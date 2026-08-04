@@ -1,0 +1,20 @@
+{
+  "name": "identity-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/identity-service/src",
+  "projectType": "application",
+  "tags": ["type:service", "scope:identity"],
+  "targets": {
+    "serve": { "command": "corepack pnpm --dir services/identity-service dev" },
+    "build": { "command": "corepack pnpm --dir services/identity-service build" },
+    "lint": {
+      "command": "corepack pnpm exec eslint services/identity-service/src --ignore-pattern \"**/*.spec.ts\""
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p services/identity-service/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config services/identity-service/vitest.config.ts"
+    }
+  }
+}

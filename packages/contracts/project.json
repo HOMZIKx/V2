@@ -1,0 +1,21 @@
+{
+  "name": "contracts",
+  "projectType": "library",
+  "root": "packages/contracts",
+  "sourceRoot": "packages/contracts/src",
+  "tags": ["type:contracts", "scope:shared"],
+  "targets": {
+    "lint": {
+      "command": "eslint packages/contracts/src"
+    },
+    "typecheck": {
+      "command": "tsc -p packages/contracts/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "vitest run packages/contracts/src"
+    },
+    "build": {
+      "command": "tsc -p packages/contracts/tsconfig.json --noEmit"
+    }
+  }
+}

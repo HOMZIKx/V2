@@ -1,21 +1,27 @@
 # ChatGPT → Cursor
 
 ## Status
-`READY_FOR_CURSOR`
+
+`IN_PROGRESS`
 
 ## Task ID
+
 `P0-BOOTSTRAP-001`
 
 ## Nazwa
+
 Prompt 0 — solidny bootstrap monorepo i fundamentu technicznego V2.
 
 ## Cel
+
 Zbuduj produkcyjnej jakości, uruchamialny lokalnie fundament techniczny platformy V2. Ten etap ma przygotować repozytorium, aplikacje bazowe, standardy jakości, kontrolę granic architektury, lokalną infrastrukturę developerską i CI. Nie implementuj jeszcze funkcji biznesowych bota ani platformy.
 
 ## Kontekst
+
 Projekt jest budowany od zera. Stary projekt jest wyłącznie opcjonalną referencją wizualną i funkcjonalną; nie wolno kopiować jego architektury ani przenosić monorepo. Obowiązuje konstytucja projektu i wszystkie zaakceptowane ADR-y.
 
 Priorytety w kolejności:
+
 1. bezpieczeństwo i poprawność;
 2. czytelne granice mikrousług;
 3. utrzymywalność i testowalność;
@@ -23,6 +29,7 @@ Priorytety w kolejności:
 5. szybkość implementacji dopiero po spełnieniu powyższych punktów.
 
 ## Protokół rozpoczęcia
+
 1. Zaktualizuj lokalne `main` z `origin/main`.
 2. Utwórz osobną gałąź `cursor/p0-foundation-bootstrap`.
 3. Przeczytaj wszystkie dokumenty obowiązkowe.
@@ -31,7 +38,9 @@ Priorytety w kolejności:
 6. Gdy decyzja wpływa na fundament, bezpieczeństwo, dane lub zakres i nie wynika z dokumentów, wpisz ją do `docs/ai/PENDING_DECISIONS.md` i zatrzymaj wyłącznie blokującą część pracy.
 
 ## Dokumenty obowiązkowe
+
 Przeczytaj w tej kolejności:
+
 1. `AGENTS.md`
 2. `.cursor/rules/00-project-constitution.mdc`
 3. `docs/NON_NEGOTIABLES.md`
@@ -44,6 +53,7 @@ Przeczytaj w tej kolejności:
 10. `docs/ai/PENDING_DECISIONS.md`
 
 ## Zatwierdzone wybory dla Promptu 0
+
 - Node.js 24 LTS.
 - TypeScript w pełnym trybie strict.
 - `pnpm` przez Corepack jako menedżer pakietów; wersję przypnij w `packageManager` i lockfile.
@@ -62,6 +72,7 @@ Przeczytaj w tej kolejności:
 ## Zakres
 
 ### 1. Monorepo i struktura
+
 Utwórz spójne monorepo Nx z co najmniej następującą strukturą:
 
 ```text
@@ -94,36 +105,42 @@ Dopuszczalne jest dopasowanie nazw do ograniczeń Nx, ale znaczenie i granice mu
 ### 2. Aplikacje bazowe
 
 #### `web`
+
 - Next.js App Router.
 - Minimalna strona techniczna informująca, że aplikacja działa.
 - Brak logowania, profili i funkcji biznesowych.
 - Health/smoke route odpowiednia dla wdrożeń.
 
 #### `admin`
+
 - React + Vite + React Router.
 - Minimalny ekran techniczny.
 - Brak logowania i panelu konfiguracyjnego.
 - Wykorzystanie wspólnego design systemu przynajmniej przez jeden minimalny komponent demonstracyjny.
 
 #### `api-gateway`
+
 - NestJS 11 z adapterem Fastify.
 - Endpointy `GET /health/live` oraz `GET /health/ready`.
 - Bazowa konfiguracja OpenAPI, dostępna wyłącznie w środowisku developerskim.
 - Bez logiki biznesowej i bez połączeń do baz innych usług.
 
 #### `discord-gateway`
+
 - Samodzielna aplikacja NestJS przygotowana jako adapter Discorda.
 - Nie łącz się jeszcze z Discordem i nie wymagaj prawdziwego tokenu.
 - Brak komend oraz funkcji bota.
 - Dodaj bezpieczny tryb startu bez sekretów i prosty health check lub równoważny mechanizm gotowości procesu.
 
 #### `identity-service` i `authorization-service`
+
 - Tylko szkielety usług zgodne z podziałem Domain / Application / Infrastructure / Interface.
 - Health checks i minimalne testy uruchomienia.
 - Bez Better Auth, OAuth, MFA, modeli użytkownika i reguł uprawnień na tym etapie.
 - Warstwy Domain i Application nie mogą importować NestJS, Fastify, ORM, RabbitMQ ani Redis.
 
 ### 3. Granice architektury
+
 - Zastosuj tagi Nx i reguły `enforce-module-boundaries`.
 - Aplikacje mogą zależeć od dozwolonych pakietów technicznych, ale nie od kodu innych aplikacji/usług.
 - Zakaz bezpośrednich importów między usługami.
@@ -132,7 +149,9 @@ Dopuszczalne jest dopasowanie nazw do ograniczeń Nx, ale znaczenie i granice mu
 - Dodaj automatyczny test lub kontrolę architektury wykrywającą niedozwolone zależności.
 
 ### 4. TypeScript i jakość kodu
+
 Wspólna konfiguracja ma wymuszać co najmniej:
+
 - `strict: true`;
 - `noUncheckedIndexedAccess`;
 - `exactOptionalPropertyTypes`;
@@ -143,6 +162,7 @@ Wspólna konfiguracja ma wymuszać co najmniej:
 - brak nieużywanych eksportów tam, gdzie narzędzia pozwalają to stabilnie sprawdzać.
 
 Dodaj:
+
 - ESLint z konfiguracją typu-aware;
 - Prettier;
 - spójne aliasy importów;
@@ -155,6 +175,7 @@ Dodaj:
 CI jest źródłem prawdy. Lokalne hooki mogą przyspieszać pracę, ale nie mogą być jedynym zabezpieczeniem.
 
 ### 5. Konfiguracja środowiska
+
 - Każda aplikacja/usługa otrzymuje walidowaną konfigurację.
 - Brak dostępu do `process.env` poza warstwą konfiguracji.
 - Dodaj `.env.example` bez prawdziwych sekretów.
@@ -163,7 +184,9 @@ CI jest źródłem prawdy. Lokalne hooki mogą przyspieszać pracę, ale nie mog
 - Nie zapisuj sekretów, tokenów ani prawdziwych danych dostępowych w repozytorium.
 
 ### 6. Lokalna infrastruktura Docker Compose
+
 Przygotuj lokalne środowisko z:
+
 - PostgreSQL;
 - Redis;
 - RabbitMQ z panelem management;
@@ -173,24 +196,29 @@ Przygotuj lokalne środowisko z:
 - czytelnymi portami zapisanymi w dokumentacji.
 
 PostgreSQL:
+
 - jedna instancja;
 - osobne bazy i osobni użytkownicy przynajmniej dla `identity-service` i `authorization-service`;
 - użytkownik usługi nie może mieć dostępu do bazy drugiej usługi;
 - skrypty inicjalizacyjne muszą być idempotentne dla czystego środowiska.
 
 RabbitMQ:
+
 - konfiguracja developerska przygotowana pod quorum queues;
 - panel management tylko do lokalnego developmentu;
 - bez implementowania jeszcze adaptera biznesowego, retry, DLQ ani Outbox.
 
 Zapewnij udokumentowane polecenia:
+
 - uruchomienie infrastruktury;
 - zatrzymanie;
 - wyczyszczenie wolumenów z wyraźnym ostrzeżeniem;
 - sprawdzenie health status.
 
 ### 7. Skrypty developerskie
+
 Zapewnij cross-platformowe polecenia, działające także na Windowsie:
+
 - `pnpm install`;
 - `pnpm dev` albo `pnpm dev:all` uruchamiające cały aktualny fundament;
 - `pnpm infra:up`;
@@ -205,6 +233,7 @@ Zapewnij cross-platformowe polecenia, działające także na Windowsie:
 Nie opieraj podstawowego workflow na skryptach Bash, które nie działają natywnie na Windowsie. Dla złożonej orkiestracji użyj skryptów Node/TypeScript albo możliwości Nx.
 
 ### 8. Testy
+
 - Co najmniej jeden sensowny test jednostkowy na każdą aplikację/usługę bazową.
 - Testy health endpoints backendu.
 - Test architektury/granic importów.
@@ -214,7 +243,9 @@ Nie opieraj podstawowego workflow na skryptach Bash, które nie działają natyw
 - Ustaw rozsądne progi coverage dla nowego kodu fundamentu i udokumentuj wyjątki; nie generuj sztucznego kodu tylko po to, aby nabić coverage.
 
 ### 9. CI i bezpieczeństwo łańcucha dostaw
+
 Utwórz GitHub Actions dla Pull Requestów i `main`:
+
 - instalacja Node 24 i Corepack;
 - `pnpm install --frozen-lockfile`;
 - format check;
@@ -228,6 +259,7 @@ Utwórz GitHub Actions dla Pull Requestów i `main`:
 - analiza zależności oraz podstawowa analiza bezpieczeństwa kodu.
 
 Wymagania:
+
 - minimalne uprawnienia workflow;
 - przypięte wersje akcji GitHub do pełnych commit SHA tam, gdzie jest to rozsądne i możliwe;
 - concurrency z anulowaniem starych przebiegów tego samego PR;
@@ -237,7 +269,9 @@ Wymagania:
 Dodaj konfigurację automatycznych aktualizacji zależności, preferencyjnie Renovate, z grupowaniem bezpiecznych aktualizacji i bez automatycznego scalania breaking changes.
 
 ### 10. Dokumentacja
+
 Utwórz lub zaktualizuj:
+
 - `README.md` — cel, wymagania, szybki start, najważniejsze komendy;
 - `AGENTS.md` — zachowaj lokalne ścieżki referencyjne, ale dodaj obowiązkową kolejność czytania konstytucji i protokół pracy;
 - `docs/DEVELOPMENT.md` — pełne uruchomienie na Windows/WSL2 i pozostałych systemach;
@@ -258,7 +292,9 @@ Utwórz lub zaktualizuj:
 Dokumentacja musi odpowiadać rzeczywistemu kodowi. Nie opisuj funkcji, których nie ma.
 
 ## Poza zakresem
+
 Nie implementuj teraz:
+
 - Discord OAuth;
 - Better Auth;
 - passkeys, TOTP i sesji;
@@ -275,6 +311,7 @@ Nie implementuj teraz:
 - kopiowania kodu starego projektu.
 
 ## Operacje zabronione
+
 - Bezpośredni commit do `main`.
 - Zmiana `NON_NEGOTIABLES.md` albo zaakceptowanych ADR-ów bez nowego ADR-u i decyzji właściciela.
 - Dodawanie `any`, `@ts-ignore`, wyłączanie lint rules lub pomijanie testów w celu przepchnięcia builda.
@@ -286,7 +323,9 @@ Nie implementuj teraz:
 - Deklarowanie sukcesu bez uruchomienia i udokumentowania testów.
 
 ## Kryteria akceptacji
+
 Zadanie jest gotowe wyłącznie wtedy, gdy:
+
 1. Czysty clone repozytorium można przygotować według README bez wiedzy spoza repo.
 2. `pnpm install --frozen-lockfile` działa.
 3. `pnpm validate` kończy się sukcesem.
@@ -302,7 +341,9 @@ Zadanie jest gotowe wyłącznie wtedy, gdy:
 13. Cursor tworzy Pull Request do `main`, ale go nie scala.
 
 ## Oczekiwany raport końcowy
+
 W `docs/ai/CURSOR_TO_CHATGPT.md` wpisz:
+
 - status `READY_FOR_REVIEW`;
 - Task ID;
 - nazwę branch i commit SHA;

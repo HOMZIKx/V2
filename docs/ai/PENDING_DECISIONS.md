@@ -3,7 +3,9 @@
 Brak aktywnych decyzji blokujących na etapie zapisu konstytucji projektu.
 
 ## Szablon
+
 ### DEC-XXX — Tytuł
+
 - **Status:** BLOCKED
 - **Kontekst:**
 - **Wpływ:**

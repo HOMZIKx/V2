@@ -1,0 +1,17 @@
+{
+  "name": "typescript-config",
+  "projectType": "library",
+  "root": "packages/typescript-config",
+  "tags": ["type:config", "scope:shared"],
+  "targets": {
+    "lint": {
+      "command": "node -e \"process.exit(0)\""
+    },
+    "typecheck": {
+      "command": "tsc -p packages/typescript-config/tsconfig.json --noEmit"
+    },
+    "build": {
+      "command": "tsc -p packages/typescript-config/tsconfig.json --noEmit"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "description": "Group compatible dependency updates for review",
+      "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
+      "groupName": "non-major dependencies",
+      "automerge": false
+    },
+    {
+      "description": "Require dashboard approval for breaking updates",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+      "automerge": false
+    }
+  ]
+}

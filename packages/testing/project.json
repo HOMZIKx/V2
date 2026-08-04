@@ -1,0 +1,21 @@
+{
+  "name": "testing",
+  "projectType": "library",
+  "root": "packages/testing",
+  "sourceRoot": "packages/testing/src",
+  "tags": ["type:util", "scope:shared"],
+  "targets": {
+    "lint": {
+      "command": "eslint packages/testing/src"
+    },
+    "typecheck": {
+      "command": "tsc -p packages/testing/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "vitest run packages/testing/src"
+    },
+    "build": {
+      "command": "tsc -p packages/testing/tsconfig.json --noEmit"
+    }
+  }
+}

@@ -1,14 +1,17 @@
 # Project State — V2
 
 ## Status
-`PROMPT_0_READY_FOR_CURSOR`
+
+`PROMPT_0_IMPLEMENTED_PENDING_REVIEW`
 
 ## Aktualny etap
-Konstytucja projektu została scalona do `main`. Aktywne zadanie `P0-BOOTSTRAP-001` jest zapisane w `docs/ai/CHATGPT_TO_CURSOR.md` ze statusem `READY_FOR_CURSOR`.
 
-Nie rozpoczęto jeszcze implementacji fundamentu technicznego.
+Fundament Promptu 0 został zaimplementowany na gałęzi
+`cursor/p0-foundation-bootstrap` i oczekuje na audyt ChatGPT. Status
+szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
 
 ## Zatwierdzone
+
 - wizja i model produktu;
 - jedna organizacja i wiele serwerów Discord;
 - hybrydowy profil użytkownika;
@@ -24,22 +27,49 @@ Nie rozpoczęto jeszcze implementacji fundamentu technicznego.
 - model tożsamości, MFA i sesji;
 - trwały protokół pracy AI;
 - zakres i kryteria akceptacji Promptu 0.
+- monorepo pnpm + Nx;
+- standardy jakości i testowania;
+- lokalna infrastruktura oraz izolacja baz identity/authorization;
+- standardy kontraktów OpenAPI i przyszłych zdarzeń.
 
 ## Aktywne zadanie
+
 - **Task ID:** `P0-BOOTSTRAP-001`
-- **Status:** `READY_FOR_CURSOR`
+- **Status:** `READY_FOR_REVIEW`
 - **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
 - **Oczekiwany branch Cursora:** `cursor/p0-foundation-bootstrap`
 - **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
 
+## Zaimplementowany fundament
+
+- aplikacje techniczne `web`, `admin`, `api-gateway` i `discord-gateway`;
+- szkielety `identity-service` i `authorization-service` z warstwami oraz
+  health checks;
+- pakiety wspólne, konfiguracja, obserwowalność, testy, design system oraz
+  konfiguracje TypeScript i ESLint;
+- Docker Compose z PostgreSQL 16, Redis 7 i RabbitMQ 3-management oraz
+  odseparowanymi bazami identity/authorization;
+- skrypty developerskie, CI, Renovate, kontrola architektury i dokumentacja
+  fundamentu.
+
 ## Niezaimplementowane
-Wszystko poza dokumentacją i minimalnym szkieletem repozytorium.
+
+- Discord OAuth, Better Auth, sesje, MFA i integracja z Discord API;
+- modele biznesowe, ORM, reguły uprawnień i moduły produktowe;
+- zdarzenia biznesowe, AsyncAPI/JSON Schema, Outbox, retry, DLQ i Streams;
+- produkcyjny hosting lub deployment.
 
 ## Następny punkt kontrolny
-Audyt Pull Requesta utworzonego przez Cursora po wykonaniu Promptu 0.
+
+Audyt ChatGPT zmian Promptu 0. Nie rozpoczynać Promptu 1 bez statusu
+`APPROVED`.
 
 ## Blokady
-Brak.
+
+Brak blokad produktowych. Na hoście implementacji Cursor brakowało Docker CLI /
+Docker Desktop — lokalne `docker compose config` i healthy kontenery nie zostały
+wykonane; CI ma wykonać walidację Compose.
 
 ## Ważna uwaga
+
 Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów.
