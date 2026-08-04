@@ -18,12 +18,25 @@ ponieważ nie są zaimplementowane.
 
 ```text
 pnpm test
+pnpm test:coverage
 pnpm test:e2e
 pnpm architecture:check
+pnpm test:infra
+pnpm test:runtime-smoke
 ```
 
 `pnpm test` jest zbiorczym targetem Nx dla testów Vitest. Smoke Playwright
 wymaga uruchamialnych aplikacji zgodnie z konfiguracją projektów E2E.
+`pnpm test:coverage` włącza raportowanie V8 oraz minimalne progi: 60% linii,
+funkcji i instrukcji oraz 50% gałęzi. Wspólne progi są skonfigurowane dla
+aplikacji, usług i testów narzędziowych; pliki konfiguracji, entrypointy,
+moduły frameworka i katalogi wynikowe są wykluczone.
+
+`pnpm test:infra` domyślnie pomija test izolacji PostgreSQL. Ustawienie
+`RUN_INFRA_TESTS=true` wymusza połączenie z lokalnym Compose i powoduje błąd,
+jeżeli baza jest niedostępna lub konto usługi może użyć cudzej bazy.
+`pnpm test:runtime-smoke` wymaga wcześniej zbudowanych aplikacji i sprawdza
+health endpointy sześciu procesów.
 
 ## Rozwój strategii
 

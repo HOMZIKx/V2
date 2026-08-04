@@ -12,15 +12,15 @@ const moduleBoundaryRule = [
     depConstraints: [
       {
         sourceTag: 'type:app',
-        onlyDependOnLibsWithTags: ['type:util', 'type:contracts', 'type:ui', 'scope:shared'],
+        onlyDependOnLibsWithTags: ['type:util', 'type:contracts', 'type:ui', 'type:config'],
       },
       {
         sourceTag: 'type:service',
-        onlyDependOnLibsWithTags: ['type:util', 'type:contracts', 'scope:shared'],
+        onlyDependOnLibsWithTags: ['type:util', 'type:contracts', 'type:config'],
       },
       {
         sourceTag: 'type:contracts',
-        onlyDependOnLibsWithTags: ['type:contracts', 'scope:shared'],
+        onlyDependOnLibsWithTags: ['type:contracts'],
       },
       {
         sourceTag: 'scope:identity',

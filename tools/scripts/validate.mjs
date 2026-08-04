@@ -4,14 +4,15 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const isWindows = process.platform === 'win32';
+const packageManager = process.platform === 'win32' ? 'corepack.cmd' : 'corepack';
 
 const checks = [
-  ['pnpm', ['format:check']],
-  ['pnpm', ['lint']],
-  ['pnpm', ['typecheck']],
-  ['pnpm', ['test']],
-  ['pnpm', ['architecture:check']],
-  ['pnpm', ['build']],
+  [packageManager, ['pnpm', 'format:check']],
+  [packageManager, ['pnpm', 'lint']],
+  [packageManager, ['pnpm', 'typecheck']],
+  [packageManager, ['pnpm', 'test']],
+  [packageManager, ['pnpm', 'architecture:check']],
+  [packageManager, ['pnpm', 'build']],
   ['docker', ['compose', '-f', 'infrastructure/docker/docker-compose.yml', 'config']],
 ];
 

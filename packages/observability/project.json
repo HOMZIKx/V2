@@ -5,17 +5,9 @@
   "sourceRoot": "packages/observability/src",
   "tags": ["type:util", "scope:shared"],
   "targets": {
-    "lint": {
-      "command": "eslint packages/observability/src"
-    },
-    "typecheck": {
-      "command": "tsc -p packages/observability/tsconfig.json --noEmit"
-    },
-    "test": {
-      "command": "vitest run packages/observability/src"
-    },
-    "build": {
-      "command": "tsc -p packages/observability/tsconfig.json --noEmit"
-    }
+    "lint": { "command": "eslint packages/observability/src" },
+    "typecheck": { "command": "tsc -p packages/observability/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/observability/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/observability/tsconfig.json --noEmit" }
   }
 }

@@ -11,151 +11,60 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `f7573c6` (HEAD)
+- **Commit SHA:** `PENDING_PUSH_HEAD`
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
-## Zaimplementowany zakres
+## Audyt follow-up (CHANGES REQUIRED → poprawki)
 
-- Monorepo pnpm 10.14.0 + Nx 23.1.1: `apps/web`, `apps/admin`, `apps/api-gateway`,
-  `apps/discord-gateway`, `services/identity-service`,
-  `services/authorization-service`.
-- Pakiety: `contracts`, `configuration`, `observability`, `testing`,
-  `design-system`, `typescript-config`, `eslint-config`.
-- Docker Compose: PostgreSQL 16 + izolowane bazy/użytkownicy identity i
-  authorization, Redis 7, RabbitMQ 3-management (quorum defaults).
-- Quality: ESLint type-aware + `@nx/enforce-module-boundaries`, Prettier,
-  Vitest, Playwright smoke configs, architecture import scan, Commitlint /
-  PR title workflow, Renovate, GitHub Actions CI.
-- Skrypty: `dev`, `dev:all`, `infra:*`, `format*`, `lint`, `typecheck`, `test`,
-  `build`, `validate`, `generate:service`, `architecture:check`.
-- Dokumentacja + ADR-0002..0005.
+Naprawiono wszystkie blokery z review „Audyt P0-BOOTSTRAP-001 — CHANGES REQUIRED”.
 
-## Zmienione pliki (obszary)
+### Blokery zamknięte
 
-### Root / tooling
+1. Prettier / format:check — wyczyszczone; CI musi przejść od formatu dalej.
+2. Playwright E2E — w CI (`pnpm exec playwright install --with-deps chromium` +
+   `pnpm test:e2e`); obowiązkowy job Quality gates.
+3. Docker healthy — job `Infrastructure integration`: `up -d --wait`, weryfikacja
+   health Postgres/Redis/RabbitMQ, test izolacji baz, `down -v` w `always()`.
+4. Test izolacji baz — `tools/infra/db-isolation.test.ts` (`RUN_INFRA_TESTS=true`).
+5. Porty Compose i hosty aplikacji — wyłącznie `127.0.0.1`; obrazy przypięte
+   (`postgres:16.9`, `redis:7.4.5`, `rabbitmq:3.13.7-management`).
+6. Generator usług — pełny Nest/Fastify szkielet + `generate-service.test.mjs`.
+7. Granice Nx — usunięto bypass `scope:shared`; reguły po `type:*` + test
+   `isDependencyAllowed`.
+8. Coverage — progi 60/60/50/60 z `@vitest/coverage-v8`, `pnpm test:coverage`.
+9. Runtime smoke — `pnpm test:runtime-smoke` startuje wszystkie 6 po `build`.
+10. `pnpm validate` — w CI (Docker dostępny na runnerze).
 
-- `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `nx.json`,
-  `tsconfig.base.json`, `eslint.config.mjs`, `.prettierrc.json`,
-  `.prettierignore`, `.editorconfig`, `.nvmrc`, `.gitignore`, `.env.example`,
-  `.commitlintrc.json`, `renovate.json`, `README.md`, `AGENTS.md`
-- `tools/scripts/{infra,validate,generate-service}.mjs`
-- `tools/architecture/{vitest.config.ts,architecture.test.ts}`
-- `.github/workflows/{ci,pr-title}.yml`
+Dodatkowo: `pnpm.onlyBuiltDependencies`, layout Next.js, pin Next `15.5.22`
+(Next 16 padał na `_global-error` / `useContext` w monorepo).
 
-### Aplikacje i usługi
-
-- `apps/web/**`, `apps/admin/**`, `apps/api-gateway/**`,
-  `apps/discord-gateway/**`
-- `services/identity-service/**`, `services/authorization-service/**`
-
-### Pakiety
-
-- `packages/{contracts,configuration,observability,testing,design-system,typescript-config,eslint-config}/**`
-
-### Infrastruktura
-
-- `infrastructure/docker/docker-compose.yml`
-- `infrastructure/postgres/init/01-create-databases.sql`
-- `infrastructure/rabbitmq/**`
-
-### Dokumentacja
-
-- `docs/DEVELOPMENT.md`, `docs/architecture/*`, `docs/quality/*`,
-  `docs/DECISION_LOG.md`, `docs/ai/*`, ADR-0002..0005
-
-## Wersje głównych narzędzi
-
-| Narzędzie | Wersja |
-|---|---|
-| Node.js | 24.13.1 (engines `>=24.0.0`) |
-| pnpm | 10.14.0 (`packageManager`) |
-| Nx | 23.1.1 |
-| TypeScript | ~5.8.3 |
-| NestJS / Fastify adapter | 11.1.28 |
-| Next.js | 16.3.0 |
-| React | 19.2.x |
-| Vite | 8.2.0 |
-| Vitest | 3.2.x |
-| Playwright | ^1.54.2 |
-| Zod | ^4.x |
-| PostgreSQL (Compose) | 16 |
-| Redis (Compose) | 7 |
-| RabbitMQ (Compose) | 3-management |
-
-## Wykonane
-
-- Fundament monorepo i wszystkie bazowe aplikacje/usługi ze scope Prompt 0.
-- Health endpoints; api-gateway `/health/live` i `/health/ready` zwracają HTTP
-  200 lokalnie.
-- Walidowana konfiguracja bez `process.env` poza `@v2/configuration`.
-- CI, Renovate, granice Nx + test architektury.
-- Dokumentacja i ADR-y zgodne z kodem.
-
-## Niewykonane (poza zakresem — celowo)
-
-- Discord OAuth, Better Auth, MFA, sesje, Discord API, komendy bota.
-- ORM, modele domenowe, reguły uprawnień, moduły produktowe.
-- Outbox, retry, DLQ, Streams, AsyncAPI produkcyjne.
-- Deploy produkcyjny / Kubernetes.
-
-## Odstępstwa / ograniczenia środowiska
-
-1. **Docker CLI niedostępny na hoście implementacji** — nie uruchomiono
-   `docker compose config` ani healthy runtime Postgres/Redis/RabbitMQ lokalnie.
-   Pliki Compose i init SQL są w repo; CI uruchamia `docker compose config`.
-   Wymagane Docker Desktop u developera do `pnpm infra:up`.
-2. **Pełne `pnpm validate` kończy się błędem na kroku Docker** na tym hoście.
-   Pozostałe kroki validate (format/lint/typecheck/test/architecture/build)
-   przechodzą osobno.
-3. Smoke Playwright nie jest częścią `pnpm validate`; konfiguracje i spece są
-   gotowe (`pnpm test:e2e` po `playwright install`).
-
-## Założenia
-
-- ESM-first; Nest serwowany przez `tsx` w development.
-- OpenAPI tylko poza production na api-gateway (`/openapi`).
-- Hasła lokalne w `.env.example` / Compose są wyłącznie developerskie.
-- Generator `pnpm generate:service` tworzy kolejny szkielet zgodny z warstwami.
-
-## Wyniki kontroli (host Windows, 2026-08-04)
+## Wyniki lokalne (Windows host, bez Docker CLI)
 
 ```text
-pnpm install --frozen-lockfile     → EXIT 0
-pnpm format:check                  → EXIT 0
-pnpm lint                          → EXIT 0 (13 projektów)
-pnpm typecheck                     → EXIT 0 (13 projektów)
-pnpm test                          → EXIT 0 (11 projektów z targetem test)
-pnpm architecture:check            → EXIT 0 (2 testy)
-pnpm build                         → EXIT 0 (13 projektów)
-api-gateway GET /health/live       → 200 {"status":"ok"}
-api-gateway GET /health/ready      → 200 {"status":"ok"}
-docker compose config              → NIE URUCHOMIONO (brak docker w PATH)
-pnpm infra:up / health containers  → NIE URUCHOMIONO (brak Docker Desktop)
-pnpm audit / gitleaks              → w CI (workflow ci.yml)
+pnpm format:check     → EXIT 0
+pnpm lint             → EXIT 0
+pnpm typecheck        → EXIT 0
+pnpm test:coverage    → EXIT 0
+pnpm architecture:check → EXIT 0 (4 tests)
+pnpm build            → EXIT 0
+pnpm test:runtime-smoke → EXIT 0 (all 6 apps/services)
+pnpm test:infra       → skipped locally (RUN_INFRA_TESTS unset)
+docker compose ...    → wymaga Docker Desktop / CI
 ```
 
-## Bezpieczeństwo
+Pełne `pnpm validate` + E2E + infra healthy są w GitHub Actions PR #3.
 
-- Brak sekretów produkcyjnych w Git; `.env` w `.gitignore`; `.env.example`
-  bez prawdziwych tokenów.
-- CI: gitleaks-action + `pnpm audit --audit-level=high`.
-- Discord gateway startuje bez tokenu (safe mode).
+## Odstępstwa / założenia
 
-## Dług techniczny
-
-- Observability: konsolowy logger, bez pełnego OTel.
-- Brak coverage thresholds w Vitest (świadomie — fundament, bez sztucznego kodu).
-- Playwright browsers nie były instalowane w tej sesji.
-- `typescript-config` ma lint no-op (tylko JSON).
+- Next.js **15.5.22** zamiast 16.x z powodu błędu builda monorepo; nadal App Router.
+- Runtime smoke Nest startuje skompilowany `dist/**/main.js` z `--import tsx`
+  (workspace packages eksportują TypeScript).
+- Host implementacji bez Dockera — dowód healthy/izolacji w CI.
 
 ## ADR-y
 
-- ADR-0002 pnpm + Nx
-- ADR-0003 quality/testing
-- ADR-0004 local infra / DB isolation
-- ADR-0005 contract standards
+Bez zmian statusu ADR-0002..0005; poprawki mieszczą się w zaakceptowanym zakresie Prompt 0.
 
-## Proponowany następny etap (bez implementacji)
+## Proponowany następny krok
 
-Audyt ChatGPT → `APPROVED` → Prompt 1 (tożsamość / Better Auth / sesje) według
-nowego zadania w `CHATGPT_TO_CURSOR.md`.
+Ponowny audyt ChatGPT PR #3. Nie zaczynać Promptu 1 bez `APPROVED`.

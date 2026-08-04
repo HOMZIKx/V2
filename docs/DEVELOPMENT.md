@@ -24,9 +24,10 @@ pnpm infra:up
 pnpm infra:status
 ```
 
-Compose uruchamia PostgreSQL 16 (`5432`), Redis 7 (`6379`) i RabbitMQ 3 z
-management UI dostępnym lokalnie pod `http://127.0.0.1:15672`. Sprawdź status
-health kontenerów przez `pnpm infra:status`.
+Compose uruchamia PostgreSQL 16.9 (`5432`), Redis 7.4.5 (`6379`) i RabbitMQ
+3.13.7 z management UI dostępnym lokalnie pod `http://127.0.0.1:15672`.
+Wszystkie porty infrastruktury są przypięte do `127.0.0.1`. Sprawdź status health
+kontenerów przez `pnpm infra:status`.
 
 ```text
 pnpm infra:down
@@ -64,7 +65,9 @@ Aktualne porty:
 
 API Gateway udostępnia dokumentację OpenAPI pod `/openapi` wyłącznie poza
 produkcją. Discord Gateway startuje bez tokenu Discorda; integracja z Discordem
-nie jest jeszcze zaimplementowana.
+nie jest jeszcze zaimplementowana. Backendowe aplikacje i usługi domyślnie
+nasłuchują wyłącznie na `127.0.0.1`; ustawienie hosta `0.0.0.0` jest dozwolone
+wyłącznie w kontenerze lub wdrożeniu, które wymaga zewnętrznego bindowania.
 
 ## Kontrole jakości
 
@@ -73,6 +76,9 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:coverage
+pnpm test:infra
+pnpm test:runtime-smoke
 pnpm test:e2e
 pnpm architecture:check
 pnpm build

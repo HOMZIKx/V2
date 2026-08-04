@@ -51,6 +51,13 @@ szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
   odseparowanymi bazami identity/authorization;
 - skrypty developerskie, CI, Renovate, kontrola architektury i dokumentacja
   fundamentu.
+- remediacje audytowe: przypięte obrazy Compose oraz porty loopback, bezpieczne
+  domyślne hosty, test generatora usługi, smoke runtime i sprawdzanie izolacji
+  baz w osobnym jobie CI.
+- granice Nx nie traktują już `scope:shared` jako uprawnienia; test jednostkowy
+  blokuje zależność usługi od `type:ui` i od tagu informacyjnego bez typu.
+- progi Vitest V8 oraz testy izolacji PostgreSQL są przygotowane do egzekwowania
+  w CI; smoke runtime uruchamia entrypointy buildów wszystkich sześciu procesów.
 
 ## Niezaimplementowane
 

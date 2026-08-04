@@ -12,7 +12,7 @@ import { AppModule } from './interface/app.module.js';
 const config = createConfig(
   z.object({
     IDENTITY_SERVICE_PORT: z.coerce.number().int().positive().default(4200),
-    IDENTITY_SERVICE_HOST: z.string().min(1).default('0.0.0.0'),
+    IDENTITY_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
     IDENTITY_DATABASE_URL: z.string().url(),
   }),
 );

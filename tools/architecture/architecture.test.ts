@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import { isDependencyAllowed } from './boundaries.js';
+
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs']);
 const forbiddenInfrastructureDependencies =
@@ -86,5 +88,26 @@ describe('architecture boundaries', () => {
     });
 
     expect(violations).toEqual([]);
+  });
+
+  it('allows dependencies only through explicit type tags', () => {
+    expect(isDependencyAllowed(['type:app'], ['type:util', 'scope:shared'])).toBe(true);
+    expect(isDependencyAllowed(['type:app'], ['type:ui', 'scope:shared'])).toBe(true);
+    expect(isDependencyAllowed(['type:service'], ['type:contracts', 'scope:shared'])).toBe(true);
+    expect(isDependencyAllowed(['type:service'], ['type:config', 'scope:shared'])).toBe(true);
+    expect(isDependencyAllowed(['type:service'], ['type:ui', 'scope:shared'])).toBe(false);
+    expect(isDependencyAllowed(['type:service'], ['scope:shared'])).toBe(false);
+  });
+
+  it('keeps identity and authorization mutually isolated', () => {
+    expect(
+      isDependencyAllowed(['type:service', 'scope:identity'], ['type:util', 'scope:authorization']),
+    ).toBe(false);
+    expect(
+      isDependencyAllowed(
+        ['type:service', 'scope:authorization'],
+        ['type:contracts', 'scope:identity'],
+      ),
+    ).toBe(false);
   });
 });

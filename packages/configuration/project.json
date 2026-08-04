@@ -5,17 +5,9 @@
   "sourceRoot": "packages/configuration/src",
   "tags": ["type:util", "scope:shared"],
   "targets": {
-    "lint": {
-      "command": "eslint packages/configuration/src"
-    },
-    "typecheck": {
-      "command": "tsc -p packages/configuration/tsconfig.json --noEmit"
-    },
-    "test": {
-      "command": "vitest run packages/configuration/src"
-    },
-    "build": {
-      "command": "tsc -p packages/configuration/tsconfig.json --noEmit"
-    }
+    "lint": { "command": "eslint packages/configuration/src" },
+    "typecheck": { "command": "tsc -p packages/configuration/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/configuration/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/configuration/tsconfig.json --noEmit" }
   }
 }

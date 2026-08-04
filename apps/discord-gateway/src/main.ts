@@ -11,7 +11,7 @@ import { AppModule } from './app.module.js';
 const config = createConfig(
   z.object({
     DISCORD_GATEWAY_PORT: z.coerce.number().int().positive().default(4100),
-    DISCORD_GATEWAY_HOST: z.string().min(1).default('0.0.0.0'),
+    DISCORD_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
   }),
 );
 const logger = createLogger('discord-gateway');

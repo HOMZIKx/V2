@@ -12,7 +12,7 @@ import { AppModule } from './interface/app.module.js';
 const config = createConfig(
   z.object({
     AUTHORIZATION_SERVICE_PORT: z.coerce.number().int().positive().default(4300),
-    AUTHORIZATION_SERVICE_HOST: z.string().min(1).default('0.0.0.0'),
+    AUTHORIZATION_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
     AUTHORIZATION_DATABASE_URL: z.string().url(),
   }),
 );

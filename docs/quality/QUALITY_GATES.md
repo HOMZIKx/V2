@@ -28,7 +28,19 @@ Commits.
 
 ## Coverage
 
+`pnpm test:coverage` oraz krok CI `Test` egzekwiają V8 coverage na poziomie
+co najmniej 60% linii, funkcji i instrukcji oraz 50% gałęzi. Wymagania dotyczą
+kodów załadowanych przez test projektu; konfiguracje, entrypointy, moduły
+frameworka i artefakty builda są wykluczone.
+
 Fundament ma mieć sensowne testy zachowania i granic, nie sztuczne linie kodu
-dla podniesienia procentu coverage. Progi coverage, jeśli zostaną wprowadzone
-dla modułów biznesowych, powinny odpowiadać ryzyku i być uzasadnione. Brak
-testu nie może być maskowany atrapą ani obniżeniem wymagań bez decyzji.
+dla podniesienia procentu coverage. Obniżenie progu dla przyszłego projektu
+wymaga uzasadnienia w `TESTING_STRATEGY.md`; brak testu nie może być maskowany
+atrapą.
+
+## Izolacja infrastruktury
+
+Osobny job CI uruchamia Compose i `RUN_INFRA_TESTS=true pnpm test:infra`.
+Test weryfikuje dostęp każdego konta PostgreSQL do własnej bazy oraz odmowę
+dostępu do bazy drugiej usługi. Runtime smoke uruchamia po buildzie wszystkie
+sześć procesów i oczekuje na ich endpointy health.

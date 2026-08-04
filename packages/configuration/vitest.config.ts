@@ -5,6 +5,6 @@ import { sharedTestConfig } from '../../tools/vitest.shared.js';
 export default defineConfig({
   test: {
     ...sharedTestConfig,
-    include: ['apps/discord-gateway/src/**/*.spec.ts'],
+    include: ['packages/configuration/src/**/*.{test,spec}.ts'],
   },
 });

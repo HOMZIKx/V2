@@ -13,7 +13,7 @@ const config = createConfig(
   z.object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_GATEWAY_PORT: z.coerce.number().int().positive().default(4000),
-    API_GATEWAY_HOST: z.string().min(1).default('0.0.0.0'),
+    API_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
   }),
 );
 const logger = createLogger('api-gateway');
