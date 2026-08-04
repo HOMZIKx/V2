@@ -4,22 +4,29 @@
 `NOT_STARTED`
 
 ## Task ID
-Nieprzypisany.
+`P0-BOOTSTRAP-001`
 
-## Raport wymagany po każdym zadaniu
-- Branch i commit SHA
-- Zmienione pliki
-- Wykonane elementy
-- Niewykonane elementy
-- Odstępstwa od planu
-- Podjęte założenia
-- Decyzje wymagające zatwierdzenia
-- Dokładne komendy testowe
-- Wyniki lint, typecheck i testów
-- Wyniki kontroli bezpieczeństwa
-- Znane błędy i ograniczenia
-- Świadomie zaciągnięty dług techniczny
-- Aktualizacja dokumentacji
-- Proponowany następny krok
+## Raport wymagany po zadaniu
+Po wykonaniu aktywnego zadania zastąp ten szablon kompletnym raportem zawierającym:
 
-Nie używaj ogólnego stwierdzenia „wszystko działa” bez dowodów.
+- status `READY_FOR_REVIEW` albo `BLOCKED`;
+- branch i commit SHA;
+- numer i link Pull Requesta;
+- zmienione pliki pogrupowane obszarami;
+- dokładne wersje głównych narzędzi i bibliotek;
+- wykonane elementy;
+- niewykonane elementy;
+- odstępstwa od planu;
+- podjęte założenia;
+- decyzje wymagające zatwierdzenia;
+- dokładne komendy testowe;
+- wyniki format, lint, typecheck, test, build i kontroli architektury;
+- wyniki Docker Compose i health checks;
+- wyniki kontroli bezpieczeństwa;
+- znane błędy, ryzyka i ograniczenia;
+- świadomie zaciągnięty dług techniczny;
+- utworzone lub zmienione ADR-y;
+- aktualizację dokumentacji;
+- proponowany następny krok bez jego implementacji.
+
+Nie używaj ogólnego stwierdzenia „wszystko działa” bez dowodów. Po utworzeniu PR zatrzymaj się.
