@@ -110,7 +110,7 @@ function startApplication(application) {
 }
 
 async function waitForHealthy(application, child) {
-  const timeoutAt = Date.now() + 90_000;
+  const timeoutAt = Date.now() + 60_000;
   let lastError = 'no response';
 
   while (Date.now() < timeoutAt) {
@@ -175,8 +175,10 @@ function freePort(port) {
   }
 }
 
-for (const port of [3000, 3001, 4000, 4100, 4200, 4300]) {
-  freePort(port);
+if (process.env.CI !== 'true') {
+  for (const port of [3000, 3001, 4000, 4100, 4200, 4300]) {
+    freePort(port);
+  }
 }
 
 const requiredArtifacts = [
