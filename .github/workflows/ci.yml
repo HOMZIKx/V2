@@ -68,8 +68,15 @@ jobs:
       - name: Run end-to-end smoke tests
         run: pnpm test:e2e
 
+      - name: Build frontend artifacts for runtime smoke
+        run: |
+          corepack pnpm --dir apps/web build
+          corepack pnpm --dir apps/admin build
+
       - name: Run runtime smoke tests
         run: pnpm test:runtime-smoke
+        env:
+          NODE_ENV: production
 
       - name: Run complete validation
         run: pnpm validate
