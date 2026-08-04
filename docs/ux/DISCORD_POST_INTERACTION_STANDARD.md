@@ -1,14 +1,17 @@
 # Discord Post & Interaction Standard
 
 ## Status
+
 `ACCEPTED — owner decision, 2026-08-04`
 
 ## Purpose
+
 All future Discord posts, panels and interactive messages must be polished, compact, mobile-first and immediately understandable. The supplied screenshots define the expected level of finish and interaction quality, not a visual template to copy.
 
 V2 must build its own recognizable identity: its own color system, iconography, emoji language, banners, illustrations and component composition. The orange FlameCode branding from the reference must not be copied. The interaction model, clarity and level of finish are mandatory; the visual expression must be original.
 
 ## Product priority
+
 The order of priorities is mandatory:
 
 1. Correct, reliable and intuitive operation.
@@ -21,6 +24,7 @@ The order of priorities is mandatory:
 A beautiful panel with confusing, fragile or incomplete behavior is unacceptable.
 
 ## Original V2 visual identity
+
 - Use a dark, premium base that integrates naturally with Discord.
 - Create a distinctive V2 identity rather than reproducing another bot's palette or artwork.
 - Use individual accent colors for modules, categories or states where this improves recognition.
@@ -32,6 +36,7 @@ A beautiful panel with confusing, fragile or incomplete behavior is unacceptable
 - Do not force one color onto every module if a controlled, individual color identity makes the system clearer.
 
 ## Emoji and icon system
+
 - Use an original, consistent set of emojis/icons selected for V2.
 - Emojis should improve fast recognition of categories and actions, not decorate every line.
 - Prefer dedicated V2 custom emojis where they materially improve identity and clarity.
@@ -41,6 +46,7 @@ A beautiful panel with confusing, fragile or incomplete behavior is unacceptable
 - Emoji may support a label but cannot be the only carrier of meaning.
 
 ## Required visual direction
+
 - Clear branded header or title strip.
 - Short, readable description with strong information hierarchy.
 - Optional branded banner/hero image only where it adds information, orientation or identity.
@@ -51,6 +57,7 @@ A beautiful panel with confusing, fragile or incomplete behavior is unacceptable
 - Visual detail must not reduce scanability or increase the number of required clicks.
 
 ## Required interaction model
+
 - Use native Discord components: select menus, buttons and modals.
 - A select menu must open Discord's native option sheet/list, with clear icon/emoji, label and optional concise description for each option.
 - The placeholder must clearly communicate the current state, for example `Nie wybrano żadnej opcji`.
@@ -67,6 +74,7 @@ A beautiful panel with confusing, fragile or incomplete behavior is unacceptable
 - Permission errors, rate limits and unavailable services must produce understandable feedback instead of silent failure.
 
 ## Top-quality behavior requirements
+
 Before a Discord panel is considered complete, verify:
 
 - the main path works on desktop and mobile;
@@ -81,6 +89,7 @@ Before a Discord panel is considered complete, verify:
 - every visible action actually works and has been tested.
 
 ## Explicitly forbidden defaults
+
 - Emoji reactions as the main navigation or action system.
 - Reaction-role style interaction when a select menu or button is the correct component.
 - Pointless chains of buttons and intermediate screens.
@@ -93,6 +102,7 @@ Before a Discord panel is considered complete, verify:
 - Prioritizing animation, decoration or branding over reliability and clarity.
 
 ## Functional pattern
+
 The standard panel should generally follow this order:
 
 1. Original V2 title/header.
@@ -110,6 +120,7 @@ After a selection, the bot should prefer one of these outcomes:
 The bot must not create channel spam merely to simulate navigation.
 
 ## Design approval rule
+
 Before implementing a new Discord module, prepare:
 
 - proposed embed layout;

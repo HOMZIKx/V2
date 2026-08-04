@@ -1,0 +1,20 @@
+{
+  "name": "discord-gateway",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/discord-gateway/src",
+  "projectType": "application",
+  "tags": ["type:app", "scope:discord-gateway"],
+  "targets": {
+    "serve": { "command": "corepack pnpm --dir apps/discord-gateway dev" },
+    "build": { "command": "corepack pnpm --dir apps/discord-gateway build" },
+    "lint": {
+      "command": "corepack pnpm exec eslint apps/discord-gateway/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p apps/discord-gateway/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config apps/discord-gateway/vitest.config.ts"
+    }
+  }
+}

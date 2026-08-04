@@ -1,0 +1,13 @@
+{
+  "name": "design-system",
+  "projectType": "library",
+  "root": "packages/design-system",
+  "sourceRoot": "packages/design-system/src",
+  "tags": ["type:ui", "scope:shared"],
+  "targets": {
+    "lint": { "command": "eslint packages/design-system/src" },
+    "typecheck": { "command": "tsc -p packages/design-system/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/design-system/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/design-system/tsconfig.json --noEmit" }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "name": "v2",
+  "version": "0.0.0",
+  "private": true,
+  "description": "V2 community gaming platform monorepo",
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "nx run-many -t serve --parallel=6",
+    "dev:all": "pnpm infra:up && pnpm dev",
+    "infra:up": "node ./tools/scripts/infra.mjs up",
+    "infra:down": "node ./tools/scripts/infra.mjs down",
+    "infra:reset": "node ./tools/scripts/infra.mjs reset",
+    "infra:status": "node ./tools/scripts/infra.mjs status",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "nx run-many -t lint --parallel=4",
+    "typecheck": "nx run-many -t typecheck --parallel=4",
+    "test": "nx run-many -t test --parallel=4",
+    "test:e2e": "nx run-many -t e2e --parallel=2",
+    "test:infra": "vitest run --config tools/infra/vitest.config.ts",
+    "test:runtime-smoke": "node ./tools/scripts/runtime-smoke.mjs",
+    "test:coverage": "nx run-many -t test --parallel=1 -- --coverage",
+    "build": "nx run-many -t build --parallel=4",
+    "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
+    "validate": "node ./tools/scripts/validate.mjs",
+    "validate:quick": "node ./tools/scripts/validate.mjs --quick",
+    "generate:service": "node ./tools/scripts/generate-service.mjs"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "nx",
+      "@nestjs/core",
+      "@scarf/scarf",
+      "unrs-resolver",
+      "sharp"
+    ],
+    "overrides": {
+      "react": "19.2.8",
+      "react-dom": "19.2.8",
+      "react-router": "8.3.0",
+      "postcss": "8.5.25",
+      "brace-expansion@>=4": "5.0.9",
+      "find-my-way": "9.7.0",
+      "js-yaml": "5.2.3",
+      "sharp": "0.35.3"
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.32.0",
+    "@nx/eslint-plugin": "23.1.1",
+    "@playwright/test": "^1.54.2",
+    "@types/node": "^24.2.0",
+    "@types/pg": "^8.20.4",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "@v2/eslint-config": "workspace:*",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "nx": "23.1.1",
+    "prettier": "^3.6.2",
+    "prettier-plugin-organize-imports": "^4.2.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tsx": "^4.20.3",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.39.0",
+    "vitest": "^3.2.4",
+    "zod": "^4.0.14"
+  },
+  "dependencies": {
+    "pg": "^8.22.0"
+  }
+}

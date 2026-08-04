@@ -1,0 +1,20 @@
+{
+  "name": "authorization-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/authorization-service/src",
+  "projectType": "application",
+  "tags": ["type:service", "scope:authorization"],
+  "targets": {
+    "serve": { "command": "corepack pnpm --dir services/authorization-service dev" },
+    "build": { "command": "corepack pnpm --dir services/authorization-service build" },
+    "lint": {
+      "command": "corepack pnpm exec eslint services/authorization-service/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p services/authorization-service/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config services/authorization-service/vitest.config.ts"
+    }
+  }
+}

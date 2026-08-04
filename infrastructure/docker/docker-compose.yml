@@ -1,0 +1,61 @@
+name: v2
+
+services:
+  postgres:
+    image: postgres:16.9
+    environment:
+      # Development-only credentials. Do not use outside a local environment.
+      POSTGRES_USER: v2_admin
+      POSTGRES_PASSWORD: v2_admin_dev_password
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.5
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13.7-management
+    environment:
+      # Development-only credentials. Do not use outside a local environment.
+      RABBITMQ_DEFAULT_USER: v2
+      RABBITMQ_DEFAULT_PASS: v2_dev_password
+    ports:
+      - '127.0.0.1:5672:5672'
+      # Keep the management UI available only from this machine.
+      - '127.0.0.1:15672:15672'
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+      - ../rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:

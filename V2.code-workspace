@@ -2,16 +2,16 @@
   "folders": [
     {
       "name": "V2 (piszemy tu)",
-      "path": "."
+      "path": ".",
     },
     {
       "name": "dobry-temat (wzory / referencja)",
-      "path": "../Nowy folder/Aplikaja-gildii-main"
-    }
+      "path": "../Nowy folder/Aplikaja-gildii-main",
+    },
   ],
   "settings": {
     "files.exclude": {
-      "**/node_modules": true
-    }
-  }
+      "**/node_modules": true,
+    },
+  },
 }

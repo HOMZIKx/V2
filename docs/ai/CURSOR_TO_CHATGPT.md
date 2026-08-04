@@ -1,32 +1,76 @@
-# Cursor → ChatGPT
+﻿# Cursor → ChatGPT
 
-## Status zadania
-`NOT_STARTED`
+## Status
+
+`READY_FOR_REVIEW`
 
 ## Task ID
+
 `P0-BOOTSTRAP-001`
 
-## Raport wymagany po zadaniu
-Po wykonaniu aktywnego zadania zastąp ten szablon kompletnym raportem zawierającym:
+## Branch, commit i PR
 
-- status `READY_FOR_REVIEW` albo `BLOCKED`;
-- branch i commit SHA;
-- numer i link Pull Requesta;
-- zmienione pliki pogrupowane obszarami;
-- dokładne wersje głównych narzędzi i bibliotek;
-- wykonane elementy;
-- niewykonane elementy;
-- odstępstwa od planu;
-- podjęte założenia;
-- decyzje wymagające zatwierdzenia;
-- dokładne komendy testowe;
-- wyniki format, lint, typecheck, test, build i kontroli architektury;
-- wyniki Docker Compose i health checks;
-- wyniki kontroli bezpieczeństwa;
-- znane błędy, ryzyka i ograniczenia;
-- świadomie zaciągnięty dług techniczny;
-- utworzone lub zmienione ADR-y;
-- aktualizację dokumentacji;
-- proponowany następny krok bez jego implementacji.
+- **Branch:** `cursor/p0-foundation-bootstrap`
+- **Commit SHA (CI `success`):** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
+- **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
-Nie używaj ogólnego stwierdzenia „wszystko działa” bez dowodów. Po utworzeniu PR zatrzymaj się.
+## Drugi audyt — poprawki
+
+Zintegrowano `origin/main` (bez utraty D-023/D-024, standardu postów Discord,
+identyfikacji V2, serwera testowego, ADR-0006 i Desktop Companion). Decyzje
+techniczne Promptu 0 przenumerowano do D-025..D-028.
+
+### Blokery zamknięte
+
+1. Sync z `main` + przenumerowanie Decision Log.
+2. Admin: React Router **8.3.0** (`BrowserRouter` / `Routes` / `Route`).
+3. Backend: lint obejmuje `*.spec.ts`; typecheck przez `tsconfig.json` z
+   testami; build przez `tsconfig.build.json`.
+4. Coverage: `all: true` + jawne `coverageInclude` per projekt.
+5. Generator: wymagane `--port` i `--data-ownership`; walidacja kolizji portów;
+   test dwóch serwisów.
+6. Runtime smoke: ephemeral ports; brak `taskkill`/`fuser` na obcych
+   procesach; zamykane tylko własne drzewo procesów.
+7. Ochrona prod: walidacja hostów URL DB/Redis/RabbitMQ; wyjątek
+   `ALLOW_PRODUCTION_CONNECTIONS=true`.
+8. `pnpm validate` = pełny zestaw; `pnpm validate:quick` = wariant lekki.
+9. CI uruchamia `pnpm validate` na finalnym HEAD.
+
+## Wyniki CI (finalny tip)
+
+- **Run:** [30955695886](https://github.com/HOMZIKx/V2/actions/runs/30955695886)
+- **Trigger:** `pull_request`
+- **HEAD SHA:** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
+- **Conclusion:** `success`
+
+| Job                        | Wynik   |
+| -------------------------- | ------- |
+| Quality gates              | success |
+| Infrastructure integration | success |
+| Secret scan                | success |
+| PR Title                   | success |
+
+Quality gates = `pnpm validate` (format, lint, typecheck, coverage, architecture,
+build, E2E, runtime smoke, compose config) + `pnpm audit --audit-level=high`.
+
+## Wyniki lokalne
+
+```text
+pnpm format:check     → EXIT 0
+pnpm lint             → EXIT 0
+pnpm typecheck        → EXIT 0
+pnpm test:coverage    → EXIT 0
+pnpm architecture:check → EXIT 0
+pnpm build            → EXIT 0
+pnpm test:runtime-smoke → EXIT 0
+pnpm audit --audit-level=high → No known vulnerabilities found
+```
+
+## Odstępstwa
+
+- Next.js **15.5.22** (zamiast 16.x) — znany błąd monorepo.
+- React Router **8.3.0** (bezpieczna linia; `react-router-dom` v8 nie istnieje).
+
+## Proponowany następny krok
+
+Trzeci audyt ChatGPT PR #3. Nie zaczynać Promptu 1 bez `APPROVED`.

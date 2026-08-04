@@ -1,0 +1,17 @@
+{
+  "name": "eslint-config",
+  "projectType": "library",
+  "root": "packages/eslint-config",
+  "tags": ["type:config", "scope:shared"],
+  "targets": {
+    "lint": {
+      "command": "eslint --no-error-on-unmatched-pattern \"packages/eslint-config/src/**/*.{js,mjs,cjs}\""
+    },
+    "typecheck": {
+      "command": "tsc -p packages/eslint-config/tsconfig.json --noEmit"
+    },
+    "build": {
+      "command": "tsc -p packages/eslint-config/tsconfig.json --noEmit"
+    }
+  }
+}

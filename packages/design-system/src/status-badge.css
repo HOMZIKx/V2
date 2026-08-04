@@ -1,0 +1,12 @@
+.v2-status-badge {
+  align-items: center;
+  background-color: color-mix(in srgb, var(--v2-status-badge-color) 12%, white);
+  border: 1px solid var(--v2-status-badge-color);
+  border-radius: 999px;
+  color: var(--v2-status-badge-color);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}

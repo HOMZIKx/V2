@@ -1,0 +1,20 @@
+{
+  "name": "api-gateway",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api-gateway/src",
+  "projectType": "application",
+  "tags": ["type:app", "scope:api-gateway"],
+  "targets": {
+    "serve": { "command": "corepack pnpm --dir apps/api-gateway dev" },
+    "build": { "command": "corepack pnpm --dir apps/api-gateway build" },
+    "lint": {
+      "command": "corepack pnpm exec eslint apps/api-gateway/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p apps/api-gateway/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config apps/api-gateway/vitest.config.ts"
+    }
+  }
+}
