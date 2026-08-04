@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `PENDING_UNTIL_COMMIT`
+- **Commit SHA:** `162619d226f892e3876509e130070871bcba7c55`
 - **PR:** `PENDING_UNTIL_PR`
 
 ## Zaimplementowany zakres
