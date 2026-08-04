@@ -47,11 +47,11 @@ nieużywanego `react-router` / `@fastify/static`, overrides zależności
 - **HEAD SHA:** `1fb8577a7712e939e1d4d61ab16a759b4827a5ef`
 - **Conclusion:** `success`
 
-| Job | Wynik |
-| --- | --- |
-| Quality gates | success (~3m52s) |
-| Infrastructure integration | success (~45s) |
-| Secret scan | success (~8s) |
+| Job                        | Wynik            |
+| -------------------------- | ---------------- |
+| Quality gates              | success (~3m52s) |
+| Infrastructure integration | success (~45s)   |
+| Secret scan                | success (~8s)    |
 
 Quality gates obejmuje m.in.: format, lint, typecheck, test, architecture
 boundaries, build, Playwright E2E, runtime smoke (6 aplikacji/usług),
