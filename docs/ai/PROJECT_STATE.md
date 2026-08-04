@@ -44,7 +44,7 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 - **Branch:** `cursor/p1-discord-test-harness`
 - **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
 - **Implementacja kodu:** ukończona na gałęzi `cursor/p1-discord-test-harness` (status `READY_FOR_LIVE_TEST`)
-- **CI:** push gałęzi po lokalnym `pnpm validate` (bez Docker CLI lokalnie — CI na Ubuntu ma Docker)
+- **CI:** zielone na HEAD `83ad417ae638582b468c839b4e0cb6c8a2076df4` (Quality gates + Infra + Secret scan)
 - **Live test Discord:** **wymagany od właściciela** — instrukcja: `docs/discord/TEST_BOT_SETUP.md` (sekrety tylko lokalnie, nigdy w czacie)
 - **Pull Request:** po live teście i zielonym CI — bez samodzielnego scalenia
 
