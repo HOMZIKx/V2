@@ -50,7 +50,6 @@ jobs:
       - name: Run complete validation
         run: pnpm validate
         env:
-          NODE_ENV: production
           CI: 'true'
 
       - name: Audit production dependencies

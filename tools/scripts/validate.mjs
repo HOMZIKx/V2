@@ -28,7 +28,11 @@ const fullChecks = [
   [packageManager, ['pnpm', 'test:e2e']],
   [packageManager, ['pnpm', '--dir', 'apps/web', 'build']],
   [packageManager, ['pnpm', '--dir', 'apps/admin', 'build']],
-  [packageManager, ['pnpm', 'test:runtime-smoke']],
+  [
+    packageManager,
+    ['pnpm', 'test:runtime-smoke'],
+    { NODE_ENV: 'production', CI: process.env.CI ?? 'true' },
+  ],
   ['docker', ['compose', '-f', 'infrastructure/docker/docker-compose.yml', 'config']],
 ];
 
@@ -38,7 +42,7 @@ if (process.env.RUN_INFRA_TESTS === 'true') {
 
 const checks = mode === 'quick' ? quickChecks : fullChecks;
 
-function run(executable, args) {
+function run(executable, args, extraEnv = {}) {
   const displayCommand = `${executable} ${args.join(' ')}`;
   console.log(`\n> ${displayCommand}`);
 
@@ -46,7 +50,10 @@ function run(executable, args) {
     cwd: repositoryRoot,
     stdio: 'inherit',
     shell: isWindows,
-    env: process.env,
+    env: {
+      ...process.env,
+      ...extraEnv,
+    },
   });
 
   if (result.error !== undefined) {
@@ -64,8 +71,9 @@ function run(executable, args) {
   }
 }
 
-for (const [executable, args] of checks) {
-  run(executable, args);
+for (const check of checks) {
+  const [executable, args, extraEnv] = check;
+  run(executable, args, extraEnv ?? {});
 }
 
 console.log(`\nAll ${mode} validation checks passed.`);
