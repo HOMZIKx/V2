@@ -8,7 +8,7 @@
     "serve": { "command": "corepack pnpm --dir services/authorization-service dev" },
     "build": { "command": "corepack pnpm --dir services/authorization-service build" },
     "lint": {
-      "command": "corepack pnpm exec eslint services/authorization-service/src --ignore-pattern \"**/*.spec.ts\""
+      "command": "corepack pnpm exec eslint services/authorization-service/src"
     },
     "typecheck": {
       "command": "corepack pnpm exec tsc -p services/authorization-service/tsconfig.json --noEmit"

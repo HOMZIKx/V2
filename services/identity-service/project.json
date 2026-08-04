@@ -8,7 +8,7 @@
     "serve": { "command": "corepack pnpm --dir services/identity-service dev" },
     "build": { "command": "corepack pnpm --dir services/identity-service build" },
     "lint": {
-      "command": "corepack pnpm exec eslint services/identity-service/src --ignore-pattern \"**/*.spec.ts\""
+      "command": "corepack pnpm exec eslint services/identity-service/src"
     },
     "typecheck": {
       "command": "corepack pnpm exec tsc -p services/identity-service/tsconfig.json --noEmit"

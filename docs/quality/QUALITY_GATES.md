@@ -2,36 +2,38 @@
 
 ## Lokalnie
 
-`pnpm validate` uruchamia kolejno:
+`pnpm validate` uruchamia pełny zestaw:
 
 1. `pnpm format:check`;
 2. `pnpm lint`;
 3. `pnpm typecheck`;
-4. `pnpm test`;
+4. `pnpm test:coverage`;
 5. `pnpm architecture:check`;
 6. `pnpm build`;
-7. `docker compose -f infrastructure/docker/docker-compose.yml config`.
+7. `pnpm test:e2e`;
+8. build frontendu + `pnpm test:runtime-smoke`;
+9. `docker compose -f infrastructure/docker/docker-compose.yml config`.
 
-Playwright smoke (`pnpm test:e2e`) jest osobnym poleceniem i nie jest obecnie
-wywoływany przez `validate`.
+`pnpm validate:quick` pomija coverage, E2E i runtime smoke (zostawia zwykłe
+`pnpm test` oraz compose config).
 
 ## CI
 
-Workflow `CI` dla pull requestów i pushy do `main` wykonuje instalację przez
-Corepack i `pnpm install --frozen-lockfile`, następnie te same kontrole
-formatowania, lint, typecheck, testów, granic architektury, build oraz
-walidację konfiguracji Compose. Dodatkowo uruchamia `pnpm audit
---audit-level=high`. Osobne zadanie wykonuje skan sekretów Gitleaks.
+Workflow `CI` dla pull requestów i pushy do `main` instaluje zależności przez
+Corepack, instaluje Chromium Playwright i uruchamia `pnpm validate`, a następnie
+`pnpm audit --audit-level=high`. Osobny job podnosi Compose, sprawdza healthy
+kontenerów i izolację baz. Dodatkowo działa skan sekretów Gitleaks.
 
 Workflow `PR Title` sprawdza zgodność tytułu pull requesta z Conventional
 Commits.
 
 ## Coverage
 
-`pnpm test:coverage` oraz krok CI `Test` egzekwiają V8 coverage na poziomie
-co najmniej 60% linii, funkcji i instrukcji oraz 50% gałęzi. Wymagania dotyczą
-kodów załadowanych przez test projektu; konfiguracje, entrypointy, moduły
-frameworka i artefakty builda są wykluczone.
+`pnpm test:coverage` egzekwuje V8 coverage z `all: true` i jawnym `include`
+dla kodu źródłowego projektu (również pliki niezaimportowane przez testy).
+Progi: co najmniej 60% linii, funkcji i instrukcji oraz 50% gałęzi. Wykluczenia
+obejmują konfiguracje, entrypointy, moduły frameworka, baryłki `index.ts` oraz
+artefakty builda.
 
 Fundament ma mieć sensowne testy zachowania i granic, nie sztuczne linie kodu
 dla podniesienia procentu coverage. Obniżenie progu dla przyszłego projektu
@@ -42,5 +44,6 @@ atrapą.
 
 Osobny job CI uruchamia Compose i `RUN_INFRA_TESTS=true pnpm test:infra`.
 Test weryfikuje dostęp każdego konta PostgreSQL do własnej bazy oraz odmowę
-dostępu do bazy drugiej usługi. Runtime smoke uruchamia po buildzie wszystkie
-sześć procesów i oczekuje na ich endpointy health.
+dostępu do bazy drugiej usługi. Runtime smoke alokuje wolne porty ephemeral,
+nie zabija obcych procesów i oczekuje health endpointów wszystkich sześciu
+procesów po buildzie.

@@ -1,4 +1,5 @@
 import { StatusBadge } from '@v2/design-system';
+import { Route, Routes } from 'react-router';
 
 export function AdminStatusPage() {
   return (
@@ -10,5 +11,9 @@ export function AdminStatusPage() {
 }
 
 export function App() {
-  return <AdminStatusPage />;
+  return (
+    <Routes>
+      <Route path="/" element={<AdminStatusPage />} />
+    </Routes>
+  );
 }

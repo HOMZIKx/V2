@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,87 +9,69 @@ const corepack = process.platform === 'win32' ? 'corepack.cmd' : 'corepack';
 const dummyDatabaseUrl = 'postgresql://smoke:smoke@127.0.0.1:5432/smoke';
 const startupFailures = new WeakMap();
 
-const applications = [
-  {
-    args: ['pnpm', '--dir', 'apps/web', 'start'],
-    command: corepack,
-    name: 'web',
-    shell: true,
-    url: 'http://127.0.0.1:3000/health',
-  },
-  {
-    args: [
-      'pnpm',
-      '--dir',
-      'apps/admin',
-      'exec',
-      'vite',
-      'preview',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      '3001',
-    ],
-    command: corepack,
-    name: 'admin',
-    shell: true,
-    url: 'http://127.0.0.1:3001/',
-  },
-  {
-    args: ['--import', 'tsx', 'apps/api-gateway/dist/apps/api-gateway/src/main.js'],
-    command: process.execPath,
-    name: 'api-gateway',
-    url: 'http://127.0.0.1:4000/health/live',
-  },
-  {
-    args: ['--import', 'tsx', 'apps/discord-gateway/dist/apps/discord-gateway/src/main.js'],
-    command: process.execPath,
-    name: 'discord-gateway',
-    url: 'http://127.0.0.1:4100/health/live',
-  },
-  {
-    args: [
-      '--import',
-      'tsx',
-      'services/identity-service/dist/services/identity-service/src/main.js',
-    ],
-    command: process.execPath,
-    name: 'identity-service',
-    url: 'http://127.0.0.1:4200/health/live',
-  },
-  {
-    args: [
-      '--import',
-      'tsx',
-      'services/authorization-service/dist/services/authorization-service/src/main.js',
-    ],
-    command: process.execPath,
-    name: 'authorization-service',
-    url: 'http://127.0.0.1:4300/health/live',
-  },
-];
+function allocatePort() {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (address === null || typeof address === 'string') {
+        server.close();
+        reject(new Error('Could not allocate an ephemeral port.'));
+        return;
+      }
+
+      const { port } = address;
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
+
+async function assertPortAvailable(port) {
+  await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.unref();
+    server.once('error', (error) => {
+      reject(
+        new Error(
+          `Port ${port} is already in use (${error.code ?? 'EADDRINUSE'}). ` +
+            'Free the port manually or stop the conflicting process, then re-run runtime smoke.',
+        ),
+      );
+    });
+    server.listen(port, '127.0.0.1', () => {
+      server.close((closeError) => {
+        if (closeError) {
+          reject(closeError);
+          return;
+        }
+        resolve();
+      });
+    });
+  });
+}
 
 function startApplication(application) {
   const child = spawn(application.command, application.args, {
     cwd: repositoryRoot,
     env: {
       ...process.env,
-      ADMIN_PORT: '3001',
-      API_GATEWAY_HOST: '127.0.0.1',
-      API_GATEWAY_PORT: '4000',
+      ...application.env,
       AUTHORIZATION_DATABASE_URL: dummyDatabaseUrl,
-      AUTHORIZATION_SERVICE_HOST: '127.0.0.1',
-      AUTHORIZATION_SERVICE_PORT: '4300',
-      DISCORD_GATEWAY_HOST: '127.0.0.1',
-      DISCORD_GATEWAY_PORT: '4100',
       IDENTITY_DATABASE_URL: dummyDatabaseUrl,
-      IDENTITY_SERVICE_HOST: '127.0.0.1',
-      IDENTITY_SERVICE_PORT: '4200',
       NODE_ENV: 'production',
       NEXT_TELEMETRY_DISABLED: '1',
     },
     shell: application.shell ?? false,
     stdio: 'inherit',
+    detached: process.platform !== 'win32',
   });
 
   child.once('error', (error) => {
@@ -142,40 +125,10 @@ function stopApplication(child) {
     return;
   }
 
-  child.kill('SIGTERM');
-}
-
-function freePort(port) {
   try {
-    if (process.platform === 'win32') {
-      execFileSync(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-Command',
-          `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`,
-        ],
-        { stdio: 'ignore', timeout: 5000 },
-      );
-      return;
-    }
-
-    execFileSync(
-      'bash',
-      [
-        '-lc',
-        `if command -v fuser >/dev/null 2>&1; then fuser -k ${port}/tcp >/dev/null 2>&1 || true; fi`,
-      ],
-      { stdio: 'ignore', timeout: 5000 },
-    );
+    process.kill(-child.pid, 'SIGTERM');
   } catch {
-    // Port may already be free.
-  }
-}
-
-if (process.env.CI !== 'true') {
-  for (const port of [3000, 3001, 4000, 4100, 4200, 4300]) {
-    freePort(port);
+    child.kill('SIGTERM');
   }
 }
 
@@ -196,6 +149,122 @@ for (const relativePath of requiredArtifacts) {
     );
   }
 }
+
+const [webPort, adminPort, apiGatewayPort, discordGatewayPort, identityPort, authorizationPort] =
+  await Promise.all([
+    allocatePort(),
+    allocatePort(),
+    allocatePort(),
+    allocatePort(),
+    allocatePort(),
+    allocatePort(),
+  ]);
+
+for (const port of [
+  webPort,
+  adminPort,
+  apiGatewayPort,
+  discordGatewayPort,
+  identityPort,
+  authorizationPort,
+]) {
+  await assertPortAvailable(port);
+}
+
+const applications = [
+  {
+    args: [
+      'pnpm',
+      '--dir',
+      'apps/web',
+      'exec',
+      'node',
+      './run-next.mjs',
+      'start',
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      String(webPort),
+    ],
+    command: corepack,
+    env: {
+      PORT: String(webPort),
+      HOSTNAME: '127.0.0.1',
+    },
+    name: 'web',
+    shell: true,
+    url: `http://127.0.0.1:${webPort}/health`,
+  },
+  {
+    args: [
+      'pnpm',
+      '--dir',
+      'apps/admin',
+      'exec',
+      'vite',
+      'preview',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(adminPort),
+    ],
+    command: corepack,
+    env: {
+      ADMIN_PORT: String(adminPort),
+    },
+    name: 'admin',
+    shell: true,
+    url: `http://127.0.0.1:${adminPort}/`,
+  },
+  {
+    args: ['--import', 'tsx', 'apps/api-gateway/dist/apps/api-gateway/src/main.js'],
+    command: process.execPath,
+    env: {
+      API_GATEWAY_HOST: '127.0.0.1',
+      API_GATEWAY_PORT: String(apiGatewayPort),
+    },
+    name: 'api-gateway',
+    url: `http://127.0.0.1:${apiGatewayPort}/health/live`,
+  },
+  {
+    args: ['--import', 'tsx', 'apps/discord-gateway/dist/apps/discord-gateway/src/main.js'],
+    command: process.execPath,
+    env: {
+      DISCORD_GATEWAY_HOST: '127.0.0.1',
+      DISCORD_GATEWAY_PORT: String(discordGatewayPort),
+    },
+    name: 'discord-gateway',
+    url: `http://127.0.0.1:${discordGatewayPort}/health/live`,
+  },
+  {
+    args: [
+      '--import',
+      'tsx',
+      'services/identity-service/dist/services/identity-service/src/main.js',
+    ],
+    command: process.execPath,
+    env: {
+      IDENTITY_SERVICE_HOST: '127.0.0.1',
+      IDENTITY_SERVICE_PORT: String(identityPort),
+    },
+    name: 'identity-service',
+    url: `http://127.0.0.1:${identityPort}/health/live`,
+  },
+  {
+    args: [
+      '--import',
+      'tsx',
+      'services/authorization-service/dist/services/authorization-service/src/main.js',
+    ],
+    command: process.execPath,
+    env: {
+      AUTHORIZATION_SERVICE_HOST: '127.0.0.1',
+      AUTHORIZATION_SERVICE_PORT: String(authorizationPort),
+    },
+    name: 'authorization-service',
+    url: `http://127.0.0.1:${authorizationPort}/health/live`,
+  },
+];
 
 const children = [];
 

@@ -1,9 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import * as designSystem from './index.js';
 import { getToneColor, StatusBadge } from './status-badge.js';
 
 describe('getToneColor', () => {
+  it('exposes the package entrypoint', () => {
+    expect(designSystem.StatusBadge).toBe(StatusBadge);
+  });
   it('returns the accessible color for each supported tone', () => {
     expect(getToneColor('ok')).toBe('#15803d');
     expect(getToneColor('warn')).toBe('#a16207');

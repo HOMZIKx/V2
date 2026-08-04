@@ -2,8 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import { ConfigValidationError, createConfig } from './create-config.js';
+import * as configuration from './index.js';
 
-const trackedKeys = ['NODE_ENV', 'REQUIRED_VALUE', 'ALLOW_PRODUCTION_CONNECTIONS'] as const;
+const trackedKeys = [
+  'NODE_ENV',
+  'REQUIRED_VALUE',
+  'ALLOW_PRODUCTION_CONNECTIONS',
+  'IDENTITY_DATABASE_URL',
+] as const;
 
 const originals = Object.fromEntries(trackedKeys.map((key) => [key, process.env[key]])) as Record<
   (typeof trackedKeys)[number],
@@ -22,6 +28,11 @@ afterEach(() => {
 });
 
 describe('createConfig', () => {
+  it('re-exports the public configuration surface', () => {
+    expect(configuration.createConfig).toBeTypeOf('function');
+    expect(configuration.assertNoAccidentalProductionConnections).toBeTypeOf('function');
+  });
+
   it('rejects an invalid required environment value', () => {
     process.env.NODE_ENV = 'production';
     process.env.REQUIRED_VALUE = 'not-a-number';
@@ -48,10 +59,11 @@ describe('createConfig', () => {
     ).toThrow(/Invalid configuration/);
   });
 
-  it('refuses accidental production connection flag in development', () => {
+  it('refuses non-local infrastructure hosts in development', () => {
     process.env.NODE_ENV = 'development';
-    process.env.ALLOW_PRODUCTION_CONNECTIONS = 'true';
     process.env.REQUIRED_VALUE = '1';
+    process.env.IDENTITY_DATABASE_URL = 'postgresql://user:pass@db.prod.example.com:5432/identity';
+    delete process.env.ALLOW_PRODUCTION_CONNECTIONS;
 
     expect(() =>
       createConfig(
@@ -59,6 +71,6 @@ describe('createConfig', () => {
           REQUIRED_VALUE: z.coerce.number().int().positive(),
         }),
       ),
-    ).toThrow(/ALLOW_PRODUCTION_CONNECTIONS/);
+    ).toThrow(/Refusing non-local infrastructure hosts/);
   });
 });

@@ -8,7 +8,7 @@
     "serve": { "command": "corepack pnpm --dir apps/discord-gateway dev" },
     "build": { "command": "corepack pnpm --dir apps/discord-gateway build" },
     "lint": {
-      "command": "corepack pnpm exec eslint apps/discord-gateway/src --ignore-pattern \"**/*.spec.ts\""
+      "command": "corepack pnpm exec eslint apps/discord-gateway/src"
     },
     "typecheck": {
       "command": "corepack pnpm exec tsc -p apps/discord-gateway/tsconfig.json --noEmit"

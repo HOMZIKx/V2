@@ -1,4 +1,4 @@
-# Cursor → ChatGPT
+﻿# Cursor â†’ ChatGPT
 
 ## Status
 
@@ -11,79 +11,53 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA (zweryfikowany CI `success`):** `f67be50148c288f894c6fc9526f94549cf24c460`
+- **Commit SHA:** `c461e50d7f44c863710e586d9fe4516b80611bfc`
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
-## Audyt follow-up (CHANGES REQUIRED → poprawki)
+## Drugi audyt â€” poprawki
 
-Naprawiono wszystkie blokery z review „Audyt P0-BOOTSTRAP-001 — CHANGES REQUIRED”.
+Zintegrowano `origin/main` (bez utraty D-023/D-024, standardu postĂłw Discord,
+identyfikacji V2, serwera testowego, ADR-0006 i Desktop Companion). Decyzje
+techniczne Promptu 0 przenumerowano do D-025..D-028.
 
-### Blokery zamknięte
+### Blokery zamkniÄ™te
 
-1. Prettier / format:check — czyste (`pnpm format:check` EXIT 0).
-2. Playwright E2E — w CI (`playwright install --with-deps chromium` + `pnpm test:e2e`).
-3. Docker healthy — job `Infrastructure integration`: `up -d --wait`, health
-   Postgres/Redis/RabbitMQ, izolacja baz, `down -v` w `always()`.
-4. Test izolacji baz — `tools/infra/db-isolation.test.ts` (`RUN_INFRA_TESTS=true`).
-5. Porty Compose i hosty aplikacji — wyłącznie `127.0.0.1`; obrazy przypięte
-   (`postgres:16.9`, `redis:7.4.5`, `rabbitmq:3.13.7-management`).
-6. Generator usług — pełny Nest/Fastify szkielet + `generate-service.test.mjs`.
-7. Granice Nx — usunięto bypass `scope:shared`; reguły po `type:*` + test
-   `isDependencyAllowed`.
-8. Coverage — progi 60/60/50/60 z `@vitest/coverage-v8`, `pnpm test:coverage`.
-9. Runtime smoke — `pnpm test:runtime-smoke` startuje wszystkie 6 po `build`.
-10. `pnpm validate` — w CI (Docker dostępny na runnerze).
+1. Sync z `main` + przenumerowanie Decision Log.
+2. Admin: React Router **8.3.0** (`BrowserRouter` / `Routes` / `Route`).
+3. Backend: lint obejmuje `*.spec.ts`; typecheck przez `tsconfig.json` z
+   testami; build przez `tsconfig.build.json`.
+4. Coverage: `all: true` + jawne `coverageInclude` per projekt.
+5. Generator: wymagane `--port` i `--data-ownership`; walidacja kolizji portĂłw;
+   test dwĂłch serwisĂłw.
+6. Runtime smoke: ephemeral ports; brak `taskkill`/`fuser` na obcych
+   procesach; zamykane tylko wĹ‚asne drzewo procesĂłw.
+7. Ochrona prod: walidacja hostĂłw URL DB/Redis/RabbitMQ; wyjÄ…tek
+   `ALLOW_PRODUCTION_CONNECTIONS=true`.
+8. `pnpm validate` = peĹ‚ny zestaw; `pnpm validate:quick` = wariant lekki.
+9. CI uruchamia `pnpm validate` na finalnym HEAD.
 
-Dodatkowo: `pnpm.onlyBuiltDependencies`, pin Next `15.5.22`, usunięcie
-nieużywanego `react-router` / `@fastify/static`, overrides zależności
-(`postcss`, `brace-expansion`, `find-my-way`, `js-yaml`, `sharp`) —
-`pnpm audit --audit-level=high` → brak high/critical.
-
-## Wyniki CI (GitHub Actions)
-
-- **Run:** [30951690018](https://github.com/HOMZIKx/V2/actions/runs/30951690018)
-- **Trigger:** `workflow_dispatch` na `cursor/p0-foundation-bootstrap`
-- **HEAD SHA:** `f67be50148c288f894c6fc9526f94549cf24c460`
-- **Conclusion:** `success`
-
-| Job                        | Wynik            |
-| -------------------------- | ---------------- |
-| Quality gates              | success (~2m59s) |
-| Infrastructure integration | success          |
-| Secret scan                | success          |
-
-Quality gates obejmuje m.in.: format, lint, typecheck, test, architecture
-boundaries, build, Playwright E2E, runtime smoke (6 aplikacji/usług),
-`pnpm validate`, `pnpm audit --audit-level=high`.
-
-Infrastructure integration obejmuje: `docker compose config`,
-`up -d --wait`, weryfikację healthy kontenerów, test izolacji baz,
-`down -v`.
-
-## Wyniki lokalne (Windows host, bez Docker CLI)
+## Wyniki lokalne
 
 ```text
-pnpm format:check          → EXIT 0
-pnpm audit --audit-level=high → No known vulnerabilities found
-pnpm test:infra            → skipped locally (RUN_INFRA_TESTS unset)
-docker compose ...         → wymaga Docker Desktop / CI
+pnpm format:check     â†’ EXIT 0
+pnpm lint             â†’ EXIT 0
+pnpm typecheck        â†’ EXIT 0
+pnpm test:coverage    â†’ EXIT 0
+pnpm architecture:check â†’ EXIT 0
+pnpm build            â†’ EXIT 0
+pnpm test:runtime-smoke â†’ EXIT 0
+pnpm audit --audit-level=high â†’ No known vulnerabilities found
 ```
 
-## Odstępstwa / założenia
+## Wyniki CI
 
-- Next.js **15.5.22** zamiast 16.x z powodu błędu builda monorepo; nadal App Router.
-- Admin bootstrap bez `react-router` (jedna strona statusu) — uniknięcie konfliktu
-  CVEs React Router 7.x vs 8.x przy czystym `pnpm audit --audit-level=high`.
-- Runtime smoke Nest startuje skompilowany `dist/**/main.js` z `--import tsx`
-  (workspace packages eksportują TypeScript).
-- Host implementacji bez Dockera — dowód healthy/izolacji w CI.
-- Automatyczny `pull_request` trigger bywał niestabilny; zielony dowód CI
-  z `workflow_dispatch` na tym samym SHA gałęzi PR #3.
+UzupeĹ‚nione po zielonym runie na finalnym HEAD.
 
-## ADR-y
+## OdstÄ™pstwa
 
-Bez zmian statusu ADR-0002..0005; poprawki mieszczą się w zaakceptowanym zakresie Prompt 0.
+- Next.js **15.5.22** (zamiast 16.x) â€” znany bĹ‚Ä…d monorepo.
+- React Router **8.3.0** (bezpieczna linia; `react-router-dom` v8 nie istnieje).
 
-## Proponowany następny krok
+## Proponowany nastÄ™pny krok
 
-Ponowny audyt ChatGPT PR #3. Nie zaczynać Promptu 1 bez `APPROVED`.
+Trzeci audyt ChatGPT PR #3. Nie zaczynaÄ‡ Promptu 1 bez `APPROVED`.

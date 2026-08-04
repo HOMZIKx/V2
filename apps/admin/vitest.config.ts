@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-import { sharedTestConfig } from '../../tools/vitest.shared.js';
+import { createProjectTestConfig } from '../../tools/vitest.shared.js';
 
-export default defineConfig({
-  test: {
-    ...sharedTestConfig,
-    include: ['apps/admin/src/**/*.spec.ts'],
-  },
-});
+export default defineConfig(
+  createProjectTestConfig({
+    testInclude: ['apps/admin/src/**/*.{spec,test}.{ts,tsx}'],
+    coverageInclude: ['apps/admin/src/**/*.{ts,tsx}'],
+  }),
+);

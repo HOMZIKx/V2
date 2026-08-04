@@ -6,7 +6,9 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const isWindows = process.platform === 'win32';
 const packageManager = process.platform === 'win32' ? 'corepack.cmd' : 'corepack';
 
-const checks = [
+const mode = process.argv.includes('--quick') ? 'quick' : 'full';
+
+const quickChecks = [
   [packageManager, ['pnpm', 'format:check']],
   [packageManager, ['pnpm', 'lint']],
   [packageManager, ['pnpm', 'typecheck']],
@@ -15,6 +17,26 @@ const checks = [
   [packageManager, ['pnpm', 'build']],
   ['docker', ['compose', '-f', 'infrastructure/docker/docker-compose.yml', 'config']],
 ];
+
+const fullChecks = [
+  [packageManager, ['pnpm', 'format:check']],
+  [packageManager, ['pnpm', 'lint']],
+  [packageManager, ['pnpm', 'typecheck']],
+  [packageManager, ['pnpm', 'test:coverage']],
+  [packageManager, ['pnpm', 'architecture:check']],
+  [packageManager, ['pnpm', 'build']],
+  [packageManager, ['pnpm', 'test:e2e']],
+  [packageManager, ['pnpm', '--dir', 'apps/web', 'build']],
+  [packageManager, ['pnpm', '--dir', 'apps/admin', 'build']],
+  [packageManager, ['pnpm', 'test:runtime-smoke']],
+  ['docker', ['compose', '-f', 'infrastructure/docker/docker-compose.yml', 'config']],
+];
+
+if (process.env.RUN_INFRA_TESTS === 'true') {
+  fullChecks.push([packageManager, ['pnpm', 'test:infra']]);
+}
+
+const checks = mode === 'quick' ? quickChecks : fullChecks;
 
 function run(executable, args) {
   const displayCommand = `${executable} ${args.join(' ')}`;
@@ -46,4 +68,4 @@ for (const [executable, args] of checks) {
   run(executable, args);
 }
 
-console.log('\nAll validation checks passed.');
+console.log(`\nAll ${mode} validation checks passed.`);

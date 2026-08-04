@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-import { sharedTestConfig } from '../../tools/vitest.shared.js';
+import { createProjectTestConfig } from '../../tools/vitest.shared.js';
 
-export default defineConfig({
-  test: {
-    ...sharedTestConfig,
-    include: ['packages/contracts/src/**/*.{test,spec}.ts'],
-  },
-});
+export default defineConfig(
+  createProjectTestConfig({
+    testInclude: ['packages/contracts/src/**/*.{test,spec}.ts'],
+    coverageInclude: ['packages/contracts/src/**/*.{ts,tsx}'],
+  }),
+);

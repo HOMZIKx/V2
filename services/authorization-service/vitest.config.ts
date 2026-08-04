@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-import { sharedTestConfig } from '../../tools/vitest.shared.js';
+import { createProjectTestConfig } from '../../tools/vitest.shared.js';
 
-export default defineConfig({
-  test: {
-    ...sharedTestConfig,
-    include: ['services/authorization-service/src/**/*.spec.ts'],
-  },
-});
+export default defineConfig(
+  createProjectTestConfig({
+    testInclude: ['services/authorization-service/src/**/*.spec.ts'],
+    coverageInclude: ['services/authorization-service/src/**/*.{ts,tsx}'],
+  }),
+);

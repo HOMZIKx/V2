@@ -31,6 +31,10 @@ szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
 - standardy jakości i testowania;
 - lokalna infrastruktura oraz izolacja baz identity/authorization;
 - standardy kontraktów OpenAPI i przyszłych zdarzeń.
+- standard postów i interakcji Discord (D-023) oraz reguła Cursor;
+- oryginalna identyfikacja wizualna V2 (D-024);
+- dedykowany serwer testowy Discord;
+- wizja Desktop Companion / overlay (ADR-0006).
 
 ## Aktywne zadanie
 
@@ -74,9 +78,7 @@ Audyt ChatGPT zmian Promptu 0. Nie rozpoczynać Promptu 1 bez statusu
 ## Blokady
 
 Brak blokad produktowych. Lokalnie na hoście Cursor brak Docker CLI /
-Docker Desktop — healthy Compose i izolacja baz są udowodnione w CI
-([run 30951690018](https://github.com/HOMZIKx/V2/actions/runs/30951690018),
-SHA `f67be50148c288f894c6fc9526f94549cf24c460`).
+Docker Desktop — healthy Compose i izolacja baz są egzekwowane w CI.
 
 ## Ważna uwaga
 

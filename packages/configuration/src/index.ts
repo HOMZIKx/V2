@@ -3,6 +3,8 @@ export {
   RuntimeEnvironmentSchema,
   assertNoAccidentalProductionConnections,
   assertProductionRequirements,
+  extractConnectionHosts,
+  isLocalInfrastructureHost,
   isProduction,
 } from './guards.js';
 export type { RuntimeEnvironment } from './guards.js';

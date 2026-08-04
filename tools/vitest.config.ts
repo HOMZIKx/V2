@@ -1,10 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-import { sharedTestConfig } from './vitest.shared.js';
+import { createProjectTestConfig } from './vitest.shared.js';
 
-export default defineConfig({
-  test: {
-    ...sharedTestConfig,
-    include: ['tools/scripts/**/*.test.mjs'],
-  },
-});
+export default defineConfig(
+  createProjectTestConfig({
+    testInclude: ['tools/scripts/**/*.test.mjs'],
+    coverageInclude: ['tools/scripts/generate-service.mjs'],
+  }),
+);

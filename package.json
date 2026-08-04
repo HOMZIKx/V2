@@ -27,6 +27,7 @@
     "build": "nx run-many -t build --parallel=4",
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
     "validate": "node ./tools/scripts/validate.mjs",
+    "validate:quick": "node ./tools/scripts/validate.mjs --quick",
     "generate:service": "node ./tools/scripts/generate-service.mjs"
   },
   "pnpm": {
@@ -41,6 +42,7 @@
     "overrides": {
       "react": "19.2.8",
       "react-dom": "19.2.8",
+      "react-router": "8.3.0",
       "postcss": "8.5.25",
       "brace-expansion@>=4": "5.0.9",
       "find-my-way": "9.7.0",

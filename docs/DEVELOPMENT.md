@@ -85,20 +85,23 @@ pnpm build
 pnpm validate
 ```
 
-`pnpm validate` uruchamia formatowanie kontrolne, lint, typecheck, testy,
-kontrolę architektury, build oraz `docker compose config`. Nie uruchamia E2E
-Playwright jako części tej sekwencji.
+`pnpm validate` uruchamia pełny zestaw: formatowanie, lint, typecheck,
+coverage, kontrolę architektury, build, E2E Playwright, runtime smoke oraz
+`docker compose config`. Lżejszy wariant: `pnpm validate:quick`.
 
 ## Generator usługi
 
 ```text
-pnpm generate:service <nazwa-service>
+pnpm generate:service <nazwa-service> --port <unique-port> --data-ownership <none|database>
 ```
 
 Nazwa musi być kebab-case i kończyć się na `-service`, na przykład
-`pnpm generate:service community-service`. Generator tworzy minimalny szkielet
-Domain, Application, Infrastructure i Interface. Przed dodaniem nowej usługi
-potwierdź jej granicę domenową zgodnie z konstytucją i ADR-ami.
+`pnpm generate:service community-service --port 4401 --data-ownership database`.
+Port musi być unikalny wśród usług. Własność danych jest jawna (`database` albo
+`none`) — generator jej nie zgaduje. Tworzony jest szkielet Domain, Application,
+Infrastructure i Interface oraz wspólna konfiguracja coverage/lint/typecheck
+testów. Przed dodaniem nowej usługi potwierdź jej granicę domenową zgodnie z
+konstytucją i ADR-ami.
 
 ## Rozwiązywanie problemów
 

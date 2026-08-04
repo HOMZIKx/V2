@@ -1,11 +1,10 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const defaultRepositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const serviceNamePattern = /^[a-z][a-z0-9-]*-service$/;
-const dataOwningServicePattern =
-  /^(identity|authorization|community|automation|notification|audit)-service$/;
+const dataOwnershipValues = new Set(['none', 'database']);
 
 function validateServiceName(name) {
   if (!serviceNamePattern.test(name)) {
@@ -13,11 +12,52 @@ function validateServiceName(name) {
   }
 }
 
-function renderFiles(name) {
+function parsePort(value) {
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Port must be an integer between 1 and 65535 (received: ${String(value)}).`);
+  }
+  return port;
+}
+
+function parseDataOwnership(value) {
+  if (!dataOwnershipValues.has(value)) {
+    throw new Error('Data ownership must be explicitly set to "none" or "database".');
+  }
+  return value;
+}
+
+function collectExistingServicePorts(root) {
+  const servicesRoot = path.join(root, 'services');
+  if (!existsSync(servicesRoot)) {
+    return new Map();
+  }
+
+  const ports = new Map();
+  for (const entry of readdirSync(servicesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.endsWith('-service')) {
+      continue;
+    }
+
+    const mainPath = path.join(servicesRoot, entry.name, 'src', 'main.ts');
+    if (!existsSync(mainPath)) {
+      continue;
+    }
+
+    const contents = readFileSync(mainPath, 'utf8');
+    const match = contents.match(/\.default\((\d{2,5})\)/);
+    if (match !== null) {
+      ports.set(Number(match[1]), entry.name);
+    }
+  }
+
+  return ports;
+}
+
+function renderFiles(name, port, dataOwnership) {
   const scope = name.slice(0, -'-service'.length);
   const configPrefix = name.replaceAll('-', '_').toUpperCase();
-  const port = 4400;
-  const hasDatabaseUrl = dataOwningServicePattern.test(name);
+  const hasDatabaseUrl = dataOwnership === 'database';
   const databaseConfig = hasDatabaseUrl ? `,\n    DATABASE_URL: z.string().url().optional()` : '';
 
   return {
@@ -29,7 +69,7 @@ function renderFiles(name) {
         type: 'module',
         scripts: {
           dev: 'tsx src/main.ts',
-          build: 'tsc -p tsconfig.json',
+          build: 'tsc -p tsconfig.build.json',
           start: `node dist/services/${name}/src/main.js`,
           test: 'vitest run --config vitest.config.ts',
           lint: 'eslint .',
@@ -68,7 +108,7 @@ function renderFiles(name) {
           serve: { command: `corepack pnpm --dir services/${name} dev` },
           build: { command: `corepack pnpm --dir services/${name} build` },
           lint: {
-            command: `corepack pnpm exec eslint services/${name}/src --ignore-pattern "**/*.spec.ts"`,
+            command: `corepack pnpm exec eslint services/${name}/src`,
           },
           typecheck: {
             command: `corepack pnpm exec tsc -p services/${name}/tsconfig.json --noEmit`,
@@ -86,21 +126,30 @@ function renderFiles(name) {
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
+    'tsconfig.build.json': `{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
     "outDir": "dist",
     "noEmit": false
   },
-  "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts"]
 }
 `,
     'vitest.config.ts': `import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
-  test: {
-    environment: 'node',
-    include: ['services/${name}/src/**/*.spec.ts'],
-  },
-});
+import { createProjectTestConfig } from '../../tools/vitest.shared.js';
+
+export default defineConfig(
+  createProjectTestConfig({
+    testInclude: ['services/${name}/src/**/*.spec.ts'],
+    coverageInclude: ['services/${name}/src/**/*.{ts,tsx}'],
+  }),
+);
 `,
     'eslint.config.mjs': `import { createV2Config } from '@v2/eslint-config';
 
@@ -110,6 +159,7 @@ export default [{ ignores: ['eslint.config.mjs'] }, ...createV2Config()];
 
 NestJS 11 and Fastify service scaffold with Domain, Application, Infrastructure, and Interface layers.
 
+Default port: \`${port}\`. Data ownership: \`${dataOwnership}\`.
 The default host is \`127.0.0.1\`. Set \`${configPrefix}_HOST=0.0.0.0\` only in a container or deployment that explicitly requires external binding.
 `,
     'src/main.ts': `import 'reflect-metadata';
@@ -193,8 +243,18 @@ describe('HealthController', () => {
   };
 }
 
-export function generateService({ name, root = defaultRepositoryRoot }) {
+export function generateService({ name, port, dataOwnership, root = defaultRepositoryRoot }) {
   validateServiceName(name);
+  const resolvedPort = parsePort(port);
+  const resolvedOwnership = parseDataOwnership(dataOwnership);
+
+  const existingPorts = collectExistingServicePorts(root);
+  const conflict = existingPorts.get(resolvedPort);
+  if (conflict !== undefined) {
+    throw new Error(
+      `Port ${resolvedPort} is already used by "${conflict}". Choose a unique service port.`,
+    );
+  }
 
   const serviceRoot = path.join(root, 'services', name);
   if (existsSync(serviceRoot)) {
@@ -203,7 +263,9 @@ export function generateService({ name, root = defaultRepositoryRoot }) {
 
   mkdirSync(path.dirname(serviceRoot), { recursive: true });
   mkdirSync(serviceRoot, { recursive: false });
-  for (const [relativePath, contents] of Object.entries(renderFiles(name))) {
+  for (const [relativePath, contents] of Object.entries(
+    renderFiles(name, resolvedPort, resolvedOwnership),
+  )) {
     const targetPath = path.join(serviceRoot, relativePath);
     mkdirSync(path.dirname(targetPath), { recursive: true });
     writeFileSync(targetPath, contents, { encoding: 'utf8', flag: 'wx' });
@@ -212,15 +274,46 @@ export function generateService({ name, root = defaultRepositoryRoot }) {
   return serviceRoot;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const name = process.argv[2];
+function parseCliArgs(argv) {
+  const positional = [];
+  const options = {};
 
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument.startsWith('--')) {
+      const key = argument.slice(2);
+      const value = argv[index + 1];
+      if (value === undefined || value.startsWith('--')) {
+        throw new Error(`Missing value for --${key}.`);
+      }
+      options[key] = value;
+      index += 1;
+      continue;
+    }
+    positional.push(argument);
+  }
+
+  return { name: positional[0], options };
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
-    if (name === undefined) {
-      throw new Error('Usage: pnpm generate:service <kebab-case-name-service>');
+    const { name, options } = parseCliArgs(process.argv.slice(2));
+    if (
+      name === undefined ||
+      options.port === undefined ||
+      options['data-ownership'] === undefined
+    ) {
+      throw new Error(
+        'Usage: pnpm generate:service <kebab-case-name-service> --port <unique-port> --data-ownership <none|database>',
+      );
     }
 
-    generateService({ name });
+    generateService({
+      name,
+      port: options.port,
+      dataOwnership: options['data-ownership'],
+    });
     console.log(`Created service scaffold at services/${name}.`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
