@@ -2,13 +2,12 @@
 
 ## Status
 
-`PROMPT_0_IMPLEMENTED_PENDING_REVIEW`
+`PROMPT_0_APPROVED_PENDING_MERGE`
 
 ## Aktualny etap
 
-Fundament Promptu 0 został zaimplementowany na gałęzi
-`cursor/p0-foundation-bootstrap` i oczekuje na audyt ChatGPT. Status
-szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
+Fundament Promptu 0 przeszedł audyt ChatGPT i pełne CI na końcowym HEAD gałęzi
+`cursor/p0-foundation-bootstrap`. PR #3 jest zatwierdzony do scalenia.
 
 ## Zatwierdzone
 
@@ -26,11 +25,11 @@ szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
 - podział Web/Admin;
 - model tożsamości, MFA i sesji;
 - trwały protokół pracy AI;
-- zakres i kryteria akceptacji Promptu 0.
+- zakres i kryteria akceptacji Promptu 0;
 - monorepo pnpm + Nx;
 - standardy jakości i testowania;
 - lokalna infrastruktura oraz izolacja baz identity/authorization;
-- standardy kontraktów OpenAPI i przyszłych zdarzeń.
+- standardy kontraktów OpenAPI i przyszłych zdarzeń;
 - standard postów i interakcji Discord (D-023) oraz reguła Cursor;
 - oryginalna identyfikacja wizualna V2 (D-024);
 - dedykowany serwer testowy Discord;
@@ -39,48 +38,41 @@ szczegółowy przekazuje `docs/ai/CURSOR_TO_CHATGPT.md`.
 ## Aktywne zadanie
 
 - **Task ID:** `P0-BOOTSTRAP-001`
-- **Status:** `READY_FOR_REVIEW`
-- **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
-- **Oczekiwany branch Cursora:** `cursor/p0-foundation-bootstrap`
-- **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
+- **Status:** `APPROVED`
+- **PR:** `#3`
+- **Finalny HEAD:** `7335e89cb424c7d13d309d33690379616ced361b`
+- **CI:** `30956552185` — success
 
 ## Zaimplementowany fundament
 
 - aplikacje techniczne `web`, `admin`, `api-gateway` i `discord-gateway`;
-- szkielety `identity-service` i `authorization-service` z warstwami oraz
-  health checks;
-- pakiety wspólne, konfiguracja, obserwowalność, testy, design system oraz
-  konfiguracje TypeScript i ESLint;
-- Docker Compose z PostgreSQL 16, Redis 7 i RabbitMQ 3-management oraz
-  odseparowanymi bazami identity/authorization;
-- skrypty developerskie, CI, Renovate, kontrola architektury i dokumentacja
-  fundamentu.
-- remediacje audytowe: przypięte obrazy Compose oraz porty loopback, bezpieczne
-  domyślne hosty, test generatora usługi, smoke runtime i sprawdzanie izolacji
-  baz w osobnym jobie CI.
-- granice Nx nie traktują już `scope:shared` jako uprawnienia; test jednostkowy
-  blokuje zależność usługi od `type:ui` i od tagu informacyjnego bez typu.
-- progi Vitest V8 oraz testy izolacji PostgreSQL są przygotowane do egzekwowania
-  w CI; smoke runtime uruchamia entrypointy buildów wszystkich sześciu procesów.
+- szkielety `identity-service` i `authorization-service` z warstwami oraz health checks;
+- pakiety wspólne, konfiguracja, obserwowalność, testy, design system oraz konfiguracje TypeScript i ESLint;
+- Docker Compose z PostgreSQL, Redis i RabbitMQ oraz odseparowanymi bazami identity/authorization;
+- skrypty developerskie, CI, Renovate, kontrola architektury i dokumentacja fundamentu;
+- przypięte obrazy Compose i porty loopback;
+- test izolacji baz i runtime smoke wszystkich sześciu procesów;
+- granice Nx, lint i typecheck testów;
+- coverage obejmujące nieimportowane pliki źródłowe;
+- generator usług z jawnym portem i własnością danych;
+- ochrona development/test przed przypadkowym połączeniem z zewnętrzną infrastrukturą;
+- pełne `pnpm validate` obejmujące E2E i runtime smoke.
 
 ## Niezaimplementowane
 
-- Discord OAuth, Better Auth, sesje, MFA i integracja z Discord API;
+- integracja z Discord API i rzeczywisty bot online;
+- Discord OAuth, Better Auth, sesje i MFA;
 - modele biznesowe, ORM, reguły uprawnień i moduły produktowe;
-- zdarzenia biznesowe, AsyncAPI/JSON Schema, Outbox, retry, DLQ i Streams;
+- zdarzenia biznesowe, Outbox, retry, DLQ i Streams;
 - produkcyjny hosting lub deployment.
 
 ## Następny punkt kontrolny
 
-Audyt ChatGPT zmian Promptu 0. Nie rozpoczynać Promptu 1 bez statusu
-`APPROVED`.
+`P1-DISCORD-TEST-HARNESS-001` — bezpieczne uruchomienie pierwszego bota na serwerze testowym `1534228693017432124`, bez funkcji biznesowych.
 
 ## Blokady
 
-Brak blokad produktowych. Lokalnie na hoście Cursor brak Docker CLI /
-Docker Desktop — healthy Compose i izolacja baz są egzekwowane w CI
-([run 30955695886](https://github.com/HOMZIKx/V2/actions/runs/30955695886),
-SHA `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`).
+Brak blokad Promptu 0.
 
 ## Ważna uwaga
 
