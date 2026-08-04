@@ -1,0 +1,28 @@
+# Decision Log — V2
+
+| ID | Decyzja | Status | Uzasadnienie skrócone |
+|---|---|---|---|
+| D-001 | Pełna platforma społecznościowo-gamingowa | ACCEPTED | Discord i WWW jako interfejsy jednego systemu |
+| D-002 | Jedna organizacja, wiele powiązanych serwerów Discord | ACCEPTED | Wspólne dane i zarządzanie bez publicznego SaaS |
+| D-003 | Hybrydowy profil użytkownika | ACCEPTED | Profil organizacyjny + lokalne członkostwa serwerowe |
+| D-004 | Pełna platforma WWW równoległa do Discorda | ACCEPTED | Możliwość dalszej rozbudowy i ograniczania funkcji |
+| D-005 | RBAC + uprawnienia, zakresy, warunki i wyjątki | ACCEPTED | Precyzyjna kontrola dostępu bez mnożenia ról |
+| D-006 | Mikrousługi od początku | ACCEPTED | Silna izolacja domen i niezależne wdrożenia |
+| D-007 | Jeden główny stos z uzasadnionymi wyjątkami | ACCEPTED | Spójność bez blokowania specjalistycznych technologii |
+| D-008 | TypeScript jako główny język | ACCEPTED | Dopasowanie do Discorda, WWW i pracy z Cursorem |
+| D-009 | Monorepo z możliwością wydzielania usług | ACCEPTED | Spójność i prostsze zmiany wielousługowe |
+| D-010 | Własność danych przez usługi na wspólnej infrastrukturze PostgreSQL | ACCEPTED | Prawdziwe granice usług bez mnożenia serwerów |
+| D-011 | REST + OpenAPI oraz komunikacja asynchroniczna | ACCEPTED | Natychmiastowe odpowiedzi i niezależne procesy w tle |
+| D-012 | RabbitMQ: quorum queues i selektywne Streams | ACCEPTED | Niezawodne zadania, routing, retry i replay |
+| D-013 | Node.js 24 LTS + NestJS 11 + Fastify | ACCEPTED | Rygor struktury i wydajna warstwa HTTP |
+| D-014 | Osobne aplikacje Web i Admin | ACCEPTED | Izolacja panelu administracyjnego |
+| D-015 | Next.js dla Web, React/Vite dla Admin | ACCEPTED | Dopasowanie frameworka do funkcji aplikacji |
+| D-016 | Konto oparte wyłącznie na Discordzie | ACCEPTED | Minimalne tarcie dla społeczności Discordowej |
+| D-017 | Natychmiastowa blokada po utracie uprawniającego członkostwa | ACCEPTED | Brak pozostawionego dostępu |
+| D-018 | Obowiązkowe passkey/TOTP dla administracji | ACCEPTED | Ochrona przed przejęciem konta Discord |
+| D-019 | Identity Service oparty na Better Auth | ACCEPTED | Nie implementujemy mechanizmów auth od zera |
+| D-020 | Sesje serwerowe + podpisany kontekst wewnętrzny | ACCEPTED | Natychmiastowe unieważnianie i brak tokenów w localStorage |
+| D-021 | Trwała konstytucja i pamięć projektu w repozytorium | ACCEPTED | AI nie może polegać na historii czatu |
+| D-022 | ChatGPT projektuje i audytuje, Cursor implementuje i raportuje | ACCEPTED | Kontrolowany obieg pracy przez GitHub |
+
+Szczegółowe decyzje architektoniczne będą rozwijane jako ADR-y w `docs/architecture/decisions/`.
