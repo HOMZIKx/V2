@@ -164,7 +164,10 @@ function freePort(port) {
 
     execFileSync(
       'bash',
-      ['-lc', `if command -v fuser >/dev/null 2>&1; then fuser -k ${port}/tcp >/dev/null 2>&1 || true; fi`],
+      [
+        '-lc',
+        `if command -v fuser >/dev/null 2>&1; then fuser -k ${port}/tcp >/dev/null 2>&1 || true; fi`,
+      ],
       { stdio: 'ignore', timeout: 5000 },
     );
   } catch {
