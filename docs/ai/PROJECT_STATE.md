@@ -1,10 +1,12 @@
 # Project State — V2
 
 ## Status
-`FOUNDATION_DECISIONS_RECORDED`
+`PROMPT_0_READY_FOR_CURSOR`
 
 ## Aktualny etap
-Przygotowanie Promptu 0 i repozytoryjnej konstytucji projektu. Nie rozpoczęto implementacji platformy ani fundamentu technicznego.
+Konstytucja projektu została scalona do `main`. Aktywne zadanie `P0-BOOTSTRAP-001` jest zapisane w `docs/ai/CHATGPT_TO_CURSOR.md` ze statusem `READY_FOR_CURSOR`.
+
+Nie rozpoczęto jeszcze implementacji fundamentu technicznego.
 
 ## Zatwierdzone
 - wizja i model produktu;
@@ -20,13 +22,21 @@ Przygotowanie Promptu 0 i repozytoryjnej konstytucji projektu. Nie rozpoczęto i
 - backend Node/Nest/Fastify;
 - podział Web/Admin;
 - model tożsamości, MFA i sesji;
-- trwały protokół pracy AI.
+- trwały protokół pracy AI;
+- zakres i kryteria akceptacji Promptu 0.
+
+## Aktywne zadanie
+- **Task ID:** `P0-BOOTSTRAP-001`
+- **Status:** `READY_FOR_CURSOR`
+- **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
+- **Oczekiwany branch Cursora:** `cursor/p0-foundation-bootstrap`
+- **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
 
 ## Niezaimplementowane
-Wszystko poza dokumentacją i istniejącym minimalnym szkieletem repozytorium.
+Wszystko poza dokumentacją i minimalnym szkieletem repozytorium.
 
-## Następny planowany etap
-`Prompt 0 — Bootstrap repozytorium, konstytucja projektu, standardy jakości i plan wdrożenia fundamentu.`
+## Następny punkt kontrolny
+Audyt Pull Requesta utworzonego przez Cursora po wykonaniu Promptu 0.
 
 ## Blokady
 Brak.
