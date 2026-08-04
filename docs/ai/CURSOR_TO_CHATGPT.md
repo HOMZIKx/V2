@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `PENDING_PUSH_HEAD`
+- **Commit SHA:** `c567e42721aa46afbb7fb204c8099a691c48e767`
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Audyt follow-up (CHANGES REQUIRED → poprawki)
