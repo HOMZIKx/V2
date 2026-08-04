@@ -1,0 +1,19 @@
+---
+description: Obowiązkowy standard projektowania postów i interakcji Discord w V2.
+alwaysApply: true
+---
+
+# Discord post and interaction UX
+
+Przy każdym zadaniu dotyczącym Discorda przeczytaj `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md`.
+
+## Bezwzględne wymagania
+- Projektuj spójne, dopracowane, mobilne embedy/panele z czytelną hierarchią.
+- Używaj natywnych select menu, przycisków i modali.
+- Menu ma działać jak natywna lista opcji Discorda i prowadzić bezpośrednio do treści lub działania.
+- Preferuj jeden stabilny post aktualizowany w miejscu oraz odpowiedzi ephemeral.
+- Nie używaj reakcji emoji jako podstawowej nawigacji ani systemu akcji.
+- Nie twórz zbędnych łańcuchów kliknięć, kolejnych publicznych wiadomości ani wielu paneli dla tej samej funkcji.
+- Przed implementacją przedstaw layout posta i dokładny flow interakcji.
+
+Odstępstwo wymaga jawnej decyzji właściciela i aktualizacji dokumentacji.
