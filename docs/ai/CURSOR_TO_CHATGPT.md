@@ -13,8 +13,8 @@ Implementacja kodu harnessu P1 jest przygotowana do manualnego live testu przez 
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** pending validation
-- **PR:** pending owner
+- **Finalny commit:** `aba7f6ef0b3716109461a9b0ccf83d41329f3e30`
+- **PR:** pending after live test
 
 ## Zakres wykonany
 
