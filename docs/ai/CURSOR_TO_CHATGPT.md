@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA (CI `success`):** `36c4e297a451275f10bad60c854243aa867fb717`
+- **Commit SHA (CI `success`):** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Drugi audyt — poprawki
@@ -38,9 +38,9 @@ techniczne Promptu 0 przenumerowano do D-025..D-028.
 
 ## Wyniki CI (finalny tip)
 
-- **Run:** [30955414702](https://github.com/HOMZIKx/V2/actions/runs/30955414702)
+- **Run:** [30955695886](https://github.com/HOMZIKx/V2/actions/runs/30955695886)
 - **Trigger:** `pull_request`
-- **HEAD SHA:** `36c4e297a451275f10bad60c854243aa867fb717`
+- **HEAD SHA:** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
 - **Conclusion:** `success`
 
 | Job                        | Wynik   |
