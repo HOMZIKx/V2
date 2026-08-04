@@ -120,7 +120,7 @@ async function waitForHealthy(application, child) {
     }
 
     try {
-      const response = await fetch(application.url);
+      const response = await fetch(application.url, { signal: AbortSignal.timeout(3000) });
       if (response.ok) {
         return;
       }
@@ -128,7 +128,7 @@ async function waitForHealthy(application, child) {
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
     }
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   throw new Error(`${application.name} did not become healthy at ${application.url}: ${lastError}`);
@@ -157,14 +157,16 @@ function freePort(port) {
           '-Command',
           `Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }`,
         ],
-        { stdio: 'ignore' },
+        { stdio: 'ignore', timeout: 5000 },
       );
       return;
     }
 
-    execFileSync('bash', ['-lc', `command -v fuser >/dev/null && fuser -k ${port}/tcp || true`], {
-      stdio: 'ignore',
-    });
+    execFileSync(
+      'bash',
+      ['-lc', `if command -v fuser >/dev/null 2>&1; then fuser -k ${port}/tcp >/dev/null 2>&1 || true; fi`],
+      { stdio: 'ignore', timeout: 5000 },
+    );
   } catch {
     // Port may already be free.
   }
