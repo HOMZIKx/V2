@@ -6,13 +6,12 @@
     },
     {
       "name": "dobry-temat (wzory / referencja)",
-      "path": "../Aplikaja-gildii-main"
+      "path": "../Nowy folder/Aplikaja-gildii-main"
     }
   ],
   "settings": {
     "files.exclude": {
-      "**/node_modules": true,
-      "**/.git": false
+      "**/node_modules": true
     }
   }
 }
