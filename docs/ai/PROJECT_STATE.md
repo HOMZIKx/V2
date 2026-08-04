@@ -2,12 +2,11 @@
 
 ## Status
 
-`PROMPT_0_APPROVED_PENDING_MERGE`
+`P1_DISCORD_TEST_HARNESS_READY_FOR_CURSOR`
 
 ## Aktualny etap
 
-Fundament Promptu 0 przeszedł audyt ChatGPT i pełne CI na końcowym HEAD gałęzi
-`cursor/p0-foundation-bootstrap`. PR #3 jest zatwierdzony do scalenia.
+Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny jest zamknięty. Następne zadanie przygotowuje pierwszy rzeczywiście działający bot V2 na dedykowanym serwerze testowym.
 
 ## Zatwierdzone
 
@@ -18,61 +17,61 @@ Fundament Promptu 0 przeszedł audyt ChatGPT i pełne CI na końcowym HEAD gał�
 - model uprawnień;
 - mikrousługi;
 - główny stos TypeScript;
-- monorepo;
+- monorepo pnpm + Nx;
 - własność danych;
 - REST/OpenAPI + RabbitMQ;
 - backend Node/Nest/Fastify;
 - podział Web/Admin;
 - model tożsamości, MFA i sesji;
 - trwały protokół pracy AI;
-- zakres i kryteria akceptacji Promptu 0;
-- monorepo pnpm + Nx;
-- standardy jakości i testowania;
-- lokalna infrastruktura oraz izolacja baz identity/authorization;
-- standardy kontraktów OpenAPI i przyszłych zdarzeń;
-- standard postów i interakcji Discord (D-023) oraz reguła Cursor;
+- standardy jakości, testów i lokalnej infrastruktury;
+- standard postów i interakcji Discord (D-023);
 - oryginalna identyfikacja wizualna V2 (D-024);
-- dedykowany serwer testowy Discord;
+- dedykowany serwer testowy Discord `1534228693017432124`;
 - wizja Desktop Companion / overlay (ADR-0006).
+
+## Zamknięty etap
+
+- **Task ID:** `P0-BOOTSTRAP-001`
+- **Status:** `APPROVED_AND_MERGED`
+- **PR:** `#3`
+- **Merge commit:** `877c680f234836ab55c5c345abf0a2175c31c24f`
 
 ## Aktywne zadanie
 
-- **Task ID:** `P0-BOOTSTRAP-001`
-- **Status:** `APPROVED`
-- **PR:** `#3`
-- **Finalny HEAD:** `7335e89cb424c7d13d309d33690379616ced361b`
-- **CI:** `30956552185` — success
+- **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
+- **Status:** `READY_FOR_CURSOR`
+- **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
+- **Oczekiwany branch Cursora:** `cursor/p1-discord-test-harness`
+- **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
 
-## Zaimplementowany fundament
+## Cel aktywnego zadania
 
-- aplikacje techniczne `web`, `admin`, `api-gateway` i `discord-gateway`;
-- szkielety `identity-service` i `authorization-service` z warstwami oraz health checks;
-- pakiety wspólne, konfiguracja, obserwowalność, testy, design system oraz konfiguracje TypeScript i ESLint;
-- Docker Compose z PostgreSQL, Redis i RabbitMQ oraz odseparowanymi bazami identity/authorization;
-- skrypty developerskie, CI, Renovate, kontrola architektury i dokumentacja fundamentu;
-- przypięte obrazy Compose i porty loopback;
-- test izolacji baz i runtime smoke wszystkich sześciu procesów;
-- granice Nx, lint i typecheck testów;
-- coverage obejmujące nieimportowane pliki źródłowe;
-- generator usług z jawnym portem i własnością danych;
-- ochrona development/test przed przypadkowym połączeniem z zewnętrzną infrastrukturą;
-- pełne `pnpm validate` obejmujące E2E i runtime smoke.
+- bezpieczne połączenie `discord-gateway` z Discordem;
+- działanie wyłącznie na guild `1534228693017432124`;
+- guild-scoped commands bez global commands;
+- `/status` i pierwszy panel `/panel-test`;
+- select menu, przyciski i modal zgodne ze standardem UX;
+- stateless signed custom IDs działające po restarcie;
+- pełne testy bez tokenu w CI;
+- obowiązkowy manualny live test przed audytem.
 
-## Niezaimplementowane
+## Nadal niezaimplementowane
 
-- integracja z Discord API i rzeczywisty bot online;
 - Discord OAuth, Better Auth, sesje i MFA;
-- modele biznesowe, ORM, reguły uprawnień i moduły produktowe;
-- zdarzenia biznesowe, Outbox, retry, DLQ i Streams;
+- docelowy system uprawnień;
+- modele biznesowe i ORM;
+- moduły wydarzeń, rezerwacji, LFG, moderacji, ticketów, muzyki, automatyzacji i analityki;
+- RabbitMQ w funkcjach biznesowych;
 - produkcyjny hosting lub deployment.
 
 ## Następny punkt kontrolny
 
-`P1-DISCORD-TEST-HARNESS-001` — bezpieczne uruchomienie pierwszego bota na serwerze testowym `1534228693017432124`, bez funkcji biznesowych.
+Cursor implementuje P1, tworzy PR, przeprowadza manualny live test po lokalnym ustawieniu sekretów przez właściciela i zgłasza finalny PR do audytu ChatGPT.
 
 ## Blokady
 
-Brak blokad Promptu 0.
+Kod nie ma blokad. Rzeczywisty live test będzie wymagał ręcznego utworzenia/konfiguracji aplikacji w Discord Developer Portal i lokalnego ustawienia tokenu. Token nie może być przekazywany przez czat ani GitHub.
 
 ## Ważna uwaga
 

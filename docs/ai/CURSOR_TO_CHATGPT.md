@@ -1,76 +1,137 @@
-﻿# Cursor → ChatGPT
+# Cursor → ChatGPT
 
 ## Status
 
-`READY_FOR_REVIEW`
+`NOT_STARTED`
+
+Dozwolone statusy podczas zadania:
+
+- `IN_PROGRESS`
+- `READY_FOR_LIVE_TEST`
+- `BLOCKED`
+- `READY_FOR_REVIEW`
 
 ## Task ID
 
-`P0-BOOTSTRAP-001`
+`P1-DISCORD-TEST-HARNESS-001`
 
 ## Branch, commit i PR
 
-- **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA (CI `success`):** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
-- **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
+- **Branch:** `cursor/p1-discord-test-harness`
+- **Finalny commit:**
+- **PR:**
 
-## Drugi audyt — poprawki
+## Zakres wykonany
 
-Zintegrowano `origin/main` (bez utraty D-023/D-024, standardu postów Discord,
-identyfikacji V2, serwera testowego, ADR-0006 i Desktop Companion). Decyzje
-techniczne Promptu 0 przenumerowano do D-025..D-028.
+Do uzupełnienia przez Cursor.
 
-### Blokery zamknięte
+## Architektura Discord Gateway
 
-1. Sync z `main` + przenumerowanie Decision Log.
-2. Admin: React Router **8.3.0** (`BrowserRouter` / `Routes` / `Route`).
-3. Backend: lint obejmuje `*.spec.ts`; typecheck przez `tsconfig.json` z
-   testami; build przez `tsconfig.build.json`.
-4. Coverage: `all: true` + jawne `coverageInclude` per projekt.
-5. Generator: wymagane `--port` i `--data-ownership`; walidacja kolizji portów;
-   test dwóch serwisów.
-6. Runtime smoke: ephemeral ports; brak `taskkill`/`fuser` na obcych
-   procesach; zamykane tylko własne drzewo procesów.
-7. Ochrona prod: walidacja hostów URL DB/Redis/RabbitMQ; wyjątek
-   `ALLOW_PRODUCTION_CONNECTIONS=true`.
-8. `pnpm validate` = pełny zestaw; `pnpm validate:quick` = wariant lekki.
-9. CI uruchamia `pnpm validate` na finalnym HEAD.
+Do uzupełnienia:
 
-## Wyniki CI (finalny tip)
+- cykl życia klienta;
+- router komend i komponentów;
+- model signed custom IDs;
+- izolacja guild;
+- health/readiness;
+- obsługa restartów i graceful shutdown.
 
-- **Run:** [30955695886](https://github.com/HOMZIKx/V2/actions/runs/30955695886)
-- **Trigger:** `pull_request`
-- **HEAD SHA:** `527b44f7daa95d0ca8fa38dd5a92e23e926a6eff`
-- **Conclusion:** `success`
+## Wersje
 
-| Job                        | Wynik   |
-| -------------------------- | ------- |
-| Quality gates              | success |
-| Infrastructure integration | success |
-| Secret scan                | success |
-| PR Title                   | success |
+- **discord.js:**
+- **Discord API:** v10
+- **Node.js:** 24 LTS
 
-Quality gates = `pnpm validate` (format, lint, typecheck, coverage, architecture,
-build, E2E, runtime smoke, compose config) + `pnpm audit --audit-level=high`.
+## Intents, scopes i permissions
 
-## Wyniki lokalne
+### Intents
+
+Do uzupełnienia.
+
+### Scopes instalacji
+
+Do uzupełnienia.
+
+### Minimalne permissions
+
+Do uzupełnienia.
+
+## Komendy i komponenty
+
+Do uzupełnienia:
+
+- `/status`;
+- `/panel-test`;
+- select menu;
+- modal;
+- odświeżenie;
+- bezpieczne usunięcie panelu.
+
+## Wyniki automatyczne
 
 ```text
-pnpm format:check     → EXIT 0
-pnpm lint             → EXIT 0
-pnpm typecheck        → EXIT 0
-pnpm test:coverage    → EXIT 0
-pnpm architecture:check → EXIT 0
-pnpm build            → EXIT 0
-pnpm test:runtime-smoke → EXIT 0
-pnpm audit --audit-level=high → No known vulnerabilities found
+pnpm validate                    →
+pnpm discord:test:generate-secret →
+pnpm discord:test:doctor          →
+pnpm discord:test:register        →
 ```
 
-## Odstępstwa
+### GitHub Actions
 
-- Next.js **15.5.22** (zamiast 16.x) — znany błąd monorepo.
-- React Router **8.3.0** (bezpieczna linia; `react-router-dom` v8 nie istnieje).
+- **Run:**
+- **HEAD SHA:**
+- **Quality gates:**
+- **Infrastructure integration:**
+- **Secret scan:**
+- **PR Title:**
+
+## Manualny live test
+
+Nie wpisuj tokenu ani signing secret.
+
+- **Application ID:**
+- **Bot User ID:**
+- **Guild ID:** `1534228693017432124`
+- **Bot online:**
+- **Brak działania na innych guild:**
+- **`/status` ephemeral:**
+- **Publikacja jednego `/panel-test`:**
+- **Select menu:**
+- **Modal:**
+- **Odświeżenie tego samego panelu:**
+- **Bezpieczne usunięcie:**
+- **Działanie panelu po restarcie:**
+- **Brak reakcji i publicznego spamu:**
+- **Brak sekretów/treści modala w logach:**
+
+## Global commands
+
+- **Zarejestrowane global commands:**
+- **Dowód użycia wyłącznie guild route:**
+
+## Bezpieczeństwo
+
+Do uzupełnienia:
+
+- redakcja sekretów;
+- strict guild isolation;
+- operator allowlist/ManageGuild;
+- signed custom IDs;
+- minimalne intents i permissions;
+- brak live Discorda w CI.
+
+## Zmienione pliki i dokumenty
+
+Do uzupełnienia.
+
+## ADR
+
+- `ADR-0007`:
+
+## Odstępstwa, ryzyka i dług techniczny
+
+Do uzupełnienia bez ukrywania problemów.
 
 ## Proponowany następny krok
 
-Trzeci audyt ChatGPT PR #3. Nie zaczynać Promptu 1 bez `APPROVED`.
+Tylko propozycja. Nie implementuj następnego etapu bez `APPROVED`.
