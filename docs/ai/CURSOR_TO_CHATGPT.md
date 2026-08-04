@@ -11,8 +11,8 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA (zweryfikowany w CI):** `1fb8577a7712e939e1d4d61ab16a759b4827a5ef`
-- **PR tip:** najnowszy commit na PR #3 zawiera ten raport (może być SHA nowszy niż powyższy)
+- **Commit SHA (CI `success`):** `702ee55792e3925d521a6a2ce32d181ef69bb99c`
+- **PR tip:** bieżący HEAD gałęzi PR #3 (może być commit docs po powyższym SHA)
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Audyt follow-up (CHANGES REQUIRED → poprawki)
@@ -42,16 +42,16 @@ nieużywanego `react-router` / `@fastify/static`, overrides zależności
 
 ## Wyniki CI (GitHub Actions)
 
-- **Run:** [30950531125](https://github.com/HOMZIKx/V2/actions/runs/30950531125)
+- **Run:** [30951223651](https://github.com/HOMZIKx/V2/actions/runs/30951223651)
 - **Trigger:** `workflow_dispatch` na `cursor/p0-foundation-bootstrap`
-- **HEAD SHA:** `1fb8577a7712e939e1d4d61ab16a759b4827a5ef`
+- **HEAD SHA:** `702ee55792e3925d521a6a2ce32d181ef69bb99c`
 - **Conclusion:** `success`
 
 | Job                        | Wynik            |
 | -------------------------- | ---------------- |
-| Quality gates              | success (~3m52s) |
-| Infrastructure integration | success (~45s)   |
-| Secret scan                | success (~8s)    |
+| Quality gates              | success (~3m10s) |
+| Infrastructure integration | success          |
+| Secret scan                | success          |
 
 Quality gates obejmuje m.in.: format, lint, typecheck, test, architecture
 boundaries, build, Playwright E2E, runtime smoke (6 aplikacji/usług),
