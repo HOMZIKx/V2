@@ -1,6 +1,6 @@
 # Cursor → ChatGPT
 
-## Status zadania
+## Status
 
 `READY_FOR_REVIEW`
 
@@ -11,8 +11,8 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `c567e42721aa46afbb7fb204c8099a691c48e767` (audit-fix implementation)
-- **PR tip:** track latest commit on PR #3 after docs SHA pin
+- **Commit SHA (zweryfikowany w CI):** `1fb8577a7712e939e1d4d61ab16a759b4827a5ef`
+- **PR tip:** najnowszy commit na PR #3 zawiera ten raport (może być SHA nowszy niż powyższy)
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Audyt follow-up (CHANGES REQUIRED → poprawki)
@@ -21,11 +21,10 @@ Naprawiono wszystkie blokery z review „Audyt P0-BOOTSTRAP-001 — CHANGES REQU
 
 ### Blokery zamknięte
 
-1. Prettier / format:check — wyczyszczone; CI musi przejść od formatu dalej.
-2. Playwright E2E — w CI (`pnpm exec playwright install --with-deps chromium` +
-   `pnpm test:e2e`); obowiązkowy job Quality gates.
-3. Docker healthy — job `Infrastructure integration`: `up -d --wait`, weryfikacja
-   health Postgres/Redis/RabbitMQ, test izolacji baz, `down -v` w `always()`.
+1. Prettier / format:check — czyste (`pnpm format:check` EXIT 0).
+2. Playwright E2E — w CI (`playwright install --with-deps chromium` + `pnpm test:e2e`).
+3. Docker healthy — job `Infrastructure integration`: `up -d --wait`, health
+   Postgres/Redis/RabbitMQ, izolacja baz, `down -v` w `always()`.
 4. Test izolacji baz — `tools/infra/db-isolation.test.ts` (`RUN_INFRA_TESTS=true`).
 5. Porty Compose i hosty aplikacji — wyłącznie `127.0.0.1`; obrazy przypięte
    (`postgres:16.9`, `redis:7.4.5`, `rabbitmq:3.13.7-management`).
@@ -36,31 +35,51 @@ Naprawiono wszystkie blokery z review „Audyt P0-BOOTSTRAP-001 — CHANGES REQU
 9. Runtime smoke — `pnpm test:runtime-smoke` startuje wszystkie 6 po `build`.
 10. `pnpm validate` — w CI (Docker dostępny na runnerze).
 
-Dodatkowo: `pnpm.onlyBuiltDependencies`, layout Next.js, pin Next `15.5.22`
-(Next 16 padał na `_global-error` / `useContext` w monorepo).
+Dodatkowo: `pnpm.onlyBuiltDependencies`, pin Next `15.5.22`, usunięcie
+nieużywanego `react-router` / `@fastify/static`, overrides zależności
+(`postcss`, `brace-expansion`, `find-my-way`, `js-yaml`, `sharp`) —
+`pnpm audit --audit-level=high` → brak high/critical.
+
+## Wyniki CI (GitHub Actions)
+
+- **Run:** [30950531125](https://github.com/HOMZIKx/V2/actions/runs/30950531125)
+- **Trigger:** `workflow_dispatch` na `cursor/p0-foundation-bootstrap`
+- **HEAD SHA:** `1fb8577a7712e939e1d4d61ab16a759b4827a5ef`
+- **Conclusion:** `success`
+
+| Job | Wynik |
+| --- | --- |
+| Quality gates | success (~3m52s) |
+| Infrastructure integration | success (~45s) |
+| Secret scan | success (~8s) |
+
+Quality gates obejmuje m.in.: format, lint, typecheck, test, architecture
+boundaries, build, Playwright E2E, runtime smoke (6 aplikacji/usług),
+`pnpm validate`, `pnpm audit --audit-level=high`.
+
+Infrastructure integration obejmuje: `docker compose config`,
+`up -d --wait`, weryfikację healthy kontenerów, test izolacji baz,
+`down -v`.
 
 ## Wyniki lokalne (Windows host, bez Docker CLI)
 
 ```text
-pnpm format:check     → EXIT 0
-pnpm lint             → EXIT 0
-pnpm typecheck        → EXIT 0
-pnpm test:coverage    → EXIT 0
-pnpm architecture:check → EXIT 0 (4 tests)
-pnpm build            → EXIT 0
-pnpm test:runtime-smoke → EXIT 0 (all 6 apps/services)
-pnpm test:infra       → skipped locally (RUN_INFRA_TESTS unset)
-docker compose ...    → wymaga Docker Desktop / CI
+pnpm format:check          → EXIT 0
+pnpm audit --audit-level=high → No known vulnerabilities found
+pnpm test:infra            → skipped locally (RUN_INFRA_TESTS unset)
+docker compose ...         → wymaga Docker Desktop / CI
 ```
-
-Pełne `pnpm validate` + E2E + infra healthy są w GitHub Actions PR #3.
 
 ## Odstępstwa / założenia
 
 - Next.js **15.5.22** zamiast 16.x z powodu błędu builda monorepo; nadal App Router.
+- Admin bootstrap bez `react-router` (jedna strona statusu) — uniknięcie konfliktu
+  CVEs React Router 7.x vs 8.x przy czystym `pnpm audit --audit-level=high`.
 - Runtime smoke Nest startuje skompilowany `dist/**/main.js` z `--import tsx`
   (workspace packages eksportują TypeScript).
 - Host implementacji bez Dockera — dowód healthy/izolacji w CI.
+- Automatyczny `pull_request` trigger bywał niestabilny; zielony dowód CI
+  z `workflow_dispatch` na tym samym SHA gałęzi PR #3.
 
 ## ADR-y
 
