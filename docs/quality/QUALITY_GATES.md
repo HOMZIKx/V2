@@ -24,6 +24,11 @@ Corepack, instaluje Chromium Playwright i uruchamia `pnpm validate`, a następni
 `pnpm audit --audit-level=high`. Osobny job podnosi Compose, sprawdza healthy
 kontenerów i izolację baz. Dodatkowo działa skan sekretów Gitleaks.
 
+CI **nie** łączy się z Discordem — harness P1 w `discord-gateway` musi przechodzić
+testy z `DISCORD_ENABLED=false`. Manualny live test po lokalnym setupie
+([TEST_BOT_SETUP.md](../discord/TEST_BOT_SETUP.md)) jest osobną bramką przed
+`READY_FOR_REVIEW`.
+
 Workflow `PR Title` sprawdza zgodność tytułu pull requesta z Conventional
 Commits.
 

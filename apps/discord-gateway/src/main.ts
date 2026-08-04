@@ -1,26 +1,42 @@
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createConfig } from '@v2/configuration';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createLogger } from '@v2/observability';
-import { z } from 'zod';
+import path from 'node:path';
 
-import { AppModule } from './app.module.js';
+import { loadEnvFile } from './infrastructure/discord/load-env-file.js';
+import { AppModule } from './interface/app.module.js';
+import { loadDiscordConfig } from './interface/discord/discord-bootstrap.service.js';
 
-const config = createConfig(
-  z.object({
-    DISCORD_GATEWAY_PORT: z.coerce.number().int().positive().default(4100),
-    DISCORD_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
-  }),
-);
+loadEnvFile(path.resolve(process.cwd(), '.env'));
+loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
+
+const config = loadDiscordConfig();
 const logger = createLogger('discord-gateway');
 
-const bootstrap = async () => {
+const bootstrap = async (): Promise<void> => {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
-  logger.info('Discord connection is deferred; gateway is running in safe mode.');
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info(`Received ${signal}; shutting down Discord gateway.`);
+    await app.close();
+    process.exit(0);
+  };
+
+  process.once('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.once('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
+
   await app.listen(config.DISCORD_GATEWAY_PORT, config.DISCORD_GATEWAY_HOST);
+  logger.info('Discord gateway HTTP listener started', {
+    host: config.DISCORD_GATEWAY_HOST,
+    port: config.DISCORD_GATEWAY_PORT,
+    discordEnabled: config.DISCORD_ENABLED,
+  });
 };
 
 void bootstrap();

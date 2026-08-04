@@ -52,6 +52,12 @@ pnpm build
 pnpm validate           # pełny zestaw lokalnych quality gates
 pnpm validate:quick     # lżejsza walidacja bez E2E i runtime smoke
 pnpm generate:service <nazwa-service> --port <unikalny-port> --data-ownership <none|database>
+
+# Discord P1 test harness (requires local secrets — see docs/discord/TEST_BOT_SETUP.md)
+pnpm discord:test:generate-secret
+pnpm discord:test:doctor
+pnpm discord:test:register
+pnpm discord:test:start
 ```
 
 Przykład:

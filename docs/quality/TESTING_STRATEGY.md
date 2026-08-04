@@ -14,6 +14,15 @@ Testy powinny sprawdzać zachowanie możliwe do zaobserwowania. W Promptcie 0 ni
 testujemy OAuth, autoryzacji, ORM, zdarzeń RabbitMQ ani funkcji biznesowych,
 ponieważ nie są zaimplementowane.
 
+## Discord test harness (P1)
+
+`apps/discord-gateway` ma testy Vitest bez połączenia z live Discordem: walidacja
+konfiguracji, redakcja sekretów, izolacja guild, signed custom IDs, renderer
+panelu, health/readiness i router interakcji na mockowanym adapterze. CI nie
+używa tokenu Discorda. Manualny live test na guild testowym jest obowiązkowy
+przed audytem — instrukcja: [TEST_BOT_SETUP.md](../discord/TEST_BOT_SETUP.md).
+Skrypty: `pnpm discord:test:doctor`, `register`, `start`, `generate-secret`.
+
 ## Uruchamianie
 
 ```text

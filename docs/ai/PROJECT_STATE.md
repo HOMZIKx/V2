@@ -2,7 +2,7 @@
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_CURSOR`
+`P1_DISCORD_TEST_HARNESS_READY_FOR_LIVE_TEST`
 
 ## Aktualny etap
 
@@ -40,10 +40,13 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 ## Aktywne zadanie
 
 - **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_CURSOR`
+- **Status:** `READY_FOR_LIVE_TEST`
+- **Branch:** `cursor/p1-discord-test-harness`
 - **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
-- **Oczekiwany branch Cursora:** `cursor/p1-discord-test-harness`
-- **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
+- **Implementacja kodu:** ukończona na gałęzi `cursor/p1-discord-test-harness` (status `READY_FOR_LIVE_TEST`)
+- **CI:** push gałęzi po lokalnym `pnpm validate` (bez Docker CLI lokalnie — CI na Ubuntu ma Docker)
+- **Live test Discord:** **wymagany od właściciela** — instrukcja: `docs/discord/TEST_BOT_SETUP.md` (sekrety tylko lokalnie, nigdy w czacie)
+- **Pull Request:** po live teście i zielonym CI — bez samodzielnego scalenia
 
 ## Cel aktywnego zadania
 
@@ -67,11 +70,11 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 
 ## Następny punkt kontrolny
 
-Cursor implementuje P1, tworzy PR, przeprowadza manualny live test po lokalnym ustawieniu sekretów przez właściciela i zgłasza finalny PR do audytu ChatGPT.
+Właściciel konfiguruje lokalne sekrety (`docs/discord/TEST_BOT_SETUP.md`), uruchamia `pnpm discord:test:doctor`, `register`, `start`, przeprowadza manualny live test na guild `1534228693017432124`, następnie finalizuje PR i audyt ChatGPT.
 
 ## Blokady
 
-Kod nie ma blokad. Rzeczywisty live test będzie wymagał ręcznego utworzenia/konfiguracji aplikacji w Discord Developer Portal i lokalnego ustawienia tokenu. Token nie może być przekazywany przez czat ani GitHub.
+Kod nie ma blokad architektonicznych. **Live test** wymaga ręcznej konfiguracji aplikacji w Discord Developer Portal i lokalnego ustawienia tokenu oraz signing secret przez właściciela. Token i signing secret nie mogą być przekazywane przez czat ani GitHub. CI i finalny HEAD commit — pending validation.
 
 ## Ważna uwaga
 

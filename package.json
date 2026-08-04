@@ -28,7 +28,11 @@
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
     "validate": "node ./tools/scripts/validate.mjs",
     "validate:quick": "node ./tools/scripts/validate.mjs --quick",
-    "generate:service": "node ./tools/scripts/generate-service.mjs"
+    "generate:service": "node ./tools/scripts/generate-service.mjs",
+    "discord:test:doctor": "tsx apps/discord-gateway/scripts/discord-cli.mjs doctor",
+    "discord:test:register": "tsx apps/discord-gateway/scripts/discord-cli.mjs register",
+    "discord:test:start": "tsx apps/discord-gateway/scripts/discord-cli.mjs start",
+    "discord:test:generate-secret": "tsx apps/discord-gateway/scripts/discord-cli.mjs generate-secret"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
