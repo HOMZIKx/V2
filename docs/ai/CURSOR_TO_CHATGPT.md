@@ -11,8 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA (CI `success`):** `702ee55792e3925d521a6a2ce32d181ef69bb99c`
-- **PR tip:** bieżący HEAD gałęzi PR #3 (może być commit docs po powyższym SHA)
+- **Commit SHA (zweryfikowany CI `success`):** `f67be50148c288f894c6fc9526f94549cf24c460`
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Audyt follow-up (CHANGES REQUIRED → poprawki)
@@ -42,14 +41,14 @@ nieużywanego `react-router` / `@fastify/static`, overrides zależności
 
 ## Wyniki CI (GitHub Actions)
 
-- **Run:** [30951223651](https://github.com/HOMZIKx/V2/actions/runs/30951223651)
+- **Run:** [30951690018](https://github.com/HOMZIKx/V2/actions/runs/30951690018)
 - **Trigger:** `workflow_dispatch` na `cursor/p0-foundation-bootstrap`
-- **HEAD SHA:** `702ee55792e3925d521a6a2ce32d181ef69bb99c`
+- **HEAD SHA:** `f67be50148c288f894c6fc9526f94549cf24c460`
 - **Conclusion:** `success`
 
 | Job                        | Wynik            |
 | -------------------------- | ---------------- |
-| Quality gates              | success (~3m10s) |
+| Quality gates              | success (~2m59s) |
 | Infrastructure integration | success          |
 | Secret scan                | success          |
 

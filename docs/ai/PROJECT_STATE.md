@@ -75,8 +75,8 @@ Audyt ChatGPT zmian Promptu 0. Nie rozpoczynać Promptu 1 bez statusu
 
 Brak blokad produktowych. Lokalnie na hoście Cursor brak Docker CLI /
 Docker Desktop — healthy Compose i izolacja baz są udowodnione w CI
-([run 30951223651](https://github.com/HOMZIKx/V2/actions/runs/30951223651),
-SHA `702ee55792e3925d521a6a2ce32d181ef69bb99c`).
+([run 30951690018](https://github.com/HOMZIKx/V2/actions/runs/30951690018),
+SHA `f67be50148c288f894c6fc9526f94549cf24c460`).
 
 ## Ważna uwaga
 
