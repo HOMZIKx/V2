@@ -4,7 +4,7 @@
 
 `READY_FOR_LIVE_TEST`
 
-Implementacja kodu harnessu P1 jest przygotowana do manualnego live testu przez właściciela. CI i pełna walidacja na finalnym HEAD — **pending validation**. Pull Request i live test Discord — **pending owner**.
+Implementacja kodu harnessu P1 jest gotowa. GitHub Actions na HEAD jest zielone. Wymagany jest manualny live test właściciela. Pull Request powstanie po live teście.
 
 ## Task ID
 
@@ -13,7 +13,8 @@ Implementacja kodu harnessu P1 jest przygotowana do manualnego live testu przez 
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** `aba7f6ef0b3716109461a9b0ccf83d41329f3e30`
+- **Finalny commit (code + green CI):** `83ad417ae638582b468c839b4e0cb6c8a2076df4`
+- **Docs HEAD:** updated on branch after green CI
 - **PR:** pending after live test
 
 ## Zakres wykonany
@@ -26,15 +27,17 @@ Implementacja kodu harnessu P1 jest przygotowana do manualnego live testu przez 
 - Strict guild isolation przy starcie i na każdej interakcji.
 - Skrypty CLI: `doctor`, `register`, `start`, `generate-secret`.
 - Testy Vitest bez live Discorda; redakcja sekretów.
+- Override `undici@6.28.0` (pnpm) dla audit high po zależności discord.js.
 - Dokumentacja: `TEST_BOT_SETUP.md`, ADR-0007, aktualizacje `.env.example`, README, DEVELOPMENT, SERVICE_CATALOG, TESTING_STRATEGY, QUALITY_GATES.
 
 ## Architektura Discord Gateway
 
 - **Cykl życia klienta:** stany `disabled` → `connecting` → `ready` / `degraded` / `failed` / `stopping`; timeout startu; graceful shutdown.
-- **Router interakcji:** centralny dispatch do handlerów komend i komponentów (application layer).
+- **Router interakcji:** `interface/discord/interaction-router.ts` (SDK poza warstwą application).
+- **Application layer:** authorization, idempotency, deklaracje komend, porty bez SDK.
 - **Signed custom IDs:** wersjonowany format, HMAC z `DISCORD_COMPONENT_SIGNING_SECRET`, constant-time verify.
 - **Izolacja guild:** weryfikacja członkostwa i `guildId` per interakcja; strict mode kończy proces przy nieautoryzowanym serwerze.
-- **Health/readiness:** `/health/live`, `/health/ready` odzwierciedlają stan procesu i gotowości Discorda.
+- **Health/readiness:** `/health/live`, `/health/ready`, `/health/discord`.
 - **Restart:** panel i komponenty działają po restarcie bez collectorów w pamięci.
 
 ## Wersje
@@ -73,19 +76,20 @@ Implementacja kodu harnessu P1 jest przygotowana do manualnego live testu przez 
 ## Wyniki automatyczne
 
 ```text
-pnpm validate                    → pending validation
+pnpm validate (local)             → green through runtime-smoke; Docker CLI missing on this Windows host (compose validated in CI)
 pnpm discord:test:generate-secret → implemented (local only)
 pnpm discord:test:doctor          → implemented (requires owner local .env)
 pnpm discord:test:register        → implemented (requires owner local .env)
+pnpm audit --audit-level=high     → clean (undici override 6.28.0)
 ```
 
 ### GitHub Actions
 
-- **Run:** pending after push
-- **HEAD SHA:** pending after push
-- **Quality gates:** pending CI
-- **Infrastructure integration:** pending CI
-- **Secret scan:** pending CI
+- **Run:** https://github.com/HOMZIKx/V2/actions/runs/30959599708
+- **HEAD SHA:** `83ad417ae638582b468c839b4e0cb6c8a2076df4`
+- **Quality gates:** success
+- **Infrastructure integration:** success
+- **Secret scan:** success
 - **PR Title:** pending (after live test)
 
 ## Manualny live test
@@ -122,29 +126,29 @@ pnpm discord:test:register        → implemented (requires owner local .env)
 
 ## Zmienione pliki i dokumenty
 
-- `apps/discord-gateway/` — adapter, router, panel, testy, CLI
-- `package.json` — skrypty `discord:test:*`
+- `apps/discord-gateway/` — adapter, router, panel, testy, CLI, banner
+- `package.json` — skrypty `discord:test:*`, override `undici`
+- `.github/workflows/ci.yml` — CI także na `cursor/**`
 - `.env.example` — zmienne harnessu
 - `docs/discord/TEST_BOT_SETUP.md` — **new**
 - `docs/architecture/decisions/ADR-0007-discord-test-harness.md` — **new**
-- `docs/DEVELOPMENT.md`, `README.md`, `docs/architecture/SERVICE_CATALOG.md`
-- `docs/quality/TESTING_STRATEGY.md`, `docs/quality/QUALITY_GATES.md`
-- `docs/ai/PROJECT_STATE.md`, `docs/ai/CURSOR_TO_CHATGPT.md`
+- `docs/DECISION_LOG.md` — D-029
+- README, DEVELOPMENT, SERVICE_CATALOG, TESTING_STRATEGY, QUALITY_GATES, PROJECT_STATE
 
-## ADR
+## ADR i decyzje
 
 - `ADR-0007`: Accepted — discord.js 14.25.1, Gateway, guild-only commands, Guilds intent, strict isolation, signed components, no live Discord in CI.
+- `D-029`: Discord test harness P1.
 
-## Odstępstwa, ryzyka i dług techniczny
+## Odstępstwa / założenia / dług
 
-- Autoryzacja operatorów to tymczasowa allowlist — nie docelowy RBAC.
-- Rotacja signing secret unieważnia istniejące custom IDs paneli.
-- `doctor` nie usuwa automatycznie starych global commands w aplikacji Discord.
-- Live test i PR wymagają działania właściciela z lokalnymi sekretami.
+- Lokalny host Windows bez Docker CLI — compose config sprawdzany w CI.
+- Tymczasowa autoryzacja operatorów (allowlist + Manage Guild) — nie jest docelowym RBAC.
+- Router interakcji w `interface/` (nie `application/`), aby zachować framework-free application layer.
+- Override `undici` ponad wersję transitive discord.js — monitorować przy upgrade SDK.
 
-## Proponowany następny krok
+## Propozycja kolejnego kroku (bez implementacji)
 
 1. Właściciel: lokalny setup według `TEST_BOT_SETUP.md`, `doctor`, `register`, `start`, manualny live test.
-2. Po zielonym `pnpm validate` i CI na finalnym HEAD: PR do `main`, uzupełnienie tego raportu wynikami live testu, status `READY_FOR_REVIEW`.
-
-Tylko propozycja. Nie implementuj następnego etapu bez `APPROVED`.
+2. Po sukcesie: Cursor finalizuje raport, tworzy PR do `main`, nie scala.
+3. Audyt ChatGPT → `APPROVED` przed kolejnym etapem.
