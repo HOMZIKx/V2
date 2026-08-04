@@ -25,5 +25,6 @@
 | D-021 | Trwała konstytucja i pamięć projektu w repozytorium | ACCEPTED | AI nie może polegać na historii czatu |
 | D-022 | ChatGPT projektuje i audytuje, Cursor implementuje i raportuje | ACCEPTED | Kontrolowany obieg pracy przez GitHub |
 | D-023 | Dopracowane posty Discord oparte na embedach i natywnych komponentach | ACCEPTED | Jeden spójny panel, select menu/przyciski/modale, bez reakcji jako nawigacji i bez zbędnego przeklikiwania |
+| D-024 | Oryginalna identyfikacja V2 i funkcjonalność ważniejsza od dekoracji | ACCEPTED | Własna skoordynowana paleta z indywidualnymi kolorami modułów, własne emoji/grafiki oraz bezwzględny priorytet niezawodnego i intuicyjnego działania |
 
 Szczegółowe decyzje architektoniczne będą rozwijane jako ADR-y w `docs/architecture/decisions/`.
