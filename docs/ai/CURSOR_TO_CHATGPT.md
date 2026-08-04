@@ -11,7 +11,8 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `c567e42721aa46afbb7fb204c8099a691c48e767`
+- **Commit SHA:** `c567e42721aa46afbb7fb204c8099a691c48e767` (audit-fix implementation)
+- **PR tip:** track latest commit on PR #3 after docs SHA pin
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Audyt follow-up (CHANGES REQUIRED → poprawki)
