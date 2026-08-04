@@ -1,19 +1,24 @@
 ---
-description: Obowiązkowy standard projektowania postów i interakcji Discord w V2.
+description: Obowiązkowy standard projektowania postów, identyfikacji i interakcji Discord w V2.
 alwaysApply: true
 ---
 
-# Discord post and interaction UX
+# Discord post, visual identity and interaction UX
 
 Przy każdym zadaniu dotyczącym Discorda przeczytaj `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md`.
 
 ## Bezwzględne wymagania
 - Projektuj spójne, dopracowane, mobilne embedy/panele z czytelną hierarchią.
+- Twórz własną identyfikację V2: własne kolory, grafiki, ikony i emoji; nie kopiuj referencji jeden do jednego.
+- Dopuszczaj indywidualne kolory modułów, ale wyłącznie w ramach jednej kontrolowanej palety V2 i z jasnym znaczeniem stanów.
 - Używaj natywnych select menu, przycisków i modali.
 - Menu ma działać jak natywna lista opcji Discorda i prowadzić bezpośrednio do treści lub działania.
 - Preferuj jeden stabilny post aktualizowany w miejscu oraz odpowiedzi ephemeral.
 - Nie używaj reakcji emoji jako podstawowej nawigacji ani systemu akcji.
 - Nie twórz zbędnych łańcuchów kliknięć, kolejnych publicznych wiadomości ani wielu paneli dla tej samej funkcji.
-- Przed implementacją przedstaw layout posta i dokładny flow interakcji.
+- Funkcjonalność, niezawodność, feedback, idempotencja i obsługa błędów są ważniejsze niż dekoracja.
+- Każdy komponent musi mieć poprawne stany: loading, empty, success, error, unavailable oraz confirmation dla działań destrukcyjnych.
+- Przed implementacją przedstaw layout posta, dokładny flow interakcji, kolory modułu, emoji/ikony oraz zachowanie publiczne i ephemeral.
+- Przetestuj główny flow na desktopie i urządzeniu mobilnym.
 
 Odstępstwo wymaga jawnej decyzji właściciela i aktualizacji dokumentacji.
