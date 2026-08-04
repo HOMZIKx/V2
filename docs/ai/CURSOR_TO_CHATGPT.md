@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p0-foundation-bootstrap`
-- **Commit SHA:** `8e2f3abf5faea794713fd2087e198b8eb8223e4d` (HEAD; foundation `162619d226f892e3876509e130070871bcba7c55`)
+- **Commit SHA:** `f7573c6` (HEAD)
 - **PR:** [#3](https://github.com/HOMZIKx/V2/pull/3)
 
 ## Zaimplementowany zakres
