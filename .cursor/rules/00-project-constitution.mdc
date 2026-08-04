@@ -1,0 +1,32 @@
+---
+description: Nadrzędna konstytucja projektu V2. Obowiązuje przy każdym zadaniu.
+alwaysApply: true
+---
+
+# Konstytucja projektu V2
+
+Przed rozpoczęciem pracy przeczytaj:
+1. `docs/NON_NEGOTIABLES.md`
+2. `docs/PROJECT_CHARTER.md`
+3. `docs/DECISION_LOG.md`
+4. `docs/ai/PROJECT_STATE.md`
+5. `docs/ai/PENDING_DECISIONS.md`
+6. ADR-y dotyczące zadania
+
+## Zasady bezwzględne
+- Nie zmieniaj samodzielnie architektury, bezpieczeństwa, modelu danych, zakresu produktu ani UX.
+- W przypadku konfliktu zatrzymaj się i zapisz decyzję w `docs/ai/PENDING_DECISIONS.md`.
+- Nie importuj logiki biznesowej pomiędzy usługami.
+- Nie korzystaj z bazy danych innej usługi.
+- Domain i Application nie mogą zależeć od NestJS, Fastify, ORM, RabbitMQ ani Discord SDK.
+- Nie używaj `any`; waliduj wejścia zewnętrzne w runtime.
+- Nie omijaj testów, kontroli bezpieczeństwa ani granic architektury.
+- Nie kopiuj architektury starego projektu. Stary projekt jest wyłącznie referencją.
+
+## Przed implementacją
+Przedstaw plan, zakres, poza zakresem, zmieniane usługi, dane, kontrakty, ryzyka i wymagane decyzje.
+
+## Po implementacji
+Uruchom lint, typecheck i odpowiednie testy. Zaktualizuj `docs/ai/PROJECT_STATE.md` i raport `docs/ai/CURSOR_TO_CHATGPT.md`. Podaj dokładne komendy, wyniki, commit SHA, ograniczenia i dług techniczny.
+
+Nie rozpoczynaj kolejnego dużego etapu bez statusu `APPROVED`.
