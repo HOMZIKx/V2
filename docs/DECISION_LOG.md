@@ -24,5 +24,6 @@
 | D-020 | Sesje serwerowe + podpisany kontekst wewnętrzny | ACCEPTED | Natychmiastowe unieważnianie i brak tokenów w localStorage |
 | D-021 | Trwała konstytucja i pamięć projektu w repozytorium | ACCEPTED | AI nie może polegać na historii czatu |
 | D-022 | ChatGPT projektuje i audytuje, Cursor implementuje i raportuje | ACCEPTED | Kontrolowany obieg pracy przez GitHub |
+| D-023 | Dopracowane posty Discord oparte na embedach i natywnych komponentach | ACCEPTED | Jeden spójny panel, select menu/przyciski/modale, bez reakcji jako nawigacji i bez zbędnego przeklikiwania |
 
 Szczegółowe decyzje architektoniczne będą rozwijane jako ADR-y w `docs/architecture/decisions/`.
