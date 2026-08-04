@@ -1,0 +1,18 @@
+{
+  "folders": [
+    {
+      "name": "V2 (piszemy tu)",
+      "path": "."
+    },
+    {
+      "name": "dobry-temat (wzory / referencja)",
+      "path": "../Aplikaja-gildii-main"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.git": false
+    }
+  }
+}
