@@ -88,11 +88,9 @@ function startApplication(application) {
       NEXT_TELEMETRY_DISABLED: '1',
     },
     shell: application.shell ?? false,
-    stdio: 'pipe',
+    stdio: 'inherit',
   });
 
-  child.stdout.pipe(process.stdout);
-  child.stderr.pipe(process.stderr);
   child.once('error', (error) => {
     startupFailures.set(child, error);
   });
