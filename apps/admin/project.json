@@ -6,7 +6,10 @@
   "tags": ["type:app", "scope:admin"],
   "targets": {
     "serve": { "command": "corepack pnpm --dir apps/admin dev" },
-    "build": { "command": "corepack pnpm --dir apps/admin build" },
+    "build": {
+      "command": "corepack pnpm --dir apps/admin build",
+      "outputs": ["{projectRoot}/dist"]
+    },
     "lint": { "command": "corepack pnpm exec eslint apps/admin/src" },
     "typecheck": { "command": "corepack pnpm exec tsc -p apps/admin/tsconfig.json --noEmit" },
     "test": { "command": "corepack pnpm exec vitest run --config apps/admin/vitest.config.ts" },

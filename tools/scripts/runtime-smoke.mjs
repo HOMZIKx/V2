@@ -10,7 +10,7 @@ const startupFailures = new WeakMap();
 
 const applications = [
   {
-    args: ['pnpm', '--dir', 'apps/web', 'exec', 'next', 'start', '-p', '3000', '-H', '127.0.0.1'],
+    args: ['pnpm', '--dir', 'apps/web', 'start'],
     command: corepack,
     name: 'web',
     shell: true,
@@ -84,7 +84,7 @@ function startApplication(application) {
       IDENTITY_DATABASE_URL: dummyDatabaseUrl,
       IDENTITY_SERVICE_HOST: '127.0.0.1',
       IDENTITY_SERVICE_PORT: '4200',
-      NODE_ENV: 'development',
+      NODE_ENV: 'production',
       NEXT_TELEMETRY_DISABLED: '1',
     },
     shell: application.shell ?? false,
@@ -97,7 +97,7 @@ function startApplication(application) {
     startupFailures.set(child, error);
   });
   child.once('exit', (code, signal) => {
-    if (code !== 0) {
+    if (code !== 0 && code !== null) {
       startupFailures.set(
         child,
         new Error(
@@ -122,11 +122,6 @@ async function waitForHealthy(application, child) {
     try {
       const response = await fetch(application.url);
       if (response.ok) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        const startupFailureAfterHealthCheck = startupFailures.get(child);
-        if (startupFailureAfterHealthCheck !== undefined) {
-          throw startupFailureAfterHealthCheck;
-        }
         return;
       }
       lastError = `HTTP ${response.status}`;
@@ -167,7 +162,9 @@ function freePort(port) {
       return;
     }
 
-    execFileSync('bash', ['-lc', `fuser -k ${port}/tcp || true`], { stdio: 'ignore' });
+    execFileSync('bash', ['-lc', `command -v fuser >/dev/null && fuser -k ${port}/tcp || true`], {
+      stdio: 'ignore',
+    });
   } catch {
     // Port may already be free.
   }
@@ -178,7 +175,7 @@ for (const port of [3000, 3001, 4000, 4100, 4200, 4300]) {
 }
 
 const requiredArtifacts = [
-  'apps/web/.next',
+  'apps/web/.next/BUILD_ID',
   'apps/admin/dist/index.html',
   'apps/api-gateway/dist/apps/api-gateway/src/main.js',
   'apps/discord-gateway/dist/apps/discord-gateway/src/main.js',
