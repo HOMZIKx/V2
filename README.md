@@ -10,7 +10,9 @@ biznesowych ani produkcyjnego hostingu.
 - Node.js 24 (sprawdź `node --version`);
 - pnpm 10.14.0 aktywowany przez Corepack;
 - Docker Desktop z działającym Docker Compose (dla PostgreSQL, Redis i
-  RabbitMQ).
+  RabbitMQ);
+- Chromium dla testów Playwright — instalowane poleceniem
+  `pnpm exec playwright install chromium` po instalacji zależności.
 
 ## Szybki start
 
@@ -18,6 +20,7 @@ biznesowych ani produkcyjnego hostingu.
 corepack enable
 corepack prepare pnpm@10.14.0 --activate
 pnpm install
+pnpm exec playwright install chromium
 pnpm infra:up
 pnpm dev
 ```
@@ -47,7 +50,14 @@ pnpm test
 pnpm architecture:check
 pnpm build
 pnpm validate           # pełny zestaw lokalnych quality gates
-pnpm generate:service <nazwa-service>
+pnpm validate:quick     # lżejsza walidacja bez E2E i runtime smoke
+pnpm generate:service <nazwa-service> --port <unikalny-port> --data-ownership <none|database>
+```
+
+Przykład:
+
+```text
+pnpm generate:service community-service --port 4401 --data-ownership database
 ```
 
 Pełne instrukcje lokalne i rozwiązywanie problemów opisuje
