@@ -29,7 +29,7 @@ review wĹ‚aĹ›ciciela â€žDecyzje wĹ‚aĹ›ciciela i instrukcja zamkn
 - Branch: `planning/p2-identity-foundation`
 - PR: https://github.com/HOMZIKx/V2/pull/10
 - Base: `main` (po merge P1 `c82d6bd`)
-- Tip SHA: `1483951382d94c0534edd62a30d836cb9cc7c530`
+- Tip SHA: `2e74bad35fc796d86574a6cb09ed98ef23789c33`
 
 ## RozstrzygniÄ™te decyzje (2026-08-05)
 
