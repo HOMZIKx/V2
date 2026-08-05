@@ -11,8 +11,8 @@
 ## Branch, commit i PR
 
 - **Branch:** `planning/p2-identity-foundation`
-- **Finalny commit:** _(uzupełnione po push)_
-- **PR:** _(uzupełnione po utworzeniu)_
+- **Finalny commit:** `38dd7b35279086fe3c202d10727d579e05f90c9a`
+- **PR:** [#10](https://github.com/HOMZIKx/V2/pull/10) (draft, bez merge)
 
 ## Co zrobiono
 

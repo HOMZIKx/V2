@@ -313,5 +313,5 @@ Gdy ChatGPT/właściciel zatwierdzą plan i rozstrzygną DEC-*:
 - [x] ADR Proposed 0009–0011
 - [x] PENDING_DECISIONS uzupełnione
 - [x] PROJECT_STATE / DECISION_LOG / raporty AI
-- [ ] PR do `main` bez merge
+- [x] PR do `main` bez merge — [#10](https://github.com/HOMZIKx/V2/pull/10)
 - [ ] Audyt ChatGPT → `APPROVED` planu
