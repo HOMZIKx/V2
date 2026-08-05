@@ -2,13 +2,11 @@
 
 ## Status
 
-`READY_FOR_RE-AUDIT`
+`READY_FOR_FINAL_REVIEW`
 
-Draft PR #11 (`cursor/p2-identity-proof-slice`) — owner amendment: **P2 active
-OAuth = Discord only**. Google removed from required config, proof UI, live
-checklist, and CI env. Architecture (V2 User UUID, ports, linking policy,
-sessions, Discord `email=null`) retained. Awaiting re-audit. Still no live
-OAuth and no merge.
+Draft PR #11 (`cursor/p2-identity-proof-slice`) — P2 Identity proof slice with
+**Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED**
+(2026-08-05). No merge until final review approval.
 
 See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
 
@@ -22,26 +20,21 @@ P2 Identity — Better Auth proof/integration slice.
 - Branch: `cursor/p2-identity-proof-slice`
 - Base: `main` po scaleniu planu P2, commit `4230fb185044faef15d4dd59a9c3c99f6c2b5956`
 - Pull Request: draft PR #11
-- Instrukcja: `docs/ai/CHATGPT_TO_CURSOR.md`
+- Instrukcja: `docs/ai/CHATGPT_TO_CURSOR.md` (Discord-only amendment)
 
 ## Current objective
 
-Udowodnić na rzeczywistym kodzie, że Better Auth 1.6.25 może działać jako silnik
-Identity Service na Node 24, NestJS 11 i Fastify 5 (PG + Redis SoT, Discord
-OAuth, explicit linking policy, immediate revoke, Discord `email=null`, no raw
-provider tokens). Active social provider in P2 is Discord only; multi-provider
-ports remain ready for a later second provider.
+Final review of PR #11 after green CI and owner-confirmed live Discord OAuth.
 
 ## In scope now
 
-- proof slice only; re-audit of PR #11
-- Discord-only active OAuth (owner amendment to DEC-003)
-- no live OAuth in this Cursor pass
+- proof slice only; final review of PR #11
+- Discord-only active OAuth
 - no merge
 
 ## Out of scope now
 
-- Google / second OAuth provider activation
+- Second OAuth provider activation (e.g. Google) — deferred
 - P3 Authorization / guild membership policy
 - produkcyjny Web/Admin login UI
 - MFA / passkey / TOTP
@@ -58,11 +51,14 @@ ports remain ready for a later second provider.
   DEC-005 A, DEC-006 C, DEC-008 A, DEC-009 A
 - ADR-0009–0012: Accepted
 
+## Live Discord OAuth (owner)
+
+PASSED 2026-08-05: sign-in → me 200 → accounts Discord → logout 200 → me 401.
+
 ## Next gate
 
-Owner re-audit → then (if approved) live Discord OAuth checklist → only then
-`READY_FOR_REVIEW` / merge consideration.
+Owner final review → merge consideration (owner only).
 
 ## Last updated
 
-2026-08-05 — Cursor (Discord-only P2 amendment)
+2026-08-05 — Cursor (live gate passed; READY_FOR_FINAL_REVIEW)

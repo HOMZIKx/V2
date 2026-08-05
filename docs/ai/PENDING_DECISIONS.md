@@ -25,8 +25,9 @@
 
 - **Status:** ACCEPTED — **B: multi-provider Identity architecture** with **P2 active OAuth = Discord only** (owner amendment)
 - **Decyzja właściciela (2026-08-05):** V2 User ze stabilnym UUID; Discord i Google jako ExternalIdentity; supersede D-016 / NON_NEGOTIABLES Discord-only.
-- **Amendment właściciela (PR #11 / kontynuacja):** aktywny zakres P2 Identity OAuth = **wyłącznie Discord**. Google nie jest wymagany w konfiguracji, proof UI ani live checklist. Zachowane: V2 User UUID, porty ExternalIdentity, polityka explicit linking, sesje Redis, PostgreSQL, Discord `email=null`. Drugi provider można dodać później bez przeprojektowania.
-- **Skutek:** ADR-0010 Accepted (architektura multi-provider-ready); aktywny socialProviders w proof = Discord; formalna aktualizacja NON_NEGOTIABLES/ADR pod „Google w P2” — po re-audycie jeśli właściciel potwierdzi.
+- **Amendment właściciela (PR #11):** aktywny zakres P2 Identity OAuth = **wyłącznie Discord**. Google nie jest wymagany w konfiguracji, proof UI ani live checklist. Zachowane: V2 User UUID, porty ExternalIdentity, polityka explicit linking, sesje Redis, PostgreSQL, Discord `email=null`. Drugi provider można dodać później bez przeprojektowania.
+- **Live gate (owner, 2026-08-05):** Discord OAuth PASSED (sign-in → me → accounts → logout → me 401).
+- **Skutek:** ADR-0010 Accepted (architektura multi-provider-ready); aktywny socialProviders w proof = Discord.
 
 ### DEC-004 — Framework auth
 

@@ -2,13 +2,11 @@
 
 ## 1. Status
 
-`READY_FOR_RE-AUDIT`
+`READY_FOR_FINAL_REVIEW`
 
-Owner amendment on draft PR #11: **P2 Identity active OAuth = Discord only**.
-Google removed from required config, proof UI, live docs, and CI placeholders.
-Session security, linking policy, Redis, PostgreSQL, and Discord `email=null`
-unchanged. Multi-provider architecture (V2 User UUID + ports) retained for a
-later second provider. Still **no** live OAuth and **no** merge.
+Draft PR #11: P2 Identity Better Auth proof with **Discord-only** active OAuth.
+Owner live Discord OAuth gate **PASSED**. Proof UI logout empty-body fix included.
+Still **no merge**.
 
 ## 2. Task ID
 
@@ -18,75 +16,68 @@ later second provider. Still **no** live OAuth and **no** merge.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: `e84f878` (report); code amendment: `e169c9ce58a79da76e95155de4043f304d2c1783`
+- Final HEAD: _(filled after push + green CI)_
 
-## 4. Discord-only amendment (this pass)
+## 4. Scope (Discord-only)
 
-| Area                    | Change                                                                                            |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
-| `identity-env.ts`       | Google env keys removed; Discord required when auth enabled                                       |
-| `create-better-auth.ts` | `socialProviders` = Discord only                                                                  |
-| `SUPPORTED_PROVIDERS`   | `['discord']`; `LinkedAccountView.provider` stays `string`                                        |
-| Proof UI                | Discord sign-in / link only; server OAuth redirect retained                                       |
-| `.env.example` / CI     | No `IDENTITY_GOOGLE_*`                                                                            |
-| `LOCAL_OAUTH_PROOF.md`  | Discord-only live checklist                                                                       |
-| Tests                   | Discord-only env; same-email / explicit multi-account via deferred provider id (not Google OAuth) |
-| `PENDING_DECISIONS`     | DEC-003 owner amendment recorded                                                                  |
+Active OAuth provider: **Discord only**. Google not in config, proof UI, live
+checklist, or CI. V2 User UUID, ports, explicit linking, Redis sessions,
+PostgreSQL, Discord `email=null` retained for a later second provider.
 
-## 5. Pinned dependencies (unchanged)
+## 5. Live Discord OAuth (owner, 2026-08-05)
+
+| Step                     | Result                   |
+| ------------------------ | ------------------------ |
+| Sign in with Discord     | OK                       |
+| `GET /identity/me`       | 200                      |
+| `GET /identity/accounts` | Discord account present  |
+| Logout                   | 200 `{ "status": "ok" }` |
+| `GET /identity/me` after | 401 `UNAUTHENTICATED`    |
+
+Documented in `docs/identity/LOCAL_OAUTH_PROOF.md` §6b.
+
+## 6. Proof UI logout fix (this pass)
+
+Fastify rejects `Content-Type: application/json` with an empty body
+(`FST_ERR_CTP_EMPTY_JSON_BODY`). Proof UI now POSTs `body: '{}'` for
+`/identity/logout` and `/identity/logout-all`. Regression test in
+`proof-ui.controller.spec.ts`.
+
+## 7. Pinned dependencies (unchanged)
 
 - `better-auth` = 1.6.25
 - `@better-auth/redis-storage` = 1.6.25
 - `ioredis` = 5.11.1
 - `@fastify/cors` = 11.3.0
 - `pg` = 8.22.0
-- Schema via `pnpm dlx auth@1.6.25 generate …` (committed migration)
 
-## 6. Layer schema and ports
+## 8–10. Architecture / storage / cookies
 
-Unchanged. Ports stay provider-agnostic; active OAuth allowlist is Discord.
-
-## 7–10. Storage, cookies, tokens, prior review fixes
-
-Unchanged from prior re-audit report (session Redis SoT, no PG session table,
-token strip hooks, logout Set-Cookie, Nest HTTP integration, strict booleans).
+Unchanged: ports, Redis session SoT, no PG session table, token strip hooks,
+logout Set-Cookie forwarding.
 
 ## 11. Test evidence
 
-Local identity (with infra): **96 passed** (unit + `better-auth` + Nest HTTP
-integration). Without `RUN_INFRA_TESTS`: 82 passed, 14 skipped.
+_(filled after local validate)_
 
 ## 12. Local command results
 
-- Identity vitest + infra: 96 passed
-- `pnpm format:check` / lint / typecheck / coverage / architecture / build / e2e /
-  web+admin build / `test:runtime-smoke` — passed (after clearing polluted
-  `IDENTITY_*` shell env from local infra runs)
+_(filled after local validate)_
 
 ## 13. CI
 
-- Push CI `31013518420` on HEAD `e169c9ce…` — **success**
-- PR CI `31013521770` on HEAD `e169c9ce…` — **success**
-  (Secret scan, Quality gates, Infrastructure integration)
-- PR Title — **success**
+_(filled after green CI)_
 
-## 14. Live checklist
+## 14. Risks / tech debt
 
-Still pending owner execution **after** re-audit — Discord only; see
-`docs/identity/LOCAL_OAUTH_PROOF.md`.
+- Formal NON_NEGOTIABLES / ADR-0010 may still mention Google in P2 historically;
+  active scope + DEC-003 amendment + brief banners say Discord-only.
+- Rotate Discord Client Secret if it was ever pasted into chat.
 
-## 15. Risks / tech debt
-
-- Formal NON_NEGOTIABLES / ADR-0010 wording still mentions Google in P2; owner
-  amendment is in `PENDING_DECISIONS` DEC-003 — recommend ADR note after re-audit
-  if owner confirms permanent doc update.
-- Second OAuth provider not active; multi-account linking proven via adapter
-  `deferred` provider id, not live Google.
-
-## 16. Recommended next slice (not implemented)
+## 15. Recommended next slice (not implemented)
 
 Internal service-to-service JWT — unchanged.
 
 ## Last updated
 
-2026-08-05 — Cursor (Discord-only P2 amendment; green CI)
+2026-08-05 — Cursor (live gate + logout fix → READY_FOR_FINAL_REVIEW)

@@ -119,6 +119,22 @@ the cookie and causes `state_mismatch`.
 Same-email no-implicit-link and multi-account-row linking are covered by
 automated infra tests (no live second OAuth provider required).
 
+## 6b. Live gate result (owner, 2026-08-05)
+
+**PASSED** — Discord-only live OAuth on draft PR #11:
+
+| Step                            | Result                        |
+| ------------------------------- | ----------------------------- |
+| Sign in with Discord            | OK                            |
+| `GET /identity/me`              | 200 (V2 user + Discord email) |
+| `GET /identity/accounts`        | Discord account present       |
+| `POST /identity/logout`         | 200 `{ "status": "ok" }`      |
+| `GET /identity/me` after logout | 401 `UNAUTHENTICATED`         |
+
+Proof UI logout/logout-all must POST `body: '{}'` with `Content-Type: application/json`
+(Fastify rejects empty JSON bodies — regression covered in
+`proof-ui.controller.spec.ts`).
+
 ### Storage inspection helpers
 
 ```

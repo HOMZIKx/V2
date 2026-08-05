@@ -130,7 +130,8 @@ function renderProofPage(): string {
       }));
     document.querySelectorAll('[data-post]').forEach((b) =>
       b.addEventListener('click', async () => {
-        const res = await fetch(b.dataset.post, { ...opts, method: 'POST' });
+        // Fastify rejects Content-Type application/json with an empty body.
+        const res = await fetch(b.dataset.post, { ...opts, method: 'POST', body: '{}' });
         show(b.dataset.post + ' ' + res.status, await res.json().catch(() => ({})));
       }));
     document.querySelector('[data-unlink]').addEventListener('click', async () => {

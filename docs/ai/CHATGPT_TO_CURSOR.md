@@ -2,7 +2,12 @@
 
 ## Status
 
-`READY_FOR_CURSOR`
+`READY_FOR_CURSOR` (historical brief)
+
+> **Owner amendment (PR #11, 2026-08-05):** aktywny zakres proof slice = **Discord OAuth
+> only**. Google nie jest wymagany w konfiguracji, proof UI ani live gate. Architektura
+> multi-provider (V2 User UUID, porty, explicit linking) pozostaje. Poniższy tekst briefu
+> historycznie wymieniał Discord + Google — traktuj aktywny zakres jak Discord-only.
 
 ## Task ID
 
@@ -20,7 +25,7 @@ Zaimplementuj pierwszy ograniczony, lecz rzeczywisty fragment P2 Identity, któr
 2. Better Auth za portami i adapterami `identity-service`;
 3. PostgreSQL jako trwały store użytkowników i kont;
 4. Redis jako operacyjne source of truth aktywnych sesji;
-5. logowanie Discord i Google;
+5. logowanie Discord (aktywny P2; drugi provider deferred);
 6. wyłącznie jawne linkowanie kont;
 7. natychmiastowe unieważnianie sesji;
 8. działanie Discord login również wtedy, gdy Discord nie zwraca e-maila.
@@ -104,17 +109,17 @@ IDENTITY_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 IDENTITY_BETTER_AUTH_SECRET=
 IDENTITY_DISCORD_CLIENT_ID=
 IDENTITY_DISCORD_CLIENT_SECRET=
-IDENTITY_GOOGLE_CLIENT_ID=
-IDENTITY_GOOGLE_CLIENT_SECRET=
 IDENTITY_PROOF_UI_ENABLED=false
 ```
+
+(Drugi OAuth provider deferred — brak `IDENTITY_GOOGLE_*` w aktywnym zakresie P2.)
 
 Możesz poprawić nazwy, jeżeli zachowasz spójny prefiks `IDENTITY_` i zaktualizujesz całą dokumentację.
 
 Zasady:
 
 1. `IDENTITY_AUTH_ENABLED=false` pozwala uruchomić zwykły fundament i CI bez sekretów oraz bez połączeń OAuth.
-2. Przy `IDENTITY_AUTH_ENABLED=true` brak DB, Redis, base URL, secretu albo konfiguracji obu providerów powoduje czytelny fail-fast przed nasłuchem HTTP.
+2. Przy `IDENTITY_AUTH_ENABLED=true` brak DB, Redis, base URL, secretu albo konfiguracji Discorda powoduje czytelny fail-fast przed nasłuchem HTTP.
 3. `IDENTITY_BETTER_AUTH_SECRET` ma mieć co najmniej 32 bajty entropii.
 4. Sekrety nie mogą pojawić się w logach, błędach, snapshotach, raportach, query stringach ani argumentach poleceń.
 5. Produkcja nie może działać z HTTP, insecure cookie, wildcard origin ani localhost redirectem.
@@ -164,10 +169,10 @@ Zasady:
 5. Oznacz taki adres jawnie jako syntetyczny w modelu/danych. `/identity/me` ma zwracać `email: null` albo osobne pole wskazujące brak prawdziwego e-maila; nie przedstawiaj syntetycznego adresu jako danych kontaktowych użytkownika.
 6. Syntetyczny e-mail nie może służyć do auto-linkingu, odzyskiwania konta ani wysyłki wiadomości.
 
-### Google
+### Google (deferred — poza aktywnym proof P2)
 
-1. Włącz provider Google z minimalnymi scope profilu i e-maila.
-2. Nie dodawaj scope Drive, Calendar, Gmail ani innych danych.
+1. Nie włączaj Google w tym proof slice. Porty i model Account pozostają multi-provider-ready.
+2. Gdy właściciel doda drugi provider później: minimalne scope profilu i e-maila; bez Drive/Calendar/Gmail.
 
 ### Linking
 
@@ -182,7 +187,7 @@ account.accountLinking.allowUnlinkingAll=false
 
 Wymagania:
 
-1. Ten sam zweryfikowany e-mail u Discord/Google nie może automatycznie scalić kont.
+1. Ten sam zweryfikowany e-mail u dwóch tożsamości OAuth nie może automatycznie scalić kont.
 2. Same-email sign-in istniejącego użytkownika ma zwrócić kontrolowany błąd `account_not_linked` lub stabilnie zmapowany kod V2.
 3. Dodatkowy provider można powiązać tylko w aktywnej sesji jawnego flow.
 4. Provider subject zajęty przez innego V2 User powoduje odmowę, nigdy reassignment.
@@ -193,7 +198,7 @@ Wymagania:
 
 Plan P2 zabrania niejawnego pozostawiania surowych tokenów providera.
 
-1. Najpierw udowodnij, czy Better Auth może po zakończeniu OAuth pozostawić pola `accessToken`, `refreshToken` i `idToken` puste, skoro V2 nie wywołuje API Discord/Google po logowaniu.
+1. Najpierw udowodnij, czy Better Auth może po zakończeniu OAuth pozostawić pola `accessToken`, `refreshToken` i `idToken` puste, skoro V2 nie wywołuje API Discorda po logowaniu.
 2. Jeśli oficjalne hooki tej wersji pozwalają bezpiecznie usunąć te wartości bez psucia login/link/unlink, zastosuj to i dodaj test bazy.
 3. Jeżeli Better Auth wymaga ich trwałego zapisu, nie przechowuj ich jawnie. Ustaw `account.encryptOAuthTokens: true`, udowodnij szyfrowanie testem/inspekcją i opisz, dlaczego token jest wymagany.
 4. Nie dodawaj własnej kryptografii bez ADR.
@@ -229,9 +234,10 @@ Dodaj minimalny interfejs testowy umożliwiający właścicielowi wykonanie live
 1. Może to być strona w `identity-service` albo cienka strona w `apps/web` korzystająca wyłącznie z kontraktów Identity.
 2. Jest dostępna tylko przy `IDENTITY_PROOF_UI_ENABLED=true` i `NODE_ENV!=production`.
 3. W produkcji route ma zwracać 404 albo nie być rejestrowany.
-4. Ma umożliwić: Discord sign-in, Google sign-in, odczyt `me`, listę kont, jawne link, unlink, logout current i logout all.
+4. Ma umożliwić: Discord sign-in, odczyt `me`, listę kont, jawne link, unlink, logout current i logout all.
 5. Nie ma być docelowym UI, design systemem ani produkcyjną stroną logowania.
 6. Nie wyświetla sekretów, provider tokenów, pełnych cookies ani technicznych stack trace.
+7. Logout/logout-all muszą wysyłać niepuste JSON body (`{}`) przy `Content-Type: application/json` (Fastify).
 
 ## Health i readiness
 
@@ -242,7 +248,7 @@ Dodaj minimalny interfejs testowy umożliwiający właścicielowi wykonanie live
 
 ## Testy automatyczne
 
-CI nie może korzystać z prawdziwych credentiali Discord/Google ani wykonywać zewnętrznych OAuth calls.
+CI nie może korzystać z prawdziwych credentiali Discord ani wykonywać zewnętrznych OAuth calls.
 
 Dodaj co najmniej:
 
@@ -267,7 +273,7 @@ Dodaj co najmniej:
 19. health/readiness przy DB/Redis up/down;
 20. graceful shutdown klientów infrastruktury.
 
-Testy z PostgreSQL i Redis mają działać w istniejącym lokalnym/CI infrastructure job. Nie zastępuj wszystkich integracji mockami. Jednocześnie nie uruchamiaj prawdziwego Discord/Google w CI.
+Testy z PostgreSQL i Redis mają działać w istniejącym lokalnym/CI infrastructure job. Nie zastępuj wszystkich integracji mockami. Jednocześnie nie uruchamiaj prawdziwego Discord OAuth w CI.
 
 ## Bramka live OAuth
 
@@ -275,7 +281,7 @@ Po zielonym kodzie, testach i CI ustaw status `READY_FOR_LIVE_TEST`, nie `READY_
 
 Dodaj `docs/identity/LOCAL_OAUTH_PROOF.md` z dokładną instrukcją:
 
-1. utworzenia lokalnych credentiali OAuth Discord i Google;
+1. utworzenia lokalnych credentiali OAuth Discord (tylko);
 2. redirect URI dla rzeczywistego base URL i base path;
 3. lokalnego ustawienia sekretów w ignorowanym `.env`;
 4. migracji i startu infrastruktury/usługi;
@@ -289,15 +295,13 @@ Live checklista:
 
 1. Discord sign-in z normalnym kontem;
 2. Discord sign-in z profilem bez e-maila, jeśli dostępne; brak takiego konta nie może być zastąpiony fałszywym twierdzeniem — obowiązkowy pozostaje test automatyczny profilu `email=null`;
-3. Google sign-in;
-4. same-email sign-in nie scala niejawnie kont;
-5. jawne link Google ↔ Discord;
-6. unlink nie pozwala usunąć ostatniego providera;
-7. `me` nie ujawnia syntetycznego e-maila jako kontaktowego;
-8. logout current działa;
-9. logout all i system revoke natychmiast odrzucają stary cookie;
-10. kontrola PostgreSQL/Redis potwierdza model storage;
-11. brak surowych tokenów providera w bazie i logach.
+3. same-email / multi-account policy pokryte testami automatycznymi (bez live drugiego OAuth);
+4. unlink nie pozwala usunąć ostatniego providera;
+5. `me` nie ujawnia syntetycznego e-maila jako kontaktowego;
+6. logout current działa;
+7. logout all i system revoke natychmiast odrzucają stary cookie;
+8. kontrola PostgreSQL/Redis potwierdza model storage;
+9. brak surowych tokenów providera w bazie i logach.
 
 Po potwierdzeniu właściciela ustaw `READY_FOR_REVIEW`.
 
@@ -313,7 +317,7 @@ Nie implementuj w tym PR:
 6. integracji konta V2 z botem Discord;
 7. RabbitMQ, Outbox i zdarzeń Identity;
 8. produkcyjnego deployu lub Zeabur;
-9. providerów innych niż Discord i Google;
+9. providerów innych niż Discord (drugi OAuth deferred);
 10. email/password, magic links ani resetu hasła;
 11. przechowywania tokenów w przeglądarce;
 12. funkcji biznesowych bota.
@@ -343,7 +347,7 @@ Zadanie może otrzymać `READY_FOR_REVIEW` tylko gdy:
 2. Better Auth 1.6.25 i pozostałe nowe zależności są przypięte dokładnie;
 3. granice ADR-0009–0012 są zachowane;
 4. PostgreSQL i Redis działają zgodnie z ustalonym ownership/storage;
-5. Discord + Google, explicit linking, `me`, unlink i revoke mają testy;
+5. Discord OAuth, explicit linking policy, `me`, unlink i revoke mają testy;
 6. null-email Discord jest obsłużony bez uzależniania identity od e-maila;
 7. provider tokens nie są pozostawione jawnie;
 8. pełne `pnpm validate` oraz wszystkie workflowy GitHub są zielone na finalnym HEAD;

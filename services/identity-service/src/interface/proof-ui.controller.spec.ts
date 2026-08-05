@@ -52,4 +52,28 @@ describe('ProofUiController', () => {
     expect(html).toContain('state_mismatch');
     expect(html).not.toContain('client_secret');
   });
+
+  it('POST handlers for logout and logout-all send body {} (Fastify empty JSON guard)', () => {
+    const controller = new ProofUiController(
+      {
+        ...baseConfig,
+        IDENTITY_PROOF_UI_ENABLED: true,
+        NODE_ENV: 'development',
+      },
+      null,
+    );
+    const html = controller.proof();
+
+    expect(html).toContain('data-post="/identity/logout"');
+    expect(html).toContain('data-post="/identity/logout-all"');
+
+    const postHandler = html.match(
+      /document\.querySelectorAll\('\[[\s]*data-post\]'\)[\s\S]*?\.forEach\([\s\S]*?\}\);/,
+    );
+    expect(postHandler?.[0]).toBeDefined();
+    expect(postHandler?.[0]).toContain("method: 'POST'");
+    expect(postHandler?.[0]).toContain("body: '{}'");
+    // Regression: bare POST with application/json and no body → FST_ERR_CTP_EMPTY_JSON_BODY
+    expect(postHandler?.[0]).not.toMatch(/method:\s*'POST'\s*\}\)/);
+  });
 });
