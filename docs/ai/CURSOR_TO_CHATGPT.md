@@ -14,6 +14,7 @@ Discord Gateway → Authorization membership sync on `cursor/p3-authorization-fo
 ## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p3-authorization-foundation`
+- Tip: `8d04848`
 - Issue: #15 (OPEN, PLAN_APPROVED)
 - PR: draft when opened (GitHub SoT for tip HEAD, CI)
 
@@ -39,11 +40,14 @@ Discord Gateway → Authorization membership sync on `cursor/p3-authorization-fo
 
 ## 6. Validation commands
 
-```bash
-pnpm --filter @v2/discord-gateway lint
+``bash
 pnpm --filter @v2/discord-gateway typecheck
-pnpm --filter @v2/discord-gateway test
-```
+pnpm exec vitest run --config apps/discord-gateway/vitest.config.ts
+pnpm exec eslint apps/discord-gateway/src
+``
+
+Results: typecheck pass; 53 tests pass; eslint apps/discord-gateway/src pass.
+Commit SHA: `8d04848809b9f7ba749be24e28605f3621bd5142`
 
 ## 7. Notes / debt
 
