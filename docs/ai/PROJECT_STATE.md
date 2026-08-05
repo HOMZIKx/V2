@@ -43,10 +43,11 @@ Wdrożenie Zeabur (DEC-001 B / ADR-0008) jest **wstrzymane** do potwierdzenia dz
 ## Aktywne zadanie
 
 - **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_LIVE_TEST`
+- **Status:** `AWAITING_DISCORD_APPLICATION_CREATE`
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Priorytet:** lokalny bot 24/7-process na PC → live test guild `1534228693017432124`
-- **Zeabur:** wstrzymany (nie tworzyć 6 serwisów / nie wdrażać teraz)
+- **Kod P1 / CI:** gotowe bez tokenu (`DISCORD_ENABLED=false`)
+- **Blokada live testu:** brak aplikacji w Discord Developer Portal — instrukcja: `docs/discord/CREATE_TEST_APPLICATION.md`
+- **Zeabur:** wstrzymany
 - **Pull Request:** po lokalnym live teście i zielonym CI — bez samodzielnego scalenia
 
 ## Cel aktywnego zadania

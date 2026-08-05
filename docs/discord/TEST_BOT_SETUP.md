@@ -8,6 +8,12 @@ Use it only on the approved **non-production test guild**:
 1534228693017432124
 ```
 
+**Zanim cokolwiek o tokenie:** jeśli aplikacja Discord jeszcze nie istnieje, wykonaj najpierw pełną instrukcję:
+
+→ **[CREATE_TEST_APPLICATION.md](./CREATE_TEST_APPLICATION.md)**
+
+Kod P1 i CI działają bez aplikacji (`DISCORD_ENABLED=false`). Live test wymaga utworzenia aplikacji w Portalu — tego kroku nie da się zautomatyzować z repozytorium.
+
 ## Security rules
 
 - **Never paste the bot token, signing secret, or any secret into chat, GitHub issues, PRs, screenshots, or terminal command arguments.**
@@ -17,25 +23,14 @@ Use it only on the approved **non-production test guild**:
 
 ## 1. Discord Developer Portal
 
-1. Open [Discord Developer Portal](https://discord.com/developers/applications).
-2. Create a new application or select an existing **test-only** application for V2.
-3. On **General Information**, copy the **Application ID** → `DISCORD_APPLICATION_ID`.
-4. Open **Bot**:
-   - Click **Reset Token** / **View Token** and copy the token once → `DISCORD_TOKEN`.
-   - Do **not** enable **Message Content Intent**, **Server Members Intent**, or **Presence Intent** (no privileged intents).
-5. Open **OAuth2 → URL Generator**:
-   - Scopes: **`bot`** and **`applications.commands`**.
-   - Bot permissions (minimal set):
-     - **View Channels**
-     - **Send Messages**
-     - **Embed Links**
-     - **Read Message History**
-   - Do **not** select **Administrator**.
-6. Copy the generated URL, open it in a browser, and install the bot **only** on guild `1534228693017432124`.
-7. In Discord (client):
-   - Enable **Developer Mode** (Settings → Advanced).
-   - Right-click the test server → **Copy Server ID** → confirm it matches `1534228693017432124`.
-   - Right-click your user → **Copy User ID** → use for `DISCORD_TEST_OPERATOR_IDS`.
+Wykonaj [CREATE_TEST_APPLICATION.md](./CREATE_TEST_APPLICATION.md) (kroki A–F). Skrót:
+
+1. [Developer Portal](https://discord.com/developers/applications) → **New Application**.
+2. **General Information** → Application ID.
+3. **Bot** → Add Bot; privileged intents **OFF**; skopiuj token lokalnie.
+4. **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; permissions View Channels, Send Messages, Embed Links, Read Message History; bez Administrator.
+5. Zainstaluj bota **tylko** na guild `1534228693017432124`.
+6. Developer Mode → skopiuj własne User ID.
 
 ## 2. Local environment
 
