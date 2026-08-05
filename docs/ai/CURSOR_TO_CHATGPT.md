@@ -14,7 +14,7 @@
 - **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
 - **Implementation commit (Components V2):** `9cd3103a74069b2ba3d0c2060d9ba01e17374c5f`
 - **Tip przed tą poprawką runtime:** `ff10cc368868efe4bb1dea4357b6029a0e4ae37b`
-- **Aktualny tip po runtime fix:** `68303c2c833e53606ce1344309e5acb50c1829b9`
+- **Aktualny tip po runtime fix:** `bba54c7bcde7d855e7f54f06d2905f57033901fb`
 
 ## Co było nie tak
 
