@@ -2,7 +2,7 @@
 
 ## Status
 
-`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION` (draft PR pending)
+`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION`
 
 ## Active phase
 
@@ -13,8 +13,9 @@ P3 Authorization foundation (Issue #15, P3-D1–P3-D20).
 - Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
 - Branch: `cursor/p3-authorization-foundation`
 - Base: `main` @ `f299775` (PR #14 Internal JWT merged)
+- HEAD tip: see GitHub PR #16
 - Issue: #15 (APPROVED decisions P3-D1–P3-D20)
-- Pull Request: draft to `main` (no merge by Cursor)
+- Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
 
 ## Current objective
 
@@ -42,4 +43,4 @@ Owner review of minimal Authorization foundation before Centrum Aktywności.
 
 ## Last updated
 
-2026-08-05 — Cursor (P3 Authorization foundation implementation)
+2026-08-05 — Cursor (draft PR #16; local `pnpm validate` green)

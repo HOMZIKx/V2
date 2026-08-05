@@ -15,9 +15,9 @@ Local `pnpm validate` passed. **No merge by Cursor. No UI.**
 ## 3. Branch / PR
 
 - Branch: `cursor/p3-authorization-foundation`
-- HEAD: `7c9eb9e` (+ follow-up docs commit if any)
+- HEAD: see PR #16 tip
 - Issue: #15
-- PR: draft (GitHub SoT for URL/CI)
+- PR: https://github.com/HOMZIKx/V2/pull/16 (draft)
 
 ## 4. What shipped
 
