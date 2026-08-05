@@ -82,6 +82,29 @@ const baseSchema = z.object({
       const trimmed = value?.trim();
       return trimmed === undefined || trimmed === '' ? 'v2.identity' : trimmed;
     }),
+  IDENTITY_INTERNAL_JWT_ENABLED: booleanFromEnv(false),
+  IDENTITY_INTERNAL_JWT_ISSUER: optionalTrimmed,
+  IDENTITY_INTERNAL_JWT_TTL_SECONDS: z.coerce.number().int().positive().max(300).default(300),
+  IDENTITY_INTERNAL_JWT_KEYRING_JSON: optionalTrimmed,
+  IDENTITY_INTERNAL_JWT_ACTIVE_KID: optionalTrimmed,
+  IDENTITY_INTERNAL_JWT_ISSUE_URL: optionalTrimmed,
+  IDENTITY_SERVICE_CLIENTS_JSON: optionalTrimmed,
+  IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
+  IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120)
+    .default(60),
+  IDENTITY_CLIENT_ASSERTION_REDIS_PREFIX: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'v2:identity:client-assertion:jti:'
+        : trimmed;
+    }),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
@@ -172,6 +195,64 @@ function assertEnabledRequirements(
   }
 }
 
+function assertInternalJwtRequirements(
+  config: IdentityEnv,
+  addIssue: (path: string, message: string) => void,
+): void {
+  if (!config.IDENTITY_INTERNAL_JWT_ENABLED) {
+    return;
+  }
+
+  if (!config.IDENTITY_AUTH_ENABLED) {
+    addIssue('IDENTITY_INTERNAL_JWT_ENABLED', 'requires IDENTITY_AUTH_ENABLED=true');
+  }
+  if (config.IDENTITY_INTERNAL_JWT_ISSUER === undefined) {
+    addIssue('IDENTITY_INTERNAL_JWT_ISSUER', 'is required when IDENTITY_INTERNAL_JWT_ENABLED=true');
+  }
+  if (config.IDENTITY_INTERNAL_JWT_KEYRING_JSON === undefined) {
+    addIssue(
+      'IDENTITY_INTERNAL_JWT_KEYRING_JSON',
+      'is required when IDENTITY_INTERNAL_JWT_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_INTERNAL_JWT_ACTIVE_KID === undefined) {
+    addIssue(
+      'IDENTITY_INTERNAL_JWT_ACTIVE_KID',
+      'is required when IDENTITY_INTERNAL_JWT_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_INTERNAL_JWT_ISSUE_URL === undefined) {
+    addIssue(
+      'IDENTITY_INTERNAL_JWT_ISSUE_URL',
+      'is required when IDENTITY_INTERNAL_JWT_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_SERVICE_CLIENTS_JSON === undefined) {
+    addIssue(
+      'IDENTITY_SERVICE_CLIENTS_JSON',
+      'is required when IDENTITY_INTERNAL_JWT_ENABLED=true',
+    );
+  }
+
+  const isProduction = config.NODE_ENV === 'production';
+  if (config.IDENTITY_INTERNAL_JWT_ISSUER !== undefined) {
+    assertValidOriginUrl(
+      config.IDENTITY_INTERNAL_JWT_ISSUER,
+      'IDENTITY_INTERNAL_JWT_ISSUER',
+      addIssue,
+      { requireHttps: isProduction, rejectLocalhost: isProduction },
+    );
+  }
+  if (config.IDENTITY_INTERNAL_JWT_ISSUE_URL !== undefined) {
+    assertValidOriginUrl(
+      config.IDENTITY_INTERNAL_JWT_ISSUE_URL,
+      'IDENTITY_INTERNAL_JWT_ISSUE_URL',
+      addIssue,
+      { requireHttps: isProduction, rejectLocalhost: isProduction },
+    );
+  }
+}
+
 /**
  * Validate the identity environment. When auth is disabled the service can boot
  * for CI/health without any secrets (DATABASE_URL is optional). When auth is
@@ -197,6 +278,16 @@ export function parseIdentityEnv(env: NodeJS.ProcessEnv): IdentityEnv {
     if (issues.length > 0) {
       throw new IdentityConfigError(
         `Identity auth is enabled but configuration is incomplete: ${issues.join('; ')}`,
+      );
+    }
+  }
+
+  if (config.IDENTITY_INTERNAL_JWT_ENABLED) {
+    const issues: string[] = [];
+    assertInternalJwtRequirements(config, (path, message) => issues.push(`${path}: ${message}`));
+    if (issues.length > 0) {
+      throw new IdentityConfigError(
+        `Identity internal JWT is enabled but configuration is incomplete: ${issues.join('; ')}`,
       );
     }
   }

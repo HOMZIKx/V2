@@ -2,65 +2,49 @@
 
 ## Status
 
-`READY_FOR_OWNER_MERGE`
+`IN_PROGRESS` — security remediation on PR #14 (READY_FOR_REVIEW retracted)
 
-Draft PR #11 (`cursor/p2-identity-proof-slice`) — P2 Identity proof slice with
-**Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED** (manual
-subset). Still **no merge** by Cursor. Tip HEAD and Checks: GitHub SoT (not
-versioned in the report). Next JWT plan: Issue #13 (`READY_FOR_OWNER_DECISION`).
+Branch `cursor/p2-identity-internal-jwt` implements P2 internal service-to-service JWT (Issue #13, D1=C). Draft PR #14. GitHub is SoT for tip HEAD and CI.
 
 See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
 
 ## Active phase
 
-P2 Identity — Better Auth proof/integration slice.
+P2 Identity — internal service-to-service JWT (security hardening).
 
 ## Active task
 
-- Task ID: `P2-IDENTITY-PROOF-001`
-- Branch: `cursor/p2-identity-proof-slice`
-- Base: `main` po scaleniu planu P2, commit `4230fb185044faef15d4dd59a9c3c99f6c2b5956`
-- Pull Request: draft PR #11
-- Instrukcja: `docs/ai/CHATGPT_TO_CURSOR.md` (Discord-only amendment)
+- Task ID: `P2-IDENTITY-INTERNAL-JWT-001`
+- Branch: `cursor/p2-identity-internal-jwt`
+- Base: `main` after PR #11 squash merge (`15586ac`)
+- Issue: #13 (APPROVED, D1 = OWNER_ACCEPTED C) — remains OPEN
+- Pull Request: #14 draft (no merge by Cursor)
 
 ## Current objective
 
-Final review of PR #11 after green CI and owner-confirmed live Discord OAuth.
+Land security fixes on PR #14: kid↔client_id binding, strict assertion/JWT claim validation, public-only retiring/retired keyring, ephemeral test keys (no PEM in history), Redis shutdown, then `READY_FOR_REVIEW_SECURITY_FIXED`.
 
 ## In scope now
 
-- proof slice only; final review of PR #11
-- Discord-only active OAuth
-- no merge
+- Cross-client impersonation fix (`keyEntry.clientId === iss`, `iss === sub`)
+- Strict single-string audience; iat/exp/jti/alg/kid header rules
+- `@v2/internal-jwt` hardened verifier
+- Internal JWT keyring: active has private; retiring/retired public-only; non-extractable signer
+- Redis `OnModuleDestroy` lifecycle
+- History rewrite of PR branch only (purge private PEMs)
 
 ## Out of scope now
 
-- Second OAuth provider activation (e.g. Google) — deferred
-- P3 Authorization / guild membership policy
-- produkcyjny Web/Admin login UI
-- MFA / passkey / TOTP
-- internal JWT między usługami
-- API Gateway auth middleware
-- integracja V2 User z Discord botem
-- RabbitMQ / Outbox / events
-- produkcyjny deploy i Zeabur
-- funkcje biznesowe bota
+- Merge PR #14
+- Close Issue #13
+- New PR
+- Internal JWT jti blacklist / Authorization RBAC / browser JWT
 
 ## Decisions in force
 
-- DEC-003 B (architecture) + P2 Discord-only OAuth amendment; DEC-004 A,
-  DEC-005 A, DEC-006 C, DEC-008 A, DEC-009 A
-- ADR-0009–0012: Accepted
-
-## Live Discord OAuth (owner)
-
-PASSED 2026-08-05: sign-in → me 200 → accounts Discord → logout 200 → me 401.
-
-## Next gate
-
-Owner merge of PR #11 (Cursor does not merge). Next implementation slice after
-merge + plan approval: `P2-IDENTITY-INTERNAL-JWT-001`.
+- DEC-008 A, DEC-009 A, ADR-0011
+- Issue #13 D1 = C (client assertion)
 
 ## Last updated
 
-2026-08-05 — Cursor (docs consistency; READY_FOR_OWNER_MERGE)
+2026-08-05 — Cursor (PR #14 security remediation)
