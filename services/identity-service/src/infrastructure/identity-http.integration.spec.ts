@@ -35,8 +35,6 @@ function applyAuthEnv(): void {
   process.env.IDENTITY_BETTER_AUTH_SECRET = TEST_SECRET;
   process.env.IDENTITY_DISCORD_CLIENT_ID = 'test-discord-id';
   process.env.IDENTITY_DISCORD_CLIENT_SECRET = 'test-discord-secret';
-  process.env.IDENTITY_GOOGLE_CLIENT_ID = 'test-google-id';
-  process.env.IDENTITY_GOOGLE_CLIENT_SECRET = 'test-google-secret';
   process.env.IDENTITY_PROOF_UI_ENABLED = 'false';
   process.env.NODE_ENV = 'development';
 }

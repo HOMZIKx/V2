@@ -13,8 +13,6 @@ const enabledEnv = (): NodeJS.ProcessEnv => ({
   IDENTITY_BETTER_AUTH_SECRET: validSecret,
   IDENTITY_DISCORD_CLIENT_ID: 'discord-id',
   IDENTITY_DISCORD_CLIENT_SECRET: 'discord-secret',
-  IDENTITY_GOOGLE_CLIENT_ID: 'google-id',
-  IDENTITY_GOOGLE_CLIENT_SECRET: 'google-secret',
 });
 
 describe('parseIdentityEnv — disabled', () => {
@@ -46,10 +44,16 @@ describe('parseIdentityEnv — enabled', () => {
     ).toThrow(IdentityConfigError);
   });
 
-  it('fails fast when a provider is missing', () => {
+  it('fails fast when Discord credentials are missing', () => {
     const env = enabledEnv();
     delete env.IDENTITY_DISCORD_CLIENT_SECRET;
     expect(() => parseIdentityEnv(env)).toThrow(IdentityConfigError);
+  });
+
+  it('does not require a second OAuth provider when Discord is configured', () => {
+    const config = parseIdentityEnv(enabledEnv());
+    expect(config.IDENTITY_AUTH_ENABLED).toBe(true);
+    expect(config.IDENTITY_DISCORD_CLIENT_ID).toBe('discord-id');
   });
 
   it('fails fast when the database url is missing', () => {

@@ -36,8 +36,6 @@ function buildConfig(): IdentityEnv {
     IDENTITY_BETTER_AUTH_SECRET: 'test-secret-value-that-is-at-least-32-bytes',
     IDENTITY_DISCORD_CLIENT_ID: 'test-discord-id',
     IDENTITY_DISCORD_CLIENT_SECRET: 'test-discord-secret',
-    IDENTITY_GOOGLE_CLIENT_ID: 'test-google-id',
-    IDENTITY_GOOGLE_CLIENT_SECRET: 'test-google-secret',
   });
 }
 
@@ -205,7 +203,7 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
     expect(me).toMatchObject({ id: user.id, email: null, emailSynthetic: true });
   });
 
-  it('does not implicitly link a second provider when the same email collides', async () => {
+  it('does not implicitly link when the same email collides across identities', async () => {
     const context = await runtime.auth.$context;
     const sharedEmail = `same-email-${Date.now()}@example.com`;
 
@@ -217,10 +215,12 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
 
     // Unique email at the DB layer: a second OAuth identity with the same email
     // must not silently attach to the first user (implicit linking disabled).
+    // Uses a deferred provider id string to prove Account/user policy without
+    // activating a second OAuth socialProviders entry.
     await expect(
       context.internalAdapter.createOAuthUser(
-        { name: 'Google Same', email: sharedEmail, emailVerified: true },
-        { providerId: 'google', accountId: `google-same-${Date.now()}` },
+        { name: 'Deferred Same', email: sharedEmail, emailVerified: true },
+        { providerId: 'deferred', accountId: `deferred-same-${Date.now()}` },
       ),
     ).rejects.toBeTruthy();
 
@@ -231,7 +231,7 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
     expect(accounts[0]?.provider).toBe('discord');
   });
 
-  it('allows explicit link of a second provider with a different email on the same user', async () => {
+  it('allows explicit link of a second provider account row with a different email on the same user', async () => {
     const context = await runtime.auth.$context;
     const stamp = Date.now();
     const { user } = await context.internalAdapter.createOAuthUser(
@@ -244,17 +244,19 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
     );
     createdUserIds.push(user.id);
 
+    // Architecture proof: Account supports multiple providers per V2 user.
+    // Active OAuth remains Discord-only; `deferred` is not a socialProviders entry.
     await context.internalAdapter.linkAccount({
       userId: user.id,
-      providerId: 'google',
-      accountId: `google-explicit-${stamp}`,
+      providerId: 'deferred',
+      accountId: `deferred-explicit-${stamp}`,
       scope: 'openid email profile',
     });
 
     const headers = await sessionHeaders(runtime, user.id);
     const adapter = new BetterAuthIdentityAdapter(runtime.auth);
     const accounts = await adapter.listAccounts(headers);
-    expect(accounts.map((account) => account.provider).sort()).toEqual(['discord', 'google']);
+    expect(accounts.map((account) => account.provider).sort()).toEqual(['deferred', 'discord']);
   });
 
   it('rejects an occupied provider subject (unique providerId+accountId)', async () => {

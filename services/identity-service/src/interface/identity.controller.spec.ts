@@ -110,9 +110,9 @@ describe('IdentityController', () => {
 
   it('falls back to the base url when no callback is given', async () => {
     const mock = spies();
-    await controllerWith(mock).link('google', request, {});
+    await controllerWith(mock).link('discord', request, {});
     expect(mock.startLink).toHaveBeenCalledWith(
-      'google',
+      'discord',
       expect.any(Headers),
       'http://127.0.0.1:4200',
     );

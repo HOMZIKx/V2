@@ -123,7 +123,7 @@ describe('BetterAuthIdentityAdapter session ops', () => {
   it('starts a link and returns the provider url', async () => {
     const { auth } = makeAuth();
     await expect(
-      new BetterAuthIdentityAdapter(auth).startLink('google', headers, 'http://cb.test'),
+      new BetterAuthIdentityAdapter(auth).startLink('discord', headers, 'http://cb.test'),
     ).resolves.toEqual({ url: 'https://provider.test/auth' });
   });
 

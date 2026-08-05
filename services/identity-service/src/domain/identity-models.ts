@@ -4,8 +4,12 @@
  * session tokens, and no provider access/refresh/id tokens.
  */
 
-/** External identity providers supported by the P2 proof slice. */
-export const SUPPORTED_PROVIDERS = ['discord', 'google'] as const;
+/**
+ * Active OAuth providers for the P2 proof slice (Discord only).
+ * Ports and `LinkedAccountView.provider` stay string-based so a second provider
+ * can be added later without redesigning V2 User UUID / ExternalIdentity.
+ */
+export const SUPPORTED_PROVIDERS = ['discord'] as const;
 
 export type ProviderId = (typeof SUPPORTED_PROVIDERS)[number];
 

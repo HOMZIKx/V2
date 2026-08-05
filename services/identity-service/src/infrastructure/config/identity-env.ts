@@ -72,8 +72,6 @@ const baseSchema = z.object({
   IDENTITY_BETTER_AUTH_SECRET: optionalTrimmed,
   IDENTITY_DISCORD_CLIENT_ID: optionalTrimmed,
   IDENTITY_DISCORD_CLIENT_SECRET: optionalTrimmed,
-  IDENTITY_GOOGLE_CLIENT_ID: optionalTrimmed,
-  IDENTITY_GOOGLE_CLIENT_SECRET: optionalTrimmed,
   IDENTITY_PROOF_UI_ENABLED: booleanFromEnv(false),
   IDENTITY_SERVICE_PORT: z.coerce.number().int().positive().default(4200),
   IDENTITY_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
@@ -147,12 +145,6 @@ function assertEnabledRequirements(
     config.IDENTITY_DISCORD_CLIENT_SECRET === undefined
   ) {
     addIssue('IDENTITY_DISCORD_CLIENT_ID', 'Discord client id and secret are required');
-  }
-  if (
-    config.IDENTITY_GOOGLE_CLIENT_ID === undefined ||
-    config.IDENTITY_GOOGLE_CLIENT_SECRET === undefined
-  ) {
-    addIssue('IDENTITY_GOOGLE_CLIENT_ID', 'Google client id and secret are required');
   }
   if (config.IDENTITY_TRUSTED_ORIGINS.length === 0) {
     addIssue('IDENTITY_TRUSTED_ORIGINS', 'at least one trusted origin is required');

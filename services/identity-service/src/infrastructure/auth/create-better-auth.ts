@@ -17,9 +17,10 @@ export type BetterAuthInstance = AuthRuntime['auth'];
 /**
  * Strip every raw provider token from an account row before it is persisted.
  *
- * V2 never calls Discord/Google APIs after login, so access/refresh/id tokens
- * are not stored at all (primary path). `encryptOAuthTokens: true` remains set
- * as defense-in-depth for any token that a future flow might reintroduce.
+ * V2 never calls Discord (or future provider) APIs after login, so access/
+ * refresh/id tokens are not stored at all (primary path).
+ * `encryptOAuthTokens: true` remains set as defense-in-depth for any token that
+ * a future flow might reintroduce.
  */
 export const stripProviderTokens = <T extends Record<string, unknown>>(
   account: T,
@@ -74,13 +75,22 @@ export function createBetterAuth(config: IdentityEnv) {
   const pool = new Pool({ connectionString: config.IDENTITY_DATABASE_URL });
   const redis = new Redis(config.IDENTITY_REDIS_URL, { maxRetriesPerRequest: null });
 
+  const trustedOrigins = new Set(config.IDENTITY_TRUSTED_ORIGINS);
+  if (config.IDENTITY_AUTH_BASE_URL !== undefined) {
+    try {
+      trustedOrigins.add(new URL(config.IDENTITY_AUTH_BASE_URL).origin);
+    } catch {
+      // Config validation already rejects invalid base URLs when auth is enabled.
+    }
+  }
+
   const auth = betterAuth({
     appName: 'v2-identity',
     database: pool,
     baseURL: config.IDENTITY_AUTH_BASE_URL,
     basePath: config.IDENTITY_AUTH_BASE_PATH,
     secret: config.IDENTITY_BETTER_AUTH_SECRET,
-    trustedOrigins: [...config.IDENTITY_TRUSTED_ORIGINS],
+    trustedOrigins: [...trustedOrigins],
     emailAndPassword: { enabled: false },
     advanced: {
       // Always mint UUIDs in JS. The string option `"uuid"` skips JS generation when
@@ -94,6 +104,9 @@ export function createBetterAuth(config: IdentityEnv) {
       cookieCache: { enabled: false },
     },
     account: {
+      // Redis holds OAuth state; the signed state cookie is a double-submit check.
+      // Keep strategy database (verification in secondary storage) for revoke-friendly flows.
+      storeStateStrategy: 'database',
       accountLinking: {
         enabled: true,
         disableImplicitLinking: true,
@@ -103,16 +116,12 @@ export function createBetterAuth(config: IdentityEnv) {
       },
       encryptOAuthTokens: true,
     },
+    // P2 active OAuth: Discord only. Ports + Account model stay multi-provider-ready.
     socialProviders: {
       discord: {
         clientId: config.IDENTITY_DISCORD_CLIENT_ID ?? '',
         clientSecret: config.IDENTITY_DISCORD_CLIENT_SECRET ?? '',
         mapProfileToUser: (profile) => mapDiscordProfileToUser(profile),
-      },
-      google: {
-        clientId: config.IDENTITY_GOOGLE_CLIENT_ID ?? '',
-        clientSecret: config.IDENTITY_GOOGLE_CLIENT_SECRET ?? '',
-        scope: ['openid', 'email', 'profile'],
       },
     },
     secondaryStorage: redisStorage({ client: redis, keyPrefix: REDIS_KEY_PREFIX }),

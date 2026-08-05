@@ -122,8 +122,6 @@ jobs:
           IDENTITY_BETTER_AUTH_SECRET: ci-placeholder-better-auth-secret-000000
           IDENTITY_DISCORD_CLIENT_ID: ci-discord-client-id
           IDENTITY_DISCORD_CLIENT_SECRET: ci-discord-client-secret
-          IDENTITY_GOOGLE_CLIENT_ID: ci-google-client-id
-          IDENTITY_GOOGLE_CLIENT_SECRET: ci-google-client-secret
 
       - name: Stop local infrastructure
         if: always()

@@ -16,14 +16,14 @@ describe('buildSyntheticEmail', () => {
 
   it('differs by account id and by provider', () => {
     expect(buildSyntheticEmail('discord', 'a')).not.toBe(buildSyntheticEmail('discord', 'b'));
-    expect(buildSyntheticEmail('discord', 'a')).not.toBe(buildSyntheticEmail('google', 'a'));
+    expect(buildSyntheticEmail('discord', 'a')).not.toBe(buildSyntheticEmail('deferred', 'a'));
   });
 });
 
 describe('isSyntheticEmail', () => {
   it('recognises synthetic addresses', () => {
     expect(isSyntheticEmail(buildSyntheticEmail('discord', '42'))).toBe(true);
-    expect(isSyntheticEmail(buildSyntheticEmail('google', '42'))).toBe(true);
+    expect(isSyntheticEmail(buildSyntheticEmail('deferred', '42'))).toBe(true);
   });
 
   it('rejects real, empty, and nullish addresses', () => {
