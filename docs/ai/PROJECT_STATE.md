@@ -2,11 +2,12 @@
 
 ## Status
 
-`P1_ZEABUR_FULL_STACK_DEPLOY_IN_PROGRESS`
+`P1_DISCORD_TEST_HARNESS_READY_FOR_LIVE_TEST`
 
 ## Aktualny etap
 
-P1 Discord Test Harness + zatwierdzone rozszerzenie **DEC-001 B**: pełne wdrożenie aktualnego stosu V2 na osobnym Zeabur (ADR-0008).
+P1 Discord Test Harness — **lokalny live test na pierwszym miejscu**.  
+Wdrożenie Zeabur (DEC-001 B / ADR-0008) jest **wstrzymane** do potwierdzenia działania bota lokalnie.
 
 ## Zatwierdzone
 
@@ -30,7 +31,7 @@ P1 Discord Test Harness + zatwierdzone rozszerzenie **DEC-001 B**: pełne wdroż
 - dedykowany serwer testowy Discord `1534228693017432124`;
 - wizja Desktop Companion / overlay (ADR-0006);
 - Discord test harness P1 (ADR-0007);
-- pełne wdrożenie stosu na osobnym Zeabur (ADR-0008 / D-030).
+- ADR-0008 (Zeabur) — dokumentacja przyjęta, **wdrożenie odłożone**.
 
 ## Zamknięty etap
 
@@ -41,36 +42,32 @@ P1 Discord Test Harness + zatwierdzone rozszerzenie **DEC-001 B**: pełne wdroż
 
 ## Aktywne zadanie
 
-- **Task ID:** `P1-DISCORD-TEST-HARNESS-001` + Zeabur full-stack (DEC-001 B)
-- **Status:** `AWAITING_OWNER_ZEABUR_VARIABLES`
+- **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
+- **Status:** `READY_FOR_LIVE_TEST`
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Deploy config:** `Dockerfile.*`, `docs/deploy/ZEABUR.md`, `docs/deploy/ZEABUR_OWNER_VARIABLES.md`
-- **Live test Discord:** po Redeploy `discord-gateway` z sekretami w Zeabur (guild `1534228693017432124`)
-- **Pull Request:** dopiero po zielonym CI i potwierdzonym działaniu wdrożenia — bez samodzielnego scalenia
+- **Priorytet:** lokalny bot 24/7-process na PC → live test guild `1534228693017432124`
+- **Zeabur:** wstrzymany (nie tworzyć 6 serwisów / nie wdrażać teraz)
+- **Pull Request:** po lokalnym live teście i zielonym CI — bez samodzielnego scalenia
 
-## Cel
+## Cel aktywnego zadania
 
-- hostowany stos: web, admin, api-gateway, discord-gateway, identity-service, authorization-service;
-- PostgreSQL×2, Redis, RabbitMQ — nowe add-ony, nie legacy;
-- bot Discord 24/7 na guild testowym;
-- sekrety tylko w Zeabur Variables.
-
-## Nadal niezaimplementowane (produkt)
-
-- Discord OAuth, Better Auth, sesje i MFA;
-- docelowy system uprawnień;
-- modele biznesowe i ORM;
-- moduły wydarzeń, rezerwacji, LFG, moderacji, ticketów, muzyki, automatyzacji i analityki;
-- RabbitMQ w funkcjach biznesowych (add-on przygotowany).
+- bezpieczne połączenie `discord-gateway` z Discordem (lokalnie);
+- działanie wyłącznie na guild `1534228693017432124`;
+- `/status`, `/panel-test`, select, modal, odśwież, usuń, restart procesu;
+- brak tokenu w czacie / Git.
 
 ## Następny punkt kontrolny
 
-Właściciel: utworzy serwisy/add-ony według `docs/deploy/ZEABUR.md`, wklei Variables z `ZEABUR_OWNER_VARIABLES.md`, Redeploy, zgłosi URL-e bez sekretów. Cursor weryfikuje health + live test Discord, potem PR.
+1. Właściciel: lokalny `.env` wg `docs/discord/TEST_BOT_SETUP.md`
+2. `pnpm discord:test:doctor` → `register` → `start`
+3. Pełny live test na Discordzie
+4. Potwierdzenie w czacie (Application ID / Bot User ID / Guild ID — bez sekretów)
+5. Dopiero potem: PR oraz ewentualne wznowienie Zeabur
 
 ## Blokady
 
-Brak dostępu agenta do panelu Zeabur / CLI — deploy kończy właściciel Variables + Redeploy. Token Discord tylko w Zeabur Secret Variables.
+Live test wymaga lokalnego tokenu i signing secret w ignorowanym `.env`. Agent nie prosi o wklejenie tokenu do czatu.
 
 ## Ważna uwaga
 
-Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów. Nie mieszać z `dobry-temat`.
+Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów.

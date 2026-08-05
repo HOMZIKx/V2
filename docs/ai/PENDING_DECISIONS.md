@@ -1,14 +1,13 @@
 # Pending Decisions — V2
 
-Brak aktywnych decyzji blokujących.
-
-## Zamknięte
+## Aktywne
 
 ### DEC-001 — Deploy V2 na Zeabur (zakres i moment)
 
-- **Status:** ACCEPTED
-- **Decyzja właściciela:** wariant **B** — pełne wdrożenie aktualnego stosu V2 na osobnym projekcie Zeabur (`APPROVED`, 2026-08-05).
-- **Realizacja:** [ADR-0008](../architecture/decisions/ADR-0008-zeabur-full-stack-deploy.md), [docs/deploy/ZEABUR.md](../deploy/ZEABUR.md).
+- **Status:** DEFERRED
+- **Decyzja właściciela (2026-08-05):** wariant B był zatwierdzony, następnie **wstrzymany**. Najpierw 100% działający bot lokalnie na guild testowym; Zeabur i 6 serwisów odłożone.
+- **ADR-0008 / Dockerfiles:** pozostają w repo jako przygotowanie, **bez kontynuacji wdrożenia** do czasu jawnego wznowienia.
+- **Warunek wznowienia:** potwierdzony lokalny live test P1 na guild `1534228693017432124`.
 
 ## Szablon
 
