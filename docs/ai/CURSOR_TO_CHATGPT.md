@@ -12,7 +12,13 @@
 
 - **Branch:** `cursor/p1-discord-test-harness`
 - **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (bez merge)
-- **Finalny commit:** _(uzupełnione po push)_
+- **Finalny commit:** `fe3c42ab50881e68d726078d2bf60b2acd2f9664` (zielone CI poniżej; kolejny tip docs-only jeśli nastąpi)
+
+## GitHub Actions (HEAD `be31a9c`)
+
+- CI (PR): success — https://github.com/HOMZIKx/V2/actions/runs/30988339309
+- CI (push): success — https://github.com/HOMZIKx/V2/actions/runs/30988337286
+- PR Title: success — https://github.com/HOMZIKx/V2/actions/runs/30988339462
 
 ## Zakres remediacji
 
@@ -56,7 +62,8 @@ files: [v2-lab-banner.png]
 
 ```text
 pnpm --filter discord-gateway test  → 13 files / 45 tests passed
-pnpm validate                       → _(uzupełnione)_
+pnpm validate                       → green through runtime-smoke; Docker CLI missing on Windows host
+live API probe                      → flags=32768, Container type 17, hasEmbeds=false
 ```
 
 ## Live probe (API)
