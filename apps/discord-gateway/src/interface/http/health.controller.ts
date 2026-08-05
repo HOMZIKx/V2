@@ -59,6 +59,8 @@ export class HealthController {
     readonly commandsRegistered: boolean;
     readonly isolationOk: boolean;
     readonly lastError: string | null;
+    readonly gitCommitSha: string;
+    readonly panelRenderer: string;
   } {
     if (!this.config.DISCORD_ENABLED || this.gateway === null) {
       return {
@@ -70,6 +72,8 @@ export class HealthController {
         commandsRegistered: false,
         isolationOk: true,
         lastError: null,
+        gitCommitSha: this.config.GIT_COMMIT_SHA,
+        panelRenderer: 'components-v2-container',
       };
     }
 
@@ -83,6 +87,8 @@ export class HealthController {
       commandsRegistered: snapshot.commandsRegistered,
       isolationOk: snapshot.isolationOk,
       lastError: snapshot.lastError,
+      gitCommitSha: this.config.GIT_COMMIT_SHA,
+      panelRenderer: 'components-v2-container',
     };
   }
 

@@ -6,7 +6,7 @@
 
 ## Aktualny etap
 
-Remediacja P1: publiczny panel Components V2. PR #9 oczekuje ponownego audytu. Bez merge. P2 Identity nie rozpoczęte w tym etapie.
+Żywy bot na `cursor/p1-discord-test-harness` serwuje **Components V2** (stary proces na :4100 zabity i zastąpiony). PR #9 bez merge.
 
 ## Zatwierdzone
 

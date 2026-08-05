@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
+import { execSync } from 'node:child_process';
 import path from 'node:path';
 
 import { loadEnvFile } from './infrastructure/discord/load-env-file.js';
@@ -12,6 +13,35 @@ import { loadDiscordConfig } from './interface/discord/discord-bootstrap.service
 
 loadEnvFile(path.resolve(process.cwd(), '.env'));
 loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
+
+function resolveGitCommitSha(): string {
+  if (process.env.GIT_COMMIT_SHA && process.env.GIT_COMMIT_SHA !== 'unknown') {
+    return process.env.GIT_COMMIT_SHA;
+  }
+  try {
+    return execSync('git rev-parse HEAD', {
+      cwd: path.resolve(process.cwd()),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+function resolveGitBranch(): string {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: path.resolve(process.cwd()),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+process.env.GIT_COMMIT_SHA = resolveGitCommitSha();
 
 const config = loadDiscordConfig();
 const logger = createLogger('discord-gateway');
@@ -41,6 +71,10 @@ const bootstrap = async (): Promise<void> => {
     host: listen.host,
     port: listen.port,
     discordEnabled: config.DISCORD_ENABLED,
+    gitCommitSha: process.env.GIT_COMMIT_SHA ?? 'unknown',
+    gitBranch: resolveGitBranch(),
+    buildMode: 'tsx-dev-source',
+    panelRenderer: 'components-v2-container',
   });
 };
 

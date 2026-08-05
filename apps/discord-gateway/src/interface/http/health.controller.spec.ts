@@ -77,5 +77,7 @@ describe('HealthController', () => {
     const controller = new HealthController(disabledConfig(), null);
     const body = controller.discord();
     expect(JSON.stringify(body)).not.toMatch(/token|secret/i);
+    expect(body.panelRenderer).toBe('components-v2-container');
+    expect(body.gitCommitSha).toBeDefined();
   });
 });

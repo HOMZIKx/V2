@@ -138,6 +138,41 @@ function runGenerateSecret() {
 
 async function runStart() {
   process.env.DISCORD_ENABLED = 'true';
+  try {
+    const { execSync } = await import('node:child_process');
+    const sha = execSync('git rev-parse HEAD', {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    process.env.GIT_COMMIT_SHA = sha;
+    console.log(
+      JSON.stringify(
+        {
+          starting: 'discord-gateway',
+          gitCommitSha: sha,
+          gitBranch: branch,
+          panelRenderer: 'components-v2-container',
+          script: 'pnpm discord:test:start → apps/discord-gateway dev (tsx src/main.ts)',
+        },
+        null,
+        2,
+      ),
+    );
+  } catch {
+    console.log(
+      JSON.stringify({
+        starting: 'discord-gateway',
+        gitCommitSha: process.env.GIT_COMMIT_SHA ?? 'unknown',
+        panelRenderer: 'components-v2-container',
+      }),
+    );
+  }
   const { spawn } = await import('node:child_process');
   const child = spawn(
     process.platform === 'win32' ? 'corepack.cmd' : 'corepack',

@@ -6,95 +6,50 @@
 
 ## Task ID
 
-`P1-DISCORD-TEST-HARNESS-001` (remediation — Components V2)
+`P1-DISCORD-TEST-HARNESS-001` (urgent: live bot on Components V2)
 
-## Branch, commit i PR
+## Branch / SHA
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (bez merge)
-- **Finalny commit:** `4ae207a4f70a6c3e6175a4f36cd324b1f8921c03` (zielone CI poniżej; kolejny tip docs-only jeśli nastąpi)
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
+- **Implementation commit (Components V2):** `9cd3103a74069b2ba3d0c2060d9ba01e17374c5f`
+- **Tip przed tą poprawką runtime:** `ff10cc368868efe4bb1dea4357b6029a0e4ae37b`
+- **Aktualny tip po runtime fix:** _(uzupełnione po push)_
 
-## GitHub Actions (HEAD `be31a9c`)
+## Co było nie tak
 
-- CI (PR): success — https://github.com/HOMZIKx/V2/actions/runs/30988339309
-- CI (push): success — https://github.com/HOMZIKx/V2/actions/runs/30988337286
-- PR Title: success — https://github.com/HOMZIKx/V2/actions/runs/30988339462
+Na porcie `4100` działał **stary** proces `pnpm --dir apps/discord-gateway dev` (oraz równolegle `discord:test:start`), który serwował legacy embed. Kod w repo już miał Components V2, ale żywy bot nie.
 
-## Zakres remediacji
+## Co zrobiono na maszynie
 
-1. Publiczny `/panel-test` przebudowany na **Discord Components V2**:
-   - jeden `ContainerBuilder` (type 17) z accent color V2;
-   - `TextDisplay` (nagłówek/opis użytkowy);
-   - `Separator` + `MediaGallery` (banner `attachment://`);
-   - Action rows: select + przyciski **wewnątrz** kontenera;
-   - stopka TextDisplay;
-   - flag `MessageFlags.IsComponentsV2` (32768);
-   - **brak** legacy `EmbedBuilder` / `embeds` w publicznym panelu.
-2. Usunięte z publicznej karty: `ready`, środowisko, wersja panelu, timestamp.
-3. Diagnostyka pozostaje w ephemeral `/status` (`buildStatusEmbed`).
-4. Refresh używa `interaction.update` z `IsComponentsV2` (bez embeds).
-5. Testy `panel-renderer.spec.ts` weryfikują kontener, flagę, select/buttons wewnątrz, brak embeds.
-6. Uprawnienia: dodane **Attach Files**; docs + ADR-0007; instrukcja odebrania Administratora; `permissions=117760`; DEC-002 bez usuwania historii.
-7. Preview layoutu: `docs/ai/artifacts/p1-panel-components-v2-preview.png` (mock UI — nie sekret).
+1. Zatrzymano wyłącznie procesy `discord-gateway` / `discord:test` / listener `4100` (bez `api-gateway`).
+2. Usunięto `apps/discord-gateway/dist`, `pnpm install --frozen-lockfile`.
+3. Dodano bezpieczny startup log: `gitCommitSha`, `gitBranch`, `buildMode=tsx-dev-source`, `panelRenderer=components-v2-container` (+ to samo w `/health/discord`).
+4. Uruchomiono `pnpm discord:test:start` z aktualnego HEAD.
+5. Usunięto legacy embed panele z kanału; opublikowano panel V2.
+6. Restart procesu — panel V2 **pozostał**; signed custom IDs (`select` / `refresh` / `delete_ask`) weryfikują się sekretem z `.env`.
 
-## Payload Components V2 (skrót)
+## Dowód żywego panelu V2
 
-```text
-flags: IsComponentsV2
-components: [
-  Container {
-    accent_color,
-    components: [
-      TextDisplay (title + user copy),
-      Separator,
-      MediaGallery [attachment://v2-lab-banner.png],
-      Separator,
-      ActionRow [StringSelect],
-      ActionRow [Odśwież, Usuń panel],
-      TextDisplay (footer)
-    ]
-  }
-]
-files: [v2-lab-banner.png]
-```
+| Dowód                                               | Wynik                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `/health/discord`                                   | `state=ready`, `panelRenderer=components-v2-container`, `gitCommitSha=ff10cc3…`            |
+| Message API                                         | `flags=32768`, `embedsCount=0`, top type `17` (Container)                                  |
+| JSON                                                | `docs/ai/artifacts/live-panel-v2-message.json`                                             |
+| Screenshot Discord (desktop, kanał TESTOWY #ogólne) | `docs/ai/artifacts/live-discord-v2-panel-window.png`                                       |
+| Jump URL                                            | `https://discord.com/channels/1534228693017432124/1534228693449179146/1534482713606881381` |
 
-## Wyniki automatyczne
+Publiczna karta: **bez** `ready` / `test` / `Wersja panelu`; select + przyciski **w** kontenerze; banner MediaGallery.
 
-```text
-pnpm --filter discord-gateway test  → 13 files / 45 tests passed
-pnpm validate                       → green through runtime-smoke; Docker CLI missing on Windows host
-live API probe                      → flags=32768, Container type 17, hasEmbeds=false
-```
+## Test interakcji
 
-## Live probe (API)
+- Automatycznie: signed IDs OK; persistence po restarcie OK; renderer unit tests 45/45.
+- Kliknięcia select / modal / Odśwież / Usuń w UI Discord: Electron nie eksponuje przycisków do UI Automation — **wymagane potwierdzenie właściciela na mobile** na już opublikowanym panelu V2 (link powyżej). Bot działa i nasłuchuje.
 
-Skrypt `apps/discord-gateway/scripts/live-panel-v2-probe.mts` (send + delete):
+## Lokalny validate
 
-```text
-liveProbe: ok
-flags: 32768 (IsComponentsV2)
-hasEmbeds: false
-topComponentTypes: [17]  // Container
-```
+`pnpm --filter discord-gateway test` → 45 passed. Pełne `pnpm validate` lokalnie może paść na braku Docker CLI (jak wcześniej); CI na tipie po push.
 
-`pnpm discord:test:doctor` → OK (guild TESTOWY, komendy status/panel-test).
+## Poza zakresem
 
-**Mobile Discord UI:** właściciel powinien potwierdzić wygląd jednej karty na telefonie po `/panel-test` (preview PNG + API probe powyżej; pełny klik select/modal — re-test właściciela zalecany).
-
-## Screenshot / preview
-
-- `docs/ai/artifacts/p1-panel-components-v2-preview.png`
-
-## Odstępstwa / ryzyka
-
-- DEC-002 Administrator nadal możliwy lokalnie — po teście odebrać (instrukcja w `TEST_BOT_SETUP.md`).
-- Lokalny `pnpm validate` może kończyć się brakiem Docker CLI na Windows; CI na PR jest źródłem prawdy dla compose.
-- Preview PNG to layout mock zgodny z copy/kolorami V2 — nie zastępuje zrzutu z klienta Discord właściciela.
-
-## Poza zakresem (zachowane)
-
-- P2 Identity, Zeabur, merge, rotacja sekretów przez PR.
-
-## Prośba
-
-Audyt ponowny PR #9 → `APPROVED` albo dalsze `CHANGES REQUIRED`. Bez merge przez Cursora.
+P2, merge, nowy PR — bez zmian.
