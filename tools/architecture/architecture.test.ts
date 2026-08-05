@@ -7,8 +7,11 @@ import { isDependencyAllowed } from './boundaries.js';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sourceExtensions = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs']);
-const forbiddenInfrastructureDependencies =
-  /(?:@nestjs(?:\/|$)|nestjs(?:\/|$)|fastify|typeorm|rabbitmq|redis|discord)/i;
+// Domain and application layers must not import any infrastructure engine.
+// Matched against the import specifier (not raw file text) so legitimate string
+// literals such as a `'discord'` provider id in a domain type are not flagged.
+const forbiddenCoreImport =
+  /^(?:@nestjs(?:\/|$)|nestjs(?:\/|$)|fastify(?:\/|$)|@fastify\/|typeorm(?:\/|$)|rabbitmq|ioredis(?:\/|$)|redis(?:\/|$)|discord|better-auth(?:\/|$)|@better-auth\/|pg(?:$|\/|-))/i;
 const importPattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s*)['"]([^'"]+)['"]/g;
 
 function collectSourceFiles(directory: string): string[] {
@@ -81,10 +84,13 @@ describe('architecture boundaries', () => {
       const isCoreLayer =
         normalizedPath.includes('/domain/') || normalizedPath.includes('/application/');
 
-      return isCoreLayer &&
-        forbiddenInfrastructureDependencies.test(readFileSync(sourceFile, 'utf8'))
-        ? [path.relative(repositoryRoot, sourceFile)]
-        : [];
+      if (!isCoreLayer) {
+        return [];
+      }
+
+      return importsFrom(readFileSync(sourceFile, 'utf8'))
+        .filter((specifier) => forbiddenCoreImport.test(specifier))
+        .map((specifier) => `${path.relative(repositoryRoot, sourceFile)} -> ${specifier}`);
     });
 
     expect(violations).toEqual([]);

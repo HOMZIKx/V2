@@ -2,62 +2,65 @@
 
 ## Status
 
-`READY_FOR_RE-AUDIT` — plan P2 Identity Foundation zamknięty decyzjami właściciela
-(2026-08-05); PR planistyczny #10 po sync z `main` (P1). Poprawki re-audytu
-(CHANGES REQUIRED) w toku / po push.
+`READY_FOR_OWNER_MERGE`
+
+Draft PR #11 (`cursor/p2-identity-proof-slice`) — P2 Identity proof slice with
+**Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED** (manual
+subset). Still **no merge** by Cursor. Tip HEAD and Checks: GitHub SoT (not
+versioned in the report). Next JWT plan: Issue #13 (`READY_FOR_OWNER_DECISION`).
+
+See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
 
 ## Active phase
 
-P2 Identity Foundation — **planning close** (PR #10). Implementacja P2 **nie
-rozpoczęta** i **zakazana** do czasu merge planu + osobnego PR implementacyjnego.
+P2 Identity — Better Auth proof/integration slice.
+
+## Active task
+
+- Task ID: `P2-IDENTITY-PROOF-001`
+- Branch: `cursor/p2-identity-proof-slice`
+- Base: `main` po scaleniu planu P2, commit `4230fb185044faef15d4dd59a9c3c99f6c2b5956`
+- Pull Request: draft PR #11
+- Instrukcja: `docs/ai/CHATGPT_TO_CURSOR.md` (Discord-only amendment)
 
 ## Current objective
 
-Domknąć niespójności dokumentacyjne z re-audytu P2 (PR body, D-017, ownership
-sesji, tip SHA bez pętli). Status `READY_FOR_RE-AUDIT`. Bez merge, bez instalacji
-Better Auth, bez kodu OAuth / sesji / DB / UI logowania.
+Final review of PR #11 after green CI and owner-confirmed live Discord OAuth.
 
 ## In scope now
 
-- Poprawki docs z re-audytu „CHANGES REQUIRED przed merge”.
-- ADR-0009 / 0010 / 0011 / 0012 Accepted; DEC-003–009 Accepted; D-016 SUPERSEDED.
-- Walidacja dokumentów + push do PR #10; komentarz PR z finalnym HEAD / workflow
-  (bez commitowania tip SHA w pętli).
+- proof slice only; final review of PR #11
+- Discord-only active OAuth
+- no merge
 
 ## Out of scope now
 
-- Instalacja Better Auth / jakiejkolwiek biblioteki auth.
-- Implementacja OAuth, sesji, cookie, JWT, bazy Identity, ekranów logowania.
-- Zmiany runtime Discord (P1 zamknięte na `main`).
-- Admin override w Discord (DEC-002 / ADR-0007 — osobny tor, test guild only).
-- Merge PR #10 do `main`.
-- Deploy produkcyjny / Zeabur Identity (D-030 / DEC-001).
-- P3 membership / guild-scoped revoke policy (DEC-006 C / zakres D-017 / ADR-0010).
+- Second OAuth provider activation (e.g. Google) — deferred
+- P3 Authorization / guild membership policy
+- produkcyjny Web/Admin login UI
+- MFA / passkey / TOTP
+- internal JWT między usługami
+- API Gateway auth middleware
+- integracja V2 User z Discord botem
+- RabbitMQ / Outbox / events
+- produkcyjny deploy i Zeabur
+- funkcje biznesowe bota
 
-## Blockers
+## Decisions in force
 
-Brak blokad decyzyjnych P2. Oczekiwanie na re-audit / APPROVED właściciela przed
-merge planu.
+- DEC-003 B (architecture) + P2 Discord-only OAuth amendment; DEC-004 A,
+  DEC-005 A, DEC-006 C, DEC-008 A, DEC-009 A
+- ADR-0009–0012: Accepted
 
-## Decisions needed
+## Live Discord OAuth (owner)
 
-Brak otwartych DEC dla zamknięcia planu P2. Pin wersji Better Auth — w PR
-implementacyjnym. Guild-level revoke policy — P3 (`DEC-006 C` / zakres `D-017` /
-ADR-0010).
+PASSED 2026-08-05: sign-in → me 200 → accounts Discord → logout 200 → me 401.
 
-## Branch / tip (bez pętli SHA)
+## Next gate
 
-- Branch: `planning/p2-identity-foundation`
-- PR: #10
-- Stabilny plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Aktualny tip SHA i numery workflow CI: **źródło prawdy w GitHub** (PR Checks /
-  Actions), nie w tym pliku.
-
-## Next recommended step
-
-Właściciel: re-audit poprawek → `APPROVED` → merge planu. Dopiero potem osobny PR
-implementacyjny P2 (proof slice Better Auth za portami Identity).
+Owner merge of PR #11 (Cursor does not merge). Next implementation slice after
+merge + plan approval: `P2-IDENTITY-INTERNAL-JWT-001`.
 
 ## Last updated
 
-2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
+2026-08-05 — Cursor (docs consistency; READY_FOR_OWNER_MERGE)

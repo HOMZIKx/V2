@@ -37,7 +37,8 @@ Ten dokument jest **planem**. Implementacja kodu P2 jest zabroniona do czasu:
 ### 3.1 W zakresie
 
 1. Centralny Identity Service — właściciel user/account/session/verification.
-2. Discord OAuth2 + Google OAuth (user login platformy).
+2. Discord OAuth2 (aktywny w proof P2); drugi provider (np. Google) deferred —
+   architektura multi-provider-ready (V2 User UUID + ExternalIdentity).
 3. Pluginowi providerzy; V2 User UUID; jawne account linking / unlink.
 4. Sesje opaque + Redis SoT; logout current / all; revoke admin|system.
 5. Endpoint `me`; bezpieczne cookies; internal JWT między usługami.
@@ -48,7 +49,7 @@ Ten dokument jest **planem**. Implementacja kodu P2 jest zabroniona do czasu:
 
 - RBAC, guild permissions / membership policy, sync ról Discord (P3);
 - MFA passkey/TOTP (wymaganie przyszłe; nie blokuje minimalnego P2 jeśli Admin nieprod);
-- Steam / inni providerzy poza Discord + Google;
+- Steam / inni providerzy poza aktywnym Discord (drugi OAuth deferred);
 - produkcyjny deploy Identity / Zeabur;
 - funkcje biznesowe bota; Authorization Service poza konsumpcją `userId`.
 
@@ -131,13 +132,15 @@ Relacje guild — poza P2.
 
 ## 10. Definition of Done (implementacja — przyszły PR)
 
-- [ ] Proof slice: Node 24, Nest11+Fastify, PG, Redis, Discord, Google, linking, revoke
-- [ ] Pin wersji Better Auth
-- [ ] E2E lokalnie: login Discord/Google, link/unlink, logout one/all, `me`
-- [ ] Cookies + Redis SoT + internal JWT
-- [ ] Testy krytyczne; lint/typecheck/architecture
-- [ ] Brak RBAC / guild policy / MFA / Zeabur w zakresie P2
-- [ ] Raport + PR **bez** samodzielnego merge
+- [x] Proof slice: Node 24, Nest11+Fastify, PG, Redis, Discord-only OAuth, linking, revoke (PR #11)
+- [x] Pin wersji Better Auth 1.6.25
+- [x] Live E2E Discord (owner subset): login, `me`, accounts, logout → 401 (2026-08-05)
+- [x] Cookies + Redis Session SoT (proof slice PR #11)
+- [ ] Internal service-to-service JWT — **not implemented**; next slice
+      `P2-IDENTITY-INTERNAL-JWT-001`
+- [x] Testy krytyczne; lint/typecheck/architecture (CI)
+- [x] Brak RBAC / guild policy / MFA / Zeabur w zakresie P2
+- [ ] Raport + PR **bez** samodzielnego merge (oczekuje owner merge)
 
 ## 11. Ten PR planistyczny — DoD
 

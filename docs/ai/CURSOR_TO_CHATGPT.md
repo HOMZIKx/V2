@@ -1,66 +1,101 @@
-﻿# CURSOR_TO_CHATGPT
+﻿# Cursor → ChatGPT
 
-## Status
+## 1. Status
 
-`READY_FOR_RE-AUDIT`
+`READY_FOR_OWNER_MERGE`
 
-## Summary
+Draft PR #11: P2 Identity Better Auth proof with **Discord-only** active OAuth.
+Owner live Discord OAuth gate **PASSED** (manual subset below). Proof UI logout
+empty-body fix included. Still **no merge** by Cursor.
 
-Poprawki po re-audycie właściciela „Re-audyt P2 — CHANGES REQUIRED przed merge”
-(PR #10, wyłącznie planistycznie):
+## 2. Task ID
 
-1. Zaktualizowano body PR #10 do stanu faktycznego (ADR-0009…0012 Accepted,
-   DEC-003–009 Accepted, D-016 SUPERSEDED, NON_NEGOTIABLES zaktualizowane).
-2. Naprawiono błędne odwołania w `PROJECT_STATE` (DEC-002/ADR-0007; DEC-006 C /
-   D-017 / ADR-0010).
-3. D-017 → status `SCOPE REVISED` (bez `ACCEPTED*`).
-4. Rozdzielono ownership logiczny vs storage: PostgreSQL User/Account/Verification
-   (+ audyt bez używalnego tokenu); Redis = session SoT; ADR-0012:
-   `secondaryStorage` najpierw.
-5. Naprawiono tabelę Session w `IDENTITY_FOUNDATION.md`.
-6. Raporty bez pętli tip SHA — aktualny HEAD/CI = źródło prawdy w GitHub.
-7. **Zero** implementacji Better Auth / OAuth / sesji / DB / UI.
+`P2-IDENTITY-PROOF-001`
 
-## Branch / PR (stabilne odniesienia)
+## 3. Branch / PR / source of truth
 
-- Branch: `planning/p2-identity-foundation`
-- PR: https://github.com/HOMZIKx/V2/pull/10
-- Base: `main` (P1 `c82d6bd`)
-- Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Aktualny tip SHA i numery workflow: **GitHub Checks / Actions** (komentarz PR
-  po zielonym CI — bez commitowania tip w pętli)
+- Branch: `cursor/p2-identity-proof-slice`
+- PR: #11 (existing draft; no new PR, no merge by Cursor)
 
-## Rozstrzygnięte decyzje (2026-08-05)
+**GitHub is the source of truth** for the current PR tip commit and the latest
+Checks / workflow runs. This versioned report does **not** store or update tip
+HEAD SHAs or CI run IDs (avoids self-driving docs commits). Read them from the
+PR page / `gh pr view 11` / Actions.
 
-| DEC     | Wybór | Skutek                                                    |
-| ------- | ----- | --------------------------------------------------------- |
-| DEC-003 | B     | Multi-provider; V2 UUID; supersede D-016                  |
-| DEC-004 | A     | Better Auth + Fastify + ports; proof first; pin w impl PR |
-| DEC-005 | A     | Tylko jawne linking                                       |
-| DEC-006 | C     | P2 = revoke API; guild policy → P3                        |
-| DEC-007 | A     | P1 merged; impl po merge planu #10                        |
-| DEC-008 | A     | Opaque cookie + Redis SoT; osobne Web/Admin               |
-| DEC-009 | A     | Internal JWT ≤5 min; asym; bez pełnego RBAC               |
+### Identity code commit (stable reference — not tip HEAD)
 
-## Validation
+- Label: **Identity code commit**
+- SHA: `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb`
+- Meaning: last commit on this branch that changed Identity Service application
+  code (Discord-only OAuth scope + proof UI logout empty-JSON fix). Later tip
+  commits may be documentation-only.
 
-Uruchamiane lokalnie przed push: `pnpm format:check` (+ lint/typecheck/architecture
-gdy adekwatne). Pełne CI i Conventional PR Title: zielone na **finalnym HEAD** —
-potwierdzone w komentarzu PR z numerami workflow.
+## 4. Scope (Discord-only)
 
-## Risks / debt
+Active OAuth provider: **Discord only**. Google not in config, proof UI, live
+checklist, or CI. V2 User UUID, ports, explicit linking, Redis sessions,
+PostgreSQL, Discord `email=null` retained for a later second provider.
 
-- Plan Accepted ≠ implementacja. Proof slice Better Auth wymaga osobnego PR.
-- Preferencja `secondaryStorage`; własny adapter tylko po dowodzie z proof.
-- Guild revoke policy odroczona do P3 (DEC-006 C / D-017 SCOPE REVISED).
-- Pin wersji Better Auth — w PR implementacyjnym.
-- Honest session-token hashing — zależne od faktycznego BA.
+## 5. Live Discord OAuth (owner, 2026-08-05)
 
-## Questions for ChatGPT / owner
+**Manually confirmed by owner:**
 
-1. Re-audit poprawek → `APPROVED` przed merge PR #10?
-2. Pin wersji Better Auth w review planu vs dopiero w PR implementacyjnym (DEC-004)?
+| Step                     | Result                   |
+| ------------------------ | ------------------------ |
+| Sign in with Discord     | OK                       |
+| `GET /identity/me`       | 200                      |
+| `GET /identity/accounts` | Discord account present  |
+| Logout                   | 200 `{ "status": "ok" }` |
+| `GET /identity/me` after | 401 `UNAUTHENTICATED`    |
+
+**Not manually confirmed** (covered by automated tests and/or not run live):
+logout-all, system revoke, PostgreSQL/Redis inspection, DB token-column check.
+See `docs/identity/LOCAL_OAUTH_PROOF.md` §6b.
+
+## 6. Proof UI logout fix
+
+Fastify rejects `Content-Type: application/json` with an empty body
+(`FST_ERR_CTP_EMPTY_JSON_BODY`). Proof UI POSTs `body: '{}'` for
+`/identity/logout` and `/identity/logout-all`. Regression test in
+`proof-ui.controller.spec.ts`.
+
+## 7. Pinned dependencies (unchanged)
+
+- `better-auth` = 1.6.25
+- `@better-auth/redis-storage` = 1.6.25
+- `ioredis` = 5.11.1
+- `@fastify/cors` = 11.3.0
+- `pg` = 8.22.0
+
+## 8–10. Architecture / storage / cookies
+
+Unchanged: ports, Redis session SoT, no PG session table, token strip hooks,
+logout Set-Cookie forwarding.
+
+## 11. Test evidence
+
+Local identity (+ infra): **97 passed** (at Identity code commit era).
+
+## 12. Local command results
+
+- Identity vitest + infra: 97 passed
+- `pnpm validate` gates + `test:runtime-smoke` passed on the proof slice
+
+## 13. CI / Checks
+
+See **GitHub PR #11 Checks** for the current tip. Do not copy run IDs into this
+file.
+
+## 14. Risks / tech debt
+
+- Formal NON_NEGOTIABLES / ADR-0010 may still mention Google historically;
+  active scope + DEC-003 amendment + brief banners say Discord-only.
+- Rotate Discord Client Secret if it was ever pasted into chat.
+
+## 15. Recommended next slice (not implemented)
+
+`P2-IDENTITY-INTERNAL-JWT-001` — plan on GitHub Issue #13; not in this PR.
 
 ## Last updated
 
-2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
+2026-08-05 — Cursor (report SoT = GitHub; READY_FOR_OWNER_MERGE)

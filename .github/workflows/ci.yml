@@ -100,6 +100,28 @@ jobs:
         run: pnpm test:infra
         env:
           RUN_INFRA_TESTS: 'true'
+          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
+          IDENTITY_REDIS_URL: redis://127.0.0.1:6379/1
+
+      - name: Migrate identity database
+        run: pnpm --dir services/identity-service migrate
+        env:
+          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
+
+      - name: Run identity auth integration tests
+        run: pnpm exec vitest run --config services/identity-service/vitest.config.ts
+        env:
+          RUN_INFRA_TESTS: 'true'
+          IDENTITY_AUTH_ENABLED: 'true'
+          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
+          IDENTITY_REDIS_URL: redis://127.0.0.1:6379/1
+          IDENTITY_AUTH_BASE_URL: http://127.0.0.1:4200
+          IDENTITY_AUTH_BASE_PATH: /api/auth
+          IDENTITY_TRUSTED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+          # CI-only non-secret placeholders (>= 32 chars); no real OAuth is performed.
+          IDENTITY_BETTER_AUTH_SECRET: ci-placeholder-better-auth-secret-000000
+          IDENTITY_DISCORD_CLIENT_ID: ci-discord-client-id
+          IDENTITY_DISCORD_CLIENT_SECRET: ci-discord-client-secret
 
       - name: Stop local infrastructure
         if: always()

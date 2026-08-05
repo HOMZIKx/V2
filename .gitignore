@@ -11,6 +11,9 @@ test-results
 tmp
 .DS_Store
 *.log
+.local-start.err
+.local-start.log
+.local-start.log.err
 .env
 .env.local
 .env.*.local

@@ -2,34 +2,53 @@ import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createConfig, resolveHttpListen } from '@v2/configuration';
+import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
-import { z } from 'zod';
 
 import { serviceName } from './domain/service-name.js';
+import type { AuthRuntime } from './infrastructure/auth/create-better-auth.js';
+import { parseIdentityEnv } from './infrastructure/config/identity-env.js';
+import { loadIdentityEnvFiles } from './infrastructure/config/load-env-file.js';
 import { AppModule } from './interface/app.module.js';
+import { AUTH_RUNTIME } from './interface/identity.tokens.js';
 
-const config = createConfig(
-  z.object({
-    IDENTITY_SERVICE_PORT: z.coerce.number().int().positive().default(4200),
-    IDENTITY_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
-    IDENTITY_DATABASE_URL: z.string().url(),
-  }),
-);
+loadIdentityEnvFiles();
+
 const logger = createLogger(serviceName);
 
 const bootstrap = async (): Promise<void> => {
+  const config = parseIdentityEnv(process.env);
+
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+
+  const runtime = app.get<AuthRuntime | null>(AUTH_RUNTIME, { strict: false });
+
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info('Shutting down Identity Service.', { signal });
+    await app.close().catch(() => undefined);
+    if (runtime !== null) {
+      await runtime.close().catch(() => undefined);
+    }
+    process.exit(0);
+  };
+
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => {
+      void shutdown(signal);
+    });
+  }
 
   const listen = resolveHttpListen({
     defaultPort: config.IDENTITY_SERVICE_PORT,
     defaultHost: config.IDENTITY_SERVICE_HOST,
   });
-  logger.info('Identity Service started without a database connection.', {
+
+  await app.listen(listen.port, listen.host);
+  logger.info('Identity Service started.', {
     host: listen.host,
     port: listen.port,
+    authEnabled: config.IDENTITY_AUTH_ENABLED,
   });
-  await app.listen(listen.port, listen.host);
 };
 
 void bootstrap();
