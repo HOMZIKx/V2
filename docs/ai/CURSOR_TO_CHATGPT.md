@@ -2,136 +2,65 @@
 
 ## Status
 
-`NOT_STARTED`
-
-Dozwolone statusy podczas zadania:
-
-- `IN_PROGRESS`
-- `READY_FOR_LIVE_TEST`
-- `BLOCKED`
-- `READY_FOR_REVIEW`
+`READY_FOR_REVIEW`
 
 ## Task ID
 
-`P1-DISCORD-TEST-HARNESS-001`
+`P2-IDENTITY-FOUNDATION-001` (**planning only**)
 
 ## Branch, commit i PR
 
-- **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:**
-- **PR:**
+- **Branch:** `planning/p2-identity-foundation`
+- **Finalny commit:** _(uzupełnione po push)_
+- **PR:** _(uzupełnione po utworzeniu)_
 
-## Zakres wykonany
+## Co zrobiono
 
-Do uzupełnienia przez Cursor.
+Przygotowano **wyłącznie dokumentację** fundamentu Identity:
 
-## Architektura Discord Gateway
+- Kompletny handoff: `docs/ai/P2_IDENTITY_FOUNDATION_HANDOFF.md`
+- Architektura: `docs/architecture/IDENTITY_FOUNDATION.md`
+- ADR **Proposed:** 0009 (granica Identity), 0010 (multi-provider), 0011 (sesje/transport)
+- `PENDING_DECISIONS.md`: DEC-003 … DEC-009 z wariantami i rekomendacjami
+- Aktualizacja `PROJECT_STATE.md`, `DECISION_LOG.md`, `SYSTEM_ARCHITECTURE.md`, `SERVICE_CATALOG.md`, `DATA_OWNERSHIP.md`
+- Ten raport + brief audytowy w `CHATGPT_TO_CURSOR.md`
 
-Do uzupełnienia:
+## Czego NIE zrobiono (świadomie)
 
-- cykl życia klienta;
-- router komend i komponentów;
-- model signed custom IDs;
-- izolacja guild;
-- health/readiness;
-- obsługa restartów i graceful shutdown.
+- Brak implementacji kodu P2
+- Brak zależności Better Auth / OAuth w lockfile
+- Brak zmian `NON_NEGOTIABLES` (wymaga DEC-003)
+- Brak merge
+- Brak startu P3 / RBAC / MFA / Zeabur
 
-## Wersje
+## Weryfikacja repo przed rekomendacjami tech
 
-- **discord.js:**
-- **Discord API:** v10
-- **Node.js:** 24 LTS
+| Fakt                     | Wynik                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `identity-service`       | Szkielet health only                                                                 |
+| `better-auth` w lockfile | Brak                                                                                 |
+| D-019 Better Auth        | ACCEPTED historycznie — **ponownie otwarte** jako DEC-004                            |
+| D-016 Discord-only       | ACCEPTED — **konflikt** z briefem P2 → DEC-003                                       |
+| Sesje Redis / cookie     | D-020 ACCEPTED — rekomendacja potwierdzenia DEC-008 (opaque), nie JWT w przeglądarce |
 
-## Intents, scopes i permissions
+## Rekomendacje (nie decyzje)
 
-### Intents
+1. Przyjąć **DEC-003 B** (multi-provider) albo **C** (Discord wymagany do pierwszego konta) — inaczej P2 Google jest sprzeczne z konstytucją.
+2. **DEC-004:** spike Better Auth vs lżejszy stack OAuth+session przed Accepted ADR.
+3. **DEC-005 A:** bez auto-link po emailu.
+4. **DEC-007 A:** implementacja P2 dopiero po P1 APPROVED+merge i APPROVED planu.
+5. **DEC-008 A / DEC-009 A:** opaque cookie session; krótki JWT tylko jako internal context.
 
-Do uzupełnienia.
+## Definition of Done tego PR planistycznego
 
-### Scopes instalacji
+- Dokumentacja kompletna względem briefu właściciela
+- PENDING wypełnione
+- PR do `main` bez merge
+- Stan projektu: oczekiwanie na audyt ChatGPT
 
-Do uzupełnienia.
+## Prośba do ChatGPT
 
-### Minimalne permissions
-
-Do uzupełnienia.
-
-## Komendy i komponenty
-
-Do uzupełnienia:
-
-- `/status`;
-- `/panel-test`;
-- select menu;
-- modal;
-- odświeżenie;
-- bezpieczne usunięcie panelu.
-
-## Wyniki automatyczne
-
-```text
-pnpm validate                    →
-pnpm discord:test:generate-secret →
-pnpm discord:test:doctor          →
-pnpm discord:test:register        →
-```
-
-### GitHub Actions
-
-- **Run:**
-- **HEAD SHA:**
-- **Quality gates:**
-- **Infrastructure integration:**
-- **Secret scan:**
-- **PR Title:**
-
-## Manualny live test
-
-Nie wpisuj tokenu ani signing secret.
-
-- **Application ID:**
-- **Bot User ID:**
-- **Guild ID:** `1534228693017432124`
-- **Bot online:**
-- **Brak działania na innych guild:**
-- **`/status` ephemeral:**
-- **Publikacja jednego `/panel-test`:**
-- **Select menu:**
-- **Modal:**
-- **Odświeżenie tego samego panelu:**
-- **Bezpieczne usunięcie:**
-- **Działanie panelu po restarcie:**
-- **Brak reakcji i publicznego spamu:**
-- **Brak sekretów/treści modala w logach:**
-
-## Global commands
-
-- **Zarejestrowane global commands:**
-- **Dowód użycia wyłącznie guild route:**
-
-## Bezpieczeństwo
-
-Do uzupełnienia:
-
-- redakcja sekretów;
-- strict guild isolation;
-- operator allowlist/ManageGuild;
-- signed custom IDs;
-- minimalne intents i permissions;
-- brak live Discorda w CI.
-
-## Zmienione pliki i dokumenty
-
-Do uzupełnienia.
-
-## ADR
-
-- `ADR-0007`:
-
-## Odstępstwa, ryzyka i dług techniczny
-
-Do uzupełnienia bez ukrywania problemów.
-
-## Proponowany następny krok
-
-Tylko propozycja. Nie implementuj następnego etapu bez `APPROVED`.
+1. Audyt pakietu planistycznego.
+2. Rozstrzygnięcie lub priorytetyzacja DEC-003 … DEC-009 z właścicielem.
+3. Po akceptacji: `APPROVED` planu + brief implementacyjny (osobno).
+4. Nie zlecać implementacji P2 w tym samym kroku co sam audyt planu, jeśli DEC-003/004 otwarte.

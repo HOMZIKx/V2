@@ -14,5 +14,13 @@ oznacza przygotowaną strukturę warstw usługowych.
 | `authorization-service` | usługa NestJS                 | baza `authorization` | skeleton   | podział Domain/Application/Infrastructure/Interface oraz health |
 
 `identity-service` i `authorization-service` nie implementują jeszcze
-logowania, OAuth, Better Auth, ORM, modeli domenowych ani reguł uprawnień.
+logowania, OAuth, sesji, ORM, modeli domenowych ani reguł uprawnień.
 PostgreSQL zawiera osobne bazy i konta usługowe dla obu właścicieli danych.
+
+### Plan P2 (dokumentacja only)
+
+Plan fundamentu Identity: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md),
+[P2 handoff](../ai/P2_IDENTITY_FOUNDATION_HANDOFF.md). Po APPROVED planu
+`identity-service` przejmie User / ExternalIdentity / Session.
+`authorization-service` pozostaje bez RBAC do P3.
+Wybór biblioteki auth (**nie** przesądzony w kodzie) — DEC-004.

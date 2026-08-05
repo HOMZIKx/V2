@@ -64,6 +64,18 @@ Domain i Application nie importują frameworków ani adapterów infrastrukturaln
 - Web: Next.js App Router
 - Admin: React + Vite + React Router
 
+## Tożsamość (P2 — planowanie)
+
+Fundament Identity jest opisany w:
+
+- [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md)
+- [P2_IDENTITY_FOUNDATION_HANDOFF.md](../ai/P2_IDENTITY_FOUNDATION_HANDOFF.md)
+- ADR Proposed: [0009](decisions/ADR-0009-identity-service-boundary.md), [0010](decisions/ADR-0010-multi-provider-identity.md), [0011](decisions/ADR-0011-session-and-auth-transport.md)
+
+**Identity ≠ Authorization.** RBAC i permissions należą do `authorization-service` (P3+), nie do P2.
+
+Do czasu akceptacji DEC-003 obowiązuje konstytucyjne Discord-only z `NON_NEGOTIABLES`; ADR-0010 pozostaje Proposed.
+
 ## Zasada ewolucji
 
 Wydzielenie repozytorium, zmiana języka, dodanie brokera, zmiana własności danych albo utworzenie nowej krytycznej usługi wymaga ADR-u.

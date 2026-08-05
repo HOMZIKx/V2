@@ -2,11 +2,12 @@
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_CURSOR`
+`P2_IDENTITY_FOUNDATION_PLANNING_READY_FOR_REVIEW`
 
 ## Aktualny etap
 
-Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny jest zamknięty. Następne zadanie przygotowuje pierwszy rzeczywiście działający bot V2 na dedykowanym serwerze testowym.
+Pakiet **planistyczny** P2 Identity Foundation oczekuje na audyt ChatGPT. **Brak implementacji P2.**  
+P1 Discord Test Harness: osobny PR (#9) — nadal wymaga `APPROVED` / merge (patrz DEC-007).
 
 ## Zatwierdzone
 
@@ -14,7 +15,7 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 - jedna organizacja i wiele serwerów Discord;
 - hybrydowy profil użytkownika;
 - pełna platforma WWW + Discord;
-- model uprawnień;
+- model uprawnień (docelowy — niezaimplementowany);
 - mikrousługi;
 - główny stos TypeScript;
 - monorepo pnpm + Nx;
@@ -22,57 +23,48 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 - REST/OpenAPI + RabbitMQ;
 - backend Node/Nest/Fastify;
 - podział Web/Admin;
-- model tożsamości, MFA i sesji;
+- historyczny model tożsamości D-016…D-020 (**część pod rewizją w DEC-003+**);
 - trwały protokół pracy AI;
 - standardy jakości, testów i lokalnej infrastruktury;
 - standard postów i interakcji Discord (D-023);
 - oryginalna identyfikacja wizualna V2 (D-024);
 - dedykowany serwer testowy Discord `1534228693017432124`;
-- wizja Desktop Companion / overlay (ADR-0006).
+- wizja Desktop Companion / overlay (ADR-0006);
+- Discord test harness P1 (ADR-0007) — na `main` wg stanu merge;
+- ADR-0008 (Zeabur) — dokumentacja; **wdrożenie deferred**.
 
 ## Zamknięty etap
 
 - **Task ID:** `P0-BOOTSTRAP-001`
 - **Status:** `APPROVED_AND_MERGED`
 - **PR:** `#3`
-- **Merge commit:** `877c680f234836ab55c5c345abf0a2175c31c24f`
 
-## Aktywne zadanie
+## Aktywne zadanie (planowanie)
+
+- **Task ID:** `P2-IDENTITY-FOUNDATION-001`
+- **Status:** `READY_FOR_REVIEW` (planning only)
+- **Branch:** `planning/p2-identity-foundation`
+- **Handoff:** `docs/ai/P2_IDENTITY_FOUNDATION_HANDOFF.md`
+- **ADR Proposed:** 0009, 0010, 0011
+- **PENDING:** DEC-003 … DEC-009
+- **Implementacja:** zablokowana
+
+## Równoległy kontekst P1
 
 - **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_CURSOR`
-- **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
-- **Oczekiwany branch Cursora:** `cursor/p1-discord-test-harness`
-- **Oczekiwany wynik:** Pull Request do `main`, bez samodzielnego scalenia.
-
-## Cel aktywnego zadania
-
-- bezpieczne połączenie `discord-gateway` z Discordem;
-- działanie wyłącznie na guild `1534228693017432124`;
-- guild-scoped commands bez global commands;
-- `/status` i pierwszy panel `/panel-test`;
-- select menu, przyciski i modal zgodne ze standardem UX;
-- stateless signed custom IDs działające po restarcie;
-- pełne testy bez tokenu w CI;
-- obowiązkowy manualny live test przed audytem.
+- **Status:** oczekuje `APPROVED` / merge (PR #9 na osobnej gałęzi)
+- **Uwaga:** Workflow zabrania startu **implementacji** P2 bez APPROVED poprzedniego etapu (DEC-007).
 
 ## Nadal niezaimplementowane
 
-- Discord OAuth, Better Auth, sesje i MFA;
-- docelowy system uprawnień;
-- modele biznesowe i ORM;
-- moduły wydarzeń, rezerwacji, LFG, moderacji, ticketów, muzyki, automatyzacji i analityki;
-- RabbitMQ w funkcjach biznesowych;
-- produkcyjny hosting lub deployment.
+- Identity OAuth / sesje / profil (P2 — po APPROVED planu);
+- MFA;
+- RBAC / authorization-service;
+- modele biznesowe poza szkieletem;
+- Zeabur (deferred);
+- moduły produktowe.
 
 ## Następny punkt kontrolny
 
-Cursor implementuje P1, tworzy PR, przeprowadza manualny live test po lokalnym ustawieniu sekretów przez właściciela i zgłasza finalny PR do audytu ChatGPT.
-
-## Blokady
-
-Kod nie ma blokad. Rzeczywisty live test będzie wymagał ręcznego utworzenia/konfiguracji aplikacji w Discord Developer Portal i lokalnego ustawienia tokenu. Token nie może być przekazywany przez czat ani GitHub.
-
-## Ważna uwaga
-
-Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów.
+Audyt ChatGPT pakietu planistycznego P2 → decyzje DEC-* → `APPROVED` planu → dopiero brief implementacyjny.  
+Nie rozpoczynać P3. Nie implementować P2 w tym PR.
