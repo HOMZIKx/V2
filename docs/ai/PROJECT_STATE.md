@@ -53,4 +53,4 @@ implementacyjny P2 (proof slice Better Auth za portami Identity).
 
 ## Last updated
 
-2026-08-05 — Cursor (P2 planning close + sync P1)
+2026-08-05 — Cursor (P2 planning close + sync P1); tip `2e4cdd8` / plan-close `42b0fa2`
