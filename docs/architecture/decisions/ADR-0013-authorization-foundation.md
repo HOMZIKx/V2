@@ -27,7 +27,8 @@ właściciela. `authorization-service` był szkieletem Nest bez domeny.
 6. **Dwa mechanizmy S2S:**
    - User-context Internal JWT (PR #14) — wywołania z aktywną sesją użytkownika;
    - System service assertion — operacje tła (revoke, sync machine calls) bez cookie.
-7. **Discord sync v1:** synchroniczny HTTP z `discord-gateway` (intenty Guilds+GuildMembers);
+7. **Discord sync v1:** synchroniczny HTTP z `discord-gateway`
+   (`DISCORD_AUTHORIZATION_SYNC_ENABLED`; GuildMembers tylko gdy sync włączony);
    RabbitMQ/outbox tylko jako przyszłe porty, bez implementacji w tym PR.
 8. **Katalog permissions** w fundamencie jest wyłącznie techniczny (test/foundation IDs).
    Finalne nazwy UX = poza zakresem.
