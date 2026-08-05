@@ -24,10 +24,13 @@ Decyzje właściciela 2026-08-05 rozdzielają transport przeglądarkowy od międ
 4. **Zakaz** przechowywania access/refresh tokenów OAuth lub JWT użytkownika w
    `localStorage` / `sessionStorage`.
 5. **Redis** (restrykcyjny ACL) = session **source of truth** dla szybkiej walidacji i
-   unieważniania. Na start: **wyłączony** Better Auth cookie cache / stateless mode, aby
-   natychmiastowy revoke nie miał okna ważności.
-6. PostgreSQL może przechowywać bezpieczne metadane / audyt sesji; **nie** duplikować
-   używalnego tokenu sesji bez uzasadnienia.
+   unieważniania (aktywny token). Na start: **wyłączony** Better Auth cookie cache /
+   stateless mode, aby natychmiastowy revoke nie miał okna ważności. Preferowany mechanizm
+   w proof: oficjalne Better Auth `secondaryStorage` (ADR-0012); własny adapter tylko gdy
+   proof wykaże konieczność.
+6. PostgreSQL: User / Account / Verification oraz ewentualne **bezpieczne metadane/audyt**
+   sesji; **database session copy disabled** w sensie używalnego tokenu — bez duplikowania
+   tokenu do PostgreSQL bez uzasadnienia.
 7. Wymagane: logout current, logout all, revoke by admin/system, **natychmiastowe**
    wygaśnięcie po revoke.
 8. Honest storage: model przechowywania tokenu sesji Better Auth musi być udokumentowany

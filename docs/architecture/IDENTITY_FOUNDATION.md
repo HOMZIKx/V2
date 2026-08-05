@@ -27,12 +27,12 @@ Szczegółowy handoff: [P2_IDENTITY_FOUNDATION_HANDOFF.md](../ai/P2_IDENTITY_FOU
 
 ## Encje (własność Identity)
 
-| Encja / tabela  | Znaczenie                                     |
-| --------------- | --------------------------------------------- |
-| User            | Centralny podmiot V2 (UUID)                   |
-| Account / ExtId | Discord / Google; UNIQUE(provider, accountId) |
-| Session         | Opaque; revoke one / all / admin              | system |
-| Verification    | State/PKCE / one-time flow tokens             |
+| Encja / tabela  | Znaczenie                                                      |
+| --------------- | -------------------------------------------------------------- |
+| User            | Centralny podmiot V2 (UUID)                                    |
+| Account / ExtId | Discord / Google; UNIQUE(provider, accountId)                  |
+| Session         | Opaque; revoke one/all/admin/system; aktywny token w Redis SoT |
+| Verification    | State/PKCE / one-time flow tokens                              |
 
 Guild Membership / Guild Profile / Permissions — **poza P2**.
 

@@ -20,22 +20,41 @@ udostępniony model danych.
 
 ## Encje Identity (P2 — plan Accepted; implementacja osobnym PR)
 
-Wyłącznie w bazie `identity`, właściciel `identity-service`:
+### Ownership logiczny
+
+Wyłącznie `identity-service` jest właścicielem tożsamości i sesji. Inne usługi
+**nie** mają dostępu do bazy `identity`, nie wykonują joinów do niej i nie
+czytają Redis sesji Identity (ACL restrykcyjny — tylko Identity).
+
+### PostgreSQL (`identity`)
 
 - `User` — stabilny UUID V2;
 - `ExternalIdentity` / `Account` — provider + providerAccountId (UNIQUE);
-- `Session` — sesje z revoke one / all / admin|system;
-- `Verification` — one-time flow tokens (state/PKCE).
+- `Verification` — one-time flow tokens (state/PKCE);
+- opcjonalnie **bezpieczne metadane / audyt sesji** (np. session id, userId,
+  created/revoked/expires, clientKind) — **bez** duplikowania używalnego tokenu
+  sesji, chyba że przyszły ADR uzasadni inaczej.
 
-Szczegóły: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md), [ADR-0009](decisions/ADR-0009-identity-service-boundary.md) Accepted.
-Inne usługi nadal **nie** mają dostępu do tej bazy. Redis session SoT — wyłącznie przez Identity.
+### Redis (P2 session source of truth)
 
-## Wspólna infrastruktura nie jest źródłem prawdy
+- Aktywna sesja / token sesji (opaque) jako **SoT** szybkiej walidacji i
+  natychmiastowego revoke — wyłącznie pod kontrolą `identity-service`.
+- Cookie cache / stateless mode Better Auth: wyłączone na start (ADR-0011 /
+  ADR-0012).
 
-Redis i RabbitMQ są współdzieloną infrastrukturą techniczną. Nie są źródłem
-prawdy dla danych biznesowych. Redis może później obsługiwać sesje, cache lub
-koordynację, a RabbitMQ transport zdarzeń i zadań, lecz nie zmienia to
-własności danych przez usługi.
+Szczegóły: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md),
+[ADR-0009](decisions/ADR-0009-identity-service-boundary.md),
+[ADR-0011](decisions/ADR-0011-session-and-auth-transport.md),
+[ADR-0012](decisions/ADR-0012-better-auth-engine.md).
+
+## Wspólna infrastruktura
+
+Redis i RabbitMQ są współdzieloną infrastrukturą techniczną. Nie zastępują
+własności domenowej usług. Wyjątek P2: **aktywny token sesji** żyje w Redis jako
+SoT operacyjny, ale **logicznym właścicielem** pozostaje wyłącznie
+`identity-service` (żadna inna usługa nie czyta tych kluczy).
+
+RabbitMQ transportuje zdarzenia i zadania; nie zmienia własności danych.
 
 Wymiana danych między usługami wymaga wersjonowanego kontraktu synchronicznego
 lub zdarzenia; nie może być zastępowana cross-readem bazy.

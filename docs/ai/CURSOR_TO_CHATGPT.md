@@ -6,33 +6,29 @@
 
 ## Summary
 
-Zamknięto planistyczny PR **#10** (`planning/p2-identity-foundation`) według
-review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2”:
+Poprawki po re-audycie właściciela „Re-audyt P2 — CHANGES REQUIRED przed merge”
+(PR #10, wyłącznie planistycznie):
 
-1. Zsynchronizowano gałąź z `main` zawierającym scalony P1 (`c82d6bd`, PR #9 /
-   Components V2) — konflikty docs rozwiązane **bez cofania** zmian P1.
-2. Zapisano decyzje właściciela **DEC-003–009** (2026-08-05) jako ACCEPTED;
-   D-016 → SUPERSEDED; D-031 / D-032 / D-033; D-019/D-020 doprecyzowane.
-3. ADR-0009 / 0010 / 0011 → **Accepted**; dodano **ADR-0012** (Better Auth
-   engine behind Identity ports + oficjalny Fastify handler).
-4. Zaktualizowano `NON_NEGOTIABLES` § Tożsamość, `IDENTITY_FOUNDATION.md`,
-   handoff, `PENDING_DECISIONS`, Decision Log, SYSTEM/SERVICE/DATA ownership,
-   ADR-0001 bullet OAuth.
-5. Security supplements: provider tokens, Redis SoT, CSRF/PKCE/redirect
-   allowlist, UNIQUE(provider, accountId), e-mail ≠ key, no unlink last,
-   Identity owns user/account/session/verification.
-6. **Zero** instalacji Better Auth, OAuth, sesji, DB, UI logowania — wyłącznie
-   dokumentacja / ADR.
+1. Zaktualizowano body PR #10 do stanu faktycznego (ADR-0009…0012 Accepted,
+   DEC-003–009 Accepted, D-016 SUPERSEDED, NON_NEGOTIABLES zaktualizowane).
+2. Naprawiono błędne odwołania w `PROJECT_STATE` (DEC-002/ADR-0007; DEC-006 C /
+   D-017 / ADR-0010).
+3. D-017 → status `SCOPE REVISED` (bez `ACCEPTED*`).
+4. Rozdzielono ownership logiczny vs storage: PostgreSQL User/Account/Verification
+   (+ audyt bez używalnego tokenu); Redis = session SoT; ADR-0012:
+   `secondaryStorage` najpierw.
+5. Naprawiono tabelę Session w `IDENTITY_FOUNDATION.md`.
+6. Raporty bez pętli tip SHA — aktualny HEAD/CI = źródło prawdy w GitHub.
+7. **Zero** implementacji Better Auth / OAuth / sesji / DB / UI.
 
-## Branch / PR
+## Branch / PR (stabilne odniesienia)
 
 - Branch: `planning/p2-identity-foundation`
 - PR: https://github.com/HOMZIKx/V2/pull/10
-- Base: `main` (po merge P1 `c82d6bd`)
+- Base: `main` (P1 `c82d6bd`)
 - Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Tip SHA: `cd6d976aee2bcb061e6d1d0519cdc2a1feb4d07f`
-- PR title: `docs(identity): add p2 identity foundation planning package`
-- Draft PR; **bez merge**
+- Aktualny tip SHA i numery workflow: **GitHub Checks / Actions** (komentarz PR
+  po zielonym CI — bez commitowania tip w pętli)
 
 ## Rozstrzygnięte decyzje (2026-08-05)
 
@@ -48,30 +44,23 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 
 ## Validation
 
-| Check                      | Wynik                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------ |
-| `pnpm format:check`        | PASS                                                                                       |
-| `pnpm lint`                | PASS                                                                                       |
-| `pnpm typecheck`           | PASS                                                                                       |
-| `pnpm architecture:check`  | PASS                                                                                       |
-| `pnpm validate` (lokalnie) | FAIL tylko na docker compose config (brak Docker CLI); wcześniej PASS coverage/build/smoke |
-| CI `@ c0bf0f3`             | PASS — Secret scan, Quality gates, Infrastructure integration, Conventional PR title       |
-
-Uwaga: tip-align po `c0bf0f3` wymaga ponownego zielonego CI na aktualnym HEAD przed APPROVED.
+Uruchamiane lokalnie przed push: `pnpm format:check` (+ lint/typecheck/architecture
+gdy adekwatne). Pełne CI i Conventional PR Title: zielone na **finalnym HEAD** —
+potwierdzone w komentarzu PR z numerami workflow.
 
 ## Risks / debt
 
 - Plan Accepted ≠ implementacja. Proof slice Better Auth wymaga osobnego PR.
-- Session storage: Redis SoT (DEC-008) vs domyślny adapter Better Auth — ADR-0012.
-- Guild revoke policy odroczona do P3 (DEC-006 C / D-017 zakres).
+- Preferencja `secondaryStorage`; własny adapter tylko po dowodzie z proof.
+- Guild revoke policy odroczona do P3 (DEC-006 C / D-017 SCOPE REVISED).
 - Pin wersji Better Auth — w PR implementacyjnym.
 - Honest session-token hashing — zależne od faktycznego BA.
 
 ## Questions for ChatGPT / owner
 
-1. Re-audit i `APPROVED` przed merge PR #10?
+1. Re-audit poprawek → `APPROVED` przed merge PR #10?
 2. Pin wersji Better Auth w review planu vs dopiero w PR implementacyjnym (DEC-004)?
 
 ## Last updated
 
-2026-08-05 — Cursor
+2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
