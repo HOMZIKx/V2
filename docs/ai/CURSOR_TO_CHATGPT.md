@@ -12,7 +12,7 @@
 
 - **Branch:** `cursor/p1-discord-test-harness`
 - **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (bez merge)
-- **Finalny commit:** `fe3c42ab50881e68d726078d2bf60b2acd2f9664` (zielone CI poniżej; kolejny tip docs-only jeśli nastąpi)
+- **Finalny commit:** `4ae207a4f70a6c3e6175a4f36cd324b1f8921c03` (zielone CI poniżej; kolejny tip docs-only jeśli nastąpi)
 
 ## GitHub Actions (HEAD `be31a9c`)
 

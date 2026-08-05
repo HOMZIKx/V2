@@ -44,7 +44,7 @@ Remediacja P1: publiczny panel Components V2. PR #9 oczekuje ponownego audytu. B
 - **Status:** `READY_FOR_RE-AUDIT`
 - **Branch:** `cursor/p1-discord-test-harness`
 - **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
-- **Finalny commit (remediation):** `fe3c42ab50881e68d726078d2bf60b2acd2f9664`
+- **Finalny commit (remediation):** `4ae207a4f70a6c3e6175a4f36cd324b1f8921c03`
 - **Zmiana UX:** publiczny `/panel-test` = Components V2 Container (bez legacy embed)
 - **Zeabur:** DEFERRED (DEC-001)
 
