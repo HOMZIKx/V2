@@ -36,6 +36,23 @@ sign-in that cannot run in CI.
 
 ## 3. Configure the local `.env`
 
+Copy the identity block from the monorepo root `.env.example` into the **root**
+`.env` (git-ignored):
+
+```
+cp .env.example .env   # then fill identity values below
+```
+
+`pnpm --dir services/identity-service migrate` and `dev` call
+`loadIdentityEnvFiles()` which loads, without overriding existing shell/CI vars:
+
+1. `.env` in the process cwd
+2. `../../.env` (monorepo root when cwd is `services/identity-service`)
+3. `services/identity-service/.env` when started from the monorepo root
+
+After `cp .env.example .env` at the repo root, `pnpm --dir services/identity-service …`
+picks up that root file via step 2.
+
 Set (never commit real values):
 
 ```

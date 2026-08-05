@@ -2,11 +2,11 @@
 
 ## 1. Status
 
-`READY_FOR_LIVE_TEST`
+`READY_FOR_RE-AUDIT`
 
-Automated proof + code complete on `cursor/p2-identity-proof-slice`. Not
-`READY_FOR_REVIEW` yet: pending (a) CI green on final HEAD and (b) the manual
-live OAuth gate (Discord + Google) confirmed by the owner.
+Addressed all six items from the owner review „CHANGES REQUIRED — przed live
+OAuth” on draft PR #11. Still **no** live OAuth and **no** merge. Not
+`READY_FOR_REVIEW` / `READY_FOR_LIVE_TEST` until re-audit passes.
 
 ## 2. Task ID
 
@@ -15,8 +15,8 @@ live OAuth gate (Discord + Google) confirmed by the owner.
 ## 3. Branch / PR / HEAD
 
 - Branch: `cursor/p2-identity-proof-slice`
-- PR: existing draft PR for this task (no new PR opened, no merge).
-- Final HEAD: recorded in the PR comment after the last push.
+- PR: #11 (existing draft; no new PR, no merge)
+- Final HEAD: recorded in the PR comment after the last push
 
 ## 4. Pinned new dependencies (exact)
 
@@ -27,7 +27,17 @@ Direct deps of `@v2/identity-service`:
 - `ioredis` = 5.11.1
 - `@fastify/cors` = 11.3.0
 - `pg` = 8.22.0
-- dev: `auth` = 1.6.25, `@types/pg` = 8.15.5
+- dev: `@types/pg` = 8.15.5
+
+No `auth` package as a repo dependency. Schema SQL was generated once with the
+pinned CLI and committed:
+
+```
+pnpm dlx auth@1.6.25 generate --config <path-to-better-auth-config> --output services/identity-service/migrations/001_better_auth.sql
+```
+
+(then hand-adjusted: no `session` table; Redis is session SoT). Re-run only when
+intentionally refreshing the committed migration.
 
 No community Nest Better Auth adapter. No Better Auth 1.7 beta/RC. No extra
 runtime crypto or ORM added.
@@ -37,21 +47,20 @@ runtime crypto or ORM added.
 ```
 domain/         errors, synthetic-email, identity-models (no BA/framework imports)
 application/    ports/identity.ports.ts, use-cases/identity.use-cases.ts (framework-free)
-infrastructure/ config/identity-env.ts, auth/create-better-auth.ts, auth/mount-better-auth.ts,
+infrastructure/ config/identity-env.ts, config/load-env-file.ts, config/callback-url.ts,
+                auth/create-better-auth.ts, auth/mount-better-auth.ts,
                 adapters/better-auth-identity.adapter.ts, db/run-migrations.ts
 interface/      app.module, auth-bootstrap.service (thin BA mount), health/identity/proof-ui
                 controllers, identity-exception.filter, request-headers, main.ts
 ```
 
 `IdentitySessionPort` methods: `getMe`, `listAccounts`, `startLink`,
-`unlinkAccount`, `logoutCurrent`, `logoutAll`, `revokeAllSessionsForUser`
-(system revoke — port/use-case only, no public admin endpoint).
+`unlinkAccount`, `logoutCurrent` / `logoutAll` → `LogoutResult` (`setCookieHeaders`),
+`revokeAllSessionsForUser` (system revoke — port/use-case only, no public admin
+endpoint).
 
-Architecture test (`tools/architecture/architecture.test.ts`) updated to forbid
-`better-auth`, `@better-auth/*`, `ioredis`, and `pg` imports in domain/application
-(now checks import specifiers, not raw substrings, so provider-name literals such
-as `'discord'` in domain types are not false-positives). `pnpm architecture:check`
-is green.
+Architecture test forbids `better-auth`, `@better-auth/*`, `ioredis`, and `pg`
+imports in domain/application (import-specifier matching).
 
 ## 6. Migrations and checksum
 
@@ -60,121 +69,86 @@ is green.
   is the session SoT).
 - Unique index `account_provider_account_uidx (providerId, accountId)` enforces
   provider-subject uniqueness at the DB level.
-- Runner `run-migrations.ts` is idempotent, records a line-ending-normalized
-  SHA-256, and detects checksum drift. Invoked via
-  `pnpm --dir services/identity-service migrate`; never on normal service start.
+- Runner `run-migrations.ts` is idempotent. Invoked via
+  `pnpm --dir services/identity-service migrate` (loads root `.env` via
+  `loadIdentityEnvFiles()`); never on normal service start.
 - `001_better_auth.sql` normalized (LF) SHA-256:
   `353ca51869aa7cd23f6125d39e54dd16509b23969a6d0c918a9f2c8213d5e30e`
 
 ## 7. PostgreSQL and Redis model
 
-- PostgreSQL: `user`, `account` (with token columns present but written `NULL`),
-  `verification`, `identity_schema_migrations`. No usable session token in PG.
-- Redis: `secondaryStorage` via `@better-auth/redis-storage` (ioredis), key
-  prefix `v2:identity:auth:`. Active sessions live only here.
-- `storeSessionInDatabase: false`, `session.cookieCache.enabled: false`,
-  stateless session not enabled → revoke is immediate.
+Unchanged: PG for user/account/verification; Redis secondary storage for
+sessions; `storeSessionInDatabase: false`; cookie cache off; immediate revoke.
 
 ## 8. Cookie configuration (no secret values)
 
-- Prefix `v2.identity` (`IDENTITY_COOKIE_PREFIX`).
-- `HttpOnly`, `SameSite=Lax`, host-only, `Secure` when
-  `advanced.useSecureCookies` (production). Opaque session id, no JWT, no browser
-  token storage. CORS via `@fastify/cors` with `credentials: true` restricted to
-  the trusted-origin allowlist.
+Prefix `v2.identity`. Logout endpoints now forward Better Auth clearing
+`Set-Cookie` headers (`signOut` / `revokeSessions`+`signOut` with
+`returnHeaders: true`).
 
 ## 9. Provider tokens — storage proof
 
-- Primary path: `databaseHooks.account.create.before` and `.update.before` null
-  out `accessToken`, `refreshToken`, `idToken`, and both expiry columns before
-  persistence. V2 calls no provider API after login.
-- Belt-and-suspenders: `account.encryptOAuthTokens: true`.
-- Unit proof: `stripProviderTokens` test. Integration proof:
-  `better-auth.integration.spec.ts` links an account with tokens and asserts the
-  DB columns are `NULL`.
+Unchanged: hooks null tokens; `encryptOAuthTokens: true`; integration proof.
 
-## 10. Test evidence
+## 10. Review fixes (six points)
 
-Unit (run in `pnpm test`, 68 passing, 5 integration skipped without infra):
+1. **Local `.env`:** `loadIdentityEnvFiles()` in `main.ts` and `migrate.mts`
+   loads cwd `.env`, `../../.env` (root when run via `--dir`), and
+   `services/identity-service/.env`. Unit/smoke in `load-env-file.spec.ts`.
+   Docs updated in `LOCAL_OAUTH_PROOF.md`.
+2. **Nest/Fastify HTTP:** `identity-http.integration.spec.ts` (infra-gated) —
+   mounted BA GET/POST, multi Set-Cookie, session cookie → `/identity/me`,
+   logout cookie clear + Redis revoke, foreign Origin/callback rejection,
+   runtime close.
+3. **Logout cookies:** port returns `LogoutResult.setCookieHeaders`; controller
+   applies them on `/identity/logout` and `/identity/logout-all`.
+4. **Engine policies (no external OAuth):** mapper→`createOAuthUser` for
+   `email=null` + `getMe` null view; same-email separate users; explicit second
+   provider different email; occupied provider subject reject; unlink last →
+   `CANNOT_UNLINK_LAST`.
+5. **Security validation:** strict booleans (typo cannot silently disable auth);
+   production rejects HTTP/localhost base URL and trusted origins; callback URL
+   must match base/trusted origin; controller + CORS tests for foreign
+   Origin/callback.
+6. **Cleanup/report:** remove tracked `.local-start.*` err artifacts; gitignore
+   `.local-start.err|.log|.log.err`; report no longer claims `auth` as
+   devDependency — documents `pnpm dlx auth@1.6.25 …`.
 
-- `synthetic-email.spec.ts` — deterministic synthetic email + detection.
-- `identity-env.spec.ts` — disabled boot, enabled fail-fast (short secret,
-  missing provider, missing DB, prod https), secret redaction.
-- `create-better-auth.spec.ts` — Discord `email=null` → synthetic email,
-  `emailVerified=false`; token stripping.
-- `better-auth-identity.adapter.spec.ts` — getMe (real vs synthetic email vs
-  null), accounts, link, unlink (row-id → provider-id resolution, NOT_FOUND),
-  logout/logout-all, system revoke, and error mapping
-  (`FAILED_TO_UNLINK_LAST_ACCOUNT` → CANNOT_UNLINK_LAST,
-  `SOCIAL_ACCOUNT_ALREADY_LINKED` → ACCOUNT_ALREADY_LINKED,
-  `FAILED_TO_GET_SESSION` → UNAUTHENTICATED, unknown → VALIDATION_FAILED).
-- `identity.controller.spec.ts` — routes, validation, AUTH_DISABLED path.
-- `identity-exception.filter.spec.ts` — stable-code → HTTP mapping.
-- `proof-ui.controller.spec.ts` — 404 when disabled/prod, HTML when dev-enabled.
-- `health.controller.spec.ts` — live, authDisabled, ready up/down.
+## 11. Test evidence
 
-Integration (gated by `RUN_INFRA_TESTS=true`, run in the CI infra job):
+Unit (local, infra skipped): 81 passed, 14 skipped.
 
-- `src/infrastructure/better-auth.integration.spec.ts` — migrate idempotent, no
-  `session` table in PG, provider tokens `NULL` on account rows, session stored
-  in Redis and immediately revoked via `revokeAllSessionsForUser`, stable V2 UUID
-  for Discord `email=null` via synthetic email.
-- `tools/infra/identity-auth.integration.test.ts` — migrate + checksum,
-  `(providerId, accountId)` uniqueness, Redis session-key roundtrip (self-contained
-  RESP client, no cross-project import).
+Integration (CI infra job, `RUN_INFRA_TESTS=true`):
 
-Coverage: 70.85% statements / 83.52% branch / 89.28% funcs / 70.85% lines
-(thresholds 60/50/60/60).
+- `better-auth.integration.spec.ts` — storage + policy suite
+- `identity-http.integration.spec.ts` — Nest/Fastify HTTP suite
+- `tools/infra/identity-auth.integration.test.ts` — migrate/checksum/uniqueness
 
-## 11. Local command results
+## 12. Local command results
 
-- `pnpm --dir services/identity-service typecheck` — PASS.
-- `pnpm exec vitest run --config services/identity-service/vitest.config.ts` —
-  PASS (68 passed, 5 skipped).
-- coverage run — PASS (above thresholds).
-- `nx run identity-service:lint` — PASS.
-- `pnpm architecture:check` — PASS.
-- `pnpm format:check` — PASS.
-- `pnpm --dir services/identity-service build` — PASS.
-- Better Auth construction smoke — PASS (`auth.handler`, `auth.api.getSession`,
-  `linkSocialAccount`, `revokeSessions`, `internalAdapter.deleteUserSessions` all
-  present).
+Recorded after `pnpm validate` on this HEAD (see PR comment).
 
-Not runnable locally (no Docker on this machine): the PostgreSQL/Redis
-integration tests and full `pnpm validate` infra step — these run in CI.
+## 13. CI
 
-## 12. CI
+Infra job: migrate + identity vitest with `RUN_INFRA_TESTS=true`. Workflow run
+ids on the final HEAD in the PR comment.
 
-`.github/workflows/ci.yml` infra job now runs, after "Verify database isolation":
-`migrate` (identity DB) then the identity integration suite with
-`RUN_INFRA_TESTS=true`, `IDENTITY_AUTH_ENABLED=true`, and CI-only non-secret
-placeholder OAuth ids/secrets (≥32-char secret). No real Discord/Google calls.
-Workflow run ids on the final HEAD to be recorded in the PR comment.
+## 14. Live checklist
 
-## 13. Live checklist
+Still pending owner execution after re-audit — see
+`docs/identity/LOCAL_OAUTH_PROOF.md`. Do not run live OAuth in this pass.
 
-Pending owner execution — see `docs/identity/LOCAL_OAUTH_PROOF.md`. The mandatory
-Discord `email=null` behaviour is covered by an automated test regardless of
-whether a real no-email Discord account is available.
+## 15. Risks / tech debt
 
-## 14. Risks, deviations, tech debt
+- HTTP/policy integration tests require Docker/PostgreSQL/Redis (CI infra).
+- Working-tree cleanup of a locked `.local-start.err` on Windows may leave a
+  local unreadable file; it is gitignored and removed from the index when
+  possible.
 
-- `create-better-auth.ts` factory body, `mount-better-auth.ts`, `run-migrations.ts`,
-  and `auth-bootstrap.service.ts` are covered by integration tests (infra job),
-  not unit tests, so they show low unit-coverage; overall threshold still met.
-- Logout endpoints revoke the session server-side (Redis) immediately; forwarding
-  Better Auth's cookie-clearing `Set-Cookie` from the port-mediated calls is not
-  wired (revocation correctness does not depend on it). Minor tech debt.
-- Architecture test changed from raw-substring to import-specifier matching:
-  strictly more precise, still forbids the same engines plus the new ones.
+## 16. Recommended next slice (not implemented)
 
-## 15. Recommended next slice (not implemented)
-
-Internal service-to-service auth: short-lived asymmetric JWT (TTL ≤ 5 min,
-`iss/aud/sub/jti/iat/exp/kid`) minted by Identity, plus the internal contract for
-other services to resolve the current V2 user — without RBAC in the token. Keep
-guild-scoped policy and Admin MFA out of scope until P3.
+Internal service-to-service JWT — unchanged from prior report.
 
 ## Last updated
 
-2026-08-05 — Cursor
+2026-08-05 — Cursor (re-audit fixes)

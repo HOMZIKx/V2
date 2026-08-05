@@ -1,18 +1,35 @@
 import { z } from 'zod';
 
+import { isLocalHostname } from './callback-url.js';
+
+const TRUE_VALUES = new Set(['1', 'true', 'yes', 'on']);
+const FALSE_VALUES = new Set(['0', 'false', 'no', 'off']);
+
 /**
- * Coerce common truthy/falsy env string spellings into a boolean. Anything
- * other than an explicit true-ish value is false.
+ * Parse an env boolean strictly. Empty/missing → default. Recognized true/false
+ * spellings map accordingly. Any other present value fails validation so a typo
+ * cannot silently disable auth (e.g. `IDENTITY_AUTH_ENABLED=ture`).
  */
 const booleanFromEnv = (defaultValue: boolean) =>
   z
     .string()
     .optional()
-    .transform((value) => {
+    .transform((value, ctx) => {
       if (value === undefined || value.trim() === '') {
         return defaultValue;
       }
-      return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+      const normalized = value.trim().toLowerCase();
+      if (TRUE_VALUES.has(normalized)) {
+        return true;
+      }
+      if (FALSE_VALUES.has(normalized)) {
+        return false;
+      }
+      ctx.addIssue({
+        code: 'custom',
+        message: `must be one of ${[...TRUE_VALUES, ...FALSE_VALUES].join('|')} (got an unrecognized value)`,
+      });
+      return z.NEVER;
     });
 
 const optionalTrimmed = z
@@ -81,6 +98,31 @@ export class IdentityConfigError extends Error {
 
 const MIN_SECRET_LENGTH = 32;
 
+function assertValidOriginUrl(
+  value: string,
+  path: string,
+  addIssue: (path: string, message: string) => void,
+  options: { requireHttps: boolean; rejectLocalhost: boolean },
+): void {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    addIssue(path, 'must be a valid absolute URL');
+    return;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    addIssue(path, 'must use http or https');
+    return;
+  }
+  if (options.requireHttps && url.protocol !== 'https:') {
+    addIssue(path, 'must use https in production');
+  }
+  if (options.rejectLocalhost && isLocalHostname(url.hostname)) {
+    addIssue(path, 'localhost / loopback is not allowed in production');
+  }
+}
+
 function assertEnabledRequirements(
   config: IdentityEnv,
   addIssue: (path: string, message: string) => void,
@@ -116,13 +158,25 @@ function assertEnabledRequirements(
     addIssue('IDENTITY_TRUSTED_ORIGINS', 'at least one trusted origin is required');
   }
 
-  if (config.NODE_ENV === 'production' && config.IDENTITY_AUTH_BASE_URL !== undefined) {
-    if (!config.IDENTITY_AUTH_BASE_URL.startsWith('https://')) {
-      addIssue('IDENTITY_AUTH_BASE_URL', 'must use https in production');
+  const isProduction = config.NODE_ENV === 'production';
+  if (config.IDENTITY_AUTH_BASE_URL !== undefined) {
+    assertValidOriginUrl(config.IDENTITY_AUTH_BASE_URL, 'IDENTITY_AUTH_BASE_URL', addIssue, {
+      requireHttps: isProduction,
+      rejectLocalhost: isProduction,
+    });
+  }
+
+  for (const [index, origin] of config.IDENTITY_TRUSTED_ORIGINS.entries()) {
+    if (origin === '*') {
+      if (isProduction) {
+        addIssue('IDENTITY_TRUSTED_ORIGINS', 'wildcard origin is not allowed in production');
+      }
+      continue;
     }
-    if (config.IDENTITY_TRUSTED_ORIGINS.some((origin) => origin === '*')) {
-      addIssue('IDENTITY_TRUSTED_ORIGINS', 'wildcard origin is not allowed in production');
-    }
+    assertValidOriginUrl(origin, `IDENTITY_TRUSTED_ORIGINS[${index}]`, addIssue, {
+      requireHttps: isProduction,
+      rejectLocalhost: isProduction,
+    });
   }
 }
 

@@ -9,9 +9,10 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseFilters,
 } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
 import type { IdentitySessionPort } from '../application/ports/identity.ports.js';
@@ -22,6 +23,7 @@ import {
   type LinkedAccountView,
   isSupportedProvider,
 } from '../domain/identity-models.js';
+import { isAllowedCallbackUrl } from '../infrastructure/config/callback-url.js';
 import type { IdentityEnv } from '../infrastructure/config/identity-env.js';
 import { IdentityExceptionFilter } from './identity-exception.filter.js';
 import { IDENTITY_CONFIG, IDENTITY_SESSION_PORT } from './identity.tokens.js';
@@ -30,6 +32,12 @@ import { toWebHeaders } from './request-headers.js';
 const providerSchema = z.string().refine(isSupportedProvider, 'unsupported provider');
 const accountIdSchema = z.string().min(1).max(256);
 const callbackSchema = z.string().url().max(2048);
+
+function applySetCookieHeaders(reply: FastifyReply, setCookieHeaders: readonly string[]): void {
+  if (setCookieHeaders.length > 0) {
+    void reply.header('set-cookie', [...setCookieHeaders]);
+  }
+}
 
 @Controller('identity')
 @UseFilters(IdentityExceptionFilter)
@@ -89,6 +97,9 @@ export class IdentityController {
     if (!parsedCallback.success) {
       throw new IdentityError('VALIDATION_FAILED', 'Invalid callbackURL');
     }
+    if (!isAllowedCallbackUrl(parsedCallback.data, this.config)) {
+      throw new IdentityError('VALIDATION_FAILED', 'callbackURL is not an allowed origin');
+    }
 
     return identity.startLink(
       port,
@@ -114,17 +125,25 @@ export class IdentityController {
 
   @Post('logout')
   @HttpCode(200)
-  public async logout(@Req() request: FastifyRequest): Promise<{ status: 'ok' }> {
+  public async logout(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{ status: 'ok' }> {
     const port = this.requirePort();
-    await identity.logoutCurrent(port, toWebHeaders(request.headers));
+    const result = await identity.logoutCurrent(port, toWebHeaders(request.headers));
+    applySetCookieHeaders(reply, result.setCookieHeaders);
     return { status: 'ok' };
   }
 
   @Post('logout-all')
   @HttpCode(200)
-  public async logoutAll(@Req() request: FastifyRequest): Promise<{ status: 'ok' }> {
+  public async logoutAll(
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{ status: 'ok' }> {
     const port = this.requirePort();
-    await identity.logoutAll(port, toWebHeaders(request.headers));
+    const result = await identity.logoutAll(port, toWebHeaders(request.headers));
+    applySetCookieHeaders(reply, result.setCookieHeaders);
     return { status: 'ok' };
   }
 }

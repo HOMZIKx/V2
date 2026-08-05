@@ -64,6 +64,36 @@ describe('parseIdentityEnv — enabled', () => {
     );
   });
 
+  it('rejects localhost trusted origins in production', () => {
+    expect(() =>
+      parseIdentityEnv({
+        ...enabledEnv(),
+        NODE_ENV: 'production',
+        IDENTITY_AUTH_BASE_URL: 'https://identity.example',
+        IDENTITY_TRUSTED_ORIGINS: 'https://app.example,http://localhost:3000',
+      }),
+    ).toThrow(IdentityConfigError);
+  });
+
+  it('accepts https production configuration without localhost', () => {
+    const config = parseIdentityEnv({
+      ...enabledEnv(),
+      NODE_ENV: 'production',
+      IDENTITY_AUTH_BASE_URL: 'https://identity.example',
+      IDENTITY_TRUSTED_ORIGINS: 'https://app.example',
+    });
+    expect(config.IDENTITY_AUTH_ENABLED).toBe(true);
+  });
+
+  it('fails on unrecognized boolean values instead of silently disabling auth', () => {
+    expect(() => parseIdentityEnv({ IDENTITY_AUTH_ENABLED: 'ture' })).toThrow(IdentityConfigError);
+    expect(() => parseIdentityEnv({ IDENTITY_AUTH_ENABLED: 'enabled' })).toThrow(
+      IdentityConfigError,
+    );
+    expect(parseIdentityEnv({ IDENTITY_AUTH_ENABLED: 'false' }).IDENTITY_AUTH_ENABLED).toBe(false);
+    expect(parseIdentityEnv({ IDENTITY_AUTH_ENABLED: '0' }).IDENTITY_AUTH_ENABLED).toBe(false);
+  });
+
   it('never includes secret values in the thrown message', () => {
     try {
       parseIdentityEnv({ ...enabledEnv(), IDENTITY_BETTER_AUTH_SECRET: 'short-secret-value' });

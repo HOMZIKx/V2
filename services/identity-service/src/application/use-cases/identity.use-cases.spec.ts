@@ -11,8 +11,8 @@ describe('identity use-cases', () => {
     const listAccounts = vi.fn().mockResolvedValue([]);
     const startLink = vi.fn().mockResolvedValue({ url: 'https://provider.test/auth' });
     const unlinkAccount = vi.fn().mockResolvedValue(undefined);
-    const logoutCurrent = vi.fn().mockResolvedValue(undefined);
-    const logoutAll = vi.fn().mockResolvedValue(undefined);
+    const logoutCurrent = vi.fn().mockResolvedValue({ setCookieHeaders: [] });
+    const logoutAll = vi.fn().mockResolvedValue({ setCookieHeaders: [] });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     const port: IdentitySessionPort = {

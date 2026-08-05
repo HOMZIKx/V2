@@ -7,8 +7,15 @@ import type { IdentityUserView } from '../domain/identity-models.js';
 import type { IdentityEnv } from '../infrastructure/config/identity-env.js';
 import { IdentityController } from './identity.controller.js';
 
-const config = { IDENTITY_AUTH_BASE_URL: 'http://127.0.0.1:4200' } as IdentityEnv;
+const config = {
+  IDENTITY_AUTH_BASE_URL: 'http://127.0.0.1:4200',
+  IDENTITY_TRUSTED_ORIGINS: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  NODE_ENV: 'development',
+} as IdentityEnv;
 const request = { headers: { cookie: 'v2.identity.session=abc' } } as unknown as FastifyRequest;
+const reply = {
+  header: vi.fn().mockReturnThis(),
+} as unknown as import('fastify').FastifyReply;
 
 const user: IdentityUserView = {
   id: 'u1',
@@ -27,8 +34,12 @@ function spies() {
     listAccounts: vi.fn().mockResolvedValue([]),
     startLink: vi.fn().mockResolvedValue({ url: 'https://provider.test/auth' }),
     unlinkAccount: vi.fn().mockResolvedValue(undefined),
-    logoutCurrent: vi.fn().mockResolvedValue(undefined),
-    logoutAll: vi.fn().mockResolvedValue(undefined),
+    logoutCurrent: vi
+      .fn()
+      .mockResolvedValue({ setCookieHeaders: ['v2.identity.session_token=; Max-Age=0'] }),
+    logoutAll: vi
+      .fn()
+      .mockResolvedValue({ setCookieHeaders: ['v2.identity.session_token=; Max-Age=0'] }),
     revokeAllSessionsForUser: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -62,14 +73,24 @@ describe('IdentityController', () => {
   it('starts linking a valid provider', async () => {
     const mock = spies();
     const result = await controllerWith(mock).link('discord', request, {
-      callbackURL: 'http://cb.test/done',
+      callbackURL: 'http://127.0.0.1:4200/done',
     });
     expect(result.url).toBe('https://provider.test/auth');
     expect(mock.startLink).toHaveBeenCalledWith(
       'discord',
       expect.any(Headers),
-      'http://cb.test/done',
+      'http://127.0.0.1:4200/done',
     );
+  });
+
+  it('rejects a foreign callbackURL origin', async () => {
+    const mock = spies();
+    await expect(
+      controllerWith(mock).link('discord', request, {
+        callbackURL: 'https://evil.example/steal',
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    expect(mock.startLink).not.toHaveBeenCalled();
   });
 
   it('rejects an unsupported provider before hitting the port', async () => {
@@ -108,12 +129,15 @@ describe('IdentityController', () => {
     });
   });
 
-  it('logs out current and all sessions', async () => {
+  it('logs out current and all sessions and forwards Set-Cookie', async () => {
     const mock = spies();
     const controller = controllerWith(mock);
-    await expect(controller.logout(request)).resolves.toEqual({ status: 'ok' });
-    await expect(controller.logoutAll(request)).resolves.toEqual({ status: 'ok' });
+    await expect(controller.logout(request, reply)).resolves.toEqual({ status: 'ok' });
+    await expect(controller.logoutAll(request, reply)).resolves.toEqual({ status: 'ok' });
     expect(mock.logoutCurrent).toHaveBeenCalledOnce();
     expect(mock.logoutAll).toHaveBeenCalledOnce();
+    expect(reply.header).toHaveBeenCalledWith('set-cookie', [
+      'v2.identity.session_token=; Max-Age=0',
+    ]);
   });
 });

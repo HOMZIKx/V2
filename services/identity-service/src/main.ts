@@ -8,8 +8,11 @@ import { createLogger } from '@v2/observability';
 import { serviceName } from './domain/service-name.js';
 import type { AuthRuntime } from './infrastructure/auth/create-better-auth.js';
 import { parseIdentityEnv } from './infrastructure/config/identity-env.js';
+import { loadIdentityEnvFiles } from './infrastructure/config/load-env-file.js';
 import { AppModule } from './interface/app.module.js';
 import { AUTH_RUNTIME } from './interface/identity.tokens.js';
+
+loadIdentityEnvFiles();
 
 const logger = createLogger(serviceName);
 

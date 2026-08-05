@@ -1,10 +1,17 @@
+import { APIError } from 'better-auth';
+import { makeSignature } from 'better-auth/crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { isSyntheticEmail } from '../domain/synthetic-email.js';
 import { BetterAuthIdentityAdapter } from './adapters/better-auth-identity.adapter.js';
-import { type AuthRuntime, createBetterAuth } from './auth/create-better-auth.js';
+import {
+  type AuthRuntime,
+  createBetterAuth,
+  mapDiscordProfileToUser,
+} from './auth/create-better-auth.js';
 import { type IdentityEnv, parseIdentityEnv } from './config/identity-env.js';
 import { runMigrations } from './db/run-migrations.js';
 
@@ -32,6 +39,15 @@ function buildConfig(): IdentityEnv {
     IDENTITY_GOOGLE_CLIENT_ID: 'test-google-id',
     IDENTITY_GOOGLE_CLIENT_SECRET: 'test-google-secret',
   });
+}
+
+async function sessionHeaders(runtime: AuthRuntime, userId: string): Promise<Headers> {
+  const context = await runtime.auth.$context;
+  const session = await context.internalAdapter.createSession(userId);
+  const signature = await makeSignature(session.token, context.secret);
+  const headers = new Headers();
+  headers.set('cookie', `${context.authCookies.sessionToken.name}=${session.token}.${signature}`);
+  return headers;
 }
 
 runInfra('Better Auth storage model (PostgreSQL + Redis)', () => {
@@ -132,25 +148,188 @@ runInfra('Better Auth storage model (PostgreSQL + Redis)', () => {
     const afterRevoke = await context.internalAdapter.findSession(session.token);
     expect(afterRevoke).toBeNull();
   });
+});
 
-  it('creates a stable V2 user with a synthetic email for Discord email=null', async () => {
+runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
+  let runtime: AuthRuntime;
+  const createdUserIds: string[] = [];
+
+  beforeAll(async () => {
+    await runMigrations({ connectionString: databaseUrl, migrationsDir });
+    runtime = createBetterAuth(buildConfig());
+  });
+
+  afterAll(async () => {
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      for (const id of createdUserIds) {
+        await client.query('DELETE FROM "user" WHERE id = $1', [id]);
+      }
+    } finally {
+      await client.end().catch(() => undefined);
+    }
+    await runtime.close();
+  });
+
+  it('persists Discord email=null through the real mapper into a synthetic email user', async () => {
     const context = await runtime.auth.$context;
     const accountId = `discord-null-${Date.now()}`;
+    const mapped = mapDiscordProfileToUser({
+      id: accountId,
+      username: 'NoEmail',
+      email: null,
+    });
+
+    expect(isSyntheticEmail(mapped.email)).toBe(true);
+    expect(mapped.emailVerified).toBe(false);
+
     const { user, account } = await context.internalAdapter.createOAuthUser(
       {
-        name: 'NoEmail',
-        email: `v2+discord+${'0'.repeat(16)}@discord.invalid`,
-        emailVerified: false,
+        name: mapped.name,
+        email: mapped.email,
+        emailVerified: mapped.emailVerified,
       },
       { providerId: 'discord', accountId },
     );
     createdUserIds.push(user.id);
 
-    expect(user.id).toMatch(/[0-9a-f-]{36}/);
+    expect(user.email).toBe(mapped.email);
+    expect(isSyntheticEmail(user.email)).toBe(true);
     expect(account.providerId).toBe('discord');
+    expect(account.accountId).toBe(accountId);
+
+    const headers = await sessionHeaders(runtime, user.id);
+    const adapter = new BetterAuthIdentityAdapter(runtime.auth);
+    const me = await adapter.getMe(headers);
+    expect(me).toMatchObject({ id: user.id, email: null, emailSynthetic: true });
+  });
+
+  it('keeps same-email provider identities as separate users (no implicit linking)', async () => {
+    const context = await runtime.auth.$context;
+    const sharedEmail = `same-email-${Date.now()}@example.com`;
+
+    const discord = await context.internalAdapter.createOAuthUser(
+      { name: 'Discord Same', email: sharedEmail, emailVerified: false },
+      { providerId: 'discord', accountId: `discord-same-${Date.now()}` },
+    );
+    const google = await context.internalAdapter.createOAuthUser(
+      { name: 'Google Same', email: sharedEmail, emailVerified: true },
+      { providerId: 'google', accountId: `google-same-${Date.now()}` },
+    );
+    createdUserIds.push(discord.user.id, google.user.id);
+
+    expect(discord.user.id).not.toBe(google.user.id);
+    expect(discord.user.email).toBe(sharedEmail);
+    expect(google.user.email).toBe(sharedEmail);
+  });
+
+  it('allows explicit link of a second provider with a different email on the same user', async () => {
+    const context = await runtime.auth.$context;
+    const stamp = Date.now();
+    const { user } = await context.internalAdapter.createOAuthUser(
+      {
+        name: 'Explicit Link',
+        email: `explicit-a-${stamp}@example.com`,
+        emailVerified: false,
+      },
+      { providerId: 'discord', accountId: `discord-explicit-${stamp}` },
+    );
+    createdUserIds.push(user.id);
+
+    await context.internalAdapter.linkAccount({
+      userId: user.id,
+      providerId: 'google',
+      accountId: `google-explicit-${stamp}`,
+      scope: 'openid email profile',
+    });
+
+    const headers = await sessionHeaders(runtime, user.id);
+    const adapter = new BetterAuthIdentityAdapter(runtime.auth);
+    const accounts = await adapter.listAccounts(headers);
+    expect(accounts.map((account) => account.provider).sort()).toEqual(['discord', 'google']);
+  });
+
+  it('rejects an occupied provider subject (unique providerId+accountId)', async () => {
+    const context = await runtime.auth.$context;
+    const stamp = Date.now();
+    const subject = `occupied-subject-${stamp}`;
+
+    const first = await context.internalAdapter.createOAuthUser(
+      {
+        name: 'Owner',
+        email: `owner-${stamp}@example.com`,
+        emailVerified: false,
+      },
+      { providerId: 'discord', accountId: subject },
+    );
+    const second = await context.internalAdapter.createUser({
+      name: 'Other',
+      email: `other-${stamp}@example.com`,
+    });
+    createdUserIds.push(first.user.id, second.id);
+
+    await expect(
+      context.internalAdapter.linkAccount({
+        userId: second.id,
+        providerId: 'discord',
+        accountId: subject,
+      }),
+    ).rejects.toBeTruthy();
+  });
+
+  it('refuses to unlink the last remaining account', async () => {
+    const context = await runtime.auth.$context;
+    const stamp = Date.now();
+    const { user, account } = await context.internalAdapter.createOAuthUser(
+      {
+        name: 'Last Account',
+        email: `last-${stamp}@example.com`,
+        emailVerified: false,
+      },
+      { providerId: 'discord', accountId: `discord-last-${stamp}` },
+    );
+    createdUserIds.push(user.id);
+
+    const headers = await sessionHeaders(runtime, user.id);
+
+    await expect(
+      runtime.auth.api.unlinkAccount({
+        body: { providerId: account.providerId, accountId: account.accountId },
+        headers,
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof APIError)) {
+        return false;
+      }
+      return error.body?.code === 'FAILED_TO_UNLINK_LAST_ACCOUNT';
+    });
 
     const adapter = new BetterAuthIdentityAdapter(runtime.auth);
-    // getSession requires cookies; here we assert the storage-level identity is stable.
-    void adapter;
+    await expect(adapter.unlinkAccount(account.id, headers)).rejects.toMatchObject({
+      code: 'CANNOT_UNLINK_LAST',
+    });
+  });
+
+  it('logoutCurrent clears cookies via returnHeaders and revokes the Redis session', async () => {
+    const context = await runtime.auth.$context;
+    const email = `logout-cookie-${Date.now()}@example.com`;
+    const user = await context.internalAdapter.createUser({ name: 'Logout Cookie', email });
+    createdUserIds.push(user.id);
+
+    const session = await context.internalAdapter.createSession(user.id);
+    const signature = await makeSignature(session.token, context.secret);
+    const headers = new Headers();
+    headers.set('cookie', `${context.authCookies.sessionToken.name}=${session.token}.${signature}`);
+
+    const adapter = new BetterAuthIdentityAdapter(runtime.auth);
+    const result = await adapter.logoutCurrent(headers);
+    expect(result.setCookieHeaders.length).toBeGreaterThan(0);
+    expect(
+      result.setCookieHeaders.some((entry) => /max-age=0/i.test(entry) || /expires=/i.test(entry)),
+    ).toBe(true);
+
+    const after = await context.internalAdapter.findSession(session.token);
+    expect(after).toBeNull();
   });
 });

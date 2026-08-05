@@ -3,7 +3,7 @@ import type {
   LinkedAccountView,
   ProviderId,
 } from '../../domain/identity-models.js';
-import type { IdentitySessionPort } from '../ports/identity.ports.js';
+import type { IdentitySessionPort, LogoutResult } from '../ports/identity.ports.js';
 
 /**
  * Thin, framework-free use-cases over {@link IdentitySessionPort}. Controllers
@@ -42,11 +42,11 @@ export function unlinkAccount(
   return port.unlinkAccount(accountId, headers);
 }
 
-export function logoutCurrent(port: IdentitySessionPort, headers: Headers): Promise<void> {
+export function logoutCurrent(port: IdentitySessionPort, headers: Headers): Promise<LogoutResult> {
   return port.logoutCurrent(headers);
 }
 
-export function logoutAll(port: IdentitySessionPort, headers: Headers): Promise<void> {
+export function logoutAll(port: IdentitySessionPort, headers: Headers): Promise<LogoutResult> {
   return port.logoutAll(headers);
 }
 

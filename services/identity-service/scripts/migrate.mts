@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadIdentityEnvFiles } from '../src/infrastructure/config/load-env-file.js';
 import { runMigrations } from '../src/infrastructure/db/run-migrations.js';
+
+loadIdentityEnvFiles();
 
 const connectionString = process.env.IDENTITY_DATABASE_URL;
 if (connectionString === undefined || connectionString.trim() === '') {

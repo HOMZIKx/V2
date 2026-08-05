@@ -5,6 +5,14 @@ import type {
 } from '../../domain/identity-models.js';
 
 /**
+ * Cookie-clearing headers produced by logout. Controllers forward these as
+ * distinct `Set-Cookie` response headers so the browser drops the session.
+ */
+export interface LogoutResult {
+  readonly setCookieHeaders: readonly string[];
+}
+
+/**
  * Application-facing port for identity/session operations. The infrastructure
  * adapter (Better Auth) implements this; domain and application never import
  * the auth engine directly.
@@ -18,8 +26,8 @@ export interface IdentitySessionPort {
   listAccounts(headers: Headers): Promise<LinkedAccountView[]>;
   startLink(provider: ProviderId, headers: Headers, callbackURL: string): Promise<{ url: string }>;
   unlinkAccount(accountId: string, headers: Headers): Promise<void>;
-  logoutCurrent(headers: Headers): Promise<void>;
-  logoutAll(headers: Headers): Promise<void>;
+  logoutCurrent(headers: Headers): Promise<LogoutResult>;
+  logoutAll(headers: Headers): Promise<LogoutResult>;
   /** System revoke — deletes every session for a user. No public admin endpoint. */
   revokeAllSessionsForUser(userId: string): Promise<void>;
 }

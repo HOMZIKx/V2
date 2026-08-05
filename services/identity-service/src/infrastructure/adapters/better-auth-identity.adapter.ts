@@ -1,6 +1,6 @@
 import { APIError } from 'better-auth';
 
-import type { IdentitySessionPort } from '../../application/ports/identity.ports.js';
+import type { IdentitySessionPort, LogoutResult } from '../../application/ports/identity.ports.js';
 import { IdentityError } from '../../domain/errors.js';
 import type {
   IdentityUserView,
@@ -15,6 +15,14 @@ function toIso(value: Date | string | number | null | undefined): string {
     return new Date(0).toISOString();
   }
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function setCookieHeadersFrom(headers: Headers): readonly string[] {
+  if (typeof headers.getSetCookie === 'function') {
+    return headers.getSetCookie();
+  }
+  const single = headers.get('set-cookie');
+  return single === null || single === '' ? [] : [single];
 }
 
 /**
@@ -141,17 +149,21 @@ export class BetterAuthIdentityAdapter implements IdentitySessionPort {
     }
   }
 
-  public async logoutCurrent(headers: Headers): Promise<void> {
+  public async logoutCurrent(headers: Headers): Promise<LogoutResult> {
     try {
-      await this.auth.api.signOut({ headers });
+      const result = await this.auth.api.signOut({ headers, returnHeaders: true });
+      return { setCookieHeaders: setCookieHeadersFrom(result.headers) };
     } catch (error) {
       throw mapError(error);
     }
   }
 
-  public async logoutAll(headers: Headers): Promise<void> {
+  public async logoutAll(headers: Headers): Promise<LogoutResult> {
     try {
+      // Revoke every server-side session first, then signOut to emit clearing cookies.
       await this.auth.api.revokeSessions({ headers });
+      const result = await this.auth.api.signOut({ headers, returnHeaders: true });
+      return { setCookieHeaders: setCookieHeadersFrom(result.headers) };
     } catch (error) {
       throw mapError(error);
     }

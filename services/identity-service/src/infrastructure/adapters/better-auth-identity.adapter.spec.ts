@@ -127,13 +127,21 @@ describe('BetterAuthIdentityAdapter session ops', () => {
     ).resolves.toEqual({ url: 'https://provider.test/auth' });
   });
 
-  it('logs out current and all', async () => {
-    const { auth, api } = makeAuth();
+  it('logs out current and all with returnHeaders for cookie clearing', async () => {
+    const clearing = new Headers();
+    clearing.append('set-cookie', 'v2.identity.session_token=; Max-Age=0; Path=/');
+    clearing.append('set-cookie', 'v2.identity.session_data=; Max-Age=0; Path=/');
+    const { auth, api } = makeAuth({
+      signOut: vi.fn().mockResolvedValue({ headers: clearing, response: { success: true } }),
+      revokeSessions: vi.fn().mockResolvedValue({ status: true }),
+    });
     const adapter = new BetterAuthIdentityAdapter(auth);
-    await adapter.logoutCurrent(headers);
-    await adapter.logoutAll(headers);
-    expect(api.signOut).toHaveBeenCalledOnce();
-    expect(api.revokeSessions).toHaveBeenCalledOnce();
+    const current = await adapter.logoutCurrent(headers);
+    const all = await adapter.logoutAll(headers);
+    expect(api.signOut).toHaveBeenCalledWith({ headers, returnHeaders: true });
+    expect(api.revokeSessions).toHaveBeenCalledWith({ headers });
+    expect(current.setCookieHeaders.length).toBeGreaterThanOrEqual(1);
+    expect(all.setCookieHeaders.length).toBeGreaterThanOrEqual(1);
   });
 
   it('system-revokes via the internal adapter', async () => {
