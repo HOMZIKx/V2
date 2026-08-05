@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** _(uzupełnione po push fix gitleaks)_
+- **Finalny commit:** `216b80952143ca3547fe9b6feb9d35f6e1b290f2`
 - **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, bez merge)
 
 ## Zakres wykonany
@@ -47,10 +47,12 @@ discord.js            → 14.25.1
 
 ### GitHub Actions
 
-- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft)
-- **HEAD:** `787e9ba` + follow-up fix (gitleaks false positive w fixture `123456…`)
-- Quality gates na push HEAD: zielone; Secret scan na PR failował przez regułę `discord-client-id` na klasycznym placeholderze w `*.spec.ts` — naprawione (fixture → `100000000000000001`).
-- Linki CI: uzupełnione po zielonym rerunie.
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, tytuł: `feat(discord-gateway): add p1 discord test harness`)
+- **CI (PR):** success — https://github.com/HOMZIKx/V2/actions/runs/30980985331  
+  (Quality gates + Secret scan + Infrastructure integration)
+- **CI (push):** success — https://github.com/HOMZIKx/V2/actions/runs/30980983179
+- **PR Title:** success — https://github.com/HOMZIKx/V2/actions/runs/30981597189
+- Secret scan: wcześniej false positive `discord-client-id` na fixture `123456…` w historii — naprawione (`.gitleaks.toml` + nowy fixture).
 
 ## Manualny live test — SUKCES
 
