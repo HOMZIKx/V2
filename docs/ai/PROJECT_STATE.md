@@ -2,7 +2,7 @@
 
 ## Status
 
-`IN_PROGRESS` — security remediation on PR #14 (READY_FOR_REVIEW retracted)
+`READY_FOR_REVIEW_SECURITY_FIXED`
 
 Branch `cursor/p2-identity-internal-jwt` implements P2 internal service-to-service JWT (Issue #13, D1=C). Draft PR #14. GitHub is SoT for tip HEAD and CI.
 

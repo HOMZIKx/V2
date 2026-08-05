@@ -2,7 +2,7 @@
 
 ## 1. Status
 
-`IN_PROGRESS` → target `READY_FOR_REVIEW_SECURITY_FIXED`
+`READY_FOR_REVIEW_SECURITY_FIXED`
 
 P2 internal service-to-service JWT security remediation on draft PR #14
 (`cursor/p2-identity-internal-jwt`). Issue #13 stays OPEN. **No merge by Cursor.**
