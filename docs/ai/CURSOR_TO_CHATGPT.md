@@ -18,20 +18,20 @@ later second provider. Still **no** live OAuth and **no** merge.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: _(filled after push)_
+- Final HEAD: `e169c9ce58a79da76e95155de4043f304d2c1783`
 
 ## 4. Discord-only amendment (this pass)
 
-| Area                        | Change                                                                                                   |
-| --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `identity-env.ts`           | Google env keys removed; Discord required when auth enabled                                              |
-| `create-better-auth.ts`     | `socialProviders` = Discord only                                                                         |
-| `SUPPORTED_PROVIDERS`       | `['discord']`; `LinkedAccountView.provider` stays `string`                                               |
-| Proof UI                    | Discord sign-in / link only; server OAuth redirect retained                                              |
-| `.env.example` / CI         | No `IDENTITY_GOOGLE_*`                                                                                   |
-| `LOCAL_OAUTH_PROOF.md`      | Discord-only live checklist                                                                              |
-| Tests                       | Discord-only env; same-email / explicit multi-account via deferred provider id string (not Google OAuth) |
-| `PENDING_DECISIONS` DEC-003 | Owner amendment recorded                                                                                 |
+| Area                    | Change                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `identity-env.ts`       | Google env keys removed; Discord required when auth enabled                                       |
+| `create-better-auth.ts` | `socialProviders` = Discord only                                                                  |
+| `SUPPORTED_PROVIDERS`   | `['discord']`; `LinkedAccountView.provider` stays `string`                                        |
+| Proof UI                | Discord sign-in / link only; server OAuth redirect retained                                       |
+| `.env.example` / CI     | No `IDENTITY_GOOGLE_*`                                                                            |
+| `LOCAL_OAUTH_PROOF.md`  | Discord-only live checklist                                                                       |
+| Tests                   | Discord-only env; same-email / explicit multi-account via deferred provider id (not Google OAuth) |
+| `PENDING_DECISIONS`     | DEC-003 owner amendment recorded                                                                  |
 
 ## 5. Pinned dependencies (unchanged)
 
@@ -53,15 +53,22 @@ token strip hooks, logout Set-Cookie, Nest HTTP integration, strict booleans).
 
 ## 11. Test evidence
 
-_(filled after local validate / CI)_
+Local identity (with infra): **96 passed** (unit + `better-auth` + Nest HTTP
+integration). Without `RUN_INFRA_TESTS`: 82 passed, 14 skipped.
 
 ## 12. Local command results
 
-_(filled after local validate)_
+- Identity vitest + infra: 96 passed
+- `pnpm format:check` / lint / typecheck / coverage / architecture / build / e2e /
+  web+admin build / `test:runtime-smoke` — passed (after clearing polluted
+  `IDENTITY_*` shell env from local infra runs)
 
 ## 13. CI
 
-_(filled after push)_
+- Push CI `31013518420` on HEAD `e169c9ce…` — **success**
+- PR CI `31013521770` on HEAD `e169c9ce…` — **success**
+  (Secret scan, Quality gates, Infrastructure integration)
+- PR Title — **success**
 
 ## 14. Live checklist
 
@@ -82,4 +89,4 @@ Internal service-to-service JWT — unchanged.
 
 ## Last updated
 
-2026-08-05 — Cursor (Discord-only P2 amendment)
+2026-08-05 — Cursor (Discord-only P2 amendment; green CI)
