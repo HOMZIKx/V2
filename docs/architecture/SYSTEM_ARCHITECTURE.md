@@ -64,17 +64,17 @@ Domain i Application nie importują frameworków ani adapterów infrastrukturaln
 - Web: Next.js App Router
 - Admin: React + Vite + React Router
 
-## Tożsamość (P2 — planowanie)
+## Tożsamość (P2 — plan Accepted; implementacja osobnym PR)
 
 Fundament Identity jest opisany w:
 
 - [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md)
 - [P2_IDENTITY_FOUNDATION_HANDOFF.md](../ai/P2_IDENTITY_FOUNDATION_HANDOFF.md)
-- ADR Proposed: [0009](decisions/ADR-0009-identity-service-boundary.md), [0010](decisions/ADR-0010-multi-provider-identity.md), [0011](decisions/ADR-0011-session-and-auth-transport.md)
+- ADR Accepted: [0009](decisions/ADR-0009-identity-service-boundary.md), [0010](decisions/ADR-0010-multi-provider-identity.md), [0011](decisions/ADR-0011-session-and-auth-transport.md), [0012](decisions/ADR-0012-better-auth-engine.md)
 
 **Identity ≠ Authorization.** RBAC i permissions należą do `authorization-service` (P3+), nie do P2.
 
-Do czasu akceptacji DEC-003 obowiązuje konstytucyjne Discord-only z `NON_NEGOTIABLES`; ADR-0010 pozostaje Proposed.
+DEC-003–009 ACCEPTED (2026-08-05): multi-provider V2 User; Better Auth za portami; opaque sessions + internal JWT. Implementacja kodu dopiero po merge planu PR #10.
 
 ## Zasada ewolucji
 

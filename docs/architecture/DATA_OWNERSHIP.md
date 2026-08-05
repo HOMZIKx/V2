@@ -18,16 +18,17 @@ W Promptcie 0 nie istnieją jeszcze modele biznesowe ani ORM. Izolacja jest
 przygotowana przez lokalne skrypty inicjalizacyjne PostgreSQL, a nie przez
 udostępniony model danych.
 
-## Planowane encje Identity (P2 — po APPROVED)
+## Encje Identity (P2 — plan Accepted; implementacja osobnym PR)
 
 Wyłącznie w bazie `identity`, właściciel `identity-service`:
 
-- `User` — stabilny identyfikator V2;
-- `ExternalIdentity` — provider + subject;
-- `Session` — sesje z revoke one / revoke all.
+- `User` — stabilny UUID V2;
+- `ExternalIdentity` / `Account` — provider + providerAccountId (UNIQUE);
+- `Session` — sesje z revoke one / all / admin|system;
+- `Verification` — one-time flow tokens (state/PKCE).
 
-Szczegóły: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md), ADR-0009 Proposed.
-Inne usługi nadal **nie** mają dostępu do tej bazy.
+Szczegóły: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md), [ADR-0009](decisions/ADR-0009-identity-service-boundary.md) Accepted.
+Inne usługi nadal **nie** mają dostępu do tej bazy. Redis session SoT — wyłącznie przez Identity.
 
 ## Wspólna infrastruktura nie jest źródłem prawdy
 

@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { createConfig } from '@v2/configuration';
+import { createConfig, resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
 import { z } from 'zod';
 
@@ -18,7 +18,7 @@ const config = createConfig(
 );
 const logger = createLogger('api-gateway');
 
-const bootstrap = async () => {
+const bootstrap = async (): Promise<void> => {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
   if (config.NODE_ENV !== 'production') {
@@ -32,8 +32,12 @@ const bootstrap = async () => {
     );
   }
 
-  logger.info('API Gateway started.');
-  await app.listen(config.API_GATEWAY_PORT, config.API_GATEWAY_HOST);
+  const listen = resolveHttpListen({
+    defaultPort: config.API_GATEWAY_PORT,
+    defaultHost: config.API_GATEWAY_HOST,
+  });
+  logger.info('API Gateway started.', { host: listen.host, port: listen.port });
+  await app.listen(listen.port, listen.host);
 };
 
 void bootstrap();

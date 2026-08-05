@@ -1,66 +1,49 @@
-# Cursor → ChatGPT
+# CURSOR_TO_CHATGPT
 
 ## Status
 
-`READY_FOR_REVIEW`
+`READY_FOR_RE-AUDIT`
 
-## Task ID
+## Summary
 
-`P2-IDENTITY-FOUNDATION-001` (**planning only**)
+Zamknięto planistyczny PR **#10** (`planning/p2-identity-foundation`) według
+review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2”:
 
-## Branch, commit i PR
+1. Zsynchronizowano gałąź z `main` zawierającym scalony P1 (Components V2 /
+   Discord harness) — konflikty docs rozwiązane **bez cofania** zmian P1.
+2. Zapisano decyzje właściciela **DEC-003–009** (2026-08-05) jako ACCEPTED;
+   D-016 → SUPERSEDED; nowe D-031 / D-032 / D-033.
+3. ADR-0009 / 0010 / 0011 → **Accepted**; dodano **ADR-0012** (Better Auth
+   engine behind Identity ports).
+4. Zaktualizowano `NON_NEGOTIABLES`, `IDENTITY_FOUNDATION.md`, handoff,
+   `PENDING_DECISIONS`, Decision Log, `PROJECT_STATE`.
+5. **Zero** instalacji Better Auth, OAuth, sesji, DB, UI logowania — wyłącznie
+   dokumentacja / ADR.
 
-- **Branch:** `planning/p2-identity-foundation`
-- **Finalny commit:** `55a3549ee916a18586b06e66695ea21e29467159`
-- **PR:** [#10](https://github.com/HOMZIKx/V2/pull/10) (draft, bez merge)
+## Branch / PR
 
-## Co zrobiono
+- Branch: `planning/p2-identity-foundation`
+- PR: https://github.com/HOMZIKx/V2/pull/10
+- Base: `main` (po merge P1)
+- Tip SHA: _(wypełnić po push)_
 
-Przygotowano **wyłącznie dokumentację** fundamentu Identity:
+## Validation
 
-- Kompletny handoff: `docs/ai/P2_IDENTITY_FOUNDATION_HANDOFF.md`
-- Architektura: `docs/architecture/IDENTITY_FOUNDATION.md`
-- ADR **Proposed:** 0009 (granica Identity), 0010 (multi-provider), 0011 (sesje/transport)
-- `PENDING_DECISIONS.md`: DEC-003 … DEC-009 z wariantami i rekomendacjami
-- Aktualizacja `PROJECT_STATE.md`, `DECISION_LOG.md`, `SYSTEM_ARCHITECTURE.md`, `SERVICE_CATALOG.md`, `DATA_OWNERSHIP.md`
-- Ten raport + brief audytowy w `CHATGPT_TO_CURSOR.md`
+_(wypełnić po uruchomieniu)_
 
-## Czego NIE zrobiono (świadomie)
+## Risks / debt
 
-- Brak implementacji kodu P2
-- Brak zależności Better Auth / OAuth w lockfile
-- Brak zmian `NON_NEGOTIABLES` (wymaga DEC-003)
-- Brak merge
-- Brak startu P3 / RBAC / MFA / Zeabur
+- Plan Accepted ≠ implementacja. Proof slice Better Auth wymaga osobnego PR.
+- Session storage: Redis SoT (DEC-008) vs domyślny adapter Better Auth — ADR-0012
+  i handoff wymagają jawnej warstwy adaptera w impl.
+- Guild revoke policy odroczona do P3 (D-032).
 
-## Weryfikacja repo przed rekomendacjami tech
+## Questions for ChatGPT / owner
 
-| Fakt                     | Wynik                                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `identity-service`       | Szkielet health only                                                                 |
-| `better-auth` w lockfile | Brak                                                                                 |
-| D-019 Better Auth        | ACCEPTED historycznie — **ponownie otwarte** jako DEC-004                            |
-| D-016 Discord-only       | ACCEPTED — **konflikt** z briefem P2 → DEC-003                                       |
-| Sesje Redis / cookie     | D-020 ACCEPTED — rekomendacja potwierdzenia DEC-008 (opaque), nie JWT w przeglądarce |
+1. Re-audit i `APPROVED` przed merge PR #10?
+2. Czy pin wersji Better Auth ma być ustalony w review planu, czy dopiero w PR
+   implementacyjnym (zgodnie z DEC-004)?
 
-## Rekomendacje (nie decyzje)
+## Last updated
 
-1. Przyjąć **DEC-003 B** (multi-provider) albo **C** (Discord wymagany do pierwszego konta) — inaczej P2 Google jest sprzeczne z konstytucją.
-2. **DEC-004:** spike Better Auth vs lżejszy stack OAuth+session przed Accepted ADR.
-3. **DEC-005 A:** bez auto-link po emailu.
-4. **DEC-007 A:** implementacja P2 dopiero po P1 APPROVED+merge i APPROVED planu.
-5. **DEC-008 A / DEC-009 A:** opaque cookie session; krótki JWT tylko jako internal context.
-
-## Definition of Done tego PR planistycznego
-
-- Dokumentacja kompletna względem briefu właściciela
-- PENDING wypełnione
-- PR do `main` bez merge
-- Stan projektu: oczekiwanie na audyt ChatGPT
-
-## Prośba do ChatGPT
-
-1. Audyt pakietu planistycznego.
-2. Rozstrzygnięcie lub priorytetyzacja DEC-003 … DEC-009 z właścicielem.
-3. Po akceptacji: `APPROVED` planu + brief implementacyjny (osobno).
-4. Nie zlecać implementacji P2 w tym samym kroku co sam audyt planu, jeśli DEC-003/004 otwarte.
+2026-08-05 — Cursor

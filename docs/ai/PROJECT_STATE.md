@@ -1,71 +1,56 @@
-# Project State — V2
+# PROJECT_STATE
 
 ## Status
 
-`P2_IDENTITY_FOUNDATION_PLANNING_READY_FOR_REVIEW`
+`READY_FOR_RE-AUDIT` — plan P2 Identity Foundation zamknięty decyzjami właściciela
+(2026-08-05); PR planistyczny #10 po sync z `main` (P1).
 
-## Aktualny etap
+## Active phase
 
-Pakiet **planistyczny** P2 Identity Foundation oczekuje na audyt ChatGPT. **Brak implementacji P2.**  
-P1 Discord Test Harness: osobny PR (#9) — nadal wymaga `APPROVED` / merge (patrz DEC-007).
+P2 Identity Foundation — **planning close** (PR #10). Implementacja P2 **nie
+rozpoczęta** i **zakazana** do czasu merge planu + osobnego PR implementacyjnego.
 
-## Zatwierdzone
+## Current objective
 
-- wizja i model produktu;
-- jedna organizacja i wiele serwerów Discord;
-- hybrydowy profil użytkownika;
-- pełna platforma WWW + Discord;
-- model uprawnień (docelowy — niezaimplementowany);
-- mikrousługi;
-- główny stos TypeScript;
-- monorepo pnpm + Nx;
-- własność danych;
-- REST/OpenAPI + RabbitMQ;
-- backend Node/Nest/Fastify;
-- podział Web/Admin;
-- historyczny model tożsamości D-016…D-020 (**część pod rewizją w DEC-003+**);
-- trwały protokół pracy AI;
-- standardy jakości, testów i lokalnej infrastruktury;
-- standard postów i interakcji Discord (D-023);
-- oryginalna identyfikacja wizualna V2 (D-024);
-- dedykowany serwer testowy Discord `1534228693017432124`;
-- wizja Desktop Companion / overlay (ADR-0006);
-- Discord test harness P1 (ADR-0007) — na `main` wg stanu merge;
-- ADR-0008 (Zeabur) — dokumentacja; **wdrożenie deferred**.
+Zamknąć plan P2 zgodnie z decyzjami właściciela DEC-003–009: ADR Accepted,
+`NON_NEGOTIABLES`, Decision Log, handoff, sync z P1. Status
+`READY_FOR_RE-AUDIT`. Bez merge, bez instalacji Better Auth, bez kodu OAuth /
+sesji / DB / UI logowania.
 
-## Zamknięty etap
+## In scope now
 
-- **Task ID:** `P0-BOOTSTRAP-001`
-- **Status:** `APPROVED_AND_MERGED`
-- **PR:** `#3`
+- Sync `planning/p2-identity-foundation` z `main` (P1 Components V2).
+- Rozstrzygnięcie DEC-003–009 → ACCEPTED; D-031, D-032, D-033; D-016 SUPERSEDED.
+- ADR-0009 / 0010 / 0011 → **Accepted**; nowy **ADR-0012** Better Auth engine.
+- Aktualizacja `NON_NEGOTIABLES`, `IDENTITY_FOUNDATION.md`, handoff,
+  `PENDING_DECISIONS`, Decision Log, raport Cursor.
+- Walidacja dokumentów + push do PR #10.
 
-## Aktywne zadanie (planowanie)
+## Out of scope now
 
-- **Task ID:** `P2-IDENTITY-FOUNDATION-001`
-- **Status:** `READY_FOR_REVIEW` (planning only)
-- **Branch:** `planning/p2-identity-foundation`
-- **Handoff:** `docs/ai/P2_IDENTITY_FOUNDATION_HANDOFF.md`
-- **ADR Proposed:** 0009, 0010, 0011
-- **PENDING:** DEC-003 … DEC-009
-- **Pull Request:** [#10](https://github.com/HOMZIKx/V2/pull/10) — draft, **bez merge**
-- **Finalny commit:** `55a3549ee916a18586b06e66695ea21e29467159`
+- Instalacja Better Auth / jakiejkolwiek biblioteki auth.
+- Implementacja OAuth, sesji, cookie, JWT, bazy Identity, ekranów logowania.
+- Zmiany runtime Discord (P1 zamknięte na `main`).
+- Admin override w Discord (DEC-002 / D-030 — osobny tor).
+- Merge PR #10 do `main`.
+- Deploy produkcyjny / Zeabur Identity.
+- P3 membership / guild revoke policy.
 
-## Równoległy kontekst P1
+## Blockers
 
-- **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** oczekuje `APPROVED` / merge (PR #9 na osobnej gałęzi)
-- **Uwaga:** Workflow zabrania startu **implementacji** P2 bez APPROVED poprzedniego etapu (DEC-007).
+Brak blokad decyzyjnych P2. Oczekiwanie na re-audit / APPROVED właściciela przed
+merge planu.
 
-## Nadal niezaimplementowane
+## Decisions needed
 
-- Identity OAuth / sesje / profil (P2 — po APPROVED planu);
-- MFA;
-- RBAC / authorization-service;
-- modele biznesowe poza szkieletem;
-- Zeabur (deferred);
-- moduły produktowe.
+Brak otwartych DEC dla zamknięcia planu P2. Pin wersji Better Auth — w PR
+implementacyjnym. Guild-level revoke policy — P3 (`DEC-006` → D-032).
 
-## Następny punkt kontrolny
+## Next recommended step
 
-Audyt ChatGPT pakietu planistycznego P2 → decyzje DEC-* → `APPROVED` planu → dopiero brief implementacyjny.  
-Nie rozpoczynać P3. Nie implementować P2 w tym PR.
+Właściciel: re-audit PR #10 → `APPROVED` → merge planu. Dopiero potem osobny PR
+implementacyjny P2 (proof slice Better Auth za portami Identity).
+
+## Last updated
+
+2026-08-05 — Cursor (P2 planning close + sync P1)

@@ -10,3 +10,4 @@ export {
 export type { RuntimeEnvironment } from './guards.js';
 
 export { createConfig as loadEnv } from './create-config.js';
+export { resolveHttpListen } from './listen.js';

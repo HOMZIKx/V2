@@ -1,0 +1,32 @@
+FROM node:24-bookworm-slim AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/typescript-config ./packages/typescript-config
+COPY packages/design-system/package.json ./packages/design-system/package.json
+COPY apps/admin/package.json ./apps/admin/package.json
+RUN pnpm install --frozen-lockfile --filter @v2/admin...
+
+FROM deps AS build
+COPY packages/typescript-config ./packages/typescript-config
+COPY packages/design-system ./packages/design-system
+COPY apps/admin ./apps/admin
+RUN pnpm --filter @v2/admin build
+
+FROM base AS runtime
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3001
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/admin/node_modules ./apps/admin/node_modules
+COPY --from=deps /app/packages/design-system/node_modules ./packages/design-system/node_modules
+COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=build /app/apps/admin ./apps/admin
+COPY --from=build /app/packages/design-system ./packages/design-system
+EXPOSE 3001
+WORKDIR /app/apps/admin
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["sh", "-c", "pnpm exec vite preview --host 0.0.0.0 --port ${PORT:-3001}"]

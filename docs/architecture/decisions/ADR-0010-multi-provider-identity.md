@@ -1,46 +1,53 @@
 # ADR-0010: Multi-provider identity and account linking
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Data:** 2026-08-05
 - **Task:** `P2-IDENTITY-FOUNDATION-001` (planning)
-- **Depends on:** DEC-003 (owner + ChatGPT)
+- **Owner decisions:** DEC-003 **B**, DEC-005 **A**, DEC-006 **C**
 
 ## Kontekst
 
-Obowiązujące dziś:
+Wcześniej obowiązywało:
 
-- `NON_NEGOTIABLES`: logowanie wyłącznie Discord OAuth; konto jednoznacznie związane z Discord User ID.
+- `NON_NEGOTIABLES`: logowanie wyłącznie Discord OAuth; konto związane z Discord User ID.
 - D-016: konto oparte wyłącznie na Discordzie.
 - ADR-0001: „logowanie przez Discord OAuth…”.
 
-Kierunek właściciela dla P2 (2026-08-05): Identity dla całej platformy; Discord OAuth2 **oraz** Google OAuth; centralny użytkownik V2 niezależny od providera; wiele zewnętrznych kont przy jednym Userze; architektura na kolejnych providerów.
+Decyzja właściciela 2026-08-05 (DEC-003 B): Identity dla całej platformy; Discord OAuth2
+**oraz** Google OAuth; centralny użytkownik V2 niezależny od providera; wiele zewnętrznych
+kont przy jednym Userze; architektura na kolejnych providerów.
 
-To jest **zmiana konstytucyjna**. Cursor nie aktualizuje `NON_NEGOTIABLES` unilaterarnie.
+## Decyzja
 
-## Decyzja (proponowana — po DEC-003)
+1. V2 utrzymuje **własny stabilny User UUID** jako klucz platformy — niezależny od Discord
+   ID oraz adresu e-mail.
+2. Discord i Google są **providerami** `ExternalIdentity` w P2 (Discord pozostaje kluczowym
+   kanałem produktu, ale **nie** jest technicznym kluczem głównym użytkownika).
+3. Rdzeń Identity jest **provider-agnostic** (strategia/plugin per provider).
+4. **Unikalność** `(provider, providerAccountId)` / `(provider, providerSubject)` —
+   subject zajęty przez innego Usera → reject (ochrona przed takeover).
+5. **E-mail nie jest kluczem tożsamości** i **nie** uruchamia auto-link.
+6. Account linking: **wyłącznie jawne** (DEC-005 A). W Better Auth:
+   `disableImplicitLinking: true`. Dodatkowy provider linkuje tylko zalogowany użytkownik
+   w jawnym flow. Kolizja istniejącego e-maila → kontrolowany komunikat, **bez** scalania.
+7. Discord może **nie zwrócić e-maila** — login nadal musi być możliwy na podstawie
+   provider account ID.
+8. **Nie wolno odłączyć ostatniego providera** bez wcześniejszego dodania innej metody
+   dostępu.
+9. Utrata Discorda / członkostwa guild **nie** usuwa automatycznie globalnego V2 User ani
+   konta Google (DEC-006 C). Guild-scoped revoke policy → P3; P2 dostarcza revoke API.
 
-1. V2 utrzymuje **własny stabilny User ID** jako klucz platformy.
-2. Discord i Google są **równorzędnymi providerami** `ExternalIdentity` w P2.
-3. Rdzeń Identity jest **provider-agnostic** (strategia/plugin per provider: authorize URL, token exchange, subject extraction).
-4. Account linking: użytkownik w sesji może dowiązać kolejnego providera; **subject już zajęty przez innego Usera → reject**.
-5. **Automatyczne łączenie kont wyłącznie po zbieżności emaila jest domyślnie zabronione**, dopóki DEC-005 nie stanowi inaczej.
-6. Discord pozostaje ważnym providerem społecznościowym, ale **nie** jest centralnym kluczem całej platformy.
-
-## Proponowane supersession (po akceptacji właściciela)
+## Supersession
 
 | Artefakt                    | Zmiana                                                                              |
 | --------------------------- | ----------------------------------------------------------------------------------- |
-| D-016                       | Zastąpić: „Konto multi-provider; Discord nie jest jedynym IdP”                      |
-| NON_NEGOTIABLES § Tożsamość | Usunąć „wyłącznie Discord”; zapisać V2 User + ExternalIdentity; Discord/Google w P2 |
-| ADR-0001 bullet OAuth       | Zastąpić odniesieniem do tego ADR + ADR-0011                                        |
-| D-017                       | Przeformułować w DEC-006 (sesje vs utrata membership Discord)                       |
+| D-016                       | **SUPERSEDED** → D-032 / ten ADR                                                    |
+| NON_NEGOTIABLES § Tożsamość | Multi-provider; V2 User UUID; Discord + Google w P2; e-mail ≠ identity key          |
+| ADR-0001 bullet OAuth       | Odniesienie do ADR-0010 + ADR-0011 + ADR-0012                                       |
+| D-017 (zakres P2)           | P2 = revoke API only; pełna polityka guild → P3 (DEC-006 C)                         |
 
 ## Konsekwencje
 
-- Użytkownik może istnieć z samym Google (jeśli polityka produktowa na to pozwoli — DEC-006).
+- Użytkownik może istnieć z samym Google (polityka produktowa guild-scoped w P3).
 - Moduły nie mogą zakładać „brak Discord ID = brak Usera”.
 - Bot Discord (P1) nadal używa Application/Bot tokenu — osobny sekret od OAuth user login.
-
-## Status
-
-**Proposed.** Bez DEC-003 Accepted implementacja multi-provider jest zablokowana.

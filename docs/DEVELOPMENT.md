@@ -64,8 +64,11 @@ Aktualne porty:
 | authorization-service (Nest) | 4300 | `GET /health/live`                      |
 
 API Gateway udostępnia dokumentację OpenAPI pod `/openapi` wyłącznie poza
-produkcją. Discord Gateway startuje bez tokenu Discorda; integracja z Discordem
-nie jest jeszcze zaimplementowana. Backendowe aplikacje i usługi domyślnie
+produkcją. Discord Gateway domyślnie startuje z `DISCORD_ENABLED=false` (bez
+tokenu). Aby uruchomić harness P1 na serwerze testowym, skonfiguruj lokalne
+sekrety według [docs/discord/TEST_BOT_SETUP.md](discord/TEST_BOT_SETUP.md), a
+następnie użyj `pnpm discord:test:doctor`, `pnpm discord:test:register` i
+`pnpm discord:test:start`. Backendowe aplikacje i usługi domyślnie
 nasłuchują wyłącznie na `127.0.0.1`; ustawienie hosta `0.0.0.0` jest dozwolone
 wyłącznie w kontenerze lub wdrożeniu, które wymaga zewnętrznego bindowania.
 
