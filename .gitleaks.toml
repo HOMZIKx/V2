@@ -1,0 +1,14 @@
+# Gitleaks config for V2 (extends defaults).
+# Classic sequential Discord snowflake appears in early P1 unit-test history and
+# trips discord-client-id; it is not a real application client id.
+
+title = "v2"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secret Discord snowflake fixture used in unit tests"
+regexes = [
+  '''123456789012345678''',
+]

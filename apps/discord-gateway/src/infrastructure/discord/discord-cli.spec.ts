@@ -17,7 +17,7 @@ describe('discord cli contracts', () => {
       listGuildCommands: vi.fn(() => Promise.resolve([])),
       fetchApplication: vi.fn(() =>
         Promise.resolve({
-          id: '123456789012345678',
+          id: '100000000000000001',
           name: 'V2 Lab',
           botUserId: '987654321098765432',
         }),

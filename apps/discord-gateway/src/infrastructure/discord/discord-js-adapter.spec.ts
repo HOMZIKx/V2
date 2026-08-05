@@ -8,7 +8,7 @@ function makeConfig() {
   return normalizeDiscordConfig(
     DiscordGatewayConfigSchema.parse({
       DISCORD_ENABLED: 'true',
-      DISCORD_APPLICATION_ID: '123456789012345678',
+      DISCORD_APPLICATION_ID: '100000000000000001',
       DISCORD_TOKEN: 'discord-test-token-value-1234567890',
       DISCORD_TEST_GUILD_ID: '1534228693017432124',
       DISCORD_TEST_OPERATOR_IDS: '111111111111111111',
@@ -52,9 +52,9 @@ describe('DiscordJsGatewayAdapter', () => {
       value: { put: restPut },
     });
 
-    const route = Routes.applicationGuildCommands('123456789012345678', '1534228693017432124');
+    const route = Routes.applicationGuildCommands('100000000000000001', '1534228693017432124');
     expect(route.includes('/guilds/')).toBe(true);
-    expect(Routes.applicationCommands('123456789012345678').includes('/guilds/')).toBe(false);
+    expect(Routes.applicationCommands('100000000000000001').includes('/guilds/')).toBe(false);
 
     const result = await adapter.putGuildCommands('1534228693017432124', [
       { name: 'status', description: 'x', version: 'p1.0.0' },

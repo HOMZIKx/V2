@@ -46,7 +46,8 @@ P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` 
 - **Live test:** sukces na guild `1534228693017432124` (potwierdzenie właściciela)
 - **Application ID / Bot User ID:** `1534432424094728364`
 - **Zeabur:** DEFERRED (DEC-001)
-- **Pull Request:** utworzony — **bez merge** do czasu `APPROVED`
+- **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — draft, **bez merge** do czasu `APPROVED`
+- **Finalny commit:** `787e9ba066d60941b16ef30884529ea7cbefee4b`
 
 ## Nadal niezaimplementowane
 

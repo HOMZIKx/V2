@@ -20,7 +20,7 @@ function makeConfig() {
   return normalizeDiscordConfig(
     DiscordGatewayConfigSchema.parse({
       DISCORD_ENABLED: 'true',
-      DISCORD_APPLICATION_ID: '123456789012345678',
+      DISCORD_APPLICATION_ID: '100000000000000001',
       DISCORD_TOKEN: 'discord-test-token-value-1234567890',
       DISCORD_TEST_GUILD_ID: guildId,
       DISCORD_TEST_OPERATOR_IDS: operatorId,

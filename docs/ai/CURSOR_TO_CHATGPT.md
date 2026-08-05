@@ -11,8 +11,8 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** _(uzupełnione po push)_
-- **PR:** _(uzupełnione po utworzeniu)_
+- **Finalny commit:** _(uzupełnione po push fix gitleaks)_
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, bez merge)
 
 ## Zakres wykonany
 
@@ -47,7 +47,10 @@ discord.js            → 14.25.1
 
 ### GitHub Actions
 
-- Uzupełnione po push finalnego HEAD.
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft)
+- **HEAD:** `787e9ba` + follow-up fix (gitleaks false positive w fixture `123456…`)
+- Quality gates na push HEAD: zielone; Secret scan na PR failował przez regułę `discord-client-id` na klasycznym placeholderze w `*.spec.ts` — naprawione (fixture → `100000000000000001`).
+- Linki CI: uzupełnione po zielonym rerunie.
 
 ## Manualny live test — SUKCES
 
