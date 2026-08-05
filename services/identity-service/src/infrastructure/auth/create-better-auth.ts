@@ -83,7 +83,9 @@ export function createBetterAuth(config: IdentityEnv) {
     trustedOrigins: [...config.IDENTITY_TRUSTED_ORIGINS],
     emailAndPassword: { enabled: false },
     advanced: {
-      database: { generateId: 'uuid' },
+      // Always mint UUIDs in JS. The string option `"uuid"` skips JS generation when
+      // the driver reports native UUID support, but our TEXT PKs have no DB default.
+      database: { generateId: () => crypto.randomUUID() },
       useSecureCookies: isProduction,
       cookiePrefix: config.IDENTITY_COOKIE_PREFIX,
     },

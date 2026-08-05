@@ -83,8 +83,8 @@ describe('redactSecrets', () => {
   });
 
   it('masks sensitive KEY=value assignments', () => {
-    const redacted = redactSecrets('IDENTITY_BETTER_AUTH_SECRET=abcdef123456');
-    expect(redacted).not.toContain('abcdef123456');
+    const redacted = redactSecrets('IDENTITY_BETTER_AUTH_SECRET=not-a-real-credential');
+    expect(redacted).not.toContain('not-a-real-credential');
   });
 
   it('masks explicitly provided secret literals', () => {
