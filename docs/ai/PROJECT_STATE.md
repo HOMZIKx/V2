@@ -2,11 +2,11 @@
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_REVIEW`
+`P1_DISCORD_TEST_HARNESS_READY_FOR_RE-AUDIT`
 
 ## Aktualny etap
 
-P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` w toku audytu. Zeabur odłożony.
+Remediacja P1: publiczny panel Components V2. PR #9 oczekuje ponownego audytu. Bez merge. P2 Identity nie rozpoczęte w tym etapie.
 
 ## Zatwierdzone
 
@@ -22,14 +22,14 @@ P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` 
 - REST/OpenAPI + RabbitMQ;
 - backend Node/Nest/Fastify;
 - podział Web/Admin;
-- model tożsamości, MFA i sesji;
+- model tożsamości, MFA i sesji (docelowy — niezaimplementowany);
 - trwały protokół pracy AI;
 - standardy jakości, testów i lokalnej infrastruktury;
 - standard postów i interakcji Discord (D-023);
 - oryginalna identyfikacja wizualna V2 (D-024);
 - dedykowany serwer testowy Discord `1534228693017432124`;
 - wizja Desktop Companion / overlay (ADR-0006);
-- Discord test harness P1 (ADR-0007);
+- Discord test harness P1 (ADR-0007) — remediacja Components V2 w toku audytu;
 - ADR-0008 (Zeabur) — dokumentacja; **wdrożenie deferred**.
 
 ## Zamknięty etap
@@ -41,27 +41,20 @@ P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` 
 ## Aktywne zadanie
 
 - **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_REVIEW`
+- **Status:** `READY_FOR_RE-AUDIT`
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Live test:** sukces na guild `1534228693017432124` (potwierdzenie właściciela)
-- **Application ID / Bot User ID:** `1534432424094728364`
+- **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
+- **Zmiana UX:** publiczny `/panel-test` = Components V2 Container (bez legacy embed)
 - **Zeabur:** DEFERRED (DEC-001)
-- **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — draft, **bez merge** do czasu `APPROVED`
-- **Finalny commit:** `da0ce51025f336d388817b96329df8b5fd03e082`
-- **CI:** zielone na tip (Quality gates, Secret scan, Infrastructure)
 
 ## Nadal niezaimplementowane
 
-- Discord OAuth, Better Auth, sesje i MFA;
-- docelowy RBAC;
+- Discord OAuth, sesje platformowe, MFA;
+- RBAC;
 - modele biznesowe i ORM;
-- moduły wydarzeń / LFG / moderacji itd.;
+- moduły produktowe;
 - wdrożenie Zeabur (wstrzymane).
 
 ## Następny punkt kontrolny
 
-Audyt ChatGPT PR P1 → `APPROVED` / merge. Nie rozpoczynać kolejnego dużego etapu bez statusu `APPROVED`.
-
-## Ważna uwaga
-
-Stary projekt nie definiuje architektury V2.
+Ponowny audyt ChatGPT PR #9. Nie merge. Nie startować implementacji P2 z tego PR.

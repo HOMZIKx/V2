@@ -13,7 +13,8 @@
 
 - **Status:** ACCEPTED (owner override, test guild only)
 - **Kontekst:** Właściciel instaluje bota z `permissions=8` (Administrator) na guild `1534228693017432124` i odmawia rotacji tokenu po wklejeniu do czatu. ADR-0007 / P1 wymagają minimalnych uprawnień bez Administrator.
-- **Decyzja właściciela:** na etapie lokalnego live testu dopuszczony Administrator na serwerze testowym; kod harnessu nadal sprawdza tylko ViewChannel/SendMessages/EmbedLinks/ReadMessageHistory oraz operator/ManageGuild.
+- **Decyzja właściciela:** na etapie lokalnego live testu dopuszczony Administrator na serwerze testowym; kod harnessu sprawdza ViewChannel/SendMessages/EmbedLinks/AttachFiles/ReadMessageHistory oraz operator/ManageGuild.
+- **Po teście:** odebrać Administrator i wrócić do `permissions=117760` (patrz `TEST_BOT_SETUP.md`). Override nie jest konfiguracją docelową.
 - **Live test:** potwierdzony przez właściciela 2026-08-05 („Wszystko działa”).
 - **Ryzyko:** token był eksponowany w czacie — zalecany Reset Token; właściciel świadomie pomija.
 - **Wznowienie zasady minimalnych uprawnień:** przed Zeabur / produkcją.

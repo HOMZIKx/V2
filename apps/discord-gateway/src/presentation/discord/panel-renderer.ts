@@ -3,9 +3,15 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
   EmbedBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
   MessageFlags,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
   StringSelectMenuBuilder,
+  TextDisplayBuilder,
   type InteractionReplyOptions,
   type MessageCreateOptions,
   type MessageEditOptions,
@@ -16,12 +22,11 @@ import { fileURLToPath } from 'node:url';
 
 import {
   createSignedCustomId,
-  PANEL_VERSION,
   panelPayload,
 } from '../../infrastructure/security/signed-custom-id.js';
 import {
   PANEL_DESCRIPTION,
-  PANEL_FOOTER_PREFIX,
+  PANEL_FOOTER,
   PANEL_TITLE,
   SELECT_OPTIONS,
   SELECT_PLACEHOLDER,
@@ -51,42 +56,17 @@ function resolveBannerPath(): string {
 
 export type PanelRenderInput = {
   signingSecret: string;
-  connectionState: string;
-  environment: string;
   includeBanner?: boolean;
 };
 
 export type PanelMessagePayload = MessageCreateOptions & MessageEditOptions;
 
+/**
+ * Public /panel-test card as Discord Components V2 (single Container).
+ * No legacy embeds. Diagnostics belong in ephemeral /status.
+ */
 export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload {
   const payload = panelPayload();
-  const embed = new EmbedBuilder()
-    .setColor(V2_PANEL_COLORS.embed)
-    .setTitle(PANEL_TITLE)
-    .setDescription(PANEL_DESCRIPTION)
-    .addFields(
-      {
-        name: 'Stan połączenia',
-        value: `\`${input.connectionState}\``,
-        inline: true,
-      },
-      {
-        name: 'Środowisko',
-        value: `\`${input.environment}\``,
-        inline: true,
-      },
-      {
-        name: 'Wersja panelu',
-        value: `\`${PANEL_VERSION}\``,
-        inline: true,
-      },
-    )
-    .setFooter({ text: `${PANEL_FOOTER_PREFIX} • panel ${PANEL_VERSION}` })
-    .setTimestamp(new Date());
-
-  if (input.includeBanner !== false) {
-    embed.setImage('attachment://v2-lab-banner.png');
-  }
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(createSignedCustomId('select', payload, input.signingSecret))
@@ -110,6 +90,15 @@ export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload
     .setLabel('Usuń panel')
     .setStyle(ButtonStyle.Danger);
 
+  const container = new ContainerBuilder().setAccentColor(V2_PANEL_COLORS.embed);
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(`## ${PANEL_TITLE}\n${PANEL_DESCRIPTION}`),
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+  );
+
   const files =
     input.includeBanner === false
       ? []
@@ -119,13 +108,29 @@ export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload
           }),
         ];
 
+  if (input.includeBanner !== false) {
+    container.addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL('attachment://v2-lab-banner.png'),
+      ),
+    );
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+    );
+  }
+
+  container.addActionRowComponents(
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
+  );
+  container.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(refresh, remove),
+  );
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${PANEL_FOOTER}`));
+
   return {
-    embeds: [embed],
-    components: [
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(refresh, remove),
-    ],
+    components: [container],
     files,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 
@@ -184,6 +189,6 @@ export function buildStatusEmbed(input: {
         inline: true,
       },
     )
-    .setFooter({ text: `${PANEL_FOOTER_PREFIX} • status` })
+    .setFooter({ text: 'V2 • TEST • status' })
     .setTimestamp(new Date());
 }

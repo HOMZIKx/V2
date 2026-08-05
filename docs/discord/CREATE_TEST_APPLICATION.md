@@ -53,6 +53,7 @@ Guild docelowy instalacji:
    - View Channels
    - Send Messages
    - Embed Links
+   - Attach Files
    - Read Message History
 4. **Nie** zaznaczaj Administrator ani Manage Roles / Ban Members itd.
 5. Skopiuj wygenerowany URL na dole strony.
@@ -112,7 +113,7 @@ Aplikacja Discord utworzona. Mam lokalnie Application ID, Token i User ID.
 Zastąp `APP_ID` swoim Application ID. Permissions bitfield = ViewChannel + SendMessages + EmbedLinks + ReadMessageHistory = `2048 + 64 + 16384 + 65536` = `83968`:
 
 ```text
-https://discord.com/api/oauth2/authorize?client_id=APP_ID&permissions=83968&scope=bot%20applications.commands
+https://discord.com/api/oauth2/authorize?client_id=APP_ID&permissions=117760&scope=bot%20applications.commands
 ```
 
 Otwórz ten link i wybierz wyłącznie guild testowy.

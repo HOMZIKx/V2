@@ -19,7 +19,45 @@ Kod P1 i CI działają bez aplikacji (`DISCORD_ENABLED=false`). Live test wymaga
 - **Never paste the bot token, signing secret, or any secret into chat, GitHub issues, PRs, screenshots, or terminal command arguments.**
 - Store secrets only in a local `.env` file (or `apps/discord-gateway/.env`) that is ignored by Git.
 - If a token or signing secret may have leaked, rotate it immediately in the Developer Portal and update your local `.env`.
-- The bot must not use the `Administrator` permission or privileged Gateway intents on this stage.
+- The bot must not use the `Administrator` permission or privileged Gateway intents as the recommended or production configuration.
+- Temporary owner override (DEC-002) may use Administrator **only** on the dedicated test guild; revoke it after testing (see § Permissions).
+
+## Permissions (minimal / recommended)
+
+Exact minimal bot permissions required by P1 harness checks and Components V2 banner upload:
+
+| Permission           | Why                                             |
+| -------------------- | ----------------------------------------------- |
+| View Channels        | See the test channel                            |
+| Send Messages        | Publish `/panel-test` and ephemeral replies     |
+| Embed Links          | Ephemeral `/status` embed                       |
+| Attach Files         | Banner media inside Components V2 container     |
+| Read Message History | Channel context for interactions / doctor hints |
+
+OAuth2 URL Generator: scopes `bot` + `applications.commands`; mark **only** the five permissions above.
+
+Invite bitmask (minimal, **not** Administrator):
+
+```text
+permissions=117760
+```
+
+Example invite (replace `APP_ID`):
+
+```text
+https://discord.com/api/oauth2/authorize?client_id=APP_ID&permissions=117760&scope=bot%20applications.commands
+```
+
+### Revoke Administrator after live test (DEC-002)
+
+If the bot was installed with `permissions=8` (Administrator) on guild `1534228693017432124`:
+
+1. Open the test guild → **Server Settings** → **Integrations** (or **Members**) → select the V2 test bot.
+2. Remove **Administrator**.
+3. Ensure only the five minimal permissions above remain (or re-invite with `permissions=117760`).
+4. Do **not** treat Administrator as the default for any future / hosted environment.
+
+DEC-002 remains documented as a temporary owner override; it is not the target configuration.
 
 ## 1. Discord Developer Portal
 
@@ -28,7 +66,7 @@ Wykonaj [CREATE_TEST_APPLICATION.md](./CREATE_TEST_APPLICATION.md) (kroki A–F)
 1. [Developer Portal](https://discord.com/developers/applications) → **New Application**.
 2. **General Information** → Application ID.
 3. **Bot** → Add Bot; privileged intents **OFF**; skopiuj token lokalnie.
-4. **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; permissions View Channels, Send Messages, Embed Links, Read Message History; bez Administrator.
+4. **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; permissions View Channels, Send Messages, Embed Links, Attach Files, Read Message History (`permissions=117760`); bez Administrator.
 5. Zainstaluj bota **tylko** na guild `1534228693017432124`.
 6. Developer Mode → skopiuj własne User ID.
 

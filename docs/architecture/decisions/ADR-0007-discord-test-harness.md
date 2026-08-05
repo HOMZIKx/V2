@@ -23,8 +23,11 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 
 - Wyłącznie intent **`GatewayIntentBits.Guilds`**. Bez `MessageContent`, `GuildMembers`, `GuildPresences` ani innych privileged intents.
 - Scopes instalacji OAuth: **`bot`** i **`applications.commands`**.
-- Minimalne uprawnienia bota: **View Channels**, **Send Messages**, **Embed Links**, **Read Message History**. Bez **Administrator** (docelowa zasada).
-- **Nota (DEC-002, 2026-08-05):** właściciel świadomie zainstalował bota testowego z uprawnieniem Administrator wyłącznie na guild `1534228693017432124` na czas lokalnego live testu. Przed hostingiem / produkcją wrócić do minimalnego zestawu.
+- Minimalne uprawnienia bota (zalecane / docelowe): **View Channels**, **Send Messages**, **Embed Links**, **Attach Files**, **Read Message History**. Bez **Administrator**.
+  - `Attach Files` jest wymagane do bannera panelu Components V2 (`attachment://`).
+  - Bitmask invite (minimalna): `permissions=117760`.
+- **Nota (DEC-002, 2026-08-05):** właściciel świadomie zainstalował bota testowego z uprawnieniem Administrator (`permissions=8`) wyłącznie na guild `1534228693017432124` na czas lokalnego live testu. To **nie** jest konfiguracja zalecana ani produkcyjna.
+- **Po teście:** odebrać Administrator (Server Settings → Integrations / Members → bot → uprawnienia) i przywrócić wyłącznie zestaw minimalny powyżej; ewentualnie ponownie zainstalować invite z `permissions=117760`.
 
 ### Komendy i izolacja guild
 
@@ -53,7 +56,8 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 - **Brak live Discorda w CI** — brak tokenu, brak połączenia Gateway w GitHub Actions.
 - Testy Vitest obejmują konfigurację, izolację guild, signed custom IDs, renderer panelu, health/readiness i router na mockowanym adapterze.
 - Manualny live test na guild testowym jest obowiązkową bramką przed statusem `READY_FOR_REVIEW`.
-- **Live test (2026-08-05):** sukces — guild `1534228693017432124`, Application/Bot ID `1534432424094728364`, potwierdzenie właściciela: `/status`, `/panel-test` i interakcje panelu działają.
+- **Live test (2026-08-05):** sukces początkowy — guild `1534228693017432124`, Application/Bot ID `1534432424094728364`.
+- **Remediacja UX (2026-08-05):** publiczny `/panel-test` = Discord Components V2 (`Container` + `IsComponentsV2`); legacy embed usunięty z panelu publicznego. Live API probe: flag `32768`, top component type `17`, bez embeds.
 
 ## Konsekwencje
 

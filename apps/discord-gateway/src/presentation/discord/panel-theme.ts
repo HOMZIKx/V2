@@ -8,21 +8,21 @@ export const V2_PANEL_COLORS = {
 
 export const PANEL_TITLE = 'V2 LAB • PANEL TESTOWY';
 export const PANEL_DESCRIPTION =
-  'Harness interakcji Discord V2. Wybierz funkcję testową albo odśwież panel — bez reakcji emoji i bez spamu wiadomościami.';
-export const PANEL_FOOTER_PREFIX = 'V2 • TEST';
-export const SELECT_PLACEHOLDER = 'Wybierz funkcję testową';
+  'Wybierz funkcję z menu, otwórz formularz albo odśwież ten panel. Potwierdzenia i szczegóły statusu dostaniesz prywatnie — bez spamu na kanale.';
+export const PANEL_FOOTER = 'V2 LAB • użyj menu lub przycisków';
+export const SELECT_PLACEHOLDER = 'Nie wybrano żadnej opcji';
 
 export const SELECT_OPTIONS = [
   {
     value: 'system_status',
     label: 'Stan systemu',
-    description: 'Bezpieczny status połączenia (ephemeral)',
+    description: 'Prywatny status połączenia',
     emoji: '🧭',
   },
   {
     value: 'reply_test',
     label: 'Test odpowiedzi',
-    description: 'Potwierdzenie z correlation ID',
+    description: 'Prywatne potwierdzenie z correlation ID',
     emoji: '🧪',
   },
   {

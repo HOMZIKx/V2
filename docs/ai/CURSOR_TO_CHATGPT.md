@@ -2,81 +2,92 @@
 
 ## Status
 
-`READY_FOR_REVIEW`
+`READY_FOR_RE-AUDIT`
 
 ## Task ID
 
-`P1-DISCORD-TEST-HARNESS-001`
+`P1-DISCORD-TEST-HARNESS-001` (remediation — Components V2)
 
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** `da0ce51025f336d388817b96329df8b5fd03e082`
-- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, bez merge)
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (bez merge)
+- **Finalny commit:** _(uzupełnione po push)_
 
-## Zakres wykonany
+## Zakres remediacji
 
-- Adapter `discord.js` **14.25.1**, Gateway/WebSocket + REST v10.
-- Walidowana konfiguracja; `DISCORD_ENABLED=false` domyślnie (CI bez tokenu).
-- Guild-only `/status` i `/panel-test` na `DISCORD_TEST_GUILD_ID`.
-- Panel V2 LAB: select, przyciski, modal, odświeżenie, usuwanie z potwierdzeniem.
-- Signed custom IDs (HMAC), strict guild isolation, CLI doctor/register/start/generate-secret.
-- Testy Vitest bez live Discorda; redakcja sekretów; override `undici@6.28.0`.
-- Dokumentacja: `CREATE_TEST_APPLICATION.md`, `TEST_BOT_SETUP.md`, ADR-0007.
-- Artefakty Zeabur (ADR-0008 / Dockerfiles) w repo, **wdrożenie Zeabur odłożone** (DEC-001 DEFERRED).
+1. Publiczny `/panel-test` przebudowany na **Discord Components V2**:
+   - jeden `ContainerBuilder` (type 17) z accent color V2;
+   - `TextDisplay` (nagłówek/opis użytkowy);
+   - `Separator` + `MediaGallery` (banner `attachment://`);
+   - Action rows: select + przyciski **wewnątrz** kontenera;
+   - stopka TextDisplay;
+   - flag `MessageFlags.IsComponentsV2` (32768);
+   - **brak** legacy `EmbedBuilder` / `embeds` w publicznym panelu.
+2. Usunięte z publicznej karty: `ready`, środowisko, wersja panelu, timestamp.
+3. Diagnostyka pozostaje w ephemeral `/status` (`buildStatusEmbed`).
+4. Refresh używa `interaction.update` z `IsComponentsV2` (bez embeds).
+5. Testy `panel-renderer.spec.ts` weryfikują kontener, flagę, select/buttons wewnątrz, brak embeds.
+6. Uprawnienia: dodane **Attach Files**; docs + ADR-0007; instrukcja odebrania Administratora; `permissions=117760`; DEC-002 bez usuwania historii.
+7. Preview layoutu: `docs/ai/artifacts/p1-panel-components-v2-preview.png` (mock UI — nie sekret).
 
-## Architektura
+## Payload Components V2 (skrót)
 
-- Cykl życia klienta: `disabled` → `connecting` → `ready` / `degraded` / `failed` / `stopping`.
-- Router w `interface/discord/` (SDK poza application layer).
-- Application: authorization, idempotency, deklaracje komend, porty bez Discord SDK.
-- Health: `/health/live`, `/health/ready`, `/health/discord`.
-
-## Intents / scopes / permissions
-
-- Intent: **tylko `Guilds`**.
-- Scopes: `bot`, `applications.commands`.
-- Docelowo minimalne permissions (ADR-0007). **Owner override DEC-002:** na live teście lokalnym bot zainstalowany z Administrator (`permissions=8`) wyłącznie na guild testowym.
+```text
+flags: IsComponentsV2
+components: [
+  Container {
+    accent_color,
+    components: [
+      TextDisplay (title + user copy),
+      Separator,
+      MediaGallery [attachment://v2-lab-banner.png],
+      Separator,
+      ActionRow [StringSelect],
+      ActionRow [Odśwież, Usuń panel],
+      TextDisplay (footer)
+    ]
+  }
+]
+files: [v2-lab-banner.png]
+```
 
 ## Wyniki automatyczne
 
 ```text
-pnpm validate (local) → green through runtime-smoke; Docker CLI missing on Windows host (compose validated in CI)
-discord.js            → 14.25.1
+pnpm --filter discord-gateway test  → 13 files / 45 tests passed
+pnpm validate                       → _(uzupełnione)_
 ```
 
-### GitHub Actions
+## Live probe (API)
 
-- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, tytuł: `feat(discord-gateway): add p1 discord test harness`)
-- **CI (PR tip):** success — https://github.com/HOMZIKx/V2/actions/runs/30981758082
-- **CI (push tip):** success — https://github.com/HOMZIKx/V2/actions/runs/30981755469
-- **PR Title:** success — https://github.com/HOMZIKx/V2/actions/runs/30981597189
-- Gitleaks false positive na historycznym fixture `123456…` naprawiony w `216b809` (`.gitleaks.toml`).
+Skrypt `apps/discord-gateway/scripts/live-panel-v2-probe.mts` (send + delete):
 
-## Manualny live test — SUKCES
+```text
+liveProbe: ok
+flags: 32768 (IsComponentsV2)
+hasEmbeds: false
+topComponentTypes: [17]  // Container
+```
 
-- **Guild ID:** `1534228693017432124` (TESTOWY)
-- **Application ID:** `1534432424094728364`
-- **Bot User ID:** `1534432424094728364`
-- **Bot online:** tak (lokalny `pnpm discord:test:start`)
-- **`/status` ephemeral:** potwierdzone przez właściciela
-- **`/panel-test` + select/modal/odśwież/usuń:** potwierdzone („Wszystko działa”)
-- **Global commands:** nie rejestrowane przez harness (tylko guild route)
-- **Token / signing secret:** nie logowane w raporcie
+`pnpm discord:test:doctor` → OK (guild TESTOWY, komendy status/panel-test).
 
-## Odstępstwa / dług
+**Mobile Discord UI:** właściciel powinien potwierdzić wygląd jednej karty na telefonie po `/panel-test` (preview PNG + API probe powyżej; pełny klik select/modal — re-test właściciela zalecany).
 
-- DEC-001 Zeabur B zatwierdzony, potem **wstrzymany** do po P1.
-- DEC-002: Administrator na guild testowym (owner) — wrócić do minimalnych uprawnień przed hostingiem.
-- Token był kiedyś wklejony do czatu — zalecany Reset Token przed produkcją/Zeabur.
-- Lokalny host bez Docker CLI.
+## Screenshot / preview
 
-## ADR / decyzje
+- `docs/ai/artifacts/p1-panel-components-v2-preview.png`
 
-- ADR-0007 Accepted (+ nota o DEC-002).
-- ADR-0008 Accepted (config), deploy deferred.
-- D-029, D-030 w DECISION_LOG.
+## Odstępstwa / ryzyka
 
-## Propozycja kolejnego kroku (bez implementacji)
+- DEC-002 Administrator nadal możliwy lokalnie — po teście odebrać (instrukcja w `TEST_BOT_SETUP.md`).
+- Lokalny `pnpm validate` może kończyć się brakiem Docker CLI na Windows; CI na PR jest źródłem prawdy dla compose.
+- Preview PNG to layout mock zgodny z copy/kolorami V2 — nie zastępuje zrzutu z klienta Discord właściciela.
 
-Audyt ChatGPT → `APPROVED` / merge. Potem ewentualne wznowienie Zeabur albo Identity — wg właściciela.
+## Poza zakresem (zachowane)
+
+- P2 Identity, Zeabur, merge, rotacja sekretów przez PR.
+
+## Prośba
+
+Audyt ponowny PR #9 → `APPROVED` albo dalsze `CHANGES REQUIRED`. Bez merge przez Cursora.

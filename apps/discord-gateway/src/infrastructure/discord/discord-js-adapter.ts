@@ -33,6 +33,7 @@ const REQUIRED_CHANNEL_PERMISSIONS = [
   PermissionFlagsBits.ViewChannel,
   PermissionFlagsBits.SendMessages,
   PermissionFlagsBits.EmbedLinks,
+  PermissionFlagsBits.AttachFiles,
   PermissionFlagsBits.ReadMessageHistory,
 ] as const;
 
@@ -40,6 +41,7 @@ const REQUIRED_PERMISSION_NAMES = [
   'ViewChannel',
   'SendMessages',
   'EmbedLinks',
+  'AttachFiles',
   'ReadMessageHistory',
 ] as const;
 

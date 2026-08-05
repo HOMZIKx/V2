@@ -188,8 +188,6 @@ export class InteractionRouter {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const panel = renderPanelMessage({
       signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-      connectionState: this.deps.gateway.getState(),
-      environment: 'test',
     });
 
     if (
@@ -301,13 +299,13 @@ export class InteractionRouter {
 
       const panel = renderPanelMessage({
         signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-        connectionState: this.deps.gateway.getState(),
-        environment: 'test',
       });
       await interaction.update({
-        embeds: panel.embeds ?? [],
+        content: null,
+        embeds: [],
         components: panel.components ?? [],
         files: panel.files ?? [],
+        flags: MessageFlags.IsComponentsV2,
       });
       return;
     }
