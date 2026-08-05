@@ -30,7 +30,7 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 - PR: https://github.com/HOMZIKx/V2/pull/10
 - Base: `main` (po merge P1 `c82d6bd`)
 - Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Tip SHA: ustawiane po commit (patrz HEAD w raporcie operatora / `git rev-parse`)
+- Tip SHA: `cd6d976aee2bcb061e6d1d0519cdc2a1feb4d07f`
 - PR title: `docs(identity): add p2 identity foundation planning package`
 - Draft PR; **bez merge**
 
