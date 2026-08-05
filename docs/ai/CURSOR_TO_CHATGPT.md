@@ -1,15 +1,15 @@
-﻿# Cursor → ChatGPT
+# Cursor → ChatGPT
 
 ## 1. Status
 
 `READY_FOR_REVIEW`
 
-Identity-side P3 integration on `cursor/p3-authorization-foundation` (Issue #15).
+Discord Gateway → Authorization membership sync on `cursor/p3-authorization-foundation` (Issue #15).
 **No merge by Cursor.**
 
 ## 2. Task ID
 
-`P3-AUTHORIZATION-FOUNDATION-001` (Identity slice)
+`P3-AUTHORIZATION-FOUNDATION-001` (Discord sync slice — P3-D1 / P3-D20)
 
 ## 3. Branch / PR / source of truth
 
@@ -17,36 +17,40 @@ Identity-side P3 integration on `cursor/p3-authorization-foundation` (Issue #15)
 - Issue: #15 (OPEN, PLAN_APPROVED)
 - PR: draft when opened (GitHub SoT for tip HEAD, CI)
 
-## 4. What landed (Identity)
+## 4. What landed (Discord → Authz sync)
 
 | Area | Change |
 | --- | --- |
-| Assertion verifier | `expectedAudience: string` parameter (issue flow still uses `IDENTITY_INTERNAL_JWT_ISSUE_URL`) |
-| System revoke | `POST /identity/v1/system/revoke-sessions` — `Identity-Client-Assertion` only; body `v2_user_id`/`reason`/`correlation_id`; aud = `IDENTITY_SYSTEM_REVOKE_URL`; jti replay; `revokeAllSessionsForUser` |
-| Login gate (P3-D19) | Better Auth `databaseHooks.session.create.before` → Discord account lookup → Authz identity-links + authorize (`permission.platform.login.www` sensitive); deny aborts session; user row kept |
-| AuthorizationClient | Signs Identity→Authz system assertions; skipped when `IDENTITY_AUTHORIZATION_ENABLED=false` |
-| Clients JSON | Test/docs register `v2.authorization-service` with revoke URL in `allowed_audiences` |
+| Intents | `Guilds` + `GuildMembers` (ADR-0007 amended; MessageContent/Presences still forbidden) |
+| Config | `DISCORD_AUTHORIZATION_SYNC_ENABLED` (default false) + Authz client env |
+| Sync client | EdDSA `Authorization-Client-Assertion`; POST register / events / reconcile |
+| Events | GuildCreate→register+reconcile; member add/remove/update; role CUD→roles_snapshot; GuildDelete/unavailable→guild_detach |
+| Isolation | Unchanged — only `DISCORD_TEST_GUILD_ID` is synced |
+| Default | Sync off → no Authz calls (P1 harness unchanged) |
 
 ## 5. New env (see `.env.example`)
 
-- `IDENTITY_SYSTEM_REVOKE_URL` (default local revoke URL)
-- `IDENTITY_AUTHORIZATION_ENABLED` / `BASE_URL` / `ASSERTION_AUD`
-- `IDENTITY_TO_AUTHZ_CLIENT_ID` (default `v2.identity-service`) + `PRIVATE_KEY_PEM` + `ACTIVE_KID`
+- `DISCORD_AUTHORIZATION_SYNC_ENABLED`
+- `AUTHORIZATION_BASE_URL`
+- `DISCORD_TO_AUTHZ_CLIENT_ID` (default `v2.discord-gateway`)
+- `DISCORD_TO_AUTHZ_PRIVATE_KEY_PEM` / `DISCORD_TO_AUTHZ_ACTIVE_KID`
+- `DISCORD_CLIENT_ASSERTION_MAX_TTL_SECONDS` (≤60)
+- Reuses `AUTHORIZATION_ASSERTION_AUD` when set; otherwise per-path aud
 
 ## 6. Validation commands
 
 ```bash
-pnpm --filter @v2/identity-service lint
-pnpm --filter @v2/identity-service typecheck
-pnpm --filter @v2/identity-service test
-RUN_INFRA_TESTS=true pnpm --filter @v2/identity-service test
+pnpm --filter @v2/discord-gateway lint
+pnpm --filter @v2/discord-gateway typecheck
+pnpm --filter @v2/discord-gateway test
 ```
 
 ## 7. Notes / debt
 
-- Authz HTTP routes for `/authorization/v1/identity-links` and `/authorize` are called by contract; mock Authz in Identity infra tests when Authz HTTP is not up.
-- Admin UI not in this PR.
+- Register `v2.discord-gateway` public keys in `AUTHORIZATION_INBOUND_CLIENTS_JSON` when enabling sync.
+- Enable **Server Members Intent** in Discord Developer Portal for live sync.
+- No periodic reconcile timer in this slice (ready/join only).
 
 ## Last updated
 
-2026-08-05 — Cursor (Identity-side P3 integration, commit `1ffa39e`)
+2026-08-05 — Cursor (Discord Gateway → Authz sync)

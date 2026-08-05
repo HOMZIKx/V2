@@ -64,4 +64,20 @@ describe('discord config', () => {
     );
     expect(result.success).toBe(false);
   });
+
+  it('allows sync disabled without Authz credentials', () => {
+    const parsed = DiscordGatewayConfigSchema.parse({
+      DISCORD_ENABLED: 'false',
+      DISCORD_AUTHORIZATION_SYNC_ENABLED: 'false',
+    });
+    expect(parsed.DISCORD_AUTHORIZATION_SYNC_ENABLED).toBe(false);
+  });
+
+  it('requires Authz credentials when sync is enabled', () => {
+    const result = DiscordGatewayConfigSchema.safeParse({
+      DISCORD_ENABLED: 'false',
+      DISCORD_AUTHORIZATION_SYNC_ENABLED: 'true',
+    });
+    expect(result.success).toBe(false);
+  });
 });

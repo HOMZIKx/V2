@@ -17,11 +17,11 @@ describe('static discord security guards', () => {
     expect(adapter).not.toMatch(/rest\.put\(\s*Routes\.applicationCommands/);
   });
 
-  it('uses only Guilds intent', () => {
+  it('uses Guilds and GuildMembers intents only', () => {
     const adapter = readSrc('src/infrastructure/discord/discord-js-adapter.ts');
     expect(adapter).toContain('GatewayIntentBits.Guilds');
+    expect(adapter).toContain('GatewayIntentBits.GuildMembers');
     expect(adapter).not.toContain('GatewayIntentBits.MessageContent');
-    expect(adapter).not.toContain('GatewayIntentBits.GuildMembers');
     expect(adapter).not.toContain('GatewayIntentBits.GuildPresences');
   });
 

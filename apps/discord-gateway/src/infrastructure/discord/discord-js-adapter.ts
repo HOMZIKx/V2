@@ -6,16 +6,25 @@ import {
   PermissionFlagsBits,
   REST,
   Routes,
+  type Guild,
   type GuildBasedChannel,
+  type GuildMember,
   type Interaction,
+  type Role,
 } from 'discord.js';
+import { randomUUID } from 'node:crypto';
 
+import type { AuthorizationSyncPort } from '../../application/ports/authorization-sync.port.js';
 import type {
   GatewayClientPort,
   GatewayHealthSnapshot,
   GatewayRestPort,
   GuildCommandDefinition,
 } from '../../application/ports/gateway.ports.js';
+import {
+  createAuthorizationSyncClient,
+  hashAuthzPayload,
+} from '../authorization/authorization-sync-client.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
 import { redactSecrets, safeErrorMessage } from '../security/secret-redaction.js';
 
@@ -27,6 +36,7 @@ export type DiscordClientLifecycleDeps = {
     warn(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
   };
+  authorizationSync?: AuthorizationSyncPort | null;
 };
 
 const REQUIRED_CHANNEL_PERMISSIONS = [
@@ -45,6 +55,8 @@ const REQUIRED_PERMISSION_NAMES = [
   'ReadMessageHistory',
 ] as const;
 
+const ALLOWED_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] as const;
+
 export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPort {
   private readonly client: Client;
   private readonly rest: REST;
@@ -54,14 +66,19 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   private isolationOk = true;
   private lastError: string | null = null;
   private readonly secrets: string[];
+  private readonly authorizationSync: AuthorizationSyncPort | null;
 
   public constructor(private readonly deps: DiscordClientLifecycleDeps) {
     this.secrets = [deps.config.DISCORD_TOKEN, deps.config.DISCORD_COMPONENT_SIGNING_SECRET].filter(
       (value) => value.length > 0,
     );
+    this.authorizationSync =
+      deps.authorizationSync === undefined
+        ? createAuthorizationSyncClient(deps.config, deps.logger)
+        : deps.authorizationSync;
 
     this.client = new Client({
-      intents: [GatewayIntentBits.Guilds],
+      intents: [...ALLOWED_INTENTS],
     });
     this.rest = new REST({ version: '10' }).setToken(deps.config.DISCORD_TOKEN);
     this.bindEvents();
@@ -109,6 +126,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       this.deps.logger.info('Discord gateway ready', {
         guildId: this.deps.config.DISCORD_TEST_GUILD_ID,
       });
+      await this.syncAllowedGuildOnReady();
     } catch (error) {
       this.state = 'failed';
       this.lastError = safeErrorMessage(error, this.secrets);
@@ -133,13 +151,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return {
       id: record.id,
       name: record.name,
-      // Discord bot applications expose the bot user under `bot`; fall back to app id.
       botUserId: record.bot?.id ?? record.id,
     };
   }
 
   public async fetchGuild(guildId: string) {
-    // Bot tokens can only GET a guild when the bot is a member of that guild.
     const guild = await this.rest.get(Routes.guild(guildId));
     const record = guild as { id: string; name: string };
 
@@ -150,7 +166,6 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
         await this.rest.get(Routes.guildMember(guildId, application.botUserId));
         botIsMember = true;
       } catch {
-        // Guild GET already implies membership for bot tokens; keep true unless GET failed.
         botIsMember = true;
       }
     }
@@ -230,7 +245,81 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildCreate, (guild) => {
-      void this.handleUnauthorizedGuild(guild.id, 'guildCreate');
+      void this.handleGuildCreate(guild).catch((error: unknown) => {
+        this.deps.logger.error('GuildCreate handler failed', {
+          guildId: guild.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildDelete, (guild) => {
+      void this.handleGuildDelete(guild).catch((error: unknown) => {
+        this.deps.logger.error('GuildDelete handler failed', {
+          guildId: guild.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildMemberAdd, (member) => {
+      void this.handleMemberUpsert(member, 'guild_member_add').catch((error: unknown) => {
+        this.deps.logger.error('GuildMemberAdd sync failed', {
+          guildId: member.guild.id,
+          userId: member.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildMemberRemove, (member) => {
+      void this.handleMemberRemove(member).catch((error: unknown) => {
+        this.deps.logger.error('GuildMemberRemove sync failed', {
+          guildId: member.guild.id,
+          userId: member.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildMemberUpdate, (_previous, member) => {
+      void this.handleMemberUpsert(member, 'guild_member_update').catch((error: unknown) => {
+        this.deps.logger.error('GuildMemberUpdate sync failed', {
+          guildId: member.guild.id,
+          userId: member.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildRoleCreate, (role) => {
+      void this.handleRolesChanged(role.guild, 'guild_role_create', role).catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleCreate sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildRoleUpdate, (_previous, role) => {
+      void this.handleRolesChanged(role.guild, 'guild_role_update', role).catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleUpdate sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
+    });
+
+    this.client.on(Events.GuildRoleDelete, (role) => {
+      void this.handleRolesChanged(role.guild, 'guild_role_delete', role).catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleDelete sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
     });
 
     this.client.on(Events.Error, (error) => {
@@ -256,6 +345,173 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       this.lastError = 'Discord session invalidated.';
       this.deps.logger.error('Discord session invalidated');
     });
+  }
+
+  private isAllowedGuild(guildId: string): boolean {
+    return guildId === this.deps.config.DISCORD_TEST_GUILD_ID;
+  }
+
+  private async handleGuildCreate(guild: Guild): Promise<void> {
+    if (!this.isAllowedGuild(guild.id)) {
+      await this.handleUnauthorizedGuild(guild.id, 'guildCreate');
+      return;
+    }
+    await this.registerAndReconcile(guild);
+  }
+
+  private async handleGuildDelete(guild: Guild): Promise<void> {
+    if (!this.isAllowedGuild(guild.id) || this.authorizationSync === null) {
+      return;
+    }
+
+    const unavailable = guild.available === false;
+    const eventType = unavailable ? 'guild_unavailable' : 'guild_delete';
+    const payload = { kind: 'guild_detach' as const };
+    const eventKey = `dg:${eventType}:${guild.id}:${randomUUID()}`;
+    await this.authorizationSync.applyDiscordEvent({
+      eventKey,
+      eventType,
+      discordGuildId: guild.id,
+      payload,
+      payloadHash: hashAuthzPayload(payload),
+    });
+  }
+
+  private async handleMemberUpsert(
+    member: GuildMember,
+    eventType: 'guild_member_add' | 'guild_member_update',
+  ): Promise<void> {
+    if (!this.isAllowedGuild(member.guild.id) || this.authorizationSync === null) {
+      return;
+    }
+
+    const roleIds = [...member.roles.cache.keys()].filter((id) => id !== member.guild.id);
+    const payload = {
+      kind: 'member_upsert' as const,
+      member: {
+        discordUserId: member.id,
+        roleIds,
+        status: 'active' as const,
+      },
+    };
+    const joinedMs = member.joinedTimestamp ?? 0;
+    const eventKey =
+      eventType === 'guild_member_add'
+        ? `dg:${eventType}:${member.guild.id}:${member.id}:${joinedMs}`
+        : `dg:${eventType}:${member.guild.id}:${member.id}:${hashAuthzPayload(roleIds)}:${randomUUID()}`;
+
+    await this.authorizationSync.applyDiscordEvent({
+      eventKey,
+      eventType,
+      discordGuildId: member.guild.id,
+      payload,
+      payloadHash: hashAuthzPayload(payload),
+    });
+  }
+
+  private async handleMemberRemove(
+    member: GuildMember | { id: string; guild: Guild },
+  ): Promise<void> {
+    if (!this.isAllowedGuild(member.guild.id) || this.authorizationSync === null) {
+      return;
+    }
+
+    const payload = {
+      kind: 'member_remove' as const,
+      discordUserId: member.id,
+    };
+    const eventKey = `dg:guild_member_remove:${member.guild.id}:${member.id}:${randomUUID()}`;
+    await this.authorizationSync.applyDiscordEvent({
+      eventKey,
+      eventType: 'guild_member_remove',
+      discordGuildId: member.guild.id,
+      payload,
+      payloadHash: hashAuthzPayload(payload),
+    });
+  }
+
+  private async handleRolesChanged(
+    guild: Guild,
+    eventType: 'guild_role_create' | 'guild_role_update' | 'guild_role_delete',
+    role: Role,
+  ): Promise<void> {
+    if (!this.isAllowedGuild(guild.id) || this.authorizationSync === null) {
+      return;
+    }
+
+    const roles = [...guild.roles.cache.values()]
+      .filter((entry) => entry.id !== guild.id)
+      .map((entry) => ({
+        discordRoleId: entry.id,
+        nameCache: entry.name,
+      }));
+
+    const payload = {
+      kind: 'roles_snapshot' as const,
+      roles,
+    };
+    const eventKey = `dg:${eventType}:${guild.id}:${role.id}:${randomUUID()}`;
+    await this.authorizationSync.applyDiscordEvent({
+      eventKey,
+      eventType,
+      discordGuildId: guild.id,
+      payload,
+      payloadHash: hashAuthzPayload(payload),
+    });
+  }
+
+  private async syncAllowedGuildOnReady(): Promise<void> {
+    if (this.authorizationSync === null) {
+      return;
+    }
+    const guild = this.client.guilds.cache.get(this.deps.config.DISCORD_TEST_GUILD_ID);
+    if (!guild) {
+      return;
+    }
+    await this.registerAndReconcile(guild);
+  }
+
+  private async registerAndReconcile(guild: Guild): Promise<void> {
+    if (this.authorizationSync === null) {
+      return;
+    }
+
+    await this.authorizationSync.registerGuild(guild.id);
+    const snapshot = await this.buildGuildSnapshot(guild);
+    await this.authorizationSync.reconcileGuild(guild.id, {
+      ...snapshot,
+      eventKey: `dg:reconcile:${guild.id}:${randomUUID()}`,
+    });
+    this.deps.logger.info('Authorization sync register+reconcile completed', {
+      guildId: guild.id,
+      memberCount: snapshot.members.length,
+      roleCount: snapshot.roles.length,
+    });
+  }
+
+  private async buildGuildSnapshot(guild: Guild): Promise<{
+    members: Array<{
+      discordUserId: string;
+      roleIds: string[];
+      status: 'active';
+    }>;
+    roles: Array<{ discordRoleId: string; nameCache: string }>;
+  }> {
+    await guild.members.fetch();
+    const roles = [...guild.roles.cache.values()]
+      .filter((role) => role.id !== guild.id)
+      .map((role) => ({
+        discordRoleId: role.id,
+        nameCache: role.name,
+      }));
+
+    const members = [...guild.members.cache.values()].map((member) => ({
+      discordUserId: member.id,
+      roleIds: [...member.roles.cache.keys()].filter((id) => id !== guild.id),
+      status: 'active' as const,
+    }));
+
+    return { members, roles };
   }
 
   private async assertGuildMembershipAndIsolation(): Promise<void> {
@@ -308,8 +564,15 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 }
 
-export function assertOnlyGuildsIntent(intents: readonly number[]): void {
-  if (intents.length !== 1 || intents[0] !== GatewayIntentBits.Guilds) {
-    throw new Error('Only GatewayIntentBits.Guilds is permitted.');
+/** P3: Guilds + GuildMembers only (no MessageContent / GuildPresences). */
+export function assertAllowedGatewayIntents(intents: readonly number[]): void {
+  const expected = new Set<number>(ALLOWED_INTENTS);
+  if (intents.length !== expected.size || intents.some((intent) => !expected.has(intent))) {
+    throw new Error('Only GatewayIntentBits.Guilds and GuildMembers are permitted.');
   }
+}
+
+/** @deprecated Use assertAllowedGatewayIntents — GuildMembers required for P3 membership sync. */
+export function assertOnlyGuildsIntent(intents: readonly number[]): void {
+  assertAllowedGatewayIntents(intents);
 }

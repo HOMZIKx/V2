@@ -2,7 +2,11 @@ import { GatewayIntentBits, Routes } from 'discord.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { DiscordGatewayConfigSchema, normalizeDiscordConfig } from './discord-config.js';
-import { assertOnlyGuildsIntent, DiscordJsGatewayAdapter } from './discord-js-adapter.js';
+import {
+  assertAllowedGatewayIntents,
+  assertOnlyGuildsIntent,
+  DiscordJsGatewayAdapter,
+} from './discord-js-adapter.js';
 
 function makeConfig() {
   return normalizeDiscordConfig(
@@ -18,10 +22,17 @@ function makeConfig() {
 }
 
 describe('DiscordJsGatewayAdapter', () => {
-  it('permits only Guilds intent', () => {
-    expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).not.toThrow();
+  it('permits Guilds and GuildMembers intents only', () => {
     expect(() =>
-      assertOnlyGuildsIntent([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]),
+      assertAllowedGatewayIntents([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]),
+    ).not.toThrow();
+    expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).toThrow();
+    expect(() =>
+      assertAllowedGatewayIntents([
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildPresences,
+      ]),
     ).toThrow();
   });
 
