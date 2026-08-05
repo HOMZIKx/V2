@@ -18,6 +18,10 @@ export class HealthController {
 
   @Get('ready')
   public async ready(): Promise<{ status: 'ok'; authorizationDisabled?: true }> {
+    if (!this.config.AUTHORIZATION_ENABLED) {
+      return { status: 'ok', authorizationDisabled: true };
+    }
+
     try {
       await this.store.ping();
     } catch {
@@ -25,10 +29,6 @@ export class HealthController {
         status: 'error',
         checks: { database: false },
       });
-    }
-
-    if (!this.config.AUTHORIZATION_ENABLED) {
-      return { status: 'ok', authorizationDisabled: true };
     }
 
     return { status: 'ok' };

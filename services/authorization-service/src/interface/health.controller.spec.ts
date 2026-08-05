@@ -18,8 +18,8 @@ describe('HealthController', () => {
     expect(ping).not.toHaveBeenCalled();
   });
 
-  it('ready checks database with SELECT 1 via store.ping', async () => {
-    const ping = vi.fn().mockResolvedValue(undefined);
+  it('ready skips database when authorization is disabled', async () => {
+    const ping = vi.fn();
     const store = { ping } as unknown as AuthorizationStorePort;
     const controller = new HealthController(config, store);
 
@@ -27,6 +27,16 @@ describe('HealthController', () => {
       status: 'ok',
       authorizationDisabled: true,
     });
+    expect(ping).not.toHaveBeenCalled();
+  });
+
+  it('ready checks database with SELECT 1 when authorization is enabled', async () => {
+    const ping = vi.fn().mockResolvedValue(undefined);
+    const store = { ping } as unknown as AuthorizationStorePort;
+    const enabled = { AUTHORIZATION_ENABLED: true } as AuthorizationEnv;
+    const controller = new HealthController(enabled, store);
+
+    await expect(controller.ready()).resolves.toEqual({ status: 'ok' });
     expect(ping).toHaveBeenCalledTimes(1);
   });
 });

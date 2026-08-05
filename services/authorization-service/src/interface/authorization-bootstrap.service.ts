@@ -21,6 +21,9 @@ export class AuthorizationBootstrapService implements OnModuleInit, OnModuleDest
   ) {}
 
   public async onModuleInit(): Promise<void> {
+    if (!this.config.AUTHORIZATION_ENABLED) {
+      return;
+    }
     await this.store.ensureOrganization(this.config.AUTHORIZATION_ORGANIZATION_ID);
   }
 
