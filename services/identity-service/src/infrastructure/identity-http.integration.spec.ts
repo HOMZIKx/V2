@@ -47,15 +47,19 @@ async function signedSessionCookie(runtime: AuthRuntime, token: string): Promise
   return `${context.authCookies.sessionToken.name}=${token}.${signature}`;
 }
 
-function collectSetCookies(headers: Record<string, unknown>): string[] {
-  const raw = headers['set-cookie'];
+function collectSetCookies(headers: object): string[] {
+  const record = headers as Record<string, unknown>;
+  const raw = record['set-cookie'];
   if (raw === undefined || raw === null) {
     return [];
   }
   if (Array.isArray(raw)) {
-    return raw.map(String);
+    return raw.filter((entry): entry is string => typeof entry === 'string');
   }
-  return [String(raw)];
+  if (typeof raw === 'string') {
+    return [raw];
+  }
+  return [];
 }
 
 runInfra('Identity Nest/Fastify HTTP mount', () => {
@@ -100,7 +104,7 @@ runInfra('Identity Nest/Fastify HTTP mount', () => {
     });
 
     expect([200, 302]).toContain(start.statusCode);
-    const cookies = collectSetCookies(start.headers as Record<string, unknown>);
+    const cookies = collectSetCookies(start.headers);
     expect(cookies.length).toBeGreaterThan(0);
 
     const sessionProbe = await app.inject({
@@ -153,7 +157,7 @@ runInfra('Identity Nest/Fastify HTTP mount', () => {
     expect(logout.statusCode).toBe(200);
     expect(logout.json()).toEqual({ status: 'ok' });
 
-    const clearCookies = collectSetCookies(logout.headers as Record<string, unknown>);
+    const clearCookies = collectSetCookies(logout.headers);
     expect(clearCookies.length).toBeGreaterThan(0);
     expect(clearCookies.some((entry) => /max-age=0/i.test(entry) || /expires=/i.test(entry))).toBe(
       true,

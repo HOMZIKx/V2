@@ -13,8 +13,9 @@ const config = {
   NODE_ENV: 'development',
 } as IdentityEnv;
 const request = { headers: { cookie: 'v2.identity.session=abc' } } as unknown as FastifyRequest;
+const replyHeader = vi.fn().mockReturnThis();
 const reply = {
-  header: vi.fn().mockReturnThis(),
+  header: replyHeader,
 } as unknown as import('fastify').FastifyReply;
 
 const user: IdentityUserView = {
@@ -136,7 +137,7 @@ describe('IdentityController', () => {
     await expect(controller.logoutAll(request, reply)).resolves.toEqual({ status: 'ok' });
     expect(mock.logoutCurrent).toHaveBeenCalledOnce();
     expect(mock.logoutAll).toHaveBeenCalledOnce();
-    expect(reply.header).toHaveBeenCalledWith('set-cookie', [
+    expect(replyHeader).toHaveBeenCalledWith('set-cookie', [
       'v2.identity.session_token=; Max-Age=0',
     ]);
   });
