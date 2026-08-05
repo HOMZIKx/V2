@@ -17,7 +17,9 @@ interface RunMigrationsOptions {
 const TRACKING_TABLE = 'identity_schema_migrations';
 
 function sha256(contents: string): string {
-  return createHash('sha256').update(contents, 'utf8').digest('hex');
+  // Normalize line endings so the checksum is stable across OSes (CRLF vs LF).
+  const normalized = contents.replace(/\r\n/g, '\n');
+  return createHash('sha256').update(normalized, 'utf8').digest('hex');
 }
 
 function listMigrationFiles(migrationsDir: string): string[] {

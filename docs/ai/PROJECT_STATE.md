@@ -2,7 +2,19 @@
 
 ## Status
 
-`READY_FOR_CURSOR`
+`READY_FOR_LIVE_TEST`
+
+Proof slice implemented and pushed on `cursor/p2-identity-proof-slice`. Local
+gates green (typecheck, unit tests + coverage 70.85%, lint, architecture,
+format, build, Better Auth construction smoke). Two gates remain before
+`READY_FOR_REVIEW`:
+
+1. CI green on the final HEAD (includes the infra job with real PostgreSQL +
+   Redis integration tests);
+2. manual live OAuth gate (Discord + Google) per `docs/identity/LOCAL_OAUTH_PROOF.md`,
+   confirmed by the owner.
+
+See `docs/ai/CURSOR_TO_CHATGPT.md` for the full evidence report.
 
 ## Active phase
 
@@ -79,4 +91,4 @@ Cursor publikuje plan w draft PR, implementuje automatyczny proof i po zielonym 
 
 ## Last updated
 
-2026-08-05 — ChatGPT, start `P2-IDENTITY-PROOF-001`
+2026-08-05 — Cursor, implemented `P2-IDENTITY-PROOF-001` (READY_FOR_LIVE_TEST)

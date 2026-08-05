@@ -36,7 +36,9 @@ async function applyMigrations(connectionString: string, dir: string): Promise<M
       .sort((a, b) => a.localeCompare(b));
     for (const file of files) {
       const contents = readFileSync(path.join(dir, file), 'utf8');
-      const checksum = createHash('sha256').update(contents, 'utf8').digest('hex');
+      const checksum = createHash('sha256')
+        .update(contents.replace(/\r\n/g, '\n'), 'utf8')
+        .digest('hex');
       const existing = await client.query(
         'SELECT 1 FROM identity_schema_migrations WHERE id = $1',
         [file],
