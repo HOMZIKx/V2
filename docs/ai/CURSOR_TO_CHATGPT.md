@@ -54,7 +54,7 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 | `pnpm typecheck`           | PASS                                                                                                 |
 | `pnpm architecture:check`  | PASS                                                                                                 |
 | `pnpm validate` (lokalnie) | FAIL tylko na `docker compose config` (brak Docker CLI); wcześniej PASS coverage/build/runtime-smoke |
-| CI `@ c0bf0f3`             | **PASS** — Secret scan, Quality gates, Infrastructure integration, Conventional PR title             |
+| CI `@ 0ee2f31`             | **PASS** — Secret scan, Quality gates, Infrastructure integration, Conventional PR title             |
 
 ## Risks / debt
 
