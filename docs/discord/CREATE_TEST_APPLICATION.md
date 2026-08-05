@@ -35,9 +35,9 @@ Guild docelowy instalacji:
 1. W menu: **Bot**.
 2. Jeśli nie ma bota: **Add Bot** → Confirm.
 3. **Privileged Gateway Intents** — wszystko **WYŁĄCZONE**:
-   - Presence Intent → OFF  
-   - Server Members Intent → OFF  
-   - Message Content Intent → OFF  
+   - Presence Intent → OFF
+   - Server Members Intent → OFF
+   - Message Content Intent → OFF
 4. Opcjonalnie: wyłącz publiczny bot (`Public Bot` OFF), jeśli chcesz ograniczyć zaproszenia.
 5. Kliknij **Reset Token** / **View Token** → skopiuj token **raz**.
 6. Zapisz lokalnie jako `DISCORD_TOKEN` (menedżer haseł / lokalny plik poza Gitem).  
@@ -50,10 +50,10 @@ Guild docelowy instalacji:
    - `bot`
    - `applications.commands`
 3. **Bot Permissions** zaznacz wyłącznie:
-   - View Channels  
-   - Send Messages  
-   - Embed Links  
-   - Read Message History  
+   - View Channels
+   - Send Messages
+   - Embed Links
+   - Read Message History
 4. **Nie** zaznaczaj Administrator ani Manage Roles / Ban Members itd.
 5. Skopiuj wygenerowany URL na dole strony.
 6. Otwórz URL w przeglądarce.
@@ -75,12 +75,12 @@ Guild docelowy instalacji:
 
 Masz lokalnie (poza Gitem):
 
-- [ ] Application ID  
-- [ ] Bot token  
-- [ ] Własne User ID  
-- [ ] Bot jest członkiem wyłącznie guildu `1534228693017432124`  
-- [ ] Privileged intents OFF  
-- [ ] Brak uprawnienia Administrator  
+- [ ] Application ID
+- [ ] Bot token
+- [ ] Własne User ID
+- [ ] Bot jest członkiem wyłącznie guildu `1534228693017432124`
+- [ ] Privileged intents OFF
+- [ ] Brak uprawnienia Administrator
 
 Potem w czacie Cursor napisz tylko:
 
@@ -92,20 +92,20 @@ Aplikacja Discord utworzona. Mam lokalnie Application ID, Token i User ID.
 
 ## Co robi Cursor po Twoim sygnale
 
-1. Pomoże uzupełnić lokalny `.env` (Ty wklejasz sekrety do pliku, nie do czatu).  
-2. `pnpm discord:test:generate-secret`  
-3. `pnpm discord:test:doctor` → `register` → `start`  
+1. Pomoże uzupełnić lokalny `.env` (Ty wklejasz sekrety do pliku, nie do czatu).
+2. `pnpm discord:test:generate-secret`
+3. `pnpm discord:test:doctor` → `register` → `start`
 4. Live test na guildzie.
 
 ## Automatyzacja — granica
 
-| Działanie | Automatyzowalne? |
-| --------- | ---------------- |
-| Utworzenie Application / Bot w Portal | **Nie** (tylko UI Discord) |
-| Generowanie invite URL | Częściowo (szablon poniżej) po posiadaniu Application ID |
-| Rejestracja komend guild | Tak — `pnpm discord:test:register` (wymaga tokenu) |
-| Start Gateway | Tak — `pnpm discord:test:start` |
-| Testy CI bez tokenu | Tak — `DISCORD_ENABLED=false` |
+| Działanie                             | Automatyzowalne?                                         |
+| ------------------------------------- | -------------------------------------------------------- |
+| Utworzenie Application / Bot w Portal | **Nie** (tylko UI Discord)                               |
+| Generowanie invite URL                | Częściowo (szablon poniżej) po posiadaniu Application ID |
+| Rejestracja komend guild              | Tak — `pnpm discord:test:register` (wymaga tokenu)       |
+| Start Gateway                         | Tak — `pnpm discord:test:start`                          |
+| Testy CI bez tokenu                   | Tak — `DISCORD_ENABLED=false`                            |
 
 ### Szablon invite (po uzyskaniu Application ID)
 

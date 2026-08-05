@@ -23,7 +23,8 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 
 - Wyłącznie intent **`GatewayIntentBits.Guilds`**. Bez `MessageContent`, `GuildMembers`, `GuildPresences` ani innych privileged intents.
 - Scopes instalacji OAuth: **`bot`** i **`applications.commands`**.
-- Minimalne uprawnienia bota: **View Channels**, **Send Messages**, **Embed Links**, **Read Message History**. Bez **Administrator**.
+- Minimalne uprawnienia bota: **View Channels**, **Send Messages**, **Embed Links**, **Read Message History**. Bez **Administrator** (docelowa zasada).
+- **Nota (DEC-002, 2026-08-05):** właściciel świadomie zainstalował bota testowego z uprawnieniem Administrator wyłącznie na guild `1534228693017432124` na czas lokalnego live testu. Przed hostingiem / produkcją wrócić do minimalnego zestawu.
 
 ### Komendy i izolacja guild
 
@@ -52,6 +53,7 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 - **Brak live Discorda w CI** — brak tokenu, brak połączenia Gateway w GitHub Actions.
 - Testy Vitest obejmują konfigurację, izolację guild, signed custom IDs, renderer panelu, health/readiness i router na mockowanym adapterze.
 - Manualny live test na guild testowym jest obowiązkową bramką przed statusem `READY_FOR_REVIEW`.
+- **Live test (2026-08-05):** sukces — guild `1534228693017432124`, Application/Bot ID `1534432424094728364`, potwierdzenie właściciela: `/status`, `/panel-test` i interakcje panelu działają.
 
 ## Konsekwencje
 

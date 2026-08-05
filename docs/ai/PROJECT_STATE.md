@@ -2,12 +2,11 @@
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_LIVE_TEST`
+`P1_DISCORD_TEST_HARNESS_READY_FOR_REVIEW`
 
 ## Aktualny etap
 
-P1 Discord Test Harness — **lokalny live test na pierwszym miejscu**.  
-Wdrożenie Zeabur (DEC-001 B / ADR-0008) jest **wstrzymane** do potwierdzenia działania bota lokalnie.
+P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` w toku audytu. Zeabur odłożony.
 
 ## Zatwierdzone
 
@@ -31,44 +30,36 @@ Wdrożenie Zeabur (DEC-001 B / ADR-0008) jest **wstrzymane** do potwierdzenia dz
 - dedykowany serwer testowy Discord `1534228693017432124`;
 - wizja Desktop Companion / overlay (ADR-0006);
 - Discord test harness P1 (ADR-0007);
-- ADR-0008 (Zeabur) — dokumentacja przyjęta, **wdrożenie odłożone**.
+- ADR-0008 (Zeabur) — dokumentacja; **wdrożenie deferred**.
 
 ## Zamknięty etap
 
 - **Task ID:** `P0-BOOTSTRAP-001`
 - **Status:** `APPROVED_AND_MERGED`
 - **PR:** `#3`
-- **Merge commit:** `877c680f234836ab55c5c345abf0a2175c31c24f`
 
 ## Aktywne zadanie
 
 - **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `AWAITING_DISCORD_APPLICATION_CREATE`
+- **Status:** `READY_FOR_REVIEW`
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Kod P1 / CI:** gotowe bez tokenu (`DISCORD_ENABLED=false`)
-- **Blokada live testu:** brak aplikacji w Discord Developer Portal — instrukcja: `docs/discord/CREATE_TEST_APPLICATION.md`
-- **Zeabur:** wstrzymany
-- **Pull Request:** po lokalnym live teście i zielonym CI — bez samodzielnego scalenia
+- **Live test:** sukces na guild `1534228693017432124` (potwierdzenie właściciela)
+- **Application ID / Bot User ID:** `1534432424094728364`
+- **Zeabur:** DEFERRED (DEC-001)
+- **Pull Request:** utworzony — **bez merge** do czasu `APPROVED`
 
-## Cel aktywnego zadania
+## Nadal niezaimplementowane
 
-- bezpieczne połączenie `discord-gateway` z Discordem (lokalnie);
-- działanie wyłącznie na guild `1534228693017432124`;
-- `/status`, `/panel-test`, select, modal, odśwież, usuń, restart procesu;
-- brak tokenu w czacie / Git.
+- Discord OAuth, Better Auth, sesje i MFA;
+- docelowy RBAC;
+- modele biznesowe i ORM;
+- moduły wydarzeń / LFG / moderacji itd.;
+- wdrożenie Zeabur (wstrzymane).
 
 ## Następny punkt kontrolny
 
-1. Właściciel: lokalny `.env` wg `docs/discord/TEST_BOT_SETUP.md`
-2. `pnpm discord:test:doctor` → `register` → `start`
-3. Pełny live test na Discordzie
-4. Potwierdzenie w czacie (Application ID / Bot User ID / Guild ID — bez sekretów)
-5. Dopiero potem: PR oraz ewentualne wznowienie Zeabur
-
-## Blokady
-
-Live test wymaga lokalnego tokenu i signing secret w ignorowanym `.env`. Agent nie prosi o wklejenie tokenu do czatu.
+Audyt ChatGPT PR P1 → `APPROVED` / merge. Nie rozpoczynać kolejnego dużego etapu bez statusu `APPROVED`.
 
 ## Ważna uwaga
 
-Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów.
+Stary projekt nie definiuje architektury V2.
