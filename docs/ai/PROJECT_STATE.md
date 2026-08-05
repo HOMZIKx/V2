@@ -6,8 +6,8 @@
 
 Draft PR #11 (`cursor/p2-identity-proof-slice`) — P2 Identity proof slice with
 **Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED** (manual
-subset). Documentation consistency pass only for merge readiness. Still **no
-merge** by Cursor.
+subset). Still **no merge** by Cursor. Tip HEAD and Checks: GitHub SoT (not
+versioned in the report). Next JWT plan: Issue #13 (`READY_FOR_OWNER_DECISION`).
 
 See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
 

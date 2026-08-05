@@ -12,14 +12,23 @@ empty-body fix included. Still **no merge** by Cursor.
 
 `P2-IDENTITY-PROOF-001`
 
-## 3. Branch / PR / HEAD
+## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p2-identity-proof-slice`
-- PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: `2297b9dea1ab3ee617dbbdef965f54c010098680`
-  (docs-only consistency tip; Identity application code unchanged)
-- Prior tip recorded for owner request: `4d1b7baf16ef91f551db5685132f311180135c32`
-  (CI `31017205223`, PR Title `31017204798`)
+- PR: #11 (existing draft; no new PR, no merge by Cursor)
+
+**GitHub is the source of truth** for the current PR tip commit and the latest
+Checks / workflow runs. This versioned report does **not** store or update tip
+HEAD SHAs or CI run IDs (avoids self-driving docs commits). Read them from the
+PR page / `gh pr view 11` / Actions.
+
+### Identity code commit (stable reference — not tip HEAD)
+
+- Label: **Identity code commit**
+- SHA: `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb`
+- Meaning: last commit on this branch that changed Identity Service application
+  code (Discord-only OAuth scope + proof UI logout empty-JSON fix). Later tip
+  commits may be documentation-only.
 
 ## 4. Scope (Discord-only)
 
@@ -65,24 +74,17 @@ logout Set-Cookie forwarding.
 
 ## 11. Test evidence
 
-Local identity (+ infra): **97 passed**.
+Local identity (+ infra): **97 passed** (at Identity code commit era).
 
 ## 12. Local command results
 
 - Identity vitest + infra: 97 passed
-- `pnpm validate` gates (format/lint/typecheck/coverage/architecture/build/e2e/
-  web+admin build) + `test:runtime-smoke` passed on the proof slice
+- `pnpm validate` gates + `test:runtime-smoke` passed on the proof slice
 
-## 13. CI (tip HEAD `2297b9d…`)
+## 13. CI / Checks
 
-- CI: `31018940939` — **success**
-  https://github.com/HOMZIKx/V2/actions/runs/31018940939
-- Push CI: `31018936225` — **success**
-  https://github.com/HOMZIKx/V2/actions/runs/31018936225
-- PR Title: `31018943572` — **success**
-  https://github.com/HOMZIKx/V2/actions/runs/31018943572
-
-Prior tip `4d1b7ba…`: CI `31017205223`, PR Title `31017204798` (both success).
+See **GitHub PR #11 Checks** for the current tip. Do not copy run IDs into this
+file.
 
 ## 14. Risks / tech debt
 
@@ -92,9 +94,8 @@ Prior tip `4d1b7ba…`: CI `31017205223`, PR Title `31017204798` (both success).
 
 ## 15. Recommended next slice (not implemented)
 
-`P2-IDENTITY-INTERNAL-JWT-001` — internal service-to-service JWT (plan Issue;
-not in this PR).
+`P2-IDENTITY-INTERNAL-JWT-001` — plan on GitHub Issue #13; not in this PR.
 
 ## Last updated
 
-2026-08-05 — Cursor (docs consistency; READY_FOR_OWNER_MERGE)
+2026-08-05 — Cursor (report SoT = GitHub; READY_FOR_OWNER_MERGE)
