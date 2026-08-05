@@ -31,6 +31,11 @@ describe('parseIdentityEnv — disabled', () => {
     expect(config.IDENTITY_REDIS_URL).toBe('redis://127.0.0.1:6379/1');
     expect(config.IDENTITY_AUTH_BASE_PATH).toBe('/api/auth');
     expect(config.IDENTITY_COOKIE_PREFIX).toBe('v2.identity');
+    expect(config.IDENTITY_SYSTEM_REVOKE_URL).toBe(
+      'http://127.0.0.1:4200/identity/v1/system/revoke-sessions',
+    );
+    expect(config.IDENTITY_AUTHORIZATION_ENABLED).toBe(false);
+    expect(config.IDENTITY_TO_AUTHZ_CLIENT_ID).toBe('v2.identity-service');
   });
 
   it('parses trusted origins into a list', () => {
@@ -155,6 +160,36 @@ describe('parseIdentityEnv — internal JWT', () => {
         IDENTITY_SERVICE_CLIENTS_JSON: clientsJson,
       }),
     ).toThrow(IdentityConfigError);
+  });
+});
+
+describe('parseIdentityEnv — authorization gate', () => {
+  let fixtures: IdentityInternalJwtTestFixtures;
+
+  beforeAll(async () => {
+    fixtures = await getIdentityTestFixtures();
+  });
+
+  it('requires Authz client signing material when enabled', () => {
+    expect(() =>
+      parseIdentityEnv({
+        ...enabledEnv(),
+        IDENTITY_AUTHORIZATION_ENABLED: 'true',
+      }),
+    ).toThrow(IdentityConfigError);
+  });
+
+  it('accepts complete authorization gate configuration', () => {
+    const config = parseIdentityEnv({
+      ...enabledEnv(),
+      IDENTITY_AUTHORIZATION_ENABLED: 'true',
+      IDENTITY_AUTHORIZATION_BASE_URL: 'http://127.0.0.1:4300',
+      IDENTITY_AUTHORIZATION_ASSERTION_AUD: 'http://127.0.0.1:4300/authorization/v1',
+      IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.privatePem,
+      IDENTITY_TO_AUTHZ_ACTIVE_KID: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.kid,
+    });
+    expect(config.IDENTITY_AUTHORIZATION_ENABLED).toBe(true);
+    expect(config.IDENTITY_TO_AUTHZ_CLIENT_ID).toBe('v2.identity-service');
   });
 });
 

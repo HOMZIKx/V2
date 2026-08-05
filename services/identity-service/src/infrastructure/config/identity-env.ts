@@ -88,6 +88,15 @@ const baseSchema = z.object({
   IDENTITY_INTERNAL_JWT_KEYRING_JSON: optionalTrimmed,
   IDENTITY_INTERNAL_JWT_ACTIVE_KID: optionalTrimmed,
   IDENTITY_INTERNAL_JWT_ISSUE_URL: optionalTrimmed,
+  IDENTITY_SYSTEM_REVOKE_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions'
+        : trimmed;
+    }),
   IDENTITY_SERVICE_CLIENTS_JSON: optionalTrimmed,
   IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS: z.coerce
@@ -105,6 +114,18 @@ const baseSchema = z.object({
         ? 'v2:identity:client-assertion:jti:'
         : trimmed;
     }),
+  IDENTITY_AUTHORIZATION_ENABLED: booleanFromEnv(false),
+  IDENTITY_AUTHORIZATION_BASE_URL: optionalTrimmed,
+  IDENTITY_AUTHORIZATION_ASSERTION_AUD: optionalTrimmed,
+  IDENTITY_TO_AUTHZ_CLIENT_ID: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === '' ? 'v2.identity-service' : trimmed;
+    }),
+  IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM: optionalTrimmed,
+  IDENTITY_TO_AUTHZ_ACTIVE_KID: optionalTrimmed,
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
@@ -251,6 +272,59 @@ function assertInternalJwtRequirements(
       { requireHttps: isProduction, rejectLocalhost: isProduction },
     );
   }
+  assertValidOriginUrl(
+    config.IDENTITY_SYSTEM_REVOKE_URL,
+    'IDENTITY_SYSTEM_REVOKE_URL',
+    addIssue,
+    { requireHttps: isProduction, rejectLocalhost: isProduction },
+  );
+}
+
+function assertAuthorizationRequirements(
+  config: IdentityEnv,
+  addIssue: (path: string, message: string) => void,
+): void {
+  if (!config.IDENTITY_AUTHORIZATION_ENABLED) {
+    return;
+  }
+
+  if (!config.IDENTITY_AUTH_ENABLED) {
+    addIssue('IDENTITY_AUTHORIZATION_ENABLED', 'requires IDENTITY_AUTH_ENABLED=true');
+  }
+  if (config.IDENTITY_AUTHORIZATION_BASE_URL === undefined) {
+    addIssue(
+      'IDENTITY_AUTHORIZATION_BASE_URL',
+      'is required when IDENTITY_AUTHORIZATION_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_AUTHORIZATION_ASSERTION_AUD === undefined) {
+    addIssue(
+      'IDENTITY_AUTHORIZATION_ASSERTION_AUD',
+      'is required when IDENTITY_AUTHORIZATION_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM === undefined) {
+    addIssue(
+      'IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM',
+      'is required when IDENTITY_AUTHORIZATION_ENABLED=true',
+    );
+  }
+  if (config.IDENTITY_TO_AUTHZ_ACTIVE_KID === undefined) {
+    addIssue(
+      'IDENTITY_TO_AUTHZ_ACTIVE_KID',
+      'is required when IDENTITY_AUTHORIZATION_ENABLED=true',
+    );
+  }
+
+  const isProduction = config.NODE_ENV === 'production';
+  if (config.IDENTITY_AUTHORIZATION_BASE_URL !== undefined) {
+    assertValidOriginUrl(
+      config.IDENTITY_AUTHORIZATION_BASE_URL,
+      'IDENTITY_AUTHORIZATION_BASE_URL',
+      addIssue,
+      { requireHttps: isProduction, rejectLocalhost: isProduction },
+    );
+  }
 }
 
 /**
@@ -292,11 +366,22 @@ export function parseIdentityEnv(env: NodeJS.ProcessEnv): IdentityEnv {
     }
   }
 
+  if (config.IDENTITY_AUTHORIZATION_ENABLED) {
+    const issues: string[] = [];
+    assertAuthorizationRequirements(config, (path, message) => issues.push(`${path}: ${message}`));
+    if (issues.length > 0) {
+      throw new IdentityConfigError(
+        `Identity authorization gate is enabled but configuration is incomplete: ${issues.join('; ')}`,
+      );
+    }
+  }
+
   return config;
 }
 
 const URL_CREDENTIALS = /(\/\/[^:/@\s]+:)([^@/\s]+)(@)/g;
-const SENSITIVE_ASSIGNMENT = /((?:SECRET|PASSWORD|TOKEN|CLIENT_SECRET)[A-Z_]*\s*[=:]\s*)(\S+)/gi;
+const SENSITIVE_ASSIGNMENT =
+  /((?:SECRET|PASSWORD|TOKEN|CLIENT_SECRET|PRIVATE_KEY)[A-Z_]*\s*[=:]\s*)(\S+)/gi;
 
 /**
  * Redact secret-bearing substrings so config can be safely logged. Replaces

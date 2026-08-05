@@ -4,73 +4,49 @@
 
 `READY_FOR_REVIEW`
 
-P3 Authorization foundation on branch `cursor/p3-authorization-foundation`.
+Identity-side P3 integration on `cursor/p3-authorization-foundation` (Issue #15).
+**No merge by Cursor.**
 
 ## 2. Task ID
 
-`P3-AUTHORIZATION-FOUNDATION-001`
+`P3-AUTHORIZATION-FOUNDATION-001` (Identity slice)
 
-## 3. Branch / commit
+## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p3-authorization-foundation`
-- Commit: `d32287648d38c34d328c0bcbe775ae32f69f528e`
+- Issue: #15 (OPEN, PLAN_APPROVED)
+- PR: draft when opened (GitHub SoT for tip HEAD, CI)
 
-## 4. Implemented scope
+## 4. What landed (Identity)
 
-Authorization-service end-to-end foundation:
+| Area | Change |
+| --- | --- |
+| Assertion verifier | `expectedAudience: string` parameter (issue flow still uses `IDENTITY_INTERNAL_JWT_ISSUE_URL`) |
+| System revoke | `POST /identity/v1/system/revoke-sessions` — `Identity-Client-Assertion` only; body `v2_user_id`/`reason`/`correlation_id`; aud = `IDENTITY_SYSTEM_REVOKE_URL`; jti replay; `revokeAllSessionsForUser` |
+| Login gate (P3-D19) | Better Auth `databaseHooks.session.create.before` → Discord account lookup → Authz identity-links + authorize (`permission.platform.login.www` sensitive); deny aborts session; user row kept |
+| AuthorizationClient | Signs Identity→Authz system assertions; skipped when `IDENTITY_AUTHORIZATION_ENABLED=false` |
+| Clients JSON | Test/docs register `v2.authorization-service` with revoke URL in `allowed_audiences` |
 
-- Application ports + use-cases (bootstrap, identity-link, authorize/explain, guild
-  register/events/reconcile/activate, grants/blocks, entitlement-loss revoke)
-- `AuthorizationRepository` (raw `pg` SQL against migration `001`)
-- `SystemRevokeClient` — EdDSA assertion + POST Identity system revoke body
-  `{ v2_user_id, reason, correlation_id }` with header `Identity-Client-Assertion`
-- Nest HTTP under `/authorization/v1/*` + inbound assertion guard
-- Startup: parse env, pool, ensure single organization row
-- Health ready: `SELECT 1` via store ping
+## 5. New env (see `.env.example`)
 
-### Auth note
+- `IDENTITY_SYSTEM_REVOKE_URL` (default local revoke URL)
+- `IDENTITY_AUTHORIZATION_ENABLED` / `BASE_URL` / `ASSERTION_AUD`
+- `IDENTITY_TO_AUTHZ_CLIENT_ID` (default `v2.identity-service`) + `PRIVATE_KEY_PEM` + `ACTIVE_KID`
 
-When `AUTHORIZATION_ENABLED=false`, `InboundAssertionGuard` skips assertion verification
-(local/unauthenticated tests). When `true`, requires `Authorization-Client-Assertion`
-with `aud = AUTHORIZATION_ASSERTION_AUD` or full request URL; optional Redis jti store.
+## 6. Validation commands
 
-## 5. Routes
-
-| Method | Path |
-| ------ | ---- |
-| POST | `/authorization/v1/bootstrap/owner` |
-| POST | `/authorization/v1/identity-links` |
-| POST | `/authorization/v1/authorize` |
-| POST | `/authorization/v1/authorize/explain` |
-| POST | `/authorization/v1/discord/guilds/register` |
-| POST | `/authorization/v1/discord/events` |
-| POST | `/authorization/v1/discord/guilds/:guildId/reconcile` |
-| POST | `/authorization/v1/discord/guilds/:guildId/activate` |
-| POST | `/authorization/v1/grants` |
-| POST | `/authorization/v1/blocks` |
-| GET | `/health/live` |
-| GET | `/health/ready` |
-
-## 6. Tests
-
-```text
-pnpm --dir services/authorization-service typecheck  # pass
-pnpm --dir services/authorization-service lint       # pass
-pnpm --dir services/authorization-service test       # 30 pass, 3 infra skipped (DB down)
-pnpm --dir services/authorization-service build      # pass
+```bash
+pnpm --filter @v2/identity-service lint
+pnpm --filter @v2/identity-service typecheck
+pnpm --filter @v2/identity-service test
+RUN_INFRA_TESTS=true pnpm --filter @v2/identity-service test
 ```
 
-Infra repository tests run when `RUN_INFRA_TESTS=true` and Postgres is reachable;
-otherwise they skip without failing the unit job.
+## 7. Notes / debt
 
-## 7. Assumptions / tech debt
+- Authz HTTP routes for `/authorization/v1/identity-links` and `/authorize` are called by contract; mock Authz in Identity infra tests when Authz HTTP is not up.
+- Admin UI not in this PR.
 
-- Identity system revoke HTTP (`POST /identity/v1/system/revoke-sessions`) is expected
-  as the `AUTHORIZATION_IDENTITY_REVOKE_URL` target (parallel Identity work may land it).
-- No PEM fixtures committed; ephemeral keys in unit tests.
-- Domain remains free of Nest/`pg`.
-- Repository integration not executed against live PG in this agent run (compose not up).
+## Last updated
 
-## 8. Questions
-
-None blocking for foundation review.
+2026-08-05 — Cursor (Identity-side P3 integration)

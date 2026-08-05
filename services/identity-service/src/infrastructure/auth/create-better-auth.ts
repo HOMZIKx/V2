@@ -4,6 +4,11 @@ import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 
 import { buildSyntheticEmail } from '../../domain/synthetic-email.js';
+import {
+  createAuthorizationClient,
+  type AuthorizationClient,
+} from '../authorization/authorization-client.js';
+import { enforceLoginEntitlement } from '../authorization/login-entitlement-gate.js';
 import type { IdentityEnv } from '../config/identity-env.js';
 
 const REDIS_KEY_PREFIX = 'v2:identity:auth:';
@@ -61,6 +66,15 @@ export function mapDiscordProfileToUser(profile: MappableDiscordProfile): {
   };
 }
 
+export interface CreateBetterAuthDependencies {
+  /**
+   * Optional override for tests. When omitted and
+   * IDENTITY_AUTHORIZATION_ENABLED=true, a real HTTP client is created.
+   * Pass `null` to force-disable the gate even if the flag is on.
+   */
+  readonly authorizationClient?: AuthorizationClient | null;
+}
+
 /**
  * Build the Better Auth engine for the Identity Service. All engine wiring
  * (PostgreSQL pool, Redis secondary storage, providers, linking policy) lives
@@ -69,7 +83,7 @@ export function mapDiscordProfileToUser(profile: MappableDiscordProfile): {
  * Caller must have validated {@link IdentityEnv} with auth enabled: the required
  * fields below are asserted non-null by config validation before this runs.
  */
-export function createBetterAuth(config: IdentityEnv) {
+export function createBetterAuth(config: IdentityEnv, deps: CreateBetterAuthDependencies = {}) {
   const isProduction = config.NODE_ENV === 'production';
 
   const pool = new Pool({ connectionString: config.IDENTITY_DATABASE_URL });
@@ -83,6 +97,13 @@ export function createBetterAuth(config: IdentityEnv) {
       // Config validation already rejects invalid base URLs when auth is enabled.
     }
   }
+
+  const authorizationClient =
+    deps.authorizationClient !== undefined
+      ? deps.authorizationClient
+      : config.IDENTITY_AUTHORIZATION_ENABLED
+        ? createAuthorizationClient(config)
+        : null;
 
   const auth = betterAuth({
     appName: 'v2-identity',
@@ -129,6 +150,20 @@ export function createBetterAuth(config: IdentityEnv) {
       account: {
         create: { before: (account) => Promise.resolve(stripProviderTokens(account)) },
         update: { before: (account) => Promise.resolve(stripProviderTokens(account)) },
+      },
+      session: {
+        create: {
+          before: async (session) => {
+            if (authorizationClient === null) {
+              return;
+            }
+            await enforceLoginEntitlement({
+              pool,
+              authorizationClient,
+              userId: session.userId,
+            });
+          },
+        },
       },
     },
   });

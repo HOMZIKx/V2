@@ -36,13 +36,13 @@ function requireStringClaim(payload: JWTPayload, claim: 'iss' | 'sub' | 'jti'): 
   return value;
 }
 
-function requireExactIssueAudience(payload: JWTPayload, issueUrl: string): void {
+function requireExactAudience(payload: JWTPayload, expectedAudience: string): void {
   const aud = payload.aud;
   if (Array.isArray(aud)) {
     reject('Assertion aud must be a single string, not an array');
   }
-  if (typeof aud !== 'string' || aud !== issueUrl) {
-    reject('Assertion aud must exactly equal IDENTITY_INTERNAL_JWT_ISSUE_URL');
+  if (typeof aud !== 'string' || aud !== expectedAudience) {
+    reject('Assertion aud must exactly equal the expected audience');
   }
 }
 
@@ -58,12 +58,15 @@ export async function verifyClientAssertion(
   assertion: string,
   config: Pick<
     IdentityEnv,
-    | 'IDENTITY_INTERNAL_JWT_ISSUE_URL'
-    | 'IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS'
-    | 'IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS'
+    'IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS' | 'IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS'
   >,
   registry: ServiceClientRegistry,
+  expectedAudience: string,
 ): Promise<VerifiedClientAssertion> {
+  if (expectedAudience.trim().length === 0) {
+    reject('Expected audience is not configured');
+  }
+
   let protectedHeader: { alg?: string; kid?: string };
   try {
     protectedHeader = decodeProtectedHeader(assertion);
@@ -83,11 +86,6 @@ export async function verifyClientAssertion(
   const keyEntry = getVerifiableServiceKey(registry, kid);
   if (keyEntry === undefined) {
     reject('Unknown or retired service-auth kid');
-  }
-
-  const issueUrl = config.IDENTITY_INTERNAL_JWT_ISSUE_URL;
-  if (issueUrl === undefined) {
-    reject('Identity issue URL is not configured');
   }
 
   let decoded: JWTPayload;
@@ -117,7 +115,7 @@ export async function verifyClientAssertion(
     reject('Assertion jti must be a UUID');
   }
 
-  requireExactIssueAudience(decoded, issueUrl);
+  requireExactAudience(decoded, expectedAudience);
 
   const iat = requireIntegerClaim(decoded, 'iat');
   const exp = requireIntegerClaim(decoded, 'exp');
@@ -149,7 +147,7 @@ export async function verifyClientAssertion(
     const verified = await jwtVerify(assertion, jwks, {
       algorithms: [ALLOWED_ALGORITHM],
       issuer: keyEntry.clientId,
-      audience: issueUrl,
+      audience: expectedAudience,
       clockTolerance: clockSkew,
     });
     payload = verified.payload;
@@ -165,7 +163,7 @@ export async function verifyClientAssertion(
     reject('Assertion iss/sub must equal key owner client_id');
   }
 
-  requireExactIssueAudience(payload, issueUrl);
+  requireExactAudience(payload, expectedAudience);
   const verifiedJti = requireStringClaim(payload, 'jti');
   if (!uuidSchema.safeParse(verifiedJti).success) {
     reject('Assertion jti must be a UUID');

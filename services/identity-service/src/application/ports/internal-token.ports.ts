@@ -5,7 +5,10 @@ export interface InternalTokenView {
 }
 
 export interface ClientAssertionPort {
-  verify(assertion: string): Promise<{ clientId: string; kid: string; jti: string }>;
+  verify(
+    assertion: string,
+    expectedAudience: string,
+  ): Promise<{ clientId: string; kid: string; jti: string }>;
   assertJtiOnce(jti: string, ttlSeconds: number): Promise<void>;
   assertAudienceAllowed(clientId: string, audience: string): void;
 }

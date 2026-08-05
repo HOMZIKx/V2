@@ -16,6 +16,8 @@ const STATUS_BY_CODE: Record<IdentityErrorCode, number> = {
   CLIENT_ASSERTION_REPLAY: HttpStatus.UNAUTHORIZED,
   INTERNAL_JWT_DISABLED: HttpStatus.SERVICE_UNAVAILABLE,
   AUDIENCE_NOT_ALLOWED: HttpStatus.FORBIDDEN,
+  LOGIN_NOT_ENTITLED: HttpStatus.FORBIDDEN,
+  AUTHORIZATION_UNAVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
 /** Maps stable {@link IdentityError} codes to HTTP responses without leaking library internals. */

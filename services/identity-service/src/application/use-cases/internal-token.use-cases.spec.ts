@@ -59,11 +59,16 @@ describe('issueInternalToken', () => {
       clientAssertion: 'assertion',
       userSessionHeaders: new Headers(),
       audience: 'v2.api-gateway',
+      expectedAudience: 'http://127.0.0.1:4200/identity/internal-token',
       assertionReplayTtlSeconds: 120,
     });
 
     expect(result.accessToken).toBe('token');
     expect(assertJtiOnce).toHaveBeenCalledWith('jti-1', 120);
+    expect(verify).toHaveBeenCalledWith(
+      'assertion',
+      'http://127.0.0.1:4200/identity/internal-token',
+    );
   });
 
   it('rejects without session', async () => {
@@ -79,6 +84,7 @@ describe('issueInternalToken', () => {
         clientAssertion: 'assertion',
         userSessionHeaders: new Headers(),
         audience: 'v2.api-gateway',
+        expectedAudience: 'http://127.0.0.1:4200/identity/internal-token',
         assertionReplayTtlSeconds: 120,
       }),
     ).rejects.toBeInstanceOf(IdentityError);

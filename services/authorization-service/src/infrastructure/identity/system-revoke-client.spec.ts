@@ -22,7 +22,7 @@ describe('SystemRevokeClient', () => {
       clientId: 'v2.authorization-service',
       kid: 'authz-active',
       privateKeyPem: privatePem,
-      revokeUrl: 'http://127.0.0.1:4200/identity/system/revoke-sessions',
+      revokeUrl: 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions',
       maxTtlSeconds: 60,
       fetchImpl: fetchImpl as typeof fetch,
     });
@@ -31,7 +31,7 @@ describe('SystemRevokeClient', () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(call[0]).toBe('http://127.0.0.1:4200/identity/system/revoke-sessions');
+    expect(call[0]).toBe('http://127.0.0.1:4200/identity/v1/system/revoke-sessions');
     expect(call[1].method).toBe('POST');
     const headers = call[1].headers as Record<string, string>;
     expect(headers['identity-client-assertion']).toMatch(/^eyJ/);
