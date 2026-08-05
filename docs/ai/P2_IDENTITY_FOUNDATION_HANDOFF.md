@@ -54,15 +54,15 @@ Ten dokument jest **planem**. Implementacja kodu P2 jest zabroniona do czasu:
 
 ## 4. Decyzje właściciela (2026-08-05) — ACCEPTED
 
-| DEC     | Wybór | Skutek                                      |
-| ------- | ----- | ------------------------------------------- |
-| DEC-003 | **B** | Multi-provider; V2 UUID; supersede D-016    |
-| DEC-004 | **A** | Better Auth + Fastify handler + ports       |
+| DEC     | Wybór | Skutek                                        |
+| ------- | ----- | --------------------------------------------- |
+| DEC-003 | **B** | Multi-provider; V2 UUID; supersede D-016      |
+| DEC-004 | **A** | Better Auth + Fastify handler + ports         |
 | DEC-005 | **A** | Tylko jawne linking; `disableImplicitLinking` |
-| DEC-006 | **C** | P2 = revoke API; guild policy → P3          |
-| DEC-007 | **A** | P1 merged; impl P2 po merge planu #10       |
-| DEC-008 | **A** | Opaque cookie + Redis SoT; osobne Web/Admin |
-| DEC-009 | **A** | Internal JWT ≤5 min; asymetryczny; bez RBAC |
+| DEC-006 | **C** | P2 = revoke API; guild policy → P3            |
+| DEC-007 | **A** | P1 merged; impl P2 po merge planu #10         |
+| DEC-008 | **A** | Opaque cookie + Redis SoT; osobne Web/Admin   |
+| DEC-009 | **A** | Internal JWT ≤5 min; asymetryczny; bez RBAC   |
 
 Szczegóły: `PENDING_DECISIONS.md` (sekcja Rozstrzygnięte), `DECISION_LOG` D-031–D-033.
 
@@ -86,11 +86,11 @@ W P2: **zero** RBAC. Przyszła konsumpcja `userId` V2 + zdarzenia Identity.
 
 ### 5.3 Klienci
 
-| Klient            | Rola w P2                                               |
-| ----------------- | ------------------------------------------------------- |
-| `web` / `admin`   | Cookies sesji (osobne nazwy); BFF → Identity            |
-| `api-gateway`     | Edge; nie SoT tożsamości                                |
-| `discord-gateway` | P1 harness; P2 — przyszłe powiązanie user↔Discord       |
+| Klient            | Rola w P2                                         |
+| ----------------- | ------------------------------------------------- |
+| `web` / `admin`   | Cookies sesji (osobne nazwy); BFF → Identity      |
+| `api-gateway`     | Edge; nie SoT tożsamości                          |
+| `discord-gateway` | P1 harness; P2 — przyszłe powiązanie user↔Discord |
 
 ## 6. Model danych
 

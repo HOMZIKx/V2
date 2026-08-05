@@ -39,12 +39,12 @@ kont przy jednym Userze; architektura na kolejnych providerów.
 
 ## Supersession
 
-| Artefakt                    | Zmiana                                                                              |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| D-016                       | **SUPERSEDED** → D-032 / ten ADR                                                    |
-| NON_NEGOTIABLES § Tożsamość | Multi-provider; V2 User UUID; Discord + Google w P2; e-mail ≠ identity key          |
-| ADR-0001 bullet OAuth       | Odniesienie do ADR-0010 + ADR-0011 + ADR-0012                                       |
-| D-017 (zakres P2)           | P2 = revoke API only; pełna polityka guild → P3 (DEC-006 C)                         |
+| Artefakt                    | Zmiana                                                                     |
+| --------------------------- | -------------------------------------------------------------------------- |
+| D-016                       | **SUPERSEDED** → D-032 / ten ADR                                           |
+| NON_NEGOTIABLES § Tożsamość | Multi-provider; V2 User UUID; Discord + Google w P2; e-mail ≠ identity key |
+| ADR-0001 bullet OAuth       | Odniesienie do ADR-0010 + ADR-0011 + ADR-0012                              |
+| D-017 (zakres P2)           | P2 = revoke API only; pełna polityka guild → P3 (DEC-006 C)                |
 
 ## Konsekwencje
 

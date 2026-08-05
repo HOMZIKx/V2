@@ -27,12 +27,12 @@ Szczegółowy handoff: [P2_IDENTITY_FOUNDATION_HANDOFF.md](../ai/P2_IDENTITY_FOU
 
 ## Encje (własność Identity)
 
-| Encja / tabela   | Znaczenie                                      |
-| ---------------- | ---------------------------------------------- |
-| User             | Centralny podmiot V2 (UUID)                    |
-| Account / ExtId  | Discord / Google; UNIQUE(provider, accountId)  |
-| Session          | Opaque; revoke one / all / admin|system        |
-| Verification     | State/PKCE / one-time flow tokens              |
+| Encja / tabela  | Znaczenie                                     |
+| --------------- | --------------------------------------------- |
+| User            | Centralny podmiot V2 (UUID)                   |
+| Account / ExtId | Discord / Google; UNIQUE(provider, accountId) |
+| Session         | Opaque; revoke one / all / admin              | system |
+| Verification    | State/PKCE / one-time flow tokens             |
 
 Guild Membership / Guild Profile / Permissions — **poza P2**.
 
@@ -61,8 +61,8 @@ Sekrety nigdy nie są współdzielone między tymi trybami.
 
 ## ADR-y
 
-| ADR     | Temat                         | Status   |
-| ------- | ----------------------------- | -------- |
+| ADR      | Temat                        | Status   |
+| -------- | ---------------------------- | -------- |
 | ADR-0009 | Granica Identity + ownership | Accepted |
 | ADR-0010 | Multi-provider + linking     | Accepted |
 | ADR-0011 | Sesje + internal JWT         | Accepted |
