@@ -2,62 +2,81 @@
 
 ## Status
 
-`READY_FOR_RE-AUDIT` — plan P2 Identity Foundation zamknięty decyzjami właściciela
-(2026-08-05); PR planistyczny #10 po sync z `main` (P1). Poprawki re-audytu
-(CHANGES REQUIRED) w toku / po push.
+`READY_FOR_CURSOR`
 
 ## Active phase
 
-P2 Identity Foundation — **planning close** (PR #10). Implementacja P2 **nie
-rozpoczęta** i **zakazana** do czasu merge planu + osobnego PR implementacyjnego.
+P2 Identity — Better Auth proof/integration slice.
+
+## Active task
+
+- Task ID: `P2-IDENTITY-PROOF-001`
+- Branch: `cursor/p2-identity-proof-slice`
+- Base: `main` po scaleniu planu P2, commit `4230fb185044faef15d4dd59a9c3c99f6c2b5956`
+- Pull Request: draft PR dla proof slice
+- Instrukcja: `docs/ai/CHATGPT_TO_CURSOR.md`
 
 ## Current objective
 
-Domknąć niespójności dokumentacyjne z re-audytu P2 (PR body, D-017, ownership
-sesji, tip SHA bez pętli). Status `READY_FOR_RE-AUDIT`. Bez merge, bez instalacji
-Better Auth, bez kodu OAuth / sesji / DB / UI logowania.
+Udowodnić na rzeczywistym kodzie, że Better Auth 1.6.25 może działać jako silnik Identity Service na Node 24, NestJS 11 i Fastify 5 z:
+
+1. PostgreSQL dla User/Account/Verification;
+2. Redis jako source of truth aktywnych sesji;
+3. Discord i Google OAuth;
+4. stabilnym V2 User UUID niezależnym od providera i e-maila;
+5. jawnym linkowaniem bez auto-merge po e-mailu;
+6. natychmiastowym revoke;
+7. obsługą Discord profile `email=null`;
+8. brakiem surowych provider tokenów w storage i odpowiedziach.
 
 ## In scope now
 
-- Poprawki docs z re-audytu „CHANGES REQUIRED przed merge”.
-- ADR-0009 / 0010 / 0011 / 0012 Accepted; DEC-003–009 Accepted; D-016 SUPERSEDED.
-- Walidacja dokumentów + push do PR #10; komentarz PR z finalnym HEAD / workflow
-  (bez commitowania tip SHA w pętli).
+- implementacja wyłącznie w `identity-service` oraz minimalnym dev-only proof UI;
+- Better Auth za portami/adapters;
+- przypięte zależności i deterministyczna migracja;
+- PostgreSQL + Redis integration tests;
+- stabilne endpointy proof: `me`, accounts, link, unlink, logout, logout-all;
+- system revoke jako port/use case bez prowizorycznego publicznego endpointu;
+- automatyczne testy bez prawdziwego OAuth;
+- manualny live gate Discord + Google po zielonym CI;
+- aktualizacja dokumentacji i raportu.
 
 ## Out of scope now
 
-- Instalacja Better Auth / jakiejkolwiek biblioteki auth.
-- Implementacja OAuth, sesji, cookie, JWT, bazy Identity, ekranów logowania.
-- Zmiany runtime Discord (P1 zamknięte na `main`).
-- Admin override w Discord (DEC-002 / ADR-0007 — osobny tor, test guild only).
-- Merge PR #10 do `main`.
-- Deploy produkcyjny / Zeabur Identity (D-030 / DEC-001).
-- P3 membership / guild-scoped revoke policy (DEC-006 C / zakres D-017 / ADR-0010).
+- P3 Authorization i guild membership policy;
+- produkcyjny Web/Admin login UI;
+- MFA/passkey/TOTP;
+- internal JWT między usługami;
+- API Gateway auth middleware;
+- integracja V2 User z Discord botem;
+- RabbitMQ/Outbox/events;
+- produkcyjny deploy i Zeabur;
+- funkcje biznesowe bota.
 
-## Blockers
+## Decisions in force
 
-Brak blokad decyzyjnych P2. Oczekiwanie na re-audit / APPROVED właściciela przed
-merge planu.
+- DEC-003 B: multi-provider V2 User UUID;
+- DEC-004 A: Better Auth za portami, oficjalna integracja Fastify;
+- DEC-005 A: explicit linking only;
+- DEC-006 C: P2 revoke, guild policy P3;
+- DEC-008 A: opaque cookie + Redis SoT;
+- DEC-009 A: internal JWT później, nie w tym proof;
+- ADR-0009–0012: Accepted.
 
-## Decisions needed
+## Blocker policy
 
-Brak otwartych DEC dla zamknięcia planu P2. Pin wersji Better Auth — w PR
-implementacyjnym. Guild-level revoke policy — P3 (`DEC-006 C` / zakres `D-017` /
-ADR-0010).
+Jeżeli Better Auth nie pozwala bez kruchego obejścia spełnić któregokolwiek z poniższych warunków, Cursor ustawia `BLOCKED` i ponownie otwiera DEC-004:
 
-## Branch / tip (bez pętli SHA)
+1. login Discord bez prawdziwego e-maila;
+2. brak implicit linking;
+3. natychmiastowe revoke bez cookie cache;
+4. Redis session SoT bez używalnego tokenu sesji w PostgreSQL;
+5. brak jawnie przechowywanych OAuth provider tokens.
 
-- Branch: `planning/p2-identity-foundation`
-- PR: #10
-- Stabilny plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Aktualny tip SHA i numery workflow CI: **źródło prawdy w GitHub** (PR Checks /
-  Actions), nie w tym pliku.
+## Next checkpoint
 
-## Next recommended step
-
-Właściciel: re-audit poprawek → `APPROVED` → merge planu. Dopiero potem osobny PR
-implementacyjny P2 (proof slice Better Auth za portami Identity).
+Cursor publikuje plan w draft PR, implementuje automatyczny proof i po zielonym CI ustawia `READY_FOR_LIVE_TEST`. Po manualnym OAuth gate właściciel potwierdza wynik, a ChatGPT wykonuje audyt kodu i bezpieczeństwa.
 
 ## Last updated
 
-2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
+2026-08-05 — ChatGPT, start `P2-IDENTITY-PROOF-001`
