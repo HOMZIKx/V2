@@ -46,4 +46,4 @@ Identity-side P3 integration: system revoke endpoint, generalized client-asserti
 
 ## Last updated
 
-2026-08-05 — Cursor (Identity-side P3 integration)
+2026-08-05 — Cursor (Identity-side P3 integration, commit `1ffa39e`)

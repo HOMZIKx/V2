@@ -49,4 +49,4 @@ RUN_INFRA_TESTS=true pnpm --filter @v2/identity-service test
 
 ## Last updated
 
-2026-08-05 — Cursor (Identity-side P3 integration)
+2026-08-05 — Cursor (Identity-side P3 integration, commit `1ffa39e`)
