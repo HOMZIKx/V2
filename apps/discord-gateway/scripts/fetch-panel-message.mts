@@ -53,7 +53,9 @@ writeFileSync(
   ),
 );
 
-console.log(JSON.stringify({ saved: proofPath, flags: msg.flags, embeds: msg.embeds?.length ?? 0 }, null, 2));
+console.log(
+  JSON.stringify({ saved: proofPath, flags: msg.flags, embeds: msg.embeds?.length ?? 0 }, null, 2),
+);
 
 const first = msg.attachments?.[0];
 if (first?.url) {

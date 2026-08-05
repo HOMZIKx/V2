@@ -31,10 +31,7 @@ const guildChannels = (await rest.get(
 )) as Array<{ id: string; type: number; name?: string }>;
 
 const textChannels = guildChannels.filter((channel) => channel.type === 0);
-const channelId =
-  channelOverride ??
-  process.env.DISCORD_TEST_CHANNEL_ID ??
-  textChannels[0]?.id;
+const channelId = channelOverride ?? process.env.DISCORD_TEST_CHANNEL_ID ?? textChannels[0]?.id;
 
 if (!channelId) {
   throw new Error('No text channel available to publish panel.');
