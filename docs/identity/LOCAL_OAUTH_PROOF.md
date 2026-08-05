@@ -121,7 +121,9 @@ automated infra tests (no live second OAuth provider required).
 
 ## 6b. Live gate result (owner, 2026-08-05)
 
-**PASSED** — Discord-only live OAuth on draft PR #11:
+### Manually confirmed by owner — PASSED
+
+Discord-only live OAuth on draft PR #11 (proof UI):
 
 | Step                            | Result                        |
 | ------------------------------- | ----------------------------- |
@@ -131,11 +133,23 @@ automated infra tests (no live second OAuth provider required).
 | `POST /identity/logout`         | 200 `{ "status": "ok" }`      |
 | `GET /identity/me` after logout | 401 `UNAUTHENTICATED`         |
 
-Proof UI logout/logout-all must POST `body: '{}'` with `Content-Type: application/json`
-(Fastify rejects empty JSON bodies — regression covered in
-`proof-ui.controller.spec.ts`).
+### Not manually confirmed
 
-### Storage inspection helpers
+The following were **not** executed or attested by the owner in the live gate.
+They remain covered by automated CI/infra tests and/or the checklist for a
+future optional re-run — **do not treat them as manually passed**:
+
+- `POST /identity/logout-all`
+- system revoke (`revokeAllSessionsForUser`)
+- PostgreSQL storage inspection (no `session` table; token columns NULL)
+- Redis session-key inspection (`v2:identity:auth:*`)
+- Live confirmation that provider tokens are absent from the database
+
+Proof UI logout/logout-all must POST `body: '{}'` with
+`Content-Type: application/json` (Fastify rejects empty JSON bodies —
+regression covered in `proof-ui.controller.spec.ts`).
+
+### Storage inspection helpers (optional; not part of the owner-passed subset)
 
 ```
 # No session table (expect empty result):

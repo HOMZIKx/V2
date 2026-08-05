@@ -2,11 +2,12 @@
 
 ## Status
 
-`READY_FOR_FINAL_REVIEW`
+`READY_FOR_OWNER_MERGE`
 
 Draft PR #11 (`cursor/p2-identity-proof-slice`) — P2 Identity proof slice with
-**Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED**
-(2026-08-05). No merge until final review approval.
+**Discord-only** active OAuth. Owner live Discord OAuth gate **PASSED** (manual
+subset). Documentation consistency pass only for merge readiness. Still **no
+merge** by Cursor.
 
 See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
 
@@ -57,8 +58,9 @@ PASSED 2026-08-05: sign-in → me 200 → accounts Discord → logout 200 → me
 
 ## Next gate
 
-Owner final review → merge consideration (owner only).
+Owner merge of PR #11 (Cursor does not merge). Next implementation slice after
+merge + plan approval: `P2-IDENTITY-INTERNAL-JWT-001`.
 
 ## Last updated
 
-2026-08-05 — Cursor (live gate passed; READY_FOR_FINAL_REVIEW)
+2026-08-05 — Cursor (docs consistency; READY_FOR_OWNER_MERGE)

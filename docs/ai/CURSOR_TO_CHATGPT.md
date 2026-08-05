@@ -2,11 +2,11 @@
 
 ## 1. Status
 
-`READY_FOR_FINAL_REVIEW`
+`READY_FOR_OWNER_MERGE`
 
 Draft PR #11: P2 Identity Better Auth proof with **Discord-only** active OAuth.
-Owner live Discord OAuth gate **PASSED**. Proof UI logout empty-body fix included.
-Still **no merge**.
+Owner live Discord OAuth gate **PASSED** (manual subset below). Proof UI logout
+empty-body fix included. Still **no merge** by Cursor.
 
 ## 2. Task ID
 
@@ -16,7 +16,7 @@ Still **no merge**.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb`
+- Final HEAD: `4d1b7baf16ef91f551db5685132f311180135c32`
 
 ## 4. Scope (Discord-only)
 
@@ -26,6 +26,8 @@ PostgreSQL, Discord `email=null` retained for a later second provider.
 
 ## 5. Live Discord OAuth (owner, 2026-08-05)
 
+**Manually confirmed by owner:**
+
 | Step                     | Result                   |
 | ------------------------ | ------------------------ |
 | Sign in with Discord     | OK                       |
@@ -34,12 +36,14 @@ PostgreSQL, Discord `email=null` retained for a later second provider.
 | Logout                   | 200 `{ "status": "ok" }` |
 | `GET /identity/me` after | 401 `UNAUTHENTICATED`    |
 
-Documented in `docs/identity/LOCAL_OAUTH_PROOF.md` §6b.
+**Not manually confirmed** (covered by automated tests and/or not run live):
+logout-all, system revoke, PostgreSQL/Redis inspection, DB token-column check.
+See `docs/identity/LOCAL_OAUTH_PROOF.md` §6b.
 
-## 6. Proof UI logout fix (this pass)
+## 6. Proof UI logout fix
 
 Fastify rejects `Content-Type: application/json` with an empty body
-(`FST_ERR_CTP_EMPTY_JSON_BODY`). Proof UI now POSTs `body: '{}'` for
+(`FST_ERR_CTP_EMPTY_JSON_BODY`). Proof UI POSTs `body: '{}'` for
 `/identity/logout` and `/identity/logout-all`. Regression test in
 `proof-ui.controller.spec.ts`.
 
@@ -64,16 +68,14 @@ Local identity (+ infra): **97 passed**.
 
 - Identity vitest + infra: 97 passed
 - `pnpm validate` gates (format/lint/typecheck/coverage/architecture/build/e2e/
-  web+admin build) passed; `test:runtime-smoke` passed with
-  `IDENTITY_AUTH_ENABLED=false` in local `.env` (auth left disabled after live
-  test so smoke does not load production-unsafe localhost origins)
+  web+admin build) + `test:runtime-smoke` passed on the proof slice
 
-## 13. CI
+## 13. CI (tip HEAD `4d1b7ba…`)
 
-- PR CI `31016665046` on HEAD `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb` —
-  **success** (Secret scan, Quality gates, Infrastructure integration)
-- Push CI `31016664287` on same HEAD — **success**
-- PR Title — **success**
+- CI: `31017205223` — **success**
+  https://github.com/HOMZIKx/V2/actions/runs/31017205223
+- PR Title: `31017204798` — **success**
+  https://github.com/HOMZIKx/V2/actions/runs/31017204798
 
 ## 14. Risks / tech debt
 
@@ -83,8 +85,9 @@ Local identity (+ infra): **97 passed**.
 
 ## 15. Recommended next slice (not implemented)
 
-Internal service-to-service JWT — unchanged.
+`P2-IDENTITY-INTERNAL-JWT-001` — internal service-to-service JWT (plan Issue;
+not in this PR).
 
 ## Last updated
 
-2026-08-05 — Cursor (READY_FOR_FINAL_REVIEW; green CI `cdfeaca`)
+2026-08-05 — Cursor (docs consistency; READY_FOR_OWNER_MERGE)

@@ -134,11 +134,13 @@ Relacje guild — poza P2.
 
 - [x] Proof slice: Node 24, Nest11+Fastify, PG, Redis, Discord-only OAuth, linking, revoke (PR #11)
 - [x] Pin wersji Better Auth 1.6.25
-- [x] Live E2E Discord: login, `me`, accounts, logout → 401 (owner 2026-08-05)
-- [ ] Cookies + Redis SoT + internal JWT (JWT → późniejszy slice)
+- [x] Live E2E Discord (owner subset): login, `me`, accounts, logout → 401 (2026-08-05)
+- [x] Cookies + Redis Session SoT (proof slice PR #11)
+- [ ] Internal service-to-service JWT — **not implemented**; next slice
+      `P2-IDENTITY-INTERNAL-JWT-001`
 - [x] Testy krytyczne; lint/typecheck/architecture (CI)
 - [x] Brak RBAC / guild policy / MFA / Zeabur w zakresie P2
-- [ ] Raport + PR **bez** samodzielnego merge (oczekuje final review)
+- [ ] Raport + PR **bez** samodzielnego merge (oczekuje owner merge)
 
 ## 11. Ten PR planistyczny — DoD
 
