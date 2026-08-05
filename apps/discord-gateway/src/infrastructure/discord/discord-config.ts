@@ -172,8 +172,6 @@ export const DiscordGatewayConfigSchema = z
         message: 'DISCORD_COMPONENT_SIGNING_SECRET must contain at least 32 bytes of entropy.',
       });
     }
-
-    }
   });
 
 export type DiscordGatewayConfigInput = z.input<typeof DiscordGatewayConfigSchema>;

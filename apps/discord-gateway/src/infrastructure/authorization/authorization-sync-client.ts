@@ -163,5 +163,9 @@ export function createAuthorizationSyncClient(
   if (!config.DISCORD_AUTHORIZATION_SYNC_ENABLED) {
     return null;
   }
-  return new HttpAuthorizationSyncClient({ config, logger, fetchImpl });
+  return new HttpAuthorizationSyncClient({
+    config,
+    logger,
+    ...(fetchImpl !== undefined ? { fetchImpl } : {}),
+  });
 }
