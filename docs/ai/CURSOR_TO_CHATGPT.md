@@ -13,7 +13,7 @@ P3 Authorization foundation on branch `cursor/p3-authorization-foundation`.
 ## 3. Branch / commit
 
 - Branch: `cursor/p3-authorization-foundation`
-- Commit: see tip after push
+- Commit: `d32287648d38c34d328c0bcbe775ae32f69f528e`
 
 ## 4. Implemented scope
 
