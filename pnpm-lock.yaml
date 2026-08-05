@@ -150,12 +150,18 @@ importers:
       '@v2/configuration':
         specifier: workspace:*
         version: link:../../packages/configuration
+      '@v2/internal-jwt':
+        specifier: workspace:*
+        version: link:../../packages/internal-jwt
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability
       fastify:
         specifier: ^5.5.0
         version: 5.11.2
+      jose:
+        specifier: 6.2.8
+        version: 6.2.8
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -318,6 +324,16 @@ importers:
         specifier: ^8.39.0
         version: 8.66.0(eslint@9.39.5(jiti@2.6.1))(typescript@5.8.3)
 
+  packages/internal-jwt:
+    dependencies:
+      jose:
+        specifier: 6.2.8
+        version: 6.2.8
+    devDependencies:
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(lightningcss@1.33.0)(tsx@4.23.5)(yaml@2.9.0)
+
   packages/observability:
     devDependencies:
       vitest:
@@ -398,6 +414,9 @@ importers:
       '@v2/configuration':
         specifier: workspace:*
         version: link:../../packages/configuration
+      '@v2/internal-jwt':
+        specifier: workspace:*
+        version: link:../../packages/internal-jwt
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -410,6 +429,9 @@ importers:
       ioredis:
         specifier: 5.11.1
         version: 5.11.1
+      jose:
+        specifier: 6.2.8
+        version: 6.2.8
       pg:
         specifier: 8.22.0
         version: 8.22.0

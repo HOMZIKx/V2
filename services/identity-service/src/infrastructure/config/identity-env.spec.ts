@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  buildTestInternalJwtKeyringJson,
+  buildTestServiceClientsJson,
+  getIdentityTestFixtures,
+  TEST_INTERNAL_JWT_ISSUE_URL,
+  TEST_INTERNAL_JWT_ISSUER,
+  type IdentityInternalJwtTestFixtures,
+} from '../internal-jwt/test-fixtures.js';
 import { IdentityConfigError, parseIdentityEnv, redactSecrets } from './identity-env.js';
 
 const validSecret = 'a'.repeat(32);
@@ -106,6 +114,47 @@ describe('parseIdentityEnv — enabled', () => {
       expect(error).toBeInstanceOf(IdentityConfigError);
       expect((error as Error).message).not.toContain('short-secret-value');
     }
+  });
+});
+
+describe('parseIdentityEnv — internal JWT', () => {
+  let fixtures: IdentityInternalJwtTestFixtures;
+  let keyringJson: string;
+  let clientsJson: string;
+
+  beforeAll(async () => {
+    fixtures = await getIdentityTestFixtures();
+    keyringJson = await buildTestInternalJwtKeyringJson();
+    clientsJson = await buildTestServiceClientsJson();
+  });
+
+  const internalJwtEnv = (): NodeJS.ProcessEnv => ({
+    ...enabledEnv(),
+    IDENTITY_INTERNAL_JWT_ENABLED: 'true',
+    IDENTITY_INTERNAL_JWT_ISSUER: TEST_INTERNAL_JWT_ISSUER,
+    IDENTITY_INTERNAL_JWT_ISSUE_URL: TEST_INTERNAL_JWT_ISSUE_URL,
+    IDENTITY_INTERNAL_JWT_KEYRING_JSON: keyringJson,
+    IDENTITY_INTERNAL_JWT_ACTIVE_KID: fixtures.TEST_INTERNAL_ACTIVE.kid,
+    IDENTITY_SERVICE_CLIENTS_JSON: clientsJson,
+  });
+
+  it('accepts complete internal JWT configuration', () => {
+    const config = parseIdentityEnv(internalJwtEnv());
+    expect(config.IDENTITY_INTERNAL_JWT_ENABLED).toBe(true);
+    expect(config.IDENTITY_INTERNAL_JWT_TTL_SECONDS).toBe(300);
+  });
+
+  it('requires auth enabled when internal JWT is enabled', () => {
+    expect(() =>
+      parseIdentityEnv({
+        IDENTITY_INTERNAL_JWT_ENABLED: 'true',
+        IDENTITY_INTERNAL_JWT_ISSUER: TEST_INTERNAL_JWT_ISSUER,
+        IDENTITY_INTERNAL_JWT_ISSUE_URL: TEST_INTERNAL_JWT_ISSUE_URL,
+        IDENTITY_INTERNAL_JWT_KEYRING_JSON: keyringJson,
+        IDENTITY_INTERNAL_JWT_ACTIVE_KID: fixtures.TEST_INTERNAL_ACTIVE.kid,
+        IDENTITY_SERVICE_CLIENTS_JSON: clientsJson,
+      }),
+    ).toThrow(IdentityConfigError);
   });
 });
 

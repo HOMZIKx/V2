@@ -12,6 +12,10 @@ const STATUS_BY_CODE: Record<IdentityErrorCode, number> = {
   VALIDATION_FAILED: HttpStatus.BAD_REQUEST,
   AUTH_DISABLED: HttpStatus.SERVICE_UNAVAILABLE,
   NOT_FOUND: HttpStatus.NOT_FOUND,
+  CLIENT_ASSERTION_INVALID: HttpStatus.UNAUTHORIZED,
+  CLIENT_ASSERTION_REPLAY: HttpStatus.UNAUTHORIZED,
+  INTERNAL_JWT_DISABLED: HttpStatus.SERVICE_UNAVAILABLE,
+  AUDIENCE_NOT_ALLOWED: HttpStatus.FORBIDDEN,
 };
 
 /** Maps stable {@link IdentityError} codes to HTTP responses without leaking library internals. */

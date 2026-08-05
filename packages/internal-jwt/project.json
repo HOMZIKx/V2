@@ -1,0 +1,13 @@
+{
+  "name": "internal-jwt",
+  "projectType": "library",
+  "root": "packages/internal-jwt",
+  "sourceRoot": "packages/internal-jwt/src",
+  "tags": ["type:util", "scope:shared"],
+  "targets": {
+    "lint": { "command": "eslint packages/internal-jwt/src" },
+    "typecheck": { "command": "tsc -p packages/internal-jwt/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/internal-jwt/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/internal-jwt/tsconfig.json --noEmit" }
+  }
+}
