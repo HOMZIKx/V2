@@ -48,7 +48,7 @@ P1 Discord Test Harness: osobny PR (#9) — nadal wymaga `APPROVED` / merge (pat
 - **ADR Proposed:** 0009, 0010, 0011
 - **PENDING:** DEC-003 … DEC-009
 - **Pull Request:** [#10](https://github.com/HOMZIKx/V2/pull/10) — draft, **bez merge**
-- **Finalny commit:** `38dd7b35279086fe3c202d10727d579e05f90c9a`
+- **Finalny commit:** `55a3549ee916a18586b06e66695ea21e29467159`
 
 ## Równoległy kontekst P1
 
