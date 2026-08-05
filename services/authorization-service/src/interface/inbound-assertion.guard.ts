@@ -1,9 +1,4 @@
-import {
-  type CanActivate,
-  type ExecutionContext,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 
 import { AuthorizationError } from '../domain/errors.js';
@@ -41,10 +36,7 @@ export class InboundAssertionGuard implements CanActivate {
     }
 
     if (this.registry === null) {
-      throw new AuthorizationError(
-        'CONFIG_INVALID',
-        'Inbound client registry is not configured',
-      );
+      throw new AuthorizationError('CONFIG_INVALID', 'Inbound client registry is not configured');
     }
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
@@ -72,8 +64,7 @@ export class InboundAssertionGuard implements CanActivate {
     );
 
     if (this.jtiStore !== null) {
-      const replayTtl =
-        this.config.AUTHORIZATION_IDENTITY_ASSERTION_MAX_TTL_SECONDS + 60;
+      const replayTtl = this.config.AUTHORIZATION_IDENTITY_ASSERTION_MAX_TTL_SECONDS + 60;
       await this.jtiStore.assertOnce(verified.jti, replayTtl);
     }
 

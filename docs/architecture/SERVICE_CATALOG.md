@@ -4,23 +4,17 @@ Ten katalog opisuje wyłącznie stan fundamentu Promptu 0. Status `foundation`
 oznacza technicznie uruchamialną aplikację bez logiki biznesowej, a `skeleton`
 oznacza przygotowaną strukturę warstw usługowych.
 
-| Element                 | Typ                           | Właściciel danych    | Status     | Odpowiedzialność obecnie                                                                                                                                                                      |
-| ----------------------- | ----------------------------- | -------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `web`                   | aplikacja Next.js App Router  | brak własnych danych | foundation | techniczna aplikacja WWW i route health                                                                                                                                                       |
-| `admin`                 | aplikacja Vite + React Router | brak własnych danych | foundation | techniczny panel administracyjny                                                                                                                                                              |
-| `api-gateway`           | NestJS + Fastify              | brak własnych danych | foundation | health endpoints i deweloperskie OpenAPI                                                                                                                                                      |
-| `discord-gateway`       | NestJS + discord.js 14.25.1   | brak własnych danych | foundation | P1 test harness: Gateway/WebSocket, guild-only commands, `/status`, `/panel-test`; tokenless default (`DISCORD_ENABLED=false`); live setup: [TEST_BOT_SETUP.md](../discord/TEST_BOT_SETUP.md) |
-| `identity-service`      | usługa NestJS                 | baza `identity`      | skeleton   | podział Domain/Application/Infrastructure/Interface oraz health                                                                                                                               |
-| `authorization-service` | usługa NestJS                 | baza `authorization` | skeleton   | podział Domain/Application/Infrastructure/Interface oraz health                                                                                                                               |
+| Element                 | Typ                           | Właściciel danych    | Status     | Odpowiedzialność obecnie                                                                                                                                                                                 |
+| ----------------------- | ----------------------------- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web`                   | aplikacja Next.js App Router  | brak własnych danych | foundation | techniczna aplikacja WWW i route health                                                                                                                                                                  |
+| `admin`                 | aplikacja Vite + React Router | brak własnych danych | foundation | techniczny panel administracyjny                                                                                                                                                                         |
+| `api-gateway`           | NestJS + Fastify              | brak własnych danych | foundation | health endpoints i deweloperskie OpenAPI                                                                                                                                                                 |
+| `discord-gateway`       | NestJS + discord.js 14.25.1   | brak własnych danych | foundation | P1 harness + opt-in P3 Authz sync (`DISCORD_AUTHORIZATION_SYNC_ENABLED`); intents Guilds (default) or Guilds+GuildMembers when sync on; [TEST_BOT_SETUP.md](../discord/TEST_BOT_SETUP.md)                |
+| `identity-service`      | usługa NestJS                 | baza `identity`      | foundation | Better Auth Discord OAuth, opaque sessions, Internal JWT issue/JWKS, system revoke, login entitlement gate → Authorization                                                                               |
+| `authorization-service` | usługa NestJS                 | baza `authorization` | foundation | P3 access decisions: org/guild/membership, authorize/explain, Discord sync ingest, owner bootstrap — [ADR-0013](decisions/ADR-0013-authorization-foundation.md), [contracts](AUTHORIZATION_CONTRACTS.md) |
 
-`identity-service` i `authorization-service` nie implementują jeszcze
-logowania, OAuth, sesji, ORM, modeli domenowych ani reguł uprawnień.
-PostgreSQL zawiera osobne bazy i konta usługowe dla obu właścicieli danych.
+`identity-service` i `authorization-service` posiadają osobne bazy PostgreSQL.
+Authorization nie czyta bazy Identity; Identity nie czyta bazy Authorization.
 
-### Plan P2 (dokumentacja only — ADR Accepted)
-
-Plan fundamentu Identity: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md),
-[P2 handoff](../ai/P2_IDENTITY_FOUNDATION_HANDOFF.md). Po merge zatwierdzonego
-planu PR #10 osobny PR implementacyjny: User / Account / Session / Verification
-w `identity-service` (Better Auth za portami — ADR-0012).
-`authorization-service` pozostaje bez RBAC do P3.
+P2 Identity (Better Auth + Internal JWT) jest na `main`. P3 Authorization foundation:
+ADR-0013 / Issue #15.

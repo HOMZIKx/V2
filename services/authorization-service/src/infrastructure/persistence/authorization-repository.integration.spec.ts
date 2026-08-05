@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { runMigrations } from '../db/run-migrations.js';
 import { AuthorizationRepository } from './authorization-repository.js';

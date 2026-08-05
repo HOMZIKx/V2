@@ -2,8 +2,8 @@ import type {
   ActivateGuildCommand,
   ApplyDiscordEventCommand,
   ApplyDiscordEventResult,
-  AuthorizeCommand,
   AuthorizationStorePort,
+  AuthorizeCommand,
   BootstrapOwnerCommand,
   BootstrapOwnerResult,
   CreateBlockCommand,
@@ -14,7 +14,10 @@ import type {
   RegisterGuildCommand,
   UpsertIdentityLinkCommand,
 } from '../../application/ports/authorization.ports.js';
-import type { AuthorizationExplanation, ConnectedGuildState } from '../../domain/decision-engine.js';
+import type {
+  AuthorizationExplanation,
+  ConnectedGuildState,
+} from '../../domain/decision-engine.js';
 import type { AuthorizationRepository } from '../persistence/authorization-repository.js';
 
 /**

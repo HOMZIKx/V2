@@ -1,19 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
-import {
-  decideAuthorization,
-  type AccessBlockRecord,
-  type AccessGrantRecord,
-  type AuthorizeContext,
-  type ConnectedGuildState,
-  type DecisionSubject,
-  type MappedPermissionGrant,
-  type MembershipState,
-  type OrganizationOwner,
-  type SyncStatus,
-} from '../../domain/decision-engine.js';
-import { AuthorizationError } from '../../domain/errors.js';
 import type {
   ActivateGuildCommand,
   ApplyDiscordEventCommand,
@@ -31,6 +18,19 @@ import type {
   RoleSnapshot,
   UpsertIdentityLinkCommand,
 } from '../../application/ports/authorization.ports.js';
+import {
+  decideAuthorization,
+  type AccessBlockRecord,
+  type AccessGrantRecord,
+  type AuthorizeContext,
+  type ConnectedGuildState,
+  type DecisionSubject,
+  type MappedPermissionGrant,
+  type MembershipState,
+  type OrganizationOwner,
+  type SyncStatus,
+} from '../../domain/decision-engine.js';
+import { AuthorizationError } from '../../domain/errors.js';
 
 interface OrganizationRow {
   readonly id: string;
@@ -61,10 +61,7 @@ function mapGuild(row: GuildRow): ConnectedGuildState {
   };
 }
 
-async function withTransaction<T>(
-  pool: Pool,
-  fn: (client: PoolClient) => Promise<T>,
-): Promise<T> {
+async function withTransaction<T>(pool: Pool, fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -145,10 +142,7 @@ export class AuthorizationRepository {
 
       if (org.bootstrap_completed_at !== null && org.owner_discord_user_id !== null) {
         if (org.owner_discord_user_id !== command.discordUserId) {
-          throw new AuthorizationError(
-            'CONFLICT',
-            'Organization owner is already bootstrapped',
-          );
+          throw new AuthorizationError('CONFLICT', 'Organization owner is already bootstrapped');
         }
         if (
           command.v2UserId !== undefined &&
@@ -217,9 +211,7 @@ export class AuthorizationRepository {
     });
   }
 
-  public async upsertIdentityLink(
-    command: UpsertIdentityLinkCommand,
-  ): Promise<IdentityLinkResult> {
+  public async upsertIdentityLink(command: UpsertIdentityLinkCommand): Promise<IdentityLinkResult> {
     try {
       const result = await withTransaction(this.pool, async (client) => {
         const linked = await client.query<{
@@ -266,7 +258,9 @@ export class AuthorizationRepository {
     }
   }
 
-  public async authorize(command: AuthorizeCommand): Promise<ReturnType<typeof decideAuthorization>> {
+  public async authorize(
+    command: AuthorizeCommand,
+  ): Promise<ReturnType<typeof decideAuthorization>> {
     const now = command.now ?? new Date();
     const loaded = await this.loadAuthorizeContext(command.subject);
     return decideAuthorization(
@@ -333,7 +327,11 @@ export class AuthorizationRepository {
           await this.upsertMember(client, command.discordGuildId, command.payload.member);
           break;
         case 'member_remove':
-          await this.deactivateMember(client, command.discordGuildId, command.payload.discordUserId);
+          await this.deactivateMember(
+            client,
+            command.discordGuildId,
+            command.payload.discordUserId,
+          );
           break;
         case 'roles_snapshot':
           await this.replaceRoles(client, command.discordGuildId, command.payload.roles);
@@ -556,10 +554,9 @@ export class AuthorizationRepository {
   }
 
   private async requireGuild(client: PoolClient, guildId: string): Promise<void> {
-    const result = await client.query(
-      'SELECT 1 FROM connected_guild WHERE discord_guild_id = $1',
-      [guildId],
-    );
+    const result = await client.query('SELECT 1 FROM connected_guild WHERE discord_guild_id = $1', [
+      guildId,
+    ]);
     if (result.rowCount === 0) {
       throw new AuthorizationError('NOT_FOUND', 'Guild is not registered');
     }

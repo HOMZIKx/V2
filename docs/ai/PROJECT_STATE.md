@@ -2,48 +2,44 @@
 
 ## Status
 
-`READY_FOR_REVIEW`
-
-Branch `cursor/p3-authorization-foundation` — P3 Authorization foundation + Identity integration + Discord Gateway → Authz membership sync.
-
-See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
+`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION` (draft PR pending)
 
 ## Active phase
 
-P3 Authorization — foundation + Identity + Discord sync (Issue #15).
+P3 Authorization foundation (Issue #15, P3-D1–P3-D20).
 
 ## Active task
 
 - Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
 - Branch: `cursor/p3-authorization-foundation`
-- Base: `main` after PR #14 squash merge (`f299775`)
-- Issue: #15 (PLAN_APPROVED)
-- Pull Request: draft (no merge by Cursor)
+- Base: `main` @ `f299775` (PR #14 Internal JWT merged)
+- Issue: #15 (APPROVED decisions P3-D1–P3-D20)
+- Pull Request: draft to `main` (no merge by Cursor)
 
 ## Current objective
 
-Discord Gateway → Authorization sync (P3-D1 / P3-D20): GuildMembers intent, register/events/reconcile with system client assertions.
+Owner review of minimal Authorization foundation before Centrum Aktywności.
 
 ## In scope now
 
-- GuildMembers intent (owner-approved; guild isolation retained)
-- Authz HTTP sync from discord-gateway (register, events, reconcile)
-- Client assertions (`Authorization-Client-Assertion`, EdDSA, TTL≤60)
-- Unit tests with mocked fetch; sync off by default
+- authorization-service domain + PG schema + `/authorization/v1/*`
+- Identity system revoke + login entitlement gate
+- Discord Gateway sync bridge (opt-in)
+- ADR-0013 + contracts docs
 
 ## Out of scope now
 
-- Merge PR / Admin UI
-- Periodic reconcile scheduler (beyond ready/join reconcile)
-- RabbitMQ / effective-access cache
+- RabbitMQ/outbox/effective cache
+- Admin/Discord/WWW UI, Centrum Aktywności
+- Owner transfer, Zeabur, product permission names
+- Merge by Cursor
 
 ## Decisions in force
 
-- P3-D1–D20 OWNER_ACCEPTED
-- DEC-008 A, DEC-009 A, ADR-0011
-- P3-D19 A (Identity checks Authz before WWW session)
-- P3-D1 B + P3-D20 A (Gateway event sync + pending_sync on bot join)
+- Issue #15 P3-D1–P3-D20
+- D-034 / ADR-0013
+- DEC-008 A, DEC-009 A, ADR-0011 (Internal JWT user-context)
 
 ## Last updated
 
-2026-08-05 — Cursor (Discord Gateway → Authz sync)
+2026-08-05 — Cursor (P3 Authorization foundation implementation)

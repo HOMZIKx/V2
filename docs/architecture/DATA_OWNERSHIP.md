@@ -14,11 +14,36 @@ jej bazy, nie wykonuje w niej zapisów i nie używa jej konta PostgreSQL.
 - Jedna lokalna instancja PostgreSQL może hostować obie bazy, ale izolacja baz i
   uprawnień pozostaje obowiązkowa.
 
-W Promptcie 0 nie istnieją jeszcze modele biznesowe ani ORM. Izolacja jest
-przygotowana przez lokalne skrypty inicjalizacyjne PostgreSQL, a nie przez
-udostępniony model danych.
+Izolacja baz i uprawnień jest egzekwowana przez lokalne skrypty inicjalizacyjne
+PostgreSQL oraz kontrakty HTTP między usługami.
 
-## Encje Identity (P2 — plan Accepted; implementacja osobnym PR)
+## Encje Authorization (P3 — ADR-0013)
+
+### Ownership logiczny
+
+Wyłącznie `authorization-service` jest właścicielem decyzji dostępowych oraz
+tabel w bazie `authorization`. Inne usługi **nie** mają dostępu do tej bazy.
+
+### PostgreSQL (`authorization`)
+
+- `organization` — pojedyncza org + jednoznaczny model właściciela
+  (`owner_discord_user_id`, `owner_v2_user_id`, bootstrap fields);
+- `connected_guild` — `pending_sync` / `active` / `inactive_detached`,
+  `login_entitling`, `sync_status`;
+- `discord_membership` / `discord_member_role` / `discord_role_snapshot`;
+- `discord_identity_link` — Discord User ID ↔ V2 User ID;
+- `permission_definition` / `group_definition` / mappings / `access_grant` /
+  `access_block`;
+- `processed_event` — idempotencja sync;
+- `audit_log`.
+
+### Kontrakty
+
+Patrz [AUTHORIZATION_CONTRACTS.md](AUTHORIZATION_CONTRACTS.md).
+Systemowy revoke sesji woła Identity assertion-only endpoint
+(`POST /identity/v1/system/revoke-sessions`).
+
+## Encje Identity (P2 — zaimplementowane; ADR-0009 / ADR-0011 / ADR-0012)
 
 ### Ownership logiczny
 

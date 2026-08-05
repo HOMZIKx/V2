@@ -22,17 +22,28 @@ function makeConfig() {
 }
 
 describe('DiscordJsGatewayAdapter', () => {
-  it('permits Guilds and GuildMembers intents only', () => {
+  it('permits Guilds-only when sync is off and Guilds+GuildMembers when sync is on', () => {
+    expect(() => assertAllowedGatewayIntents([GatewayIntentBits.Guilds], false)).not.toThrow();
+    expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).not.toThrow();
     expect(() =>
-      assertAllowedGatewayIntents([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]),
+      assertAllowedGatewayIntents([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers], true),
     ).not.toThrow();
-    expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).toThrow();
     expect(() =>
-      assertAllowedGatewayIntents([
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildPresences,
-      ]),
+      assertAllowedGatewayIntents(
+        [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+        false,
+      ),
+    ).toThrow();
+    expect(() => assertAllowedGatewayIntents([GatewayIntentBits.Guilds], true)).toThrow();
+    expect(() =>
+      assertAllowedGatewayIntents(
+        [
+          GatewayIntentBits.Guilds,
+          GatewayIntentBits.GuildMembers,
+          GatewayIntentBits.GuildPresences,
+        ],
+        true,
+      ),
     ).toThrow();
   });
 

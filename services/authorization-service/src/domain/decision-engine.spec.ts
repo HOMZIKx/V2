@@ -82,7 +82,9 @@ function grant(partial: {
   };
 }
 
-function block(partial: Partial<AccessBlockRecord> & Pick<AccessBlockRecord, 'id'>): AccessBlockRecord {
+function block(
+  partial: Partial<AccessBlockRecord> & Pick<AccessBlockRecord, 'id'>,
+): AccessBlockRecord {
   return {
     scopeType: 'global',
     reason: 'blocked',
@@ -120,7 +122,12 @@ describe('decideAuthorization — specificity ranking', () => {
     const context = baseContext({
       grants: [
         grant({ id: 'group', effect: 'deny', specificity: 'group_default' }),
-        grant({ id: 'org', effect: 'deny', specificity: 'organization', scopeType: 'organization' }),
+        grant({
+          id: 'org',
+          effect: 'deny',
+          specificity: 'organization',
+          scopeType: 'organization',
+        }),
         grant({ id: 'guild', effect: 'deny', specificity: 'guild' }),
         grant({ id: 'user', effect: 'allow', specificity: 'user' }),
       ],

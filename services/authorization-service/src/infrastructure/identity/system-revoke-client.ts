@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { importPKCS8, SignJWT } from 'jose';
+import { randomUUID } from 'node:crypto';
 
 import type { SessionRevokePort } from '../../application/ports/authorization.ports.js';
 import { AuthorizationError } from '../../domain/errors.js';
@@ -25,7 +25,10 @@ export class SystemRevokeClient implements SessionRevokePort {
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
-  public static fromEnv(config: AuthorizationEnv, fetchImpl?: typeof fetch): SystemRevokeClient | null {
+  public static fromEnv(
+    config: AuthorizationEnv,
+    fetchImpl?: typeof fetch,
+  ): SystemRevokeClient | null {
     if (
       config.AUTHORIZATION_SYSTEM_PRIVATE_KEY_PEM === undefined ||
       config.AUTHORIZATION_SYSTEM_ACTIVE_KID === undefined ||

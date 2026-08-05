@@ -8,10 +8,7 @@ import type { AuthorizationClient } from './authorization-client.js';
  * Look up the Discord provider account id for a V2 user from Better Auth's
  * account table. Returns null when no Discord link exists yet.
  */
-export async function findDiscordAccountId(
-  pool: Pool,
-  userId: string,
-): Promise<string | null> {
+export async function findDiscordAccountId(pool: Pool, userId: string): Promise<string | null> {
   const result = await pool.query<{ accountId: string }>(
     `SELECT "accountId" FROM "account" WHERE "userId" = $1 AND "providerId" = 'discord' LIMIT 1`,
     [userId],

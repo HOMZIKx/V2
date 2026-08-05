@@ -103,18 +103,18 @@ Private service key stays in api-gateway only. No browser route returns tokens.
 
 ## Threat model
 
-| Threat              | Control                                               |
-| ------------------- | ----------------------------------------------------- |
-| Browser mint        | No service private key in browser; assertion required |
-| Assertion replay    | Redis jti NX + TTL                                    |
+| Threat              | Control                                                                    |
+| ------------------- | -------------------------------------------------------------------------- |
+| Browser mint        | No service private key in browser; assertion required                      |
+| Assertion replay    | Redis jti NX + TTL                                                         |
 | Wrong assertion aud | Exact match to caller-supplied expected audience (issue URL or revoke URL) |
-| Wrong internal aud  | Per-client `allowed_audiences`                        |
-| Alg confusion       | EdDSA only                                            |
-| Key mixup           | Separate keyrings                                     |
-| Session-only mint   | Forbidden                                             |
-| Session-only revoke | Forbidden — assertion required                        |
-| Cross-client forge  | `kid` bound to `iss` (`keyEntry.clientId === iss`)    |
-| Multi-audience JWT  | Exact single-string `aud` required                    |
+| Wrong internal aud  | Per-client `allowed_audiences`                                             |
+| Alg confusion       | EdDSA only                                                                 |
+| Key mixup           | Separate keyrings                                                          |
+| Session-only mint   | Forbidden                                                                  |
+| Session-only revoke | Forbidden — assertion required                                             |
+| Cross-client forge  | `kid` bound to `iss` (`keyEntry.clientId === iss`)                         |
+| Multi-audience JWT  | Exact single-string `aud` required                                         |
 
 ## Consumer verification
 
@@ -134,10 +134,10 @@ const verified = await verifyInternalJwt({
 
 ## System client assertion vs user Internal JWT
 
-| Mechanism | Who presents it | Proves | Typical use |
-| --- | --- | --- | --- |
-| **Client assertion** (`Identity-Client-Assertion`) | Backend service (gateway, Authz) | The calling *service* identity (`iss`/`sub` = `client_id`) | Mint internal JWT; system revoke sessions |
-| **User Internal JWT** (`Authorization: Bearer`) | Backend after Identity issue | Short-lived *user* context (`sub` = V2 user id) | Downstream service calls on behalf of a logged-in user |
+| Mechanism                                          | Who presents it                  | Proves                                                     | Typical use                                            |
+| -------------------------------------------------- | -------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| **Client assertion** (`Identity-Client-Assertion`) | Backend service (gateway, Authz) | The calling _service_ identity (`iss`/`sub` = `client_id`) | Mint internal JWT; system revoke sessions              |
+| **User Internal JWT** (`Authorization: Bearer`)    | Backend after Identity issue     | Short-lived _user_ context (`sub` = V2 user id)            | Downstream service calls on behalf of a logged-in user |
 
 Rules:
 

@@ -1,4 +1,4 @@
-import { generateKeyPair, exportPKCS8, SignJWT, jwtVerify } from 'jose';
+import { exportPKCS8, generateKeyPair, jwtVerify, SignJWT } from 'jose';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 

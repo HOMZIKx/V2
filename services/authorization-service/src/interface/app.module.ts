@@ -77,10 +77,7 @@ const providers: Provider[] = [
   {
     provide: ASSERTION_JTI_STORE,
     useFactory: (config: AuthorizationEnv): AssertionJtiStore | null => {
-      if (
-        !config.AUTHORIZATION_ENABLED ||
-        config.AUTHORIZATION_ASSERTION_REDIS_URL === undefined
-      ) {
+      if (!config.AUTHORIZATION_ENABLED || config.AUTHORIZATION_ASSERTION_REDIS_URL === undefined) {
         return null;
       }
       return createAssertionJtiStore(

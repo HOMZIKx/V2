@@ -122,16 +122,10 @@ function subjectMatchesOwner(subject: DecisionSubject, owner: OrganizationOwner)
   ) {
     return true;
   }
-  return (
-    subject.discordUserId !== undefined && subject.discordUserId === owner.ownerDiscordUserId
-  );
+  return subject.discordUserId !== undefined && subject.discordUserId === owner.ownerDiscordUserId;
 }
 
-function blockApplies(
-  block: AccessBlockRecord,
-  scope: AuthorizationScope,
-  now: Date,
-): boolean {
+function blockApplies(block: AccessBlockRecord, scope: AuthorizationScope, now: Date): boolean {
   if (isExpired(block.expiresAt, now)) {
     return false;
   }

@@ -272,12 +272,10 @@ function assertInternalJwtRequirements(
       { requireHttps: isProduction, rejectLocalhost: isProduction },
     );
   }
-  assertValidOriginUrl(
-    config.IDENTITY_SYSTEM_REVOKE_URL,
-    'IDENTITY_SYSTEM_REVOKE_URL',
-    addIssue,
-    { requireHttps: isProduction, rejectLocalhost: isProduction },
-  );
+  assertValidOriginUrl(config.IDENTITY_SYSTEM_REVOKE_URL, 'IDENTITY_SYSTEM_REVOKE_URL', addIssue, {
+    requireHttps: isProduction,
+    rejectLocalhost: isProduction,
+  });
 }
 
 function assertAuthorizationRequirements(

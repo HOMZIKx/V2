@@ -55,7 +55,8 @@ const REQUIRED_PERMISSION_NAMES = [
   'ReadMessageHistory',
 ] as const;
 
-const ALLOWED_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] as const;
+const BASE_INTENTS = [GatewayIntentBits.Guilds] as const;
+const SYNC_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] as const;
 
 export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPort {
   private readonly client: Client;
@@ -77,8 +78,13 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
         ? createAuthorizationSyncClient(deps.config, deps.logger)
         : deps.authorizationSync;
 
+    const intents = deps.config.DISCORD_AUTHORIZATION_SYNC_ENABLED
+      ? [...SYNC_INTENTS]
+      : [...BASE_INTENTS];
+    assertAllowedGatewayIntents(intents, deps.config.DISCORD_AUTHORIZATION_SYNC_ENABLED);
+
     this.client = new Client({
-      intents: [...ALLOWED_INTENTS],
+      intents,
     });
     this.rest = new REST({ version: '10' }).setToken(deps.config.DISCORD_TOKEN);
     this.bindEvents();
@@ -293,33 +299,39 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildRoleCreate, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_create', role).catch((error: unknown) => {
-        this.deps.logger.error('GuildRoleCreate sync failed', {
-          guildId: role.guild.id,
-          roleId: role.id,
-          error: safeErrorMessage(error, this.secrets),
-        });
-      });
+      void this.handleRolesChanged(role.guild, 'guild_role_create', role).catch(
+        (error: unknown) => {
+          this.deps.logger.error('GuildRoleCreate sync failed', {
+            guildId: role.guild.id,
+            roleId: role.id,
+            error: safeErrorMessage(error, this.secrets),
+          });
+        },
+      );
     });
 
     this.client.on(Events.GuildRoleUpdate, (_previous, role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_update', role).catch((error: unknown) => {
-        this.deps.logger.error('GuildRoleUpdate sync failed', {
-          guildId: role.guild.id,
-          roleId: role.id,
-          error: safeErrorMessage(error, this.secrets),
-        });
-      });
+      void this.handleRolesChanged(role.guild, 'guild_role_update', role).catch(
+        (error: unknown) => {
+          this.deps.logger.error('GuildRoleUpdate sync failed', {
+            guildId: role.guild.id,
+            roleId: role.id,
+            error: safeErrorMessage(error, this.secrets),
+          });
+        },
+      );
     });
 
     this.client.on(Events.GuildRoleDelete, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_delete', role).catch((error: unknown) => {
-        this.deps.logger.error('GuildRoleDelete sync failed', {
-          guildId: role.guild.id,
-          roleId: role.id,
-          error: safeErrorMessage(error, this.secrets),
-        });
-      });
+      void this.handleRolesChanged(role.guild, 'guild_role_delete', role).catch(
+        (error: unknown) => {
+          this.deps.logger.error('GuildRoleDelete sync failed', {
+            guildId: role.guild.id,
+            roleId: role.id,
+            error: safeErrorMessage(error, this.secrets),
+          });
+        },
+      );
     });
 
     this.client.on(Events.Error, (error) => {
@@ -564,15 +576,27 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 }
 
-/** P3: Guilds + GuildMembers only (no MessageContent / GuildPresences). */
-export function assertAllowedGatewayIntents(intents: readonly number[]): void {
-  const expected = new Set<number>(ALLOWED_INTENTS);
+/**
+ * P3: allow Guilds-only (sync off) or Guilds + GuildMembers (sync on).
+ * Never MessageContent / GuildPresences / other privileged extras.
+ */
+export function assertAllowedGatewayIntents(
+  intents: readonly number[],
+  authorizationSyncEnabled = false,
+): void {
+  const expected = authorizationSyncEnabled
+    ? new Set<number>(SYNC_INTENTS)
+    : new Set<number>(BASE_INTENTS);
   if (intents.length !== expected.size || intents.some((intent) => !expected.has(intent))) {
-    throw new Error('Only GatewayIntentBits.Guilds and GuildMembers are permitted.');
+    throw new Error(
+      authorizationSyncEnabled
+        ? 'Only GatewayIntentBits.Guilds and GuildMembers are permitted when authorization sync is enabled.'
+        : 'Only GatewayIntentBits.Guilds is permitted when authorization sync is disabled.',
+    );
   }
 }
 
-/** @deprecated Use assertAllowedGatewayIntents — GuildMembers required for P3 membership sync. */
+/** @deprecated Prefer assertAllowedGatewayIntents(intents, syncEnabled). */
 export function assertOnlyGuildsIntent(intents: readonly number[]): void {
-  assertAllowedGatewayIntents(intents);
+  assertAllowedGatewayIntents(intents, false);
 }

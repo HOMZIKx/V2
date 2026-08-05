@@ -1,3 +1,4 @@
+import { Redis } from 'ioredis';
 import {
   createLocalJWKSet,
   decodeJwt,
@@ -8,7 +9,6 @@ import {
   type JWK,
   type JWTPayload,
 } from 'jose';
-import { Redis } from 'ioredis';
 import { z } from 'zod';
 
 import { AuthorizationError } from '../../domain/errors.js';
@@ -108,11 +108,7 @@ export async function loadInboundClientRegistry(
       }
       globalKids.add(keyRecord.kid);
 
-      const key = await importPublicKey(
-        keyRecord.public_key_pem,
-        keyRecord.kid,
-        keyRecord.status,
-      );
+      const key = await importPublicKey(keyRecord.public_key_pem, keyRecord.kid, keyRecord.status);
       keys.set(keyRecord.kid, key);
       keysByKid.set(keyRecord.kid, { clientId: record.client_id, key });
 
@@ -332,9 +328,6 @@ export class RedisAssertionJtiStore implements AssertionJtiStore {
   }
 }
 
-export function createAssertionJtiStore(
-  redisUrl: string,
-  prefix: string,
-): RedisAssertionJtiStore {
+export function createAssertionJtiStore(redisUrl: string, prefix: string): RedisAssertionJtiStore {
   return new RedisAssertionJtiStore(new Redis(redisUrl, { lazyConnect: false }), prefix);
 }

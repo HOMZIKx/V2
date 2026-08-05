@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  type OnModuleDestroy,
-  type OnModuleInit,
-} from '@nestjs/common';
+import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import type { Pool } from 'pg';
 
 import type { AuthorizationStorePort } from '../application/ports/authorization.ports.js';

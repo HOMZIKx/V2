@@ -14,7 +14,7 @@ import { AUTH_RUNTIME } from '../interface/identity.tokens.js';
 import type { AuthRuntime } from './auth/create-better-auth.js';
 import { createBetterAuth } from './auth/create-better-auth.js';
 import type { AuthorizationClient } from './authorization/authorization-client.js';
-import { type IdentityEnv, parseIdentityEnv } from './config/identity-env.js';
+import { parseIdentityEnv, type IdentityEnv } from './config/identity-env.js';
 import { runMigrations } from './db/run-migrations.js';
 import { signTestClientAssertion } from './internal-jwt/sign-test-client-assertion.js';
 import {

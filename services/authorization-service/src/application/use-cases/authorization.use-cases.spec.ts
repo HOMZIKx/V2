@@ -1,14 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  AuthorizationStorePort,
-  SessionRevokePort,
-} from '../ports/authorization.ports.js';
+import type { AuthorizationStorePort, SessionRevokePort } from '../ports/authorization.ports.js';
 import * as useCases from './authorization.use-cases.js';
 
-function createStore(
-  overrides: Partial<AuthorizationStorePort> = {},
-): AuthorizationStorePort {
+function createStore(overrides: Partial<AuthorizationStorePort> = {}): AuthorizationStorePort {
   return {
     ensureOrganization: vi.fn(),
     ping: vi.fn(),
@@ -51,16 +46,12 @@ describe('authorization use-cases', () => {
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
     const revoke: SessionRevokePort = { revokeAllSessionsForUser };
 
-    const result = await useCases.applyDiscordEvent(
-      store,
-      revoke,
-      {
-        eventKey: 'evt-1',
-        eventType: 'member_remove',
-        discordGuildId: 'g1',
-        payload: { kind: 'member_remove', discordUserId: 'd1' },
-      },
-    );
+    const result = await useCases.applyDiscordEvent(store, revoke, {
+      eventKey: 'evt-1',
+      eventType: 'member_remove',
+      discordGuildId: 'g1',
+      payload: { kind: 'member_remove', discordUserId: 'd1' },
+    });
 
     expect(result.revokedUserIds).toEqual(['user-a', 'user-b']);
     expect(revokeAllSessionsForUser).toHaveBeenCalledTimes(2);

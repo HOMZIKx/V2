@@ -22,10 +22,7 @@ export async function revokeSessionsForUserSystem(
   input: SystemRevokeSessionsInput,
 ): Promise<{ status: 'ok'; revoked_user_id: string; correlation_id: string }> {
   if (input.clientAssertion === undefined || input.clientAssertion.length === 0) {
-    throw new IdentityError(
-      'CLIENT_ASSERTION_INVALID',
-      'Missing Identity-Client-Assertion header',
-    );
+    throw new IdentityError('CLIENT_ASSERTION_INVALID', 'Missing Identity-Client-Assertion header');
   }
 
   const assertion = await assertionPort.verify(input.clientAssertion, input.expectedAudience);

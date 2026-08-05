@@ -7,10 +7,7 @@ import { createLogger } from '@v2/observability';
 import type { Pool } from 'pg';
 
 import { serviceName } from './domain/service-name.js';
-import {
-  parseAuthorizationEnv,
-  redactSecrets,
-} from './infrastructure/config/authorization-env.js';
+import { parseAuthorizationEnv, redactSecrets } from './infrastructure/config/authorization-env.js';
 import { loadAuthorizationEnvFiles } from './infrastructure/config/load-env-file.js';
 import { AppModule } from './interface/app.module.js';
 import { AUTHORIZATION_POOL } from './interface/authorization.tokens.js';

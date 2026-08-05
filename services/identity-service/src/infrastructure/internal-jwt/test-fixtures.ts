@@ -12,8 +12,7 @@ export interface TestKeyFixture {
 
 export const TEST_INTERNAL_JWT_ISSUER = 'http://127.0.0.1:4200';
 export const TEST_INTERNAL_JWT_ISSUE_URL = 'http://127.0.0.1:4200/identity/internal-token';
-export const TEST_SYSTEM_REVOKE_URL =
-  'http://127.0.0.1:4200/identity/v1/system/revoke-sessions';
+export const TEST_SYSTEM_REVOKE_URL = 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions';
 export const TEST_GATEWAY_CLIENT_ID = 'v2.api-gateway';
 export const TEST_GATEWAY_AUDIENCE = 'v2.api-gateway';
 export const TEST_OTHER_CLIENT_ID = 'v2.other-service';

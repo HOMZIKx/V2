@@ -95,10 +95,7 @@ export class HttpAuthorizationClient implements AuthorizationClient {
         body: JSON.stringify(body),
       });
     } catch {
-      throw new IdentityError(
-        'AUTHORIZATION_UNAVAILABLE',
-        'Authorization service is unreachable',
-      );
+      throw new IdentityError('AUTHORIZATION_UNAVAILABLE', 'Authorization service is unreachable');
     }
   }
 
@@ -144,18 +141,12 @@ export class HttpAuthorizationClient implements AuthorizationClient {
     try {
       json = await response.json();
     } catch {
-      throw new IdentityError(
-        'AUTHORIZATION_UNAVAILABLE',
-        'Authorize response was not valid JSON',
-      );
+      throw new IdentityError('AUTHORIZATION_UNAVAILABLE', 'Authorize response was not valid JSON');
     }
 
     const parsed = authorizeDecisionSchema.safeParse(json);
     if (!parsed.success) {
-      throw new IdentityError(
-        'AUTHORIZATION_UNAVAILABLE',
-        'Authorize response missing decision',
-      );
+      throw new IdentityError('AUTHORIZATION_UNAVAILABLE', 'Authorize response missing decision');
     }
     return parsed.data.decision;
   }

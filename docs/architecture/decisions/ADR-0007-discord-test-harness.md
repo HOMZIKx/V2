@@ -77,10 +77,9 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 
 ## Amendment (P3-D1 / P3-D20 — 2026-08-05)
 
-Owner-approved membership sync supersedes the P1 **Guilds-only** intent restriction:
+Owner-approved membership sync supersedes the P1 **Guilds-only** intent restriction **when sync is enabled**:
 
-- `GatewayIntentBits.Guilds` **and** `GatewayIntentBits.GuildMembers` are required for Discord → Authorization sync.
+- Default (`DISCORD_AUTHORIZATION_SYNC_ENABLED=false`): `GatewayIntentBits.Guilds` only (P1 harness / tokenless-safe).
+- Sync on: `GatewayIntentBits.Guilds` **and** `GatewayIntentBits.GuildMembers` for Discord → Authorization membership sync.
 - `MessageContent` and `GuildPresences` remain forbidden.
 - Guild isolation (`DISCORD_STRICT_GUILD_ISOLATION`) is unchanged: only the configured test guild is synced; foreign guilds are rejected/left.
-- Sync is gated by `DISCORD_AUTHORIZATION_SYNC_ENABLED` (default `false`) so the P1 harness remains tokenless-safe.
-

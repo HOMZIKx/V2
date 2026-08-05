@@ -132,17 +132,11 @@ function assertEnabledRequirements(
   addIssue: (path: string, message: string) => void,
 ): void {
   if (config.AUTHORIZATION_INBOUND_CLIENTS_JSON === undefined) {
-    addIssue(
-      'AUTHORIZATION_INBOUND_CLIENTS_JSON',
-      'is required when AUTHORIZATION_ENABLED=true',
-    );
+    addIssue('AUTHORIZATION_INBOUND_CLIENTS_JSON', 'is required when AUTHORIZATION_ENABLED=true');
   }
 
   if (config.AUTHORIZATION_SYSTEM_ACTIVE_KID === undefined) {
-    addIssue(
-      'AUTHORIZATION_SYSTEM_ACTIVE_KID',
-      'is required when AUTHORIZATION_ENABLED=true',
-    );
+    addIssue('AUTHORIZATION_SYSTEM_ACTIVE_KID', 'is required when AUTHORIZATION_ENABLED=true');
   }
 
   if (config.AUTHORIZATION_SYSTEM_PRIVATE_KEY_PEM === undefined) {
@@ -153,10 +147,7 @@ function assertEnabledRequirements(
   }
 
   if (config.AUTHORIZATION_IDENTITY_BASE_URL === undefined) {
-    addIssue(
-      'AUTHORIZATION_IDENTITY_BASE_URL',
-      'is required when AUTHORIZATION_ENABLED=true',
-    );
+    addIssue('AUTHORIZATION_IDENTITY_BASE_URL', 'is required when AUTHORIZATION_ENABLED=true');
   }
 
   if (config.AUTHORIZATION_IDENTITY_REVOKE_URL === undefined) {

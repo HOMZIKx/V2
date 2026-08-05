@@ -21,10 +21,7 @@ import * as useCases from '../application/use-cases/authorization.use-cases.js';
 import type { DecisionSubject } from '../domain/decision-engine.js';
 import { AuthorizationError } from '../domain/errors.js';
 import { AuthorizationExceptionFilter } from './authorization-exception.filter.js';
-import {
-  AUTHORIZATION_STORE_PORT,
-  SESSION_REVOKE_PORT,
-} from './authorization.tokens.js';
+import { AUTHORIZATION_STORE_PORT, SESSION_REVOKE_PORT } from './authorization.tokens.js';
 import { InboundAssertionGuard } from './inbound-assertion.guard.js';
 
 const subjectSchema = z
@@ -314,9 +311,7 @@ export class AuthorizationController {
     const parsed = parseOrThrow(registerGuildBodySchema, body);
     return useCases.registerGuild(this.store, {
       discordGuildId: parsed.discordGuildId,
-      ...(parsed.loginEntitling !== undefined
-        ? { loginEntitling: parsed.loginEntitling }
-        : {}),
+      ...(parsed.loginEntitling !== undefined ? { loginEntitling: parsed.loginEntitling } : {}),
     });
   }
 
