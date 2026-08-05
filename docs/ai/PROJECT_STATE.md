@@ -1,62 +1,63 @@
-# Project State — V2
+# PROJECT_STATE
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_RE-AUDIT`
+`READY_FOR_RE-AUDIT` — plan P2 Identity Foundation zamknięty decyzjami właściciela
+(2026-08-05); PR planistyczny #10 po sync z `main` (P1). Poprawki re-audytu
+(CHANGES REQUIRED) w toku / po push.
 
-## Aktualny etap
+## Active phase
 
-Żywy bot na `cursor/p1-discord-test-harness` serwuje **Components V2** (stary proces na :4100 zabity i zastąpiony). PR #9 bez merge.
+P2 Identity Foundation — **planning close** (PR #10). Implementacja P2 **nie
+rozpoczęta** i **zakazana** do czasu merge planu + osobnego PR implementacyjnego.
 
-## Zatwierdzone
+## Current objective
 
-- wizja i model produktu;
-- jedna organizacja i wiele serwerów Discord;
-- hybrydowy profil użytkownika;
-- pełna platforma WWW + Discord;
-- model uprawnień;
-- mikrousługi;
-- główny stos TypeScript;
-- monorepo pnpm + Nx;
-- własność danych;
-- REST/OpenAPI + RabbitMQ;
-- backend Node/Nest/Fastify;
-- podział Web/Admin;
-- model tożsamości, MFA i sesji (docelowy — niezaimplementowany);
-- trwały protokół pracy AI;
-- standardy jakości, testów i lokalnej infrastruktury;
-- standard postów i interakcji Discord (D-023);
-- oryginalna identyfikacja wizualna V2 (D-024);
-- dedykowany serwer testowy Discord `1534228693017432124`;
-- wizja Desktop Companion / overlay (ADR-0006);
-- Discord test harness P1 (ADR-0007) — remediacja Components V2 w toku audytu;
-- ADR-0008 (Zeabur) — dokumentacja; **wdrożenie deferred**.
+Domknąć niespójności dokumentacyjne z re-audytu P2 (PR body, D-017, ownership
+sesji, tip SHA bez pętli). Status `READY_FOR_RE-AUDIT`. Bez merge, bez instalacji
+Better Auth, bez kodu OAuth / sesji / DB / UI logowania.
 
-## Zamknięty etap
+## In scope now
 
-- **Task ID:** `P0-BOOTSTRAP-001`
-- **Status:** `APPROVED_AND_MERGED`
-- **PR:** `#3`
+- Poprawki docs z re-audytu „CHANGES REQUIRED przed merge”.
+- ADR-0009 / 0010 / 0011 / 0012 Accepted; DEC-003–009 Accepted; D-016 SUPERSEDED.
+- Walidacja dokumentów + push do PR #10; komentarz PR z finalnym HEAD / workflow
+  (bez commitowania tip SHA w pętli).
 
-## Aktywne zadanie
+## Out of scope now
 
-- **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_RE-AUDIT`
-- **Branch:** `cursor/p1-discord-test-harness`
-- **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
-- **Tip (live V2 bot):** `68303c2c833e53606ce1344309e5acb50c1829b9`
-- **Finalny commit (remediation):** `4ae207a4f70a6c3e6175a4f36cd324b1f8921c03`
-- **Zmiana UX:** publiczny `/panel-test` = Components V2 Container (bez legacy embed)
-- **Zeabur:** DEFERRED (DEC-001)
+- Instalacja Better Auth / jakiejkolwiek biblioteki auth.
+- Implementacja OAuth, sesji, cookie, JWT, bazy Identity, ekranów logowania.
+- Zmiany runtime Discord (P1 zamknięte na `main`).
+- Admin override w Discord (DEC-002 / ADR-0007 — osobny tor, test guild only).
+- Merge PR #10 do `main`.
+- Deploy produkcyjny / Zeabur Identity (D-030 / DEC-001).
+- P3 membership / guild-scoped revoke policy (DEC-006 C / zakres D-017 / ADR-0010).
 
-## Nadal niezaimplementowane
+## Blockers
 
-- Discord OAuth, sesje platformowe, MFA;
-- RBAC;
-- modele biznesowe i ORM;
-- moduły produktowe;
-- wdrożenie Zeabur (wstrzymane).
+Brak blokad decyzyjnych P2. Oczekiwanie na re-audit / APPROVED właściciela przed
+merge planu.
 
-## Następny punkt kontrolny
+## Decisions needed
 
-Ponowny audyt ChatGPT PR #9. Nie merge. Nie startować implementacji P2 z tego PR.
+Brak otwartych DEC dla zamknięcia planu P2. Pin wersji Better Auth — w PR
+implementacyjnym. Guild-level revoke policy — P3 (`DEC-006 C` / zakres `D-017` /
+ADR-0010).
+
+## Branch / tip (bez pętli SHA)
+
+- Branch: `planning/p2-identity-foundation`
+- PR: #10
+- Stabilny plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
+- Aktualny tip SHA i numery workflow CI: **źródło prawdy w GitHub** (PR Checks /
+  Actions), nie w tym pliku.
+
+## Next recommended step
+
+Właściciel: re-audit poprawek → `APPROVED` → merge planu. Dopiero potem osobny PR
+implementacyjny P2 (proof slice Better Auth za portami Identity).
+
+## Last updated
+
+2026-08-05 — Cursor (re-audit CHANGES REQUIRED)

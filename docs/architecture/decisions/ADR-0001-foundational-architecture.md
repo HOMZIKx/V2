@@ -21,7 +21,7 @@ Przyjmujemy:
 - Transactional Outbox, idempotencję, retry, DLQ i correlation IDs;
 - aplikację Web w Next.js App Router;
 - aplikację Admin w React + Vite + React Router;
-- logowanie przez Discord OAuth, Better Auth, sesje serwerowe w Redisie oraz obowiązkowe MFA administracji.
+- multi-provider Identity (Discord + Google w P2; V2 User UUID) — ADR-0010; Better Auth za portami Identity — ADR-0012; opaque sesje cookie + Redis oraz internal JWT — ADR-0011; MFA administracji obowiązkowe na etapie produkcyjnego Admin (D-018).
 
 ## Konsekwencje pozytywne
 

@@ -49,17 +49,19 @@ Poniższe zasady są nadrzędne. Agent nie może ich samodzielnie zmieniać ani 
 
 ## Tożsamość i bezpieczeństwo
 
-- Użytkownik loguje się wyłącznie przez Discord OAuth.
-- Platforma przechowuje wewnętrzny techniczny identyfikator użytkownika, ale konto jest jednoznacznie związane z Discord User ID.
-- Administrator wybiera, które serwery i role Discord pozwalają na logowanie.
-- Utrata członkostwa lub wymaganej roli natychmiast unieważnia dostęp i aktywne sesje, bez kasowania danych.
-- Identity Service opiera się na Better Auth.
-- Zwykły użytkownik korzysta z Discord OAuth.
-- Administracja ma obowiązkowe passkey albo TOTP oraz kody odzyskiwania.
+- Główna tożsamość platformy to **V2 User** ze stabilnym UUID niezależnym od Discord ID i e-maila.
+- Discord i Google są zewnętrznymi providerami (`ExternalIdentity`); architektura musi pozwalać na kolejnych providerów. Discord pozostaje kluczowym kanałem produktu, ale nie jest technicznym kluczem głównym użytkownika.
+- E-mail nie jest kluczem tożsamości i nie uruchamia automatycznego łączenia kont.
+- Account linking jest wyłącznie jawne (`disableImplicitLinking`); unikalność `(provider, providerAccountId)`; nie wolno odłączyć ostatniego providera bez innej metody dostępu.
+- Discord login musi działać także gdy provider nie zwróci e-maila (subject = provider account ID).
+- Identity Service jest jedynym właścicielem tabel user / account / session / verification; inne usługi korzystają wyłącznie z kontraktów Identity.
+- Identity Service opiera się na Better Auth zamkniętym za portami/adapters (oficjalny handler Fastify); inne usługi nie importują Better Auth ani nie czytają jego tabel.
+- Dostęp guild-scoped (które serwery/role Discord uprawniają) oraz natychmiastowa blokada po utracie członkostwa/roli należą do Authorization / synchronizacji Discord (P3+). P2 dostarcza mechanizm revoke sesji. Utrata Discorda nie kasuje automatycznie V2 User ani konta Google.
+- Administracja ma obowiązkowe passkey albo TOTP oraz kody odzyskiwania (etap po minimalnym P2, jeśli Admin nie jest jeszcze produkcyjny).
 - Krytyczne operacje wymagają ponownego potwierdzenia MFA.
-- Przeglądarka korzysta z sesji serwerowej w bezpiecznym cookie. Zakaz tokenów dostępowych w `localStorage`.
-- Redis przechowuje sesje.
-- Wewnętrzna komunikacja używa krótkotrwałego, podpisanego kontekstu tożsamości.
+- Przeglądarka: opaque sesja serwerowa w cookie `HttpOnly` + `Secure` (poza localhost) + host-only; zakaz JWT jako sesji przeglądarkowej; zakaz tokenów w `localStorage` / `sessionStorage`. Osobne cookies Web vs Admin.
+- Redis (restrykcyjny ACL) jest źródłem szybkiej walidacji/unieważniania sesji; cookie cache/stateless Better Auth wyłączone na start, aby revoke był natychmiastowy.
+- Wewnętrzna komunikacja: krótko żyjący JWT (TTL ≤ 5 min) z `iss`/`aud`/`sub`/`jti`/`iat`/`exp`/`kid`, asymetrycznie podpisany przez Identity; bez pełnego RBAC w tokenie.
 
 ## Jakość i kontrola zmian
 

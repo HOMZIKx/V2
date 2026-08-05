@@ -1,55 +1,66 @@
-# Cursor → ChatGPT
+﻿# CURSOR_TO_CHATGPT
 
 ## Status
 
 `READY_FOR_RE-AUDIT`
 
-## Task ID
+## Summary
 
-`P1-DISCORD-TEST-HARNESS-001` (urgent: live bot on Components V2)
+Poprawki po re-audycie właściciela „Re-audyt P2 — CHANGES REQUIRED przed merge”
+(PR #10, wyłącznie planistycznie):
 
-## Branch / SHA
+1. Zaktualizowano body PR #10 do stanu faktycznego (ADR-0009…0012 Accepted,
+   DEC-003–009 Accepted, D-016 SUPERSEDED, NON_NEGOTIABLES zaktualizowane).
+2. Naprawiono błędne odwołania w `PROJECT_STATE` (DEC-002/ADR-0007; DEC-006 C /
+   D-017 / ADR-0010).
+3. D-017 → status `SCOPE REVISED` (bez `ACCEPTED*`).
+4. Rozdzielono ownership logiczny vs storage: PostgreSQL User/Account/Verification
+   (+ audyt bez używalnego tokenu); Redis = session SoT; ADR-0012:
+   `secondaryStorage` najpierw.
+5. Naprawiono tabelę Session w `IDENTITY_FOUNDATION.md`.
+6. Raporty bez pętli tip SHA — aktualny HEAD/CI = źródło prawdy w GitHub.
+7. **Zero** implementacji Better Auth / OAuth / sesji / DB / UI.
 
-- **Branch:** `cursor/p1-discord-test-harness`
-- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
-- **Implementation commit (Components V2):** `9cd3103a74069b2ba3d0c2060d9ba01e17374c5f`
-- **Tip przed tą poprawką runtime:** `ff10cc368868efe4bb1dea4357b6029a0e4ae37b`
-- **Aktualny tip po runtime fix:** `bba54c7bcde7d855e7f54f06d2905f57033901fb`
+## Branch / PR (stabilne odniesienia)
 
-## Co było nie tak
+- Branch: `planning/p2-identity-foundation`
+- PR: https://github.com/HOMZIKx/V2/pull/10
+- Base: `main` (P1 `c82d6bd`)
+- Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
+- Aktualny tip SHA i numery workflow: **GitHub Checks / Actions** (komentarz PR
+  po zielonym CI — bez commitowania tip w pętli)
 
-Na porcie `4100` działał **stary** proces `pnpm --dir apps/discord-gateway dev` (oraz równolegle `discord:test:start`), który serwował legacy embed. Kod w repo już miał Components V2, ale żywy bot nie.
+## Rozstrzygnięte decyzje (2026-08-05)
 
-## Co zrobiono na maszynie
+| DEC     | Wybór | Skutek                                                    |
+| ------- | ----- | --------------------------------------------------------- |
+| DEC-003 | B     | Multi-provider; V2 UUID; supersede D-016                  |
+| DEC-004 | A     | Better Auth + Fastify + ports; proof first; pin w impl PR |
+| DEC-005 | A     | Tylko jawne linking                                       |
+| DEC-006 | C     | P2 = revoke API; guild policy → P3                        |
+| DEC-007 | A     | P1 merged; impl po merge planu #10                        |
+| DEC-008 | A     | Opaque cookie + Redis SoT; osobne Web/Admin               |
+| DEC-009 | A     | Internal JWT ≤5 min; asym; bez pełnego RBAC               |
 
-1. Zatrzymano wyłącznie procesy `discord-gateway` / `discord:test` / listener `4100` (bez `api-gateway`).
-2. Usunięto `apps/discord-gateway/dist`, `pnpm install --frozen-lockfile`.
-3. Dodano bezpieczny startup log: `gitCommitSha`, `gitBranch`, `buildMode=tsx-dev-source`, `panelRenderer=components-v2-container` (+ to samo w `/health/discord`).
-4. Uruchomiono `pnpm discord:test:start` z aktualnego HEAD.
-5. Usunięto legacy embed panele z kanału; opublikowano panel V2.
-6. Restart procesu — panel V2 **pozostał**; signed custom IDs (`select` / `refresh` / `delete_ask`) weryfikują się sekretem z `.env`.
+## Validation
 
-## Dowód żywego panelu V2
+Uruchamiane lokalnie przed push: `pnpm format:check` (+ lint/typecheck/architecture
+gdy adekwatne). Pełne CI i Conventional PR Title: zielone na **finalnym HEAD** —
+potwierdzone w komentarzu PR z numerami workflow.
 
-| Dowód                                               | Wynik                                                                                      |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `/health/discord`                                   | `state=ready`, `panelRenderer=components-v2-container`, `gitCommitSha=ff10cc3…`            |
-| Message API                                         | `flags=32768`, `embedsCount=0`, top type `17` (Container)                                  |
-| JSON                                                | `docs/ai/artifacts/live-panel-v2-message.json`                                             |
-| Screenshot Discord (desktop, kanał TESTOWY #ogólne) | `docs/ai/artifacts/live-discord-v2-panel-window.png`                                       |
-| Jump URL                                            | `https://discord.com/channels/1534228693017432124/1534228693449179146/1534482713606881381` |
+## Risks / debt
 
-Publiczna karta: **bez** `ready` / `test` / `Wersja panelu`; select + przyciski **w** kontenerze; banner MediaGallery.
+- Plan Accepted ≠ implementacja. Proof slice Better Auth wymaga osobnego PR.
+- Preferencja `secondaryStorage`; własny adapter tylko po dowodzie z proof.
+- Guild revoke policy odroczona do P3 (DEC-006 C / D-017 SCOPE REVISED).
+- Pin wersji Better Auth — w PR implementacyjnym.
+- Honest session-token hashing — zależne od faktycznego BA.
 
-## Test interakcji
+## Questions for ChatGPT / owner
 
-- Automatycznie: signed IDs OK; persistence po restarcie OK; renderer unit tests 45/45.
-- Kliknięcia select / modal / Odśwież / Usuń w UI Discord: Electron nie eksponuje przycisków do UI Automation — **wymagane potwierdzenie właściciela na mobile** na już opublikowanym panelu V2 (link powyżej). Bot działa i nasłuchuje.
+1. Re-audit poprawek → `APPROVED` przed merge PR #10?
+2. Pin wersji Better Auth w review planu vs dopiero w PR implementacyjnym (DEC-004)?
 
-## Lokalny validate
+## Last updated
 
-`pnpm --filter discord-gateway test` → 45 passed. Pełne `pnpm validate` lokalnie może paść na braku Docker CLI (jak wcześniej); CI na tipie po push.
-
-## Poza zakresem
-
-P2, merge, nowy PR — bez zmian.
+2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
