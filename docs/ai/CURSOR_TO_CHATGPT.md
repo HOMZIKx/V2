@@ -2,63 +2,75 @@
 
 ## 1. Status
 
-`READY_FOR_REVIEW_SECURITY_FIXED`
+`READY_FOR_REVIEW`
 
-P2 internal service-to-service JWT security remediation on draft PR #14
-(`cursor/p2-identity-internal-jwt`). Issue #13 stays OPEN. **No merge by Cursor.**
+P3 Authorization foundation on branch `cursor/p3-authorization-foundation`.
 
 ## 2. Task ID
 
-`P2-IDENTITY-INTERNAL-JWT-001`
+`P3-AUTHORIZATION-FOUNDATION-001`
 
-## 3. Branch / PR / source of truth
+## 3. Branch / commit
 
-- Branch: `cursor/p2-identity-internal-jwt`
-- Issue: #13 (OPEN)
-- PR: #14 draft (GitHub SoT for tip HEAD, CI)
+- Branch: `cursor/p3-authorization-foundation`
+- Commit: see tip after push
 
-## 4. Security fixes in this pass
+## 4. Implemented scope
 
-| Area               | Fix                                                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Assertion binding  | `keyEntry.clientId === iss`, `iss === sub`; `jwtVerify` issuer = key owner; audience allowlist only for key owner                         |
-| Assertion claims   | Single-string `aud === ISSUE_URL`; integer `iat`/`exp`; future `iat` rejected; TTL ≤ 60; UUID `jti`; `kid` header-only; `alg=EdDSA`       |
-| `@v2/internal-jwt` | Single-string `aud`; require `iat`; `exp>iat`; TTL ≤ 300; UUID `jti`; header-only `kid`; `EdDSA`                                          |
-| Keyring            | active: private+public; retiring/retired: public-only (private rejected); one active; non-extractable signing key; JWKS = active+retiring |
-| Secrets            | No static PKCS#8 PEMs in tree; ephemeral Ed25519 in tests; gitleaks path allowlists for crypto fixtures removed                           |
-| Redis              | `InternalJwtLifecycleService` `OnModuleDestroy` closes assertion store once                                                               |
+Authorization-service end-to-end foundation:
 
-## 5. Hard constraints confirmed
+- Application ports + use-cases (bootstrap, identity-link, authorize/explain, guild
+  register/events/reconcile/activate, grants/blocks, entitlement-loss revoke)
+- `AuthorizationRepository` (raw `pg` SQL against migration `001`)
+- `SystemRevokeClient` — EdDSA assertion + POST Identity system revoke body
+  `{ v2_user_id, reason, correlation_id }` with header `Identity-Client-Assertion`
+- Nest HTTP under `/authorization/v1/*` + inbound assertion guard
+- Startup: parse env, pool, ensure single organization row
+- Health ready: `SELECT 1` via store ping
 
-- Domain/Application do not import Nest/Fastify/Better Auth/ioredis/pg
-- Browser never receives JWT or client assertion
-- Cross-client impersonation rejected before issue
-- Redis replay fail-closed
-- No broad gitleaks allowlist for production keyring / fixtures
+### Auth note
 
-## 6. Tests (highlights)
+When `AUTHORIZATION_ENABLED=false`, `InboundAssertionGuard` skips assertion verification
+(local/unauthenticated tests). When `true`, requires `Authorization-Client-Assertion`
+with `aud = AUTHORIZATION_ASSERTION_AUD` or full request URL; optional Redis jti store.
 
-- Cross-client impersonation (unit + infra)
-- Future `iat`, audience array, bad UUID/alg/signature, missing claims
-- Exact single audience (assertion + package)
-- Public-only retiring/retired; multi-active / mismatch / active-without-private rejected
-- Lifecycle closes Redis once
-- Payload omits email/roles/permissions/discord/session id
-- Gateway proof returns `{ ok, sub }` only
+## 5. Routes
 
-## 7. Validation commands
+| Method | Path |
+| ------ | ---- |
+| POST | `/authorization/v1/bootstrap/owner` |
+| POST | `/authorization/v1/identity-links` |
+| POST | `/authorization/v1/authorize` |
+| POST | `/authorization/v1/authorize/explain` |
+| POST | `/authorization/v1/discord/guilds/register` |
+| POST | `/authorization/v1/discord/events` |
+| POST | `/authorization/v1/discord/guilds/:guildId/reconcile` |
+| POST | `/authorization/v1/discord/guilds/:guildId/activate` |
+| POST | `/authorization/v1/grants` |
+| POST | `/authorization/v1/blocks` |
+| GET | `/health/live` |
+| GET | `/health/ready` |
 
-```bash
-pnpm validate
-RUN_INFRA_TESTS=true pnpm --filter @v2/identity-service test
-# local gitleaks on main..HEAD; also confirm no PKCS#8 private PEMs in `git log -p main..HEAD`
+## 6. Tests
+
+```text
+pnpm --dir services/authorization-service typecheck  # pass
+pnpm --dir services/authorization-service lint       # pass
+pnpm --dir services/authorization-service test       # 30 pass, 3 infra skipped (DB down)
+pnpm --dir services/authorization-service build      # pass
 ```
 
-## 8. Open risks / notes
+Infra repository tests run when `RUN_INFRA_TESTS=true` and Postgres is reachable;
+otherwise they skip without failing the unit job.
 
-- PR branch history will be rewritten (`--force-with-lease`) to purge PEMs from all PR commits
-- `main` unchanged
+## 7. Assumptions / tech debt
 
-## Last updated
+- Identity system revoke HTTP (`POST /identity/v1/system/revoke-sessions`) is expected
+  as the `AUTHORIZATION_IDENTITY_REVOKE_URL` target (parallel Identity work may land it).
+- No PEM fixtures committed; ephemeral keys in unit tests.
+- Domain remains free of Nest/`pg`.
+- Repository integration not executed against live PG in this agent run (compose not up).
 
-2026-08-05 — Cursor (security remediation)
+## 8. Questions
+
+None blocking for foundation review.

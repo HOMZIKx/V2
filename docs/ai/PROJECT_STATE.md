@@ -2,49 +2,42 @@
 
 ## Status
 
-`READY_FOR_REVIEW_SECURITY_FIXED`
+`IN_PROGRESS`
 
-Branch `cursor/p2-identity-internal-jwt` implements P2 internal service-to-service JWT (Issue #13, D1=C). Draft PR #14. GitHub is SoT for tip HEAD and CI.
-
-See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
+Branch `cursor/p3-authorization-foundation` implements P3 Authorization foundation
+(decision engine, persistence, HTTP `/authorization/v1/*`, Identity revoke client).
 
 ## Active phase
 
-P2 Identity — internal service-to-service JWT (security hardening).
+P3 Authorization — foundation (single organization, login entitlement, Discord sync snapshot).
 
 ## Active task
 
-- Task ID: `P2-IDENTITY-INTERNAL-JWT-001`
-- Branch: `cursor/p2-identity-internal-jwt`
-- Base: `main` after PR #11 squash merge (`15586ac`)
-- Issue: #13 (APPROVED, D1 = OWNER_ACCEPTED C) — remains OPEN
-- Pull Request: #14 draft (no merge by Cursor)
+- Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
+- Branch: `cursor/p3-authorization-foundation`
+- Base: `main` (includes P2 Identity squash merges)
 
 ## Current objective
 
-Land security fixes on PR #14: kid↔client_id binding, strict assertion/JWT claim validation, public-only retiring/retired keyring, ephemeral test keys (no PEM in history), Redis shutdown, then `READY_FOR_REVIEW_SECURITY_FIXED`.
+Ship authorization-service application + infrastructure + Nest HTTP surface so Identity
+and Discord gateway can call authorize / sync / policy endpoints.
 
 ## In scope now
 
-- Cross-client impersonation fix (`keyEntry.clientId === iss`, `iss === sub`)
-- Strict single-string audience; iat/exp/jti/alg/kid header rules
-- `@v2/internal-jwt` hardened verifier
-- Internal JWT keyring: active has private; retiring/retired public-only; non-extractable signer
-- Redis `OnModuleDestroy` lifecycle
-- History rewrite of PR branch only (purge private PEMs)
+- Ensure single organization on startup
+- Bootstrap owner, identity links, authorize/explain
+- Guild register / Discord events / reconcile / activate + login_entitling
+- Grants / blocks
+- Session revoke to Identity when last login entitlement is lost
+- Inbound `Authorization-Client-Assertion` when `AUTHORIZATION_ENABLED=true`
 
 ## Out of scope now
 
-- Merge PR #14
-- Close Issue #13
-- New PR
-- Internal JWT jti blacklist / Authorization RBAC / browser JWT
-
-## Decisions in force
-
-- DEC-008 A, DEC-009 A, ADR-0011
-- Issue #13 D1 = C (client assertion)
+- Full Discord gateway sync producer
+- WWW/Admin UI for policy
+- Multi-organization
+- Merge without owner/ChatGPT review
 
 ## Last updated
 
-2026-08-05 — Cursor (PR #14 security remediation)
+2026-08-05 — Cursor (P3 authorization foundation implementation)

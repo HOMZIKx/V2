@@ -110,6 +110,11 @@ const baseSchema = z.object({
    * generates and persists an organization id on first boot.
    */
   AUTHORIZATION_ORGANIZATION_ID: optionalUuid,
+  /**
+   * Expected `aud` for inbound client assertions. When unset, guards use the
+   * full request URL (protocol + host + path) as the audience.
+   */
+  AUTHORIZATION_ASSERTION_AUD: optionalTrimmed,
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
