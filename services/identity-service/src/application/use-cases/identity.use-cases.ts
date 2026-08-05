@@ -1,4 +1,8 @@
-import type { IdentityUserView, LinkedAccountView, ProviderId } from '../../domain/identity-models.js';
+import type {
+  IdentityUserView,
+  LinkedAccountView,
+  ProviderId,
+} from '../../domain/identity-models.js';
 import type { IdentitySessionPort } from '../ports/identity.ports.js';
 
 /**
@@ -7,7 +11,10 @@ import type { IdentitySessionPort } from '../ports/identity.ports.js';
  * out of the interface layer's type surface.
  */
 
-export function getMe(port: IdentitySessionPort, headers: Headers): Promise<IdentityUserView | null> {
+export function getMe(
+  port: IdentitySessionPort,
+  headers: Headers,
+): Promise<IdentityUserView | null> {
   return port.getMe(headers);
 }
 
@@ -43,9 +50,6 @@ export function logoutAll(port: IdentitySessionPort, headers: Headers): Promise<
   return port.logoutAll(headers);
 }
 
-export function revokeAllSessionsForUser(
-  port: IdentitySessionPort,
-  userId: string,
-): Promise<void> {
+export function revokeAllSessionsForUser(port: IdentitySessionPort, userId: string): Promise<void> {
   return port.revokeAllSessionsForUser(userId);
 }

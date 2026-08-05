@@ -137,7 +137,11 @@ runInfra('Better Auth storage model (PostgreSQL + Redis)', () => {
     const context = await runtime.auth.$context;
     const accountId = `discord-null-${Date.now()}`;
     const { user, account } = await context.internalAdapter.createOAuthUser(
-      { name: 'NoEmail', email: `v2+discord+${'0'.repeat(16)}@discord.invalid`, emailVerified: false },
+      {
+        name: 'NoEmail',
+        email: `v2+discord+${'0'.repeat(16)}@discord.invalid`,
+        emailVerified: false,
+      },
       { providerId: 'discord', accountId },
     );
     createdUserIds.push(user.id);

@@ -52,8 +52,7 @@ export function mapDiscordProfileToUser(profile: MappableDiscordProfile): {
   email: string;
   emailVerified: boolean;
 } {
-  const email =
-    profile.email == null ? buildSyntheticEmail('discord', profile.id) : profile.email;
+  const email = profile.email == null ? buildSyntheticEmail('discord', profile.id) : profile.email;
   return {
     name: profile.global_name ?? profile.username ?? profile.id,
     email,
@@ -117,8 +116,8 @@ export function createBetterAuth(config: IdentityEnv) {
     secondaryStorage: redisStorage({ client: redis, keyPrefix: REDIS_KEY_PREFIX }),
     databaseHooks: {
       account: {
-        create: { before: async (account) => stripProviderTokens(account) },
-        update: { before: async (account) => stripProviderTokens(account) },
+        create: { before: (account) => Promise.resolve(stripProviderTokens(account)) },
+        update: { before: (account) => Promise.resolve(stripProviderTokens(account)) },
       },
     },
   });

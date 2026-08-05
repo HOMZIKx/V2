@@ -73,10 +73,10 @@ export async function runMigrations(options: RunMigrationsOptions): Promise<Migr
       try {
         await client.query('BEGIN');
         await client.query(contents);
-        await client.query(
-          `INSERT INTO ${TRACKING_TABLE} (id, checksum) VALUES ($1, $2)`,
-          [file, checksum],
-        );
+        await client.query(`INSERT INTO ${TRACKING_TABLE} (id, checksum) VALUES ($1, $2)`, [
+          file,
+          checksum,
+        ]);
         await client.query('COMMIT');
       } catch (error) {
         await client.query('ROLLBACK').catch(() => undefined);

@@ -1,4 +1,8 @@
-import type { IdentityUserView, LinkedAccountView, ProviderId } from '../../domain/identity-models.js';
+import type {
+  IdentityUserView,
+  LinkedAccountView,
+  ProviderId,
+} from '../../domain/identity-models.js';
 
 /**
  * Application-facing port for identity/session operations. The infrastructure

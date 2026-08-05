@@ -57,7 +57,9 @@ export class IdentityController {
   }
 
   @Get('accounts')
-  public async accounts(@Req() request: FastifyRequest): Promise<{ accounts: LinkedAccountView[] }> {
+  public async accounts(
+    @Req() request: FastifyRequest,
+  ): Promise<{ accounts: LinkedAccountView[] }> {
     const port = this.requirePort();
     const accounts = await identity.listAccounts(port, toWebHeaders(request.headers));
     return { accounts };

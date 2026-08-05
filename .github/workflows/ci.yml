@@ -109,7 +109,7 @@ jobs:
           IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
 
       - name: Run identity auth integration tests
-        run: pnpm --dir services/identity-service exec vitest run --config vitest.config.ts src/**/*.integration.spec.ts
+        run: pnpm exec vitest run --config services/identity-service/vitest.config.ts
         env:
           RUN_INFRA_TESTS: 'true'
           IDENTITY_AUTH_ENABLED: 'true'

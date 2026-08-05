@@ -59,9 +59,9 @@ describe('parseIdentityEnv — enabled', () => {
   });
 
   it('requires https base url in production', () => {
-    expect(() =>
-      parseIdentityEnv({ ...enabledEnv(), NODE_ENV: 'production' }),
-    ).toThrow(IdentityConfigError);
+    expect(() => parseIdentityEnv({ ...enabledEnv(), NODE_ENV: 'production' })).toThrow(
+      IdentityConfigError,
+    );
   });
 
   it('never includes secret values in the thrown message', () => {

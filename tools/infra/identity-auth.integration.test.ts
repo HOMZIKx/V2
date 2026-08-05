@@ -1,12 +1,64 @@
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { runMigrations } from '../../services/identity-service/src/infrastructure/db/run-migrations.js';
-
 const runInfra = process.env.RUN_INFRA_TESTS === 'true' ? describe : describe.skip;
+
+interface MigrationEntry {
+  readonly id: string;
+  readonly checksum: string;
+  readonly status: 'applied' | 'skipped';
+}
+
+/**
+ * Self-contained idempotent migration applier. Kept independent of the identity
+ * service source so this shared-infra test does not create a cross-project
+ * dependency cycle. Mirrors services/identity-service run-migrations behaviour.
+ */
+async function applyMigrations(connectionString: string, dir: string): Promise<MigrationEntry[]> {
+  const client = new Client({ connectionString });
+  await client.connect();
+  const entries: MigrationEntry[] = [];
+  try {
+    await client.query(
+      `CREATE TABLE IF NOT EXISTS identity_schema_migrations (
+         id TEXT PRIMARY KEY,
+         applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+         checksum TEXT NOT NULL
+       )`,
+    );
+    const files = readdirSync(dir)
+      .filter((file) => file.endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b));
+    for (const file of files) {
+      const contents = readFileSync(path.join(dir, file), 'utf8');
+      const checksum = createHash('sha256').update(contents, 'utf8').digest('hex');
+      const existing = await client.query(
+        'SELECT 1 FROM identity_schema_migrations WHERE id = $1',
+        [file],
+      );
+      if ((existing.rowCount ?? 0) > 0) {
+        entries.push({ id: file, checksum, status: 'skipped' });
+        continue;
+      }
+      await client.query('BEGIN');
+      await client.query(contents);
+      await client.query('INSERT INTO identity_schema_migrations (id, checksum) VALUES ($1, $2)', [
+        file,
+        checksum,
+      ]);
+      await client.query('COMMIT');
+      entries.push({ id: file, checksum, status: 'applied' });
+    }
+    return entries;
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
 
 const databaseUrl =
   process.env.IDENTITY_DATABASE_URL ??
@@ -100,21 +152,21 @@ async function withRedis<T>(
 
 runInfra('identity auth infrastructure', () => {
   beforeAll(async () => {
-    await runMigrations({ connectionString: databaseUrl, migrationsDir });
+    await applyMigrations(databaseUrl, migrationsDir);
   });
 
   afterAll(async () => {
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
-      await client.query("DELETE FROM \"user\" WHERE email LIKE 'infra-test-%'");
+      await client.query('DELETE FROM "user" WHERE email LIKE \'infra-test-%\'');
     } finally {
       await client.end().catch(() => undefined);
     }
   });
 
   it('records the 001 migration checksum and is idempotent', async () => {
-    const results = await runMigrations({ connectionString: databaseUrl, migrationsDir });
+    const results = await applyMigrations(databaseUrl, migrationsDir);
     const entry = results.find((r) => r.id === '001_better_auth.sql');
     expect(entry).toBeDefined();
     expect(entry?.status).toBe('skipped');
@@ -127,10 +179,11 @@ runInfra('identity auth infrastructure', () => {
     try {
       const userId = `infra-user-${Date.now()}`;
       const email = `infra-test-${Date.now()}@example.com`;
-      await client.query(
-        'INSERT INTO "user" (id, name, email) VALUES ($1, $2, $3)',
-        [userId, 'Infra Test', email],
-      );
+      await client.query('INSERT INTO "user" (id, name, email) VALUES ($1, $2, $3)', [
+        userId,
+        'Infra Test',
+        email,
+      ]);
       await client.query(
         'INSERT INTO "account" (id, "accountId", "providerId", "userId") VALUES ($1, $2, $3, $4)',
         [`infra-acc-${Date.now()}`, 'provider-account-1', 'discord', userId],
