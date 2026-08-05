@@ -2,11 +2,11 @@
 
 ## Status
 
-`P1_DISCORD_TEST_HARNESS_READY_FOR_LIVE_TEST`
+`P1_ZEABUR_FULL_STACK_DEPLOY_IN_PROGRESS`
 
 ## Aktualny etap
 
-Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny jest zamknięty. Następne zadanie przygotowuje pierwszy rzeczywiście działający bot V2 na dedykowanym serwerze testowym.
+P1 Discord Test Harness + zatwierdzone rozszerzenie **DEC-001 B**: pełne wdrożenie aktualnego stosu V2 na osobnym Zeabur (ADR-0008).
 
 ## Zatwierdzone
 
@@ -28,7 +28,9 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 - standard postów i interakcji Discord (D-023);
 - oryginalna identyfikacja wizualna V2 (D-024);
 - dedykowany serwer testowy Discord `1534228693017432124`;
-- wizja Desktop Companion / overlay (ADR-0006).
+- wizja Desktop Companion / overlay (ADR-0006);
+- Discord test harness P1 (ADR-0007);
+- pełne wdrożenie stosu na osobnym Zeabur (ADR-0008 / D-030).
 
 ## Zamknięty etap
 
@@ -39,43 +41,36 @@ Prompt 0 został zatwierdzony i scalony do `main` w PR #3. Fundament techniczny 
 
 ## Aktywne zadanie
 
-- **Task ID:** `P1-DISCORD-TEST-HARNESS-001`
-- **Status:** `READY_FOR_LIVE_TEST`
+- **Task ID:** `P1-DISCORD-TEST-HARNESS-001` + Zeabur full-stack (DEC-001 B)
+- **Status:** `AWAITING_OWNER_ZEABUR_VARIABLES`
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Źródło:** `docs/ai/CHATGPT_TO_CURSOR.md`
-- **Implementacja kodu:** ukończona na gałęzi `cursor/p1-discord-test-harness` (status `READY_FOR_LIVE_TEST`)
-- **CI:** zielone na HEAD `83ad417ae638582b468c839b4e0cb6c8a2076df4` (Quality gates + Infra + Secret scan)
-- **Live test Discord:** **wymagany od właściciela** — instrukcja: `docs/discord/TEST_BOT_SETUP.md` (sekrety tylko lokalnie, nigdy w czacie)
-- **Pull Request:** po live teście i zielonym CI — bez samodzielnego scalenia
+- **Deploy config:** `Dockerfile.*`, `docs/deploy/ZEABUR.md`, `docs/deploy/ZEABUR_OWNER_VARIABLES.md`
+- **Live test Discord:** po Redeploy `discord-gateway` z sekretami w Zeabur (guild `1534228693017432124`)
+- **Pull Request:** dopiero po zielonym CI i potwierdzonym działaniu wdrożenia — bez samodzielnego scalenia
 
-## Cel aktywnego zadania
+## Cel
 
-- bezpieczne połączenie `discord-gateway` z Discordem;
-- działanie wyłącznie na guild `1534228693017432124`;
-- guild-scoped commands bez global commands;
-- `/status` i pierwszy panel `/panel-test`;
-- select menu, przyciski i modal zgodne ze standardem UX;
-- stateless signed custom IDs działające po restarcie;
-- pełne testy bez tokenu w CI;
-- obowiązkowy manualny live test przed audytem.
+- hostowany stos: web, admin, api-gateway, discord-gateway, identity-service, authorization-service;
+- PostgreSQL×2, Redis, RabbitMQ — nowe add-ony, nie legacy;
+- bot Discord 24/7 na guild testowym;
+- sekrety tylko w Zeabur Variables.
 
-## Nadal niezaimplementowane
+## Nadal niezaimplementowane (produkt)
 
 - Discord OAuth, Better Auth, sesje i MFA;
 - docelowy system uprawnień;
 - modele biznesowe i ORM;
 - moduły wydarzeń, rezerwacji, LFG, moderacji, ticketów, muzyki, automatyzacji i analityki;
-- RabbitMQ w funkcjach biznesowych;
-- produkcyjny hosting lub deployment.
+- RabbitMQ w funkcjach biznesowych (add-on przygotowany).
 
 ## Następny punkt kontrolny
 
-Właściciel konfiguruje lokalne sekrety (`docs/discord/TEST_BOT_SETUP.md`), uruchamia `pnpm discord:test:doctor`, `register`, `start`, przeprowadza manualny live test na guild `1534228693017432124`, następnie finalizuje PR i audyt ChatGPT.
+Właściciel: utworzy serwisy/add-ony według `docs/deploy/ZEABUR.md`, wklei Variables z `ZEABUR_OWNER_VARIABLES.md`, Redeploy, zgłosi URL-e bez sekretów. Cursor weryfikuje health + live test Discord, potem PR.
 
 ## Blokady
 
-Kod nie ma blokad architektonicznych. **Live test** wymaga ręcznej konfiguracji aplikacji w Discord Developer Portal i lokalnego ustawienia tokenu oraz signing secret przez właściciela. Token i signing secret nie mogą być przekazywane przez czat ani GitHub. CI i finalny HEAD commit — pending validation.
+Brak dostępu agenta do panelu Zeabur / CLI — deploy kończy właściciel Variables + Redeploy. Token Discord tylko w Zeabur Secret Variables.
 
 ## Ważna uwaga
 
-Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów.
+Stary projekt nie definiuje architektury V2. Jest wyłącznie opcjonalną referencją dla wybranych wzorów. Nie mieszać z `dobry-temat`.

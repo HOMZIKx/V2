@@ -31,5 +31,6 @@
 | D-027 | Lokalna infrastruktura i izolacja baz                                 | ACCEPTED | Compose oraz osobne bazy i konta identity/authorization — [ADR-0004](architecture/decisions/ADR-0004-local-infrastructure-db-isolation.md)                             |
 | D-028 | Standardy kontraktów                                                  | ACCEPTED | OpenAPI dla synchronicznych i miejsce na wersjonowane zdarzenia — [ADR-0005](architecture/decisions/ADR-0005-contract-standards.md)                                    |
 | D-029 | Discord test harness P1                                               | ACCEPTED | discord.js 14.25.1, Gateway, guild-only, Guilds intent, signed components, no live Discord in CI — [ADR-0007](architecture/decisions/ADR-0007-discord-test-harness.md) |
+| D-030 | Pełne wdrożenie stosu V2 na osobnym Zeabur                            | ACCEPTED | Dockerfiles per serwis, 2×Postgres + Redis + RabbitMQ, sekrety tylko w Zeabur — [ADR-0008](architecture/decisions/ADR-0008-zeabur-full-stack-deploy.md)                |
 
 Szczegółowe decyzje architektoniczne będą rozwijane jako ADR-y w `docs/architecture/decisions/`.

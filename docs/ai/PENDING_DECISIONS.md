@@ -1,6 +1,14 @@
 # Pending Decisions — V2
 
-Brak aktywnych decyzji blokujących na etapie zapisu konstytucji projektu.
+Brak aktywnych decyzji blokujących.
+
+## Zamknięte
+
+### DEC-001 — Deploy V2 na Zeabur (zakres i moment)
+
+- **Status:** ACCEPTED
+- **Decyzja właściciela:** wariant **B** — pełne wdrożenie aktualnego stosu V2 na osobnym projekcie Zeabur (`APPROVED`, 2026-08-05).
+- **Realizacja:** [ADR-0008](../architecture/decisions/ADR-0008-zeabur-full-stack-deploy.md), [docs/deploy/ZEABUR.md](../deploy/ZEABUR.md).
 
 ## Szablon
 

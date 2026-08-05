@@ -60,6 +60,13 @@ pnpm discord:test:register
 pnpm discord:test:start
 ```
 
+## Zeabur (osobny project V2)
+
+Pełne wdrożenie aktualnego stosu: [docs/deploy/ZEABUR.md](docs/deploy/ZEABUR.md).  
+Zmienne do wklejenia przez właściciela: [docs/deploy/ZEABUR_OWNER_VARIABLES.md](docs/deploy/ZEABUR_OWNER_VARIABLES.md).  
+Nie używaj projektu legacy `dobry-temat`.
+
+
 Przykład:
 
 ```text

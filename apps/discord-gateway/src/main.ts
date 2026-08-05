@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
 import path from 'node:path';
 
@@ -31,10 +32,14 @@ const bootstrap = async (): Promise<void> => {
     void shutdown('SIGTERM');
   });
 
-  await app.listen(config.DISCORD_GATEWAY_PORT, config.DISCORD_GATEWAY_HOST);
+  const listen = resolveHttpListen({
+    defaultPort: config.DISCORD_GATEWAY_PORT,
+    defaultHost: config.DISCORD_GATEWAY_HOST,
+  });
+  await app.listen(listen.port, listen.host);
   logger.info('Discord gateway HTTP listener started', {
-    host: config.DISCORD_GATEWAY_HOST,
-    port: config.DISCORD_GATEWAY_PORT,
+    host: listen.host,
+    port: listen.port,
     discordEnabled: config.DISCORD_ENABLED,
   });
 };

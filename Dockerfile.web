@@ -1,0 +1,28 @@
+FROM node:24-bookworm-slim AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/typescript-config ./packages/typescript-config
+COPY apps/web/package.json ./apps/web/package.json
+RUN pnpm install --frozen-lockfile --filter @v2/web...
+
+FROM deps AS build
+COPY packages/typescript-config ./packages/typescript-config
+COPY apps/web ./apps/web
+RUN pnpm --filter @v2/web build
+
+FROM base AS runtime
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=build /app/apps/web ./apps/web
+EXPOSE 3000
+WORKDIR /app/apps/web
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["sh", "-c", "pnpm exec next start --hostname 0.0.0.0 --port ${PORT:-3000}"]
