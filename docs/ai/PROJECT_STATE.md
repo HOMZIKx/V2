@@ -47,8 +47,8 @@ P1 Discord Test Harness zakończony lokalnym live testem (sukces). PR do `main` 
 - **Application ID / Bot User ID:** `1534432424094728364`
 - **Zeabur:** DEFERRED (DEC-001)
 - **Pull Request:** [#9](https://github.com/HOMZIKx/V2/pull/9) — draft, **bez merge** do czasu `APPROVED`
-- **Finalny commit:** `c97fbe5e6c521628572279198df642ea5507c375` (tip); validated harness+gitleaks: `216b809`
-- **CI:** zielone na `216b809` (Quality gates, Secret scan, Infrastructure); tip docs — po push rerun
+- **Finalny commit:** `da0ce51025f336d388817b96329df8b5fd03e082`
+- **CI:** zielone na tip (Quality gates, Secret scan, Infrastructure)
 
 ## Nadal niezaimplementowane
 
