@@ -1,66 +1,47 @@
-﻿# CURSOR_TO_CHATGPT
+# Cursor → ChatGPT
 
 ## Status
 
-`READY_FOR_RE-AUDIT`
+`IN_PROGRESS`
 
-## Summary
+## Task ID
 
-Poprawki po re-audycie właściciela „Re-audyt P2 — CHANGES REQUIRED przed merge”
-(PR #10, wyłącznie planistycznie):
+`P2-IDENTITY-PROOF-001`
 
-1. Zaktualizowano body PR #10 do stanu faktycznego (ADR-0009…0012 Accepted,
-   DEC-003–009 Accepted, D-016 SUPERSEDED, NON_NEGOTIABLES zaktualizowane).
-2. Naprawiono błędne odwołania w `PROJECT_STATE` (DEC-002/ADR-0007; DEC-006 C /
-   D-017 / ADR-0010).
-3. D-017 → status `SCOPE REVISED` (bez `ACCEPTED*`).
-4. Rozdzielono ownership logiczny vs storage: PostgreSQL User/Account/Verification
-   (+ audyt bez używalnego tokenu); Redis = session SoT; ADR-0012:
-   `secondaryStorage` najpierw.
-5. Naprawiono tabelę Session w `IDENTITY_FOUNDATION.md`.
-6. Raporty bez pętli tip SHA — aktualny HEAD/CI = źródło prawdy w GitHub.
-7. **Zero** implementacji Better Auth / OAuth / sesji / DB / UI.
+## Branch / PR
 
-## Branch / PR (stabilne odniesienia)
+- Branch: `cursor/p2-identity-proof-slice`
+- PR: draft PR dla Better Auth proof slice
+- Base: `main` po commit `4230fb185044faef15d4dd59a9c3c99f6c2b5956`
 
-- Branch: `planning/p2-identity-foundation`
-- PR: https://github.com/HOMZIKx/V2/pull/10
-- Base: `main` (P1 `c82d6bd`)
-- Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Aktualny tip SHA i numery workflow: **GitHub Checks / Actions** (komentarz PR
-  po zielonym CI — bez commitowania tip w pętli)
+## Required final report
 
-## Rozstrzygnięte decyzje (2026-08-05)
+Cursor zastępuje ten szablon raportem zgodnym z `docs/ai/CHATGPT_TO_CURSOR.md`.
 
-| DEC     | Wybór | Skutek                                                    |
-| ------- | ----- | --------------------------------------------------------- |
-| DEC-003 | B     | Multi-provider; V2 UUID; supersede D-016                  |
-| DEC-004 | A     | Better Auth + Fastify + ports; proof first; pin w impl PR |
-| DEC-005 | A     | Tylko jawne linking                                       |
-| DEC-006 | C     | P2 = revoke API; guild policy → P3                        |
-| DEC-007 | A     | P1 merged; impl po merge planu #10                        |
-| DEC-008 | A     | Opaque cookie + Redis SoT; osobne Web/Admin               |
-| DEC-009 | A     | Internal JWT ≤5 min; asym; bez pełnego RBAC               |
+Raport końcowy musi zawierać:
 
-## Validation
+1. status `READY_FOR_LIVE_TEST`, `READY_FOR_REVIEW` albo `BLOCKED`;
+2. finalny HEAD podany w komentarzu PR;
+3. dokładne wersje wszystkich nowych zależności;
+4. zmienione pliki i granice warstw;
+5. listę portów aplikacyjnych;
+6. migracje i checksumę SQL;
+7. model PostgreSQL i Redis;
+8. konfigurację cookie bez wartości sekretnej;
+9. wyniki testów null-email Discord, linking, unlink i revoke;
+10. dowód dotyczący storage provider tokenów;
+11. wyniki `pnpm validate` i workflowów GitHub;
+12. wynik manualnego live gate albo precyzyjną blokadę;
+13. ryzyka, odstępstwa i dług techniczny;
+14. następny rekomendowany slice bez jego implementowania.
 
-Uruchamiane lokalnie przed push: `pnpm format:check` (+ lint/typecheck/architecture
-gdy adekwatne). Pełne CI i Conventional PR Title: zielone na **finalnym HEAD** —
-potwierdzone w komentarzu PR z numerami workflow.
+## Current note
 
-## Risks / debt
+Nie oznaczaj zadania jako gotowego przed przejściem dwóch bramek:
 
-- Plan Accepted ≠ implementacja. Proof slice Better Auth wymaga osobnego PR.
-- Preferencja `secondaryStorage`; własny adapter tylko po dowodzie z proof.
-- Guild revoke policy odroczona do P3 (DEC-006 C / D-017 SCOPE REVISED).
-- Pin wersji Better Auth — w PR implementacyjnym.
-- Honest session-token hashing — zależne od faktycznego BA.
-
-## Questions for ChatGPT / owner
-
-1. Re-audit poprawek → `APPROVED` przed merge PR #10?
-2. Pin wersji Better Auth w review planu vs dopiero w PR implementacyjnym (DEC-004)?
+1. automatyczny proof + zielone CI;
+2. manualny live OAuth Discord + Google potwierdzony przez właściciela.
 
 ## Last updated
 
-2026-08-05 — Cursor (re-audit CHANGES REQUIRED)
+2026-08-05 — ChatGPT
