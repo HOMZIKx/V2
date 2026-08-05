@@ -17,7 +17,7 @@ export class AuthBootstrapService implements OnModuleInit {
   public constructor(
     @Inject(IDENTITY_CONFIG) private readonly config: IdentityEnv,
     @Inject(AUTH_RUNTIME) private readonly runtime: AuthRuntime | null,
-    private readonly httpAdapterHost: HttpAdapterHost,
+    @Inject(HttpAdapterHost) private readonly httpAdapterHost: HttpAdapterHost,
   ) {}
 
   public async onModuleInit(): Promise<void> {

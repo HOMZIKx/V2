@@ -205,7 +205,7 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
     expect(me).toMatchObject({ id: user.id, email: null, emailSynthetic: true });
   });
 
-  it('keeps same-email provider identities as separate users (no implicit linking)', async () => {
+  it('does not implicitly link a second provider when the same email collides', async () => {
     const context = await runtime.auth.$context;
     const sharedEmail = `same-email-${Date.now()}@example.com`;
 
@@ -213,15 +213,22 @@ runInfra('Better Auth linking / identity policies (no external OAuth)', () => {
       { name: 'Discord Same', email: sharedEmail, emailVerified: false },
       { providerId: 'discord', accountId: `discord-same-${Date.now()}` },
     );
-    const google = await context.internalAdapter.createOAuthUser(
-      { name: 'Google Same', email: sharedEmail, emailVerified: true },
-      { providerId: 'google', accountId: `google-same-${Date.now()}` },
-    );
-    createdUserIds.push(discord.user.id, google.user.id);
+    createdUserIds.push(discord.user.id);
 
-    expect(discord.user.id).not.toBe(google.user.id);
-    expect(discord.user.email).toBe(sharedEmail);
-    expect(google.user.email).toBe(sharedEmail);
+    // Unique email at the DB layer: a second OAuth identity with the same email
+    // must not silently attach to the first user (implicit linking disabled).
+    await expect(
+      context.internalAdapter.createOAuthUser(
+        { name: 'Google Same', email: sharedEmail, emailVerified: true },
+        { providerId: 'google', accountId: `google-same-${Date.now()}` },
+      ),
+    ).rejects.toBeTruthy();
+
+    const headers = await sessionHeaders(runtime, discord.user.id);
+    const adapter = new BetterAuthIdentityAdapter(runtime.auth);
+    const accounts = await adapter.listAccounts(headers);
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.provider).toBe('discord');
   });
 
   it('allows explicit link of a second provider with a different email on the same user', async () => {
