@@ -16,7 +16,10 @@ empty-body fix included. Still **no merge** by Cursor.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: `4d1b7baf16ef91f551db5685132f311180135c32`
+- Final HEAD: `2297b9dea1ab3ee617dbbdef965f54c010098680`
+  (docs-only consistency tip; Identity application code unchanged)
+- Prior tip recorded for owner request: `4d1b7baf16ef91f551db5685132f311180135c32`
+  (CI `31017205223`, PR Title `31017204798`)
 
 ## 4. Scope (Discord-only)
 
@@ -70,12 +73,16 @@ Local identity (+ infra): **97 passed**.
 - `pnpm validate` gates (format/lint/typecheck/coverage/architecture/build/e2e/
   web+admin build) + `test:runtime-smoke` passed on the proof slice
 
-## 13. CI (tip HEAD `4d1b7ba…`)
+## 13. CI (tip HEAD `2297b9d…`)
 
-- CI: `31017205223` — **success**
-  https://github.com/HOMZIKx/V2/actions/runs/31017205223
-- PR Title: `31017204798` — **success**
-  https://github.com/HOMZIKx/V2/actions/runs/31017204798
+- CI: `31018940939` — **success**
+  https://github.com/HOMZIKx/V2/actions/runs/31018940939
+- Push CI: `31018936225` — **success**
+  https://github.com/HOMZIKx/V2/actions/runs/31018936225
+- PR Title: `31018943572` — **success**
+  https://github.com/HOMZIKx/V2/actions/runs/31018943572
+
+Prior tip `4d1b7ba…`: CI `31017205223`, PR Title `31017204798` (both success).
 
 ## 14. Risks / tech debt
 
