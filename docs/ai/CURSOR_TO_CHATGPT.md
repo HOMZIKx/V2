@@ -16,7 +16,7 @@ Still **no merge**.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: _(filled after push + green CI)_
+- Final HEAD: `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb`
 
 ## 4. Scope (Discord-only)
 
@@ -58,19 +58,26 @@ logout Set-Cookie forwarding.
 
 ## 11. Test evidence
 
-_(filled after local validate)_
+Local identity (+ infra): **97 passed**.
 
 ## 12. Local command results
 
-_(filled after local validate)_
+- Identity vitest + infra: 97 passed
+- `pnpm validate` gates (format/lint/typecheck/coverage/architecture/build/e2e/
+  web+admin build) passed; `test:runtime-smoke` passed with
+  `IDENTITY_AUTH_ENABLED=false` in local `.env` (auth left disabled after live
+  test so smoke does not load production-unsafe localhost origins)
 
 ## 13. CI
 
-_(filled after green CI)_
+- PR CI `31016665046` on HEAD `cdfeaca265c11d78a0bf29f6a400a7d113bfc7fb` —
+  **success** (Secret scan, Quality gates, Infrastructure integration)
+- Push CI `31016664287` on same HEAD — **success**
+- PR Title — **success**
 
 ## 14. Risks / tech debt
 
-- Formal NON_NEGOTIABLES / ADR-0010 may still mention Google in P2 historically;
+- Formal NON_NEGOTIABLES / ADR-0010 may still mention Google historically;
   active scope + DEC-003 amendment + brief banners say Discord-only.
 - Rotate Discord Client Secret if it was ever pasted into chat.
 
@@ -80,4 +87,4 @@ Internal service-to-service JWT — unchanged.
 
 ## Last updated
 
-2026-08-05 — Cursor (live gate + logout fix → READY_FOR_FINAL_REVIEW)
+2026-08-05 — Cursor (READY_FOR_FINAL_REVIEW; green CI `cdfeaca`)
