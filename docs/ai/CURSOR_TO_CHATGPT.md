@@ -29,9 +29,10 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 - Branch: `planning/p2-identity-foundation`
 - PR: https://github.com/HOMZIKx/V2/pull/10
 - Base: `main` (po merge P1 `c82d6bd`)
-- Tip SHA: `c0bf0f36bea0025f16c333aea830270fd39d2b62` (zaktualizować po kolejnym push tip-align)
+- Plan-close merge commit: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
+- Branch HEAD (po push raportu): ustawiane w kolejnym commit tip-align / patrz `git rev-parse`
 - PR title: `docs(identity): add p2 identity foundation planning package`
-- Mergeable: `true` / `clean` (draft; **bez merge**)
+- Draft PR; **bez merge**
 
 ## Rozstrzygnięte decyzje (2026-08-05)
 
@@ -54,7 +55,8 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 | `pnpm typecheck`           | PASS                                                                                                 |
 | `pnpm architecture:check`  | PASS                                                                                                 |
 | `pnpm validate` (lokalnie) | FAIL tylko na `docker compose config` (brak Docker CLI); wcześniej PASS coverage/build/runtime-smoke |
-| CI `@ 0ee2f31`             | **PASS** — Secret scan, Quality gates, Infrastructure integration, Conventional PR title             |
+| CI `@ c0bf0f3`             | **PASS** — Secret scan, Quality gates, Infrastructure integration, Conventional PR title             |
+| CI po tip-align            | Uruchomione na nowszym HEAD — oczekiwać zielonego przed APPROVED                                     |
 
 ## Risks / debt
 
