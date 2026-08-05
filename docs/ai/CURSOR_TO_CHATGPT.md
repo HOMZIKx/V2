@@ -14,7 +14,7 @@ Discord Gateway → Authorization membership sync on `cursor/p3-authorization-fo
 ## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p3-authorization-foundation`
-- Tip: `8d04848`
+- Tip: `a8ee615`
 - Issue: #15 (OPEN, PLAN_APPROVED)
 - PR: draft when opened (GitHub SoT for tip HEAD, CI)
 
@@ -47,7 +47,7 @@ pnpm exec eslint apps/discord-gateway/src
 ``
 
 Results: typecheck pass; 53 tests pass; eslint apps/discord-gateway/src pass.
-Commit SHA: `8d04848809b9f7ba749be24e28605f3621bd5142`
+- Commit SHA: `a8ee61567e772dee182e24e72455fc98a0583d18`
 
 ## 7. Notes / debt
 
