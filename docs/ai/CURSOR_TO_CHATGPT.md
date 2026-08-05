@@ -16,7 +16,7 @@ OAuth” on draft PR #11. Still **no** live OAuth and **no** merge. Not
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: recorded in the PR comment after the last push
+- Final HEAD: `7ded4c81b9a52f4acbf525e685409a2d2195c379`
 
 ## 4. Pinned new dependencies (exact)
 
@@ -126,16 +126,20 @@ Integration (CI infra job, `RUN_INFRA_TESTS=true`):
 
 ## 12. Local command results
 
-Recorded after `pnpm validate` on this HEAD (see PR comment).
+- `pnpm validate` — passed format/lint/typecheck/coverage/architecture/build/e2e/
+  web+admin build/runtime-smoke. Local failure only: `docker compose … config`
+  (Docker CLI missing on this Windows host). Infra covered by CI.
+- Identity unit: 81 passed, 14 skipped without `RUN_INFRA_TESTS`.
 
 ## 13. CI
 
-Infra job: migrate + identity vitest with `RUN_INFRA_TESTS=true`. Workflow run
-ids on the final HEAD in the PR comment.
+- CI run `31004726485` on HEAD `7ded4c81…` — **success**
+- Infrastructure integration job — **success**
+- PR Title workflow — success on the same HEAD (see PR comment)
 
 ## 14. Live checklist
 
-Still pending owner execution after re-audit — see
+Still pending owner execution **after** re-audit — see
 `docs/identity/LOCAL_OAUTH_PROOF.md`. Do not run live OAuth in this pass.
 
 ## 15. Risks / tech debt
