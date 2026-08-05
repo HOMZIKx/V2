@@ -11,7 +11,7 @@
 ## Branch, commit i PR
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:** `216b80952143ca3547fe9b6feb9d35f6e1b290f2`
+- **Finalny commit:** `c97fbe5e6c521628572279198df642ea5507c375` (docs tip; code+gitleaks fix: `216b809`)
 - **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) (draft, bez merge)
 
 ## Zakres wykonany
