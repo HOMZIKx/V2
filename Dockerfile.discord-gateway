@@ -1,0 +1,25 @@
+FROM node:24-bookworm-slim AS base
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/typescript-config ./packages/typescript-config
+COPY packages/configuration/package.json ./packages/configuration/package.json
+COPY packages/observability/package.json ./packages/observability/package.json
+COPY apps/discord-gateway/package.json ./apps/discord-gateway/package.json
+RUN pnpm install --frozen-lockfile --filter @v2/discord-gateway...
+
+FROM deps AS runtime
+COPY packages/configuration ./packages/configuration
+COPY packages/observability ./packages/observability
+COPY packages/typescript-config ./packages/typescript-config
+COPY apps/discord-gateway ./apps/discord-gateway
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=4100
+EXPOSE 4100
+WORKDIR /app
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4100)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["pnpm", "--filter", "@v2/discord-gateway", "exec", "tsx", "src/main.ts"]

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createConfig } from '@v2/configuration';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { createConfig, resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
 import { z } from 'zod';
 
@@ -18,11 +18,18 @@ const config = createConfig(
 );
 const logger = createLogger(serviceName);
 
-const bootstrap = async () => {
+const bootstrap = async (): Promise<void> => {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
-  logger.info('Identity Service started without a database connection.');
-  await app.listen(config.IDENTITY_SERVICE_PORT, config.IDENTITY_SERVICE_HOST);
+  const listen = resolveHttpListen({
+    defaultPort: config.IDENTITY_SERVICE_PORT,
+    defaultHost: config.IDENTITY_SERVICE_HOST,
+  });
+  logger.info('Identity Service started without a database connection.', {
+    host: listen.host,
+    port: listen.port,
+  });
+  await app.listen(listen.port, listen.host);
 };
 
 void bootstrap();

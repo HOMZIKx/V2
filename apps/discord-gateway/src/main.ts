@@ -1,26 +1,81 @@
 import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
-import { createConfig } from '@v2/configuration';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
-import { z } from 'zod';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 
-import { AppModule } from './app.module.js';
+import { loadEnvFile } from './infrastructure/discord/load-env-file.js';
+import { AppModule } from './interface/app.module.js';
+import { loadDiscordConfig } from './interface/discord/discord-bootstrap.service.js';
 
-const config = createConfig(
-  z.object({
-    DISCORD_GATEWAY_PORT: z.coerce.number().int().positive().default(4100),
-    DISCORD_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
-  }),
-);
+loadEnvFile(path.resolve(process.cwd(), '.env'));
+loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
+
+function resolveGitCommitSha(): string {
+  if (process.env.GIT_COMMIT_SHA && process.env.GIT_COMMIT_SHA !== 'unknown') {
+    return process.env.GIT_COMMIT_SHA;
+  }
+  try {
+    return execSync('git rev-parse HEAD', {
+      cwd: path.resolve(process.cwd()),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+function resolveGitBranch(): string {
+  try {
+    return execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd: path.resolve(process.cwd()),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
+process.env.GIT_COMMIT_SHA = resolveGitCommitSha();
+
+const config = loadDiscordConfig();
 const logger = createLogger('discord-gateway');
 
-const bootstrap = async () => {
+const bootstrap = async (): Promise<void> => {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
 
-  logger.info('Discord connection is deferred; gateway is running in safe mode.');
-  await app.listen(config.DISCORD_GATEWAY_PORT, config.DISCORD_GATEWAY_HOST);
+  const shutdown = async (signal: string): Promise<void> => {
+    logger.info(`Received ${signal}; shutting down Discord gateway.`);
+    await app.close();
+    process.exit(0);
+  };
+
+  process.once('SIGINT', () => {
+    void shutdown('SIGINT');
+  });
+  process.once('SIGTERM', () => {
+    void shutdown('SIGTERM');
+  });
+
+  const listen = resolveHttpListen({
+    defaultPort: config.DISCORD_GATEWAY_PORT,
+    defaultHost: config.DISCORD_GATEWAY_HOST,
+  });
+  await app.listen(listen.port, listen.host);
+  logger.info('Discord gateway HTTP listener started', {
+    host: listen.host,
+    port: listen.port,
+    discordEnabled: config.DISCORD_ENABLED,
+    gitCommitSha: process.env.GIT_COMMIT_SHA ?? 'unknown',
+    gitBranch: resolveGitBranch(),
+    buildMode: 'tsx-dev-source',
+    panelRenderer: 'components-v2-container',
+  });
 };
 
 void bootstrap();

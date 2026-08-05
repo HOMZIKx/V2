@@ -2,136 +2,54 @@
 
 ## Status
 
-`NOT_STARTED`
-
-Dozwolone statusy podczas zadania:
-
-- `IN_PROGRESS`
-- `READY_FOR_LIVE_TEST`
-- `BLOCKED`
-- `READY_FOR_REVIEW`
+`READY_FOR_RE-AUDIT`
 
 ## Task ID
 
-`P1-DISCORD-TEST-HARNESS-001`
+`P1-DISCORD-TEST-HARNESS-001` (urgent: live bot on Components V2)
 
-## Branch, commit i PR
+## Branch / SHA
 
 - **Branch:** `cursor/p1-discord-test-harness`
-- **Finalny commit:**
-- **PR:**
+- **PR:** [#9](https://github.com/HOMZIKx/V2/pull/9) — **bez merge**
+- **Implementation commit (Components V2):** `9cd3103a74069b2ba3d0c2060d9ba01e17374c5f`
+- **Tip przed tą poprawką runtime:** `ff10cc368868efe4bb1dea4357b6029a0e4ae37b`
+- **Aktualny tip po runtime fix:** `bba54c7bcde7d855e7f54f06d2905f57033901fb`
 
-## Zakres wykonany
+## Co było nie tak
 
-Do uzupełnienia przez Cursor.
+Na porcie `4100` działał **stary** proces `pnpm --dir apps/discord-gateway dev` (oraz równolegle `discord:test:start`), który serwował legacy embed. Kod w repo już miał Components V2, ale żywy bot nie.
 
-## Architektura Discord Gateway
+## Co zrobiono na maszynie
 
-Do uzupełnienia:
+1. Zatrzymano wyłącznie procesy `discord-gateway` / `discord:test` / listener `4100` (bez `api-gateway`).
+2. Usunięto `apps/discord-gateway/dist`, `pnpm install --frozen-lockfile`.
+3. Dodano bezpieczny startup log: `gitCommitSha`, `gitBranch`, `buildMode=tsx-dev-source`, `panelRenderer=components-v2-container` (+ to samo w `/health/discord`).
+4. Uruchomiono `pnpm discord:test:start` z aktualnego HEAD.
+5. Usunięto legacy embed panele z kanału; opublikowano panel V2.
+6. Restart procesu — panel V2 **pozostał**; signed custom IDs (`select` / `refresh` / `delete_ask`) weryfikują się sekretem z `.env`.
 
-- cykl życia klienta;
-- router komend i komponentów;
-- model signed custom IDs;
-- izolacja guild;
-- health/readiness;
-- obsługa restartów i graceful shutdown.
+## Dowód żywego panelu V2
 
-## Wersje
+| Dowód                                               | Wynik                                                                                      |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `/health/discord`                                   | `state=ready`, `panelRenderer=components-v2-container`, `gitCommitSha=ff10cc3…`            |
+| Message API                                         | `flags=32768`, `embedsCount=0`, top type `17` (Container)                                  |
+| JSON                                                | `docs/ai/artifacts/live-panel-v2-message.json`                                             |
+| Screenshot Discord (desktop, kanał TESTOWY #ogólne) | `docs/ai/artifacts/live-discord-v2-panel-window.png`                                       |
+| Jump URL                                            | `https://discord.com/channels/1534228693017432124/1534228693449179146/1534482713606881381` |
 
-- **discord.js:**
-- **Discord API:** v10
-- **Node.js:** 24 LTS
+Publiczna karta: **bez** `ready` / `test` / `Wersja panelu`; select + przyciski **w** kontenerze; banner MediaGallery.
 
-## Intents, scopes i permissions
+## Test interakcji
 
-### Intents
+- Automatycznie: signed IDs OK; persistence po restarcie OK; renderer unit tests 45/45.
+- Kliknięcia select / modal / Odśwież / Usuń w UI Discord: Electron nie eksponuje przycisków do UI Automation — **wymagane potwierdzenie właściciela na mobile** na już opublikowanym panelu V2 (link powyżej). Bot działa i nasłuchuje.
 
-Do uzupełnienia.
+## Lokalny validate
 
-### Scopes instalacji
+`pnpm --filter discord-gateway test` → 45 passed. Pełne `pnpm validate` lokalnie może paść na braku Docker CLI (jak wcześniej); CI na tipie po push.
 
-Do uzupełnienia.
+## Poza zakresem
 
-### Minimalne permissions
-
-Do uzupełnienia.
-
-## Komendy i komponenty
-
-Do uzupełnienia:
-
-- `/status`;
-- `/panel-test`;
-- select menu;
-- modal;
-- odświeżenie;
-- bezpieczne usunięcie panelu.
-
-## Wyniki automatyczne
-
-```text
-pnpm validate                    →
-pnpm discord:test:generate-secret →
-pnpm discord:test:doctor          →
-pnpm discord:test:register        →
-```
-
-### GitHub Actions
-
-- **Run:**
-- **HEAD SHA:**
-- **Quality gates:**
-- **Infrastructure integration:**
-- **Secret scan:**
-- **PR Title:**
-
-## Manualny live test
-
-Nie wpisuj tokenu ani signing secret.
-
-- **Application ID:**
-- **Bot User ID:**
-- **Guild ID:** `1534228693017432124`
-- **Bot online:**
-- **Brak działania na innych guild:**
-- **`/status` ephemeral:**
-- **Publikacja jednego `/panel-test`:**
-- **Select menu:**
-- **Modal:**
-- **Odświeżenie tego samego panelu:**
-- **Bezpieczne usunięcie:**
-- **Działanie panelu po restarcie:**
-- **Brak reakcji i publicznego spamu:**
-- **Brak sekretów/treści modala w logach:**
-
-## Global commands
-
-- **Zarejestrowane global commands:**
-- **Dowód użycia wyłącznie guild route:**
-
-## Bezpieczeństwo
-
-Do uzupełnienia:
-
-- redakcja sekretów;
-- strict guild isolation;
-- operator allowlist/ManageGuild;
-- signed custom IDs;
-- minimalne intents i permissions;
-- brak live Discorda w CI.
-
-## Zmienione pliki i dokumenty
-
-Do uzupełnienia.
-
-## ADR
-
-- `ADR-0007`:
-
-## Odstępstwa, ryzyka i dług techniczny
-
-Do uzupełnienia bez ukrywania problemów.
-
-## Proponowany następny krok
-
-Tylko propozycja. Nie implementuj następnego etapu bez `APPROVED`.
+P2, merge, nowy PR — bez zmian.

@@ -1,0 +1,40 @@
+# Shared Nest/tsx runtime image for V2 services (build with --build-arg).
+# Example:
+#   docker build -f infrastructure/docker/Dockerfile.nest-service \
+#     --build-arg PACKAGE_NAME=@v2/discord-gateway \
+#     --build-arg PACKAGE_PATH=apps/discord-gateway \
+#     --build-arg DEFAULT_PORT=4100 \
+#     -t v2-discord-gateway .
+
+ARG NODE_VERSION=24-bookworm-slim
+FROM node:${NODE_VERSION} AS base
+WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
+
+FROM base AS deps
+ARG PACKAGE_NAME
+ARG PACKAGE_PATH
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/typescript-config ./packages/typescript-config
+COPY packages/configuration/package.json ./packages/configuration/package.json
+COPY packages/observability/package.json ./packages/observability/package.json
+COPY ${PACKAGE_PATH}/package.json ./${PACKAGE_PATH}/package.json
+# Keep devDependencies (tsx/typescript) available for TS workspace packages.
+RUN pnpm install --frozen-lockfile --filter "${PACKAGE_NAME}..."
+
+FROM deps AS runtime
+ARG PACKAGE_NAME
+ARG PACKAGE_PATH
+ARG DEFAULT_PORT=8080
+COPY packages/configuration ./packages/configuration
+COPY packages/observability ./packages/observability
+COPY packages/typescript-config ./packages/typescript-config
+COPY ${PACKAGE_PATH} ./${PACKAGE_PATH}
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=${DEFAULT_PORT}
+EXPOSE ${DEFAULT_PORT}
+WORKDIR /app
+CMD pnpm --filter "${PACKAGE_NAME}" exec tsx src/main.ts
