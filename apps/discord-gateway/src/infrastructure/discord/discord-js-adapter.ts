@@ -131,20 +131,28 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return {
       id: record.id,
       name: record.name,
-      botUserId: record.bot?.id ?? 'unknown',
+      // Discord bot applications expose the bot user under `bot`; fall back to app id.
+      botUserId: record.bot?.id ?? record.id,
     };
   }
 
   public async fetchGuild(guildId: string) {
+    // Bot tokens can only GET a guild when the bot is a member of that guild.
     const guild = await this.rest.get(Routes.guild(guildId));
     const record = guild as { id: string; name: string };
-    let botIsMember = false;
-    try {
-      await this.rest.get(Routes.guildMember(guildId, '@me'));
-      botIsMember = true;
-    } catch {
-      botIsMember = false;
+
+    let botIsMember = true;
+    const application = await this.fetchApplication().catch(() => null);
+    if (application !== null && application.botUserId !== 'unknown') {
+      try {
+        await this.rest.get(Routes.guildMember(guildId, application.botUserId));
+        botIsMember = true;
+      } catch {
+        // Guild GET already implies membership for bot tokens; keep true unless GET failed.
+        botIsMember = true;
+      }
     }
+
     return { id: record.id, name: record.name, botIsMember };
   }
 
