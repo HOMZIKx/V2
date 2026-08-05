@@ -18,7 +18,7 @@ later second provider. Still **no** live OAuth and **no** merge.
 
 - Branch: `cursor/p2-identity-proof-slice`
 - PR: #11 (existing draft; no new PR, no merge)
-- Final HEAD: `e169c9ce58a79da76e95155de4043f304d2c1783`
+- Final HEAD: `e84f878` (report); code amendment: `e169c9ce58a79da76e95155de4043f304d2c1783`
 
 ## 4. Discord-only amendment (this pass)
 
