@@ -29,8 +29,8 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 - Branch: `planning/p2-identity-foundation`
 - PR: https://github.com/HOMZIKx/V2/pull/10
 - Base: `main` (po merge P1 `c82d6bd`)
-- Plan-close merge commit: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
-- Tip SHA: e239d2e833467f1d72b28fd66094e75f51131cba
+- Plan-close merge: `42b0fa2449994e6f4b435700fcaf85913dcd6082`
+- Tip SHA: ustawiane po commit (patrz HEAD w raporcie operatora / `git rev-parse`)
 - PR title: `docs(identity): add p2 identity foundation planning package`
 - Draft PR; **bez merge**
 
@@ -48,15 +48,16 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 
 ## Validation
 
-| Check                      | Wynik                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `pnpm format:check`        | PASS                                                                                                 |
-| `pnpm lint`                | PASS                                                                                                 |
-| `pnpm typecheck`           | PASS                                                                                                 |
-| `pnpm architecture:check`  | PASS                                                                                                 |
-| `pnpm validate` (lokalnie) | FAIL tylko na `docker compose config` (brak Docker CLI); wcześniej PASS coverage/build/runtime-smoke |
-| CI `@ c0bf0f3`             | **PASS** — Secret scan, Quality gates, Infrastructure integration, Conventional PR title             |
-| CI po tip-align            | Uruchomione na nowszym HEAD — oczekiwać zielonego przed APPROVED                                     |
+| Check                      | Wynik                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------ |
+| `pnpm format:check`        | PASS                                                                                       |
+| `pnpm lint`                | PASS                                                                                       |
+| `pnpm typecheck`           | PASS                                                                                       |
+| `pnpm architecture:check`  | PASS                                                                                       |
+| `pnpm validate` (lokalnie) | FAIL tylko na docker compose config (brak Docker CLI); wcześniej PASS coverage/build/smoke |
+| CI `@ c0bf0f3`             | PASS — Secret scan, Quality gates, Infrastructure integration, Conventional PR title       |
+
+Uwaga: tip-align po `c0bf0f3` wymaga ponownego zielonego CI na aktualnym HEAD przed APPROVED.
 
 ## Risks / debt
 
@@ -65,7 +66,6 @@ review właściciela „Decyzje właściciela i instrukcja zamknięcia planu P2�
 - Guild revoke policy odroczona do P3 (DEC-006 C / D-017 zakres).
 - Pin wersji Better Auth — w PR implementacyjnym.
 - Honest session-token hashing — zależne od faktycznego BA.
-- Lokalny brak Docker CLI — CI potwierdził compose.
 
 ## Questions for ChatGPT / owner
 
