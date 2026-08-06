@@ -238,16 +238,14 @@ describe('authorization use-cases', () => {
 
   it('creates a grant and drains affected sessions', async () => {
     const createGrant = vi.fn().mockResolvedValue({ id: 'grant-1', revokedUserIds: ['user-x'] });
-    const listPendingSessionRevokes = vi
-      .fn()
-      .mockResolvedValue([
-        pending({
-          id: 'r-x',
-          v2UserId: 'user-x',
-          correlationId: 'c-x',
-          reason: 'login_entitlement_lost',
-        }),
-      ]);
+    const listPendingSessionRevokes = vi.fn().mockResolvedValue([
+      pending({
+        id: 'r-x',
+        v2UserId: 'user-x',
+        correlationId: 'c-x',
+        reason: 'login_entitlement_lost',
+      }),
+    ]);
     const store = createStore({ createGrant, listPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 

@@ -146,12 +146,16 @@ describe('buildDiscordEventKey', () => {
   });
 
   it('is deterministic regardless of object key ordering in the payload', () => {
-    const key1 = buildDiscordEventKey('guild_role_update', [GUILD_ID], [
-      { discordRoleId: 'r1', nameCache: 'Member' },
-    ]);
-    const key2 = buildDiscordEventKey('guild_role_update', [GUILD_ID], [
-      { nameCache: 'Member', discordRoleId: 'r1' },
-    ]);
+    const key1 = buildDiscordEventKey(
+      'guild_role_update',
+      [GUILD_ID],
+      [{ discordRoleId: 'r1', nameCache: 'Member' }],
+    );
+    const key2 = buildDiscordEventKey(
+      'guild_role_update',
+      [GUILD_ID],
+      [{ nameCache: 'Member', discordRoleId: 'r1' }],
+    );
     expect(key1).toBe(key2);
   });
 
@@ -168,9 +172,9 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const adapter = makeAdapterWithSync(port);
 
     const guild = { id: GUILD_ID, available: false } as unknown as Guild;
-    await (
-      adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }
-    ).handleGuildDelete(guild);
+    await (adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }).handleGuildDelete(
+      guild,
+    );
 
     expect(applyDiscordEvent).toHaveBeenCalledTimes(1);
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
@@ -184,9 +188,9 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const adapter = makeAdapterWithSync(port);
 
     const guild = { id: GUILD_ID, available: true } as unknown as Guild;
-    await (
-      adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }
-    ).handleGuildDelete(guild);
+    await (adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }).handleGuildDelete(
+      guild,
+    );
 
     expect(applyDiscordEvent).toHaveBeenCalledTimes(1);
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
@@ -200,17 +204,15 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const adapter = makeAdapterWithSync(port);
 
     const guild = { id: GUILD_ID, available: false } as unknown as Guild;
-    const handle = (adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> })
-      .handleGuildDelete.bind(adapter);
+    const handle = (
+      adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }
+    ).handleGuildDelete.bind(adapter);
     await handle(guild);
     await handle(guild);
 
     const keys = applyDiscordEvent.mock.calls.map(
       (call) => (call[0] as AuthzDiscordEventInput).eventKey,
     );
-    expect(keys).toEqual([
-      `dg:guild_unavailable:${GUILD_ID}`,
-      `dg:guild_unavailable:${GUILD_ID}`,
-    ]);
+    expect(keys).toEqual([`dg:guild_unavailable:${GUILD_ID}`, `dg:guild_unavailable:${GUILD_ID}`]);
   });
 });

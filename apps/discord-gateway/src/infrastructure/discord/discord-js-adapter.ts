@@ -298,39 +298,33 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildRoleCreate, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_create').catch(
-        (error: unknown) => {
-          this.deps.logger.error('GuildRoleCreate sync failed', {
-            guildId: role.guild.id,
-            roleId: role.id,
-            error: safeErrorMessage(error, this.secrets),
-          });
-        },
-      );
+      void this.handleRolesChanged(role.guild, 'guild_role_create').catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleCreate sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
     });
 
     this.client.on(Events.GuildRoleUpdate, (_previous, role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_update').catch(
-        (error: unknown) => {
-          this.deps.logger.error('GuildRoleUpdate sync failed', {
-            guildId: role.guild.id,
-            roleId: role.id,
-            error: safeErrorMessage(error, this.secrets),
-          });
-        },
-      );
+      void this.handleRolesChanged(role.guild, 'guild_role_update').catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleUpdate sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
     });
 
     this.client.on(Events.GuildRoleDelete, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_delete').catch(
-        (error: unknown) => {
-          this.deps.logger.error('GuildRoleDelete sync failed', {
-            guildId: role.guild.id,
-            roleId: role.id,
-            error: safeErrorMessage(error, this.secrets),
-          });
-        },
-      );
+      void this.handleRolesChanged(role.guild, 'guild_role_delete').catch((error: unknown) => {
+        this.deps.logger.error('GuildRoleDelete sync failed', {
+          guildId: role.guild.id,
+          roleId: role.id,
+          error: safeErrorMessage(error, this.secrets),
+        });
+      });
     });
 
     this.client.on(Events.Error, (error) => {
