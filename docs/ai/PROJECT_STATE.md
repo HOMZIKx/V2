@@ -49,6 +49,13 @@ Owner/ChatGPT final audit of P4 specification → marker
 - ADR-0014 Proposed (technical boundary)
 - P4-D3 / D5 / D6 / D7 / D8 — open as documented in PENDING
 
+## Validation (this task)
+
+- Docs format / relative links / P4.1–P4.6 traceability: pass
+- `pnpm architecture:check`: pass
+- `pnpm validate` once: repo checks passed through runtime smoke; Docker CLI
+  missing (`docker compose … config` → ENOENT) — **environment limitation**
+
 ## Last updated
 
-2026-08-06 — Cursor (`READY_FOR_FINAL_P4_SPEC_AUDIT`)
+2026-08-06 — Cursor (`READY_FOR_FINAL_P4_SPEC_AUDIT`) — PR #18 draft

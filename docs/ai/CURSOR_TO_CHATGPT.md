@@ -53,10 +53,22 @@ na świeżej gałęzi od `main` po merge P3. **Brak implementacji. Brak merge.**
 - P4-D8 / Issue #12 visuals — OWNER_DECISION_REQUIRED
 - ADR-0014 Accepted
 
-## 7. Next
+## 7. Validation
+
+| Check                                         | Result                                                                                                                                                                                                                                    |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prettier (touched docs + repo `format:check`) | pass                                                                                                                                                                                                                                      |
+| Relative links in touched docs (38)           | pass                                                                                                                                                                                                                                      |
+| Traceability stages P4.1–P4.6                 | present                                                                                                                                                                                                                                   |
+| `pnpm architecture:check`                     | pass                                                                                                                                                                                                                                      |
+| `pnpm validate` (once)                        | **partial** — all steps through `test:runtime-smoke` passed; final `docker compose … config` failed with `spawnSync docker ENOENT` (**environment**: Docker CLI absent). Not a repository defect. No empty CI commit. No Actions changes. |
+
+HEAD after transplant: see branch tip. Draft PR: #18.
+
+## 8. Next
 
 After audit APPROVED: **P4.1** domain/contracts (separate brief). No code in this PR.
 
-## 8. Marker
+## 9. Marker
 
 `READY_FOR_FINAL_P4_SPEC_AUDIT`
