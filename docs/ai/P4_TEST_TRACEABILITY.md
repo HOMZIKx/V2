@@ -2,7 +2,7 @@
 
 ## Status
 
-`SPEC — final audit after P3 merge (no implementation)`
+`SPEC — technical recommendations + P4.1 plan (no implementation)`
 
 Kolumny: decyzja produktowa → domena → kontrakt → permission (TECH proposal) →
 etap → test.

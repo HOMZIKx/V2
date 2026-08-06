@@ -44,11 +44,15 @@
 
 ### P4-D3 — właściciel domeny / nazwa usługi
 
-- **Status:** TECHNICAL_OPEN / ADR-0014 Proposed
-- **Kontekst:** Osobna usługa + baza wymagane architektonicznie (ADR-0001).
-- **Rekomendacja techniczna:** `community-service` + DB `community`.
-- **Decyzja właściciela:** formalna nazwa = `OWNER_DECISION_REQUIRED` (nie blokuje
-  spisu agregatów w docs). Opcja „trzymać w gateway/authz/identity” pozostaje odrzucona.
+- **Status:** `OWNER_DECISION_REQUIRED` (ADR-0014 nadal Proposed)
+- **Kontekst:** Osobna usługa + baza wymagane (ADR-0001). Opcja „w gateway/authz/
+  identity” odrzucona.
+- **Pakiet decyzyjny (max 3 warianty):** szczegóły w
+  `docs/architecture/CENTRUM_AKTYWNOSCI.md` §14.
+  1. `community-service` / DB `community` — **rekomendacja TECH**
+  2. `activity-service` / DB `activity`
+  3. `centrum-service` / DB `centrum`
+- **Rekomendacja techniczna:** wariant 1. **Nie** zamyka decyzji właściciela.
 
 ### P4-D4 — kanały w P4
 
@@ -59,32 +63,37 @@
 
 ### P4-D5 — transport mutacji / projekcji
 
-- **Status:** TECHNICAL_OPEN
-- **Rekomendacja techniczna:** Sync HTTP + idempotency w P4.1–P4.2; porty pod Outbox/RMQ.
-- **Decyzja właściciela:** brak — nie przedstawiać rekomendacji jako Accepted.
+- **Status właściciela:** `TECHNICAL_OPEN`
+- **Status rekomendacji TECH:** `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT`
+  (`PROPOSED — READY_FOR_CHATGPT_AUDIT`)
+- **Rekomendacja:** wariant 5 — sync HTTP + idempotency + PG transactional outbox
+  dla projekcji Discord; RabbitMQ później (P4.5+ / multi-consumer). Analiza
+  porównawcza: architecture §11. **Nie** oznacza Accepted.
 
 ### P4-D6 — publikacja panelu Centrum
 
-- **Status:** OWNER_ACCEPTED (partial) + TECHNICAL_OPEN (mechanizm publish)
-- **Decyzja właściciela:** Stały panel; update in-place; jeden prywatny formularz
-  (nie kreator); sekcje Utwórz / Szukam ekipy / Moje / Powiadomienia.
-  Layout = Components V2 Container + Section z accessory Button
-  (`docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`).
-- **TECHNICAL_OPEN:** slash operatora vs auto-publish przy starcie / repair.
+- **Status produktu (layout):** OWNER_ACCEPTED (partial)
+- **Status mechanizmu ops:** `TECHNICAL_OPEN` + rekomendacja
+  `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` (architecture §12)
+- **Decyzja właściciela (layout):** Stały panel; update in-place; jeden prywatny
+  formularz; sekcje Utwórz / Szukam ekipy / Moje / Powiadomienia; Components V2.
+- **Rekomendacja TECH:** trwały rekord panelu, stany, lease, reconcile, anti-dupe,
+  operator publish/refresh/repair/move/detach/inspect — bez publicznych copy.
 
 ### P4-D7 — katalog permission IDs
 
-- **Status:** TECHNICAL_OPEN + OWNER_DECISION_REQUIRED (finalne stringi)
-- **Wymaganie produktowe:** mapowanie akcji→P3 permissions (architecture + traceability).
-- **Propozycja TECH:** `permission.activity.event.*` / `….admin.configure` /
-  `….panel.publish` (patrz architecture doc). Finalne ID = właściciel/ChatGPT.
+- **Status:** `OWNER_DECISION_REQUIRED` (finalne stringi)
+- **Pakiet:** kompletna tabela propozycji w architecture §13 (read/create/edit/
+  cancel/manage/RSVP/participants/panel/admin/multi/recurring/privacy/attendance/
+  stats/moderate).
+- **Nie** dodawać automatycznie do kodu Authz.
 
 ### P4-D8 — checkpoint wizualny (Issue #12) vs kontrakt layoutu
 
 - **Status layoutu interaktywnego:** CONTRACT_SPECIFIED —
   component tree, custom_id, „Więcej”, in-place edit —
-  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`.
-- **Status assetów (Issue #12):** OWNER_DECISION_REQUIRED
+  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md` (+ weryfikacja discord.js §N).
+- **Status assetów (Issue #12):** `OWNER_DECISION_REQUIRED` (**bez zmian**)
   (kolory, emoji, bannery, typografia, copy poza zaakceptowanymi etykietami).
 - **Wzór właściciela:** modułowość i panelowość — **nie** klikalne obszary obrazu.
 

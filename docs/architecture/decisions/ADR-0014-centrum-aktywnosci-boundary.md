@@ -31,12 +31,20 @@ Ten ADR **nie** renegocjuje tych reguł.
    finalne stringi = `OWNER_DECISION_REQUIRED`).
 4. **Tożsamość na Discordzie:** Discord User ID; WWW login nie jest wymagany
    dla zwykłych operacji Discord (P3-D3).
-5. **Transport v1:** rekomendacja TECH = sync HTTP + idempotency; Outbox/RMQ =
-   TECHNICAL_OPEN (dawne P4-D5).
+5. **Transport v1:** rekomendacja TECH = **wariant 5** (sync HTTP + idempotency +
+   PG transactional outbox dla projekcji Discord; RabbitMQ później) —
+   status `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` / P4-D5 nadal
+   `TECHNICAL_OPEN` do audytu ChatGPT (szczegóły:
+   [CENTRUM_AKTYWNOSCI.md](../CENTRUM_AKTYWNOSCI.md) §11).
 6. **Widoczne assety UX** wymagają Issue #12 przed implementacją UI Discord.
 7. **Implementacja kodu** dopiero po: Accepted tego ADR (lub następcy) oraz
    brief `READY_FOR_CURSOR`. Zależność P3 jest **spełniona** (PR #16 merged
    → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`).
+8. **Stały panel (P4-D6):** projekt operacyjny rekordu/stanów/reconcile —
+   `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` (§12 architecture doc); nie Accepted.
+9. **discord.js 14.25.1** w repo obsługuje wymagany układ Components V2
+   (Container/Section/`setButtonAccessory`/IsComponentsV2) — weryfikacja w
+   UX doc; **brak** wymuszonej aktualizacji biblioteki dla kontraktu layoutu.
 
 ## Alternatywy odrzucone (fundament)
 

@@ -432,3 +432,78 @@ Bez łańcuchów publicznych wiadomości.
 | Style Button (kolory Discord)   | OWNER_DECISION_REQUIRED (w ramach palety V2) |
 
 Wzór wizualny właściciela = **modułowość i panelowość**, nie klikalny obraz.
+
+## N. Weryfikacja discord.js w repo (Components V2)
+
+**Źródło prawdy:** `apps/discord-gateway` depends on `discord.js@14.25.1`
+(lockfile `discord.js@14.25.1`); runtime checked via
+`apps/discord-gateway` module resolution. P1 już importuje
+`ContainerBuilder`, `TextDisplayBuilder`, `SeparatorBuilder`,
+`MediaGalleryBuilder`, `ActionRowBuilder`, `ButtonBuilder`,
+`StringSelectMenuBuilder`, `MessageFlags.IsComponentsV2` w
+`panel-renderer.ts`.
+
+Import wzorcowy:
+
+```ts
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ContainerBuilder,
+  MediaGalleryBuilder,
+  MessageFlags,
+  ModalBuilder,
+  SectionBuilder,
+  SeparatorBuilder,
+  TextDisplayBuilder,
+  TextInputBuilder,
+  ThumbnailBuilder,
+  StringSelectMenuBuilder,
+} from 'discord.js';
+```
+
+`SectionBuilder` API (builders): `addTextDisplayComponents`,
+`setButtonAccessory`, `setThumbnailAccessory`.
+`ContainerBuilder`: `addSectionComponents`, `addSeparatorComponents`,
+`addTextDisplayComponents`, `addActionRowComponents`,
+`addMediaGalleryComponents`, `setAccentColor`.
+
+| WYMAGANY ELEMENT              | OBSŁUGA W REPO                                 | RZECZYWISTE API                                          | OGRANICZENIE                                                           | DZIAŁANIE               |
+| ----------------------------- | ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------- |
+| Container                     | **tak** (P1 używa)                             | `ContainerBuilder`                                       | jeden root typowy dla panelu                                           | użyć w P4.2             |
+| Section                       | **tak** (export; P1 jeszcze nie używa Section) | `SectionBuilder` + `container.addSectionComponents`      | accessory = Button **lub** Thumbnail                                   | layout Centrum          |
+| accessory Button              | **tak**                                        | `section.setButtonAccessory(ButtonBuilder)`              | nie HTML/PNG hit-area                                                  | P4.2                    |
+| Text Display                  | **tak**                                        | `TextDisplayBuilder.setContent`                          | limity treści Discord                                                  | P4.2                    |
+| Separator                     | **tak**                                        | `SeparatorBuilder` + `SeparatorSpacingSize`              | divider/spacing                                                        | P4.2                    |
+| Media Gallery                 | **tak**                                        | `MediaGalleryBuilder` / `MediaGalleryItemBuilder`        | assety = Issue #12                                                     | opcjonalnie po D8       |
+| Thumbnail                     | **tak**                                        | `ThumbnailBuilder` / `setThumbnailAccessory`             | nie jako zamiennik Button CTA                                          | ostrożnie               |
+| Action Row                    | **tak**                                        | `ActionRowBuilder`                                       | max **5** components / row (API Discord)                               | RSVP + Więcej           |
+| Button                        | **tak**                                        | `ButtonBuilder` + `ButtonStyle`                          | label/emoji limity; `customId` 1–100                                   | P4.2                    |
+| Select Menu                   | **tak**                                        | `StringSelectMenuBuilder`                                | option label/value ≤100                                                | panel P1; Centrum wg UX |
+| `MessageFlags.IsComponentsV2` | **tak** (`32768`)                              | `MessageFlags.IsComponentsV2`                            | flaga trwała; **bez** klasycznego `content`/`embeds` na tej wiadomości | obowiązkowe             |
+| Modal                         | **tak**                                        | `ModalBuilder` + `TextInputBuilder`                      | modal custom_id ≤100; pola tekstowe                                    | create/RSVP fields      |
+| Ephemeral                     | **tak**                                        | `MessageFlags.Ephemeral`                                 | prywatne menu „Więcej”                                                 | P4.2                    |
+| Update in-place               | **tak** (P1 refresh)                           | `message.edit` / `interaction.update` z components+flags | ten sam `message.id`                                                   | SoT backend             |
+| custom_id                     | **tak**                                        | `setCustomId`                                            | **1–100** znaków (validators builders)                                 | wersjonowane; bez PII   |
+| disabled components           | **tak**                                        | `ButtonBuilder.setDisabled` / select disabled            | stany ended/cancelled                                                  | P4.2                    |
+
+### Limity techniczne (z builders + discord-api-types / praktyka P1)
+
+- `custom_id`: 1–100 znaków (shapeshift validators w `@discordjs/builders`).
+- Action Row: do 5 przycisków.
+- Select option label/value/description: ≤100.
+- Components V2 + legacy embeds/content na **tej samej** wiadomości: **unikać**
+  (P1: flags V2, bez embeds na panelu publicznym).
+- Całkowity budżet komponentów wiadomości: walidować snapshotami (UX §K; Discord
+  limity top-level — test kontraktowy w P4.2).
+
+### Aktualizacja discord.js?
+
+**Nie wymagana** dla kontraktu Centrum na obecnym `14.25.1`. Brakujące względem
+UX jest użycie `SectionBuilder` w rendererze produktowym (P4.2), nie brak API.
+
+Jeżeli przyszły minor/major złamie builders: osobny PR dependency; regresja P1
+`panel-renderer` + snapshoty. **Blocker P4.2 tylko gdyby API Section/accessory
+zniknęło** — obecnie nie. Nie jest blockerem P4.1 (domain-only).
+
+**Zakaz:** implementować „udawane V2” przez PNG + rząd przycisków jako obejście.

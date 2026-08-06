@@ -24,7 +24,9 @@ P2 Identity (Better Auth + Internal JWT) i P3 Authorization foundation są na
 Pierwszy pion produktowy: [Centrum Aktywności](CENTRUM_AKTYWNOSCI.md),
 [product spec](../product/CENTRUM_AKTYWNOSCI.md),
 [P4 handoff](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md).
-Po Accepted ADR-0014 — osobna usługa domenowa (roboczo `community-service`) w
-PR implementacyjnym P4.1+. Ten katalog nie dodaje wiersza usługi, dopóki
-formalna nazwa (P4-D3) nie jest `OWNER_ACCEPTED`. Stary PR #17 jest
-superseded i zamknięty.
+Po Accepted ADR-0014 — osobna usługa domenowa (roboczo `community-service`;
+warianty nazwy = P4-D3 OWNER_DECISION_REQUIRED) w PR implementacyjnym P4.1+.
+Rekomendacje transportu/panelu: architecture §11–§12
+(`TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT`). Ten katalog nie dodaje wiersza
+usługi, dopóki formalna nazwa (P4-D3) nie jest `OWNER_ACCEPTED`. Stary PR #17
+jest superseded i zamknięty.

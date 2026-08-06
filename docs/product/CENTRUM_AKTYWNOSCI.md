@@ -249,13 +249,13 @@ Organizator: usunięcie uczestnika z powodem + audyt.
 
 ## 22. Mapowanie starych P4-D1–P4-D8
 
-| ID    | Nowa interpretacja                                                                                                                                                                        |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                                                                 |
-| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                                                       |
-| P4-D3 | **TECHNICAL_OPEN** — roboczo `community-service`; formalna nazwa usługi nadal Proposed                                                                                                    |
-| P4-D4 | **OWNER_ACCEPTED (superseded Discord-only)** — Discord + podstawowy Admin + pierwszy WWW (bez create na WWW w P4.4)                                                                       |
-| P4-D5 | **TECHNICAL_OPEN** — rekomendacja sync HTTP + idempotency; nie jest decyzją właściciela                                                                                                   |
-| P4-D6 | **OWNER_ACCEPTED (partial)** — stały panel, update in-place, jeden formularz, sekcje panelu; dokładny mechanizm publish slash vs config = TECHNICAL_OPEN                                  |
-| P4-D7 | **TECHNICAL_OPEN** — wymagane mapowanie akcji→permission; finalne ID strings = OWNER_DECISION_REQUIRED                                                                                    |
-| P4-D8 | **OWNER_DECISION_REQUIRED** (assety) + **kontrakt layoutu Accepted w UX** — Issue #12 = kolory/emoji/grafiki/copy; component tree Components V2 = `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md` |
+| ID    | Nowa interpretacja                                                                                                                                          |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                                   |
+| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                         |
+| P4-D3 | **OWNER_DECISION_REQUIRED** — pakiet 3 wariantów + rekomendacja TECH `community-service` (architecture §14); ADR-0014 Proposed                              |
+| P4-D4 | **OWNER_ACCEPTED (superseded Discord-only)** — Discord + podstawowy Admin + pierwszy WWW (bez create na WWW w P4.4)                                         |
+| P4-D5 | **TECHNICAL_OPEN** + rekomendacja TECH wariant 5 (HTTP + outbox; RMQ później) = `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` — nie Accepted                   |
+| P4-D6 | **OWNER_ACCEPTED (partial)** layout + **TECHNICAL_OPEN** mechanizm; rekomendacja ops panelu = `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` (architecture §12) |
+| P4-D7 | **OWNER_DECISION_REQUIRED** — katalog propozycji architecture §13; nie w kodzie Authz                                                                       |
+| P4-D8 | **OWNER_DECISION_REQUIRED** (assety) + **kontrakt layoutu** — Issue #12; discord.js 14.25.1 weryfikacja UX §N                                               |
