@@ -28,15 +28,15 @@ WWW/Admin UI, finalnych assetów.
 
 ## 3. Dokumenty SoT
 
-| Dokument                                                                      | Treść                                                                                             |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [product/CENTRUM_AKTYWNOSCI.md](../product/CENTRUM_AKTYWNOSCI.md)             | Spec produktowa A–S + mapowanie P4-D\*                                                            |
-| [architecture/CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_AKTYWNOSCI.md)   | Granice, etapy, **§11 transport**, **§12 panel**, **§13 perms**, **§14 nazwa**, **§15 P4.1 plan** |
-| [ADR-0014](../architecture/decisions/ADR-0014-centrum-aktywnosci-boundary.md) | Boundary **Proposed** (techniczne)                                                                |
-| [ux/CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md)       | Component tree + **§N weryfikacja discord.js 14.25.1**                                            |
-| [ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md](../ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md)   | WWW P4.4 + Admin P4.3                                                                             |
-| [P4_TEST_TRACEABILITY.md](P4_TEST_TRACEABILITY.md)                            | Macierz + testy layoutu V2                                                                        |
-| `PENDING_DECISIONS.md`                                                        | P4-D\* / TECHNICAL_OPEN / OWNER_DECISION_REQUIRED                                                 |
+| Dokument                                                                      | Treść                                                              |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [product/CENTRUM_AKTYWNOSCI.md](../product/CENTRUM_AKTYWNOSCI.md)             | Spec produktowa A–S + mapowanie P4-D\*                             |
+| [architecture/CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_AKTYWNOSCI.md)   | Granice, etapy, §11–§14 TECH, **§15 P4.1 implementation sequence** |
+| [ADR-0014](../architecture/decisions/ADR-0014-centrum-aktywnosci-boundary.md) | Boundary **Proposed** (techniczne)                                 |
+| [ux/CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md)       | Component tree + **§N weryfikacja discord.js 14.25.1**             |
+| [ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md](../ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md)   | WWW P4.4 + Admin P4.3                                              |
+| [P4_TEST_TRACEABILITY.md](P4_TEST_TRACEABILITY.md)                            | Macierz + testy layoutu V2                                         |
+| `PENDING_DECISIONS.md`                                                        | P4-D\* / TECHNICAL_OPEN / OWNER_DECISION_REQUIRED                  |
 
 ## 4. Rekomendacje TECH (nie Accepted)
 

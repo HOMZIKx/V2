@@ -413,3 +413,196 @@ Rekomendacja TECH poniżej **nie** zamyka decyzji.
 **Rekomendacja techniczna:** **A `community-service` / DB `community`** — zgodna z
 `pnpm generate:service` (`[a-z]-service`), ADR-0001 ownership, miejsce na P4.6+
 bez natychmiastowego rozszczepiania. Formalna nazwa nadal OWNER_DECISION_REQUIRED.
+
+## 15. P4.1 — Plan implementacji (docs only; no code in this PR)
+
+**Status:** `PROPOSED — READY_FOR_CHATGPT_AUDIT`  
+**Cel:** Domain, model danych, kontrakty, permissions catalog wiring (Accepted
+IDs only), audyt — **bez** UI Discord/WWW/Admin.  
+**Nazwa usługi:** roboczo `community-service` (P4-D3 OWNER_DECISION_REQUIRED;
+generator wymaga `*-service`).
+
+### 15.1 Struktura katalogów (propozycja)
+
+```text
+services/community-service/          # po Accepted P4-D3 nazwy
+  package.json  project.json  vitest.config.ts  tsconfig*.json  eslint.config.mjs
+  migrations/00xx_*.sql
+  src/
+    main.ts
+    domain/           # czysta TS — bez Nest/Fastify/pg/discord/RMQ
+    application/      # use-cases + ports
+    infrastructure/   # pg, migrations runner, HTTP clients (Authz)
+    interface/        # Nest controllers, guards, workers, app.module
+packages/contracts/
+  src/community/      # OpenAPI fragments / zod DTO shared (opcjonalnie w P4.1)
+```
+
+Wzór warstw: `services/authorization-service` + `pnpm generate:service`.
+
+### 15.2 Nowe projekty / pakiety
+
+| Element                              | Akcja P4.1                                                |
+| ------------------------------------ | --------------------------------------------------------- |
+| `services/community-service`         | **NOWY** (generate-service + dataOwnership=database)      |
+| `packages/contracts` community paths | **rozszerzenie** szkicu OpenAPI/DTO                       |
+| `apps/*` Discord/Web/Admin           | **bez** UI produktowego; najwyżej health/env placeholders |
+| RabbitMQ client package              | **NIE** w P4.1 (patrz §11)                                |
+
+### 15.3 Pliki dodawane (reprezentatywne)
+
+- `services/community-service/**` (skeleton + domain + migrations + tests)
+- `infrastructure/postgres/init/01-create-databases.sh` — rola+DB `community`
+- `.env.example` — `COMMUNITY_*` / `COMMUNITY_DATABASE_URL`
+- `docs/architecture/SERVICE_CATALOG.md` — wiersz po Accepted nazwy
+- OpenAPI draft pod `packages/contracts` lub `docs/architecture/...`
+
+### 15.4 Pliki zmieniane
+
+- `pnpm-lock.yaml` (workspace deps)
+- Compose init DB script; ewent. `tools/scripts/runtime-smoke.mjs` (7. usługa)
+- `docs/ai/PROJECT_STATE.md` / handoff po merge P4.1
+- **Nie:** `.github/workflows/*` w pierwszym PR P4.1 (osobno jeśli CI smoke)
+
+### 15.5 Zależności warstw
+
+```text
+interface (Nest) → application → domain
+infrastructure → application ports
+domain ⟂ Nest, Fastify, pg, discord.js, amqplib
+community-service → authorization-service (HTTP authorize/explain + assertion)
+community-service ⟂ identity DB / authorization DB
+discord-gateway ⟂ community DB (dopiero P4.2 adapter HTTP)
+```
+
+### 15.6–15.13 Model domenowy (P4.1 scope)
+
+**Granica:** SoT aktywności/RSVP/limitów/projekcji-intent; brak renderu Discord.
+
+**Agregaty / encje (P4.1 minimum):**
+`ActivityType`, `ParticipationStatusDef`, `ParticipantFieldCatalog`,
+`GuildActivitySettings`, `Activity`, `Participation`, `ActivityProjection`
+(rekord intent/message ids — bez live Discord), `ActivityAuditEntry`,
+`IdempotencyRecord`, `OutboxMessage` (schema gotowa; worker może być no-op /
+poller stub).
+
+**Value objects:** `ActivityId`, `GuildId`, `OrganizationId`, `DiscordUserId`,
+`TimeWindow` (≤14d member), `ParticipantLimit`, `OccupiesSlot`, `CorrelationId`,
+`PermissionId` (string Accepted).
+
+**Statusy Activity:** jak §4 (`draft_form` … `completed` / `cancelled` /
+`deleted`).
+
+**Maszyny:** Activity lifecycle; Participation (statusDef + waitlist position);
+Outbox delivery (`pending|leased|done|dead`); HubPanel (§12) — tabela może
+powstać w P4.1 jako schema-only, runtime w P4.2.
+
+**Komendy (application):** `CreateOneShotActivity`, `CancelActivity`,
+`ChangeSchedule` (flags reconfirm), `SetRsvp`, `PromoteWaitlist`,
+`ConfigureGuildSettings` (admin API szkic), `RecordAudit`.
+
+**Zapytania:** `GetActivity`, `ListGuildActivities`, `ListMyActivities`,
+`ExplainLimits`.
+
+**Zdarzenia domenowe (porty; broker nie wymagany):**
+`community.activity.created.v1`, `….rsvp_changed.v1`, `….cancelled.v1`,
+`….schedule_changed.v1`, `….waitlist_promoted.v1` — zapis outbox payload JSON.
+
+### 15.14–15.16 Kontrakty
+
+**HTTP/S2S (sync):**
+
+| Method path (szkic)                        | Auth                      | Idempotency     |
+| ------------------------------------------ | ------------------------- | --------------- |
+| `POST /community/v1/activities`            | assertion + Authz create  | key required    |
+| `GET /community/v1/activities/:id`         | assertion + read          | —               |
+| `POST /community/v1/activities/:id/rsvp`   | assertion + join          | key required    |
+| `POST /community/v1/activities/:id/cancel` | assertion + cancel/manage | key             |
+| `GET /community/v1/me/activities`          | assertion                 | —               |
+| `POST /community/v1/authorize-probe` (dev) | —                         | zabronione prod |
+
+Każda mutacja: `AuthorizePort.authorize/explain` **przed** commit reguł
+(wyjątki tylko read publicznych projekcji — i tak membership).
+
+**Zdarzenia przyszłe:** wersjonowane nazwy jak wyżej; consumer = gateway P4.2 /
+RMQ P4.5+.
+
+### 15.17–15.20 Schemat DB / migracje
+
+Kolejność migracji (przykład):
+
+1. `0001_extensions_and_meta` (jeśli potrzebne)
+2. `0002_catalog_types_status_fields_settings`
+3. `0003_activities_participations`
+4. `0004_projections_outbox_idempotency_audit`
+5. `0005_hub_panels` (schema pod P4.2)
+
+**Constraints (przykłady):**
+
+- CHECK start_at ≤ now()+14d dla creator bez recurring grant (egzekucja domenowa
+  - opcjonalnie deferred)
+- UNIQUE waitlist `(activity_id, position)` WHERE active
+- UNIQUE participation `(activity_id, subject_discord_user_id)` active
+- UNIQUE hub panel `(organization_id, discord_guild_id, panel_type)`
+- FK activity → type/settings
+
+**Indeksy:** `(guild_id, start_at)`, `(organizer_id, status)`,
+`outbox (status, available_at)`, `idempotency (key)`.
+
+**Idempotency keys:** `Idempotency-Key` header lub body
+`idempotency_key` scoped `(actor, route, key)` → same response.
+
+### 15.21–15.26 Audyt, korelacja, Authz, błędy, retry, TX
+
+- Audit: append-only `activity_audit_entries` (actor, action, before/after ref,
+  reason, correlation_id).
+- Correlation: wymagane na mutacjach; propagowane do outbox.
+- Authz: każdy command mapuje permission §13 (Accepted strings only).
+- Błędy domenowe: `ActiveActivityLimitExceeded`, `HorizonExceeded`,
+  `RegistrationsClosed`, `WaitlistOnly`, `PermissionDenied`, `NotFound`,
+  `ConflictScheduleReconfirmRequired`, `InvalidStatusTransition`.
+- Retry: HTTP caller — limited; outbox — lease+backoff (wzór Authz revoke).
+- TX: command + outbox insert + idempotency row w **jednej** transakcji PG.
+
+### 15.27–15.34 Testy i infra
+
+| Rodzaj         | Przykłady                                                                                                |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| Unit domain    | max 4 active; 14d; auto Będę organizer; waitlist FIFO; occupiesSlot; auto-end 2h; cancel; reconfirm flag |
+| Integration PG | migrations up; create+rsvp; idempotent replay; outbox row                                                |
+| Architecture   | domain imports forbid nest/pg/discord (vitest boundaries)                                                |
+| Contract       | OpenAPI/zod request validation; golden error codes                                                       |
+| Migration      | up/down or up+assert schema on empty DB                                                                  |
+| Compose        | DB `community` + role; **bez** nowego kontenera app                                                      |
+| `.env.example` | COMMUNITY_DATABASE_URL, COMMUNITY_ENABLED, ports                                                         |
+| Runtime smoke  | health `/health/live` + `/ready` community (rozszerzenie smoke)                                          |
+
+### 15.35 Definition of Done — P4.1
+
+1. Usługa startuje lokalnie; migracje zielone; izolacja DB.
+2. Domain invariants pokryte testami (limity produktowe A–F minimum).
+3. OpenAPI/DTO szkic mutacji+zapytań; bez Discord UI.
+4. AuthorizePort zintegrowany (fake w unit; HTTP client + assertion w infra).
+5. Outbox tabela + test insert; worker może być minimalny/no-op z testem lease.
+6. `architecture:check` + lint/typecheck/test service green.
+7. Brak importów zakazanych w domain/application.
+8. Marker: `READY_FOR_AUDIT_P4_1_DOMAIN`.
+9. Permission IDs w kodzie tylko po Accepted P4-D7 (do tego czasu stałe testowe
+   / feature-flagged mirror Accepted set).
+10. Pierwszy PR implementacyjny **nie** zawiera UI Discord.
+
+### 15.36 Kolejność commitów implementacyjnych (max 8)
+
+| #   | Cel                     | Zakres                                      | Pliki                                    | Testy                      | Zależności                            | Done when                     |
+| --- | ----------------------- | ------------------------------------------- | ---------------------------------------- | -------------------------- | ------------------------------------- | ----------------------------- |
+| 1   | Skeleton usługi         | generate-service + Nx/pnpm                  | `services/community-service/*` bootstrap | lint/typecheck/health      | P4-D3 name Accepted lub jawny wyjątek | health OK                     |
+| 2   | DB isolation            | init role/DB + env                          | postgres init, `.env.example`            | infra script / migrate dry | #1                                    | DB connects                   |
+| 3   | Domain model            | aggregates/VOs/errors/state                 | `src/domain/**`                          | unit lifecycle/limits      | #1                                    | invariants green              |
+| 4   | Application ports       | commands/queries + AuthorizePort            | `src/application/**`                     | unit use-case fakes        | #3                                    | use-cases green               |
+| 5   | Migrations schema       | tables/indexes/constraints                  | `migrations/**`                          | migration test             | #2                                    | schema assert                 |
+| 6   | Persistence adapter     | repository + idempotency + outbox write     | `infrastructure/persistence/**`          | integration PG             | #4–5                                  | create/rsvp persist           |
+| 7   | HTTP API + Authz client | controllers, assertion guard, OpenAPI draft | `interface/**`, contracts                | contract + e2e service     | #6                                    | mutate via HTTP               |
+| 8   | Hardening               | architecture boundaries, smoke, audit docs  | tools boundaries, smoke, docs            | architecture:check, smoke  | #7                                    | `READY_FOR_AUDIT_P4_1_DOMAIN` |
+
+**Zakaz w tych 8 commitach:** discord-gateway product panel, WWW/Admin UI,
+RMQ topology, final assets.
