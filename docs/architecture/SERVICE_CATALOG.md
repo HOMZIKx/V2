@@ -1,8 +1,6 @@
 # Katalog aplikacji i usług
 
-Ten katalog opisuje wyłącznie stan fundamentu Promptu 0. Status `foundation`
-oznacza technicznie uruchamialną aplikację bez logiki biznesowej, a `skeleton`
-oznacza przygotowaną strukturę warstw usługowych.
+Ten katalog opisuje stan fundamentu oraz Accepted P4 boundary.
 
 | Element                 | Typ                           | Właściciel danych    | Status     | Odpowiedzialność obecnie                                                                                                                                                                                 |
 | ----------------------- | ----------------------------- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -16,17 +14,16 @@ oznacza przygotowaną strukturę warstw usługowych.
 `identity-service` i `authorization-service` posiadają osobne bazy PostgreSQL.
 Authorization nie czyta bazy Identity; Identity nie czyta bazy Authorization.
 
-P2 Identity (Better Auth + Internal JWT) i P3 Authorization foundation są na
-`main` (PR #16 merge `1f23635`). ADR-0013 / Issue #15 (closed).
+P2 Identity i P3 Authorization są na `main` (PR #16 merge `1f23635`).
 
-### Plan P4 (dokumentacja — produkt Accepted, usługa Proposed)
+### P4 — activity-service (Accepted boundary, kod jeszcze nie)
 
-Pierwszy pion produktowy: [Centrum Aktywności](CENTRUM_AKTYWNOSCI.md),
-[product spec](../product/CENTRUM_AKTYWNOSCI.md),
-[P4 handoff](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md).
-Po Accepted ADR-0014 — osobna usługa domenowa (roboczo `community-service`;
-warianty nazwy = P4-D3 OWNER_DECISION_REQUIRED) w PR implementacyjnym P4.1+.
-Rekomendacje transportu/panelu: architecture §11–§12
-(`TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT`). Ten katalog nie dodaje wiersza
-usługi, dopóki formalna nazwa (P4-D3) nie jest `OWNER_ACCEPTED`. Stary PR #17
-jest superseded i zamknięty.
+| Element            | Typ                        | Właściciel danych | Status                          | Odpowiedzialność                                                                                                                                                         |
+| ------------------ | -------------------------- | ----------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `activity-service` | usługa NestJS (plan P4.1+) | baza `activity`   | **planned** (ADR-0014 Accepted) | SoT Centrum Aktywności: wydarzenia, RSVP, limity, outbox, panel ops, audyt — [CENTRUM_AKTYWNOSCI.md](CENTRUM_AKTYWNOSCI.md), [product](../product/CENTRUM_AKTYWNOSCI.md) |
+
+Pakiet: `@v2/activity-service`. Katalog: `services/activity-service`.
+Domena/kontrakty/eventy: prefiks `activity`. **Nie** `community-service`.
+
+Kod/migracje powstają dopiero w implementacyjnym P4.1 po `READY_FOR_CURSOR`.
+Stary PR #17 superseded; SoT docs = PR #18.

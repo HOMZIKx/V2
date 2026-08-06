@@ -228,15 +228,15 @@ pełna lista = prywatna odpowiedź.
 
 ### D.3 Zarządzanie (tylko ephemeral po „Więcej” lub Moje aktywności)
 
-| id  | meaning                   | custom_id (przykład)                      | perm TECH              | modal            | edit public msg         | audit    |
-| --- | ------------------------- | ----------------------------------------- | ---------------------- | ---------------- | ----------------------- | -------- |
-| M1  | Edycja opisu/miejsca/info | `activity:v1:event:<id>:edit:soft`        | manage.self / moderate | tak              | tak jeśli public fields | tak      |
-| M2  | Zmiana terminu (istotna)  | `activity:v1:event:<id>:edit:schedule`    | manage.self / moderate | tak + confirm    | tak + notify            | tak      |
-| M3  | Zamknij/otwórz zapisy     | `activity:v1:event:<id>:regs:close\|open` | manage.self / moderate | confirm optional | tak                     | tak      |
-| M4  | Usuń uczestnika           | `activity:v1:event:<id>:kick`             | manage.self / moderate | tak (powód)      | tak                     | tak      |
-| M5  | Anuluj wydarzenie         | `activity:v1:event:<id>:cancel`           | manage.self / moderate | tak (powód)      | tak                     | tak      |
-| M6  | Przejmij (mod)            | `activity:v1:event:<id>:takeover`         | `….moderate.guild`     | tak (powód)      | tak                     | tak      |
-| M7  | Utwórz wątek              | `activity:v1:event:<id>:thread`           | manage.self            | nie              | nie (thread)            | optional |
+| id  | meaning                   | custom_id (przykład)                      | perm TECH                                      | modal            | edit public msg         | audit    |
+| --- | ------------------------- | ----------------------------------------- | ---------------------------------------------- | ---------------- | ----------------------- | -------- |
+| M1  | Edycja opisu/miejsca/info | `activity:v1:event:<id>:edit:soft`        | `….event.manage.self` / `….event.manage.guild` | tak              | tak jeśli public fields | tak      |
+| M2  | Zmiana terminu (istotna)  | `activity:v1:event:<id>:edit:schedule`    | `….event.manage.self` / `….event.manage.guild` | tak + confirm    | tak + notify            | tak      |
+| M3  | Zamknij/otwórz zapisy     | `activity:v1:event:<id>:regs:close\|open` | `….event.manage.self` / `….event.manage.guild` | confirm optional | tak                     | tak      |
+| M4  | Usuń uczestnika           | `activity:v1:event:<id>:kick`             | `….event.manage.self` / `….event.manage.guild` | tak (powód)      | tak                     | tak      |
+| M5  | Anuluj wydarzenie         | `activity:v1:event:<id>:cancel`           | `….event.manage.self` / `….event.manage.guild` | tak (powód)      | tak                     | tak      |
+| M6  | Przejmij (mod)            | `activity:v1:event:<id>:takeover`         | `….event.manage.guild`                         | tak (powód)      | tak                     | tak      |
+| M7  | Utwórz wątek              | `activity:v1:event:<id>:thread`           | `….event.manage.self`                          | nie              | nie (thread)            | optional |
 
 Destructive → zawsze confirmation (standard D-023).
 
@@ -424,14 +424,15 @@ Bez łańcuchów publicznych wiadomości.
 
 ## M. Relacja do Issue #12 / P4-D8
 
-| Warstwa                         | Status                                       |
-| ------------------------------- | -------------------------------------------- |
-| Component tree / custom_id / UX | Zdefiniowane w tym dokumencie (kontrakt)     |
-| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED                      |
-| Opisy Text Display sekcji       | OWNER_DECISION_REQUIRED                      |
-| Style Button (kolory Discord)   | OWNER_DECISION_REQUIRED (w ramach palety V2) |
+| Warstwa                         | Status                                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| Component tree / custom_id / UX | CONTRACT w tym dokumencie                               |
+| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED — **prod visual sign-off**      |
+| P4.2a test guild                | **dozwolone** native V2 **bez** dekoracyjnego bannera   |
+| Screenshot visual contract      | `REFERENCE_IMAGE_REQUIRED` w sesji closure (brak pliku) |
+| Opisy / style Button            | OWNER_DECISION_REQUIRED                                 |
 
-Wzór wizualny właściciela = **modułowość i panelowość**, nie klikalny obraz.
+Wzór = **modułowość i panelowość**, nie klikalny obraz. Issue #12 **nie** blokuje test servera.
 
 ## N. Weryfikacja discord.js w repo (Components V2)
 
@@ -507,3 +508,13 @@ Jeżeli przyszły minor/major złamie builders: osobny PR dependency; regresja P
 zniknęło** — obecnie nie. Nie jest blockerem P4.1 (domain-only).
 
 **Zakaz:** implementować „udawane V2” przez PNG + rząd przycisków jako obejście.
+
+## O. Jeden logiczny formularz (Accepted)
+
+Discord modal ≤5 komponentów. Formularz = **prywatny panel** Components V2 ze
+szkicem 24h i sekcjami: podstawowe / termin / publikacja / uczestnicy-limity /
+opcje. Edytuj sekcję → modal ≤5 pól lub selecty w panelu. Nie kreator krokowy.
+Podgląd → Publikuj. Walidacja daty + timezone user/fallback guild; błędy bez
+utraty draftu; cancel; stale; mobile.
+
+Mapowanie pól: architecture §12. Permissions: `event.create` / `event.manage.self`.

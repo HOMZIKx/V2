@@ -2,11 +2,13 @@
 
 ## Status
 
-`OWNER_PRODUCT_ACCEPTED — P3 dependency satisfied; active stage = final P4 specification audit (no implementation)`
+`OWNER_PRODUCT_ACCEPTED — ADR-0014 Accepted; final P4 spec closure (no implementation)`
 
-Nazwa robocza „Centrum Aktywności” pochodzi z Issue #15. **Finalny branding,
-copy przycisków (poza już zaakceptowanymi etykietami funkcji), kolory, emoji i
-grafiki** = `OWNER_DECISION_REQUIRED` (Issue #12 / dawne P4-D8).
+Usługa: `activity-service` / DB `activity`. Nazwa robocza produktu „Centrum
+Aktywności” pochodzi z Issue #15. **Finalny branding, copy (poza zaakceptowanymi
+etykietami), kolory, emoji, grafiki** = `OWNER_DECISION_REQUIRED` (Issue #12 /
+P4-D8) — wymagane przed **produkcyjnym** visual sign-off; **nie** blokują
+P4.1 ani testowego P4.2a.
 
 Zatwierdzone etykiety funkcji głównego panelu (treść produktu, nie assety):
 
@@ -39,8 +41,10 @@ bazami.
 | Uprawniony organizator / administracja | Permission P3             | Może cykle i szerszy horyzont                                                          | Może wiele Discordów                 | Zależnie od grantów                               |
 | Moderator guild                        | Permission P3 moderate    | —                                                                                      | —                                    | Edycja / anulowanie / przejęcie na swoim serwerze |
 
-Szczegółowe permission keys: [CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_AKTYWNOSCI.md)
-(§ Permission mapping). Finalne stringi ID = `OWNER_DECISION_REQUIRED`.
+Szczegółowe permission keys (Accepted):
+[architecture §6](../architecture/CENTRUM_AKTYWNOSCI.md).
+Moderator = `permission.activity.event.manage.guild`; organizator =
+`permission.activity.event.manage.self` + ownership.
 
 ## 2. Model aktywności
 
@@ -60,14 +64,20 @@ Szczegółowe permission keys: [CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_A
 
 - Statusy uczestnictwa konfiguruje administrator; mogą być przypisane do rodzaju aktywności.
 - Serwer ma ustawienia domyślne.
-- Każdy status ma flagę **czy zajmuje miejsce w limicie**.
+- Każdy status ma: konfigurowalny label, `occupiesSlot`, oraz stabilne
+  **behavior** (`confirmed` / `tentative` / `declined` / `custom`) — niezależne
+  od copy. Szczegóły: architecture §5.
 - System musi obsługiwać odpowiedniki: Będę / Może będę / Nie będę (bez hardcodu
   jako jedynego modelu).
-- Organizator automatycznie dostaje status odpowiadający „Będę”.
+- Organizator automatycznie dostaje `organizerDefaultStatusId`
+  (`behavior=confirmed`, `occupiesSlot=true`).
 - Konflikt z innym wydarzeniem → **ostrzeżenie**, nie blokada.
 - Po zamknięciu zapisów uczestnik może tylko zrezygnować; powód rezygnacji opcjonalny.
-- Po istotnej zmianie terminu uczestnicy dostają status „Wymaga potwierdzenia” i
-  muszą ponownie wybrać status.
+- Po istotnej zmianie terminu: **zachowany** dotychczasowy status RSVP;
+  `confirmationState → requires_reconfirmation`; miejsce tymczasowo zarezerwowane;
+  **bez** awansu waitlist przy samej zmianie; uczestnik potwierdza lub rezygnuje;
+  po deadline brak potwierdzenia zwalnia miejsce → dopiero wtedy FIFO waitlist
+  do `waitlistPromotionStatusId`. „Wymaga potwierdzenia” **nie** jest StatusDef RSVP.
 
 ## 4. Limity i lista rezerwowa
 
@@ -83,8 +93,9 @@ Szczegółowe permission keys: [CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_A
 
 - Organizator może ustawić termin zamknięcia zapisów; domyślnie = start wydarzenia.
 - Może zamknąć wcześniej i ponownie otworzyć; obie operacje w historii.
-- Zmiana terminu wymaga **osobnego potwierdzenia**; zawsze generuje powiadomienie;
-  uczestnicy → „Wymaga potwierdzenia”.
+- Zmiana terminu wymaga **osobnego potwierdzenia** (`confirmationState`); zawsze
+  generuje powiadomienie. Deadline reconfirm: domyślnie start; min. techniczne
+  skrócenie: 15 min od zmiany (architecture §5).
 
 ## 6. Pełny cykl życia
 
@@ -151,9 +162,12 @@ Użytkownik może wyciszyć: rodzaj aktywności i/lub konkretne wydarzenie.
 Główny panel: Utwórz aktywność | Szukam ekipy | Moje aktywności | Powiadomienia.
 
 - „Szukam ekipy” = uproszczona, szybka ścieżka tworzenia tej samej aktywności.
-- Formularz Discord: **jeden większy prywatny formularz** (nie kreator krokowy);
-  anulowanie + powrót do panelu głównego; bez zbędnego „Wstecz”.
-- Niedokończony formularz → szkic **24 h**; przed publikacją → podgląd.
+- Formularz Discord: **jeden logiczny formularz** w prywatnym panelu Components V2
+  (nie kreator Dalej/Dalej; nie jeden modal na wszystkie pola — Discord ≤5 pól
+  na modal). Sekcje draftu edytowalne w dowolnej kolejności; Podgląd → Publikuj.
+  Mapowanie pól: architecture §12.
+- Niedokończony formularz → szkic **24 h**; błędy walidacji bez utraty draftu;
+  przed publikacją → podgląd.
 - Główny post wydarzenia: kompaktowy; bot aktualizuje **ten sam** post.
 - Organizator wskazany; przycisk kontaktu z organizatorem; opcjonalny wątek.
 - Zarządzanie: przycisk **Więcej** → prywatne menu wg P3 + „Moje aktywności”
@@ -178,7 +192,8 @@ Pełny component tree, `custom_id`, wireframe’y, reguły edit in-place i testy
 payloadów: [CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md).
 
 Assety wizualne (kolory, emoji, bannery, typografia) = `OWNER_DECISION_REQUIRED`
-(Issue #12 / P4-D8) — nie blokują kontraktu layoutu interaktywnego.
+(Issue #12 / P4-D8) — wymagane przed produkcyjnym visual sign-off; **nie**
+blokują P4.1 ani testowego P4.2a (native Components V2 bez dekoracyjnego bannera).
 
 ## 13. „Moje aktywności”
 
@@ -249,13 +264,13 @@ Organizator: usunięcie uczestnika z powodem + audyt.
 
 ## 22. Mapowanie starych P4-D1–P4-D8
 
-| ID    | Nowa interpretacja                                                                                                                                          |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                                   |
-| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                         |
-| P4-D3 | **OWNER_DECISION_REQUIRED** — pakiet 3 wariantów + rekomendacja TECH `community-service` (architecture §14); ADR-0014 Proposed                              |
-| P4-D4 | **OWNER_ACCEPTED (superseded Discord-only)** — Discord + podstawowy Admin + pierwszy WWW (bez create na WWW w P4.4)                                         |
-| P4-D5 | **TECHNICAL_OPEN** + rekomendacja TECH wariant 5 (HTTP + outbox; RMQ później) = `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` — nie Accepted                   |
-| P4-D6 | **OWNER_ACCEPTED (partial)** layout + **TECHNICAL_OPEN** mechanizm; rekomendacja ops panelu = `TECHNICAL_RECOMMENDATION_READY_FOR_AUDIT` (architecture §12) |
-| P4-D7 | **OWNER_DECISION_REQUIRED** — katalog propozycji architecture §13; nie w kodzie Authz                                                                       |
-| P4-D8 | **OWNER_DECISION_REQUIRED** (assety) + **kontrakt layoutu** — Issue #12; discord.js 14.25.1 weryfikacja UX §N                                               |
+| ID    | Nowa interpretacja                                                                                                                              |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                       |
+| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                             |
+| P4-D3 | **OWNER_ACCEPTED** — `activity-service` / `@v2/activity-service` / DB `activity`                                                                |
+| P4-D4 | **OWNER_ACCEPTED** — Discord + Admin + WWW (bez create WWW w P4.4)                                                                              |
+| P4-D5 | **OWNER_ACCEPTED** — HTTP + idempotency + PG outbox/lease; RMQ od P4.5                                                                          |
+| P4-D6 | **OWNER_ACCEPTED** — panel ops + nonce/`enforceNonce` + adopt reconcile                                                                         |
+| P4-D7 | **OWNER_ACCEPTED** — final permission catalog (architecture §6)                                                                                 |
+| P4-D8 | Assety = **OWNER_DECISION_REQUIRED** (prod sign-off); layout V2 = CONTRACT; screenshot visual contract = `REFERENCE_IMAGE_REQUIRED` w tej sesji |
