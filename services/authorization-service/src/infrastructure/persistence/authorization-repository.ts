@@ -620,7 +620,12 @@ export class AuthorizationRepository {
       const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
       const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
-      await this.applyReconcileSnapshot(client, command.discordGuildId, command.members, command.roles);
+      await this.applyReconcileSnapshot(
+        client,
+        command.discordGuildId,
+        command.members,
+        command.roles,
+      );
 
       const now = new Date();
       // Conditional bump: only transition unavailable/stale → fresh (or first apply).
