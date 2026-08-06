@@ -74,7 +74,17 @@ Fundament Identity jest opisany w:
 
 **Identity ≠ Authorization.** RBAC i permissions należą do `authorization-service` (P3+), nie do P2.
 
-DEC-003–009 ACCEPTED (2026-08-05): multi-provider V2 User; Better Auth za portami; opaque sessions + internal JWT. Implementacja kodu dopiero po merge planu PR #10.
+DEC-003–009 ACCEPTED (2026-08-05): multi-provider V2 User; Better Auth za portami; opaque sessions + internal JWT.
+
+### P4 — Centrum Aktywności (plan Proposed)
+
+Pierwszy pion produktowy bota po fundamencie P3. Plan (bez implementacji):
+[CENTRUM_AKTYWNOSCI.md](CENTRUM_AKTYWNOSCI.md),
+[P4 handoff](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md),
+[ADR-0014 Proposed](decisions/ADR-0014-centrum-aktywnosci-boundary.md).
+Właściciel danych aktywności = osobna usługa domenowa (roboczo `community-service`);
+`discord-gateway` pozostaje adapterem. Decyzje P4-D1…P4-D8 w
+`docs/ai/PENDING_DECISIONS.md`.
 
 ## Zasada ewolucji
 

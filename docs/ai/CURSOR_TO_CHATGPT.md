@@ -2,63 +2,73 @@
 
 ## 1. Status
 
-`READY_FOR_REVIEW_SECURITY_FIXED`
+`READY_FOR_OWNER_DECISIONS`
 
-P2 internal service-to-service JWT security remediation on draft PR #14
-(`cursor/p2-identity-internal-jwt`). Issue #13 stays OPEN. **No merge by Cursor.**
+P4 Centrum Aktywności **planning package only** on
+`cursor/p4-centrum-aktywnosci-plan-ea0a`. No product/service code.
+**No merge by Cursor.**
 
 ## 2. Task ID
 
-`P2-IDENTITY-INTERNAL-JWT-001`
+`P4-CENTRUM-AKTYWNOSCI-001`
 
 ## 3. Branch / PR / source of truth
 
-- Branch: `cursor/p2-identity-internal-jwt`
-- Issue: #13 (OPEN)
-- PR: #14 draft (GitHub SoT for tip HEAD, CI)
+- Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
+- HEAD: `c07d2968d47c6406949fae851e889b5505b38377`
+- Base: `main` @ `f299775`
+- Prerequisite: P3 draft PR #16 (`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION`)
+  must be APPROVED + merged before P4 implementation
+- Issue: none yet for P4 (tracking via this PR + `PENDING_DECISIONS`; owner may open Issue)
 
-## 4. Security fixes in this pass
+## 4. What this package delivers
 
-| Area               | Fix                                                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Assertion binding  | `keyEntry.clientId === iss`, `iss === sub`; `jwtVerify` issuer = key owner; audience allowlist only for key owner                         |
-| Assertion claims   | Single-string `aud === ISSUE_URL`; integer `iat`/`exp`; future `iat` rejected; TTL ≤ 60; UUID `jti`; `kid` header-only; `alg=EdDSA`       |
-| `@v2/internal-jwt` | Single-string `aud`; require `iat`; `exp>iat`; TTL ≤ 300; UUID `jti`; header-only `kid`; `EdDSA`                                          |
-| Keyring            | active: private+public; retiring/retired: public-only (private rejected); one active; non-extractable signing key; JWKS = active+retiring |
-| Secrets            | No static PKCS#8 PEMs in tree; ephemeral Ed25519 in tests; gitleaks path allowlists for crypto fixtures removed                           |
-| Redis              | `InternalJwtLifecycleService` `OnModuleDestroy` closes assertion store once                                                               |
+| Doc                                                  | Purpose                          |
+| ---------------------------------------------------- | -------------------------------- |
+| `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md`           | Handoff, scope, gates            |
+| `docs/architecture/CENTRUM_AKTYWNOSCI.md`            | Proposed service boundaries      |
+| `docs/architecture/decisions/ADR-0014-…md`           | ADR **Proposed**                 |
+| `docs/product/CENTRUM_AKTYWNOSCI.md`                 | Product draft                    |
+| `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`              | Interaction skeleton (no assets) |
+| `docs/ai/PENDING_DECISIONS.md`                       | **P4-D1…P4-D8 BLOCKED**          |
+| `PROJECT_STATE` / this report / `DECISION_LOG` D-035 | State                            |
 
-## 5. Hard constraints confirmed
+## 5. Explicitly not delivered
 
-- Domain/Application do not import Nest/Fastify/Better Auth/ioredis/pg
-- Browser never receives JWT or client assertion
-- Cross-client impersonation rejected before issue
-- Redis replay fail-closed
-- No broad gitleaks allowlist for production keyring / fixtures
+- `community-service` code / DB / OpenAPI
+- Discord product panel / commands
+- Final permission catalog, module accent, emoji, banner, copy
+- Merge of P3 PR #16
 
-## 6. Tests (highlights)
+## 6. Technical recommendation summary (for owner)
 
-- Cross-client impersonation (unit + infra)
-- Future `iat`, audience array, bad UUID/alg/signature, missing claims
-- Exact single audience (assertion + package)
-- Public-only retiring/retired; multi-active / mismatch / active-without-private rejected
-- Lifecycle closes Redis once
-- Payload omits email/roles/permissions/discord/session id
-- Gateway proof returns `{ ok, sub }` only
+1. P4-D1 **B** — hub + one activity type.
+2. P4-D3 **A** — new `community-service` + DB `community`.
+3. P4-D4 **A** — Discord-only v1.
+4. P4-D5 **A** — sync HTTP + idempotency first.
+5. P4-D6 **A** — operator slash publishes one stable panel.
+6. P4-D8 **A** or **B** — visual checkpoint before UI (never lab placeholders as product).
 
-## 7. Validation commands
+## 7. Validation
 
 ```bash
-pnpm validate
-RUN_INFRA_TESTS=true pnpm --filter @v2/identity-service test
-# local gitleaks on main..HEAD; also confirm no PKCS#8 private PEMs in `git log -p main..HEAD`
+pnpm format:check   # pass
+pnpm lint           # pass
+pnpm typecheck      # pass
+pnpm test           # pass
+# pnpm validate:quick — compose config failed locally (Docker CLI absent in agent VM)
 ```
 
-## 8. Open risks / notes
+Docs-only; no service code/schema changes.
 
-- PR branch history will be rewritten (`--force-with-lease`) to purge PEMs from all PR commits
-- `main` unchanged
+## 8. Questions for owner / ChatGPT
+
+1. Close P4-D1…P4-D8 (especially first activity type and visual checkpoint path).
+2. Confirm P3 PR #16 APPROVED timeline — P4 implementation must not start on
+   unmerged Authz foundation.
+3. Optional: open GitHub Issue „P4 Centrum Aktywności” mirroring Issue #15 style
+   for decision comments.
 
 ## Last updated
 
-2026-08-05 — Cursor (security remediation)
+2026-08-06 — Cursor (P4 planning)

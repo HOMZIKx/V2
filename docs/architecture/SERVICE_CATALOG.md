@@ -23,4 +23,13 @@ Plan fundamentu Identity: [IDENTITY_FOUNDATION.md](IDENTITY_FOUNDATION.md),
 [P2 handoff](../ai/P2_IDENTITY_FOUNDATION_HANDOFF.md). Po merge zatwierdzonego
 planu PR #10 osobny PR implementacyjny: User / Account / Session / Verification
 w `identity-service` (Better Auth za portami — ADR-0012).
-`authorization-service` pozostaje bez RBAC do P3.
+`authorization-service` pozostaje bez RBAC do P3 (fundament Authz: Issue #15 /
+draft PR #16).
+
+### Plan P4 (dokumentacja only — ADR-0014 Proposed)
+
+Pierwszy pion produktowy: [Centrum Aktywności](CENTRUM_AKTYWNOSCI.md),
+[P4 handoff](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md). Po `APPROVED` planu i merge
+P3 — osobna usługa domenowa (roboczo `community-service`) w osobnym PR
+implementacyjnym. Ten katalog nie dodaje jeszcze wiersza usługi, dopóki P4-D3
+nie jest `OWNER_ACCEPTED`.

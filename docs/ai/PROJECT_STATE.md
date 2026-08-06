@@ -2,49 +2,49 @@
 
 ## Status
 
-`READY_FOR_REVIEW_SECURITY_FIXED`
-
-Branch `cursor/p2-identity-internal-jwt` implements P2 internal service-to-service JWT (Issue #13, D1=C). Draft PR #14. GitHub is SoT for tip HEAD and CI.
-
-See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
+`READY_FOR_OWNER_DECISIONS` (P4 planning package — no implementation)
 
 ## Active phase
 
-P2 Identity — internal service-to-service JWT (security hardening).
+P4 Centrum Aktywności — **plan only**.
 
 ## Active task
 
-- Task ID: `P2-IDENTITY-INTERNAL-JWT-001`
-- Branch: `cursor/p2-identity-internal-jwt`
-- Base: `main` after PR #11 squash merge (`15586ac`)
-- Issue: #13 (APPROVED, D1 = OWNER_ACCEPTED C) — remains OPEN
-- Pull Request: #14 draft (no merge by Cursor)
+- Task ID: `P4-CENTRUM-AKTYWNOSCI-001`
+- Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
+- Base: `main` @ `f299775` (PR #14 Internal JWT)
+- HEAD: `c07d2968d47c6406949fae851e889b5505b38377`
+- Prerequisite: P3 Authorization foundation APPROVED + merged
+  (Issue #15; draft PR #16 still open on `cursor/p3-authorization-foundation`)
+- Pull Request: draft planning PR — no merge by Cursor
 
 ## Current objective
 
-Land security fixes on PR #14: kid↔client_id binding, strict assertion/JWT claim validation, public-only retiring/retired keyring, ephemeral test keys (no PEM in history), Redis shutdown, then `READY_FOR_REVIEW_SECURITY_FIXED`.
+Owner (+ ChatGPT) closes P4-D1…P4-D8 in `PENDING_DECISIONS.md`, accepts or
+revises ADR-0014, completes visual checkpoint (Issue #12 / P4-D8), then merges
+planning after `APPROVED`. Implementation only after P3 is on `main` and a
+`READY_FOR_CURSOR` brief exists.
 
 ## In scope now
 
-- Cross-client impersonation fix (`keyEntry.clientId === iss`, `iss === sub`)
-- Strict single-string audience; iat/exp/jti/alg/kid header rules
-- `@v2/internal-jwt` hardened verifier
-- Internal JWT keyring: active has private; retiring/retired public-only; non-extractable signer
-- Redis `OnModuleDestroy` lifecycle
-- History rewrite of PR branch only (purge private PEMs)
+- Planning docs: handoff, architecture, ADR-0014 Proposed, product, Discord UX outline
+- Pending decisions P4-D1…P4-D8
+- State / report updates
 
 ## Out of scope now
 
-- Merge PR #14
-- Close Issue #13
-- New PR
-- Internal JWT jti blacklist / Authorization RBAC / browser JWT
+- Any community/activity service code, migrations, Discord product panel
+- Choosing final colors/emoji/banners/copy
+- Merging P3 or P4
+- Zeabur, Desktop Companion, Admin UX
 
 ## Decisions in force
 
+- P3-D1–P3-D20 (Issue #15) — access foundation; product activities deferred to P4
+- D-023 / D-024 — Discord panel UX + original V2 identity
 - DEC-008 A, DEC-009 A, ADR-0011
-- Issue #13 D1 = C (client assertion)
+- P4-D1…P4-D8 — **BLOCKED** (awaiting owner)
 
 ## Last updated
 
-2026-08-05 — Cursor (PR #14 security remediation)
+2026-08-06 — Cursor (P4 Centrum Aktywności planning package)
