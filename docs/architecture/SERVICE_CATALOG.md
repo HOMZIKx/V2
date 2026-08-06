@@ -1,8 +1,6 @@
 # Katalog aplikacji i usług
 
-Ten katalog opisuje wyłącznie stan fundamentu Promptu 0. Status `foundation`
-oznacza technicznie uruchamialną aplikację bez logiki biznesowej, a `skeleton`
-oznacza przygotowaną strukturę warstw usługowych.
+Ten katalog opisuje stan fundamentu oraz Accepted P4 boundary.
 
 | Element                 | Typ                           | Właściciel danych    | Status     | Odpowiedzialność obecnie                                                                                                                                                                                 |
 | ----------------------- | ----------------------------- | -------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -16,5 +14,16 @@ oznacza przygotowaną strukturę warstw usługowych.
 `identity-service` i `authorization-service` posiadają osobne bazy PostgreSQL.
 Authorization nie czyta bazy Identity; Identity nie czyta bazy Authorization.
 
-P2 Identity (Better Auth + Internal JWT) jest na `main`. P3 Authorization foundation:
-ADR-0013 / Issue #15.
+P2 Identity i P3 Authorization są na `main` (PR #16 merge `1f23635`).
+
+### P4 — activity-service (Accepted boundary, kod jeszcze nie)
+
+| Element            | Typ                        | Właściciel danych | Status                          | Odpowiedzialność                                                                                                                                                         |
+| ------------------ | -------------------------- | ----------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `activity-service` | usługa NestJS (plan P4.1+) | baza `activity`   | **planned** (ADR-0014 Accepted) | SoT Centrum Aktywności: wydarzenia, RSVP, limity, outbox, panel ops, audyt — [CENTRUM_AKTYWNOSCI.md](CENTRUM_AKTYWNOSCI.md), [product](../product/CENTRUM_AKTYWNOSCI.md) |
+
+Pakiet: `@v2/activity-service`. Katalog: `services/activity-service`.
+Domena/kontrakty/eventy: prefiks `activity`. **Nie** `community-service`.
+
+Kod/migracje powstają dopiero w implementacyjnym P4.1 po `READY_FOR_CURSOR`.
+Stary PR #17 superseded; SoT docs = PR #18.

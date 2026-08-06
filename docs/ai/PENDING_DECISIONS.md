@@ -19,62 +19,77 @@
 - **Ryzyko:** token był eksponowany w czacie — zalecany Reset Token; właściciel świadomie pomija.
 - **Wznowienie zasady minimalnych uprawnień:** przed Zeabur / produkcją.
 
-## Rozstrzygnięte (P3 Authorization — 2026-08-05)
+## P4 Centrum Aktywności — status decyzji
 
-Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED` (komentarze Issue + ADR-0013 / D-034).
-Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
-(`cursor/p3-authorization-foundation`) — final closure pass; merge tylko przez właściciela.
+> SoT: PR #18 `cursor/p4-centrum-aktywnosci-spec-v2`. ADR-0014 **Accepted**.
+> Implementacja zabroniona do `READY_FOR_CURSOR`.
 
-## Zamrożone (do merge P3)
+### P4-D1 — zakres pierwszej wersji Centrum
 
-### P4 / PR #17 — Centrum Aktywności
+- **Status:** OWNER_ACCEPTED
 
-- **Status:** FROZEN
-- **PR:** https://github.com/HOMZIKx/V2/pull/17 (docs-only planning)
-- **Warunek wznowienia:** merge PR #16 + jawne `APPROVED` na start P4.
-- Agent nie implementuje P4 ani nie rozszerza PR #17 w trakcie domknięcia P3.
+### P4-D2 — pierwszy typ aktywności
 
-## Rozstrzygnięte (P2 Identity — 2026-08-05)
+- **Status:** OWNER_ACCEPTED
 
-### DEC-003 — Multi-provider Identity vs Discord-only
+### P4-D3 — właściciel domeny / nazwa usługi
 
-- **Status:** ACCEPTED — **B: multi-provider Identity architecture** with **P2 active OAuth = Discord only** (owner amendment)
+- **Status:** **OWNER_ACCEPTED**
+- **Decyzja:** `services/activity-service`, `@v2/activity-service`, DB `activity`,
+  domena/kontrakty `activity`. Odrzucone: `community-service` jako szeroki worek.
 
-### DEC-004 — Framework auth
+### P4-D4 — kanały w P4
 
-- **Status:** ACCEPTED — **A: Better Auth** (z izolacją)
+- **Status:** OWNER_ACCEPTED
 
-### DEC-005 — Account linking po emailu
+### P4-D5 — transport mutacji / projekcji
 
-- **Status:** ACCEPTED — **A: wyłącznie jawne linking**
+- **Status:** **OWNER_ACCEPTED**
+- **Decyzja:** P4.1–P4.2 = sync HTTP + assertion/user context + idempotency +
+  PG transactional outbox + claim/lease + retry/backoff. RabbitMQ nie w P4.1;
+  od P4.5 (lub wcześniej przy multi-consumer). Brak runtime no-op workera;
+  worker off do realnego consumer P4.2.
 
-### DEC-006 — D-017 przy multi-provider
+### P4-D6 — publikacja panelu Centrum
 
-- **Status:** ACCEPTED — **C w P2**
+- **Status:** **OWNER_ACCEPTED** (layout + mechanizm ops z nonce/adopt)
+- **Decyzja:** publish occurrence + Discord `nonce`/`enforceNonce` + reconcile
+  adopt po `panel_id` w custom_id; crash-window tests; lease+UNIQUE; nie obiecywać
+  braku duplikatu samym SELECT FOR UPDATE. Szczegóły architecture §10.
 
-### DEC-007 — Sekwencja P1 vs P2
+### P4-D7 — katalog permission IDs
 
-- **Status:** ACCEPTED — **A (warunek spełniony)**
+- **Status:** **OWNER_ACCEPTED**
+- **Katalog finalny:** patrz architecture §6. Usunięte konkurencyjne nazwy
+  (`edit.self`, `cancel.self`, `manage.others`, `moderate.guild`,
+  `participants.manage`, `panel.publish`, `admin.configure`).
 
-### DEC-008 — Sesja przeglądarkowa
+### P4-D8 — checkpoint wizualny (Issue #12) vs kontrakt layoutu
 
-- **Status:** ACCEPTED — **A: opaque server session**
+- **Status layoutu interaktywnego (Components V2):** CONTRACT_SPECIFIED w
+  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`
+- **Status screenshot-based visual interaction contract:**
+  `REFERENCE_IMAGE_REQUIRED` — załącznik niedostępny w środowisku agenta w tej
+  sesji; nie projektowano z pamięci; plik
+  `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` **nie** utworzony.
+- **Status assetów (Issue #12):** `OWNER_DECISION_REQUIRED` dla produkcyjnego
+  visual sign-off. **Nie blokuje** P4.1 ani testowego P4.2a (native V2 bez bannera).
 
-### DEC-009 — Kontekst wewnętrzny
+### P4-T1 — ADR-0014
 
-- **Status:** ACCEPTED — **A: krótko żyjący internal JWT**
+- **Status:** **Accepted**
 
-## Szablon
+### P4-T2 — OpenAPI ścieżki i event names
 
-### DEC-XXX — Tytuł
+- **Status:** TECHNICAL_OPEN (szkic Accepted w architecture; stabilizacja P4.1)
+- Prefiks: `/activity/v1`, eventy `activity.*.v1`
 
-- **Status:** BLOCKED
-- **Kontekst:**
-- **Wpływ:**
-- **Opcja A:**
-- **Opcja B:**
-- **Opcja C:**
-- **Rekomendacja techniczna:**
-- **Decyzja właściciela:**
+## Rozstrzygnięte (P3 Authorization — 2026-08-05 / merge 2026-08-06)
 
-Agent nie może samodzielnie usuwać pozycji `BLOCKED` ani zastępować decyzji założeniem.
+Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED`.
+Implementacja: PR #16 **merged** do `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`.
+Issue #15 **closed**.
+
+## Historia — PR #17 (superseded)
+
+- PR #17 **zamknięty jako zastąpiony**. SoT = PR #18.

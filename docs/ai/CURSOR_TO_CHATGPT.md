@@ -2,22 +2,34 @@
 
 ## 1. Status
 
-`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`
+`READY_FOR_FINAL_P4_SPEC_REAUDIT`
 
-Final P3 closure pass 3 on draft PR #16 after `BLOCKING_FINAL_P3_CLOSURE_PASS_3`.
-**No merge. No P4. PR #17 frozen.**
+Visual part: `REFERENCE_IMAGE_REQUIRED` (screenshot not available in agent FS;
+no design-from-memory).
 
-## 2. Task ID
+## 2. Task
 
-`P3-FINAL-CLOSURE-PASS-3`
+`P4-FINAL-SPEC-CLOSURE-001` — PR #18
 
-## 3. Fix
+## 3. Closed blockers
 
-Identical reconcile `eventKey` + snapshot after `unavailable`/`stale` performs
-recovery (restore `fresh`, bump `availability_generation` once) under
-`connected_guild FOR UPDATE`. Same key while already `fresh` remains an
-idempotent duplicate.
+| Item       | Resolution                                                           |
+| ---------- | -------------------------------------------------------------------- |
+| P4-D3      | `activity-service` / `@v2/activity-service` / DB `activity`          |
+| P4-D5      | HTTP + idempotency + PG outbox/lease; RMQ from P4.5; no no-op worker |
+| P4-D6      | publish occurrence + nonce/enforceNonce + adopt reconcile + tests    |
+| P4-D7      | final permission catalog (no edit.self/cancel.self/…)                |
+| RSVP       | StatusDef.behavior + confirmationState + waitlist rules              |
+| Invariants | TX locks; Clock horizon; concurrent tests required                   |
+| Form       | one logical V2 form; modals ≤5; not wizard                           |
+| Issue #12  | does not block P4.2a test guild                                      |
+| ADR-0014   | **Accepted**                                                         |
 
-## 4. Marker
+## 4. Still open
 
-`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`
+- P4-D8 assets for prod visual sign-off
+- Screenshot visual interaction contract (`REFERENCE_IMAGE_REQUIRED`)
+
+## 5. Marker
+
+`READY_FOR_FINAL_P4_SPEC_REAUDIT`
