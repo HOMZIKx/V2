@@ -21,12 +21,12 @@ Final P3 closure pass 2 on draft PR #16 after `BLOCKING_FINAL_P3_CLOSURE_PASS_2`
 
 ## 4. Closure remediations (4/4)
 
-| # | Problem | Fix | Confirming test |
-| - | ------- | --- | --------------- |
-| 1 | Process-local lifecycle epochs reset on gateway restart | Authz DB generations + durable `processed_event` keys; Gateway no longer SoT | integration leave/rejoin/unavailable/detach across new repository instance |
-| 2 | Revoke delivered/failed ignored lease owner | Conditional UPDATE on id+lease_owner+valid lease; boolean result; worker wires leaseSeconds/maxAttempts | integration worker A/B stale lease rejected |
-| 3 | No-escalation only for allow | Same hold-check for deny; no manage.* skip; org scope still owner/org-manager | integration deny escalation + group with manage.org |
-| 4 | login.www short-circuited before grants | Unified candidates: membership + grants; specificity + deny-wins; real sole-allow expiry → revoke | decision-engine + integration sole allow expiry |
+| #   | Problem                                                 | Fix                                                                                                     | Confirming test                                                            |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1   | Process-local lifecycle epochs reset on gateway restart | Authz DB generations + durable `processed_event` keys; Gateway no longer SoT                            | integration leave/rejoin/unavailable/detach across new repository instance |
+| 2   | Revoke delivered/failed ignored lease owner             | Conditional UPDATE on id+lease_owner+valid lease; boolean result; worker wires leaseSeconds/maxAttempts | integration worker A/B stale lease rejected                                |
+| 3   | No-escalation only for allow                            | Same hold-check for deny; no manage.* skip; org scope still owner/org-manager                           | integration deny escalation + group with manage.org                        |
+| 4   | login.www short-circuited before grants                 | Unified candidates: membership + grants; specificity + deny-wins; real sole-allow expiry → revoke       | decision-engine + integration sole allow expiry                            |
 
 ## 5. Marker
 
