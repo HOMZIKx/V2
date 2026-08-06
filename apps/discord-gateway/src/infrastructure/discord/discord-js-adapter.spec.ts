@@ -271,7 +271,7 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     };
 
     // Avoid real Discord cache fetches during reconcile.
-    internals.buildGuildSnapshot = async () => ({ members: [], roles: [] });
+    internals.buildGuildSnapshot = () => Promise.resolve({ members: [], roles: [] });
 
     const outage = { id: GUILD_ID, available: false } as unknown as Guild;
     await internals.handleGuildDelete(outage);
@@ -301,7 +301,7 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
       }>;
     };
 
-    internals.buildGuildSnapshot = async () => ({ members: [], roles: [] });
+    internals.buildGuildSnapshot = () => Promise.resolve({ members: [], roles: [] });
 
     const detached = { id: GUILD_ID, available: true } as unknown as Guild;
     await internals.handleGuildDelete(detached);
