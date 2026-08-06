@@ -82,6 +82,10 @@ Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 - **Status:** OWNER_ACCEPTED (partial) + TECHNICAL_OPEN (mechanizm publish)
 - **Decyzja właściciela:** Stały panel; update in-place; jeden prywatny formularz
   (nie kreator); sekcje Utwórz / Szukam ekipy / Moje / Powiadomienia.
+- **Uzupełnienie kontraktu (2026-08-06):** layout = Components V2 Container +
+  Section z **accessory Button** przy każdej sekcji (nie Action Row oderwany
+  pod spodem; nie PNG hotspot). Szczegóły:
+  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`.
 - **TECHNICAL_OPEN:** slash operatora vs auto-publish przy starcie.
 
 ### P4-D7 — katalog permission IDs
@@ -91,11 +95,22 @@ Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 - **Propozycja TECH:** `permission.activity.event.*` / `….admin.configure` /
   `….panel.publish` (patrz architecture doc). Finalne ID = właściciel/ChatGPT.
 
-### P4-D8 — checkpoint wizualny (Issue #12)
+### P4-D8 — checkpoint wizualny (Issue #12) vs kontrakt layoutu
 
-- **Status:** OWNER_DECISION_REQUIRED
-- **Zakres:** kolory, emoji, grafiki, copy poza zaakceptowanymi etykietami funkcji.
-- **Zakaz:** placeholdery lab jako produkt.
+- **Status layoutu interaktywnego:** CONTRACT_SPECIFIED (lokalnie) —
+  component tree, custom_id, „Więcej”, in-place edit, testy payload —
+  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`. **Nie** wymaga Issue #12 do
+  zamknięcia kontraktu interakcji.
+- **Status assetów (Issue #12):** OWNER_DECISION_REQUIRED
+  - kolory / accent Container;
+  - emoji / ikony;
+  - bannery Media Gallery;
+  - typografia / ornamenty;
+  - copy Text Display poza zaakceptowanymi etykietami funkcji.
+- **Wzór właściciela:** modułowość i panelowość sekcji z akcją — **nie**
+  wymóg klikalnych obszarów obrazu (Discord tego nie obsługuje).
+- **Zakaz:** placeholdery lab jako produkt; golden-image całej wiadomości jako
+  test interaktywności.
 
 ### P4-T1 — formalne Accepted ADR-0014 + nazwa usługi
 

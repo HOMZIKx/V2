@@ -133,16 +133,16 @@ Zdarzenia wersjonowane (porty; implementacja brokera nie wymagana w P4.1):
 
 ### P4.2 — Jednorazowe wydarzenia Discord
 
-|                  |                                                                                                                              |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Cel**          | Panel + prywatny formularz + publikacja + RSVP + limity + rezerwa + edycja + anulowanie + Moje aktywności + odporność postów |
-| **Zakres**       | discord-gateway adapter; projekcje; szkic 24h; podgląd; Szukam ekipy                                                         |
-| **Out of scope** | Serie; multi-discord wspólne listy; WWW create; tymczasowe VC; final assets bez Issue #12                                    |
-| **Zależności**   | P4.1; P4-D8 / Issue #12 dla widocznych assetów **lub** niewidoczny slice za zgodą właściciela                                |
-| **Testy**        | Integration RSVP/waitlist; idempotent interactions; post repair; deny paths                                                  |
-| **Rollback**     | Feature flag sync off; panele lab                                                                                            |
-| **AC**           | Live guild: create→rsvp→limit→cancel; update in-place; states loading/empty/error/unavailable/confirm                        |
-| **Marker**       | `READY_FOR_AUDIT_P4_2_DISCORD_EVENTS`                                                                                        |
+|                  |                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Cel**          | Panel + prywatny formularz + publikacja + RSVP + limity + rezerwa + edycja + anulowanie + Moje aktywności + odporność postów   |
+| **Zakres**       | discord-gateway adapter; projekcje; szkic 24h; podgląd; Szukam ekipy; **Components V2** wg UX contract                         |
+| **Out of scope** | Serie; multi-discord wspólne listy; WWW create; tymczasowe VC; final assets bez Issue #12                                      |
+| **Zależności**   | P4.1; kontrakt [CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md); Issue #12 tylko dla widocznych assetów    |
+| **Testy**        | Payload snapshots V2; custom_id; RSVP/waitlist; „Więcej”+P3; in-place edit; no status spam; post repair                        |
+| **Rollback**     | Feature flag sync off; panele lab                                                                                              |
+| **AC**           | Live guild: create→rsvp→limit→cancel; Section accessory panel; update in-place; states loading/empty/error/unavailable/confirm |
+| **Marker**       | `READY_FOR_AUDIT_P4_2_DISCORD_EVENTS`                                                                                          |
 
 ### P4.3 — Podstawowy Admin
 

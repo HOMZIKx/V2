@@ -156,11 +156,29 @@ Główny panel: Utwórz aktywność | Szukam ekipy | Moje aktywności | Powiadom
 - Niedokończony formularz → szkic **24 h**; przed publikacją → podgląd.
 - Główny post wydarzenia: kompaktowy; bot aktualizuje **ten sam** post.
 - Organizator wskazany; przycisk kontaktu z organizatorem; opcjonalny wątek.
-- Zarządzanie: przyciski pod postem + „Moje aktywności”.
+- Zarządzanie: przycisk **Więcej** → prywatne menu wg P3 + „Moje aktywności”
+  (bez publicznych przycisków admin widocznych dla wszystkich).
 - Istniejący kanał głosowy: wskazanie dozwolone; **tymczasowe VC = odroczone**.
 - Przycisk „Zgłoś”; katalog powodów + „Inny powód” (admin).
 
-Assety wizualne = `OWNER_DECISION_REQUIRED`.
+### 12.1 Kierunek interaktywny (Components V2) — obowiązkowy
+
+Sedno UX: **panel Discord**, nie statyczny PNG z przyciskami doklejonymi pod
+grafiką. Wiadomości używają **Components V2** (`IS_COMPONENTS_V2`): Container,
+Section z accessory Button przy każdej funkcji panelu, Text Display, Separator,
+Action Row dla RSVP i akcji posta wydarzenia.
+
+- Grafika wyłącznie dekoracyjna (banner / ikona / miniatura) — bez klikalnych
+  obszarów obrazu, HTML/CSS, nakładania przycisków na grafikę.
+- Podstawowe akcje = natywne Button / Select Menu.
+- Publiczny post wydarzenia identyczny dla wszystkich; uprawnione zarządzanie
+  tylko w odpowiedzi prywatnej po **Więcej** (permission keys P3).
+
+Pełny component tree, `custom_id`, wireframe’y, reguły edit in-place i testy
+payloadów: [CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md).
+
+Assety wizualne (kolory, emoji, bannery, typografia) = `OWNER_DECISION_REQUIRED`
+(Issue #12 / P4-D8) — nie blokują kontraktu layoutu interaktywnego.
 
 ## 13. „Moje aktywności”
 
@@ -231,13 +249,13 @@ Organizator: usunięcie uczestnika z powodem + audyt.
 
 ## 22. Mapowanie starych P4-D1–P4-D8
 
-| ID    | Nowa interpretacja                                                                                                                                       |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                                |
-| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                      |
-| P4-D3 | **TECHNICAL_OPEN** — roboczo `community-service`; formalna nazwa usługi nadal Proposed                                                                   |
-| P4-D4 | **OWNER_ACCEPTED (superseded Discord-only)** — Discord + podstawowy Admin + pierwszy WWW (bez create na WWW w P4.4)                                      |
-| P4-D5 | **TECHNICAL_OPEN** — rekomendacja sync HTTP + idempotency; nie jest decyzją właściciela                                                                  |
-| P4-D6 | **OWNER_ACCEPTED (partial)** — stały panel, update in-place, jeden formularz, sekcje panelu; dokładny mechanizm publish slash vs config = TECHNICAL_OPEN |
-| P4-D7 | **TECHNICAL_OPEN** — wymagane mapowanie akcji→permission; finalne ID strings = OWNER_DECISION_REQUIRED                                                   |
-| P4-D8 | **OWNER_DECISION_REQUIRED** — Issue #12 (kolory, emoji, grafiki, copy poza zaakceptowanymi etykietami)                                                   |
+| ID    | Nowa interpretacja                                                                                                                                                                        |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                                                                 |
+| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                                                       |
+| P4-D3 | **TECHNICAL_OPEN** — roboczo `community-service`; formalna nazwa usługi nadal Proposed                                                                                                    |
+| P4-D4 | **OWNER_ACCEPTED (superseded Discord-only)** — Discord + podstawowy Admin + pierwszy WWW (bez create na WWW w P4.4)                                                                       |
+| P4-D5 | **TECHNICAL_OPEN** — rekomendacja sync HTTP + idempotency; nie jest decyzją właściciela                                                                                                   |
+| P4-D6 | **OWNER_ACCEPTED (partial)** — stały panel, update in-place, jeden formularz, sekcje panelu; dokładny mechanizm publish slash vs config = TECHNICAL_OPEN                                  |
+| P4-D7 | **TECHNICAL_OPEN** — wymagane mapowanie akcji→permission; finalne ID strings = OWNER_DECISION_REQUIRED                                                                                    |
+| P4-D8 | **OWNER_DECISION_REQUIRED** (assety) + **kontrakt layoutu Accepted w UX** — Issue #12 = kolory/emoji/grafiki/copy; component tree Components V2 = `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md` |
