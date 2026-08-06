@@ -51,9 +51,9 @@ gitleaks detect --log-opts="main..HEAD"  # no leaks found
 
 ### Tip HEAD
 
-`e84440281f1a1a552fe11ca7fcc56ff71e44b7e7`
+`a7ced41db3e8313461138d691327378862bdc51e` (GitHub SoT; remediation code `e844402` + docs)
 
-### Green workflows (tip HEAD)
+### Green workflows (code tip `e844402`; docs tip CI pending/following)
 
 | Workflow                        | URL                                                                    |
 | ------------------------------- | ---------------------------------------------------------------------- |
@@ -73,4 +73,4 @@ gitleaks detect --log-opts="main..HEAD"  # no leaks found
 
 ## Last updated
 
-2026-08-06 — Cursor (`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`, tip `e844402`)
+2026-08-06 — Cursor (`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`)
