@@ -41,6 +41,11 @@ Gateway transport keys must not rely on process-local Maps: retries of the same
 occurrence reuse the durable key; later legitimate cycles get a new generation
 after rejoin / reconcile / re-register.
 
+Identical reconcile snapshots (same `eventKey`) are idempotent while
+`sync_status=fresh`. The same key after `unavailable`/`stale` performs a
+**recovery transition** (restore `fresh`, bump `availability_generation` once)
+under a `connected_guild` row lock — it is not treated as a stale duplicate.
+
 ### Recommended client allowlists
 
 | Client                | `allowed_operations`                                                                            |

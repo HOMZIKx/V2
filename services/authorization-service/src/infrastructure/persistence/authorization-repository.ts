@@ -585,6 +585,21 @@ export class AuthorizationRepository {
       this.reconcileEventKey(command.discordGuildId, command.members, command.roles);
 
     return withTransaction(this.pool, async (client) => {
+      // Serialize reconcile / recovery on the guild row so parallel recoveries
+      // cannot double-bump availability_generation.
+      const guildLock = await client.query<{
+        sync_status: SyncStatus;
+      }>(
+        `SELECT sync_status FROM connected_guild
+         WHERE discord_guild_id = $1
+         FOR UPDATE`,
+        [command.discordGuildId],
+      );
+      if (guildLock.rowCount === 0) {
+        throw new AuthorizationError('NOT_FOUND', 'Guild is not registered');
+      }
+      const syncBefore = guildLock.rows[0]!.sync_status;
+
       const inserted = await client.query(
         `INSERT INTO processed_event (event_key, event_type, discord_guild_id)
          VALUES ($1, 'reconcile', $2)
@@ -592,35 +607,25 @@ export class AuthorizationRepository {
          RETURNING event_key`,
         [eventKey, command.discordGuildId],
       );
-      if (inserted.rowCount === 0) {
+
+      const isNewProcessedEvent = (inserted.rowCount ?? 0) > 0;
+      const needsRecovery =
+        !isNewProcessedEvent && (syncBefore === 'unavailable' || syncBefore === 'stale');
+
+      if (!isNewProcessedEvent && !needsRecovery) {
+        // Identical reconcile retry while already fresh — true idempotent duplicate.
         return { applied: false, duplicate: true, eventKey, revokedUserIds: [] };
       }
 
-      await this.requireGuild(client, command.discordGuildId);
       const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
       const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
-      await this.replaceRoles(client, command.discordGuildId, command.roles);
-
-      const seenUsers = new Set<string>();
-      for (const member of command.members) {
-        seenUsers.add(member.discordUserId);
-        await this.upsertMember(client, command.discordGuildId, member);
-      }
-
-      const existing = await client.query<{ discord_user_id: string }>(
-        `SELECT discord_user_id FROM discord_membership
-         WHERE discord_guild_id = $1 AND status = 'active'`,
-        [command.discordGuildId],
-      );
-      for (const row of existing.rows) {
-        if (!seenUsers.has(row.discord_user_id)) {
-          await this.deactivateMember(client, command.discordGuildId, row.discord_user_id);
-        }
-      }
+      await this.applyReconcileSnapshot(client, command.discordGuildId, command.members, command.roles);
 
       const now = new Date();
-      await client.query(
+      // Conditional bump: only transition unavailable/stale → fresh (or first apply).
+      // Parallel recoveries serialize on FOR UPDATE; the second sees fresh and no-ops.
+      const recovered = await client.query<{ availability_generation: number }>(
         `UPDATE connected_guild
          SET sync_status = 'fresh',
              last_fresh_at = $2,
@@ -628,9 +633,19 @@ export class AuthorizationRepository {
              last_sync_error = NULL,
              availability_generation = availability_generation + 1,
              updated_at = $2
-         WHERE discord_guild_id = $1`,
-        [command.discordGuildId, now],
+         WHERE discord_guild_id = $1
+           AND (
+             $3::boolean
+             OR sync_status IN ('unavailable', 'stale')
+           )
+         RETURNING availability_generation`,
+        [command.discordGuildId, now, isNewProcessedEvent],
       );
+
+      if (recovered.rowCount === 0) {
+        // Lost the race after lock release edge, or status already fresh.
+        return { applied: false, duplicate: true, eventKey, revokedUserIds: [] };
+      }
 
       const revokedUserIds = await this.usersWhoLostWwwLoginEntitlement(client, entitledBefore);
       await this.enqueuePendingRevokes(
@@ -641,11 +656,17 @@ export class AuthorizationRepository {
       );
 
       await this.writeAudit(client, {
-        action: 'discord.reconcile',
+        action: needsRecovery ? 'discord.reconcile_recovery' : 'discord.reconcile',
         actorClientId: command.actorClientId ?? null,
         discordGuildId: command.discordGuildId,
         correlationId: command.correlationId ?? null,
-        details: { eventKey, revokedUserIds },
+        details: {
+          eventKey,
+          revokedUserIds,
+          recovery: needsRecovery,
+          previousSyncStatus: syncBefore,
+          availabilityGeneration: recovered.rows[0]!.availability_generation,
+        },
       });
 
       return { applied: true, duplicate: false, eventKey, revokedUserIds };
@@ -1420,6 +1441,32 @@ export class AuthorizationRepository {
       }
       default:
         return command.eventKey;
+    }
+  }
+
+  private async applyReconcileSnapshot(
+    client: PoolClient,
+    guildId: string,
+    members: readonly MemberSnapshot[],
+    roles: readonly RoleSnapshot[],
+  ): Promise<void> {
+    await this.replaceRoles(client, guildId, roles);
+
+    const seenUsers = new Set<string>();
+    for (const member of members) {
+      seenUsers.add(member.discordUserId);
+      await this.upsertMember(client, guildId, member);
+    }
+
+    const existing = await client.query<{ discord_user_id: string }>(
+      `SELECT discord_user_id FROM discord_membership
+       WHERE discord_guild_id = $1 AND status = 'active'`,
+      [guildId],
+    );
+    for (const row of existing.rows) {
+      if (!seenUsers.has(row.discord_user_id)) {
+        await this.deactivateMember(client, guildId, row.discord_user_id);
+      }
     }
   }
 

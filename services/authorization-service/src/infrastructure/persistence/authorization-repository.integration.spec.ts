@@ -612,6 +612,160 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
     expect(blockExpiry.revokedUserIds).not.toContain('ex-v2');
   });
 
+  it('recovers identical reconcile snapshot after unavailable without random keys', async ({
+    skip,
+  }) => {
+    if (!infraReady || repository === undefined || pool === undefined) {
+      skip();
+      return;
+    }
+    await bootstrapOwnerFixture(repository);
+    await repository.upsertIdentityLink({ discordUserId: 'rec-d', v2UserId: 'rec-v2' });
+    await repository.registerGuild({ discordGuildId: 'guild-rec' });
+
+    const snapshot = {
+      roles: [{ discordRoleId: 'role-rec', nameCache: 'Rec' }],
+      members: [{ discordUserId: 'rec-d', roleIds: ['role-rec'], status: 'active' as const }],
+    };
+    const reconcileKey = 'dg:reconcile:guild-rec:identical-snapshot-S';
+
+    const first = await repository.reconcileGuild({
+      discordGuildId: 'guild-rec',
+      eventKey: reconcileKey,
+      ...snapshot,
+    });
+    expect(first.applied).toBe(true);
+
+    const genAfterFirst = await pool.query<{ availability_generation: number }>(
+      `SELECT availability_generation FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    const generationBeforeOutage = genAfterFirst.rows[0]!.availability_generation;
+
+    await repository.applyDiscordEvent({
+      eventKey: 'client:rec-unavail-1',
+      eventType: 'guild_unavailable',
+      discordGuildId: 'guild-rec',
+      payload: { kind: 'guild_unavailable' },
+    });
+    const unavailableState = await pool.query<{ sync_status: string }>(
+      `SELECT sync_status FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    expect(unavailableState.rows[0]!.sync_status).toBe('unavailable');
+
+    const firstUnavailable = await pool.query<{ event_key: string }>(
+      `SELECT event_key FROM processed_event
+       WHERE event_key LIKE 'dg:guild_unavailable:guild-rec:%'
+       ORDER BY processed_at ASC LIMIT 1`,
+    );
+    const firstUnavailableKey = firstUnavailable.rows[0]!.event_key;
+
+    // New repository instance (simulates gateway/authz process restart).
+    const restarted = new AuthorizationRepository(pool, 120);
+    const recovery = await restarted.reconcileGuild({
+      discordGuildId: 'guild-rec',
+      eventKey: reconcileKey,
+      ...snapshot,
+    });
+    expect(recovery.applied).toBe(true);
+    expect(recovery.duplicate).toBe(false);
+
+    const afterRecovery = await pool.query<{
+      sync_status: string;
+      availability_generation: number;
+      last_sync_error: string | null;
+    }>(
+      `SELECT sync_status, availability_generation, last_sync_error
+       FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    expect(afterRecovery.rows[0]!.sync_status).toBe('fresh');
+    expect(afterRecovery.rows[0]!.last_sync_error).toBeNull();
+    expect(afterRecovery.rows[0]!.availability_generation).toBe(generationBeforeOutage + 1);
+
+    const recoveryAudit = await pool.query(
+      `SELECT 1 FROM audit_log
+       WHERE action = 'discord.reconcile_recovery'
+         AND discord_guild_id = 'guild-rec'
+         AND details->>'eventKey' = $1`,
+      [reconcileKey],
+    );
+    expect(recoveryAudit.rowCount).toBeGreaterThan(0);
+
+    // Identical reconcile while already fresh → true duplicate, no generation bump.
+    const duplicateWhileFresh = await restarted.reconcileGuild({
+      discordGuildId: 'guild-rec',
+      eventKey: reconcileKey,
+      ...snapshot,
+    });
+    expect(duplicateWhileFresh.applied).toBe(false);
+    expect(duplicateWhileFresh.duplicate).toBe(true);
+    const genAfterDuplicate = await pool.query<{ availability_generation: number }>(
+      `SELECT availability_generation FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    expect(genAfterDuplicate.rows[0]!.availability_generation).toBe(generationBeforeOutage + 1);
+
+    const nextUnavailable = await restarted.applyDiscordEvent({
+      eventKey: 'client:rec-unavail-2',
+      eventType: 'guild_unavailable',
+      discordGuildId: 'guild-rec',
+      payload: { kind: 'guild_unavailable' },
+    });
+    expect(nextUnavailable.applied).toBe(true);
+    expect(nextUnavailable.eventKey).not.toBe(firstUnavailableKey);
+
+    // Parallel recovery must bump generation exactly once.
+    const parallelKey = 'dg:reconcile:guild-rec:parallel-recovery-S';
+    const parallelSnapshot = {
+      roles: [{ discordRoleId: 'role-rec', nameCache: 'Rec' }],
+      members: [{ discordUserId: 'rec-d', roleIds: ['role-rec'], status: 'active' as const }],
+    };
+    // Seed processed_event as if this snapshot was reconciled earlier while fresh.
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-rec',
+      eventKey: parallelKey,
+      ...parallelSnapshot,
+    });
+    await pool.query(
+      `UPDATE connected_guild SET sync_status = 'unavailable' WHERE discord_guild_id = 'guild-rec'`,
+    );
+    const genBeforeRace = await pool.query<{ availability_generation: number }>(
+      `SELECT availability_generation FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    const raceBase = genBeforeRace.rows[0]!.availability_generation;
+
+    const repoA = new AuthorizationRepository(pool, 120);
+    const repoB = new AuthorizationRepository(pool, 120);
+    const [resultA, resultB] = await Promise.all([
+      repoA.reconcileGuild({
+        discordGuildId: 'guild-rec',
+        eventKey: parallelKey,
+        ...parallelSnapshot,
+      }),
+      repoB.reconcileGuild({
+        discordGuildId: 'guild-rec',
+        eventKey: parallelKey,
+        ...parallelSnapshot,
+      }),
+    ]);
+    const appliedCount = [resultA, resultB].filter((entry) => entry.applied).length;
+    const duplicateCount = [resultA, resultB].filter((entry) => entry.duplicate).length;
+    expect(appliedCount).toBe(1);
+    expect(duplicateCount).toBe(1);
+
+    const genAfterRace = await pool.query<{ availability_generation: number }>(
+      `SELECT availability_generation FROM connected_guild WHERE discord_guild_id = 'guild-rec'`,
+    );
+    expect(genAfterRace.rows[0]!.availability_generation).toBe(raceBase + 1);
+
+    const recoveryAudits = await pool.query(
+      `SELECT 1 FROM audit_log
+       WHERE action = 'discord.reconcile_recovery'
+         AND discord_guild_id = 'guild-rec'
+         AND details->>'eventKey' = $1`,
+      [parallelKey],
+    );
+    expect(recoveryAudits.rowCount).toBe(1);
+  });
+
   it('durable lifecycle generations survive across repository instances', async ({ skip }) => {
     if (!infraReady || repository === undefined || pool === undefined) {
       skip();
@@ -667,7 +821,17 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
     expect(secondLeave.eventKey).toBe('dg:guild_member_remove:guild-life:life-d:1');
     expect(secondLeave.eventKey).not.toBe(firstLeave.eventKey);
 
-    // unavailable → reconcile → new instance → unavailable
+    // unavailable → identical reconcile recovery → new unavailable generation
+    const outageSnapshot = {
+      roles: [] as Array<{ discordRoleId: string; nameCache: string }>,
+      members: [] as Array<{ discordUserId: string; roleIds: string[]; status: 'active' }>,
+    };
+    const outageReconcileKey = 'dg:reconcile:guild-life:outage-recovery-snapshot';
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-life',
+      eventKey: outageReconcileKey,
+      ...outageSnapshot,
+    });
     const unavail1 = await repository.applyDiscordEvent({
       eventKey: 'client:unavail:1',
       eventType: 'guild_unavailable',
@@ -675,12 +839,14 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
       payload: { kind: 'guild_unavailable' },
     });
     expect(unavail1.eventKey).toMatch(/^dg:guild_unavailable:guild-life:\d+$/);
-    await repository.reconcileGuild({
+    // Same snapshot + same eventKey after outage must recover (not randomUUID).
+    const recovered = await freshRepo.reconcileGuild({
       discordGuildId: 'guild-life',
-      eventKey: `reconcile-life2-${randomUUID()}`,
-      roles: [],
-      members: [],
+      eventKey: outageReconcileKey,
+      ...outageSnapshot,
     });
+    expect(recovered.applied).toBe(true);
+    expect(recovered.duplicate).toBe(false);
     const unavail2 = await freshRepo.applyDiscordEvent({
       eventKey: 'client:unavail:2',
       eventType: 'guild_unavailable',

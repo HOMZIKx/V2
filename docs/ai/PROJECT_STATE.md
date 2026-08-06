@@ -6,41 +6,32 @@
 
 ## Active phase
 
-P3 Authorization foundation — final closure pass 2 after
-`BLOCKING_FINAL_P3_CLOSURE_PASS_2` (4 blockers). Draft PR #16 only.
+P3 Authorization foundation — final closure pass 3 after
+`BLOCKING_FINAL_P3_CLOSURE_PASS_3` (identical reconcile recovery). Draft PR #16.
 
 ## Active task
 
-- Task ID: `P3-FINAL-CLOSURE-PASS-2`
+- Task ID: `P3-FINAL-CLOSURE-PASS-3`
 - Branch: `cursor/p3-authorization-foundation`
-- Base tip before pass: `ef815dc91ddace863dbabaa8ec6b5239d7b1aa9f`
-- Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
-- Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
+- Start HEAD: `60c71cb7ea6c6d400bc8ab7d662bef90c920219a`
+- Issue: #15
+- Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge)
 
 ## Current objective
 
-Final re-audit of the 4 remaining closure blockers, then owner merge of PR #16.
+Final re-audit after reconcile recovery fix; owner merge of PR #16.
 
 ## In scope now
 
-- Durable lifecycle occurrence identity in Authorization DB
-- Lease-guarded revoke delivered/failed updates
-- No-escalation for allow **and** deny
-- Unified WWW login decision including access_grant + membership
+- Identical reconcile key recovery after unavailable/stale
+- Parallel recovery serialization on connected_guild
 
 ## Out of scope now
 
-- P4 / PR #17 / Centrum Aktywności (**frozen** until P3 merge)
-- Local branch `local/p4-centrum-aktywnosci-spec-prep` untouched
-- UI, Zeabur, RabbitMQ Streams
+- P4 / PR #17 frozen
+- Empty CI commits
 - Merge by Cursor
-- Empty CI retrigger commits
-
-## Decisions in force
-
-- P3-D1–P3-D20 (Issue #15)
-- ADR-0013
 
 ## Last updated
 
-2026-08-06 — Cursor (`P3-FINAL-CLOSURE-PASS-2`)
+2026-08-06 — Cursor (`P3-FINAL-CLOSURE-PASS-3`)
