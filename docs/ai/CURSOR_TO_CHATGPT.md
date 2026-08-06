@@ -2,7 +2,6 @@
 
 ## 1. Status
 
-`P4_BATCHED_TECHNICAL_PREP_IN_PROGRESS` → ends with
 `P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`
 
 Prior: `READY_FOR_FINAL_P4_SPEC_AUDIT` (transplant PR #18).
@@ -56,9 +55,14 @@ implementacji. Brak merge.**
 
 ## 7. Validation
 
-See PROJECT_STATE / end-of-batch report. Single `pnpm validate` after A+B docs.
-Docker CLI may be absent (env). Stage C Actions audit is **local branch only**.
+| Check                           | Result                                                         |
+| ------------------------------- | -------------------------------------------------------------- |
+| Prettier / links / traceability | pass                                                           |
+| `pnpm architecture:check`       | pass                                                           |
+| `pnpm validate` (once, A+B)     | partial — green through runtime smoke; Docker CLI ENOENT (env) |
 
-## 8. Marker (end of batch)
+HEAD: branch tip on `cursor/p4-centrum-aktywnosci-spec-v2`. Draft PR: #18.
+
+## 8. Marker
 
 `P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`

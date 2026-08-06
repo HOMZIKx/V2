@@ -2,9 +2,7 @@
 
 ## Status
 
-`P4_BATCHED_TECHNICAL_PREP_IN_PROGRESS` (docs on PR #18)
-
-Prior gate: `READY_FOR_FINAL_P4_SPEC_AUDIT` — satisfied.
+`P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`
 
 ## Active phase
 
@@ -50,11 +48,13 @@ Marker at end of batch: `P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`.
 - P4-D3 / D7 / D8 — OWNER_DECISION_REQUIRED
 - ADR-0014 Proposed
 
-## Validation (transplant)
+## Validation (this batch A+B)
 
-- Docs format / links / architecture:check pass
-- `pnpm validate` once: passed through runtime smoke; Docker CLI missing (env)
+- Prettier / relative links / P4.1–P4.6 traceability / architecture:check: pass
+- `pnpm validate` once: passed through `test:runtime-smoke`; failed only
+  `docker compose … config` (`spawnSync docker ENOENT`) — **environment**
+- No product code; no Actions changes on this branch
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-BATCHED-TECHNICAL-PREP-WHILE-OWNER-AWAY-001`)
+2026-08-06 — Cursor — marker `P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`

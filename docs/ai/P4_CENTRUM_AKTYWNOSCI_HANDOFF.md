@@ -1,7 +1,7 @@
 # P4 Centrum Aktywności — Handoff
 
 - **Task ID:** `P4-BATCHED-TECHNICAL-PREP-WHILE-OWNER-AWAY-001`
-- **Status:** `P4_BATCHED_TECHNICAL_PREP_IN_PROGRESS` → combined audit marker at end
+- **Status:** `P4_BATCHED_TECHNICAL_PREP_READY_FOR_COMBINED_AUDIT`
 - **Prior marker:** `READY_FOR_FINAL_P4_SPEC_AUDIT` (transplant done)
 - **Branch:** `cursor/p4-centrum-aktywnosci-spec-v2`
   (fresh from `origin/main` @ `1f23635` — PR #16 merge)
