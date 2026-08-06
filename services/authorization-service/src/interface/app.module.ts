@@ -20,8 +20,8 @@ import {
 } from '../infrastructure/internal/verify-inbound-assertion.js';
 import { AuthorizationRepository } from '../infrastructure/persistence/authorization-repository.js';
 import { AuthorizationBootstrapService } from './authorization-bootstrap.service.js';
-import { AuthorizationController } from './authorization.controller.js';
 import { AuthorizationMaintenanceWorker } from './authorization-maintenance.worker.js';
+import { AuthorizationController } from './authorization.controller.js';
 import {
   ASSERTION_JTI_STORE,
   AUTHORIZATION_CONFIG,

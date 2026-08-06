@@ -211,9 +211,13 @@ describe('authorization use-cases', () => {
     });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
-    const result = await useCases.runMaintenanceTick(store, { revokeAllSessionsForUser }, {
-      leaseOwner: 'worker-test',
-    });
+    const result = await useCases.runMaintenanceTick(
+      store,
+      { revokeAllSessionsForUser },
+      {
+        leaseOwner: 'worker-test',
+      },
+    );
 
     expect(processExpiredPolicies).toHaveBeenCalled();
     expect(claimPendingSessionRevokes).toHaveBeenCalledWith(

@@ -813,9 +813,7 @@ export class AuthorizationRepository {
           command.discordUserId ?? null,
         );
         const entitledBefore =
-          targetV2 !== undefined
-            ? await this.isWwwLoginEntitled(client, targetV2)
-            : false;
+          targetV2 !== undefined ? await this.isWwwLoginEntitled(client, targetV2) : false;
 
         await client.query(
           `INSERT INTO access_grant (
@@ -1264,14 +1262,12 @@ export class AuthorizationRepository {
       if (orgManage.decision === 'allow') {
         return;
       }
-      throw new AuthorizationError('FORBIDDEN', `Actor is not permitted to ${MANAGE_GUILD_PERMISSION}`);
+      throw new AuthorizationError(
+        'FORBIDDEN',
+        `Actor is not permitted to ${MANAGE_GUILD_PERMISSION}`,
+      );
     }
-    await this.requireActorCan(
-      actor,
-      MANAGE_ORG_PERMISSION,
-      { type: 'organization' },
-      'sensitive',
-    );
+    await this.requireActorCan(actor, MANAGE_ORG_PERMISSION, { type: 'organization' }, 'sensitive');
   }
 
   /**
@@ -1297,19 +1293,13 @@ export class AuthorizationRepository {
       );
     }
 
-    const permissions = await this.expandGrantPermissions(
-      command.permissionId,
-      command.groupId,
-    );
+    const permissions = await this.expandGrantPermissions(command.permissionId, command.groupId);
     const scope = {
       type: 'guild' as const,
       guildId: command.scopeGuildId!,
     };
     for (const permissionId of permissions) {
-      if (
-        permissionId === MANAGE_ORG_PERMISSION ||
-        permissionId === MANAGE_GUILD_PERMISSION
-      ) {
+      if (permissionId === MANAGE_ORG_PERMISSION || permissionId === MANAGE_GUILD_PERMISSION) {
         // Managing actors already passed requireActorCanManageScope.
         continue;
       }

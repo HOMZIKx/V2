@@ -120,9 +120,7 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
       discordGuildId: 'guild-1',
       eventKey: `reconcile-test-${randomUUID()}`,
       roles: [{ discordRoleId: 'role-1', nameCache: 'Member' }],
-      members: [
-        { discordUserId: 'user-d', roleIds: ['role-1'], status: 'active' },
-      ],
+      members: [{ discordUserId: 'user-d', roleIds: ['role-1'], status: 'active' }],
     });
 
     await repository.activateGuild({ discordGuildId: 'guild-1', actor: ownerActor });
