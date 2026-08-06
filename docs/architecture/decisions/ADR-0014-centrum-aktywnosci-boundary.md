@@ -34,8 +34,9 @@ Ten ADR **nie** renegocjuje tych reguł.
 5. **Transport v1:** rekomendacja TECH = sync HTTP + idempotency; Outbox/RMQ =
    TECHNICAL_OPEN (dawne P4-D5).
 6. **Widoczne assety UX** wymagają Issue #12 przed implementacją UI Discord.
-7. **Implementacja kodu** dopiero po: merge P3 do `main`, Accepted tego ADR
-   (lub następcy), brief `READY_FOR_CURSOR`.
+7. **Implementacja kodu** dopiero po: Accepted tego ADR (lub następcy) oraz
+   brief `READY_FOR_CURSOR`. Zależność P3 jest **spełniona** (PR #16 merged
+   → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`).
 
 ## Alternatywy odrzucone (fundament)
 

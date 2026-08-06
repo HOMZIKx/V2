@@ -2,7 +2,7 @@
 
 ## Status
 
-`SPEC — local prep pending P3 merge`
+`SPEC — final audit after P3 merge (no implementation)`
 
 Kolumny: decyzja produktowa → domena → kontrakt → permission (TECH proposal) →
 etap → test.

@@ -19,30 +19,16 @@
 - **Ryzyko:** token był eksponowany w czacie — zalecany Reset Token; właściciel świadomie pomija.
 - **Wznowienie zasady minimalnych uprawnień:** przed Zeabur / produkcją.
 
-<<<<<<< HEAD
-## Rozstrzygnięte (P3 Authorization — 2026-08-05)
+## P4 Centrum Aktywności — status decyzji
 
-Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED` (komentarze Issue + ADR-0013 / D-034).
-Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
-(`cursor/p3-authorization-foundation`) — final closure pass; merge tylko przez właściciela.
-=======
-## P4 Centrum Aktywności — status decyzji (SPEC-PREP 2026-08-06)
-
-> Spec lokalna: `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md`.
-> Implementacja zabroniona do merge P3 (PR #16) + brief `READY_FOR_CURSOR`.
+> Spec SoT: `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md` na gałęzi
+> `cursor/p4-centrum-aktywnosci-spec-v2` (świeży `main` po merge PR #16).
+> Implementacja zabroniona do briefu `READY_FOR_CURSOR` po audycie spec.
 > Decyzje produktowe A–S: `docs/product/CENTRUM_AKTYWNOSCI.md`.
->>>>>>> 15cfebe (docs(community): complete P4 Centrum Aktywności implementable spec)
+> Stary PR #17: **closed (superseded)** — nie jest źródłem prawdy.
 
-## Zamrożone (do merge P3)
+### P4-D1 — zakres pierwszej wersji Centrum
 
-<<<<<<< HEAD
-### P4 / PR #17 — Centrum Aktywności
-
-- **Status:** FROZEN
-- **PR:** https://github.com/HOMZIKx/V2/pull/17 (docs-only planning)
-- **Warunek wznowienia:** merge PR #16 + jawne `APPROVED` na start P4.
-- Agent nie implementuje P4 ani nie rozszerza PR #17 w trakcie domknięcia P3.
-=======
 - **Status:** OWNER_ACCEPTED (superseded prior A/B/C options)
 - **Decyzja właściciela:** Pełny model produktowy Centrum z etapami wdrożenia
   P4.1–P4.6 (domain → Discord one-shot → Admin → WWW → multi/resilience →
@@ -82,11 +68,9 @@ Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 - **Status:** OWNER_ACCEPTED (partial) + TECHNICAL_OPEN (mechanizm publish)
 - **Decyzja właściciela:** Stały panel; update in-place; jeden prywatny formularz
   (nie kreator); sekcje Utwórz / Szukam ekipy / Moje / Powiadomienia.
-- **Uzupełnienie kontraktu (2026-08-06):** layout = Components V2 Container +
-  Section z **accessory Button** przy każdej sekcji (nie Action Row oderwany
-  pod spodem; nie PNG hotspot). Szczegóły:
-  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`.
-- **TECHNICAL_OPEN:** slash operatora vs auto-publish przy starcie.
+  Layout = Components V2 Container + Section z accessory Button
+  (`docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`).
+- **TECHNICAL_OPEN:** slash operatora vs auto-publish przy starcie / repair.
 
 ### P4-D7 — katalog permission IDs
 
@@ -97,20 +81,12 @@ Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 
 ### P4-D8 — checkpoint wizualny (Issue #12) vs kontrakt layoutu
 
-- **Status layoutu interaktywnego:** CONTRACT_SPECIFIED (lokalnie) —
-  component tree, custom_id, „Więcej”, in-place edit, testy payload —
-  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`. **Nie** wymaga Issue #12 do
-  zamknięcia kontraktu interakcji.
+- **Status layoutu interaktywnego:** CONTRACT_SPECIFIED —
+  component tree, custom_id, „Więcej”, in-place edit —
+  `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`.
 - **Status assetów (Issue #12):** OWNER_DECISION_REQUIRED
-  - kolory / accent Container;
-  - emoji / ikony;
-  - bannery Media Gallery;
-  - typografia / ornamenty;
-  - copy Text Display poza zaakceptowanymi etykietami funkcji.
-- **Wzór właściciela:** modułowość i panelowość sekcji z akcją — **nie**
-  wymóg klikalnych obszarów obrazu (Discord tego nie obsługuje).
-- **Zakaz:** placeholdery lab jako produkt; golden-image całej wiadomości jako
-  test interaktywności.
+  (kolory, emoji, bannery, typografia, copy poza zaakceptowanymi etykietami).
+- **Wzór właściciela:** modułowość i panelowość — **nie** klikalne obszary obrazu.
 
 ### P4-T1 — formalne Accepted ADR-0014 + nazwa usługi
 
@@ -121,7 +97,17 @@ Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 
 - **Status:** TECHNICAL_OPEN
 - **Kontekst:** Szkic w architecture; stabilizacja przy P4.1.
->>>>>>> 15cfebe (docs(community): complete P4 Centrum Aktywności implementable spec)
+
+## Rozstrzygnięte (P3 Authorization — 2026-08-05 / merge 2026-08-06)
+
+Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED`.
+Implementacja: PR #16 **merged** do `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`.
+Issue #15 **closed**. Nie wymagają ponownego pytania.
+
+## Historia — PR #17 (superseded)
+
+- PR #17 (plan docs-only) został **zamknięty jako zastąpiony**.
+- Nie kontynuować jego historii; SoT = `cursor/p4-centrum-aktywnosci-spec-v2`.
 
 ## Rozstrzygnięte (P2 Identity — 2026-08-05)
 

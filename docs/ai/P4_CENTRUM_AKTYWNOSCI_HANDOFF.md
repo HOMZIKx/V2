@@ -1,29 +1,31 @@
-# P4 Centrum Aktywności — Handoff (spec prep)
+# P4 Centrum Aktywności — Handoff
 
-- **Task ID:** `P4-DISCORD-INTERACTIVE-LAYOUT-CONTRACT-001` (kontynuacja spec)
-- **Prior:** `P4-CENTRUM-AKTYWNOSCI-SPEC-PREP-001` @ `15cfebe`
-- **Status:** `P4_INTERACTIVE_LAYOUT_CONTRACT_READY_LOCALLY`
-- **Local branch:** `local/p4-centrum-aktywnosci-spec-prep`
-  (based on `origin/cursor/p4-centrum-aktywnosci-plan-ea0a`)
-- **Push:** **NO** (P3 PR #16 still open — do not pollute PR #17 / remote)
+- **Task ID:** `P4-SPEC-TRANSPLANT-AFTER-P3-001`
+- **Status:** `READY_FOR_FINAL_P4_SPEC_AUDIT`
+- **Branch:** `cursor/p4-centrum-aktywnosci-spec-v2`
+  (fresh from `origin/main` @ `1f23635` — PR #16 merge)
+- **Source local commits (order preserved):**
+  1. product/architecture/UX/traceability spec
+  2. Discord Components V2 interactive layout contract
+- **Old PR #17:** closed (superseded) — do not reopen / continue
 - **Date:** 2026-08-06
-- **Depends on:** merge P3 Authorization foundation (PR #16) to `main` before
-  any remote P4 update or implementation
+- **Implements code:** **NO** — documentation audit only
 
 ## 1. Cel
 
-Kompletna **implementacyjna specyfikacja** Centrum Aktywności (A–S) **oraz**
-dokładny kontrakt interaktywnych wiadomości Discord **Components V2**
-(panel sekcji + accessory Button; post wydarzenia; prywatne „Więcej”).
-**Bez** kodu community-service, migracji, endpointów, komend, WWW, Admin UI,
-finalnych assetów.
+Kompletna **implementacyjna specyfikacja** Centrum Aktywności (decyzje A–S)
+oraz dokładny kontrakt interaktywnych wiadomości Discord **Components V2**.
+**Bez** kodu community-service, migracji, endpointów, komend Discord, WWW,
+Admin UI, finalnych assetów.
 
-## 2. Stan P3
+## 2. Stan fundamentów
 
-| Element    | Stan                                                        |
-| ---------- | ----------------------------------------------------------- |
-| PR #16     | **OPEN**, not merged (`cursor/p3-authorization-foundation`) |
-| Tryb pracy | Lokalna gałąź spec; **bez push**; **bez** update PR #17     |
+| Element   | Stan                                                          |
+| --------- | ------------------------------------------------------------- |
+| P0–P3     | **Completed**                                                 |
+| PR #16    | **Merged** → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e` |
+| Issue #15 | **Closed**                                                    |
+| PR #17    | **Closed (superseded)**                                       |
 
 ## 3. Dokumenty SoT
 
@@ -31,42 +33,29 @@ finalnych assetów.
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | [product/CENTRUM_AKTYWNOSCI.md](../product/CENTRUM_AKTYWNOSCI.md)             | Spec produktowa A–S + §12.1 Components V2                          |
 | [architecture/CENTRUM_AKTYWNOSCI.md](../architecture/CENTRUM_AKTYWNOSCI.md)   | Granice, agregaty, etapy P4.1–P4.6, permissions TECH               |
-| [ADR-0014](../architecture/decisions/ADR-0014-centrum-aktywnosci-boundary.md) | Boundary Proposed (techniczne)                                     |
+| [ADR-0014](../architecture/decisions/ADR-0014-centrum-aktywnosci-boundary.md) | Boundary **Proposed** (techniczne)                                 |
 | [ux/CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md)       | **Component tree, custom_id, wireframe, interakcje, test payload** |
 | [ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md](../ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md)   | WWW P4.4 + Admin P4.3                                              |
 | [P4_TEST_TRACEABILITY.md](P4_TEST_TRACEABILITY.md)                            | Macierz + testy layoutu V2                                         |
-| [GITHUB_ACTIONS_AUDIT.md](GITHUB_ACTIONS_AUDIT.md)                            | Audyt CI (bez zmian YAML)                                          |
-| `PENDING_DECISIONS.md`                                                        | P4-D\* / P4-D8 rozdzielenie layout vs assety                       |
+| `PENDING_DECISIONS.md`                                                        | P4-D\* / TECHNICAL_OPEN / OWNER_DECISION_REQUIRED                  |
 
-## 4. Kluczowa korekta UX (ten task)
-
-| Było mylone                          | Jest (kontrakt)                                              |
-| ------------------------------------ | ------------------------------------------------------------ |
-| Statyczny PNG + przyciski pod spodem | Container + Section + accessory Button per funkcja           |
-| Klikalne obszary grafiki             | Zakazane — Discord tego nie obsługuje                        |
-| Publiczne przyciski admin            | Tylko ephemeral po „Więcej” + P3                             |
-| Golden-image całej wiadomości        | Snapshot payload JSON + testy interakcji; golden tylko asset |
-
-## 5. Etapy wdrożenia (bez zmian numeracji)
+## 4. Etapy wdrożenia (po audycie — nie rozpoczęte)
 
 1. **P4.1** Domain + contracts + migrations (no UI)
-2. **P4.2** Discord one-shot — **implementacja wg kontraktu V2**
+2. **P4.2** Discord one-shot — Components V2 contract
 3. **P4.3** Basic Admin config
 4. **P4.4** First WWW
 5. **P4.5** Multi-Discord + resilience
 6. **P4.6** Series, private, attendance, stats
 
-## 6. Operacje zabronione nadal
+## 5. Operacje zabronione w tym PR
 
 1. Kod implementacyjny / migracje / UI.
-2. Push / update PR #17 przed merge P3.
-3. Merge P3 lub P4; modyfikacja PR #16.
-4. Wymyślanie assetów/copy poza zaakceptowanymi etykietami.
-5. Równoległy RBAC; cross-DB Identity/Authorization/Community.
+2. Merge do `main` przez agenta.
+3. Wymyślanie assetów/copy poza zaakceptowanymi etykietami.
+4. Równoległy RBAC; cross-DB Identity/Authorization/Community.
+5. Reopen / kontynuacja PR #17.
 
-## 7. Po merge P3
+## 6. Po audycie
 
-1. Świeża gałąź od `main`: `cursor/p4-centrum-aktywnosci-spec-v2`.
-2. Przenieść dokumenty (w tym kontrakt V2).
-3. Draft PR → `READY_FOR_FINAL_P4_SPEC_AUDIT`.
-4. Implementacja dopiero po `READY_FOR_CURSOR`.
+Brief `READY_FOR_CURSOR` → start **P4.1** na osobnej gałęzi implementacyjnej.

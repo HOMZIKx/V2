@@ -4,9 +4,10 @@
 
 `SPEC — product OWNER_ACCEPTED; technical boundary ADR-0014 still Proposed`
 
-Implementacja kodu zabroniona do: merge P3 Authorization do `main` +
-`APPROVED` / `READY_FOR_CURSOR` brief. Ten dokument jest implementacyjną
-specyfikacją granic i etapów — **bez** kodu.
+P3 Authorization jest scalone (`main` @ `1f23635`, PR #16). Implementacja
+kodu zabroniona do końcowego audytu tej specyfikacji + `APPROVED` /
+`READY_FOR_CURSOR` brief. Ten dokument jest implementacyjną specyfikacją
+granic i etapów — **bez** kodu.
 
 Produkt: [CENTRUM_AKTYWNOSCI.md](../product/CENTRUM_AKTYWNOSCI.md).
 Handoff: [P4_CENTRUM_AKTYWNOSCI_HANDOFF.md](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md).

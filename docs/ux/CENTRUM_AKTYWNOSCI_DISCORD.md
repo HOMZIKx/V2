@@ -2,7 +2,7 @@
 
 ## Status
 
-`INTERACTIVE_LAYOUT_CONTRACT — local spec; assets OWNER_DECISION_REQUIRED (Issue #12)`
+`INTERACTIVE_LAYOUT_CONTRACT — final P4 spec audit; assets OWNER_DECISION_REQUIRED (Issue #12)`
 
 Szkielet interakcji zgodny z decyzjami właściciela A–S oraz
 `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md` (D-023, D-024).

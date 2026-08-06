@@ -2,7 +2,7 @@
 
 ## Status
 
-`OWNER_PRODUCT_ACCEPTED — implementation gated on P3 merge + READY_FOR_CURSOR brief`
+`OWNER_PRODUCT_ACCEPTED — P3 dependency satisfied; active stage = final P4 specification audit (no implementation)`
 
 Nazwa robocza „Centrum Aktywności” pochodzi z Issue #15. **Finalny branding,
 copy przycisków (poza już zaakceptowanymi etykietami funkcji), kolory, emoji i
