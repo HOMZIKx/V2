@@ -47,7 +47,11 @@ export class SystemRevokeClient implements SessionRevokePort {
     });
   }
 
-  public async revokeAllSessionsForUser(v2UserId: string): Promise<void> {
+  public async revokeAllSessionsForUser(
+    v2UserId: string,
+    correlationId: string,
+    reason: string,
+  ): Promise<void> {
     const assertion = await this.signAssertion();
     let response: Response;
     try {
@@ -59,8 +63,8 @@ export class SystemRevokeClient implements SessionRevokePort {
         },
         body: JSON.stringify({
           v2_user_id: v2UserId,
-          reason: 'login_entitlement_lost',
-          correlation_id: randomUUID(),
+          reason,
+          correlation_id: correlationId,
         }),
       });
     } catch {

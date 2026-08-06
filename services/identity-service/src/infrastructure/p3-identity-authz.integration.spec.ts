@@ -13,8 +13,7 @@ import { AppModule } from '../interface/app.module.js';
 import { AUTH_RUNTIME } from '../interface/identity.tokens.js';
 import type { AuthRuntime } from './auth/create-better-auth.js';
 import { createBetterAuth } from './auth/create-better-auth.js';
-import type { AuthorizationClient } from './authorization/authorization-client.js';
-import { parseIdentityEnv, type IdentityEnv } from './config/identity-env.js';
+import { parseIdentityEnv } from './config/identity-env.js';
 import { runMigrations } from './db/run-migrations.js';
 import { signTestClientAssertion } from './internal-jwt/sign-test-client-assertion.js';
 import {
@@ -211,19 +210,12 @@ runInfra('Identity system revoke + login entitlement (infra)', () => {
   });
 });
 
-runInfra('Login entitlement gate leaves no session on deny', () => {
-  it('keeps the V2 user but does not persist a session when Authz denies login', async () => {
+runInfra('First Discord OAuth login entitlement ordering', () => {
+  it('reads Discord account via a fresh PG query in session.create.before: deny leaves no session; allow creates one', async () => {
     await runMigrations({ connectionString: databaseUrl, migrationsDir });
 
-    const denyUpsert = vi.fn().mockResolvedValue(undefined);
-    const denyAuthorize = vi.fn().mockResolvedValue('deny');
-    const denyClient: AuthorizationClient = {
-      upsertIdentityLink: denyUpsert,
-      authorizeWwwLogin: denyAuthorize,
-    };
-
     const fixtures = await getIdentityTestFixtures();
-    const config: IdentityEnv = parseIdentityEnv({
+    const baseEnv = {
       IDENTITY_AUTH_ENABLED: 'true',
       IDENTITY_AUTHORIZATION_ENABLED: 'true',
       IDENTITY_AUTHORIZATION_BASE_URL: 'http://127.0.0.1:4300',
@@ -238,36 +230,115 @@ runInfra('Login entitlement gate leaves no session on deny', () => {
       IDENTITY_BETTER_AUTH_SECRET: TEST_SECRET,
       IDENTITY_DISCORD_CLIENT_ID: 'test-discord-id',
       IDENTITY_DISCORD_CLIENT_SECRET: 'test-discord-secret',
+    } as const;
+
+    // --- DENY path: OAuth order = createUser → linkAccount → createSession ---
+    const denyUpsert = vi.fn().mockResolvedValue(undefined);
+    const denyAuthorize = vi.fn().mockResolvedValue('deny');
+    const denyRuntime = createBetterAuth(parseIdentityEnv({ ...baseEnv }), {
+      authorizationClient: {
+        upsertIdentityLink: denyUpsert,
+        authorizeWwwLogin: denyAuthorize,
+      },
     });
 
-    const localRuntime = createBetterAuth(config, { authorizationClient: denyClient });
     try {
-      const context = await localRuntime.auth.$context;
-      const email = `login-deny-${Date.now()}@example.com`;
-      const user = await context.internalAdapter.createUser({ name: 'Denied Login', email });
+      const context = await denyRuntime.auth.$context;
+      const email = `oauth-deny-${Date.now()}@example.com`;
+      const discordAccountId = `discord-oauth-deny-${Date.now()}`;
+
+      // Step 1: user exists without Discord account (pre-callback).
+      const user = await context.internalAdapter.createUser({ name: 'OAuth Deny', email });
+
+      // Step 2: session.create.before must fail closed — no Discord row yet.
+      await expect(context.internalAdapter.createSession(user.id)).rejects.toMatchObject({
+        body: expect.objectContaining({ code: 'LOGIN_NOT_ENTITLED' }),
+      });
+      expect(denyUpsert).not.toHaveBeenCalled();
+
+      // Step 3: Discord account appears (OAuth provider callback / account create).
       await context.internalAdapter.linkAccount({
         userId: user.id,
         providerId: 'discord',
-        accountId: `discord-deny-${Date.now()}`,
+        accountId: discordAccountId,
         accessToken: null,
         refreshToken: null,
         idToken: null,
         scope: 'identify',
       });
 
+      // Prove a separate SELECT sees the just-written account (same query the gate uses).
+      const accountProbe = await denyRuntime.pool.query<{ accountId: string }>(
+        `SELECT "accountId" FROM "account" WHERE "userId" = $1 AND "providerId" = 'discord' LIMIT 1`,
+        [user.id],
+      );
+      expect(accountProbe.rows[0]?.accountId).toBe(discordAccountId);
+
+      // Step 4: createSession → session.create.before → findDiscordAccountId (PG) → Authz deny.
       await expect(context.internalAdapter.createSession(user.id)).rejects.toBeInstanceOf(APIError);
 
-      const redisKeys = await localRuntime.redis.keys(`v2:identity:auth:*${user.id}*`);
-      const userSessions = await context.internalAdapter.listSessions(user.id);
-      expect(userSessions).toEqual([]);
-      expect(redisKeys.length).toBe(0);
+      expect(denyUpsert).toHaveBeenCalledWith({
+        discordUserId: discordAccountId,
+        v2UserId: user.id,
+      });
+      expect(denyAuthorize).toHaveBeenCalledWith({
+        discordUserId: discordAccountId,
+        v2UserId: user.id,
+      });
+
+      const denySessions = await context.internalAdapter.listSessions(user.id);
+      const denyRedis = await denyRuntime.redis.keys(`v2:identity:auth:*${user.id}*`);
+      expect(denySessions).toEqual([]);
+      expect(denyRedis.length).toBe(0);
 
       const stillThere = await context.internalAdapter.findUserById(user.id);
       expect(stillThere?.id).toBe(user.id);
-      expect(denyUpsert).toHaveBeenCalled();
-      expect(denyAuthorize).toHaveBeenCalled();
     } finally {
-      await localRuntime.close();
+      await denyRuntime.close();
+    }
+
+    // --- ALLOW path: same ordering yields a persisted session ---
+    const allowUpsert = vi.fn().mockResolvedValue(undefined);
+    const allowAuthorize = vi.fn().mockResolvedValue('allow');
+    const allowRuntime = createBetterAuth(parseIdentityEnv({ ...baseEnv }), {
+      authorizationClient: {
+        upsertIdentityLink: allowUpsert,
+        authorizeWwwLogin: allowAuthorize,
+      },
+    });
+
+    try {
+      const context = await allowRuntime.auth.$context;
+      const email = `oauth-allow-${Date.now()}@example.com`;
+      const discordAccountId = `discord-oauth-allow-${Date.now()}`;
+
+      const user = await context.internalAdapter.createUser({ name: 'OAuth Allow', email });
+      await context.internalAdapter.linkAccount({
+        userId: user.id,
+        providerId: 'discord',
+        accountId: discordAccountId,
+        accessToken: null,
+        refreshToken: null,
+        idToken: null,
+        scope: 'identify',
+      });
+
+      const session = await context.internalAdapter.createSession(user.id);
+      expect(session.userId).toBe(user.id);
+
+      expect(allowUpsert).toHaveBeenCalledWith({
+        discordUserId: discordAccountId,
+        v2UserId: user.id,
+      });
+      expect(allowAuthorize).toHaveBeenCalledWith({
+        discordUserId: discordAccountId,
+        v2UserId: user.id,
+      });
+
+      const allowSessions = await context.internalAdapter.listSessions(user.id);
+      expect(allowSessions.some((entry) => entry.id === session.id)).toBe(true);
+    } finally {
+      await allowRuntime.close();
     }
   });
 });

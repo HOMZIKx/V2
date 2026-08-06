@@ -1,32 +1,39 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
-import type {
-  ActivateGuildCommand,
-  ApplyDiscordEventCommand,
-  ApplyDiscordEventResult,
-  AuthorizeCommand,
-  BootstrapOwnerCommand,
-  BootstrapOwnerResult,
-  CreateBlockCommand,
-  CreateGrantCommand,
-  EnsureOrganizationResult,
-  IdentityLinkResult,
-  MemberSnapshot,
-  ReconcileGuildCommand,
-  RegisterGuildCommand,
-  RoleSnapshot,
-  UpsertIdentityLinkCommand,
+import {
+  computeGrantSpecificity,
+  type ActivateGuildCommand,
+  type ApplyDiscordEventCommand,
+  type ApplyDiscordEventResult,
+  type AuthorizeCommand,
+  type BootstrapOwnerCommand,
+  type BootstrapOwnerResult,
+  type CreateBlockCommand,
+  type CreateGrantCommand,
+  type EnsureOrganizationResult,
+  type IdentityLinkResult,
+  type MemberSnapshot,
+  type PendingSessionRevokeRecord,
+  type PolicyMutationResult,
+  type ReconcileGuildCommand,
+  type RegisterGuildCommand,
+  type RoleSnapshot,
+  type SetGuildLoginEntitlingCommand,
+  type UpsertIdentityLinkCommand,
 } from '../../application/ports/authorization.ports.js';
 import {
   decideAuthorization,
   type AccessBlockRecord,
   type AccessGrantRecord,
+  type AuthorizationExplanation,
+  type AuthorizationScope,
   type AuthorizeContext,
   type ConnectedGuildState,
   type DecisionSubject,
   type MappedPermissionGrant,
   type MembershipState,
+  type OperationClass,
   type OrganizationOwner,
   type SyncStatus,
 } from '../../domain/decision-engine.js';
@@ -37,6 +44,7 @@ interface OrganizationRow {
   readonly owner_discord_user_id: string | null;
   readonly owner_v2_user_id: string | null;
   readonly bootstrap_completed_at: Date | null;
+  readonly bootstrap_source_discord_user_id_snapshot: string | null;
 }
 
 interface GuildRow {
@@ -46,6 +54,19 @@ interface GuildRow {
   readonly sync_status: SyncStatus;
   readonly last_fresh_at: Date | null;
 }
+
+interface AuditEntry {
+  readonly action: string;
+  readonly actor?: string | null;
+  readonly actorClientId?: string | null;
+  readonly subjectV2UserId?: string | null;
+  readonly subjectDiscordUserId?: string | null;
+  readonly discordGuildId?: string | null;
+  readonly correlationId?: string | null;
+  readonly details?: Record<string, unknown>;
+}
+
+const REVOKE_REASON_ENTITLEMENT_LOST = 'login_entitlement_lost';
 
 function toIso(value: Date): string {
   return value.toISOString();
@@ -82,6 +103,10 @@ function isUniqueViolation(error: unknown): boolean {
 
 function isForeignKeyViolation(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23503';
+}
+
+function actorLabel(actor: DecisionSubject): string | null {
+  return actor.v2UserId ?? actor.discordUserId ?? null;
 }
 
 /**
@@ -133,48 +158,54 @@ export class AuthorizationRepository {
   public async bootstrapOwner(command: BootstrapOwnerCommand): Promise<BootstrapOwnerResult> {
     return withTransaction(this.pool, async (client) => {
       const orgResult = await client.query<OrganizationRow>(
-        'SELECT id, owner_discord_user_id, owner_v2_user_id, bootstrap_completed_at FROM organization ORDER BY created_at ASC LIMIT 1 FOR UPDATE',
+        `SELECT id, owner_discord_user_id, owner_v2_user_id, bootstrap_completed_at,
+                bootstrap_source_discord_user_id_snapshot
+         FROM organization ORDER BY created_at ASC LIMIT 1 FOR UPDATE`,
       );
       const org = orgResult.rows[0];
       if (org === undefined) {
         throw new AuthorizationError('CONFIG_INVALID', 'Organization is not seeded');
       }
 
-      if (org.bootstrap_completed_at !== null && org.owner_discord_user_id !== null) {
-        if (org.owner_discord_user_id !== command.discordUserId) {
-          throw new AuthorizationError('CONFLICT', 'Organization owner is already bootstrapped');
-        }
-        if (
-          command.v2UserId !== undefined &&
-          org.owner_v2_user_id !== null &&
-          org.owner_v2_user_id !== command.v2UserId
-        ) {
-          throw new AuthorizationError(
-            'CONFLICT',
-            'Organization owner V2 user does not match bootstrap request',
-          );
-        }
+      const alreadyBootstrapped =
+        org.bootstrap_completed_at !== null && org.owner_discord_user_id !== null;
 
-        let ownerV2 = org.owner_v2_user_id;
-        if (command.v2UserId !== undefined && org.owner_v2_user_id === null) {
-          await client.query(
-            `UPDATE organization
-             SET owner_v2_user_id = $1, updated_at = now()
-             WHERE id = $2`,
-            [command.v2UserId, org.id],
-          );
-          ownerV2 = command.v2UserId;
-        }
-
-        return {
-          organizationId: org.id,
-          ownerDiscordUserId: org.owner_discord_user_id,
-          ...(ownerV2 !== null ? { ownerV2UserId: ownerV2 } : {}),
-          bootstrapCompletedAt: toIso(org.bootstrap_completed_at),
-          alreadyCompleted: true,
-        };
+      if (alreadyBootstrapped) {
+        return this.completeAlreadyBootstrapped(client, org, command);
       }
 
+      // First bootstrap: the incoming Discord user must exactly match the env
+      // seed. A missing seed means no one is authorized to become owner.
+      if (
+        command.requiredBootstrapDiscordUserId === undefined ||
+        command.discordUserId !== command.requiredBootstrapDiscordUserId
+      ) {
+        throw new AuthorizationError(
+          'FORBIDDEN',
+          'Bootstrap Discord user does not match the required env seed',
+        );
+      }
+
+      // The owner must already have a verified Discord ↔ V2 identity link.
+      const link = await client.query<{ v2_user_id: string }>(
+        'SELECT v2_user_id FROM discord_identity_link WHERE discord_user_id = $1',
+        [command.discordUserId],
+      );
+      const linkRow = link.rows[0];
+      if (linkRow === undefined) {
+        throw new AuthorizationError(
+          'FORBIDDEN',
+          'Bootstrap requires an existing Discord identity link',
+        );
+      }
+      if (command.v2UserId !== undefined && command.v2UserId !== linkRow.v2_user_id) {
+        throw new AuthorizationError(
+          'CONFLICT',
+          'Provided V2 user does not match the linked Discord identity',
+        );
+      }
+
+      const ownerV2 = command.v2UserId ?? linkRow.v2_user_id;
       const completedAt = new Date();
       await client.query(
         `UPDATE organization
@@ -184,49 +215,158 @@ export class AuthorizationRepository {
              bootstrap_source_discord_user_id_snapshot = $1,
              updated_at = now()
          WHERE id = $4`,
-        [command.discordUserId, command.v2UserId ?? null, completedAt, org.id],
+        [command.discordUserId, ownerV2, completedAt, org.id],
       );
 
-      await client.query(
-        `INSERT INTO audit_log (id, action, actor, subject_discord_user_id, subject_v2_user_id, correlation_id, details)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
-        [
-          randomUUID(),
-          'bootstrap.owner',
-          command.actor ?? 'system',
-          command.discordUserId,
-          command.v2UserId ?? null,
-          command.correlationId ?? null,
-          JSON.stringify({ organizationId: org.id }),
-        ],
-      );
+      await this.writeAudit(client, {
+        action: 'bootstrap.owner',
+        actor: command.actor ?? 'system',
+        actorClientId: command.actorClientId ?? null,
+        subjectDiscordUserId: command.discordUserId,
+        subjectV2UserId: ownerV2,
+        correlationId: command.correlationId ?? null,
+        details: { organizationId: org.id },
+      });
 
       return {
         organizationId: org.id,
         ownerDiscordUserId: command.discordUserId,
-        ...(command.v2UserId !== undefined ? { ownerV2UserId: command.v2UserId } : {}),
+        ownerV2UserId: ownerV2,
         bootstrapCompletedAt: toIso(completedAt),
         alreadyCompleted: false,
       };
     });
   }
 
+  private async completeAlreadyBootstrapped(
+    client: PoolClient,
+    org: OrganizationRow,
+    command: BootstrapOwnerCommand,
+  ): Promise<BootstrapOwnerResult> {
+    const ownerDiscord = org.owner_discord_user_id!;
+    const snapshot = org.bootstrap_source_discord_user_id_snapshot;
+    const envSeed = command.requiredBootstrapDiscordUserId;
+
+    // A changed env seed must never transfer ownership. Record the ignore and
+    // return the persisted owner idempotently.
+    const envDiffers = envSeed !== undefined && envSeed !== snapshot;
+    const commandTargetsDifferentOwner = command.discordUserId !== ownerDiscord;
+
+    if (envDiffers || commandTargetsDifferentOwner) {
+      await this.writeAudit(client, {
+        action: 'bootstrap.env_ignored',
+        actor: command.actor ?? 'system',
+        actorClientId: command.actorClientId ?? null,
+        subjectDiscordUserId: ownerDiscord,
+        subjectV2UserId: org.owner_v2_user_id,
+        correlationId: command.correlationId ?? null,
+        details: {
+          organizationId: org.id,
+          persistedOwnerDiscordUserId: ownerDiscord,
+          bootstrapSourceSnapshot: snapshot,
+          requestedDiscordUserId: command.discordUserId,
+          envSeedDiscordUserId: envSeed ?? null,
+        },
+      });
+
+      return {
+        organizationId: org.id,
+        ownerDiscordUserId: ownerDiscord,
+        ...(org.owner_v2_user_id !== null ? { ownerV2UserId: org.owner_v2_user_id } : {}),
+        bootstrapCompletedAt: toIso(org.bootstrap_completed_at!),
+        alreadyCompleted: true,
+      };
+    }
+
+    // Same owner: allow a one-time backfill of the V2 id, reject conflicting V2.
+    if (
+      command.v2UserId !== undefined &&
+      org.owner_v2_user_id !== null &&
+      org.owner_v2_user_id !== command.v2UserId
+    ) {
+      throw new AuthorizationError(
+        'CONFLICT',
+        'Organization owner V2 user does not match bootstrap request',
+      );
+    }
+
+    let ownerV2 = org.owner_v2_user_id;
+    if (command.v2UserId !== undefined && org.owner_v2_user_id === null) {
+      await client.query(
+        `UPDATE organization
+         SET owner_v2_user_id = $1, updated_at = now()
+         WHERE id = $2`,
+        [command.v2UserId, org.id],
+      );
+      ownerV2 = command.v2UserId;
+    }
+
+    return {
+      organizationId: org.id,
+      ownerDiscordUserId: ownerDiscord,
+      ...(ownerV2 !== null ? { ownerV2UserId: ownerV2 } : {}),
+      bootstrapCompletedAt: toIso(org.bootstrap_completed_at!),
+      alreadyCompleted: true,
+    };
+  }
+
   public async upsertIdentityLink(command: UpsertIdentityLinkCommand): Promise<IdentityLinkResult> {
     try {
-      const result = await withTransaction(this.pool, async (client) => {
-        const linked = await client.query<{
+      return await withTransaction(this.pool, async (client) => {
+        const existing = await client.query<{
+          discord_user_id: string;
+          v2_user_id: string;
+          linked_at: Date;
+        }>(
+          `SELECT discord_user_id, v2_user_id, linked_at
+           FROM discord_identity_link
+           WHERE discord_user_id = $1
+           FOR UPDATE`,
+          [command.discordUserId],
+        );
+
+        const existingRow = existing.rows[0];
+        if (existingRow !== undefined) {
+          if (existingRow.v2_user_id !== command.v2UserId) {
+            // Links are immutable 1:1 — never rebind a Discord user to a new V2 id.
+            throw new AuthorizationError(
+              'CONFLICT',
+              'Discord user is already linked to a different V2 identity',
+            );
+          }
+
+          // Idempotent re-link: ensure memberships carry the V2 id.
+          await client.query(
+            `UPDATE discord_membership
+             SET v2_user_id = $1, updated_at = now()
+             WHERE discord_user_id = $2`,
+            [command.v2UserId, command.discordUserId],
+          );
+
+          return {
+            discordUserId: existingRow.discord_user_id,
+            v2UserId: existingRow.v2_user_id,
+            linkedAt: toIso(existingRow.linked_at),
+            created: false,
+          };
+        }
+
+        // Insert a brand-new link. A unique violation on v2_user_id means the
+        // V2 identity is already bound to a different Discord user.
+        const inserted = await client.query<{
           discord_user_id: string;
           v2_user_id: string;
           linked_at: Date;
         }>(
           `INSERT INTO discord_identity_link (discord_user_id, v2_user_id)
            VALUES ($1, $2)
-           ON CONFLICT (discord_user_id) DO UPDATE
-             SET v2_user_id = EXCLUDED.v2_user_id,
-                 linked_at = now()
            RETURNING discord_user_id, v2_user_id, linked_at`,
           [command.discordUserId, command.v2UserId],
         );
+        const row = inserted.rows[0];
+        if (row === undefined) {
+          throw new AuthorizationError('CONFIG_INVALID', 'Identity link insert failed');
+        }
 
         await client.query(
           `UPDATE discord_membership
@@ -235,18 +375,22 @@ export class AuthorizationRepository {
           [command.v2UserId, command.discordUserId],
         );
 
-        const row = linked.rows[0];
-        if (row === undefined) {
-          throw new AuthorizationError('CONFIG_INVALID', 'Identity link upsert failed');
-        }
-        return row;
-      });
+        await this.writeAudit(client, {
+          action: 'identity.link',
+          actorClientId: command.actorClientId ?? null,
+          subjectDiscordUserId: command.discordUserId,
+          subjectV2UserId: command.v2UserId,
+          correlationId: command.correlationId ?? null,
+          details: {},
+        });
 
-      return {
-        discordUserId: result.discord_user_id,
-        v2UserId: result.v2_user_id,
-        linkedAt: toIso(result.linked_at),
-      };
+        return {
+          discordUserId: row.discord_user_id,
+          v2UserId: row.v2_user_id,
+          linkedAt: toIso(row.linked_at),
+          created: true,
+        };
+      });
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new AuthorizationError(
@@ -258,9 +402,7 @@ export class AuthorizationRepository {
     }
   }
 
-  public async authorize(
-    command: AuthorizeCommand,
-  ): Promise<ReturnType<typeof decideAuthorization>> {
+  public async authorize(command: AuthorizeCommand): Promise<AuthorizationExplanation> {
     const now = command.now ?? new Date();
     const loaded = await this.loadAuthorizeContext(command.subject);
     return decideAuthorization(
@@ -280,20 +422,34 @@ export class AuthorizationRepository {
   public async registerGuild(command: RegisterGuildCommand): Promise<ConnectedGuildState> {
     const org = await this.requireOrganizationId();
     try {
-      const result = await this.pool.query<GuildRow>(
-        `INSERT INTO connected_guild (
-           discord_guild_id, organization_id, status, login_entitling, sync_status
-         ) VALUES ($1, $2, 'pending_sync', $3, 'unavailable')
-         ON CONFLICT (discord_guild_id) DO UPDATE
-           SET updated_at = now()
-         RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
-        [command.discordGuildId, org, command.loginEntitling ?? false],
-      );
-      const row = result.rows[0];
-      if (row === undefined) {
-        throw new AuthorizationError('CONFIG_INVALID', 'Guild register failed');
-      }
-      return mapGuild(row);
+      return await withTransaction(this.pool, async (client) => {
+        // A freshly registered guild is always inert: pending_sync, no login
+        // entitlement, and unavailable until a reconcile marks it fresh. Any
+        // client-provided entitlement flag is ignored.
+        const result = await client.query<GuildRow>(
+          `INSERT INTO connected_guild (
+             discord_guild_id, organization_id, status, login_entitling, sync_status
+           ) VALUES ($1, $2, 'pending_sync', FALSE, 'unavailable')
+           ON CONFLICT (discord_guild_id) DO UPDATE
+             SET updated_at = now()
+           RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
+          [command.discordGuildId, org],
+        );
+        const row = result.rows[0];
+        if (row === undefined) {
+          throw new AuthorizationError('CONFIG_INVALID', 'Guild register failed');
+        }
+
+        await this.writeAudit(client, {
+          action: 'guild.register',
+          actorClientId: command.actorClientId ?? null,
+          discordGuildId: command.discordGuildId,
+          correlationId: command.correlationId ?? null,
+          details: {},
+        });
+
+        return mapGuild(row);
+      });
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new AuthorizationError('CONFIG_INVALID', 'Organization is not seeded');
@@ -336,6 +492,16 @@ export class AuthorizationRepository {
         case 'roles_snapshot':
           await this.replaceRoles(client, command.discordGuildId, command.payload.roles);
           break;
+        case 'guild_unavailable':
+          // Transient outage: only downgrade freshness. Status and login
+          // entitlement are preserved so recovery does not require re-activation.
+          await client.query(
+            `UPDATE connected_guild
+             SET sync_status = 'unavailable', updated_at = now()
+             WHERE discord_guild_id = $1`,
+            [command.discordGuildId],
+          );
+          break;
         case 'guild_detach':
           await client.query(
             `UPDATE connected_guild
@@ -361,12 +527,36 @@ export class AuthorizationRepository {
       );
 
       const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      await this.enqueuePendingRevokes(
+        client,
+        revokedUserIds,
+        REVOKE_REASON_ENTITLEMENT_LOST,
+        command.eventKey,
+      );
+
+      await this.writeAudit(client, {
+        action: 'discord.event',
+        actorClientId: command.actorClientId ?? null,
+        discordGuildId: command.discordGuildId,
+        correlationId: command.correlationId ?? null,
+        details: {
+          eventKey: command.eventKey,
+          eventType: command.eventType,
+          kind: command.payload.kind,
+          revokedUserIds,
+        },
+      });
+
       return { applied: true, duplicate: false, revokedUserIds };
     });
   }
 
   public async reconcileGuild(command: ReconcileGuildCommand): Promise<ApplyDiscordEventResult> {
-    const eventKey = command.eventKey ?? `reconcile:${command.discordGuildId}:${randomUUID()}`;
+    // A deterministic key derived from the snapshot content keeps reconciles
+    // idempotent. randomUUID would defeat de-duplication entirely.
+    const eventKey =
+      command.eventKey ??
+      this.reconcileEventKey(command.discordGuildId, command.members, command.roles);
 
     return withTransaction(this.pool, async (client) => {
       const inserted = await client.query(
@@ -415,6 +605,21 @@ export class AuthorizationRepository {
       );
 
       const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      await this.enqueuePendingRevokes(
+        client,
+        revokedUserIds,
+        REVOKE_REASON_ENTITLEMENT_LOST,
+        eventKey,
+      );
+
+      await this.writeAudit(client, {
+        action: 'discord.reconcile',
+        actorClientId: command.actorClientId ?? null,
+        discordGuildId: command.discordGuildId,
+        correlationId: command.correlationId ?? null,
+        details: { eventKey, revokedUserIds },
+      });
+
       return { applied: true, duplicate: false, revokedUserIds };
     });
   }
@@ -423,30 +628,132 @@ export class AuthorizationRepository {
     readonly guild: ConnectedGuildState;
     readonly revokedUserIds: readonly string[];
   }> {
-    return withTransaction(this.pool, async (client) => {
-      await this.requireGuild(client, command.discordGuildId);
-      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+    await this.requireActorCan(
+      command.actor,
+      'permission.authorization.policy.manage.org',
+      { type: 'organization' },
+      'sensitive',
+    );
 
-      const result = await client.query<GuildRow>(
-        `UPDATE connected_guild
-         SET status = 'active',
-             login_entitling = $2,
-             updated_at = now()
+    return withTransaction(this.pool, async (client) => {
+      const current = await client.query<GuildRow>(
+        `SELECT discord_guild_id, status, login_entitling, sync_status, last_fresh_at
+         FROM connected_guild
          WHERE discord_guild_id = $1
-         RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
-        [command.discordGuildId, command.loginEntitling],
+         FOR UPDATE`,
+        [command.discordGuildId],
       );
-      const row = result.rows[0];
-      if (row === undefined) {
-        throw new AuthorizationError('NOT_FOUND', 'Guild not found');
+      const currentRow = current.rows[0];
+      if (currentRow === undefined) {
+        throw new AuthorizationError('NOT_FOUND', 'Guild is not registered');
+      }
+      if (
+        currentRow.sync_status !== 'fresh' ||
+        (currentRow.status !== 'pending_sync' && currentRow.status !== 'active')
+      ) {
+        throw new AuthorizationError(
+          'VALIDATION_FAILED',
+          'Guild must be freshly synced and pending or active to activate',
+        );
       }
 
+      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+
+      // Activation only flips lifecycle status; login entitlement is managed
+      // separately so activating never grants login access implicitly.
+      const result = await client.query<GuildRow>(
+        `UPDATE connected_guild
+         SET status = 'active', updated_at = now()
+         WHERE discord_guild_id = $1
+         RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
+        [command.discordGuildId],
+      );
+      const row = result.rows[0]!;
+
       const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      await this.enqueuePendingRevokes(
+        client,
+        revokedUserIds,
+        REVOKE_REASON_ENTITLEMENT_LOST,
+        `guild_activate:${command.discordGuildId}`,
+      );
+
+      await this.writeAudit(client, {
+        action: 'guild.activate',
+        actor: actorLabel(command.actor),
+        actorClientId: command.actorClientId ?? null,
+        discordGuildId: command.discordGuildId,
+        correlationId: command.correlationId ?? null,
+        details: { revokedUserIds },
+      });
+
       return { guild: mapGuild(row), revokedUserIds };
     });
   }
 
-  public async createGrant(command: CreateGrantCommand): Promise<{ readonly id: string }> {
+  public async setGuildLoginEntitling(command: SetGuildLoginEntitlingCommand): Promise<{
+    readonly guild: ConnectedGuildState;
+    readonly revokedUserIds: readonly string[];
+  }> {
+    await this.requireActorCan(
+      command.actor,
+      'permission.authorization.policy.manage.org',
+      { type: 'organization' },
+      'sensitive',
+    );
+
+    return withTransaction(this.pool, async (client) => {
+      const current = await client.query<GuildRow>(
+        `SELECT discord_guild_id, status, login_entitling, sync_status, last_fresh_at
+         FROM connected_guild
+         WHERE discord_guild_id = $1
+         FOR UPDATE`,
+        [command.discordGuildId],
+      );
+      const currentRow = current.rows[0];
+      if (currentRow === undefined) {
+        throw new AuthorizationError('NOT_FOUND', 'Guild is not registered');
+      }
+      if (currentRow.status !== 'active' || currentRow.sync_status !== 'fresh') {
+        throw new AuthorizationError(
+          'VALIDATION_FAILED',
+          'Guild must be active and freshly synced to change login entitlement',
+        );
+      }
+
+      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+
+      const result = await client.query<GuildRow>(
+        `UPDATE connected_guild
+         SET login_entitling = $2, updated_at = now()
+         WHERE discord_guild_id = $1
+         RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
+        [command.discordGuildId, command.loginEntitling],
+      );
+      const row = result.rows[0]!;
+
+      const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      await this.enqueuePendingRevokes(
+        client,
+        revokedUserIds,
+        REVOKE_REASON_ENTITLEMENT_LOST,
+        `guild_login_entitling:${command.discordGuildId}`,
+      );
+
+      await this.writeAudit(client, {
+        action: 'guild.login_entitling',
+        actor: actorLabel(command.actor),
+        actorClientId: command.actorClientId ?? null,
+        discordGuildId: command.discordGuildId,
+        correlationId: command.correlationId ?? null,
+        details: { loginEntitling: command.loginEntitling, revokedUserIds },
+      });
+
+      return { guild: mapGuild(row), revokedUserIds };
+    });
+  }
+
+  public async createGrant(command: CreateGrantCommand): Promise<PolicyMutationResult> {
     if (
       (command.permissionId === undefined && command.groupId === undefined) ||
       (command.permissionId !== undefined && command.groupId !== undefined)
@@ -472,29 +779,68 @@ export class AuthorizationRepository {
       );
     }
 
+    await this.requireActorCanManageScope(command.actor, command.scopeType, command.scopeGuildId);
+
+    // Specificity is derived from subject + scope, never trusted from callers.
+    const specificity = computeGrantSpecificity({
+      ...(command.discordUserId !== undefined ? { discordUserId: command.discordUserId } : {}),
+      ...(command.v2UserId !== undefined ? { v2UserId: command.v2UserId } : {}),
+      scopeType: command.scopeType,
+    });
+    const createdBy = actorLabel(command.actor);
+
     const id = randomUUID();
     try {
-      await this.pool.query(
-        `INSERT INTO access_grant (
-           id, effect, permission_id, group_id, discord_user_id, v2_user_id,
-           scope_type, scope_guild_id, specificity, reason, created_by, expires_at
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [
-          id,
-          command.effect,
-          command.permissionId ?? null,
-          command.groupId ?? null,
-          command.discordUserId ?? null,
-          command.v2UserId ?? null,
-          command.scopeType,
-          command.scopeGuildId ?? null,
-          command.specificity,
-          command.reason ?? null,
-          command.createdBy ?? null,
-          command.expiresAt ?? null,
-        ],
-      );
-      return { id };
+      return await withTransaction(this.pool, async (client) => {
+        await client.query(
+          `INSERT INTO access_grant (
+             id, effect, permission_id, group_id, discord_user_id, v2_user_id,
+             scope_type, scope_guild_id, specificity, reason, created_by, expires_at
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [
+            id,
+            command.effect,
+            command.permissionId ?? null,
+            command.groupId ?? null,
+            command.discordUserId ?? null,
+            command.v2UserId ?? null,
+            command.scopeType,
+            command.scopeGuildId ?? null,
+            specificity,
+            command.reason ?? null,
+            createdBy,
+            command.expiresAt ?? null,
+          ],
+        );
+
+        // A new deny can strip login access from the target — revoke sessions.
+        const revokedUserIds =
+          command.effect === 'deny'
+            ? await this.enqueueRevokesForTarget(
+                client,
+                command.v2UserId,
+                command.discordUserId,
+                `grant:${id}`,
+              )
+            : [];
+
+        await this.writeAudit(client, {
+          action: 'grant.create',
+          actor: createdBy,
+          actorClientId: command.actorClientId ?? null,
+          subjectDiscordUserId: command.discordUserId ?? null,
+          subjectV2UserId: command.v2UserId ?? null,
+          correlationId: command.correlationId ?? null,
+          details: {
+            grantId: id,
+            effect: command.effect,
+            scopeType: command.scopeType,
+            revokedUserIds,
+          },
+        });
+
+        return { id, revokedUserIds };
+      });
     } catch (error) {
       if (isForeignKeyViolation(error)) {
         throw new AuthorizationError(
@@ -506,7 +852,7 @@ export class AuthorizationRepository {
     }
   }
 
-  public async createBlock(command: CreateBlockCommand): Promise<{ readonly id: string }> {
+  public async createBlock(command: CreateBlockCommand): Promise<PolicyMutationResult> {
     if (command.discordUserId === undefined && command.v2UserId === undefined) {
       throw new AuthorizationError(
         'VALIDATION_FAILED',
@@ -523,23 +869,157 @@ export class AuthorizationRepository {
       );
     }
 
-    const id = randomUUID();
-    await this.pool.query(
-      `INSERT INTO access_block (
-         id, discord_user_id, v2_user_id, scope_type, scope_guild_id, reason, created_by, expires_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [
-        id,
-        command.discordUserId ?? null,
-        command.v2UserId ?? null,
-        command.scopeType,
-        command.scopeGuildId ?? null,
-        command.reason,
-        command.createdBy ?? null,
-        command.expiresAt ?? null,
-      ],
+    await this.requireActorCanManageScope(
+      command.actor,
+      command.scopeType === 'global' ? 'organization' : 'guild',
+      command.scopeGuildId,
     );
-    return { id };
+
+    const createdBy = actorLabel(command.actor);
+    const id = randomUUID();
+    return withTransaction(this.pool, async (client) => {
+      await client.query(
+        `INSERT INTO access_block (
+           id, discord_user_id, v2_user_id, scope_type, scope_guild_id, reason, created_by, expires_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [
+          id,
+          command.discordUserId ?? null,
+          command.v2UserId ?? null,
+          command.scopeType,
+          command.scopeGuildId ?? null,
+          command.reason,
+          createdBy,
+          command.expiresAt ?? null,
+        ],
+      );
+
+      // Any block can strip login access from the target — revoke sessions.
+      const revokedUserIds = await this.enqueueRevokesForTarget(
+        client,
+        command.v2UserId,
+        command.discordUserId,
+        `block:${id}`,
+      );
+
+      await this.writeAudit(client, {
+        action: 'block.create',
+        actor: createdBy,
+        actorClientId: command.actorClientId ?? null,
+        subjectDiscordUserId: command.discordUserId ?? null,
+        subjectV2UserId: command.v2UserId ?? null,
+        correlationId: command.correlationId ?? null,
+        details: { blockId: id, scopeType: command.scopeType, revokedUserIds },
+      });
+
+      return { id, revokedUserIds };
+    });
+  }
+
+  public async listPendingSessionRevokes(
+    limit = 100,
+  ): Promise<readonly PendingSessionRevokeRecord[]> {
+    const result = await this.pool.query<{
+      id: string;
+      v2_user_id: string;
+      correlation_id: string;
+      reason: string;
+      attempts: number;
+    }>(
+      `SELECT id, v2_user_id, correlation_id, reason, attempts
+       FROM pending_session_revoke
+       WHERE status = 'pending'
+       ORDER BY created_at ASC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      v2UserId: row.v2_user_id,
+      correlationId: row.correlation_id,
+      reason: row.reason,
+      attempts: row.attempts,
+    }));
+  }
+
+  public async markSessionRevokeDelivered(id: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE pending_session_revoke
+       SET status = 'delivered', delivered_at = now(), updated_at = now()
+       WHERE id = $1`,
+      [id],
+    );
+  }
+
+  public async markSessionRevokeAttemptFailed(id: string, errorMessage: string): Promise<void> {
+    // Keep the row pending so a later drain retries; record the attempt count
+    // and the last error for observability.
+    await this.pool.query(
+      `UPDATE pending_session_revoke
+       SET attempts = attempts + 1, last_error = $2, updated_at = now()
+       WHERE id = $1`,
+      [id, errorMessage],
+    );
+  }
+
+  public async processExpiredPolicies(
+    now?: Date,
+  ): Promise<{ readonly revokedUserIds: readonly string[] }> {
+    const cutoff = now ?? new Date();
+    return withTransaction(this.pool, async (client) => {
+      const revoked = new Set<string>();
+
+      const expiredGrants = await client.query<{
+        id: string;
+        v2_user_id: string | null;
+        discord_user_id: string | null;
+      }>(
+        `SELECT id, v2_user_id, discord_user_id
+         FROM access_grant
+         WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+      const expiredBlocks = await client.query<{
+        id: string;
+        v2_user_id: string | null;
+        discord_user_id: string | null;
+      }>(
+        `SELECT id, v2_user_id, discord_user_id
+         FROM access_block
+         WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+
+      for (const row of [...expiredGrants.rows, ...expiredBlocks.rows]) {
+        const v2 = await this.resolveV2ForSubject(client, row.v2_user_id, row.discord_user_id);
+        if (v2 === undefined) {
+          continue;
+        }
+        const correlationId = `expire:${row.id}:${v2}`;
+        const inserted = await client.query(
+          `INSERT INTO pending_session_revoke (
+             id, v2_user_id, correlation_id, reason, status, source_event_key
+           ) VALUES ($1, $2, $3, 'policy_expired', 'pending', $4)
+           ON CONFLICT (correlation_id) DO NOTHING
+           RETURNING id`,
+          [randomUUID(), v2, correlationId, `expire:${row.id}`],
+        );
+        if ((inserted.rowCount ?? 0) > 0) {
+          revoked.add(v2);
+        }
+      }
+
+      const revokedUserIds = [...revoked];
+      if (revokedUserIds.length > 0) {
+        await this.writeAudit(client, {
+          action: 'policy.expire',
+          actor: 'system',
+          details: { revokedUserIds },
+        });
+      }
+
+      return { revokedUserIds };
+    });
   }
 
   private async requireOrganizationId(): Promise<string> {
@@ -551,6 +1031,49 @@ export class AuthorizationRepository {
       throw new AuthorizationError('CONFIG_INVALID', 'Organization is not seeded');
     }
     return row.id;
+  }
+
+  private async requireActorCanManageScope(
+    actor: DecisionSubject,
+    scopeType: 'organization' | 'guild',
+    scopeGuildId: string | undefined,
+  ): Promise<void> {
+    if (scopeType === 'guild') {
+      if (scopeGuildId === undefined) {
+        throw new AuthorizationError(
+          'VALIDATION_FAILED',
+          'scopeGuildId is required for guild scope',
+        );
+      }
+      await this.requireActorCan(
+        actor,
+        'permission.authorization.policy.manage.guild',
+        { type: 'guild', guildId: scopeGuildId },
+        'sensitive',
+      );
+      return;
+    }
+    await this.requireActorCan(
+      actor,
+      'permission.authorization.policy.manage.org',
+      { type: 'organization' },
+      'sensitive',
+    );
+  }
+
+  private async requireActorCan(
+    actor: DecisionSubject,
+    permissionId: string,
+    scope: AuthorizationScope,
+    operationClass: OperationClass,
+  ): Promise<void> {
+    if (actor.v2UserId === undefined && actor.discordUserId === undefined) {
+      throw new AuthorizationError('FORBIDDEN', 'Actor identity is required');
+    }
+    const decision = await this.authorize({ subject: actor, permissionId, scope, operationClass });
+    if (decision.decision !== 'allow') {
+      throw new AuthorizationError('FORBIDDEN', `Actor is not permitted to ${permissionId}`);
+    }
   }
 
   private async requireGuild(client: PoolClient, guildId: string): Promise<void> {
@@ -644,6 +1167,13 @@ export class AuthorizationRepository {
            WHERE discord_guild_id = $1 AND discord_role_id = $2`,
           [guildId, row.discord_role_id],
         );
+        // Drop member↔role edges for the soft-deleted role so it can never grant
+        // mapped permissions again.
+        await client.query(
+          `DELETE FROM discord_member_role
+           WHERE discord_guild_id = $1 AND discord_role_id = $2`,
+          [guildId, row.discord_role_id],
+        );
       }
     }
   }
@@ -690,12 +1220,107 @@ export class AuthorizationRepository {
     return lost;
   }
 
+  private async enqueuePendingRevokes(
+    client: PoolClient,
+    userIds: readonly string[],
+    reason: string,
+    sourceEventKey?: string,
+  ): Promise<void> {
+    for (const v2UserId of new Set(userIds)) {
+      const correlationId =
+        sourceEventKey !== undefined
+          ? `${sourceEventKey}:${v2UserId}`
+          : `${reason}:${v2UserId}:${randomUUID()}`;
+      await client.query(
+        `INSERT INTO pending_session_revoke (
+           id, v2_user_id, correlation_id, reason, status, source_event_key
+         ) VALUES ($1, $2, $3, $4, 'pending', $5)
+         ON CONFLICT (correlation_id) DO NOTHING`,
+        [randomUUID(), v2UserId, correlationId, reason, sourceEventKey ?? null],
+      );
+    }
+  }
+
+  private async enqueueRevokesForTarget(
+    client: PoolClient,
+    v2UserId: string | undefined,
+    discordUserId: string | undefined,
+    sourceEventKey: string,
+  ): Promise<readonly string[]> {
+    const v2 = await this.resolveV2ForSubject(client, v2UserId ?? null, discordUserId ?? null);
+    if (v2 === undefined) {
+      return [];
+    }
+    await this.enqueuePendingRevokes(client, [v2], REVOKE_REASON_ENTITLEMENT_LOST, sourceEventKey);
+    return [v2];
+  }
+
+  private async resolveV2ForSubject(
+    client: PoolClient,
+    v2UserId: string | null,
+    discordUserId: string | null,
+  ): Promise<string | undefined> {
+    if (v2UserId !== null) {
+      return v2UserId;
+    }
+    if (discordUserId === null) {
+      return undefined;
+    }
+    const link = await client.query<{ v2_user_id: string }>(
+      'SELECT v2_user_id FROM discord_identity_link WHERE discord_user_id = $1',
+      [discordUserId],
+    );
+    return link.rows[0]?.v2_user_id;
+  }
+
+  private reconcileEventKey(
+    guildId: string,
+    members: readonly MemberSnapshot[],
+    roles: readonly RoleSnapshot[],
+  ): string {
+    const canonicalMembers = members
+      .map((member) => ({
+        discordUserId: member.discordUserId,
+        v2UserId: member.v2UserId ?? null,
+        roleIds: [...member.roleIds].sort((left, right) => left.localeCompare(right)),
+        status: member.status,
+      }))
+      .sort((left, right) => left.discordUserId.localeCompare(right.discordUserId));
+    const canonicalRoles = roles
+      .map((role) => ({ discordRoleId: role.discordRoleId, nameCache: role.nameCache ?? null }))
+      .sort((left, right) => left.discordRoleId.localeCompare(right.discordRoleId));
+    const canonical = JSON.stringify({ members: canonicalMembers, roles: canonicalRoles });
+    const hash = createHash('sha256').update(canonical, 'utf8').digest('hex');
+    return `reconcile:${guildId}:${hash}`;
+  }
+
+  private async writeAudit(client: PoolClient, entry: AuditEntry): Promise<void> {
+    await client.query(
+      `INSERT INTO audit_log (
+         id, action, actor, actor_client_id, subject_v2_user_id, subject_discord_user_id,
+         discord_guild_id, correlation_id, details
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)`,
+      [
+        randomUUID(),
+        entry.action,
+        entry.actor ?? null,
+        entry.actorClientId ?? null,
+        entry.subjectV2UserId ?? null,
+        entry.subjectDiscordUserId ?? null,
+        entry.discordGuildId ?? null,
+        entry.correlationId ?? null,
+        JSON.stringify(entry.details ?? {}),
+      ],
+    );
+  }
+
   private async loadAuthorizeContext(subject: DecisionSubject): Promise<{
     readonly context: AuthorizeContext;
     readonly groupPermissionIdsForGrants: ReadonlyMap<string, readonly string[]>;
   }> {
     const orgResult = await this.pool.query<OrganizationRow>(
-      `SELECT id, owner_discord_user_id, owner_v2_user_id, bootstrap_completed_at
+      `SELECT id, owner_discord_user_id, owner_v2_user_id, bootstrap_completed_at,
+              bootstrap_source_discord_user_id_snapshot
        FROM organization ORDER BY created_at ASC LIMIT 1`,
     );
     const org = orgResult.rows[0];
@@ -713,14 +1338,20 @@ export class AuthorizationRepository {
       };
     }
 
+    // Resolve a single, identity-linked principal. Never union grants/blocks of
+    // two unrelated identifiers: an attacker could otherwise assert a foreign
+    // v2UserId alongside their own discordUserId and inherit foreign policy.
+    const resolved = await this.resolvePrincipal(subject);
+    const identityLinked = resolved.identityLinked;
+
     const subjectFilters: string[] = [];
     const subjectParams: string[] = [];
-    if (subject.v2UserId !== undefined) {
-      subjectParams.push(subject.v2UserId);
+    if (resolved.v2UserId !== undefined) {
+      subjectParams.push(resolved.v2UserId);
       subjectFilters.push(`v2_user_id = $${subjectParams.length}`);
     }
-    if (subject.discordUserId !== undefined) {
-      subjectParams.push(subject.discordUserId);
+    if (resolved.discordUserId !== undefined) {
+      subjectParams.push(resolved.discordUserId);
       subjectFilters.push(`discord_user_id = $${subjectParams.length}`);
     }
 
@@ -780,12 +1411,12 @@ export class AuthorizationRepository {
 
     const membershipParams: string[] = [];
     const membershipFilters: string[] = [];
-    if (subject.v2UserId !== undefined) {
-      membershipParams.push(subject.v2UserId);
+    if (resolved.v2UserId !== undefined) {
+      membershipParams.push(resolved.v2UserId);
       membershipFilters.push(`m.v2_user_id = $${membershipParams.length}`);
     }
-    if (subject.discordUserId !== undefined) {
-      membershipParams.push(subject.discordUserId);
+    if (resolved.discordUserId !== undefined) {
+      membershipParams.push(resolved.discordUserId);
       membershipFilters.push(`m.discord_user_id = $${membershipParams.length}`);
     }
     const membershipClause =
@@ -813,6 +1444,10 @@ export class AuthorizationRepository {
        INNER JOIN discord_membership m
          ON m.discord_guild_id = mr.discord_guild_id
         AND m.discord_user_id = mr.discord_user_id
+       INNER JOIN discord_role_snapshot rs
+         ON rs.discord_guild_id = mr.discord_guild_id
+        AND rs.discord_role_id = mr.discord_role_id
+        AND rs.deleted_at IS NULL
        WHERE ${membershipClause}`,
       membershipParams,
     );
@@ -853,6 +1488,10 @@ export class AuthorizationRepository {
        INNER JOIN discord_member_role mr
          ON mr.discord_guild_id = m.discord_guild_id
         AND mr.discord_user_id = m.discord_user_id
+       INNER JOIN discord_role_snapshot rs
+         ON rs.discord_guild_id = mr.discord_guild_id
+        AND rs.discord_role_id = mr.discord_role_id
+        AND rs.deleted_at IS NULL
        INNER JOIN discord_role_mapping drm
          ON drm.discord_guild_id = mr.discord_guild_id
         AND drm.discord_role_id = mr.discord_role_id
@@ -869,25 +1508,6 @@ export class AuthorizationRepository {
       permissionId: row.permission_id,
       source: row.source,
     }));
-
-    let identityLinked = false;
-    if (subject.v2UserId !== undefined || subject.discordUserId !== undefined) {
-      const linkParams: string[] = [];
-      const linkFilters: string[] = [];
-      if (subject.v2UserId !== undefined) {
-        linkParams.push(subject.v2UserId);
-        linkFilters.push(`v2_user_id = $${linkParams.length}`);
-      }
-      if (subject.discordUserId !== undefined) {
-        linkParams.push(subject.discordUserId);
-        linkFilters.push(`discord_user_id = $${linkParams.length}`);
-      }
-      const link = await this.pool.query(
-        `SELECT 1 FROM discord_identity_link WHERE ${linkFilters.join(' OR ')} LIMIT 1`,
-        linkParams,
-      );
-      identityLinked = (link.rowCount ?? 0) > 0;
-    }
 
     const groupPermsResult = await this.pool.query<{
       group_id: string;
@@ -912,5 +1532,57 @@ export class AuthorizationRepository {
       },
       groupPermissionIdsForGrants,
     };
+  }
+
+  /**
+   * Resolve the querying subject to a single linked person. When both ids are
+   * given they must be an exact link pair; when one is given the other is filled
+   * from the link if present. `identityLinked` is only true for an exact link.
+   */
+  private async resolvePrincipal(subject: DecisionSubject): Promise<{
+    readonly v2UserId?: string;
+    readonly discordUserId?: string;
+    readonly identityLinked: boolean;
+  }> {
+    const { v2UserId, discordUserId } = subject;
+
+    if (v2UserId !== undefined && discordUserId !== undefined) {
+      const link = await this.pool.query(
+        `SELECT 1 FROM discord_identity_link
+         WHERE discord_user_id = $1 AND v2_user_id = $2
+         LIMIT 1`,
+        [discordUserId, v2UserId],
+      );
+      if ((link.rowCount ?? 0) === 0) {
+        throw new AuthorizationError('CONFLICT', 'Discord and V2 identity pair does not match');
+      }
+      return { v2UserId, discordUserId, identityLinked: true };
+    }
+
+    if (v2UserId !== undefined) {
+      const link = await this.pool.query<{ discord_user_id: string }>(
+        'SELECT discord_user_id FROM discord_identity_link WHERE v2_user_id = $1 LIMIT 1',
+        [v2UserId],
+      );
+      const linkedDiscord = link.rows[0]?.discord_user_id;
+      if (linkedDiscord !== undefined) {
+        return { v2UserId, discordUserId: linkedDiscord, identityLinked: true };
+      }
+      return { v2UserId, identityLinked: false };
+    }
+
+    if (discordUserId !== undefined) {
+      const link = await this.pool.query<{ v2_user_id: string }>(
+        'SELECT v2_user_id FROM discord_identity_link WHERE discord_user_id = $1 LIMIT 1',
+        [discordUserId],
+      );
+      const linkedV2 = link.rows[0]?.v2_user_id;
+      if (linkedV2 !== undefined) {
+        return { v2UserId: linkedV2, discordUserId, identityLinked: true };
+      }
+      return { discordUserId, identityLinked: false };
+    }
+
+    return { identityLinked: false };
   }
 }

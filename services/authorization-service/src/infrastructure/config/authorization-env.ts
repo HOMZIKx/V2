@@ -131,6 +131,16 @@ function assertEnabledRequirements(
   config: AuthorizationEnv,
   addIssue: (path: string, message: string) => void,
 ): void {
+  // The bootstrap owner seed must be pinned in the environment before enabling
+  // authorization: without it no one can ever become organization owner, and a
+  // missing seed must never let an arbitrary caller claim ownership (P3-D8).
+  if (config.AUTHORIZATION_BOOTSTRAP_DISCORD_USER_ID === undefined) {
+    addIssue(
+      'AUTHORIZATION_BOOTSTRAP_DISCORD_USER_ID',
+      'is required when AUTHORIZATION_ENABLED=true (owner bootstrap seed)',
+    );
+  }
+
   if (config.AUTHORIZATION_INBOUND_CLIENTS_JSON === undefined) {
     addIssue('AUTHORIZATION_INBOUND_CLIENTS_JSON', 'is required when AUTHORIZATION_ENABLED=true');
   }

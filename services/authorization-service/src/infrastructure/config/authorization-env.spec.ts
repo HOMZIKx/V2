@@ -35,6 +35,7 @@ describe('parseAuthorizationEnv', () => {
     const config = parseAuthorizationEnv({
       ...baseEnv(),
       AUTHORIZATION_ENABLED: 'true',
+      AUTHORIZATION_BOOTSTRAP_DISCORD_USER_ID: '123456789012345678',
       AUTHORIZATION_INBOUND_CLIENTS_JSON: '[]',
       AUTHORIZATION_SYSTEM_ACTIVE_KID: 'kid-1',
       AUTHORIZATION_SYSTEM_PRIVATE_KEY_PEM: 'pem',
@@ -42,6 +43,22 @@ describe('parseAuthorizationEnv', () => {
       AUTHORIZATION_IDENTITY_REVOKE_URL: 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions',
     });
     expect(config.AUTHORIZATION_ENABLED).toBe(true);
+    expect(config.AUTHORIZATION_BOOTSTRAP_DISCORD_USER_ID).toBe('123456789012345678');
+  });
+
+  it('requires the bootstrap owner seed when enabled', () => {
+    expect(() =>
+      parseAuthorizationEnv({
+        ...baseEnv(),
+        AUTHORIZATION_ENABLED: 'true',
+        AUTHORIZATION_INBOUND_CLIENTS_JSON: '[]',
+        AUTHORIZATION_SYSTEM_ACTIVE_KID: 'kid-1',
+        AUTHORIZATION_SYSTEM_PRIVATE_KEY_PEM: 'pem',
+        AUTHORIZATION_IDENTITY_BASE_URL: 'http://127.0.0.1:4200',
+        AUTHORIZATION_IDENTITY_REVOKE_URL:
+          'http://127.0.0.1:4200/identity/v1/system/revoke-sessions',
+      }),
+    ).toThrow(/AUTHORIZATION_BOOTSTRAP_DISCORD_USER_ID/);
   });
 
   it('rejects unrecognized boolean values', () => {

@@ -404,7 +404,73 @@ describe('decideAuthorization — login entitling and stale deny', () => {
     expect(result.decision).toBe('deny');
     expect(result.specificity).toBe('sync_gate');
     expect(result.syncStatus).toBe('stale');
-    expect(result.appliedPolicyFlags).toContain('sensitive_requires_fresh');
+    expect(
+      result.appliedPolicyFlags.some((flag) => flag.startsWith('sensitive_requires_fresh')),
+    ).toBe(true);
+  });
+
+  it('allows login when one entitling guild is fresh even if another is stale', () => {
+    const staleAt = new Date(NOW.getTime() - (TRUST_WINDOW_SECONDS + 30) * 1000);
+    const context = baseContext({
+      guilds: [
+        activeGuild(GUILD_A, {
+          loginEntitling: true,
+          syncStatus: 'stale',
+          lastFreshAt: staleAt,
+        }),
+        activeGuild(GUILD_B, {
+          loginEntitling: true,
+          syncStatus: 'fresh',
+          lastFreshAt: NOW,
+        }),
+      ],
+      memberships: [membership(GUILD_A), membership(GUILD_B)],
+      identityLinked: true,
+    });
+
+    const result = decideAuthorization(
+      baseInput({ permissionId: LOGIN_PERMISSION, scope: ORG_SCOPE, operationClass: 'sensitive' }),
+      context,
+    );
+
+    expect(result.decision).toBe('allow');
+    expect(result.appliedPolicyFlags).toContain('login_guild:guild-b');
+  });
+
+  it('denies login when the only entitling guild has a guild-scoped block', () => {
+    const context = baseContext({
+      guilds: [activeGuild(GUILD_A, { loginEntitling: true })],
+      memberships: [membership(GUILD_A)],
+      identityLinked: true,
+      blocks: [
+        block({
+          id: 'guild-block',
+          scopeType: 'guild',
+          scopeGuildId: GUILD_A,
+          reason: 'guild quarantine',
+        }),
+      ],
+    });
+
+    const result = decideAuthorization(
+      baseInput({ permissionId: LOGIN_PERMISSION, scope: ORG_SCOPE, operationClass: 'sensitive' }),
+      context,
+    );
+
+    expect(result.decision).toBe('deny');
+    expect(result.appliedPolicyFlags).toContain('guild_block:guild-a');
+  });
+
+  it('allows ordinary guild ops within the unavailable trust window when lastFreshAt is recent', () => {
+    const recentFresh = new Date(NOW.getTime() - (TRUST_WINDOW_SECONDS - 10) * 1000);
+    const context = baseContext({
+      guilds: [activeGuild(GUILD_A, { syncStatus: 'unavailable', lastFreshAt: recentFresh })],
+      grants: [grant({ id: 'allow-1', effect: 'allow', specificity: 'user' })],
+    });
+
+    const result = decideAuthorization(baseInput({ operationClass: 'ordinary' }), context);
+    expect(result.decision).toBe('allow');
+    expect(result.appliedPolicyFlags).toContain('ordinary_trust_window');
   });
 
   it('denies ordinary guild ops when stale data exceeds the trust window', () => {

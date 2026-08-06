@@ -2,11 +2,12 @@
 
 ## Status
 
-`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION`
+`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`
 
 ## Active phase
 
-P3 Authorization foundation (Issue #15, P3-D1–P3-D20).
+P3 Authorization foundation — security/correctness remediation after ChatGPT audit
+`CHANGES_REQUIRED_P3_AUTHORIZATION_SECURITY_AND_CORRECTNESS`.
 
 ## Active task
 
@@ -14,33 +15,34 @@ P3 Authorization foundation (Issue #15, P3-D1–P3-D20).
 - Branch: `cursor/p3-authorization-foundation`
 - Base: `main` @ `f299775` (PR #14 Internal JWT merged)
 - HEAD tip: see GitHub PR #16
-- Issue: #15 (APPROVED decisions P3-D1–P3-D20)
+- Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
 - Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
 
 ## Current objective
 
-Owner review of minimal Authorization foundation before Centrum Aktywności.
+Re-audit of all 12 blocking audit points on PR #16.
 
 ## In scope now
 
-- authorization-service domain + PG schema + `/authorization/v1/*`
-- Identity system revoke + login entitlement gate
-- Discord Gateway sync bridge (opt-in)
-- ADR-0013 + contracts docs
+- All 12 audit remediations (bootstrap seed, S2S allowlist, immutable links,
+  per-guild login, unavailable vs detach, deterministic event keys, durable
+  pending revokes, activate-requires-fresh, no-escalation actors, deleted-role
+  filter, audit lifecycle, first OAuth login proof)
+- Docs / contracts / report updates
 
 ## Out of scope now
 
-- RabbitMQ/outbox/effective cache
-- Admin/Discord/WWW UI, Centrum Aktywności
-- Owner transfer, Zeabur, product permission names
+- P4 / PR #17 / Centrum Aktywności
+- UI, Zeabur, RabbitMQ Streams
 - Merge by Cursor
+- Changing P3-D1–P3-D20
 
 ## Decisions in force
 
 - Issue #15 P3-D1–P3-D20
 - D-034 / ADR-0013
-- DEC-008 A, DEC-009 A, ADR-0011 (Internal JWT user-context)
+- DEC-008 A, DEC-009 A, ADR-0011
 
 ## Last updated
 
-2026-08-05 — Cursor (draft PR #16; local `pnpm validate` green)
+2026-08-06 — Cursor (`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`)

@@ -1,6 +1,14 @@
-import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Inject,
+  Injectable,
+  SetMetadata,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { FastifyRequest } from 'fastify';
 
+import type { DecisionSubject } from '../domain/decision-engine.js';
 import { AuthorizationError } from '../domain/errors.js';
 import type { AuthorizationEnv } from '../infrastructure/config/authorization-env.js';
 import {
@@ -16,10 +24,27 @@ import {
 
 const ASSERTION_HEADER = 'authorization-client-assertion';
 
+/** Metadata key carrying the S2S operation a guarded route requires. */
+export const REQUIRED_OPERATION = 'authz:required_operation';
+
+/**
+ * Declare the S2S operation a route requires. The guard checks the verified
+ * client's `allowed_operations` allowlist against this value.
+ */
+export const RequireOperation = (operation: string): MethodDecorator =>
+  SetMetadata(REQUIRED_OPERATION, operation);
+
+/** Request enriched by the guard with the verified client + optional actor. */
+export interface AuthenticatedRequest extends FastifyRequest {
+  verifiedClientId?: string;
+  verifiedActor?: DecisionSubject;
+}
+
 /**
  * When `AUTHORIZATION_ENABLED=false`, inbound assertions are skipped so local
  * tests can exercise HTTP without key material. When enabled, every guarded
- * route requires a valid `Authorization-Client-Assertion` header.
+ * route requires a valid `Authorization-Client-Assertion` header AND the
+ * verified client must be allowlisted for the route's declared operation.
  */
 @Injectable()
 export class InboundAssertionGuard implements CanActivate {
@@ -28,6 +53,7 @@ export class InboundAssertionGuard implements CanActivate {
     @Inject(INBOUND_CLIENT_REGISTRY)
     private readonly registry: InboundClientRegistry | null,
     @Inject(ASSERTION_JTI_STORE) private readonly jtiStore: AssertionJtiStore | null,
+    private readonly reflector: Reflector,
   ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -39,7 +65,7 @@ export class InboundAssertionGuard implements CanActivate {
       throw new AuthorizationError('CONFIG_INVALID', 'Inbound client registry is not configured');
     }
 
-    const request = context.switchToHttp().getRequest<FastifyRequest>();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const header = request.headers[ASSERTION_HEADER];
     const assertion =
       typeof header === 'string' ? header : Array.isArray(header) ? header[0] : undefined;
@@ -63,9 +89,38 @@ export class InboundAssertionGuard implements CanActivate {
       this.registry,
     );
 
+    // Per-route S2S allowlist: the client must be explicitly permitted to invoke
+    // the operation this route declares.
+    const requiredOperation = this.reflector.get<string | undefined>(
+      REQUIRED_OPERATION,
+      context.getHandler(),
+    );
+    if (requiredOperation !== undefined) {
+      const client = this.registry.clients.get(verified.clientId);
+      if (client === undefined || !client.allowedOperations.has(requiredOperation)) {
+        throw new AuthorizationError(
+          'FORBIDDEN',
+          `Client ${verified.clientId} is not allowed to perform ${requiredOperation}`,
+        );
+      }
+    }
+
     if (this.jtiStore !== null) {
       const replayTtl = this.config.AUTHORIZATION_IDENTITY_ASSERTION_MAX_TTL_SECONDS + 60;
       await this.jtiStore.assertOnce(verified.jti, replayTtl);
+    }
+
+    // Expose the authenticated client and any operator actor claims so the
+    // controller derives the actor from the verified assertion — never from the
+    // untrusted request body.
+    request.verifiedClientId = verified.clientId;
+    if (verified.actorV2UserId !== undefined || verified.actorDiscordUserId !== undefined) {
+      request.verifiedActor = {
+        ...(verified.actorV2UserId !== undefined ? { v2UserId: verified.actorV2UserId } : {}),
+        ...(verified.actorDiscordUserId !== undefined
+          ? { discordUserId: verified.actorDiscordUserId }
+          : {}),
+      };
     }
 
     return true;

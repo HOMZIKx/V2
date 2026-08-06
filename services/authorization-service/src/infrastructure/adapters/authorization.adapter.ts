@@ -10,8 +10,11 @@ import type {
   CreateGrantCommand,
   EnsureOrganizationResult,
   IdentityLinkResult,
+  PendingSessionRevokeRecord,
+  PolicyMutationResult,
   ReconcileGuildCommand,
   RegisterGuildCommand,
+  SetGuildLoginEntitlingCommand,
   UpsertIdentityLinkCommand,
 } from '../../application/ports/authorization.ports.js';
 import type {
@@ -66,11 +69,36 @@ export class AuthorizationAdapter implements AuthorizationStorePort {
     return this.repository.activateGuild(command);
   }
 
-  public createGrant(command: CreateGrantCommand): Promise<{ readonly id: string }> {
+  public setGuildLoginEntitling(command: SetGuildLoginEntitlingCommand): Promise<{
+    readonly guild: ConnectedGuildState;
+    readonly revokedUserIds: readonly string[];
+  }> {
+    return this.repository.setGuildLoginEntitling(command);
+  }
+
+  public createGrant(command: CreateGrantCommand): Promise<PolicyMutationResult> {
     return this.repository.createGrant(command);
   }
 
-  public createBlock(command: CreateBlockCommand): Promise<{ readonly id: string }> {
+  public createBlock(command: CreateBlockCommand): Promise<PolicyMutationResult> {
     return this.repository.createBlock(command);
+  }
+
+  public listPendingSessionRevokes(limit?: number): Promise<readonly PendingSessionRevokeRecord[]> {
+    return this.repository.listPendingSessionRevokes(limit);
+  }
+
+  public markSessionRevokeDelivered(id: string): Promise<void> {
+    return this.repository.markSessionRevokeDelivered(id);
+  }
+
+  public markSessionRevokeAttemptFailed(id: string, errorMessage: string): Promise<void> {
+    return this.repository.markSessionRevokeAttemptFailed(id, errorMessage);
+  }
+
+  public processExpiredPolicies(
+    now?: Date,
+  ): Promise<{ readonly revokedUserIds: readonly string[] }> {
+    return this.repository.processExpiredPolicies(now);
   }
 }

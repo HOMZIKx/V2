@@ -29,6 +29,11 @@ const inboundClientKeySchema = z.object({
 const inboundClientSchema = z.object({
   client_id: z.string().min(1),
   keys: z.array(inboundClientKeySchema).min(1),
+  // S2S allowlist: the exact set of Authorization operations this client is
+  // permitted to invoke. Omitted/empty means the client may call no guarded
+  // route (deny-by-default), so a compromised or misconfigured client cannot
+  // reach operations outside its role.
+  allowed_operations: z.array(z.string().min(1)).default([]),
 });
 
 export interface InboundClientPublicKey {
@@ -41,6 +46,7 @@ export interface InboundClientPublicKey {
 export interface InboundClientRecord {
   readonly clientId: string;
   readonly keys: ReadonlyMap<string, InboundClientPublicKey>;
+  readonly allowedOperations: ReadonlySet<string>;
 }
 
 export interface InboundClientRegistry {
@@ -52,6 +58,9 @@ export interface VerifiedInboundAssertion {
   readonly clientId: string;
   readonly kid: string;
   readonly jti: string;
+  /** Optional operator identity the client is acting on behalf of. */
+  readonly actorV2UserId?: string;
+  readonly actorDiscordUserId?: string;
 }
 
 export interface VerifyInboundAssertionOptions {
@@ -126,6 +135,7 @@ export async function loadInboundClientRegistry(
     clients.set(record.client_id, {
       clientId: record.client_id,
       keys,
+      allowedOperations: new Set(record.allowed_operations),
     });
   }
 
@@ -166,6 +176,17 @@ function requireExactAudience(payload: JWTPayload, expectedAudience: string): vo
   if (typeof aud !== 'string' || aud !== expectedAudience) {
     reject('Assertion aud must exactly equal expected audience');
   }
+}
+
+function optionalStringClaim(payload: JWTPayload, claim: string): string | undefined {
+  const value = payload[claim];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string' || value.length === 0) {
+    reject(`Assertion ${claim} must be a non-empty string when present`);
+  }
+  return value;
 }
 
 function requireIntegerClaim(payload: JWTPayload, claim: 'iat' | 'exp'): number {
@@ -288,7 +309,16 @@ export async function verifyInboundAssertion(
     reject('Assertion jti must be a UUID');
   }
 
-  return { clientId: keyEntry.clientId, kid, jti: verifiedJti };
+  const actorV2UserId = optionalStringClaim(payload, 'actor_v2_user_id');
+  const actorDiscordUserId = optionalStringClaim(payload, 'actor_discord_user_id');
+
+  return {
+    clientId: keyEntry.clientId,
+    kid,
+    jti: verifiedJti,
+    ...(actorV2UserId !== undefined ? { actorV2UserId } : {}),
+    ...(actorDiscordUserId !== undefined ? { actorDiscordUserId } : {}),
+  };
 }
 
 export interface AssertionJtiStore {

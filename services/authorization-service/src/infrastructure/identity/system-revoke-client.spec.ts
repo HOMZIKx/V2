@@ -27,7 +27,11 @@ describe('SystemRevokeClient', () => {
       fetchImpl: fetchImpl as typeof fetch,
     });
 
-    await client.revokeAllSessionsForUser('user-1');
+    await client.revokeAllSessionsForUser(
+      'user-1',
+      '123e4567-e89b-12d3-a456-426614174000',
+      'login_entitlement_lost',
+    );
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
@@ -44,9 +48,7 @@ describe('SystemRevokeClient', () => {
     };
     expect(parsed.v2_user_id).toBe('user-1');
     expect(parsed.reason).toBe('login_entitlement_lost');
-    expect(parsed.correlation_id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    );
+    expect(parsed.correlation_id).toBe('123e4567-e89b-12d3-a456-426614174000');
   });
 
   it('returns null fromEnv when revoke signing config is incomplete', () => {
@@ -107,6 +109,8 @@ describe('SystemRevokeClient assertion shape', () => {
       maxTtlSeconds: 30,
       fetchImpl: () => Promise.resolve(new Response(null, { status: 204 })),
     });
-    await expect(client.revokeAllSessionsForUser('u')).resolves.toBeUndefined();
+    await expect(
+      client.revokeAllSessionsForUser('u', 'corr-1', 'login_entitlement_lost'),
+    ).resolves.toBeUndefined();
   });
 });
