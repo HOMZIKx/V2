@@ -19,20 +19,94 @@
 - **Ryzyko:** token był eksponowany w czacie — zalecany Reset Token; właściciel świadomie pomija.
 - **Wznowienie zasady minimalnych uprawnień:** przed Zeabur / produkcją.
 
+<<<<<<< HEAD
 ## Rozstrzygnięte (P3 Authorization — 2026-08-05)
 
 Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED` (komentarze Issue + ADR-0013 / D-034).
 Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
 (`cursor/p3-authorization-foundation`) — final closure pass; merge tylko przez właściciela.
+=======
+## P4 Centrum Aktywności — status decyzji (SPEC-PREP 2026-08-06)
+
+> Spec lokalna: `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md`.
+> Implementacja zabroniona do merge P3 (PR #16) + brief `READY_FOR_CURSOR`.
+> Decyzje produktowe A–S: `docs/product/CENTRUM_AKTYWNOSCI.md`.
+>>>>>>> 15cfebe (docs(community): complete P4 Centrum Aktywności implementable spec)
 
 ## Zamrożone (do merge P3)
 
+<<<<<<< HEAD
 ### P4 / PR #17 — Centrum Aktywności
 
 - **Status:** FROZEN
 - **PR:** https://github.com/HOMZIKx/V2/pull/17 (docs-only planning)
 - **Warunek wznowienia:** merge PR #16 + jawne `APPROVED` na start P4.
 - Agent nie implementuje P4 ani nie rozszerza PR #17 w trakcie domknięcia P3.
+=======
+- **Status:** OWNER_ACCEPTED (superseded prior A/B/C options)
+- **Decyzja właściciela:** Pełny model produktowy Centrum z etapami wdrożenia
+  P4.1–P4.6 (domain → Discord one-shot → Admin → WWW → multi/resilience →
+  extensions). Nie „hub only” i nie jeden twardo wybrany „typ” jako jedyny produkt.
+- **Skutek:** Stare opcje A/B/C planu nie obowiązują jako wybór v1.
+
+### P4-D2 — pierwszy typ aktywności
+
+- **Status:** OWNER_ACCEPTED (superseded)
+- **Decyzja właściciela:** Rodzaje aktywności konfiguruje administrator; aktywność
+  należy do gry na serwerze; „Inna aktywność” per-serwer. Nie pojedynczy hardcodowany typ.
+- **Skutek:** Katalog typów w Admin (P4.3); model w P4.1.
+
+### P4-D3 — właściciel domeny / nazwa usługi
+
+- **Status:** TECHNICAL_OPEN / ADR-0014 Proposed
+- **Kontekst:** Osobna usługa + baza wymagane architektonicznie (ADR-0001).
+- **Rekomendacja techniczna:** `community-service` + DB `community`.
+- **Decyzja właściciela:** formalna nazwa = `OWNER_DECISION_REQUIRED` (nie blokuje
+  spisu agregatów w docs). Opcja „trzymać w gateway/authz/identity” pozostaje odrzucona.
+
+### P4-D4 — kanały w P4
+
+- **Status:** OWNER_ACCEPTED (superseded „Discord only v1”)
+- **Decyzja właściciela:** Discord (P4.2) + podstawowy Admin (P4.3) + pierwszy WWW
+  browse/RSVP/Moje/powiadomienia (P4.4). Tworzenie na WWW odroczone względem Discorda.
+- **Skutek:** Usunięta sprzeczność „Discord only” vs zatwierdzony WWW.
+
+### P4-D5 — transport mutacji / projekcji
+
+- **Status:** TECHNICAL_OPEN
+- **Rekomendacja techniczna:** Sync HTTP + idempotency w P4.1–P4.2; porty pod Outbox/RMQ.
+- **Decyzja właściciela:** brak — nie przedstawiać rekomendacji jako Accepted.
+
+### P4-D6 — publikacja panelu Centrum
+
+- **Status:** OWNER_ACCEPTED (partial) + TECHNICAL_OPEN (mechanizm publish)
+- **Decyzja właściciela:** Stały panel; update in-place; jeden prywatny formularz
+  (nie kreator); sekcje Utwórz / Szukam ekipy / Moje / Powiadomienia.
+- **TECHNICAL_OPEN:** slash operatora vs auto-publish przy starcie.
+
+### P4-D7 — katalog permission IDs
+
+- **Status:** TECHNICAL_OPEN + OWNER_DECISION_REQUIRED (finalne stringi)
+- **Wymaganie produktowe:** mapowanie akcji→P3 permissions (architecture + traceability).
+- **Propozycja TECH:** `permission.activity.event.*` / `….admin.configure` /
+  `….panel.publish` (patrz architecture doc). Finalne ID = właściciel/ChatGPT.
+
+### P4-D8 — checkpoint wizualny (Issue #12)
+
+- **Status:** OWNER_DECISION_REQUIRED
+- **Zakres:** kolory, emoji, grafiki, copy poza zaakceptowanymi etykietami funkcji.
+- **Zakaz:** placeholdery lab jako produkt.
+
+### P4-T1 — formalne Accepted ADR-0014 + nazwa usługi
+
+- **Status:** BLOCKED / TECHNICAL_OPEN
+- **Kontekst:** Boundary Proposed; produkt Accepted osobno.
+
+### P4-T2 — OpenAPI ścieżki i event names
+
+- **Status:** TECHNICAL_OPEN
+- **Kontekst:** Szkic w architecture; stabilizacja przy P4.1.
+>>>>>>> 15cfebe (docs(community): complete P4 Centrum Aktywności implementable spec)
 
 ## Rozstrzygnięte (P2 Identity — 2026-08-05)
 
