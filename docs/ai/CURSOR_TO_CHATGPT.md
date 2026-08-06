@@ -15,7 +15,7 @@ P4 Centrum Aktywności **planning package only** on
 ## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
-- HEAD: `73686cc9c6aaaefdb994519cb9932a3463e33b9a`
+- HEAD tip: see GitHub planning PR (SoT)
 - Base: `main` @ `f299775`
 - Prerequisite: P3 draft PR #16 (`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION`)
   must be APPROVED + merged before P4 implementation
