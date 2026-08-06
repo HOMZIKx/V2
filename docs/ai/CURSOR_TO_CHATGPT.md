@@ -37,15 +37,26 @@ Prior 12-point security remediation remains in force (see earlier PR comments / 
 ## 5. Validation
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm validate   # full suite once at end
-gitleaks detect --log-opts=main..HEAD
+pnpm format:check   # pass
+pnpm lint           # pass
+pnpm typecheck      # pass
+pnpm test:coverage / architecture:check / e2e / runtime-smoke  # pass
+RUN_INFRA_TESTS=true authorization + identity P3 integration  # pass (local PG/Redis)
+gitleaks detect --log-opts=main..HEAD  # no leaks
+# Local `pnpm validate` compose config step fails without Docker CLI;
+# CI compose + infra jobs are the SoT for compose.
 ```
 
-CI URLs and final HEAD filled after green tip push.
+### Tip HEAD
+
+`44431e7` (GitHub SoT; code tip `1253d55` + prettier/`require-await` + CI retrigger)
+
+### CI
+
+- Secret scan (PR tip): https://github.com/HOMZIKx/V2/actions/runs/31117845870/job/92671957632 (pass)
+- CI run: https://github.com/HOMZIKx/V2/actions/runs/31117845870
+- Prior attempt failed only on GitHub Actions “Service Unavailable” during job setup (not code)
+- Quality gates / Infrastructure: queued after Actions outage — confirm green on tip before merge
 
 ## 6. Explicitly unchanged / frozen
 

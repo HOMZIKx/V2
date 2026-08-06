@@ -14,9 +14,10 @@ P3 Authorization foundation — final closure pass after
 - Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
 - Branch: `cursor/p3-authorization-foundation`
 - Base: `main` @ `f299775` (PR #14 Internal JWT merged)
-- HEAD tip: see GitHub PR #16 (SoT)
+- HEAD tip: `44431e7` (GitHub PR #16 SoT; code `1253d55`)
 - Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
 - Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
+- CI: https://github.com/HOMZIKx/V2/actions/runs/31117845870 (secret scan green; gates queued after GH Actions outage)
 
 ## Current objective
 
