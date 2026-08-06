@@ -159,9 +159,9 @@ describe('buildDiscordEventKey', () => {
     expect(key1).toBe(key2);
   });
 
-  it('omits the hash for identity-only remove keys (idempotent)', () => {
-    expect(buildDiscordEventKey('guild_member_remove', [GUILD_ID, 'u1'])).toBe(
-      `dg:guild_member_remove:${GUILD_ID}:u1`,
+  it('includes membership epoch in remove keys (defaults to 0)', () => {
+    expect(buildDiscordEventKey('guild_member_remove', [GUILD_ID, 'u1', 0])).toBe(
+      `dg:guild_member_remove:${GUILD_ID}:u1:0`,
     );
   });
 });
@@ -180,7 +180,7 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
     expect(input.payload).toEqual({ kind: 'guild_unavailable' });
     expect(input.eventType).toBe('guild_unavailable');
-    expect(input.eventKey).toBe(`dg:guild_unavailable:${GUILD_ID}`);
+    expect(input.eventKey).toBe(`dg:guild_unavailable:${GUILD_ID}:0`);
   });
 
   it('sends guild_detach when GuildDelete is a confirmed removal (available !== false)', async () => {
@@ -196,10 +196,10 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
     expect(input.payload).toEqual({ kind: 'guild_detach' });
     expect(input.eventType).toBe('guild_delete');
-    expect(input.eventKey).toBe(`dg:guild_detach:${GUILD_ID}`);
+    expect(input.eventKey).toBe(`dg:guild_detach:${GUILD_ID}:0`);
   });
 
-  it('replays the same event key across repeated GuildDelete outage events', async () => {
+  it('replays the same event key across repeated GuildDelete outage events (retry)', async () => {
     const { port, applyDiscordEvent } = makeSyncMock();
     const adapter = makeAdapterWithSync(port);
 
@@ -213,6 +213,106 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const keys = applyDiscordEvent.mock.calls.map(
       (call) => (call[0] as AuthzDiscordEventInput).eventKey,
     );
-    expect(keys).toEqual([`dg:guild_unavailable:${GUILD_ID}`, `dg:guild_unavailable:${GUILD_ID}`]);
+    expect(keys).toEqual([
+      `dg:guild_unavailable:${GUILD_ID}:0`,
+      `dg:guild_unavailable:${GUILD_ID}:0`,
+    ]);
+  });
+
+  it('leave → rejoin → leave uses a new remove key for the second leave', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+    const internals = adapter as unknown as {
+      handleMemberRemove(m: { id: string; guild: Guild }): Promise<void>;
+      handleMemberUpsert(
+        m: {
+          id: string;
+          guild: Guild;
+          roles: { cache: Map<string, unknown> };
+          joinedTimestamp: number | null;
+        },
+        t: 'guild_member_add' | 'guild_member_update',
+      ): Promise<void>;
+    };
+
+    const guild = { id: GUILD_ID } as Guild;
+    const member = {
+      id: 'u-leave',
+      guild,
+      roles: { cache: new Map([[GUILD_ID, {}]]) },
+      joinedTimestamp: 1_700_000_000_000,
+    };
+
+    await internals.handleMemberRemove(member);
+    await internals.handleMemberUpsert(member, 'guild_member_add');
+    await internals.handleMemberRemove(member);
+
+    const removeKeys = applyDiscordEvent.mock.calls
+      .map((call) => call[0] as AuthzDiscordEventInput)
+      .filter((input) => input.eventType === 'guild_member_remove')
+      .map((input) => input.eventKey);
+
+    expect(removeKeys).toEqual([
+      `dg:guild_member_remove:${GUILD_ID}:u-leave:0`,
+      `dg:guild_member_remove:${GUILD_ID}:u-leave:1`,
+    ]);
+  });
+
+  it('unavailable → reconcile → unavailable uses a new unavailable key', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+    const internals = adapter as unknown as {
+      handleGuildDelete(g: Guild): Promise<void>;
+      registerAndReconcile(g: Guild): Promise<void>;
+      buildGuildSnapshot(g: Guild): Promise<{
+        members: Array<{ discordUserId: string; roleIds: string[]; status: 'active' }>;
+        roles: Array<{ discordRoleId: string; nameCache: string }>;
+      }>;
+    };
+
+    // Avoid real Discord cache fetches during reconcile.
+    internals.buildGuildSnapshot = async () => ({ members: [], roles: [] });
+
+    const outage = { id: GUILD_ID, available: false } as unknown as Guild;
+    await internals.handleGuildDelete(outage);
+    await internals.registerAndReconcile({ id: GUILD_ID } as Guild);
+    await internals.handleGuildDelete(outage);
+
+    const unavailableKeys = applyDiscordEvent.mock.calls
+      .map((call) => call[0] as AuthzDiscordEventInput)
+      .filter((input) => input.payload.kind === 'guild_unavailable')
+      .map((input) => input.eventKey);
+
+    expect(unavailableKeys).toEqual([
+      `dg:guild_unavailable:${GUILD_ID}:0`,
+      `dg:guild_unavailable:${GUILD_ID}:1`,
+    ]);
+  });
+
+  it('detach → reconnect → detach uses a new detach key', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+    const internals = adapter as unknown as {
+      handleGuildDelete(g: Guild): Promise<void>;
+      registerAndReconcile(g: Guild): Promise<void>;
+      buildGuildSnapshot(g: Guild): Promise<{
+        members: Array<{ discordUserId: string; roleIds: string[]; status: 'active' }>;
+        roles: Array<{ discordRoleId: string; nameCache: string }>;
+      }>;
+    };
+
+    internals.buildGuildSnapshot = async () => ({ members: [], roles: [] });
+
+    const detached = { id: GUILD_ID, available: true } as unknown as Guild;
+    await internals.handleGuildDelete(detached);
+    await internals.registerAndReconcile({ id: GUILD_ID } as Guild);
+    await internals.handleGuildDelete(detached);
+
+    const detachKeys = applyDiscordEvent.mock.calls
+      .map((call) => call[0] as AuthzDiscordEventInput)
+      .filter((input) => input.payload.kind === 'guild_detach')
+      .map((input) => input.eventKey);
+
+    expect(detachKeys).toEqual([`dg:guild_detach:${GUILD_ID}:0`, `dg:guild_detach:${GUILD_ID}:1`]);
   });
 });

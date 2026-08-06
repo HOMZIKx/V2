@@ -2,12 +2,78 @@ import type {
   AuthorizationStorePort,
   BootstrapOwnerCommand,
   BootstrapOwnerResult,
+  ClaimPendingRevokesOptions,
   SessionRevokePort,
 } from '../ports/authorization.ports.js';
 
 export interface DeliverPendingRevokesResult {
   readonly delivered: number;
   readonly failed: number;
+  readonly terminalFailed: number;
+}
+
+const DEFAULT_MAX_ATTEMPTS = 25;
+
+/**
+ * Drain the durable `pending_session_revoke` queue: claim rows with a lease,
+ * call Identity's system revoke, mark delivered on success or record a failed
+ * attempt with backoff. Safe for concurrent instances via SKIP LOCKED.
+ */
+export async function deliverPendingRevokes(
+  store: AuthorizationStorePort,
+  revoke: SessionRevokePort | null,
+  options?: {
+    readonly limit?: number;
+    readonly leaseOwner?: string;
+    readonly leaseSeconds?: number;
+    readonly maxAttempts?: number;
+  },
+): Promise<DeliverPendingRevokesResult> {
+  if (revoke === null) {
+    return { delivered: 0, failed: 0, terminalFailed: 0 };
+  }
+
+  const leaseOwner = options?.leaseOwner ?? `drain:${process.pid}`;
+  const claim: ClaimPendingRevokesOptions = {
+    leaseOwner,
+    ...(options?.limit !== undefined ? { limit: options.limit } : {}),
+    ...(options?.leaseSeconds !== undefined ? { leaseSeconds: options.leaseSeconds } : {}),
+  };
+
+  const pending =
+    typeof store.claimPendingSessionRevokes === 'function'
+      ? await store.claimPendingSessionRevokes(claim)
+      : await store.listPendingSessionRevokes(options?.limit);
+
+  let delivered = 0;
+  let failed = 0;
+  let terminalFailed = 0;
+  const maxAttempts = options?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+
+  for (const record of pending) {
+    try {
+      await revoke.revokeAllSessionsForUser(record.v2UserId, record.correlationId, record.reason);
+      await store.markSessionRevokeDelivered(record.id, leaseOwner);
+      delivered += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const nextAttempts = record.attempts + 1;
+      const terminal = nextAttempts >= maxAttempts;
+      await store.markSessionRevokeAttemptFailed({
+        id: record.id,
+        errorMessage: message,
+        terminal,
+        actor: leaseOwner,
+      });
+      if (terminal) {
+        terminalFailed += 1;
+      } else {
+        failed += 1;
+      }
+    }
+  }
+
+  return { delivered, failed, terminalFailed };
 }
 
 export async function bootstrapOwner(
@@ -43,43 +109,6 @@ export async function registerGuild(
   command: Parameters<AuthorizationStorePort['registerGuild']>[0],
 ): Promise<Awaited<ReturnType<AuthorizationStorePort['registerGuild']>>> {
   return store.registerGuild(command);
-}
-
-/**
- * Drain the durable `pending_session_revoke` queue: for each pending row call
- * Identity's system revoke, marking the row delivered on success or recording a
- * failed attempt (row stays pending) so a later drain retries it. The queue —
- * written inside each mutation transaction — is the crash-safe source of truth;
- * this drain is what actually kills sessions. It is safe to call repeatedly and
- * even when a mutation was a duplicate (there may be un-delivered rows from an
- * earlier crashed drain).
- */
-export async function deliverPendingRevokes(
-  store: AuthorizationStorePort,
-  revoke: SessionRevokePort | null,
-  limit?: number,
-): Promise<DeliverPendingRevokesResult> {
-  if (revoke === null) {
-    return { delivered: 0, failed: 0 };
-  }
-
-  const pending = await store.listPendingSessionRevokes(limit);
-  let delivered = 0;
-  let failed = 0;
-
-  for (const record of pending) {
-    try {
-      await revoke.revokeAllSessionsForUser(record.v2UserId, record.correlationId, record.reason);
-      await store.markSessionRevokeDelivered(record.id);
-      delivered += 1;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await store.markSessionRevokeAttemptFailed(record.id, message);
-      failed += 1;
-    }
-  }
-
-  return { delivered, failed };
 }
 
 export async function applyDiscordEvent(
@@ -150,4 +179,25 @@ export async function processExpiredPolicies(
   const result = await store.processExpiredPolicies(now);
   await deliverPendingRevokes(store, revoke);
   return result;
+}
+
+/** One maintenance tick: expirations then pending revoke delivery. */
+export async function runMaintenanceTick(
+  store: AuthorizationStorePort,
+  revoke: SessionRevokePort | null,
+  options?: {
+    readonly leaseOwner?: string;
+    readonly revokeLimit?: number;
+    readonly now?: Date;
+  },
+): Promise<{
+  readonly expirations: Awaited<ReturnType<AuthorizationStorePort['processExpiredPolicies']>>;
+  readonly revokes: DeliverPendingRevokesResult;
+}> {
+  const expirations = await store.processExpiredPolicies(options?.now);
+  const revokes = await deliverPendingRevokes(store, revoke, {
+    ...(options?.leaseOwner !== undefined ? { leaseOwner: options.leaseOwner } : {}),
+    ...(options?.revokeLimit !== undefined ? { limit: options.revokeLimit } : {}),
+  });
+  return { expirations, revokes };
 }

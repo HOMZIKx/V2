@@ -80,12 +80,13 @@ const registerGuildBodySchema = z.object({
   discordGuildId: z.string().min(1).max(128),
 });
 
-const memberSnapshotSchema = z.object({
-  discordUserId: z.string().min(1).max(128),
-  v2UserId: z.string().min(1).max(128).optional(),
-  roleIds: z.array(z.string().min(1).max(128)).default([]),
-  status: z.enum(['active', 'inactive']).default('active'),
-});
+const memberSnapshotSchema = z
+  .object({
+    discordUserId: z.string().min(1).max(128),
+    roleIds: z.array(z.string().min(1).max(128)).default([]),
+    status: z.enum(['active', 'inactive']).default('active'),
+  })
+  .strict();
 
 const roleSnapshotSchema = z.object({
   discordRoleId: z.string().min(1).max(128),
@@ -217,7 +218,6 @@ function toDecisionSubject(subject: {
 function toMemberSnapshots(
   members: ReadonlyArray<{
     readonly discordUserId: string;
-    readonly v2UserId?: string | undefined;
     readonly roleIds: readonly string[];
     readonly status: 'active' | 'inactive';
   }>,
@@ -226,7 +226,6 @@ function toMemberSnapshots(
     discordUserId: member.discordUserId,
     roleIds: [...member.roleIds],
     status: member.status,
-    ...(member.v2UserId !== undefined ? { v2UserId: member.v2UserId } : {}),
   }));
 }
 

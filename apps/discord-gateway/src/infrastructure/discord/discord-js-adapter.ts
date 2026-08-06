@@ -25,6 +25,7 @@ import {
   hashAuthzPayload,
 } from '../authorization/authorization-sync-client.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
+import { GuildLifecycleEpochStore } from '../discord/guild-lifecycle-epoch.js';
 import { redactSecrets, safeErrorMessage } from '../security/secret-redaction.js';
 
 export type DiscordClientLifecycleDeps = {
@@ -67,6 +68,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   private lastError: string | null = null;
   private readonly secrets: string[];
   private readonly authorizationSync: AuthorizationSyncPort | null;
+  private readonly lifecycleEpochs = new GuildLifecycleEpochStore();
 
   public constructor(private readonly deps: DiscordClientLifecycleDeps) {
     this.secrets = [deps.config.DISCORD_TOKEN, deps.config.DISCORD_COMPONENT_SIGNING_SECRET].filter(
@@ -369,16 +371,25 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       return;
     }
 
-    // #5: GuildDelete fires both for a transient outage (guild.available === false)
+    // GuildDelete fires both for a transient outage (guild.available === false)
     // and for a confirmed removal/disconnect. Only the latter is a real detach.
+    // Event keys include a lifecycle epoch so leave→rejoin / outage→fresh /
+    // detach→reconnect cycles do not collide, while retries of the same delivery
+    // reuse the current epoch.
     const unavailable = guild.available === false;
     const eventType = unavailable ? 'guild_unavailable' : 'guild_delete';
     const payload = unavailable
       ? ({ kind: 'guild_unavailable' } as const)
       : ({ kind: 'guild_detach' } as const);
     const eventKey = unavailable
-      ? buildDiscordEventKey('guild_unavailable', [guild.id])
-      : buildDiscordEventKey('guild_detach', [guild.id]);
+      ? buildDiscordEventKey('guild_unavailable', [
+          guild.id,
+          this.lifecycleEpochs.availabilityEpoch(guild.id),
+        ])
+      : buildDiscordEventKey('guild_detach', [
+          guild.id,
+          this.lifecycleEpochs.attachmentEpoch(guild.id),
+        ]);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
       eventType,
@@ -408,7 +419,12 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     const joinedMs = member.joinedTimestamp ?? 0;
     const eventKey =
       eventType === 'guild_member_add'
-        ? buildDiscordEventKey(eventType, [member.guild.id, member.id, joinedMs])
+        ? buildDiscordEventKey(eventType, [
+            member.guild.id,
+            member.id,
+            joinedMs,
+            this.lifecycleEpochs.membershipEpoch(member.guild.id, member.id),
+          ])
         : buildDiscordEventKey(eventType, [member.guild.id, member.id], {
             roleIds: [...roleIds].sort(),
             status: payload.member.status,
@@ -421,6 +437,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       payload,
       payloadHash: hashAuthzPayload(payload),
     });
+
+    // Rejoin / add advances the membership epoch so a later leave is a new event.
+    if (eventType === 'guild_member_add') {
+      this.lifecycleEpochs.bumpMembershipEpoch(member.guild.id, member.id);
+    }
   }
 
   private async handleMemberRemove(
@@ -434,7 +455,12 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       kind: 'member_remove' as const,
       discordUserId: member.id,
     };
-    const eventKey = buildDiscordEventKey('guild_member_remove', [member.guild.id, member.id]);
+    const epoch = this.lifecycleEpochs.membershipEpoch(member.guild.id, member.id);
+    const eventKey = buildDiscordEventKey('guild_member_remove', [
+      member.guild.id,
+      member.id,
+      epoch,
+    ]);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
       eventType: 'guild_member_remove',
@@ -490,6 +516,10 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       return;
     }
 
+    // Reconnect / (re)register advances the attachment epoch so a later detach
+    // is distinct from a previous detach of the same guild.
+    this.lifecycleEpochs.bumpAttachmentEpoch(guild.id);
+
     await this.authorizationSync.registerGuild(guild.id);
     const snapshot = await this.buildGuildSnapshot(guild);
     const sortedMembers = [...snapshot.members].sort((a, b) =>
@@ -505,6 +535,8 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
         roles: sortedRoles,
       }),
     });
+    // Fresh reconcile advances the availability epoch so a later outage is new.
+    this.lifecycleEpochs.bumpAvailabilityEpoch(guild.id);
     this.deps.logger.info('Authorization sync register+reconcile completed', {
       guildId: guild.id,
       memberCount: snapshot.members.length,
@@ -591,10 +623,9 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
  * Build a deterministic idempotency key for a Discord → Authorization event.
  *
  * The key is `dg:{type}:{...parts}` optionally suffixed with a sha256 hash of
- * the canonical JSON of `payloadForHash`. Because the key is derived purely
- * from stable entity identity plus a content hash (never randomUUID), replaying
- * the same logical event produces the same key so Authz can dedupe it, while a
- * meaningful change (e.g. different roles) yields a different key.
+ * the canonical JSON of `payloadForHash`. Keys never use randomUUID. Lifecycle
+ * epochs (passed as parts) keep retries of one delivery stable while separating
+ * later legitimate cycles of the same entity.
  */
 export function buildDiscordEventKey(
   type: string,

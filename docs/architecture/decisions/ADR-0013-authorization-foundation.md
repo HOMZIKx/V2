@@ -30,14 +30,25 @@ właściciela. `authorization-service` był szkieletem Nest bez domeny.
 7. **Discord sync v1:** synchroniczny HTTP z `discord-gateway`
    (`DISCORD_AUTHORIZATION_SYNC_ENABLED`; GuildMembers tylko gdy sync włączony);
    RabbitMQ/outbox tylko jako przyszłe porty, bez implementacji w tym PR.
+   Event keys są lifecycle-aware (epoch w Gateway): retry tego samego eventu
+   zachowuje key; leave→rejoin→leave / unavailable→fresh→unavailable /
+   detach→reconnect→detach dostają nowe keys. Membership **nie** przyjmuje
+   `v2UserId` z Gateway — tylko Identity tworzy `discord_identity_link`.
 8. **Katalog permissions** w fundamencie jest wyłącznie techniczny (test/foundation IDs).
    Finalne nazwy UX = poza zakresem.
+9. **Durable session revoke:** `pending_session_revoke` w tej samej transakcji co
+   utrata WWW login entitlement; autonomiczny worker (startup + okresowo) z
+   lease/`SKIP LOCKED`, backoff i audytem `revoke.enqueued|attempt_failed|delivered|failed_terminal`.
+   Revoke tylko przy przejściu allow→deny końcowego `permission.platform.login.www`.
+10. **No-escalation (P3-D18):** lokalny manager nie nadaje org scope ani permissions
+    (w tym z grupy), których sam nie posiada; wyjątek: org policy manager / owner.
 
 ## Konsekwencje
 
 - Identity zyskuje `POST /identity/v1/system/revoke-sessions` oraz login gate.
 - Discord Gateway emituje register/events/reconcile do Authorization gdy sync włączony.
 - Deploy Zeabur, Admin UI, Centrum Aktywności i pełny RBAC pozostają poza P3 foundation.
+- P4 / PR #17 pozostaje zamrożony do merge PR #16 (D-035).
 
 ## Zastąpienie
 

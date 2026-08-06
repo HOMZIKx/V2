@@ -2,38 +2,37 @@
 
 ## Status
 
-`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`
+`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`
 
 ## Active phase
 
-P3 Authorization foundation — security/correctness remediation after ChatGPT audit
-`CHANGES_REQUIRED_P3_AUTHORIZATION_SECURITY_AND_CORRECTNESS`.
+P3 Authorization foundation — final closure pass after
+`BLOCKING_FINAL_P3_CLOSURE_PASS` (7 points). Draft PR #16 only.
 
 ## Active task
 
 - Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
 - Branch: `cursor/p3-authorization-foundation`
 - Base: `main` @ `f299775` (PR #14 Internal JWT merged)
-- HEAD tip: `6991d893351a992850a8a3f39f1634453f39c43d` (GitHub PR #16 SoT; code remediation `e844402`)
+- HEAD tip: see GitHub PR #16 (SoT)
 - Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
 - Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
-- CI on code tip `e844402`: https://github.com/HOMZIKx/V2/actions/runs/31114236847 (success)
 
 ## Current objective
 
-Re-audit of all 12 blocking audit points on PR #16.
+Final re-audit of the 7 closure blockers, then owner merge of PR #16.
+Phase close P0–P3 documented in `docs/ai/PHASE_COMPLETION_AUDIT.md`.
 
 ## In scope now
 
-- All 12 audit remediations (bootstrap seed, S2S allowlist, immutable links,
-  per-guild login, unavailable vs detach, deterministic event keys, durable
-  pending revokes, activate-requires-fresh, no-escalation actors, deleted-role
-  filter, audit lifecycle, first OAuth login proof)
-- Docs / contracts / report updates
+- Final 7-point closure remediations (lifecycle event keys, autonomous revoke
+  worker, automatic expiry, full no-escalation, Gateway without v2UserId,
+  authoritative WWW login entitlement recalc, revoke audit lifecycle)
+- Docs / contracts / P0–P3 completion matrix
 
 ## Out of scope now
 
-- P4 / PR #17 / Centrum Aktywności
+- P4 / PR #17 / Centrum Aktywności (**frozen** until P3 merge)
 - UI, Zeabur, RabbitMQ Streams
 - Merge by Cursor
 - Changing P3-D1–P3-D20
@@ -46,4 +45,4 @@ Re-audit of all 12 blocking audit points on PR #16.
 
 ## Last updated
 
-2026-08-06 — Cursor (`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`)
+2026-08-06 — Cursor (`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`)

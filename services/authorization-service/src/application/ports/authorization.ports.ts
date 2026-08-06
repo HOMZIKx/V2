@@ -57,7 +57,6 @@ export interface RegisterGuildCommand {
 
 export interface MemberSnapshot {
   readonly discordUserId: string;
-  readonly v2UserId?: string;
   readonly roleIds: readonly string[];
   readonly status: 'active' | 'inactive';
 }
@@ -166,6 +165,21 @@ export interface PendingSessionRevokeRecord {
   readonly correlationId: string;
   readonly reason: string;
   readonly attempts: number;
+  readonly sourceEventKey?: string;
+}
+
+export interface ClaimPendingRevokesOptions {
+  readonly limit?: number;
+  readonly leaseOwner: string;
+  readonly leaseSeconds?: number;
+}
+
+export interface MarkSessionRevokeAttemptFailedCommand {
+  readonly id: string;
+  readonly errorMessage: string;
+  /** When true, row becomes failed_terminal and will not be retried. */
+  readonly terminal?: boolean;
+  readonly actor?: string;
 }
 
 export interface PolicyMutationResult {
@@ -196,9 +210,16 @@ export interface AuthorizationStorePort {
   }>;
   createGrant(command: CreateGrantCommand): Promise<PolicyMutationResult>;
   createBlock(command: CreateBlockCommand): Promise<PolicyMutationResult>;
+  /**
+   * @deprecated Prefer claimPendingSessionRevokes for multi-instance workers.
+   * Kept for tests and opportunistic drains after mutations.
+   */
   listPendingSessionRevokes(limit?: number): Promise<readonly PendingSessionRevokeRecord[]>;
-  markSessionRevokeDelivered(id: string): Promise<void>;
-  markSessionRevokeAttemptFailed(id: string, errorMessage: string): Promise<void>;
+  claimPendingSessionRevokes(
+    options: ClaimPendingRevokesOptions,
+  ): Promise<readonly PendingSessionRevokeRecord[]>;
+  markSessionRevokeDelivered(id: string, actor?: string): Promise<void>;
+  markSessionRevokeAttemptFailed(command: MarkSessionRevokeAttemptFailedCommand): Promise<void>;
   processExpiredPolicies(now?: Date): Promise<{ readonly revokedUserIds: readonly string[] }>;
 }
 

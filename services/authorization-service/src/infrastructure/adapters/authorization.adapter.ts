@@ -6,10 +6,12 @@ import type {
   AuthorizeCommand,
   BootstrapOwnerCommand,
   BootstrapOwnerResult,
+  ClaimPendingRevokesOptions,
   CreateBlockCommand,
   CreateGrantCommand,
   EnsureOrganizationResult,
   IdentityLinkResult,
+  MarkSessionRevokeAttemptFailedCommand,
   PendingSessionRevokeRecord,
   PolicyMutationResult,
   ReconcileGuildCommand,
@@ -88,12 +90,20 @@ export class AuthorizationAdapter implements AuthorizationStorePort {
     return this.repository.listPendingSessionRevokes(limit);
   }
 
-  public markSessionRevokeDelivered(id: string): Promise<void> {
-    return this.repository.markSessionRevokeDelivered(id);
+  public claimPendingSessionRevokes(
+    options: ClaimPendingRevokesOptions,
+  ): Promise<readonly PendingSessionRevokeRecord[]> {
+    return this.repository.claimPendingSessionRevokes(options);
   }
 
-  public markSessionRevokeAttemptFailed(id: string, errorMessage: string): Promise<void> {
-    return this.repository.markSessionRevokeAttemptFailed(id, errorMessage);
+  public markSessionRevokeDelivered(id: string, actor?: string): Promise<void> {
+    return this.repository.markSessionRevokeDelivered(id, actor);
+  }
+
+  public markSessionRevokeAttemptFailed(
+    command: MarkSessionRevokeAttemptFailedCommand,
+  ): Promise<void> {
+    return this.repository.markSessionRevokeAttemptFailed(command);
   }
 
   public processExpiredPolicies(

@@ -22,7 +22,17 @@
 ## Rozstrzygnięte (P3 Authorization — 2026-08-05)
 
 Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED` (komentarze Issue + ADR-0013 / D-034).
-Nie wymagają ponownego pytania. Implementacja fundamentu: branch `cursor/p3-authorization-foundation`.
+Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
+(`cursor/p3-authorization-foundation`) — final closure pass; merge tylko przez właściciela.
+
+## Zamrożone (do merge P3)
+
+### P4 / PR #17 — Centrum Aktywności
+
+- **Status:** FROZEN
+- **PR:** https://github.com/HOMZIKx/V2/pull/17 (docs-only planning)
+- **Warunek wznowienia:** merge PR #16 + jawne `APPROVED` na start P4.
+- Agent nie implementuje P4 ani nie rozszerza PR #17 w trakcie domknięcia P3.
 
 ## Rozstrzygnięte (P2 Identity — 2026-08-05)
 

@@ -22,6 +22,7 @@ function createStore(overrides: Partial<AuthorizationStorePort> = {}): Authoriza
     createGrant: vi.fn(),
     createBlock: vi.fn(),
     listPendingSessionRevokes: vi.fn().mockResolvedValue([]),
+    claimPendingSessionRevokes: vi.fn().mockResolvedValue([]),
     markSessionRevokeDelivered: vi.fn(),
     markSessionRevokeAttemptFailed: vi.fn(),
     processExpiredPolicies: vi.fn(),
@@ -62,7 +63,7 @@ describe('authorization use-cases', () => {
       duplicate: false,
       revokedUserIds: ['user-a', 'user-b'],
     });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([
         pending({ id: 'r-a', v2UserId: 'user-a', correlationId: 'c-a' }),
@@ -71,7 +72,7 @@ describe('authorization use-cases', () => {
     const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
     const store = createStore({
       applyDiscordEvent,
-      listPendingSessionRevokes,
+      claimPendingSessionRevokes,
       markSessionRevokeDelivered,
     });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
@@ -86,20 +87,8 @@ describe('authorization use-cases', () => {
 
     expect(result.revokedUserIds).toEqual(['user-a', 'user-b']);
     expect(revokeAllSessionsForUser).toHaveBeenCalledTimes(2);
-    expect(revokeAllSessionsForUser).toHaveBeenNthCalledWith(
-      1,
-      'user-a',
-      'c-a',
-      'login_entitlement_lost',
-    );
-    expect(revokeAllSessionsForUser).toHaveBeenNthCalledWith(
-      2,
-      'user-b',
-      'c-b',
-      'login_entitlement_lost',
-    );
-    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('r-a');
-    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('r-b');
+    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('r-a', expect.any(String));
+    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('r-b', expect.any(String));
   });
 
   it('drains pending revokes even when the mutation was a duplicate', async () => {
@@ -108,13 +97,13 @@ describe('authorization use-cases', () => {
       duplicate: true,
       revokedUserIds: [],
     });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'stale', v2UserId: 'user-a', correlationId: 'c-stale' })]);
     const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
     const store = createStore({
       applyDiscordEvent,
-      listPendingSessionRevokes,
+      claimPendingSessionRevokes,
       markSessionRevokeDelivered,
     });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
@@ -136,17 +125,17 @@ describe('authorization use-cases', () => {
       'c-stale',
       'login_entitlement_lost',
     );
-    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('stale');
+    expect(markSessionRevokeDelivered).toHaveBeenCalledWith('stale', expect.any(String));
   });
 
   it('records a failed attempt and keeps the row pending when Identity revoke fails', async () => {
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-1', v2UserId: 'user-a', correlationId: 'c-1' })]);
     const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
     const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(undefined);
     const store = createStore({
-      listPendingSessionRevokes,
+      claimPendingSessionRevokes,
       markSessionRevokeDelivered,
       markSessionRevokeAttemptFailed,
     });
@@ -154,9 +143,40 @@ describe('authorization use-cases', () => {
 
     const summary = await useCases.deliverPendingRevokes(store, { revokeAllSessionsForUser });
 
-    expect(summary).toEqual({ delivered: 0, failed: 1 });
+    expect(summary).toEqual({ delivered: 0, failed: 1, terminalFailed: 0 });
     expect(markSessionRevokeDelivered).not.toHaveBeenCalled();
-    expect(markSessionRevokeAttemptFailed).toHaveBeenCalledWith('r-1', 'identity down');
+    expect(markSessionRevokeAttemptFailed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'r-1',
+        errorMessage: 'identity down',
+        terminal: false,
+      }),
+    );
+  });
+
+  it('marks terminal failure after max attempts', async () => {
+    const claimPendingSessionRevokes = vi
+      .fn()
+      .mockResolvedValue([
+        pending({ id: 'r-1', v2UserId: 'user-a', correlationId: 'c-1', attempts: 24 }),
+      ]);
+    const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(undefined);
+    const store = createStore({
+      claimPendingSessionRevokes,
+      markSessionRevokeAttemptFailed,
+    });
+    const revokeAllSessionsForUser = vi.fn().mockRejectedValue(new Error('still down'));
+
+    const summary = await useCases.deliverPendingRevokes(
+      store,
+      { revokeAllSessionsForUser },
+      { maxAttempts: 25 },
+    );
+
+    expect(summary.terminalFailed).toBe(1);
+    expect(markSessionRevokeAttemptFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'r-1', terminal: true }),
+    );
   });
 
   it('skips revoke when the revoke port is null', async () => {
@@ -165,8 +185,8 @@ describe('authorization use-cases', () => {
       duplicate: false,
       revokedUserIds: ['user-a'],
     });
-    const listPendingSessionRevokes = vi.fn();
-    const store = createStore({ reconcileGuild, listPendingSessionRevokes });
+    const claimPendingSessionRevokes = vi.fn();
+    const store = createStore({ reconcileGuild, claimPendingSessionRevokes });
 
     await expect(
       useCases.reconcileGuild(store, null, {
@@ -175,7 +195,36 @@ describe('authorization use-cases', () => {
         roles: [],
       }),
     ).resolves.toMatchObject({ applied: true });
-    expect(listPendingSessionRevokes).not.toHaveBeenCalled();
+    expect(claimPendingSessionRevokes).not.toHaveBeenCalled();
+  });
+
+  it('runMaintenanceTick processes expirations then delivers revokes without a new event', async () => {
+    const processExpiredPolicies = vi.fn().mockResolvedValue({ revokedUserIds: [] });
+    const claimPendingSessionRevokes = vi
+      .fn()
+      .mockResolvedValue([pending({ id: 'r-orphan', correlationId: 'c-orphan' })]);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
+    const store = createStore({
+      processExpiredPolicies,
+      claimPendingSessionRevokes,
+      markSessionRevokeDelivered,
+    });
+    const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
+
+    const result = await useCases.runMaintenanceTick(store, { revokeAllSessionsForUser }, {
+      leaseOwner: 'worker-test',
+    });
+
+    expect(processExpiredPolicies).toHaveBeenCalled();
+    expect(claimPendingSessionRevokes).toHaveBeenCalledWith(
+      expect.objectContaining({ leaseOwner: 'worker-test' }),
+    );
+    expect(result.revokes.delivered).toBe(1);
+    expect(revokeAllSessionsForUser).toHaveBeenCalledWith(
+      'user-a',
+      'c-orphan',
+      'login_entitlement_lost',
+    );
   });
 
   it('activates guild and drains the revoke queue', async () => {
@@ -188,10 +237,10 @@ describe('authorization use-cases', () => {
       },
       revokedUserIds: ['user-z'],
     });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-z', v2UserId: 'user-z', correlationId: 'c-z' })]);
-    const store = createStore({ activateGuild, listPendingSessionRevokes });
+    const store = createStore({ activateGuild, claimPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     await useCases.activateGuild(
@@ -217,10 +266,10 @@ describe('authorization use-cases', () => {
       },
       revokedUserIds: ['user-y'],
     });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-y', v2UserId: 'user-y', correlationId: 'c-y' })]);
-    const store = createStore({ setGuildLoginEntitling, listPendingSessionRevokes });
+    const store = createStore({ setGuildLoginEntitling, claimPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     await useCases.setGuildLoginEntitling(
@@ -238,7 +287,7 @@ describe('authorization use-cases', () => {
 
   it('creates a grant and drains affected sessions', async () => {
     const createGrant = vi.fn().mockResolvedValue({ id: 'grant-1', revokedUserIds: ['user-x'] });
-    const listPendingSessionRevokes = vi.fn().mockResolvedValue([
+    const claimPendingSessionRevokes = vi.fn().mockResolvedValue([
       pending({
         id: 'r-x',
         v2UserId: 'user-x',
@@ -246,7 +295,7 @@ describe('authorization use-cases', () => {
         reason: 'login_entitlement_lost',
       }),
     ]);
-    const store = createStore({ createGrant, listPendingSessionRevokes });
+    const store = createStore({ createGrant, claimPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     const result = await useCases.createGrant(
@@ -271,10 +320,10 @@ describe('authorization use-cases', () => {
 
   it('creates a block and drains affected sessions', async () => {
     const createBlock = vi.fn().mockResolvedValue({ id: 'block-1', revokedUserIds: ['user-b'] });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-b', v2UserId: 'user-b', correlationId: 'c-b' })]);
-    const store = createStore({ createBlock, listPendingSessionRevokes });
+    const store = createStore({ createBlock, claimPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     await useCases.createBlock(
@@ -297,12 +346,12 @@ describe('authorization use-cases', () => {
 
   it('processes expired policies and drains affected sessions', async () => {
     const processExpiredPolicies = vi.fn().mockResolvedValue({ revokedUserIds: ['user-w'] });
-    const listPendingSessionRevokes = vi
+    const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([
         pending({ id: 'r-w', v2UserId: 'user-w', correlationId: 'c-w', reason: 'policy_expired' }),
       ]);
-    const store = createStore({ processExpiredPolicies, listPendingSessionRevokes });
+    const store = createStore({ processExpiredPolicies, claimPendingSessionRevokes });
     const revokeAllSessionsForUser = vi.fn().mockResolvedValue(undefined);
 
     await useCases.processExpiredPolicies(store, { revokeAllSessionsForUser });

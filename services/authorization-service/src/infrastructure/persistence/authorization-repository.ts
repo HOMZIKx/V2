@@ -67,6 +67,14 @@ interface AuditEntry {
 }
 
 const REVOKE_REASON_ENTITLEMENT_LOST = 'login_entitlement_lost';
+const LOGIN_WWW_PERMISSION = 'permission.platform.login.www';
+const MANAGE_ORG_PERMISSION = 'permission.authorization.policy.manage.org';
+const MANAGE_GUILD_PERMISSION = 'permission.authorization.policy.manage.guild';
+
+/** Minimal query surface shared by Pool and PoolClient. */
+type Queryable = {
+  query: Pool['query'];
+};
 
 function toIso(value: Date): string {
   return value.toISOString();
@@ -476,7 +484,8 @@ export class AuthorizationRepository {
 
       await this.requireGuild(client, command.discordGuildId);
 
-      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+      const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
+      const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
       switch (command.payload.kind) {
         case 'member_upsert':
@@ -526,7 +535,7 @@ export class AuthorizationRepository {
         [command.discordGuildId],
       );
 
-      const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      const revokedUserIds = await this.usersWhoLostWwwLoginEntitlement(client, entitledBefore);
       await this.enqueuePendingRevokes(
         client,
         revokedUserIds,
@@ -571,7 +580,8 @@ export class AuthorizationRepository {
       }
 
       await this.requireGuild(client, command.discordGuildId);
-      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+      const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
+      const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
       await this.replaceRoles(client, command.discordGuildId, command.roles);
 
@@ -604,7 +614,7 @@ export class AuthorizationRepository {
         [command.discordGuildId, now],
       );
 
-      const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      const revokedUserIds = await this.usersWhoLostWwwLoginEntitlement(client, entitledBefore);
       await this.enqueuePendingRevokes(
         client,
         revokedUserIds,
@@ -657,7 +667,8 @@ export class AuthorizationRepository {
         );
       }
 
-      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+      const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
+      const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
       // Activation only flips lifecycle status; login entitlement is managed
       // separately so activating never grants login access implicitly.
@@ -670,7 +681,7 @@ export class AuthorizationRepository {
       );
       const row = result.rows[0]!;
 
-      const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      const revokedUserIds = await this.usersWhoLostWwwLoginEntitlement(client, entitledBefore);
       await this.enqueuePendingRevokes(
         client,
         revokedUserIds,
@@ -721,7 +732,8 @@ export class AuthorizationRepository {
         );
       }
 
-      const candidatesBefore = await this.collectEntitledUserIds(client, command.discordGuildId);
+      const candidates = await this.collectGuildCandidateUserIds(client, command.discordGuildId);
+      const entitledBefore = await this.filterWwwLoginEntitled(client, candidates);
 
       const result = await client.query<GuildRow>(
         `UPDATE connected_guild
@@ -732,7 +744,7 @@ export class AuthorizationRepository {
       );
       const row = result.rows[0]!;
 
-      const revokedUserIds = await this.usersWhoLostEntitlement(client, candidatesBefore);
+      const revokedUserIds = await this.usersWhoLostWwwLoginEntitlement(client, entitledBefore);
       await this.enqueuePendingRevokes(
         client,
         revokedUserIds,
@@ -780,6 +792,9 @@ export class AuthorizationRepository {
     }
 
     await this.requireActorCanManageScope(command.actor, command.scopeType, command.scopeGuildId);
+    if (command.effect === 'allow') {
+      await this.requireActorCanGrantPermissions(command);
+    }
 
     // Specificity is derived from subject + scope, never trusted from callers.
     const specificity = computeGrantSpecificity({
@@ -792,6 +807,16 @@ export class AuthorizationRepository {
     const id = randomUUID();
     try {
       return await withTransaction(this.pool, async (client) => {
+        const targetV2 = await this.resolveV2ForSubject(
+          client,
+          command.v2UserId ?? null,
+          command.discordUserId ?? null,
+        );
+        const entitledBefore =
+          targetV2 !== undefined
+            ? await this.isWwwLoginEntitled(client, targetV2)
+            : false;
+
         await client.query(
           `INSERT INTO access_grant (
              id, effect, permission_id, group_id, discord_user_id, v2_user_id,
@@ -813,16 +838,19 @@ export class AuthorizationRepository {
           ],
         );
 
-        // A new deny can strip login access from the target — revoke sessions.
-        const revokedUserIds =
-          command.effect === 'deny'
-            ? await this.enqueueRevokesForTarget(
-                client,
-                command.v2UserId,
-                command.discordUserId,
-                `grant:${id}`,
-              )
-            : [];
+        const revokedUserIds: string[] = [];
+        if (targetV2 !== undefined) {
+          const entitledAfter = await this.isWwwLoginEntitled(client, targetV2);
+          if (entitledBefore && !entitledAfter) {
+            await this.enqueuePendingRevokes(
+              client,
+              [targetV2],
+              REVOKE_REASON_ENTITLEMENT_LOST,
+              `grant:${id}`,
+            );
+            revokedUserIds.push(targetV2);
+          }
+        }
 
         await this.writeAudit(client, {
           action: 'grant.create',
@@ -878,6 +906,14 @@ export class AuthorizationRepository {
     const createdBy = actorLabel(command.actor);
     const id = randomUUID();
     return withTransaction(this.pool, async (client) => {
+      const targetV2 = await this.resolveV2ForSubject(
+        client,
+        command.v2UserId ?? null,
+        command.discordUserId ?? null,
+      );
+      const entitledBefore =
+        targetV2 !== undefined ? await this.isWwwLoginEntitled(client, targetV2) : false;
+
       await client.query(
         `INSERT INTO access_block (
            id, discord_user_id, v2_user_id, scope_type, scope_guild_id, reason, created_by, expires_at
@@ -894,13 +930,19 @@ export class AuthorizationRepository {
         ],
       );
 
-      // Any block can strip login access from the target — revoke sessions.
-      const revokedUserIds = await this.enqueueRevokesForTarget(
-        client,
-        command.v2UserId,
-        command.discordUserId,
-        `block:${id}`,
-      );
+      const revokedUserIds: string[] = [];
+      if (targetV2 !== undefined) {
+        const entitledAfter = await this.isWwwLoginEntitled(client, targetV2);
+        if (entitledBefore && !entitledAfter) {
+          await this.enqueuePendingRevokes(
+            client,
+            [targetV2],
+            REVOKE_REASON_ENTITLEMENT_LOST,
+            `block:${id}`,
+          );
+          revokedUserIds.push(targetV2);
+        }
+      }
 
       await this.writeAudit(client, {
         action: 'block.create',
@@ -925,10 +967,13 @@ export class AuthorizationRepository {
       correlation_id: string;
       reason: string;
       attempts: number;
+      source_event_key: string | null;
     }>(
-      `SELECT id, v2_user_id, correlation_id, reason, attempts
+      `SELECT id, v2_user_id, correlation_id, reason, attempts, source_event_key
        FROM pending_session_revoke
        WHERE status = 'pending'
+         AND next_attempt_at <= now()
+         AND (lease_expires_at IS NULL OR lease_expires_at < now())
        ORDER BY created_at ASC
        LIMIT $1`,
       [limit],
@@ -939,27 +984,141 @@ export class AuthorizationRepository {
       correlationId: row.correlation_id,
       reason: row.reason,
       attempts: row.attempts,
+      ...(row.source_event_key !== null ? { sourceEventKey: row.source_event_key } : {}),
     }));
   }
 
-  public async markSessionRevokeDelivered(id: string): Promise<void> {
-    await this.pool.query(
-      `UPDATE pending_session_revoke
-       SET status = 'delivered', delivered_at = now(), updated_at = now()
-       WHERE id = $1`,
-      [id],
-    );
+  public async claimPendingSessionRevokes(options: {
+    readonly limit?: number;
+    readonly leaseOwner: string;
+    readonly leaseSeconds?: number;
+  }): Promise<readonly PendingSessionRevokeRecord[]> {
+    const limit = options.limit ?? 100;
+    const leaseSeconds = options.leaseSeconds ?? 30;
+    return withTransaction(this.pool, async (client) => {
+      const claimed = await client.query<{
+        id: string;
+        v2_user_id: string;
+        correlation_id: string;
+        reason: string;
+        attempts: number;
+        source_event_key: string | null;
+      }>(
+        `WITH candidates AS (
+           SELECT id
+           FROM pending_session_revoke
+           WHERE status = 'pending'
+             AND next_attempt_at <= now()
+             AND (lease_expires_at IS NULL OR lease_expires_at < now())
+           ORDER BY created_at ASC
+           LIMIT $1
+           FOR UPDATE SKIP LOCKED
+         )
+         UPDATE pending_session_revoke p
+         SET lease_owner = $2,
+             lease_expires_at = now() + ($3::text || ' seconds')::interval,
+             updated_at = now()
+         FROM candidates c
+         WHERE p.id = c.id
+         RETURNING p.id, p.v2_user_id, p.correlation_id, p.reason, p.attempts, p.source_event_key`,
+        [limit, options.leaseOwner, leaseSeconds],
+      );
+      return claimed.rows.map((row) => ({
+        id: row.id,
+        v2UserId: row.v2_user_id,
+        correlationId: row.correlation_id,
+        reason: row.reason,
+        attempts: row.attempts,
+        ...(row.source_event_key !== null ? { sourceEventKey: row.source_event_key } : {}),
+      }));
+    });
   }
 
-  public async markSessionRevokeAttemptFailed(id: string, errorMessage: string): Promise<void> {
-    // Keep the row pending so a later drain retries; record the attempt count
-    // and the last error for observability.
-    await this.pool.query(
-      `UPDATE pending_session_revoke
-       SET attempts = attempts + 1, last_error = $2, updated_at = now()
-       WHERE id = $1`,
-      [id, errorMessage],
-    );
+  public async markSessionRevokeDelivered(id: string, actor?: string): Promise<void> {
+    await withTransaction(this.pool, async (client) => {
+      const result = await client.query<{
+        v2_user_id: string;
+        correlation_id: string;
+        source_event_key: string | null;
+        attempts: number;
+      }>(
+        `UPDATE pending_session_revoke
+         SET status = 'delivered',
+             delivered_at = now(),
+             updated_at = now(),
+             lease_owner = NULL,
+             lease_expires_at = NULL
+         WHERE id = $1
+         RETURNING v2_user_id, correlation_id, source_event_key, attempts`,
+        [id],
+      );
+      const row = result.rows[0];
+      if (row === undefined) {
+        return;
+      }
+      await this.writeAudit(client, {
+        action: 'revoke.delivered',
+        actor: actor ?? 'system',
+        subjectV2UserId: row.v2_user_id,
+        correlationId: row.correlation_id,
+        details: {
+          revokeId: id,
+          attempt: row.attempts,
+          outcome: 'delivered',
+          sourceEventKey: row.source_event_key,
+        },
+      });
+    });
+  }
+
+  public async markSessionRevokeAttemptFailed(command: {
+    readonly id: string;
+    readonly errorMessage: string;
+    readonly terminal?: boolean;
+    readonly actor?: string;
+  }): Promise<void> {
+    const terminal = command.terminal === true;
+    // Exponential backoff capped at 15 minutes: 2^attempts seconds (min 2).
+    await withTransaction(this.pool, async (client) => {
+      const result = await client.query<{
+        v2_user_id: string;
+        correlation_id: string;
+        source_event_key: string | null;
+        attempts: number;
+      }>(
+        `UPDATE pending_session_revoke
+         SET attempts = attempts + 1,
+             last_error = $2,
+             updated_at = now(),
+             status = CASE WHEN $3 THEN 'failed_terminal' ELSE 'pending' END,
+             next_attempt_at = CASE
+               WHEN $3 THEN next_attempt_at
+               ELSE now() + (LEAST(900, GREATEST(2, POWER(2, attempts + 1)::int)) || ' seconds')::interval
+             END,
+             lease_owner = NULL,
+             lease_expires_at = NULL
+         WHERE id = $1
+         RETURNING v2_user_id, correlation_id, source_event_key, attempts`,
+        [command.id, command.errorMessage, terminal],
+      );
+      const row = result.rows[0];
+      if (row === undefined) {
+        return;
+      }
+      await this.writeAudit(client, {
+        action: terminal ? 'revoke.failed_terminal' : 'revoke.attempt_failed',
+        actor: command.actor ?? 'system',
+        subjectV2UserId: row.v2_user_id,
+        correlationId: row.correlation_id,
+        details: {
+          revokeId: command.id,
+          attempt: row.attempts,
+          outcome: terminal ? 'failed_terminal' : 'attempt_failed',
+          error: command.errorMessage,
+          sourceEventKey: row.source_event_key,
+        },
+      });
+    });
   }
 
   public async processExpiredPolicies(
@@ -969,52 +1128,93 @@ export class AuthorizationRepository {
     return withTransaction(this.pool, async (client) => {
       const revoked = new Set<string>();
 
-      const expiredGrants = await client.query<{
+      const expiredAllows = await client.query<{
         id: string;
+        permission_id: string | null;
+        group_id: string | null;
         v2_user_id: string | null;
         discord_user_id: string | null;
+        expires_at: Date;
       }>(
-        `SELECT id, v2_user_id, discord_user_id
+        `SELECT id, permission_id, group_id, v2_user_id, discord_user_id, expires_at
          FROM access_grant
-         WHERE expires_at IS NOT NULL AND expires_at <= $1`,
-        [cutoff],
-      );
-      const expiredBlocks = await client.query<{
-        id: string;
-        v2_user_id: string | null;
-        discord_user_id: string | null;
-      }>(
-        `SELECT id, v2_user_id, discord_user_id
-         FROM access_block
-         WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+         WHERE effect = 'allow'
+           AND expires_at IS NOT NULL
+           AND expires_at <= $1`,
         [cutoff],
       );
 
-      for (const row of [...expiredGrants.rows, ...expiredBlocks.rows]) {
+      const expiredDeniesAndBlocks: Array<{
+        id: string;
+        kind: 'grant_deny' | 'block';
+      }> = [];
+
+      const expiredDenies = await client.query<{ id: string }>(
+        `SELECT id FROM access_grant
+         WHERE effect = 'deny' AND expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+      for (const row of expiredDenies.rows) {
+        expiredDeniesAndBlocks.push({ id: row.id, kind: 'grant_deny' });
+      }
+      const expiredBlocks = await client.query<{ id: string }>(
+        `SELECT id FROM access_block
+         WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+      for (const row of expiredBlocks.rows) {
+        expiredDeniesAndBlocks.push({ id: row.id, kind: 'block' });
+      }
+
+      for (const row of expiredAllows.rows) {
         const v2 = await this.resolveV2ForSubject(client, row.v2_user_id, row.discord_user_id);
         if (v2 === undefined) {
           continue;
         }
-        const correlationId = `expire:${row.id}:${v2}`;
-        const inserted = await client.query(
-          `INSERT INTO pending_session_revoke (
-             id, v2_user_id, correlation_id, reason, status, source_event_key
-           ) VALUES ($1, $2, $3, 'policy_expired', 'pending', $4)
-           ON CONFLICT (correlation_id) DO NOTHING
-           RETURNING id`,
-          [randomUUID(), v2, correlationId, `expire:${row.id}`],
-        );
-        if ((inserted.rowCount ?? 0) > 0) {
+        // Compare authoritative login entitlement just before vs after expiry.
+        const beforeNow = new Date(row.expires_at.getTime() - 1);
+        const entitledBefore = await this.isWwwLoginEntitled(client, v2, beforeNow);
+        const entitledAfter = await this.isWwwLoginEntitled(client, v2, cutoff);
+        if (entitledBefore && !entitledAfter) {
+          await this.enqueuePendingRevokes(
+            client,
+            [v2],
+            REVOKE_REASON_ENTITLEMENT_LOST,
+            `expire:${row.id}`,
+          );
           revoked.add(v2);
         }
       }
 
+      // Expiry of deny/block must never enqueue revoke (access is restored or unchanged).
+      for (const row of expiredDeniesAndBlocks) {
+        await this.writeAudit(client, {
+          action: 'policy.expire_noop_revoke',
+          actor: 'system',
+          details: { id: row.id, kind: row.kind, reason: 'deny_or_block_expiry' },
+        });
+      }
+
+      // Physically remove expired rows so they are not re-processed.
+      await client.query(
+        `DELETE FROM access_grant WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+      await client.query(
+        `DELETE FROM access_block WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+        [cutoff],
+      );
+
       const revokedUserIds = [...revoked];
-      if (revokedUserIds.length > 0) {
+      if (revokedUserIds.length > 0 || expiredAllows.rows.length > 0) {
         await this.writeAudit(client, {
           action: 'policy.expire',
           actor: 'system',
-          details: { revokedUserIds },
+          details: {
+            revokedUserIds,
+            expiredAllowCount: expiredAllows.rows.length,
+            expiredDenyOrBlockCount: expiredDeniesAndBlocks.length,
+          },
         });
       }
 
@@ -1045,20 +1245,104 @@ export class AuthorizationRepository {
           'scopeGuildId is required for guild scope',
         );
       }
-      await this.requireActorCan(
-        actor,
-        'permission.authorization.policy.manage.guild',
-        { type: 'guild', guildId: scopeGuildId },
-        'sensitive',
-      );
-      return;
+      // Local managers may hold manage.guild; org managers / owners also qualify.
+      const guildManage = await this.authorize({
+        subject: actor,
+        permissionId: MANAGE_GUILD_PERMISSION,
+        scope: { type: 'guild', guildId: scopeGuildId },
+        operationClass: 'sensitive',
+      });
+      if (guildManage.decision === 'allow') {
+        return;
+      }
+      const orgManage = await this.authorize({
+        subject: actor,
+        permissionId: MANAGE_ORG_PERMISSION,
+        scope: { type: 'organization' },
+        operationClass: 'sensitive',
+      });
+      if (orgManage.decision === 'allow') {
+        return;
+      }
+      throw new AuthorizationError('FORBIDDEN', `Actor is not permitted to ${MANAGE_GUILD_PERMISSION}`);
     }
     await this.requireActorCan(
       actor,
-      'permission.authorization.policy.manage.org',
+      MANAGE_ORG_PERMISSION,
       { type: 'organization' },
       'sensitive',
     );
+  }
+
+  /**
+   * P3-D18 no-escalation: for allow grants, every granted permission (direct or
+   * via group expansion) must already be held by the actor in the same scope,
+   * unless the actor is an org policy manager / owner (manage.org).
+   */
+  private async requireActorCanGrantPermissions(command: CreateGrantCommand): Promise<void> {
+    const orgManage = await this.authorize({
+      subject: command.actor,
+      permissionId: MANAGE_ORG_PERMISSION,
+      scope: { type: 'organization' },
+      operationClass: 'sensitive',
+    });
+    if (orgManage.decision === 'allow') {
+      return;
+    }
+
+    if (command.scopeType === 'organization') {
+      throw new AuthorizationError(
+        'FORBIDDEN',
+        'Local managers cannot grant organization-scoped permissions',
+      );
+    }
+
+    const permissions = await this.expandGrantPermissions(
+      command.permissionId,
+      command.groupId,
+    );
+    const scope = {
+      type: 'guild' as const,
+      guildId: command.scopeGuildId!,
+    };
+    for (const permissionId of permissions) {
+      if (
+        permissionId === MANAGE_ORG_PERMISSION ||
+        permissionId === MANAGE_GUILD_PERMISSION
+      ) {
+        // Managing actors already passed requireActorCanManageScope.
+        continue;
+      }
+      const decision = await this.authorize({
+        subject: command.actor,
+        permissionId,
+        scope,
+        operationClass: 'sensitive',
+      });
+      if (decision.decision !== 'allow') {
+        throw new AuthorizationError(
+          'FORBIDDEN',
+          `Actor cannot grant permission they do not hold: ${permissionId}`,
+        );
+      }
+    }
+  }
+
+  private async expandGrantPermissions(
+    permissionId: string | undefined,
+    groupId: string | undefined,
+  ): Promise<readonly string[]> {
+    if (permissionId !== undefined) {
+      return [permissionId];
+    }
+    if (groupId === undefined) {
+      return [];
+    }
+    const result = await this.pool.query<{ permission_id: string }>(
+      'SELECT permission_id FROM group_permission WHERE group_id = $1',
+      [groupId],
+    );
+    return result.rows.map((row) => row.permission_id);
   }
 
   private async requireActorCan(
@@ -1090,16 +1374,28 @@ export class AuthorizationRepository {
     guildId: string,
     member: MemberSnapshot,
   ): Promise<void> {
+    // V2 binding comes only from the durable Identity link — Gateway must never
+    // inject or overwrite a Discord↔V2 mapping via membership payloads.
+    const link = await client.query<{ v2_user_id: string }>(
+      'SELECT v2_user_id FROM discord_identity_link WHERE discord_user_id = $1',
+      [member.discordUserId],
+    );
+    const linkedV2 = link.rows[0]?.v2_user_id ?? null;
+
     await client.query(
       `INSERT INTO discord_membership (
          discord_guild_id, discord_user_id, v2_user_id, status, last_synced_at, source
        ) VALUES ($1, $2, $3, $4, now(), 'gateway')
        ON CONFLICT (discord_guild_id, discord_user_id) DO UPDATE
-         SET v2_user_id = COALESCE(EXCLUDED.v2_user_id, discord_membership.v2_user_id),
+         SET v2_user_id = COALESCE(
+               (SELECT v2_user_id FROM discord_identity_link
+                WHERE discord_user_id = EXCLUDED.discord_user_id),
+               discord_membership.v2_user_id
+             ),
              status = EXCLUDED.status,
              last_synced_at = now(),
              updated_at = now()`,
-      [guildId, member.discordUserId, member.v2UserId ?? null, member.status],
+      [guildId, member.discordUserId, linkedV2, member.status],
     );
 
     await client.query(
@@ -1178,42 +1474,86 @@ export class AuthorizationRepository {
     }
   }
 
-  private async collectEntitledUserIds(
+  /**
+   * Candidate V2 users that may lose WWW login entitlement due to a guild-scoped
+   * mutation: linked identities with membership (active or otherwise) on the guild.
+   */
+  private async collectGuildCandidateUserIds(
     client: PoolClient,
-    guildId?: string,
+    guildId: string,
   ): Promise<ReadonlySet<string>> {
-    const params: string[] = [];
-    let guildFilter = '';
-    if (guildId !== undefined) {
-      params.push(guildId);
-      guildFilter = `AND m.discord_guild_id = $${params.length}`;
-    }
-
     const result = await client.query<{ v2_user_id: string }>(
-      `SELECT DISTINCT m.v2_user_id
+      `SELECT DISTINCT COALESCE(m.v2_user_id, l.v2_user_id) AS v2_user_id
        FROM discord_membership m
-       INNER JOIN connected_guild g ON g.discord_guild_id = m.discord_guild_id
-       WHERE m.status = 'active'
-         AND m.v2_user_id IS NOT NULL
-         AND g.status = 'active'
-         AND g.login_entitling = TRUE
-         ${guildFilter}`,
-      params,
+       LEFT JOIN discord_identity_link l ON l.discord_user_id = m.discord_user_id
+       WHERE m.discord_guild_id = $1
+         AND COALESCE(m.v2_user_id, l.v2_user_id) IS NOT NULL`,
+      [guildId],
     );
     return new Set(result.rows.map((row) => row.v2_user_id));
   }
 
-  private async usersWhoLostEntitlement(
+  private async filterWwwLoginEntitled(
+    client: PoolClient,
+    candidates: ReadonlySet<string>,
+    now?: Date,
+  ): Promise<ReadonlySet<string>> {
+    const entitled = new Set<string>();
+    for (const v2UserId of candidates) {
+      if (await this.isWwwLoginEntitled(client, v2UserId, now)) {
+        entitled.add(v2UserId);
+      }
+    }
+    return entitled;
+  }
+
+  private async isWwwLoginEntitled(
+    queryable: Queryable,
+    v2UserId: string,
+    now?: Date,
+  ): Promise<boolean> {
+    const explanation = await this.authorizeWithQueryable(queryable, {
+      subject: { v2UserId },
+      permissionId: LOGIN_WWW_PERMISSION,
+      scope: { type: 'organization' },
+      operationClass: 'sensitive',
+      ...(now !== undefined ? { now } : {}),
+    });
+    return explanation.decision === 'allow';
+  }
+
+  private async authorizeWithQueryable(
+    queryable: Queryable,
+    command: AuthorizeCommand,
+  ): Promise<AuthorizationExplanation> {
+    const decisionNow = command.now ?? new Date();
+    const loaded = await this.loadAuthorizeContext(command.subject, queryable);
+    return decideAuthorization(
+      {
+        subject: command.subject,
+        permissionId: command.permissionId,
+        scope: command.scope,
+        operationClass: command.operationClass,
+        now: decisionNow,
+        trustWindowSeconds: this.trustWindowSeconds,
+      },
+      loaded.context,
+      { groupPermissionIdsForGrants: loaded.groupPermissionIdsForGrants },
+    );
+  }
+
+  private async usersWhoLostWwwLoginEntitlement(
     client: PoolClient,
     previouslyEntitled: ReadonlySet<string>,
+    now?: Date,
   ): Promise<readonly string[]> {
     if (previouslyEntitled.size === 0) {
       return [];
     }
-    const stillEntitled = await this.collectEntitledUserIds(client);
     const lost: string[] = [];
     for (const userId of previouslyEntitled) {
-      if (!stillEntitled.has(userId)) {
+      const still = await this.isWwwLoginEntitled(client, userId, now);
+      if (!still) {
         lost.push(userId);
       }
     }
@@ -1231,28 +1571,31 @@ export class AuthorizationRepository {
         sourceEventKey !== undefined
           ? `${sourceEventKey}:${v2UserId}`
           : `${reason}:${v2UserId}:${randomUUID()}`;
-      await client.query(
+      const inserted = await client.query<{ id: string }>(
         `INSERT INTO pending_session_revoke (
-           id, v2_user_id, correlation_id, reason, status, source_event_key
-         ) VALUES ($1, $2, $3, $4, 'pending', $5)
-         ON CONFLICT (correlation_id) DO NOTHING`,
+           id, v2_user_id, correlation_id, reason, status, source_event_key, next_attempt_at
+         ) VALUES ($1, $2, $3, $4, 'pending', $5, now())
+         ON CONFLICT (correlation_id) DO NOTHING
+         RETURNING id`,
         [randomUUID(), v2UserId, correlationId, reason, sourceEventKey ?? null],
       );
+      if ((inserted.rowCount ?? 0) === 0) {
+        continue;
+      }
+      await this.writeAudit(client, {
+        action: 'revoke.enqueued',
+        actor: 'system',
+        subjectV2UserId: v2UserId,
+        correlationId,
+        details: {
+          revokeId: inserted.rows[0]!.id,
+          reason,
+          sourceEventKey: sourceEventKey ?? null,
+          attempt: 0,
+          outcome: 'enqueued',
+        },
+      });
     }
-  }
-
-  private async enqueueRevokesForTarget(
-    client: PoolClient,
-    v2UserId: string | undefined,
-    discordUserId: string | undefined,
-    sourceEventKey: string,
-  ): Promise<readonly string[]> {
-    const v2 = await this.resolveV2ForSubject(client, v2UserId ?? null, discordUserId ?? null);
-    if (v2 === undefined) {
-      return [];
-    }
-    await this.enqueuePendingRevokes(client, [v2], REVOKE_REASON_ENTITLEMENT_LOST, sourceEventKey);
-    return [v2];
   }
 
   private async resolveV2ForSubject(
@@ -1281,7 +1624,6 @@ export class AuthorizationRepository {
     const canonicalMembers = members
       .map((member) => ({
         discordUserId: member.discordUserId,
-        v2UserId: member.v2UserId ?? null,
         roleIds: [...member.roleIds].sort((left, right) => left.localeCompare(right)),
         status: member.status,
       }))
@@ -1314,11 +1656,14 @@ export class AuthorizationRepository {
     );
   }
 
-  private async loadAuthorizeContext(subject: DecisionSubject): Promise<{
+  private async loadAuthorizeContext(
+    subject: DecisionSubject,
+    queryable: Queryable = this.pool,
+  ): Promise<{
     readonly context: AuthorizeContext;
     readonly groupPermissionIdsForGrants: ReadonlyMap<string, readonly string[]>;
   }> {
-    const orgResult = await this.pool.query<OrganizationRow>(
+    const orgResult = await queryable.query<OrganizationRow>(
       `SELECT id, owner_discord_user_id, owner_v2_user_id, bootstrap_completed_at,
               bootstrap_source_discord_user_id_snapshot
        FROM organization ORDER BY created_at ASC LIMIT 1`,
@@ -1341,7 +1686,7 @@ export class AuthorizationRepository {
     // Resolve a single, identity-linked principal. Never union grants/blocks of
     // two unrelated identifiers: an attacker could otherwise assert a foreign
     // v2UserId alongside their own discordUserId and inherit foreign policy.
-    const resolved = await this.resolvePrincipal(subject);
+    const resolved = await this.resolvePrincipal(subject, queryable);
     const identityLinked = resolved.identityLinked;
 
     const subjectFilters: string[] = [];
@@ -1358,7 +1703,7 @@ export class AuthorizationRepository {
     const subjectClause =
       subjectFilters.length === 0 ? 'FALSE' : `(${subjectFilters.join(' OR ')})`;
 
-    const blocksResult = await this.pool.query<{
+    const blocksResult = await queryable.query<{
       id: string;
       scope_type: 'global' | 'guild';
       scope_guild_id: string | null;
@@ -1379,7 +1724,7 @@ export class AuthorizationRepository {
       ...(row.expires_at !== null ? { expiresAt: row.expires_at } : {}),
     }));
 
-    const grantsResult = await this.pool.query<{
+    const grantsResult = await queryable.query<{
       id: string;
       effect: 'allow' | 'deny';
       permission_id: string | null;
@@ -1422,7 +1767,7 @@ export class AuthorizationRepository {
     const membershipClause =
       membershipFilters.length === 0 ? 'FALSE' : `(${membershipFilters.join(' OR ')})`;
 
-    const membershipRows = await this.pool.query<{
+    const membershipRows = await queryable.query<{
       discord_guild_id: string;
       discord_user_id: string;
       v2_user_id: string | null;
@@ -1434,7 +1779,7 @@ export class AuthorizationRepository {
       membershipParams,
     );
 
-    const roleRows = await this.pool.query<{
+    const roleRows = await queryable.query<{
       discord_guild_id: string;
       discord_user_id: string;
       discord_role_id: string;
@@ -1468,13 +1813,13 @@ export class AuthorizationRepository {
       roleIds: rolesByMember.get(`${row.discord_guild_id}:${row.discord_user_id}`) ?? [],
     }));
 
-    const guildsResult = await this.pool.query<GuildRow>(
+    const guildsResult = await queryable.query<GuildRow>(
       `SELECT discord_guild_id, status, login_entitling, sync_status, last_fresh_at
        FROM connected_guild`,
     );
     const guilds = guildsResult.rows.map(mapGuild);
 
-    const mappedResult = await this.pool.query<{
+    const mappedResult = await queryable.query<{
       mapping_id: string;
       discord_guild_id: string;
       permission_id: string;
@@ -1509,7 +1854,7 @@ export class AuthorizationRepository {
       source: row.source,
     }));
 
-    const groupPermsResult = await this.pool.query<{
+    const groupPermsResult = await queryable.query<{
       group_id: string;
       permission_id: string;
     }>('SELECT group_id, permission_id FROM group_permission');
@@ -1539,7 +1884,10 @@ export class AuthorizationRepository {
    * given they must be an exact link pair; when one is given the other is filled
    * from the link if present. `identityLinked` is only true for an exact link.
    */
-  private async resolvePrincipal(subject: DecisionSubject): Promise<{
+  private async resolvePrincipal(
+    subject: DecisionSubject,
+    queryable: Queryable = this.pool,
+  ): Promise<{
     readonly v2UserId?: string;
     readonly discordUserId?: string;
     readonly identityLinked: boolean;
@@ -1547,7 +1895,7 @@ export class AuthorizationRepository {
     const { v2UserId, discordUserId } = subject;
 
     if (v2UserId !== undefined && discordUserId !== undefined) {
-      const link = await this.pool.query(
+      const link = await queryable.query(
         `SELECT 1 FROM discord_identity_link
          WHERE discord_user_id = $1 AND v2_user_id = $2
          LIMIT 1`,
@@ -1560,7 +1908,7 @@ export class AuthorizationRepository {
     }
 
     if (v2UserId !== undefined) {
-      const link = await this.pool.query<{ discord_user_id: string }>(
+      const link = await queryable.query<{ discord_user_id: string }>(
         'SELECT discord_user_id FROM discord_identity_link WHERE v2_user_id = $1 LIMIT 1',
         [v2UserId],
       );
@@ -1572,7 +1920,7 @@ export class AuthorizationRepository {
     }
 
     if (discordUserId !== undefined) {
-      const link = await this.pool.query<{ v2_user_id: string }>(
+      const link = await queryable.query<{ v2_user_id: string }>(
         'SELECT v2_user_id FROM discord_identity_link WHERE discord_user_id = $1 LIMIT 1',
         [discordUserId],
       );

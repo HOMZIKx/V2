@@ -70,6 +70,10 @@ describe('SystemRevokeClient', () => {
       AUTHORIZATION_ASSERTION_REDIS_PREFIX: 'v2:authorization:client-assertion:jti:',
       AUTHORIZATION_ORGANIZATION_ID: undefined,
       AUTHORIZATION_ASSERTION_AUD: undefined,
+      AUTHORIZATION_MAINTENANCE_INTERVAL_MS: 0,
+      AUTHORIZATION_REVOKE_BATCH_LIMIT: 50,
+      AUTHORIZATION_REVOKE_LEASE_SECONDS: 30,
+      AUTHORIZATION_REVOKE_MAX_ATTEMPTS: 25,
       NODE_ENV: 'test',
     } satisfies AuthorizationEnv;
 

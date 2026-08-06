@@ -3,9 +3,13 @@
  * Implemented in infrastructure; application never imports Nest/HTTP/jose.
  */
 
+/**
+ * Membership snapshot from Discord Gateway.
+ * Must never carry `v2UserId` — only Identity may create Discord↔V2 links;
+ * Authorization resolves V2 from `discord_identity_link`.
+ */
 export type AuthzMemberSnapshot = {
   readonly discordUserId: string;
-  readonly v2UserId?: string;
   readonly roleIds: readonly string[];
   readonly status: 'active' | 'inactive';
 };

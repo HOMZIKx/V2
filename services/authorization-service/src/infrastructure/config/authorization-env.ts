@@ -115,6 +115,14 @@ const baseSchema = z.object({
    * full request URL (protocol + host + path) as the audience.
    */
   AUTHORIZATION_ASSERTION_AUD: optionalTrimmed,
+  /**
+   * Maintenance worker interval (ms) for expiry + pending revoke drain.
+   * Default 15s. Set 0 to disable the autonomous worker (tests).
+   */
+  AUTHORIZATION_MAINTENANCE_INTERVAL_MS: z.coerce.number().int().min(0).default(15_000),
+  AUTHORIZATION_REVOKE_BATCH_LIMIT: z.coerce.number().int().positive().max(500).default(50),
+  AUTHORIZATION_REVOKE_LEASE_SECONDS: z.coerce.number().int().positive().max(300).default(30),
+  AUTHORIZATION_REVOKE_MAX_ATTEMPTS: z.coerce.number().int().positive().max(100).default(25),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
