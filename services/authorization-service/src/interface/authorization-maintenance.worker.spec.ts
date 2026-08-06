@@ -51,13 +51,15 @@ describe('AuthorizationMaintenanceWorker', () => {
     await worker.runOnce();
 
     expect(processExpiredPolicies).toHaveBeenCalled();
-    expect(claimPendingSessionRevokes).toHaveBeenCalledWith(
-      expect.objectContaining({
-        leaseOwner: expect.any(String),
-        leaseSeconds: 30,
-        limit: 10,
-      }),
-    );
+    expect(claimPendingSessionRevokes).toHaveBeenCalledTimes(1);
+    const claimArg = claimPendingSessionRevokes.mock.calls[0]?.[0] as {
+      leaseOwner: string;
+      leaseSeconds: number;
+      limit: number;
+    };
+    expect(typeof claimArg.leaseOwner).toBe('string');
+    expect(claimArg.leaseSeconds).toBe(30);
+    expect(claimArg.limit).toBe(10);
     expect(revokeAllSessionsForUser).toHaveBeenCalledWith('u1', 'c1', 'login_entitlement_lost');
     expect(markSessionRevokeDelivered).toHaveBeenCalled();
   });

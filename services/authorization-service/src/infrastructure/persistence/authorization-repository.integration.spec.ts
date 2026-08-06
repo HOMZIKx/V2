@@ -810,30 +810,27 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
 
     // Local manager may deny a permission they hold (policy.read).
-    await expect(
-      repository.createGrant({
-        effect: 'deny',
-        permissionId: 'permission.authorization.policy.read',
-        v2UserId: 'victim2',
-        discordUserId: 'victim2-d',
-        scopeType: 'guild',
-        scopeGuildId: 'guild-deny-esc',
-        actor: localActor,
-      }),
-    ).resolves.toMatchObject({ id: expect.any(String) });
+    const deniedHeld = await repository.createGrant({
+      effect: 'deny',
+      permissionId: 'permission.authorization.policy.read',
+      v2UserId: 'victim2',
+      discordUserId: 'victim2-d',
+      scopeType: 'guild',
+      scopeGuildId: 'guild-deny-esc',
+      actor: localActor,
+    });
+    expect(deniedHeld.id.length).toBeGreaterThan(0);
 
-    await expect(
-      repository.createGrant({
-        effect: 'allow',
-        permissionId: 'permission.authorization.policy.read',
-        v2UserId: 'victim3',
-        discordUserId: 'victim3-d',
-        scopeType: 'guild',
-        scopeGuildId: 'guild-deny-esc',
-        actor: localActor,
-      }),
-    ).resolves.toMatchObject({ id: expect.any(String) });
-
+    const allowedHeld = await repository.createGrant({
+      effect: 'allow',
+      permissionId: 'permission.authorization.policy.read',
+      v2UserId: 'victim3',
+      discordUserId: 'victim3-d',
+      scopeType: 'guild',
+      scopeGuildId: 'guild-deny-esc',
+      actor: localActor,
+    });
+    expect(allowedHeld.id.length).toBeGreaterThan(0);
     await pool.query(
       `INSERT INTO group_definition (group_id, description) VALUES ('group.test.escalate_org', 'test')
        ON CONFLICT DO NOTHING`,

@@ -145,14 +145,20 @@ describe('authorization use-cases', () => {
 
     expect(summary).toEqual({ delivered: 0, failed: 1, terminalFailed: 0 });
     expect(markSessionRevokeDelivered).not.toHaveBeenCalled();
-    expect(markSessionRevokeAttemptFailed).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'r-1',
-        leaseOwner: expect.any(String),
-        errorMessage: 'identity down',
-        terminal: false,
-      }),
-    );
+    expect(markSessionRevokeAttemptFailed).toHaveBeenCalledTimes(1);
+    const failedArg = markSessionRevokeAttemptFailed.mock.calls[0]?.[0] as {
+      id: string;
+      leaseOwner: string;
+      errorMessage: string;
+      terminal: boolean;
+    };
+    expect(failedArg).toMatchObject({
+      id: 'r-1',
+      errorMessage: 'identity down',
+      terminal: false,
+    });
+    expect(typeof failedArg.leaseOwner).toBe('string');
+    expect(failedArg.leaseOwner.length).toBeGreaterThan(0);
   });
 
   it('marks terminal failure after max attempts', async () => {
