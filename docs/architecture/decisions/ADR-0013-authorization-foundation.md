@@ -48,7 +48,7 @@ właściciela. `authorization-service` był szkieletem Nest bez domeny.
 - Identity zyskuje `POST /identity/v1/system/revoke-sessions` oraz login gate.
 - Discord Gateway emituje register/events/reconcile do Authorization gdy sync włączony.
 - Deploy Zeabur, Admin UI, Centrum Aktywności i pełny RBAC pozostają poza P3 foundation.
-- *(Historia D-035)* P4 / PR #17 były zamrożone do merge PR #16; warunek
+- _(Historia D-035)_ P4 / PR #17 były zamrożone do merge PR #16; warunek
   spełniony (`1f23635`). Spec P4: `cursor/p4-centrum-aktywnosci-spec-v2`;
   PR #17 closed (superseded).
 

@@ -13,28 +13,28 @@ na świeżej gałęzi od `main` po merge P3. **Brak implementacji. Brak merge.**
 
 ## 3. P3 dependency (satisfied)
 
-| Element        | Stan                                                              |
-| -------------- | ----------------------------------------------------------------- |
-| PR #16         | **Merged** → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e` |
-| Issue #15      | **Closed**                                                        |
-| PR #17 (plan)  | **Closed (superseded)** — replaced by this PR                     |
-| P0–P3          | **Completed**                                                     |
+| Element       | Stan                                                             |
+| ------------- | ---------------------------------------------------------------- |
+| PR #16        | **Merged** → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e` |
+| Issue #15     | **Closed**                                                       |
+| PR #17 (plan) | **Closed (superseded)** — replaced by this PR                    |
+| P0–P3         | **Completed**                                                    |
 
 ## 4. Branch / deliverables
 
 - Branch: `cursor/p4-centrum-aktywnosci-spec-v2`
 - Transplanted commits (in order): product/architecture/UX spec + Components V2 contract
 
-| Doc                                          | Rola                                              |
-| -------------------------------------------- | ------------------------------------------------- |
-| `docs/product/CENTRUM_AKTYWNOSCI.md`         | Spec produktowa A–S                               |
-| `docs/architecture/CENTRUM_AKTYWNOSCI.md`    | Agregaty, P4.1–P4.6, permissions TECH             |
-| `docs/architecture/decisions/ADR-0014-…`     | Boundary **Proposed**                             |
-| `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`      | Components V2 component tree / custom_id / tests  |
-| `docs/ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md`    | WWW P4.4 + Admin P4.3                             |
-| `docs/ai/P4_TEST_TRACEABILITY.md`            | Macierz decyzja→…→test                            |
-| `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md`   | Handoff                                           |
-| `docs/ai/PENDING_DECISIONS.md`               | P4-D\* open / Accepted                            |
+| Doc                                        | Rola                                             |
+| ------------------------------------------ | ------------------------------------------------ |
+| `docs/product/CENTRUM_AKTYWNOSCI.md`       | Spec produktowa A–S                              |
+| `docs/architecture/CENTRUM_AKTYWNOSCI.md`  | Agregaty, P4.1–P4.6, permissions TECH            |
+| `docs/architecture/decisions/ADR-0014-…`   | Boundary **Proposed**                            |
+| `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`    | Components V2 component tree / custom_id / tests |
+| `docs/ux/CENTRUM_AKTYWNOSCI_WWW_ADMIN.md`  | WWW P4.4 + Admin P4.3                            |
+| `docs/ai/P4_TEST_TRACEABILITY.md`          | Macierz decyzja→…→test                           |
+| `docs/ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md` | Handoff                                          |
+| `docs/ai/PENDING_DECISIONS.md`             | P4-D\* open / Accepted                           |
 
 ## 5. Closed contradictions (vs early planning)
 

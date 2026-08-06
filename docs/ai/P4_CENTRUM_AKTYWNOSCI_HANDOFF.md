@@ -20,12 +20,12 @@ Admin UI, finalnych assetów.
 
 ## 2. Stan fundamentów
 
-| Element   | Stan                                                          |
-| --------- | ------------------------------------------------------------- |
-| P0–P3     | **Completed**                                                 |
+| Element   | Stan                                                             |
+| --------- | ---------------------------------------------------------------- |
+| P0–P3     | **Completed**                                                    |
 | PR #16    | **Merged** → `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e` |
-| Issue #15 | **Closed**                                                    |
-| PR #17    | **Closed (superseded)**                                       |
+| Issue #15 | **Closed**                                                       |
+| PR #17    | **Closed (superseded)**                                          |
 
 ## 3. Dokumenty SoT
 
