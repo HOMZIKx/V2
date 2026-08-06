@@ -251,9 +251,15 @@ runInfra('First Discord OAuth login entitlement ordering', () => {
       const user = await context.internalAdapter.createUser({ name: 'OAuth Deny', email });
 
       // Step 2: session.create.before must fail closed — no Discord row yet.
-      await expect(context.internalAdapter.createSession(user.id)).rejects.toMatchObject({
-        body: expect.objectContaining({ code: 'LOGIN_NOT_ENTITLED' }),
-      });
+      try {
+        await context.internalAdapter.createSession(user.id);
+        expect.unreachable('expected LOGIN_NOT_ENTITLED before Discord link');
+      } catch (error) {
+        expect(error).toBeInstanceOf(APIError);
+        expect((error as APIError).body).toEqual(
+          expect.objectContaining({ code: 'LOGIN_NOT_ENTITLED' }),
+        );
+      }
       expect(denyUpsert).not.toHaveBeenCalled();
 
       // Step 3: Discord account appears (OAuth provider callback / account create).
