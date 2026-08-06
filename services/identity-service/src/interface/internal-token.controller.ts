@@ -89,10 +89,16 @@ export class InternalTokenController {
       this.config.IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS +
       this.config.IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS;
 
+    const issueUrl = this.config.IDENTITY_INTERNAL_JWT_ISSUE_URL;
+    if (issueUrl === undefined) {
+      throw new IdentityError('INTERNAL_JWT_DISABLED', 'Identity issue URL is not configured');
+    }
+
     const issued = await issueInternalToken(sessionPort, assertionPort, issuePort, {
       clientAssertion: assertion,
       userSessionHeaders: toWebHeaders(request.headers),
       audience: parsedBody.data.audience,
+      expectedAudience: issueUrl,
       assertionReplayTtlSeconds: replayTtl,
     });
 

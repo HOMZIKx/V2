@@ -23,6 +23,7 @@ import {
 import { InternalJwtLifecycleService } from './internal-jwt-lifecycle.service.js';
 import { InternalTokenController } from './internal-token.controller.js';
 import { ProofUiController } from './proof-ui.controller.js';
+import { SystemRevokeController } from './system-revoke.controller.js';
 
 const providers: Provider[] = [
   {
@@ -76,7 +77,13 @@ const providers: Provider[] = [
 ];
 
 @Module({
-  controllers: [HealthController, IdentityController, InternalTokenController, ProofUiController],
+  controllers: [
+    HealthController,
+    IdentityController,
+    InternalTokenController,
+    SystemRevokeController,
+    ProofUiController,
+  ],
   providers,
 })
 export class AppModule {}

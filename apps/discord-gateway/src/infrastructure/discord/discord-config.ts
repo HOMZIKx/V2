@@ -55,10 +55,70 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_STRICT_GUILD_ISOLATION: z.preprocess((value) => parseBoolean(value, true), z.boolean()),
     DISCORD_STARTUP_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
     DISCORD_TEST_CHANNEL_ID: z.string().optional().default(''),
+    DISCORD_AUTHORIZATION_SYNC_ENABLED: z.preprocess(
+      (value) => parseBoolean(value, false),
+      z.boolean(),
+    ),
+    AUTHORIZATION_BASE_URL: z.string().optional(),
+    DISCORD_TO_AUTHZ_CLIENT_ID: z.string().min(1).default('v2.discord-gateway'),
+    DISCORD_TO_AUTHZ_PRIVATE_KEY_PEM: z.string().optional(),
+    DISCORD_TO_AUTHZ_ACTIVE_KID: z.string().optional(),
+    AUTHORIZATION_ASSERTION_AUD: z.string().optional(),
+    DISCORD_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(60)
+      .default(60),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
   })
   .superRefine((config, ctx) => {
+    if (config.DISCORD_AUTHORIZATION_SYNC_ENABLED) {
+      if (
+        config.AUTHORIZATION_BASE_URL === undefined ||
+        config.AUTHORIZATION_BASE_URL.trim().length === 0
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTHORIZATION_BASE_URL'],
+          message: 'AUTHORIZATION_BASE_URL is required when Discord Authorization sync is enabled.',
+        });
+      } else {
+        try {
+          new URL(config.AUTHORIZATION_BASE_URL);
+        } catch {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['AUTHORIZATION_BASE_URL'],
+            message: 'AUTHORIZATION_BASE_URL must be a valid URL.',
+          });
+        }
+      }
+
+      const pem = config.DISCORD_TO_AUTHZ_PRIVATE_KEY_PEM ?? '';
+      if (!pem.includes('BEGIN PRIVATE KEY')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['DISCORD_TO_AUTHZ_PRIVATE_KEY_PEM'],
+          message:
+            'DISCORD_TO_AUTHZ_PRIVATE_KEY_PEM (PKCS8) is required when Discord Authorization sync is enabled.',
+        });
+      }
+
+      if (
+        config.DISCORD_TO_AUTHZ_ACTIVE_KID === undefined ||
+        config.DISCORD_TO_AUTHZ_ACTIVE_KID.trim().length === 0
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['DISCORD_TO_AUTHZ_ACTIVE_KID'],
+          message:
+            'DISCORD_TO_AUTHZ_ACTIVE_KID is required when Discord Authorization sync is enabled.',
+        });
+      }
+    }
+
     if (!config.DISCORD_ENABLED) {
       return;
     }

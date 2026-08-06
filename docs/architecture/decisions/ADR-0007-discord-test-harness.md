@@ -21,7 +21,8 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 
 ### Intents i uprawnienia
 
-- Wyłącznie intent **`GatewayIntentBits.Guilds`**. Bez `MessageContent`, `GuildMembers`, `GuildPresences` ani innych privileged intents.
+- **P1 (oryginał):** wyłącznie intent **`GatewayIntentBits.Guilds`**. Bez `MessageContent`, `GuildMembers`, `GuildPresences` ani innych privileged intents.
+- **P3 amendment:** patrz sekcja poniżej — `GuildMembers` jest wymagany dla sync członkostwa (P3-D1).
 - Scopes instalacji OAuth: **`bot`** i **`applications.commands`**.
 - Minimalne uprawnienia bota (zalecane / docelowe): **View Channels**, **Send Messages**, **Embed Links**, **Attach Files**, **Read Message History**. Bez **Administrator**.
   - `Attach Files` jest wymagane do bannera panelu Components V2 (`attachment://`).
@@ -73,3 +74,12 @@ Przyjmujemy następujące decyzje dla harnessu P1:
 - [DISCORD_POST_INTERACTION_STANDARD.md](../../ux/DISCORD_POST_INTERACTION_STANDARD.md)
 - [TEST_DISCORD.md](../../environments/TEST_DISCORD.md)
 - [CHATGPT_TO_CURSOR.md](../../ai/CHATGPT_TO_CURSOR.md) — zakres P1
+
+## Amendment (P3-D1 / P3-D20 — 2026-08-05)
+
+Owner-approved membership sync supersedes the P1 **Guilds-only** intent restriction **when sync is enabled**:
+
+- Default (`DISCORD_AUTHORIZATION_SYNC_ENABLED=false`): `GatewayIntentBits.Guilds` only (P1 harness / tokenless-safe).
+- Sync on: `GatewayIntentBits.Guilds` **and** `GatewayIntentBits.GuildMembers` for Discord → Authorization membership sync.
+- `MessageContent` and `GuildPresences` remain forbidden.
+- Guild isolation (`DISCORD_STRICT_GUILD_ISOLATION`) is unchanged: only the configured test guild is synced; foreign guilds are rejected/left.

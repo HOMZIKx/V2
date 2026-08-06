@@ -9,10 +9,8 @@ import {
 } from './test-fixtures.js';
 
 export async function signTestClientAssertion(options: {
-  readonly config: Pick<
-    IdentityEnv,
-    'IDENTITY_INTERNAL_JWT_ISSUE_URL' | 'IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS'
-  >;
+  readonly config: Pick<IdentityEnv, 'IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS'> &
+    Partial<Pick<IdentityEnv, 'IDENTITY_INTERNAL_JWT_ISSUE_URL'>>;
   readonly clientId?: string;
   readonly kid?: string;
   readonly privatePem?: string;

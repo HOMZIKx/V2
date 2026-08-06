@@ -16,8 +16,16 @@ export class InternalJwtAdapter implements ClientAssertionPort, InternalJwtIssue
     private readonly config: IdentityEnv,
   ) {}
 
-  public verify(assertion: string): Promise<{ clientId: string; kid: string; jti: string }> {
-    return verifyClientAssertion(assertion, this.config, this.runtime.serviceClients);
+  public verify(
+    assertion: string,
+    expectedAudience: string,
+  ): Promise<{ clientId: string; kid: string; jti: string }> {
+    return verifyClientAssertion(
+      assertion,
+      this.config,
+      this.runtime.serviceClients,
+      expectedAudience,
+    );
   }
 
   public assertJtiOnce(jti: string, ttlSeconds: number): Promise<void> {

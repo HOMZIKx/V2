@@ -10,6 +10,8 @@ export interface IssueInternalTokenInput {
   readonly clientAssertion: string;
   readonly userSessionHeaders: Headers;
   readonly audience: string;
+  /** Exact assertion audience (IDENTITY_INTERNAL_JWT_ISSUE_URL). */
+  readonly expectedAudience: string;
   readonly assertionReplayTtlSeconds: number;
 }
 
@@ -19,7 +21,7 @@ export async function issueInternalToken(
   issuePort: InternalJwtIssuePort,
   input: IssueInternalTokenInput,
 ): Promise<InternalTokenView> {
-  const assertion = await assertionPort.verify(input.clientAssertion);
+  const assertion = await assertionPort.verify(input.clientAssertion, input.expectedAudience);
   await assertionPort.assertJtiOnce(assertion.jti, input.assertionReplayTtlSeconds);
   assertionPort.assertAudienceAllowed(assertion.clientId, input.audience);
 

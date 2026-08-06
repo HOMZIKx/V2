@@ -12,10 +12,13 @@ export interface TestKeyFixture {
 
 export const TEST_INTERNAL_JWT_ISSUER = 'http://127.0.0.1:4200';
 export const TEST_INTERNAL_JWT_ISSUE_URL = 'http://127.0.0.1:4200/identity/internal-token';
+export const TEST_SYSTEM_REVOKE_URL = 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions';
 export const TEST_GATEWAY_CLIENT_ID = 'v2.api-gateway';
 export const TEST_GATEWAY_AUDIENCE = 'v2.api-gateway';
 export const TEST_OTHER_CLIENT_ID = 'v2.other-service';
 export const TEST_OTHER_AUDIENCE = 'v2.other-service';
+export const TEST_AUTHZ_CLIENT_ID = 'v2.authorization-service';
+export const TEST_SERVICE_AUTHZ_ACTIVE_KID = 'service-authz-active';
 
 export const TEST_INTERNAL_ACTIVE_KID = 'internal-active';
 export const TEST_INTERNAL_RETIRING_KID = 'internal-retiring';
@@ -47,6 +50,7 @@ export interface IdentityInternalJwtTestFixtures {
   readonly TEST_SERVICE_GATEWAY_ACTIVE: TestKeyFixture;
   readonly TEST_SERVICE_GATEWAY_RETIRING: TestKeyFixture;
   readonly TEST_SERVICE_OTHER_ACTIVE: TestKeyFixture;
+  readonly TEST_SERVICE_AUTHZ_ACTIVE: TestKeyFixture;
 }
 
 let fixturesPromise: Promise<IdentityInternalJwtTestFixtures> | undefined;
@@ -61,6 +65,7 @@ export function getIdentityTestFixtures(): Promise<IdentityInternalJwtTestFixtur
       TEST_SERVICE_GATEWAY_RETIRING_KID,
     ),
     TEST_SERVICE_OTHER_ACTIVE: await createEphemeralKeyFixture(TEST_SERVICE_OTHER_ACTIVE_KID),
+    TEST_SERVICE_AUTHZ_ACTIVE: await createEphemeralKeyFixture(TEST_SERVICE_AUTHZ_ACTIVE_KID),
   }))();
   return fixturesPromise;
 }
@@ -92,6 +97,17 @@ export async function buildTestServiceClientsJson(): Promise<string> {
           kid: f.TEST_SERVICE_OTHER_ACTIVE.kid,
           status: 'active',
           public_key_pem: f.TEST_SERVICE_OTHER_ACTIVE.publicPem,
+        },
+      ],
+    },
+    {
+      client_id: TEST_AUTHZ_CLIENT_ID,
+      allowed_audiences: [TEST_SYSTEM_REVOKE_URL],
+      keys: [
+        {
+          kid: f.TEST_SERVICE_AUTHZ_ACTIVE.kid,
+          status: 'active',
+          public_key_pem: f.TEST_SERVICE_AUTHZ_ACTIVE.publicPem,
         },
       ],
     },

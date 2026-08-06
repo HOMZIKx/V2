@@ -2,49 +2,36 @@
 
 ## Status
 
-`READY_FOR_REVIEW_SECURITY_FIXED`
-
-Branch `cursor/p2-identity-internal-jwt` implements P2 internal service-to-service JWT (Issue #13, D1=C). Draft PR #14. GitHub is SoT for tip HEAD and CI.
-
-See `docs/ai/CURSOR_TO_CHATGPT.md` for the evidence report.
+`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`
 
 ## Active phase
 
-P2 Identity — internal service-to-service JWT (security hardening).
+P3 Authorization foundation — final closure pass 3 after
+`BLOCKING_FINAL_P3_CLOSURE_PASS_3` (identical reconcile recovery). Draft PR #16.
 
 ## Active task
 
-- Task ID: `P2-IDENTITY-INTERNAL-JWT-001`
-- Branch: `cursor/p2-identity-internal-jwt`
-- Base: `main` after PR #11 squash merge (`15586ac`)
-- Issue: #13 (APPROVED, D1 = OWNER_ACCEPTED C) — remains OPEN
-- Pull Request: #14 draft (no merge by Cursor)
+- Task ID: `P3-FINAL-CLOSURE-PASS-3`
+- Branch: `cursor/p3-authorization-foundation`
+- Start HEAD: `60c71cb7ea6c6d400bc8ab7d662bef90c920219a`
+- Issue: #15
+- Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge)
 
 ## Current objective
 
-Land security fixes on PR #14: kid↔client_id binding, strict assertion/JWT claim validation, public-only retiring/retired keyring, ephemeral test keys (no PEM in history), Redis shutdown, then `READY_FOR_REVIEW_SECURITY_FIXED`.
+Final re-audit after reconcile recovery fix; owner merge of PR #16.
 
 ## In scope now
 
-- Cross-client impersonation fix (`keyEntry.clientId === iss`, `iss === sub`)
-- Strict single-string audience; iat/exp/jti/alg/kid header rules
-- `@v2/internal-jwt` hardened verifier
-- Internal JWT keyring: active has private; retiring/retired public-only; non-extractable signer
-- Redis `OnModuleDestroy` lifecycle
-- History rewrite of PR branch only (purge private PEMs)
+- Identical reconcile key recovery after unavailable/stale
+- Parallel recovery serialization on connected_guild
 
 ## Out of scope now
 
-- Merge PR #14
-- Close Issue #13
-- New PR
-- Internal JWT jti blacklist / Authorization RBAC / browser JWT
-
-## Decisions in force
-
-- DEC-008 A, DEC-009 A, ADR-0011
-- Issue #13 D1 = C (client assertion)
+- P4 / PR #17 frozen
+- Empty CI commits
+- Merge by Cursor
 
 ## Last updated
 
-2026-08-05 — Cursor (PR #14 security remediation)
+2026-08-06 — Cursor (`P3-FINAL-CLOSURE-PASS-3`)

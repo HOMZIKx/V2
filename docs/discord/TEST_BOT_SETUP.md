@@ -19,7 +19,7 @@ Kod P1 i CI działają bez aplikacji (`DISCORD_ENABLED=false`). Live test wymaga
 - **Never paste the bot token, signing secret, or any secret into chat, GitHub issues, PRs, screenshots, or terminal command arguments.**
 - Store secrets only in a local `.env` file (or `apps/discord-gateway/.env`) that is ignored by Git.
 - If a token or signing secret may have leaked, rotate it immediately in the Developer Portal and update your local `.env`.
-- The bot must not use the `Administrator` permission or privileged Gateway intents as the recommended or production configuration.
+- The bot must not use the `Administrator` permission. Privileged intents: enable **Server Members Intent** only when Discord→Authz sync is on (P3); keep Message Content / Presence off.
 - Temporary owner override (DEC-002) may use Administrator **only** on the dedicated test guild; revoke it after testing (see § Permissions).
 
 ## Permissions (minimal / recommended)
@@ -65,7 +65,7 @@ Wykonaj [CREATE_TEST_APPLICATION.md](./CREATE_TEST_APPLICATION.md) (kroki A–F)
 
 1. [Developer Portal](https://discord.com/developers/applications) → **New Application**.
 2. **General Information** → Application ID.
-3. **Bot** → Add Bot; privileged intents **OFF**; skopiuj token lokalnie.
+3. **Bot** → Add Bot; enable **Server Members Intent** when using Authorization sync (`DISCORD_AUTHORIZATION_SYNC_ENABLED=true`); keep `Message Content` / `Presence` **OFF**; skopiuj token lokalnie.
 4. **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; permissions View Channels, Send Messages, Embed Links, Attach Files, Read Message History (`permissions=117760`); bez Administrator.
 5. Zainstaluj bota **tylko** na guild `1534228693017432124`.
 6. Developer Mode → skopiuj własne User ID.

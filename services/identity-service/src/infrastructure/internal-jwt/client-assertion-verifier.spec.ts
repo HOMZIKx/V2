@@ -21,10 +21,11 @@ import {
 } from './test-fixtures.js';
 
 const baseConfig = {
-  IDENTITY_INTERNAL_JWT_ISSUE_URL: TEST_INTERNAL_JWT_ISSUE_URL,
   IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: 60,
   IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS: 60,
 } as const;
+
+const issueAudience = TEST_INTERNAL_JWT_ISSUE_URL;
 
 describe('verifyClientAssertion', () => {
   let fixtures: IdentityInternalJwtTestFixtures;
@@ -37,7 +38,7 @@ describe('verifyClientAssertion', () => {
     const registry = await loadServiceClientRegistry(await buildTestServiceClientsJson());
     const assertion = await signTestClientAssertion({ config: baseConfig });
 
-    const verified = await verifyClientAssertion(assertion, baseConfig, registry);
+    const verified = await verifyClientAssertion(assertion, baseConfig, registry, issueAudience);
     expect(verified.clientId).toBe(TEST_GATEWAY_CLIENT_ID);
     expect(verified.kid).toBe(fixtures.TEST_SERVICE_GATEWAY_ACTIVE.kid);
     expect(verified.jti).toEqual(expect.any(String));
@@ -51,7 +52,9 @@ describe('verifyClientAssertion', () => {
       sub: 'v2.other',
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -66,12 +69,14 @@ describe('verifyClientAssertion', () => {
       sub: TEST_OTHER_CLIENT_ID,
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
 
     await expect(async () => {
-      const verified = await verifyClientAssertion(assertion, baseConfig, registry);
+      const verified = await verifyClientAssertion(assertion, baseConfig, registry, issueAudience);
       assertAudienceAllowedForClient(registry, verified.clientId, TEST_OTHER_AUDIENCE);
     }).rejects.toBeInstanceOf(IdentityError);
   });
@@ -86,7 +91,9 @@ describe('verifyClientAssertion', () => {
       sub: TEST_GATEWAY_CLIENT_ID,
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -98,9 +105,9 @@ describe('verifyClientAssertion', () => {
       audience: 'https://evil.example/token',
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toBeInstanceOf(
-      IdentityError,
-    );
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toBeInstanceOf(IdentityError);
   });
 
   it('rejects audience as array even when it contains the issue URL', async () => {
@@ -110,7 +117,9 @@ describe('verifyClientAssertion', () => {
       audience: [TEST_INTERNAL_JWT_ISSUE_URL, 'https://evil.example'],
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -123,7 +132,9 @@ describe('verifyClientAssertion', () => {
       expiresInSeconds: 60,
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -135,7 +146,9 @@ describe('verifyClientAssertion', () => {
       jti: 'not-a-uuid',
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -150,9 +163,9 @@ describe('verifyClientAssertion', () => {
       sub: TEST_GATEWAY_CLIENT_ID,
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toBeInstanceOf(
-      IdentityError,
-    );
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toBeInstanceOf(IdentityError);
   });
 
   it('rejects wrong algorithm', async () => {
@@ -169,7 +182,9 @@ describe('verifyClientAssertion', () => {
       .setExpirationTime('60s')
       .sign(new TextEncoder().encode('hmac-secret-for-wrong-alg-test'));
 
-    await expect(verifyClientAssertion(token, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(token, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -181,7 +196,9 @@ describe('verifyClientAssertion', () => {
       omitClaim: 'jti',
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toMatchObject({
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toMatchObject({
       code: 'CLIENT_ASSERTION_INVALID',
     });
   });
@@ -193,9 +210,9 @@ describe('verifyClientAssertion', () => {
       expiresInSeconds: -120,
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toBeInstanceOf(
-      IdentityError,
-    );
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toBeInstanceOf(IdentityError);
   });
 
   it('rejects unknown kid', async () => {
@@ -205,9 +222,9 @@ describe('verifyClientAssertion', () => {
       kid: 'unknown-kid',
     });
 
-    await expect(verifyClientAssertion(assertion, baseConfig, registry)).rejects.toBeInstanceOf(
-      IdentityError,
-    );
+    await expect(
+      verifyClientAssertion(assertion, baseConfig, registry, issueAudience),
+    ).rejects.toBeInstanceOf(IdentityError);
   });
 
   it('accepts retiring key for verification', async () => {
@@ -218,8 +235,23 @@ describe('verifyClientAssertion', () => {
       privatePem: fixtures.TEST_SERVICE_GATEWAY_RETIRING.privatePem,
     });
 
-    const verified = await verifyClientAssertion(assertion, baseConfig, registry);
+    const verified = await verifyClientAssertion(assertion, baseConfig, registry, issueAudience);
     expect(verified.kid).toBe(fixtures.TEST_SERVICE_GATEWAY_RETIRING.kid);
+  });
+
+  it('accepts a caller-supplied expected audience (system revoke URL)', async () => {
+    const registry = await loadServiceClientRegistry(await buildTestServiceClientsJson());
+    const revokeUrl = 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions';
+    const assertion = await signTestClientAssertion({
+      config: baseConfig,
+      clientId: 'v2.authorization-service',
+      kid: fixtures.TEST_SERVICE_AUTHZ_ACTIVE.kid,
+      privatePem: fixtures.TEST_SERVICE_AUTHZ_ACTIVE.privatePem,
+      audience: revokeUrl,
+    });
+
+    const verified = await verifyClientAssertion(assertion, baseConfig, registry, revokeUrl);
+    expect(verified.clientId).toBe('v2.authorization-service');
   });
 });
 

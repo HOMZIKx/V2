@@ -19,46 +19,50 @@
 - **Ryzyko:** token był eksponowany w czacie — zalecany Reset Token; właściciel świadomie pomija.
 - **Wznowienie zasady minimalnych uprawnień:** przed Zeabur / produkcją.
 
+## Rozstrzygnięte (P3 Authorization — 2026-08-05)
+
+Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED` (komentarze Issue + ADR-0013 / D-034).
+Nie wymagają ponownego pytania. Implementacja fundamentu: draft PR #16
+(`cursor/p3-authorization-foundation`) — final closure pass; merge tylko przez właściciela.
+
+## Zamrożone (do merge P3)
+
+### P4 / PR #17 — Centrum Aktywności
+
+- **Status:** FROZEN
+- **PR:** https://github.com/HOMZIKx/V2/pull/17 (docs-only planning)
+- **Warunek wznowienia:** merge PR #16 + jawne `APPROVED` na start P4.
+- Agent nie implementuje P4 ani nie rozszerza PR #17 w trakcie domknięcia P3.
+
 ## Rozstrzygnięte (P2 Identity — 2026-08-05)
 
 ### DEC-003 — Multi-provider Identity vs Discord-only
 
 - **Status:** ACCEPTED — **B: multi-provider Identity architecture** with **P2 active OAuth = Discord only** (owner amendment)
-- **Decyzja właściciela (2026-08-05):** V2 User ze stabilnym UUID; Discord i Google jako ExternalIdentity; supersede D-016 / NON_NEGOTIABLES Discord-only.
-- **Amendment właściciela (PR #11):** aktywny zakres P2 Identity OAuth = **wyłącznie Discord**. Google nie jest wymagany w konfiguracji, proof UI ani live checklist. Zachowane: V2 User UUID, porty ExternalIdentity, polityka explicit linking, sesje Redis, PostgreSQL, Discord `email=null`. Drugi provider można dodać później bez przeprojektowania.
-- **Live gate (owner, 2026-08-05):** Discord OAuth PASSED (sign-in → me → accounts → logout → me 401).
-- **Skutek:** ADR-0010 Accepted (architektura multi-provider-ready); aktywny socialProviders w proof = Discord.
 
 ### DEC-004 — Framework auth
 
 - **Status:** ACCEPTED — **A: Better Auth** (z izolacją)
-- **Decyzja właściciela (2026-08-05):** oficjalny handler Fastify w Identity; Better Auth tylko za portami/adapters; brak community Nest adaptera jako fundamentu; proof/integration slice przed pełną budową; pin wersji w PR implementacyjnym.
-- **Skutek:** ADR-0012 Accepted; D-019 potwierdzone.
 
 ### DEC-005 — Account linking po emailu
 
 - **Status:** ACCEPTED — **A: wyłącznie jawne linking**
-- **Decyzja właściciela (2026-08-05):** zero auto-merge po emailu; `disableImplicitLinking: true`; kolizja email → kontrolowany komunikat.
 
 ### DEC-006 — D-017 przy multi-provider
 
 - **Status:** ACCEPTED — **C w P2**
-- **Decyzja właściciela (2026-08-05):** P2 = natychmiastowy revoke API; polityka guild/membership → P3 Authorization; utrata Discorda nie kasuje V2 User ani Google.
 
 ### DEC-007 — Sekwencja P1 vs P2
 
 - **Status:** ACCEPTED — **A (warunek spełniony)**
-- **Decyzja właściciela (2026-08-05):** P1 zatwierdzony i scalony (PR #9 / `c82d6bd`); plan P2 można zamknąć; implementacja P2 dopiero po merge planu PR #10, w osobnym PR.
 
 ### DEC-008 — Sesja przeglądarkowa
 
 - **Status:** ACCEPTED — **A: opaque server session**
-- **Decyzja właściciela (2026-08-05):** HttpOnly + Secure + host-only cookie; Redis SoT walidacji/revoke; wyłączony cookie cache/stateless Better Auth; osobne cookies Web vs Admin; zakaz JWT/localStorage jako sesji przeglądarki.
 
 ### DEC-009 — Kontekst wewnętrzny
 
 - **Status:** ACCEPTED — **A: krótko żyjący internal JWT**
-- **Decyzja właściciela (2026-08-05):** TTL ≤ 5 min; iss/aud/sub/jti/iat/exp/kid; asymetryczne podpisy; prywatny klucz tylko w Identity; bez pełnego RBAC w tokenie.
 
 ## Szablon
 

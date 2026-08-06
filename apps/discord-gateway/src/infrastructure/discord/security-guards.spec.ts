@@ -17,11 +17,14 @@ describe('static discord security guards', () => {
     expect(adapter).not.toMatch(/rest\.put\(\s*Routes\.applicationCommands/);
   });
 
-  it('uses only Guilds intent', () => {
+  it('gates GuildMembers behind authorization sync and forbids MessageContent/Presence', () => {
     const adapter = readSrc('src/infrastructure/discord/discord-js-adapter.ts');
     expect(adapter).toContain('GatewayIntentBits.Guilds');
+    expect(adapter).toContain('GatewayIntentBits.GuildMembers');
+    expect(adapter).toContain('BASE_INTENTS');
+    expect(adapter).toContain('SYNC_INTENTS');
+    expect(adapter).toContain('DISCORD_AUTHORIZATION_SYNC_ENABLED');
     expect(adapter).not.toContain('GatewayIntentBits.MessageContent');
-    expect(adapter).not.toContain('GatewayIntentBits.GuildMembers');
     expect(adapter).not.toContain('GatewayIntentBits.GuildPresences');
   });
 
