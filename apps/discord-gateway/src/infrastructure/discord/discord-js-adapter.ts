@@ -10,9 +10,8 @@ import {
   type GuildBasedChannel,
   type GuildMember,
   type Interaction,
-  type Role,
 } from 'discord.js';
-import { randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import type { AuthorizationSyncPort } from '../../application/ports/authorization-sync.port.js';
 import type {
@@ -299,7 +298,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildRoleCreate, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_create', role).catch(
+      void this.handleRolesChanged(role.guild, 'guild_role_create').catch(
         (error: unknown) => {
           this.deps.logger.error('GuildRoleCreate sync failed', {
             guildId: role.guild.id,
@@ -311,7 +310,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildRoleUpdate, (_previous, role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_update', role).catch(
+      void this.handleRolesChanged(role.guild, 'guild_role_update').catch(
         (error: unknown) => {
           this.deps.logger.error('GuildRoleUpdate sync failed', {
             guildId: role.guild.id,
@@ -323,7 +322,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
 
     this.client.on(Events.GuildRoleDelete, (role) => {
-      void this.handleRolesChanged(role.guild, 'guild_role_delete', role).catch(
+      void this.handleRolesChanged(role.guild, 'guild_role_delete').catch(
         (error: unknown) => {
           this.deps.logger.error('GuildRoleDelete sync failed', {
             guildId: role.guild.id,
@@ -376,10 +375,16 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       return;
     }
 
+    // #5: GuildDelete fires both for a transient outage (guild.available === false)
+    // and for a confirmed removal/disconnect. Only the latter is a real detach.
     const unavailable = guild.available === false;
     const eventType = unavailable ? 'guild_unavailable' : 'guild_delete';
-    const payload = { kind: 'guild_detach' as const };
-    const eventKey = `dg:${eventType}:${guild.id}:${randomUUID()}`;
+    const payload = unavailable
+      ? ({ kind: 'guild_unavailable' } as const)
+      : ({ kind: 'guild_detach' } as const);
+    const eventKey = unavailable
+      ? buildDiscordEventKey('guild_unavailable', [guild.id])
+      : buildDiscordEventKey('guild_detach', [guild.id]);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
       eventType,
@@ -409,8 +414,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     const joinedMs = member.joinedTimestamp ?? 0;
     const eventKey =
       eventType === 'guild_member_add'
-        ? `dg:${eventType}:${member.guild.id}:${member.id}:${joinedMs}`
-        : `dg:${eventType}:${member.guild.id}:${member.id}:${hashAuthzPayload(roleIds)}:${randomUUID()}`;
+        ? buildDiscordEventKey(eventType, [member.guild.id, member.id, joinedMs])
+        : buildDiscordEventKey(eventType, [member.guild.id, member.id], {
+            roleIds: [...roleIds].sort(),
+            status: payload.member.status,
+          });
 
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
@@ -432,7 +440,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       kind: 'member_remove' as const,
       discordUserId: member.id,
     };
-    const eventKey = `dg:guild_member_remove:${member.guild.id}:${member.id}:${randomUUID()}`;
+    const eventKey = buildDiscordEventKey('guild_member_remove', [member.guild.id, member.id]);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
       eventType: 'guild_member_remove',
@@ -445,7 +453,6 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   private async handleRolesChanged(
     guild: Guild,
     eventType: 'guild_role_create' | 'guild_role_update' | 'guild_role_delete',
-    role: Role,
   ): Promise<void> {
     if (!this.isAllowedGuild(guild.id) || this.authorizationSync === null) {
       return;
@@ -462,7 +469,8 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       kind: 'roles_snapshot' as const,
       roles,
     };
-    const eventKey = `dg:${eventType}:${guild.id}:${role.id}:${randomUUID()}`;
+    const sortedRoles = [...roles].sort((a, b) => a.discordRoleId.localeCompare(b.discordRoleId));
+    const eventKey = buildDiscordEventKey(eventType, [guild.id], sortedRoles);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
       eventType,
@@ -490,9 +498,18 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
 
     await this.authorizationSync.registerGuild(guild.id);
     const snapshot = await this.buildGuildSnapshot(guild);
+    const sortedMembers = [...snapshot.members].sort((a, b) =>
+      a.discordUserId.localeCompare(b.discordUserId),
+    );
+    const sortedRoles = [...snapshot.roles].sort((a, b) =>
+      a.discordRoleId.localeCompare(b.discordRoleId),
+    );
     await this.authorizationSync.reconcileGuild(guild.id, {
       ...snapshot,
-      eventKey: `dg:reconcile:${guild.id}:${randomUUID()}`,
+      eventKey: buildDiscordEventKey('reconcile', [guild.id], {
+        members: sortedMembers,
+        roles: sortedRoles,
+      }),
     });
     this.deps.logger.info('Authorization sync register+reconcile completed', {
       guildId: guild.id,
@@ -574,6 +591,52 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     process.exitCode = 1;
     await this.stop();
   }
+}
+
+/**
+ * Build a deterministic idempotency key for a Discord → Authorization event.
+ *
+ * The key is `dg:{type}:{...parts}` optionally suffixed with a sha256 hash of
+ * the canonical JSON of `payloadForHash`. Because the key is derived purely
+ * from stable entity identity plus a content hash (never randomUUID), replaying
+ * the same logical event produces the same key so Authz can dedupe it, while a
+ * meaningful change (e.g. different roles) yields a different key.
+ */
+export function buildDiscordEventKey(
+  type: string,
+  parts: readonly (string | number)[],
+  payloadForHash?: unknown,
+): string {
+  const segments = ['dg', type, ...parts.map((part) => String(part))];
+  if (payloadForHash !== undefined) {
+    segments.push(sha256CanonicalJson(payloadForHash));
+  }
+  return segments.join(':');
+}
+
+function sha256CanonicalJson(payload: unknown): string {
+  return createHash('sha256').update(canonicalJson(payload)).digest('hex');
+}
+
+/** Stable JSON with recursively sorted object keys for hash determinism. */
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalize(value));
+}
+
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => canonicalize(entry));
+  }
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return Object.keys(record)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, key) => {
+        acc[key] = canonicalize(record[key]);
+        return acc;
+      }, {});
+  }
+  return value;
 }
 
 /**

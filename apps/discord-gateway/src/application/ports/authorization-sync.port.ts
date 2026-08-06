@@ -30,6 +30,9 @@ export type AuthzDiscordEventPayload =
     }
   | {
       readonly kind: 'guild_detach';
+    }
+  | {
+      readonly kind: 'guild_unavailable';
     };
 
 export type AuthzDiscordEventInput = {

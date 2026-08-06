@@ -1,10 +1,15 @@
-import { GatewayIntentBits, Routes } from 'discord.js';
+import { GatewayIntentBits, Routes, type Guild } from 'discord.js';
 import { describe, expect, it, vi } from 'vitest';
 
+import type {
+  AuthorizationSyncPort,
+  AuthzDiscordEventInput,
+} from '../../application/ports/authorization-sync.port.js';
 import { DiscordGatewayConfigSchema, normalizeDiscordConfig } from './discord-config.js';
 import {
   assertAllowedGatewayIntents,
   assertOnlyGuildsIntent,
+  buildDiscordEventKey,
   DiscordJsGatewayAdapter,
 } from './discord-js-adapter.js';
 
@@ -85,5 +90,127 @@ describe('DiscordJsGatewayAdapter', () => {
     const calls = restPut.mock.calls as unknown as Array<[unknown]>;
     const firstArg = calls[0]?.[0];
     expect(typeof firstArg === 'string' ? firstArg : '').toContain('/guilds/');
+  });
+});
+
+function makeSyncMock(): {
+  port: AuthorizationSyncPort;
+  applyDiscordEvent: ReturnType<typeof vi.fn>;
+} {
+  const applyDiscordEvent = vi.fn(() => Promise.resolve());
+  return {
+    port: {
+      registerGuild: vi.fn(() => Promise.resolve()),
+      applyDiscordEvent,
+      reconcileGuild: vi.fn(() => Promise.resolve()),
+    },
+    applyDiscordEvent,
+  };
+}
+
+function makeAdapterWithSync(port: AuthorizationSyncPort): DiscordJsGatewayAdapter {
+  return new DiscordJsGatewayAdapter({
+    config: makeConfig(),
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    onInteraction: () => Promise.resolve(),
+    authorizationSync: port,
+  });
+}
+
+const GUILD_ID = '1534228693017432124';
+
+describe('buildDiscordEventKey', () => {
+  it('produces the same key for the same member update payload (idempotent replay)', () => {
+    const key1 = buildDiscordEventKey('guild_member_update', [GUILD_ID, 'u1'], {
+      roleIds: ['r2', 'r1'].sort(),
+      status: 'active',
+    });
+    const key2 = buildDiscordEventKey('guild_member_update', [GUILD_ID, 'u1'], {
+      roleIds: ['r1', 'r2'].sort(),
+      status: 'active',
+    });
+    expect(key1).toBe(key2);
+    expect(key1.startsWith(`dg:guild_member_update:${GUILD_ID}:u1:`)).toBe(true);
+  });
+
+  it('produces different keys when the roles differ', () => {
+    const key1 = buildDiscordEventKey('guild_member_update', [GUILD_ID, 'u1'], {
+      roleIds: ['r1'],
+      status: 'active',
+    });
+    const key2 = buildDiscordEventKey('guild_member_update', [GUILD_ID, 'u1'], {
+      roleIds: ['r1', 'r2'],
+      status: 'active',
+    });
+    expect(key1).not.toBe(key2);
+  });
+
+  it('is deterministic regardless of object key ordering in the payload', () => {
+    const key1 = buildDiscordEventKey('guild_role_update', [GUILD_ID], [
+      { discordRoleId: 'r1', nameCache: 'Member' },
+    ]);
+    const key2 = buildDiscordEventKey('guild_role_update', [GUILD_ID], [
+      { nameCache: 'Member', discordRoleId: 'r1' },
+    ]);
+    expect(key1).toBe(key2);
+  });
+
+  it('omits the hash for identity-only remove keys (idempotent)', () => {
+    expect(buildDiscordEventKey('guild_member_remove', [GUILD_ID, 'u1'])).toBe(
+      `dg:guild_member_remove:${GUILD_ID}:u1`,
+    );
+  });
+});
+
+describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
+  it('sends guild_unavailable (not detach) when GuildDelete reports available === false', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+
+    const guild = { id: GUILD_ID, available: false } as unknown as Guild;
+    await (
+      adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }
+    ).handleGuildDelete(guild);
+
+    expect(applyDiscordEvent).toHaveBeenCalledTimes(1);
+    const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
+    expect(input.payload).toEqual({ kind: 'guild_unavailable' });
+    expect(input.eventType).toBe('guild_unavailable');
+    expect(input.eventKey).toBe(`dg:guild_unavailable:${GUILD_ID}`);
+  });
+
+  it('sends guild_detach when GuildDelete is a confirmed removal (available !== false)', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+
+    const guild = { id: GUILD_ID, available: true } as unknown as Guild;
+    await (
+      adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> }
+    ).handleGuildDelete(guild);
+
+    expect(applyDiscordEvent).toHaveBeenCalledTimes(1);
+    const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
+    expect(input.payload).toEqual({ kind: 'guild_detach' });
+    expect(input.eventType).toBe('guild_delete');
+    expect(input.eventKey).toBe(`dg:guild_detach:${GUILD_ID}`);
+  });
+
+  it('replays the same event key across repeated GuildDelete outage events', async () => {
+    const { port, applyDiscordEvent } = makeSyncMock();
+    const adapter = makeAdapterWithSync(port);
+
+    const guild = { id: GUILD_ID, available: false } as unknown as Guild;
+    const handle = (adapter as unknown as { handleGuildDelete(g: Guild): Promise<void> })
+      .handleGuildDelete.bind(adapter);
+    await handle(guild);
+    await handle(guild);
+
+    const keys = applyDiscordEvent.mock.calls.map(
+      (call) => (call[0] as AuthzDiscordEventInput).eventKey,
+    );
+    expect(keys).toEqual([
+      `dg:guild_unavailable:${GUILD_ID}`,
+      `dg:guild_unavailable:${GUILD_ID}`,
+    ]);
   });
 });
