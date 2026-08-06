@@ -14,9 +14,10 @@ P3 Authorization foundation — security/correctness remediation after ChatGPT a
 - Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
 - Branch: `cursor/p3-authorization-foundation`
 - Base: `main` @ `f299775` (PR #14 Internal JWT merged)
-- HEAD tip: see GitHub PR #16
+- HEAD tip: `e84440281f1a1a552fe11ca7fcc56ff71e44b7e7` (GitHub PR #16 SoT)
 - Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
 - Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
+- CI tip: https://github.com/HOMZIKx/V2/actions/runs/31114236847 (success)
 
 ## Current objective
 

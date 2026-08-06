@@ -39,18 +39,30 @@ P3 Authorization foundation security/correctness remediation on draft PR #16
 ## 5. Validation
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-AUTHORIZATION_DATABASE_URL=... IDENTITY_DATABASE_URL=... IDENTITY_REDIS_URL=... RUN_INFRA_TESTS=true \
-  pnpm --filter @v2/authorization-service test
-AUTHORIZATION_DATABASE_URL=... IDENTITY_DATABASE_URL=... IDENTITY_REDIS_URL=... RUN_INFRA_TESTS=true \
-  pnpm --filter @v2/identity-service exec vitest run src/infrastructure/p3-identity-authz.integration.spec.ts
-pnpm validate   # full gate including secret scan / smoke where available
+pnpm format:check   # pass
+pnpm lint           # pass
+pnpm typecheck      # pass
+pnpm test / coverage / architecture:check / e2e / runtime-smoke  # pass
+RUN_INFRA_TESTS=true … authorization + identity integration  # pass (local PG/Redis)
+gitleaks detect --log-opts="main..HEAD"  # no leaks found
+# Local `pnpm validate` compose config step fails without Docker CLI;
+# CI compose + infra jobs are green on tip HEAD.
 ```
 
-Local infra: PostgreSQL 16 + Redis 7 started on the agent VM (no Docker CLI).
+### Tip HEAD
+
+`e84440281f1a1a552fe11ca7fcc56ff71e44b7e7`
+
+### Green workflows (tip HEAD)
+
+| Workflow                        | URL                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| CI (PR)                         | https://github.com/HOMZIKx/V2/actions/runs/31114236847                 |
+| CI (push)                       | https://github.com/HOMZIKx/V2/actions/runs/31114230003                 |
+| PR Title                        | https://github.com/HOMZIKx/V2/actions/runs/31114240124                 |
+| Secret scan (PR CI job)         | https://github.com/HOMZIKx/V2/actions/runs/31114236847/job/92659769075 |
+| Infrastructure integration (PR) | https://github.com/HOMZIKx/V2/actions/runs/31114236847/job/92659769387 |
+| Quality gates (PR)              | https://github.com/HOMZIKx/V2/actions/runs/31114236847/job/92659769318 |
 
 ## 6. Explicitly unchanged
 
@@ -61,4 +73,4 @@ Local infra: PostgreSQL 16 + Redis 7 started on the agent VM (no Docker CLI).
 
 ## Last updated
 
-2026-08-06 — Cursor (audit remediations)
+2026-08-06 — Cursor (`READY_FOR_REAUDIT_P3_AUTHORIZATION_FOUNDATION`, tip `e844402`)
