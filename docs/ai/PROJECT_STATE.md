@@ -13,10 +13,10 @@ P4 Centrum Aktywności — **plan only**.
 - Task ID: `P4-CENTRUM-AKTYWNOSCI-001`
 - Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
 - Base: `main` @ `f299775` (PR #14 Internal JWT)
-- HEAD tip: see GitHub planning PR (SoT)
+- HEAD tip: see GitHub planning PR #17 (SoT)
 - Prerequisite: P3 Authorization foundation APPROVED + merged
   (Issue #15; draft PR #16 still open on `cursor/p3-authorization-foundation`)
-- Pull Request: draft planning PR — no merge by Cursor
+- Pull Request: https://github.com/HOMZIKx/V2/pull/17 (draft — no merge by Cursor)
 
 ## Current objective
 

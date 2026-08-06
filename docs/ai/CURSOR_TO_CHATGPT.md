@@ -15,11 +15,12 @@ P4 Centrum Aktywności **planning package only** on
 ## 3. Branch / PR / source of truth
 
 - Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
-- HEAD tip: see GitHub planning PR (SoT)
+- HEAD tip: see GitHub planning PR #17 (SoT)
 - Base: `main` @ `f299775`
 - Prerequisite: P3 draft PR #16 (`READY_FOR_REVIEW_P3_AUTHORIZATION_FOUNDATION`)
   must be APPROVED + merged before P4 implementation
-- Issue: none yet for P4 (tracking via this PR + `PENDING_DECISIONS`; owner may open Issue)
+- Issue: none yet for P4 (tracking via PR #17 + `PENDING_DECISIONS`; owner may open Issue)
+- PR: https://github.com/HOMZIKx/V2/pull/17 (draft)
 
 ## 4. What this package delivers
 
