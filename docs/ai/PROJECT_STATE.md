@@ -13,7 +13,7 @@ P4 Centrum Aktywności — **plan only**.
 - Task ID: `P4-CENTRUM-AKTYWNOSCI-001`
 - Branch: `cursor/p4-centrum-aktywnosci-plan-ea0a`
 - Base: `main` @ `f299775` (PR #14 Internal JWT)
-- HEAD: `c07d2968d47c6406949fae851e889b5505b38377`
+- HEAD: `73686cc9c6aaaefdb994519cb9932a3463e33b9a`
 - Prerequisite: P3 Authorization foundation APPROVED + merged
   (Issue #15; draft PR #16 still open on `cursor/p3-authorization-foundation`)
 - Pull Request: draft planning PR — no merge by Cursor
