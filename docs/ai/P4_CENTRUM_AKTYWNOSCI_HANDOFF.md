@@ -2,7 +2,9 @@
 
 - **Task ID:** `P4-CENTRUM-AKTYWNOSCI-001`
 - **Status:** `READY_FOR_OWNER_DECISIONS` (planning package — **no implementation**)
+- **Branch:** `cursor/p4-centrum-aktywnosci-plan-ea0a`
 - **PR:** [#17](https://github.com/HOMZIKx/V2/pull/17)
+- **Date:** 2026-08-06
 - **Depends on:** P3 Authorization foundation **APPROVED + merged to `main`**
   (Issue #15, draft PR #16 / `cursor/p3-authorization-foundation`) before any
   implementacyjny PR P4.
