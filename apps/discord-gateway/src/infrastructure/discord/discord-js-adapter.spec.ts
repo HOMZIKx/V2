@@ -159,9 +159,9 @@ describe('buildDiscordEventKey', () => {
     expect(key1).toBe(key2);
   });
 
-  it('includes membership epoch in remove keys (defaults to 0)', () => {
-    expect(buildDiscordEventKey('guild_member_remove', [GUILD_ID, 'u1', 0])).toBe(
-      `dg:guild_member_remove:${GUILD_ID}:u1:0`,
+  it('includes guild and user in remove keys (generation owned by Authz)', () => {
+    expect(buildDiscordEventKey('guild_member_remove', [GUILD_ID, 'u1'])).toBe(
+      `dg:guild_member_remove:${GUILD_ID}:u1`,
     );
   });
 });
@@ -180,7 +180,7 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
     expect(input.payload).toEqual({ kind: 'guild_unavailable' });
     expect(input.eventType).toBe('guild_unavailable');
-    expect(input.eventKey).toBe(`dg:guild_unavailable:${GUILD_ID}:0`);
+    expect(input.eventKey).toBe(`dg:guild_unavailable:${GUILD_ID}`);
   });
 
   it('sends guild_detach when GuildDelete is a confirmed removal (available !== false)', async () => {
@@ -196,10 +196,10 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const input = applyDiscordEvent.mock.calls[0]?.[0] as AuthzDiscordEventInput;
     expect(input.payload).toEqual({ kind: 'guild_detach' });
     expect(input.eventType).toBe('guild_delete');
-    expect(input.eventKey).toBe(`dg:guild_detach:${GUILD_ID}:0`);
+    expect(input.eventKey).toBe(`dg:guild_detach:${GUILD_ID}`);
   });
 
-  it('replays the same event key across repeated GuildDelete outage events (retry)', async () => {
+  it('replays the same transport event key across repeated GuildDelete outage events (retry)', async () => {
     const { port, applyDiscordEvent } = makeSyncMock();
     const adapter = makeAdapterWithSync(port);
 
@@ -213,13 +213,10 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
     const keys = applyDiscordEvent.mock.calls.map(
       (call) => (call[0] as AuthzDiscordEventInput).eventKey,
     );
-    expect(keys).toEqual([
-      `dg:guild_unavailable:${GUILD_ID}:0`,
-      `dg:guild_unavailable:${GUILD_ID}:0`,
-    ]);
+    expect(keys).toEqual([`dg:guild_unavailable:${GUILD_ID}`, `dg:guild_unavailable:${GUILD_ID}`]);
   });
 
-  it('leave → rejoin → leave uses a new remove key for the second leave', async () => {
+  it('leave → rejoin → leave sends the same transport remove key (Authz owns generation)', async () => {
     const { port, applyDiscordEvent } = makeSyncMock();
     const adapter = makeAdapterWithSync(port);
     const internals = adapter as unknown as {
@@ -253,12 +250,12 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
       .map((input) => input.eventKey);
 
     expect(removeKeys).toEqual([
-      `dg:guild_member_remove:${GUILD_ID}:u-leave:0`,
-      `dg:guild_member_remove:${GUILD_ID}:u-leave:1`,
+      `dg:guild_member_remove:${GUILD_ID}:u-leave`,
+      `dg:guild_member_remove:${GUILD_ID}:u-leave`,
     ]);
   });
 
-  it('unavailable → reconcile → unavailable uses a new unavailable key', async () => {
+  it('unavailable → reconcile → unavailable reuses transport unavailable key', async () => {
     const { port, applyDiscordEvent } = makeSyncMock();
     const adapter = makeAdapterWithSync(port);
     const internals = adapter as unknown as {
@@ -270,7 +267,6 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
       }>;
     };
 
-    // Avoid real Discord cache fetches during reconcile.
     internals.buildGuildSnapshot = () => Promise.resolve({ members: [], roles: [] });
 
     const outage = { id: GUILD_ID, available: false } as unknown as Guild;
@@ -284,12 +280,12 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
       .map((input) => input.eventKey);
 
     expect(unavailableKeys).toEqual([
-      `dg:guild_unavailable:${GUILD_ID}:0`,
-      `dg:guild_unavailable:${GUILD_ID}:1`,
+      `dg:guild_unavailable:${GUILD_ID}`,
+      `dg:guild_unavailable:${GUILD_ID}`,
     ]);
   });
 
-  it('detach → reconnect → detach uses a new detach key', async () => {
+  it('detach → reconnect → detach reuses transport detach key', async () => {
     const { port, applyDiscordEvent } = makeSyncMock();
     const adapter = makeAdapterWithSync(port);
     const internals = adapter as unknown as {
@@ -313,6 +309,6 @@ describe('DiscordJsGatewayAdapter guild lifecycle events', () => {
       .filter((input) => input.payload.kind === 'guild_detach')
       .map((input) => input.eventKey);
 
-    expect(detachKeys).toEqual([`dg:guild_detach:${GUILD_ID}:0`, `dg:guild_detach:${GUILD_ID}:1`]);
+    expect(detachKeys).toEqual([`dg:guild_detach:${GUILD_ID}`, `dg:guild_detach:${GUILD_ID}`]);
   });
 });

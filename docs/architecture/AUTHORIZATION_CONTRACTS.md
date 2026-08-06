@@ -33,8 +33,13 @@ Members carry **only** `discordUserId`, `roleIds`, `status`.
 **`v2UserId` is rejected** (strict schema). Authorization binds V2 via
 `discord_identity_link` written exclusively by Identity.
 
-Event keys from Gateway are lifecycle-aware (epoch): retries reuse the key;
-later leave / unavailable / detach cycles get a new key.
+Event keys for Discord lifecycle terminators (`member_remove`,
+`guild_unavailable`, `guild_detach`) are **rewritten by Authorization** using
+durable generations stored in the Authorization DB
+(`lifecycle_generation`, `availability_generation`, `attachment_generation`).
+Gateway transport keys must not rely on process-local Maps: retries of the same
+occurrence reuse the durable key; later legitimate cycles get a new generation
+after rejoin / reconcile / re-register.
 
 ### Recommended client allowlists
 
@@ -69,10 +74,12 @@ optional — the worker runs on startup and on an interval.
 
 ## No-escalation
 
-For `effect=allow`, Authorization expands a group to its permissions and
-requires the actor to already hold each permission in the same scope (org
-policy manager / owner excepted via `manage.org`). Local managers cannot
-grant organization scope.
+For `effect=allow` **and** `effect=deny`, Authorization expands a group to its
+permissions and requires the actor to already hold each permission in the same
+scope (org policy manager / owner excepted via `manage.org`). Local managers
+cannot grant organization scope. Holding
+`permission.authorization.policy.manage.guild` alone is not sufficient to
+grant or deny arbitrary permissions.
 
 ## Out of scope here
 

@@ -439,7 +439,8 @@ export class AuthorizationRepository {
              discord_guild_id, organization_id, status, login_entitling, sync_status
            ) VALUES ($1, $2, 'pending_sync', FALSE, 'unavailable')
            ON CONFLICT (discord_guild_id) DO UPDATE
-             SET updated_at = now()
+             SET updated_at = now(),
+                 attachment_generation = connected_guild.attachment_generation + 1
            RETURNING discord_guild_id, status, login_entitling, sync_status, last_fresh_at`,
           [command.discordGuildId, org],
         );
@@ -470,16 +471,26 @@ export class AuthorizationRepository {
     command: ApplyDiscordEventCommand,
   ): Promise<ApplyDiscordEventResult> {
     return withTransaction(this.pool, async (client) => {
+      // Occurrence identity is owned by Authorization DB generations — not by
+      // the gateway process. Client eventKey is accepted for non-lifecycle
+      // events; lifecycle terminators always use durable keys.
+      const durableEventKey = await this.resolveDurableEventKey(client, command);
+
       const inserted = await client.query(
         `INSERT INTO processed_event (event_key, event_type, discord_guild_id, payload_hash)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (event_key) DO NOTHING
          RETURNING event_key`,
-        [command.eventKey, command.eventType, command.discordGuildId, command.payloadHash ?? null],
+        [durableEventKey, command.eventType, command.discordGuildId, command.payloadHash ?? null],
       );
 
       if (inserted.rowCount === 0) {
-        return { applied: false, duplicate: true, revokedUserIds: [] };
+        return {
+          applied: false,
+          duplicate: true,
+          eventKey: durableEventKey,
+          revokedUserIds: [],
+        };
       }
 
       await this.requireGuild(client, command.discordGuildId);
@@ -540,7 +551,7 @@ export class AuthorizationRepository {
         client,
         revokedUserIds,
         REVOKE_REASON_ENTITLEMENT_LOST,
-        command.eventKey,
+        durableEventKey,
       );
 
       await this.writeAudit(client, {
@@ -549,14 +560,20 @@ export class AuthorizationRepository {
         discordGuildId: command.discordGuildId,
         correlationId: command.correlationId ?? null,
         details: {
-          eventKey: command.eventKey,
+          eventKey: durableEventKey,
+          clientEventKey: command.eventKey,
           eventType: command.eventType,
           kind: command.payload.kind,
           revokedUserIds,
         },
       });
 
-      return { applied: true, duplicate: false, revokedUserIds };
+      return {
+        applied: true,
+        duplicate: false,
+        eventKey: durableEventKey,
+        revokedUserIds,
+      };
     });
   }
 
@@ -576,7 +593,7 @@ export class AuthorizationRepository {
         [eventKey, command.discordGuildId],
       );
       if (inserted.rowCount === 0) {
-        return { applied: false, duplicate: true, revokedUserIds: [] };
+        return { applied: false, duplicate: true, eventKey, revokedUserIds: [] };
       }
 
       await this.requireGuild(client, command.discordGuildId);
@@ -609,6 +626,7 @@ export class AuthorizationRepository {
              last_fresh_at = $2,
              last_sync_at = $2,
              last_sync_error = NULL,
+             availability_generation = availability_generation + 1,
              updated_at = $2
          WHERE discord_guild_id = $1`,
         [command.discordGuildId, now],
@@ -630,7 +648,7 @@ export class AuthorizationRepository {
         details: { eventKey, revokedUserIds },
       });
 
-      return { applied: true, duplicate: false, revokedUserIds };
+      return { applied: true, duplicate: false, eventKey, revokedUserIds };
     });
   }
 
@@ -792,9 +810,9 @@ export class AuthorizationRepository {
     }
 
     await this.requireActorCanManageScope(command.actor, command.scopeType, command.scopeGuildId);
-    if (command.effect === 'allow') {
-      await this.requireActorCanGrantPermissions(command);
-    }
+    // P3-D18: no-escalation for both allow and deny — actor must hold every
+    // directly granted permission (and every permission in a group).
+    await this.requireActorCanGrantPermissions(command);
 
     // Specificity is derived from subject + scope, never trusted from callers.
     const specificity = computeGrantSpecificity({
@@ -1032,8 +1050,8 @@ export class AuthorizationRepository {
     });
   }
 
-  public async markSessionRevokeDelivered(id: string, actor?: string): Promise<void> {
-    await withTransaction(this.pool, async (client) => {
+  public async markSessionRevokeDelivered(id: string, leaseOwner: string): Promise<boolean> {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{
         v2_user_id: string;
         correlation_id: string;
@@ -1047,16 +1065,20 @@ export class AuthorizationRepository {
              lease_owner = NULL,
              lease_expires_at = NULL
          WHERE id = $1
+           AND lease_owner = $2
+           AND lease_expires_at IS NOT NULL
+           AND lease_expires_at >= now()
+           AND status = 'pending'
          RETURNING v2_user_id, correlation_id, source_event_key, attempts`,
-        [id],
+        [id, leaseOwner],
       );
       const row = result.rows[0];
       if (row === undefined) {
-        return;
+        return false;
       }
       await this.writeAudit(client, {
         action: 'revoke.delivered',
-        actor: actor ?? 'system',
+        actor: leaseOwner,
         subjectV2UserId: row.v2_user_id,
         correlationId: row.correlation_id,
         details: {
@@ -1066,18 +1088,19 @@ export class AuthorizationRepository {
           sourceEventKey: row.source_event_key,
         },
       });
+      return true;
     });
   }
 
   public async markSessionRevokeAttemptFailed(command: {
     readonly id: string;
+    readonly leaseOwner: string;
     readonly errorMessage: string;
     readonly terminal?: boolean;
-    readonly actor?: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const terminal = command.terminal === true;
     // Exponential backoff capped at 15 minutes: 2^attempts seconds (min 2).
-    await withTransaction(this.pool, async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{
         v2_user_id: string;
         correlation_id: string;
@@ -1086,26 +1109,30 @@ export class AuthorizationRepository {
       }>(
         `UPDATE pending_session_revoke
          SET attempts = attempts + 1,
-             last_error = $2,
+             last_error = $3,
              updated_at = now(),
-             status = CASE WHEN $3 THEN 'failed_terminal' ELSE 'pending' END,
+             status = CASE WHEN $4 THEN 'failed_terminal' ELSE 'pending' END,
              next_attempt_at = CASE
-               WHEN $3 THEN next_attempt_at
+               WHEN $4 THEN next_attempt_at
                ELSE now() + (LEAST(900, GREATEST(2, POWER(2, attempts + 1)::int)) || ' seconds')::interval
              END,
              lease_owner = NULL,
              lease_expires_at = NULL
          WHERE id = $1
+           AND lease_owner = $2
+           AND lease_expires_at IS NOT NULL
+           AND lease_expires_at >= now()
+           AND status = 'pending'
          RETURNING v2_user_id, correlation_id, source_event_key, attempts`,
-        [command.id, command.errorMessage, terminal],
+        [command.id, command.leaseOwner, command.errorMessage, terminal],
       );
       const row = result.rows[0];
       if (row === undefined) {
-        return;
+        return false;
       }
       await this.writeAudit(client, {
         action: terminal ? 'revoke.failed_terminal' : 'revoke.attempt_failed',
-        actor: command.actor ?? 'system',
+        actor: command.leaseOwner,
         subjectV2UserId: row.v2_user_id,
         correlationId: row.correlation_id,
         details: {
@@ -1116,6 +1143,7 @@ export class AuthorizationRepository {
           sourceEventKey: row.source_event_key,
         },
       });
+      return true;
     });
   }
 
@@ -1271,9 +1299,10 @@ export class AuthorizationRepository {
   }
 
   /**
-   * P3-D18 no-escalation: for allow grants, every granted permission (direct or
-   * via group expansion) must already be held by the actor in the same scope,
-   * unless the actor is an org policy manager / owner (manage.org).
+   * P3-D18 no-escalation: for allow *and* deny grants, every granted permission
+   * (direct or via group expansion) must already be held by the actor in the
+   * same scope, unless the actor is an org policy manager / owner (manage.org).
+   * Holding manage.guild alone is not sufficient to grant/deny arbitrary perms.
    */
   private async requireActorCanGrantPermissions(command: CreateGrantCommand): Promise<void> {
     const orgManage = await this.authorize({
@@ -1299,10 +1328,6 @@ export class AuthorizationRepository {
       guildId: command.scopeGuildId!,
     };
     for (const permissionId of permissions) {
-      if (permissionId === MANAGE_ORG_PERMISSION || permissionId === MANAGE_GUILD_PERMISSION) {
-        // Managing actors already passed requireActorCanManageScope.
-        continue;
-      }
       const decision = await this.authorize({
         subject: command.actor,
         permissionId,
@@ -1359,6 +1384,45 @@ export class AuthorizationRepository {
     }
   }
 
+  /**
+   * Build the durable processed_event key for lifecycle-sensitive occurrences.
+   * Generations live in Authorization DB and survive gateway restarts.
+   */
+  private async resolveDurableEventKey(
+    client: PoolClient,
+    command: ApplyDiscordEventCommand,
+  ): Promise<string> {
+    switch (command.payload.kind) {
+      case 'member_remove': {
+        const row = await client.query<{ lifecycle_generation: number }>(
+          `SELECT lifecycle_generation FROM discord_membership
+           WHERE discord_guild_id = $1 AND discord_user_id = $2`,
+          [command.discordGuildId, command.payload.discordUserId],
+        );
+        const generation = row.rows[0]?.lifecycle_generation ?? 0;
+        return `dg:guild_member_remove:${command.discordGuildId}:${command.payload.discordUserId}:${generation}`;
+      }
+      case 'guild_unavailable': {
+        const row = await client.query<{ availability_generation: number }>(
+          `SELECT availability_generation FROM connected_guild WHERE discord_guild_id = $1`,
+          [command.discordGuildId],
+        );
+        const generation = row.rows[0]?.availability_generation ?? 0;
+        return `dg:guild_unavailable:${command.discordGuildId}:${generation}`;
+      }
+      case 'guild_detach': {
+        const row = await client.query<{ attachment_generation: number }>(
+          `SELECT attachment_generation FROM connected_guild WHERE discord_guild_id = $1`,
+          [command.discordGuildId],
+        );
+        const generation = row.rows[0]?.attachment_generation ?? 0;
+        return `dg:guild_detach:${command.discordGuildId}:${generation}`;
+      }
+      default:
+        return command.eventKey;
+    }
+  }
+
   private async upsertMember(
     client: PoolClient,
     guildId: string,
@@ -1371,6 +1435,13 @@ export class AuthorizationRepository {
       [member.discordUserId],
     );
     const linkedV2 = link.rows[0]?.v2_user_id ?? null;
+
+    const previous = await client.query<{ status: string }>(
+      `SELECT status FROM discord_membership
+       WHERE discord_guild_id = $1 AND discord_user_id = $2`,
+      [guildId, member.discordUserId],
+    );
+    const previousStatus = previous.rows[0]?.status;
 
     await client.query(
       `INSERT INTO discord_membership (
@@ -1387,6 +1458,17 @@ export class AuthorizationRepository {
              updated_at = now()`,
       [guildId, member.discordUserId, linkedV2, member.status],
     );
+
+    // Rejoin (inactive → active) advances the durable membership generation so
+    // a later leave is a new occurrence. First-time insert stays at 0.
+    if (member.status === 'active' && previousStatus === 'inactive') {
+      await client.query(
+        `UPDATE discord_membership
+         SET lifecycle_generation = lifecycle_generation + 1, updated_at = now()
+         WHERE discord_guild_id = $1 AND discord_user_id = $2`,
+        [guildId, member.discordUserId],
+      );
+    }
 
     await client.query(
       `DELETE FROM discord_member_role

@@ -99,6 +99,8 @@ export interface ApplyDiscordEventCommand {
 export interface ApplyDiscordEventResult {
   readonly applied: boolean;
   readonly duplicate: boolean;
+  /** Durable occurrence key used for processed_event idempotency. */
+  readonly eventKey: string;
   readonly revokedUserIds: readonly string[];
 }
 
@@ -176,10 +178,11 @@ export interface ClaimPendingRevokesOptions {
 
 export interface MarkSessionRevokeAttemptFailedCommand {
   readonly id: string;
+  /** Current worker lease owner — required; stale owners must not mutate. */
+  readonly leaseOwner: string;
   readonly errorMessage: string;
   /** When true, row becomes failed_terminal and will not be retried. */
   readonly terminal?: boolean;
-  readonly actor?: string;
 }
 
 export interface PolicyMutationResult {
@@ -218,8 +221,16 @@ export interface AuthorizationStorePort {
   claimPendingSessionRevokes(
     options: ClaimPendingRevokesOptions,
   ): Promise<readonly PendingSessionRevokeRecord[]>;
-  markSessionRevokeDelivered(id: string, actor?: string): Promise<void>;
-  markSessionRevokeAttemptFailed(command: MarkSessionRevokeAttemptFailedCommand): Promise<void>;
+  /**
+   * Marks delivered only when `leaseOwner` still holds a valid lease.
+   * @returns true when the row was updated; false when lease was lost.
+   */
+  markSessionRevokeDelivered(id: string, leaseOwner: string): Promise<boolean>;
+  /**
+   * Records a failed attempt only when `leaseOwner` still holds a valid lease.
+   * @returns true when the row was updated; false when lease was lost.
+   */
+  markSessionRevokeAttemptFailed(command: MarkSessionRevokeAttemptFailedCommand): Promise<boolean>;
   processExpiredPolicies(now?: Date): Promise<{ readonly revokedUserIds: readonly string[] }>;
 }
 

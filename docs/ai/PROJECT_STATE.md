@@ -6,44 +6,41 @@
 
 ## Active phase
 
-P3 Authorization foundation — final closure pass after
-`BLOCKING_FINAL_P3_CLOSURE_PASS` (7 points). Draft PR #16 only.
+P3 Authorization foundation — final closure pass 2 after
+`BLOCKING_FINAL_P3_CLOSURE_PASS_2` (4 blockers). Draft PR #16 only.
 
 ## Active task
 
-- Task ID: `P3-AUTHORIZATION-FOUNDATION-001`
+- Task ID: `P3-FINAL-CLOSURE-PASS-2`
 - Branch: `cursor/p3-authorization-foundation`
-- Base: `main` @ `f299775` (PR #14 Internal JWT merged)
-- HEAD tip: `44431e7` (GitHub PR #16 SoT; code `1253d55`)
+- Base tip before pass: `ef815dc91ddace863dbabaa8ec6b5239d7b1aa9f`
 - Issue: #15 (APPROVED decisions P3-D1–P3-D20 — unchanged)
 - Pull Request: https://github.com/HOMZIKx/V2/pull/16 (draft — no merge by Cursor)
-- CI: https://github.com/HOMZIKx/V2/actions/runs/31117845870 (secret scan green; gates queued after GH Actions outage)
 
 ## Current objective
 
-Final re-audit of the 7 closure blockers, then owner merge of PR #16.
-Phase close P0–P3 documented in `docs/ai/PHASE_COMPLETION_AUDIT.md`.
+Final re-audit of the 4 remaining closure blockers, then owner merge of PR #16.
 
 ## In scope now
 
-- Final 7-point closure remediations (lifecycle event keys, autonomous revoke
-  worker, automatic expiry, full no-escalation, Gateway without v2UserId,
-  authoritative WWW login entitlement recalc, revoke audit lifecycle)
-- Docs / contracts / P0–P3 completion matrix
+- Durable lifecycle occurrence identity in Authorization DB
+- Lease-guarded revoke delivered/failed updates
+- No-escalation for allow **and** deny
+- Unified WWW login decision including access_grant + membership
 
 ## Out of scope now
 
 - P4 / PR #17 / Centrum Aktywności (**frozen** until P3 merge)
+- Local branch `local/p4-centrum-aktywnosci-spec-prep` untouched
 - UI, Zeabur, RabbitMQ Streams
 - Merge by Cursor
-- Changing P3-D1–P3-D20
+- Empty CI retrigger commits
 
 ## Decisions in force
 
-- Issue #15 P3-D1–P3-D20
-- D-034 / ADR-0013
-- DEC-008 A, DEC-009 A, ADR-0011
+- P3-D1–P3-D20 (Issue #15)
+- ADR-0013
 
 ## Last updated
 
-2026-08-06 — Cursor (`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`)
+2026-08-06 — Cursor (`P3-FINAL-CLOSURE-PASS-2`)

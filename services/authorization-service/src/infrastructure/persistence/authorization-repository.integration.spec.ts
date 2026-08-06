@@ -530,7 +530,7 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
-  it('expiry of allow can revoke login; expiry of deny/block does not', async ({ skip }) => {
+  it('expiry of sole allow login enqueues revoke; deny/block expiry does not', async ({ skip }) => {
     if (!infraReady || repository === undefined || pool === undefined) {
       skip();
       return;
@@ -562,61 +562,353 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
     const denyExpiry = await repository.processExpiredPolicies(new Date());
     expect(denyExpiry.revokedUserIds).not.toContain('ex-v2');
 
-    // Detach guild so login depends on an allow grant we will expire.
+    // Detach so membership is not an entitlement source.
     await repository.applyDiscordEvent({
       eventKey: `detach-ex-${randomUUID()}`,
       eventType: 'guild_delete',
       discordGuildId: 'guild-ex',
       payload: { kind: 'guild_detach' },
     });
-    // Clear pending from detach for a clean assert.
     await pool.query(`DELETE FROM pending_session_revoke WHERE v2_user_id = 'ex-v2'`);
 
     const allowId = randomUUID();
-    const expiresAt = new Date(Date.now() + 5_000);
+    const future = new Date(Date.now() + 60_000);
     await pool.query(
       `INSERT INTO access_grant (
          id, effect, permission_id, discord_user_id, v2_user_id, scope_type, specificity, created_by, expires_at
        ) VALUES ($1, 'allow', 'permission.platform.login.www', 'ex-d', 'ex-v2', 'organization', 'user', 'owner-v2', $2)`,
-      [allowId, expiresAt],
+      [allowId, future],
     );
 
-    // Before expiry: still entitled via allow grant? Login.www uses membership on
-    // login_entitling guilds, not grants — so for grant-based login we need a different
-    // path. Re-activate a membership-based entitle then expire a future allow that
-    // doesn't drive login; instead test expiry by removing membership entitlement
-    // via turning off login_entitling with an expired allow that never mattered...
-    //
-    // Practical coverage: processExpiredPolicies with an allow grant whose subject
-    // loses entitlement when the grant expires. Login.www is membership-driven, so
-    // create a second guild that is NOT entitling and use guild detach already done.
-    // After detach, user is not entitled. Expiring an allow for login.www while
-    // already denied should not enqueue. Instead: restore entitling membership,
-    // then expire nothing login-related, and verify deny/block expiry path above.
-    //
-    // Strong allow→deny via expiry: temporarily use setGuildLoginEntitling false
-    // is not expiry. We'll assert processExpiredPolicies deletes expired allow
-    // without false-positive revoke when user remains entitled via membership.
-    await repository.registerGuild({ discordGuildId: 'guild-ex2' });
-    await repository.reconcileGuild({
-      discordGuildId: 'guild-ex2',
-      eventKey: `reconcile-ex2-${randomUUID()}`,
-      roles: [],
-      members: [{ discordUserId: 'ex-d', roleIds: [], status: 'active' }],
+    const before = await repository.authorize({
+      subject: { v2UserId: 'ex-v2', discordUserId: 'ex-d' },
+      permissionId: 'permission.platform.login.www',
+      scope: { type: 'organization' },
+      operationClass: 'sensitive',
     });
-    await repository.activateGuild({ discordGuildId: 'guild-ex2', actor: ownerActor });
-    await repository.setGuildLoginEntitling({
-      discordGuildId: 'guild-ex2',
-      loginEntitling: true,
-      actor: ownerActor,
-    });
+    expect(before.decision).toBe('allow');
 
     await pool.query(`UPDATE access_grant SET expires_at = $1 WHERE id = $2`, [
       new Date(Date.now() - 1_000),
       allowId,
     ]);
-    const allowExpiryWhileEntitled = await repository.processExpiredPolicies(new Date());
-    expect(allowExpiryWhileEntitled.revokedUserIds).not.toContain('ex-v2');
+    const allowExpiry = await repository.processExpiredPolicies(new Date());
+    expect(allowExpiry.revokedUserIds).toContain('ex-v2');
+
+    const pending = await pool.query(
+      `SELECT 1 FROM pending_session_revoke WHERE v2_user_id = 'ex-v2' AND status = 'pending'`,
+    );
+    expect(pending.rowCount).toBeGreaterThan(0);
+
+    // Block expiry must not enqueue revoke.
+    await pool.query(`DELETE FROM pending_session_revoke WHERE v2_user_id = 'ex-v2'`);
+    await pool.query(
+      `INSERT INTO access_block (
+         id, discord_user_id, v2_user_id, scope_type, reason, created_by, expires_at
+       ) VALUES ($1, 'ex-d', 'ex-v2', 'global', 'temp', 'owner-v2', $2)`,
+      [randomUUID(), new Date(Date.now() - 1_000)],
+    );
+    const blockExpiry = await repository.processExpiredPolicies(new Date());
+    expect(blockExpiry.revokedUserIds).not.toContain('ex-v2');
+  });
+
+  it('durable lifecycle generations survive across repository instances', async ({ skip }) => {
+    if (!infraReady || repository === undefined || pool === undefined) {
+      skip();
+      return;
+    }
+    await bootstrapOwnerFixture(repository);
+    await repository.upsertIdentityLink({ discordUserId: 'life-d', v2UserId: 'life-v2' });
+    await repository.registerGuild({ discordGuildId: 'guild-life' });
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-life',
+      eventKey: `reconcile-life-${randomUUID()}`,
+      roles: [],
+      members: [{ discordUserId: 'life-d', roleIds: [], status: 'active' }],
+    });
+
+    const firstLeave = await repository.applyDiscordEvent({
+      eventKey: 'client:remove:1',
+      eventType: 'guild_member_remove',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'member_remove', discordUserId: 'life-d' },
+    });
+    expect(firstLeave.applied).toBe(true);
+    expect(firstLeave.eventKey).toBe('dg:guild_member_remove:guild-life:life-d:0');
+
+    const retryLeave = await repository.applyDiscordEvent({
+      eventKey: 'client:remove:retry',
+      eventType: 'guild_member_remove',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'member_remove', discordUserId: 'life-d' },
+    });
+    expect(retryLeave.duplicate).toBe(true);
+    expect(retryLeave.eventKey).toBe(firstLeave.eventKey);
+
+    await repository.applyDiscordEvent({
+      eventKey: `client:add:${randomUUID()}`,
+      eventType: 'guild_member_add',
+      discordGuildId: 'guild-life',
+      payload: {
+        kind: 'member_upsert',
+        member: { discordUserId: 'life-d', roleIds: [], status: 'active' },
+      },
+    });
+
+    // Simulate gateway restart: new repository instance, same DB.
+    const freshRepo = new AuthorizationRepository(pool, 120);
+    const secondLeave = await freshRepo.applyDiscordEvent({
+      eventKey: 'client:remove:2',
+      eventType: 'guild_member_remove',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'member_remove', discordUserId: 'life-d' },
+    });
+    expect(secondLeave.applied).toBe(true);
+    expect(secondLeave.eventKey).toBe('dg:guild_member_remove:guild-life:life-d:1');
+    expect(secondLeave.eventKey).not.toBe(firstLeave.eventKey);
+
+    // unavailable → reconcile → new instance → unavailable
+    const unavail1 = await repository.applyDiscordEvent({
+      eventKey: 'client:unavail:1',
+      eventType: 'guild_unavailable',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'guild_unavailable' },
+    });
+    expect(unavail1.eventKey).toMatch(/^dg:guild_unavailable:guild-life:\d+$/);
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-life',
+      eventKey: `reconcile-life2-${randomUUID()}`,
+      roles: [],
+      members: [],
+    });
+    const unavail2 = await freshRepo.applyDiscordEvent({
+      eventKey: 'client:unavail:2',
+      eventType: 'guild_unavailable',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'guild_unavailable' },
+    });
+    expect(unavail2.applied).toBe(true);
+    expect(unavail2.eventKey).not.toBe(unavail1.eventKey);
+
+    // detach → reconnect → new instance → detach
+    const detach1 = await repository.applyDiscordEvent({
+      eventKey: 'client:detach:1',
+      eventType: 'guild_delete',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'guild_detach' },
+    });
+    await freshRepo.registerGuild({ discordGuildId: 'guild-life' });
+    const detach2 = await freshRepo.applyDiscordEvent({
+      eventKey: 'client:detach:2',
+      eventType: 'guild_delete',
+      discordGuildId: 'guild-life',
+      payload: { kind: 'guild_detach' },
+    });
+    expect(detach2.applied).toBe(true);
+    expect(detach2.eventKey).not.toBe(detach1.eventKey);
+  });
+
+  it('rejects stale lease owner delivered/failed after another worker claims', async ({ skip }) => {
+    if (!infraReady || repository === undefined || pool === undefined) {
+      skip();
+      return;
+    }
+    const id = randomUUID();
+    await pool.query(
+      `INSERT INTO pending_session_revoke (id, v2_user_id, correlation_id, reason, status, next_attempt_at)
+       VALUES ($1, 'lease2-user', 'lease-corr-2', 'login_entitlement_lost', 'pending', now())`,
+      [id],
+    );
+
+    const claimedA = await repository.claimPendingSessionRevokes({
+      leaseOwner: 'worker-a',
+      leaseSeconds: 1,
+      limit: 10,
+    });
+    expect(claimedA.some((row) => row.id === id)).toBe(true);
+
+    await pool.query(
+      `UPDATE pending_session_revoke SET lease_expires_at = now() - interval '1 second' WHERE id = $1`,
+      [id],
+    );
+
+    const claimedB = await repository.claimPendingSessionRevokes({
+      leaseOwner: 'worker-b',
+      leaseSeconds: 60,
+      limit: 10,
+    });
+    expect(claimedB.some((row) => row.id === id)).toBe(true);
+
+    const lateDelivered = await repository.markSessionRevokeDelivered(id, 'worker-a');
+    expect(lateDelivered).toBe(false);
+    const lateFailed = await repository.markSessionRevokeAttemptFailed({
+      id,
+      leaseOwner: 'worker-a',
+      errorMessage: 'stale',
+    });
+    expect(lateFailed).toBe(false);
+
+    const ok = await repository.markSessionRevokeDelivered(id, 'worker-b');
+    expect(ok).toBe(true);
+
+    const audits = await pool.query<{ action: string }>(
+      `SELECT action FROM audit_log WHERE details->>'revokeId' = $1`,
+      [id],
+    );
+    const deliveredCount = audits.rows.filter((row) => row.action === 'revoke.delivered').length;
+    expect(deliveredCount).toBe(1);
+  });
+
+  it('local manager cannot allow or deny permissions (or groups) they do not hold', async ({
+    skip,
+  }) => {
+    if (!infraReady || repository === undefined || pool === undefined) {
+      skip();
+      return;
+    }
+    await bootstrapOwnerFixture(repository);
+    await repository.upsertIdentityLink({ discordUserId: 'deny-d', v2UserId: 'deny-v2' });
+    await repository.registerGuild({ discordGuildId: 'guild-deny-esc' });
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-deny-esc',
+      eventKey: `reconcile-deny-esc-${randomUUID()}`,
+      roles: [],
+      members: [{ discordUserId: 'deny-d', roleIds: [], status: 'active' }],
+    });
+    await repository.activateGuild({ discordGuildId: 'guild-deny-esc', actor: ownerActor });
+    await repository.createGrant({
+      effect: 'allow',
+      groupId: 'group.foundation.test.local_mod',
+      v2UserId: 'deny-v2',
+      discordUserId: 'deny-d',
+      scopeType: 'guild',
+      scopeGuildId: 'guild-deny-esc',
+      actor: ownerActor,
+    });
+    const localActor = { v2UserId: 'deny-v2', discordUserId: 'deny-d' };
+
+    await expect(
+      repository.createGrant({
+        effect: 'deny',
+        permissionId: 'permission.platform.login.www',
+        v2UserId: 'victim2',
+        scopeType: 'guild',
+        scopeGuildId: 'guild-deny-esc',
+        actor: localActor,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    await expect(
+      repository.createGrant({
+        effect: 'deny',
+        groupId: 'group.foundation.test.member',
+        v2UserId: 'victim2',
+        scopeType: 'guild',
+        scopeGuildId: 'guild-deny-esc',
+        actor: localActor,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    // Local manager may deny a permission they hold (policy.read).
+    await expect(
+      repository.createGrant({
+        effect: 'deny',
+        permissionId: 'permission.authorization.policy.read',
+        v2UserId: 'victim2',
+        discordUserId: 'victim2-d',
+        scopeType: 'guild',
+        scopeGuildId: 'guild-deny-esc',
+        actor: localActor,
+      }),
+    ).resolves.toMatchObject({ id: expect.any(String) });
+
+    await expect(
+      repository.createGrant({
+        effect: 'allow',
+        permissionId: 'permission.authorization.policy.read',
+        v2UserId: 'victim3',
+        discordUserId: 'victim3-d',
+        scopeType: 'guild',
+        scopeGuildId: 'guild-deny-esc',
+        actor: localActor,
+      }),
+    ).resolves.toMatchObject({ id: expect.any(String) });
+
+    await pool.query(
+      `INSERT INTO group_definition (group_id, description) VALUES ('group.test.escalate_org', 'test')
+       ON CONFLICT DO NOTHING`,
+    );
+    await pool.query(
+      `INSERT INTO group_permission (group_id, permission_id) VALUES
+         ('group.test.escalate_org', 'permission.authorization.policy.manage.org')
+       ON CONFLICT DO NOTHING`,
+    );
+    await expect(
+      repository.createGrant({
+        effect: 'deny',
+        groupId: 'group.test.escalate_org',
+        v2UserId: 'victim4',
+        discordUserId: 'victim4-d',
+        scopeType: 'guild',
+        scopeGuildId: 'guild-deny-esc',
+        actor: localActor,
+      }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('organization deny login revokes; unrelated deny does not; sole allow expiry revokes', async ({
+    skip,
+  }) => {
+    if (!infraReady || repository === undefined || pool === undefined) {
+      skip();
+      return;
+    }
+    await bootstrapOwnerFixture(repository);
+    await repository.upsertIdentityLink({ discordUserId: 'lg-d', v2UserId: 'lg-v2' });
+    await repository.registerGuild({ discordGuildId: 'guild-lg' });
+    await repository.reconcileGuild({
+      discordGuildId: 'guild-lg',
+      eventKey: `reconcile-lg-${randomUUID()}`,
+      roles: [],
+      members: [{ discordUserId: 'lg-d', roleIds: [], status: 'active' }],
+    });
+    await repository.activateGuild({ discordGuildId: 'guild-lg', actor: ownerActor });
+    await repository.setGuildLoginEntitling({
+      discordGuildId: 'guild-lg',
+      loginEntitling: true,
+      actor: ownerActor,
+    });
+
+    const loginOk = await repository.authorize({
+      subject: { v2UserId: 'lg-v2', discordUserId: 'lg-d' },
+      permissionId: 'permission.platform.login.www',
+      scope: { type: 'organization' },
+      operationClass: 'sensitive',
+    });
+    expect(loginOk.decision).toBe('allow');
+
+    const denied = await repository.createGrant({
+      effect: 'deny',
+      permissionId: 'permission.platform.login.www',
+      v2UserId: 'lg-v2',
+      discordUserId: 'lg-d',
+      scopeType: 'organization',
+      actor: ownerActor,
+    });
+    expect(denied.revokedUserIds).toContain('lg-v2');
+
+    await pool.query(`DELETE FROM pending_session_revoke WHERE v2_user_id = 'lg-v2'`);
+    await pool.query(`DELETE FROM access_grant WHERE id = $1`, [denied.id]);
+
+    const unrelated = await repository.createGrant({
+      effect: 'deny',
+      permissionId: 'permission.authorization.policy.read',
+      v2UserId: 'lg-v2',
+      discordUserId: 'lg-d',
+      scopeType: 'organization',
+      actor: ownerActor,
+    });
+    expect(unrelated.revokedUserIds).toEqual([]);
   });
 
   it('audits revoke.enqueued / attempt_failed / delivered lifecycle', async ({ skip }) => {
@@ -662,15 +954,29 @@ describe.skipIf(!wantInfra)('AuthorizationRepository (infra)', () => {
 
     await repository.markSessionRevokeAttemptFailed({
       id: row!.id,
+      leaseOwner: 'test-worker',
       errorMessage: 'identity down',
-      actor: 'test-worker',
     });
     const failed = await pool.query(
       `SELECT 1 FROM audit_log WHERE action = 'revoke.attempt_failed' AND subject_v2_user_id = 'aud-v2'`,
     );
     expect(failed.rowCount).toBeGreaterThan(0);
 
-    await repository.markSessionRevokeDelivered(row!.id, 'test-worker');
+    // Failed attempt clears the lease; reclaim before marking delivered.
+    await pool.query(
+      `UPDATE pending_session_revoke
+       SET next_attempt_at = now(), lease_owner = NULL, lease_expires_at = NULL
+       WHERE id = $1`,
+      [row!.id],
+    );
+    const reclaimed = await repository.claimPendingSessionRevokes({
+      leaseOwner: 'test-worker',
+      limit: 10,
+    });
+    expect(reclaimed.some((entry) => entry.id === row!.id)).toBe(true);
+
+    const deliveredOk = await repository.markSessionRevokeDelivered(row!.id, 'test-worker');
+    expect(deliveredOk).toBe(true);
     const delivered = await pool.query(
       `SELECT 1 FROM audit_log WHERE action = 'revoke.delivered' AND subject_v2_user_id = 'aud-v2'`,
     );

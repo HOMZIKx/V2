@@ -4,72 +4,30 @@
 
 `READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`
 
-Final P3 closure pass on draft PR #16 after `BLOCKING_FINAL_P3_CLOSURE_PASS`.
-Issue #15 decisions P3-D1–P3-D20 unchanged. **No merge by Cursor. No UI. No P4.**
+Final P3 closure pass 2 on draft PR #16 after `BLOCKING_FINAL_P3_CLOSURE_PASS_2`
+(4 blockers). Issue #15 decisions P3-D1–P3-D20 unchanged.
+**No merge by Cursor. No UI. No P4. PR #17 frozen.**
 
 ## 2. Task ID
 
-`P3-AUTHORIZATION-FOUNDATION-001`
+`P3-FINAL-CLOSURE-PASS-2`
 
-## 3. Branch / PR / source of truth
+## 3. Branch / PR
 
 - Branch: `cursor/p3-authorization-foundation`
-- HEAD tip: see GitHub PR #16
-- Issue: #15
+- Start HEAD: `ef815dc91ddace863dbabaa8ec6b5239d7b1aa9f`
 - PR: https://github.com/HOMZIKx/V2/pull/16 (draft)
-- Phase matrix: `docs/ai/PHASE_COMPLETION_AUDIT.md`
-- P4 / PR #17: **frozen**
+- P4 / PR #17: **frozen** (local P4 commits not on this branch)
 
-## 4. Final closure remediations (7/7)
+## 4. Closure remediations (4/4)
 
-| #   | Problem                                             | Fix                                                                                                                                                                | Files                                               | Confirming test                                                                | Result       |
-| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------ | ------------ |
-| 1   | Identity-only keys collided across lifecycle cycles | Gateway `GuildLifecycleEpochStore`; remove/unavailable/detach keys include epoch; bump on rejoin/reconcile/reconnect                                               | `guild-lifecycle-epoch.ts`, `discord-js-adapter.ts` | leave→rejoin→leave; unavailable→reconcile→unavailable; detach→reconnect→detach | pass         |
-| 2   | Durable revoke had no autonomous retry              | `AuthorizationMaintenanceWorker` startup+interval; `claimPendingSessionRevokes` with `FOR UPDATE SKIP LOCKED` + lease; backoff; graceful shutdown                  | migration `003_*`, worker, use-cases, repository    | worker.spec + use-cases maintenance tick + lease claim integration             | pass         |
-| 3   | Expiry only via manual endpoint                     | Same worker runs `processExpiredPolicies` periodically and on startup                                                                                              | worker + `runMaintenanceTick`                       | worker.spec automatic tick without Discord/policy event                        | pass         |
-| 4   | No-escalation checked only manage.*                 | Expand group permissions; actor must hold each granted permission; local manager cannot grant org scope                                                            | repository `requireActorCanGrantPermissions`        | integration direct + group escalation FORBIDDEN                                | pass (infra) |
-| 5   | Gateway could inject `v2UserId`                     | Removed from Gateway port + Authz member schema (`.strict()`); membership binds V2 from `discord_identity_link` only                                               | sync port, controller, `upsertMember`               | gateway-member-contract.spec + integration link bind                           | pass         |
-| 6   | Revoke not based on real WWW login allow→deny       | Authoritative `permission.platform.login.www` before/after; revoke only on loss; non-login deny and sibling-guild block do not logout; deny/block expiry no revoke | repository entitlement helpers                      | integration non-login deny, multi-guild block, deny expiry                     | pass (infra) |
-| 7   | Missing revoke delivery audit                       | `revoke.enqueued` / `revoke.attempt_failed` / `revoke.delivered` / `revoke.failed_terminal` with user, correlation, source, attempt, outcome, actor                | repository mark/enqueue                             | integration audit lifecycle                                                    | pass (infra) |
+| # | Problem | Fix | Confirming test |
+| - | ------- | --- | --------------- |
+| 1 | Process-local lifecycle epochs reset on gateway restart | Authz DB generations + durable `processed_event` keys; Gateway no longer SoT | integration leave/rejoin/unavailable/detach across new repository instance |
+| 2 | Revoke delivered/failed ignored lease owner | Conditional UPDATE on id+lease_owner+valid lease; boolean result; worker wires leaseSeconds/maxAttempts | integration worker A/B stale lease rejected |
+| 3 | No-escalation only for allow | Same hold-check for deny; no manage.* skip; org scope still owner/org-manager | integration deny escalation + group with manage.org |
+| 4 | login.www short-circuited before grants | Unified candidates: membership + grants; specificity + deny-wins; real sole-allow expiry → revoke | decision-engine + integration sole allow expiry |
 
-Prior 12-point security remediation remains in force (see earlier PR comments / git history).
+## 5. Marker
 
-## 5. Validation
-
-```bash
-pnpm format:check   # pass
-pnpm lint           # pass
-pnpm typecheck      # pass
-pnpm test:coverage / architecture:check / e2e / runtime-smoke  # pass
-RUN_INFRA_TESTS=true authorization + identity P3 integration  # pass (local PG/Redis)
-gitleaks detect --log-opts=main..HEAD  # no leaks
-# Local `pnpm validate` compose config step fails without Docker CLI;
-# CI compose + infra jobs are the SoT for compose.
-```
-
-### Tip HEAD
-
-`44431e7` (GitHub SoT; code tip `1253d55` + prettier/`require-await` + CI retrigger)
-
-### CI
-
-- Secret scan (PR tip): https://github.com/HOMZIKx/V2/actions/runs/31117845870/job/92671957632 (pass)
-- CI run: https://github.com/HOMZIKx/V2/actions/runs/31117845870
-- Prior attempt failed only on GitHub Actions “Service Unavailable” during job setup (not code)
-- Quality gates / Infrastructure: queued after Actions outage — confirm green on tip before merge
-
-## 6. Explicitly unchanged / frozen
-
-- P3-D1–P3-D20
-- No P4 / PR #17 implementation
-- No UI
-- No merge by Cursor
-
-## 7. Conscious backlog (not foundation defects)
-
-See `PHASE_COMPLETION_AUDIT.md` — RabbitMQ/outbox, effective cache, Authz UI,
-product permission names, Zeabur, P4.
-
-## Last updated
-
-2026-08-06 — Cursor (`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`)
+`READY_FOR_FINAL_REAUDIT_AND_PHASE_CLOSE_P3`

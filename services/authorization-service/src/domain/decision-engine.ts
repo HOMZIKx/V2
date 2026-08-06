@@ -283,14 +283,24 @@ export function decideAuthorization(
       };
     }
 
-    // P3-D9: evaluate each login_entitling guild independently. A stale second
-    // guild must not poison a fresh entitling guild. Guild-scoped blocks apply
-    // to that candidate guild even though the authorize scope is organization.
+    // Unified login decision: membership entitlements and access_grant rows
+    // compete under specificity + deny-wins-on-tie. Do not short-circuit before
+    // evaluating grants.
+    type Candidate = {
+      readonly id: string;
+      readonly effect: DecisionEffect;
+      readonly specificity: RuleSpecificity;
+      readonly source: string;
+      readonly syncStatus?: SyncStatus;
+      readonly dataAgeSeconds?: number;
+    };
+    const candidates: Candidate[] = [];
+
     const entitlingGuilds = context.guilds.filter(
       (guild) => guild.status === 'active' && guild.loginEntitling,
     );
 
-    let sawCandidate = false;
+    let sawMembershipCandidate = false;
     let lastFailedSync: {
       syncStatus?: SyncStatus;
       dataAgeSeconds?: number;
@@ -304,7 +314,7 @@ export function decideAuthorization(
       if (membership === undefined) {
         continue;
       }
-      sawCandidate = true;
+      sawMembershipCandidate = true;
 
       const blockedOnGuild = context.blocks.some((candidate) =>
         guildBlockAppliesToGuild(candidate, guild.discordGuildId, now),
@@ -321,29 +331,66 @@ export function decideAuthorization(
         now,
         trustWindowSeconds,
       );
-      if (sync.ok) {
-        flags.push('login_entitlement_ok');
-        flags.push(`login_guild:${guild.discordGuildId}`);
-        return {
-          decision: 'allow',
-          permissionId,
-          scope,
-          winningRuleId: 'login_entitlement',
-          source: 'login_entitling_membership',
-          specificity: 'login_gate',
-          ...(sync.syncStatus !== undefined ? { syncStatus: sync.syncStatus } : {}),
-          ...(sync.dataAgeSeconds !== undefined ? { dataAgeSeconds: sync.dataAgeSeconds } : {}),
-          appliedPolicyFlags: flags,
-          reason: 'Active membership on login_entitling guild',
-        };
+      if (!sync.ok) {
+        lastFailedSync = sync;
+        if (sync.flag !== undefined) {
+          flags.push(`${sync.flag}:${guild.discordGuildId}`);
+        }
+        continue;
       }
-      lastFailedSync = sync;
-      if (sync.flag !== undefined) {
-        flags.push(`${sync.flag}:${guild.discordGuildId}`);
-      }
+
+      candidates.push({
+        id: `login_entitlement:${guild.discordGuildId}`,
+        effect: 'allow',
+        specificity: 'guild',
+        source: 'login_entitling_membership',
+        ...(sync.syncStatus !== undefined ? { syncStatus: sync.syncStatus } : {}),
+        ...(sync.dataAgeSeconds !== undefined ? { dataAgeSeconds: sync.dataAgeSeconds } : {}),
+      });
     }
 
-    if (!sawCandidate) {
+    for (const grant of context.grants) {
+      if (isExpired(grant.expiresAt, now)) {
+        continue;
+      }
+      if (!grantAppliesToScope(grant, scope)) {
+        continue;
+      }
+      const groupPerms =
+        grant.groupId === undefined
+          ? []
+          : (options?.groupPermissionIdsForGrants?.get(grant.groupId) ?? []);
+      const matchesPermission =
+        grant.permissionId === permissionId ||
+        (grant.groupId !== undefined && groupPerms.includes(permissionId));
+      if (!matchesPermission) {
+        continue;
+      }
+      candidates.push({
+        id: grant.id,
+        effect: grant.effect,
+        specificity: grant.specificity,
+        source: grant.source,
+      });
+    }
+
+    if (candidates.length === 0) {
+      if (sawMembershipCandidate) {
+        return {
+          decision: 'deny',
+          permissionId,
+          scope,
+          specificity: 'sync_gate',
+          ...(lastFailedSync.syncStatus !== undefined
+            ? { syncStatus: lastFailedSync.syncStatus }
+            : {}),
+          ...(lastFailedSync.dataAgeSeconds !== undefined
+            ? { dataAgeSeconds: lastFailedSync.dataAgeSeconds }
+            : {}),
+          appliedPolicyFlags: flags,
+          reason: 'No login_entitling guild satisfies fresh sync without a guild block',
+        };
+      }
       flags.push('login_entitlement_missing');
       return {
         decision: 'deny',
@@ -351,21 +398,43 @@ export function decideAuthorization(
         scope,
         specificity: 'login_gate',
         appliedPolicyFlags: flags,
-        reason: 'No active membership on a login_entitling guild',
+        reason: 'No active membership on a login_entitling guild and no matching login grant',
       };
     }
 
+    candidates.sort((left, right) => {
+      const rankDiff = SPECIFICITY_RANK[right.specificity] - SPECIFICITY_RANK[left.specificity];
+      if (rankDiff !== 0) {
+        return rankDiff;
+      }
+      if (left.effect !== right.effect) {
+        return left.effect === 'deny' ? -1 : 1;
+      }
+      return left.id.localeCompare(right.id);
+    });
+
+    const winner = candidates[0]!;
+    if (winner.effect === 'allow' && winner.source === 'login_entitling_membership') {
+      flags.push('login_entitlement_ok');
+      flags.push(`login_guild:${winner.id.replace('login_entitlement:', '')}`);
+    }
+    flags.push(`specificity:${winner.specificity}`);
     return {
-      decision: 'deny',
+      decision: winner.effect,
       permissionId,
       scope,
-      specificity: 'sync_gate',
-      ...(lastFailedSync.syncStatus !== undefined ? { syncStatus: lastFailedSync.syncStatus } : {}),
-      ...(lastFailedSync.dataAgeSeconds !== undefined
-        ? { dataAgeSeconds: lastFailedSync.dataAgeSeconds }
-        : {}),
+      winningRuleId: winner.id,
+      source: winner.source,
+      specificity: winner.specificity,
+      ...(winner.syncStatus !== undefined ? { syncStatus: winner.syncStatus } : {}),
+      ...(winner.dataAgeSeconds !== undefined ? { dataAgeSeconds: winner.dataAgeSeconds } : {}),
       appliedPolicyFlags: flags,
-      reason: 'No login_entitling guild satisfies fresh sync without a guild block',
+      reason:
+        winner.effect === 'allow'
+          ? winner.source === 'login_entitling_membership'
+            ? 'Active membership on login_entitling guild'
+            : 'Matching allow login grant won by specificity'
+          : 'Matching deny login grant won by specificity or deny-on-tie',
     };
   }
 

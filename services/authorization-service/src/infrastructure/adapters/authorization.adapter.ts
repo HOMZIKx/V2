@@ -96,13 +96,13 @@ export class AuthorizationAdapter implements AuthorizationStorePort {
     return this.repository.claimPendingSessionRevokes(options);
   }
 
-  public markSessionRevokeDelivered(id: string, actor?: string): Promise<void> {
-    return this.repository.markSessionRevokeDelivered(id, actor);
+  public markSessionRevokeDelivered(id: string, leaseOwner: string): Promise<boolean> {
+    return this.repository.markSessionRevokeDelivered(id, leaseOwner);
   }
 
   public markSessionRevokeAttemptFailed(
     command: MarkSessionRevokeAttemptFailedCommand,
-  ): Promise<void> {
+  ): Promise<boolean> {
     return this.repository.markSessionRevokeAttemptFailed(command);
   }
 

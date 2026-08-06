@@ -1,12 +1,12 @@
 /**
- * In-process lifecycle epochs for Discord → Authorization event identity.
+ * @deprecated Process-local epochs are NOT the source of truth for Discord
+ * lifecycle occurrence identity. Authorization DB generations
+ * (`lifecycle_generation`, `availability_generation`, `attachment_generation`)
+ * define durable `processed_event.event_key` values.
  *
- * Identity-only keys (remove / unavailable / detach) must dedupe *retries* of
- * the same logical delivery, but must not collide with a later, legitimate
- * cycle (leave→rejoin→leave, unavailable→fresh→unavailable, detach→reconnect→detach).
- *
- * Epochs bump on the restoring event so the next terminating event gets a new key.
- * Retries of the same terminating event reuse the current epoch (same key).
+ * Gateway may omit generation suffixes on terminating event keys; Authorization
+ * rewrites them from durable state. This module remains only as a thin optional
+ * cache helper for diagnostics — never as SoT.
  */
 export class GuildLifecycleEpochStore {
   private readonly membership = new Map<string, number>();
@@ -17,7 +17,6 @@ export class GuildLifecycleEpochStore {
     return this.membership.get(this.memberKey(guildId, discordUserId)) ?? 0;
   }
 
-  /** Call after a successful member add / rejoin restores membership. */
   public bumpMembershipEpoch(guildId: string, discordUserId: string): void {
     const key = this.memberKey(guildId, discordUserId);
     this.membership.set(key, this.membershipEpoch(guildId, discordUserId) + 1);
@@ -27,7 +26,6 @@ export class GuildLifecycleEpochStore {
     return this.availability.get(guildId) ?? 0;
   }
 
-  /** Call after reconcile marks the guild fresh again. */
   public bumpAvailabilityEpoch(guildId: string): void {
     this.availability.set(guildId, this.availabilityEpoch(guildId) + 1);
   }
@@ -36,7 +34,6 @@ export class GuildLifecycleEpochStore {
     return this.attachment.get(guildId) ?? 0;
   }
 
-  /** Call when the guild is registered / reconnected after detach. */
   public bumpAttachmentEpoch(guildId: string): void {
     this.attachment.set(guildId, this.attachmentEpoch(guildId) + 1);
   }

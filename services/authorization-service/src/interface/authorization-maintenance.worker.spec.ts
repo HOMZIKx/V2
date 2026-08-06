@@ -25,7 +25,7 @@ describe('AuthorizationMaintenanceWorker', () => {
         attempts: 0,
       },
     ]);
-    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(true);
     const store = {
       processExpiredPolicies,
       claimPendingSessionRevokes,
@@ -51,7 +51,13 @@ describe('AuthorizationMaintenanceWorker', () => {
     await worker.runOnce();
 
     expect(processExpiredPolicies).toHaveBeenCalled();
-    expect(claimPendingSessionRevokes).toHaveBeenCalled();
+    expect(claimPendingSessionRevokes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leaseOwner: expect.any(String),
+        leaseSeconds: 30,
+        limit: 10,
+      }),
+    );
     expect(revokeAllSessionsForUser).toHaveBeenCalledWith('u1', 'c1', 'login_entitlement_lost');
     expect(markSessionRevokeDelivered).toHaveBeenCalled();
   });

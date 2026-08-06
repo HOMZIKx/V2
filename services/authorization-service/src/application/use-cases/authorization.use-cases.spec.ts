@@ -69,7 +69,7 @@ describe('authorization use-cases', () => {
         pending({ id: 'r-a', v2UserId: 'user-a', correlationId: 'c-a' }),
         pending({ id: 'r-b', v2UserId: 'user-b', correlationId: 'c-b' }),
       ]);
-    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(true);
     const store = createStore({
       applyDiscordEvent,
       claimPendingSessionRevokes,
@@ -100,7 +100,7 @@ describe('authorization use-cases', () => {
     const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'stale', v2UserId: 'user-a', correlationId: 'c-stale' })]);
-    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(true);
     const store = createStore({
       applyDiscordEvent,
       claimPendingSessionRevokes,
@@ -132,8 +132,8 @@ describe('authorization use-cases', () => {
     const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-1', v2UserId: 'user-a', correlationId: 'c-1' })]);
-    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
-    const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(true);
+    const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(true);
     const store = createStore({
       claimPendingSessionRevokes,
       markSessionRevokeDelivered,
@@ -148,6 +148,7 @@ describe('authorization use-cases', () => {
     expect(markSessionRevokeAttemptFailed).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'r-1',
+        leaseOwner: expect.any(String),
         errorMessage: 'identity down',
         terminal: false,
       }),
@@ -160,7 +161,7 @@ describe('authorization use-cases', () => {
       .mockResolvedValue([
         pending({ id: 'r-1', v2UserId: 'user-a', correlationId: 'c-1', attempts: 24 }),
       ]);
-    const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeAttemptFailed = vi.fn().mockResolvedValue(true);
     const store = createStore({
       claimPendingSessionRevokes,
       markSessionRevokeAttemptFailed,
@@ -203,7 +204,7 @@ describe('authorization use-cases', () => {
     const claimPendingSessionRevokes = vi
       .fn()
       .mockResolvedValue([pending({ id: 'r-orphan', correlationId: 'c-orphan' })]);
-    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(undefined);
+    const markSessionRevokeDelivered = vi.fn().mockResolvedValue(true);
     const store = createStore({
       processExpiredPolicies,
       claimPendingSessionRevokes,

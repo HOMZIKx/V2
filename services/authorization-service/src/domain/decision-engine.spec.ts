@@ -365,7 +365,7 @@ describe('decideAuthorization — login entitling and stale deny', () => {
       context,
     );
     expect(result.decision).toBe('allow');
-    expect(result.specificity).toBe('login_gate');
+    expect(result.specificity).toBe('guild');
     expect(result.appliedPolicyFlags).toContain('login_entitlement_ok');
   });
 
@@ -459,6 +459,55 @@ describe('decideAuthorization — login entitling and stale deny', () => {
 
     expect(result.decision).toBe('deny');
     expect(result.appliedPolicyFlags).toContain('guild_block:guild-a');
+  });
+
+  it('organization-scoped deny login wins over membership entitlement', () => {
+    const context = baseContext({
+      guilds: [activeGuild(GUILD_A, { loginEntitling: true })],
+      memberships: [membership(GUILD_A)],
+      identityLinked: true,
+      grants: [
+        grant({
+          id: 'deny-login',
+          effect: 'deny',
+          specificity: 'user',
+          permissionId: LOGIN_PERMISSION,
+          scopeType: 'organization',
+        }),
+      ],
+    });
+
+    const result = decideAuthorization(
+      baseInput({ permissionId: LOGIN_PERMISSION, scope: ORG_SCOPE }),
+      context,
+    );
+    expect(result.decision).toBe('deny');
+    expect(result.winningRuleId).toBe('deny-login');
+  });
+
+  it('temporary organization allow login grants access without entitling membership', () => {
+    const context = baseContext({
+      guilds: [activeGuild(GUILD_A, { loginEntitling: false })],
+      memberships: [membership(GUILD_A)],
+      identityLinked: true,
+      grants: [
+        grant({
+          id: 'temp-allow-login',
+          effect: 'allow',
+          specificity: 'user',
+          permissionId: LOGIN_PERMISSION,
+          scopeType: 'organization',
+          expiresAt: new Date(NOW.getTime() + 60_000),
+        }),
+      ],
+    });
+
+    const result = decideAuthorization(
+      baseInput({ permissionId: LOGIN_PERMISSION, scope: ORG_SCOPE }),
+      context,
+    );
+    expect(result.decision).toBe('allow');
+    expect(result.winningRuleId).toBe('temp-allow-login');
   });
 
   it('allows ordinary guild ops within the unavailable trust window when lastFreshAt is recent', () => {

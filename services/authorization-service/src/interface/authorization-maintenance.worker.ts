@@ -96,6 +96,8 @@ export class AuthorizationMaintenanceWorker implements OnModuleInit, OnModuleDes
       const result = await runMaintenanceTick(this.store, this.revoke, {
         leaseOwner: this.leaseOwner,
         revokeLimit: this.config.AUTHORIZATION_REVOKE_BATCH_LIMIT,
+        leaseSeconds: this.config.AUTHORIZATION_REVOKE_LEASE_SECONDS,
+        maxAttempts: this.config.AUTHORIZATION_REVOKE_MAX_ATTEMPTS,
       });
       if (
         result.expirations.revokedUserIds.length > 0 ||

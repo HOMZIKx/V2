@@ -53,18 +53,23 @@ export async function deliverPendingRevokes(
   for (const record of pending) {
     try {
       await revoke.revokeAllSessionsForUser(record.v2UserId, record.correlationId, record.reason);
-      await store.markSessionRevokeDelivered(record.id, leaseOwner);
-      delivered += 1;
+      const deliveredOk = await store.markSessionRevokeDelivered(record.id, leaseOwner);
+      if (deliveredOk) {
+        delivered += 1;
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const nextAttempts = record.attempts + 1;
       const terminal = nextAttempts >= maxAttempts;
-      await store.markSessionRevokeAttemptFailed({
+      const failedOk = await store.markSessionRevokeAttemptFailed({
         id: record.id,
+        leaseOwner,
         errorMessage: message,
         terminal,
-        actor: leaseOwner,
       });
+      if (!failedOk) {
+        continue;
+      }
       if (terminal) {
         terminalFailed += 1;
       } else {
@@ -188,6 +193,8 @@ export async function runMaintenanceTick(
   options?: {
     readonly leaseOwner?: string;
     readonly revokeLimit?: number;
+    readonly leaseSeconds?: number;
+    readonly maxAttempts?: number;
     readonly now?: Date;
   },
 ): Promise<{
@@ -198,6 +205,8 @@ export async function runMaintenanceTick(
   const revokes = await deliverPendingRevokes(store, revoke, {
     ...(options?.leaseOwner !== undefined ? { leaseOwner: options.leaseOwner } : {}),
     ...(options?.revokeLimit !== undefined ? { limit: options.revokeLimit } : {}),
+    ...(options?.leaseSeconds !== undefined ? { leaseSeconds: options.leaseSeconds } : {}),
+    ...(options?.maxAttempts !== undefined ? { maxAttempts: options.maxAttempts } : {}),
   });
   return { expirations, revokes };
 }
