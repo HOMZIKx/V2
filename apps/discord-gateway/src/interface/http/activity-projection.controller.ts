@@ -142,8 +142,13 @@ export class ActivityProjectionController {
       throw new UnauthorizedException('Discord activity projections are disabled.');
     }
 
-    const expected = this.config.ACTIVITY_PROJECTION_SHARED_SECRET;
-    if (projectionSecret !== expected) {
+    const expected = this.config.ACTIVITY_PROJECTION_SHARED_SECRET?.trim() ?? '';
+    if (expected.length === 0) {
+      throw new ServiceUnavailableException(
+        'ACTIVITY_PROJECTION_SHARED_SECRET is not configured (fail closed).',
+      );
+    }
+    if (projectionSecret === undefined || projectionSecret !== expected) {
       throw new UnauthorizedException('Invalid projection secret.');
     }
   }

@@ -140,6 +140,12 @@ function assertOutboxWorkerRequirements(
       'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true',
     );
   }
+  if (config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined) {
+    addIssue(
+      'ACTIVITY_PROJECTION_SHARED_SECRET',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true (x-activity-projection-secret contract)',
+    );
+  }
   if (config.ACTIVITY_ENABLED) {
     if (config.ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM === undefined) {
       addIssue(

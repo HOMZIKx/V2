@@ -261,7 +261,7 @@ describe('ActivityInteractionHandler', () => {
 
     const handled = await handler.handleComponent(interaction as never);
     expect(handled).toBe(true);
-    expect(createDraft).toHaveBeenCalledOnce();
+    expect(createDraft).not.toHaveBeenCalled();
     expect(showModal).toHaveBeenCalledOnce();
     expect(reply).not.toHaveBeenCalled();
     expect(deferReply).not.toHaveBeenCalled();

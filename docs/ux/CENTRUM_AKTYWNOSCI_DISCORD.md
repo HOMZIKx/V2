@@ -425,6 +425,7 @@ Bez łańcuchów publicznych wiadomości.
 ## M. Relacja do Issue #12 / P4-D8
 
 ### OWNER VISUAL DECISION — CENTRUM AKTYWNOŚCI
+
 (`P4-DISCORD-VISUAL-CORRECTION-001` / D-038; powiązane z Issue #12)
 
 - **Activity module accent:** `#D48632` (`0xD48632`)

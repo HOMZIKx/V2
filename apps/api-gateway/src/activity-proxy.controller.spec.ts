@@ -59,7 +59,7 @@ describe('ActivityProxyController', () => {
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(url.toString()).toContain('/activity/v1/admin/guilds/g1/readiness');
     const headers = init.headers as Record<string, string>;
-    expect(headers.cookie).toBe('session=abc');
+    expect(headers.cookie).toBeUndefined();
     expect(headers.accept).toBe('application/json');
     expect(headers['x-request-id']).toBe('req-1');
     expect(headers['x-correlation-id']).toBe('corr-1');
@@ -93,7 +93,7 @@ describe('ActivityProxyController', () => {
     expect(headers.authorization).toBeUndefined();
     expect(headers['activity-client-assertion']).toBeUndefined();
     expect(headers['proxy-connection']).toBeUndefined();
-    expect(headers.cookie).toBe('ok=1');
+    expect(headers.cookie).toBeUndefined();
 
     vi.unstubAllGlobals();
   });
@@ -179,6 +179,8 @@ describe('ActivityProxyController', () => {
     const headers = activityCall[1].headers as Record<string, string>;
     expect(headers['x-actor-discord-user-id']).toBe('discord-9');
     expect(headers['x-actor-v2-user-id']).toBe('v2-1');
+    expect(headers.cookie).toBeUndefined();
+    expect(headers.authorization).toBeUndefined();
 
     vi.unstubAllGlobals();
   });

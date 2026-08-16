@@ -55,6 +55,14 @@ export function ForbiddenState() {
   );
 }
 
+export function UnauthorizedState() {
+  return (
+    <StatePanel title="Wymagane logowanie" tone="warn">
+      Zaloguj się, aby zobaczyć tę treść.
+    </StatePanel>
+  );
+}
+
 export function UnavailableState({
   title = 'Niedostępne',
   children,

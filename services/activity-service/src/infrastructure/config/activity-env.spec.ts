@@ -29,6 +29,16 @@ describe('parseActivityEnv', () => {
     ).toThrow(/ACTIVITY_DISCORD_PROJECTION_BASE_URL/);
   });
 
+  it('requires projection shared secret when outbox worker enabled', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        ACTIVITY_OUTBOX_WORKER_ENABLED: 'true',
+        ACTIVITY_DISCORD_PROJECTION_BASE_URL: 'http://127.0.0.1:4100',
+      }),
+    ).toThrow(/ACTIVITY_PROJECTION_SHARED_SECRET/);
+  });
+
   it('requires authz signing when ACTIVITY_ENABLED=true', () => {
     expect(() =>
       parseActivityEnv({

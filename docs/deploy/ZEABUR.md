@@ -9,21 +9,20 @@ Decyzja: [ADR-0008](../architecture/decisions/ADR-0008-zeabur-full-stack-deploy.
 
 1. Utwórz / użyj projectu **niezależnego** od legacy (możesz nazwać np. `v2` zamiast `untitled-1`).
 2. Region: dowolny (np. Hetzner Helsinki).
-3. Podłącz repo `HOMZIKx/V2` (branch roboczy `cursor/p1-discord-test-harness` albo `main` po merge).
+3. Podłącz repo `HOMZIKx/V2` — **pre-merge test branch:** `cursor/p4-1-activity-domain` (nie `main` do czasu APPROVED).
 
 ## 2. Add-ony (najpierw)
 
 Dodaj **wyłącznie nowe** add-ony w tym projekcie:
 
-| Add-on (sugerowana nazwa serwisu) | Cel                                     |
-| --------------------------------- | --------------------------------------- |
-| `postgres-identity`               | baza + user dla `identity-service`      |
-| `postgres-authorization`          | baza + user dla `authorization-service` |
-| `postgres-activity`               | baza + user dla `activity-service` (P4) |
-| `redis`                           | współdzielona infrastruktura            |
-| `rabbitmq`                        | współdzielona infrastruktura (P4.5+)    |
+| Add-on (sugerowana nazwa serwisu) | Cel                                                    |
+| --------------------------------- | ------------------------------------------------------ |
+| `postgres-activity`               | baza + user dla `activity-service` (P4) — **wymagany** |
+| `postgres-identity`               | baza + user dla `identity-service`                     |
+| `postgres-authorization`          | baza + user dla `authorization-service`                |
+| `redis`                           | Identity + Activity JTI gdy `ACTIVITY_ENABLED=true`    |
 
-Nie używaj connection stringów ze starego projektu.
+**Bez RabbitMQ** w deployu P4.1–P4.4 (P4.5 out of scope).
 
 ## 3. Serwisy aplikacji
 
@@ -46,7 +45,8 @@ Usuń / nie używaj jednego serwisu `v2` na całe monorepo. Utwórz **osobny ser
 Dla każdego serwisu:
 
 - Root Directory: `/` (repo root)
-- Builder: Dockerfile (auto po nazwie albo `ZBPACK_DOCKERFILE_NAME=<nazwa>`)
+- Builder: Dockerfile — ustaw `ZBPACK_DOCKERFILE_NAME=<suffix>` (np. `discord-gateway`, **nie** `Dockerfile.discord-gateway`)
+- Runtime: production `node dist/main.js` (obrazy Nest **nie** używają `pnpm run dev` / tsx)
 - Restart: domyślny restart Zeabur (always / on-failure)
 - Public networking: włącz dla `web`, `admin`, `api-gateway` (oraz opcjonalnie health `discord-gateway`)
 - `discord-gateway` musi mieć stały proces (WebSocket outbound do Discord) — nie używaj scale-to-zero
@@ -76,6 +76,7 @@ Pełna lista wartości do ręcznego wklejenia: [ZEABUR_OWNER_VARIABLES.md](./ZEA
 
 ```text
 docker build -f Dockerfile.discord-gateway -t v2-discord-gateway .
+docker build -f Dockerfile.activity-service -t v2-activity-service .
 docker build -f Dockerfile.api-gateway -t v2-api-gateway .
 docker build -f Dockerfile.identity-service -t v2-identity-service .
 docker build -f Dockerfile.authorization-service -t v2-authorization-service .

@@ -37,12 +37,12 @@ export function toUserFacingError(error: unknown): string {
       bodyCode === 'VALIDATION_FAILED' ||
       bodyCode === 'HORIZON_EXCEEDED'
     ) {
+      if (bodyCode === 'HORIZON_EXCEEDED') {
+        return 'Termin wykracza poza dozwolony horyzont (zwykle 14 dni).';
+      }
       const detail = extractErrorMessage(error.body);
       if (detail !== null && !TECHNICAL_LEAK.test(detail) && detail.length <= 160) {
         return detail;
-      }
-      if (bodyCode === 'HORIZON_EXCEEDED') {
-        return 'Termin wykracza poza dozwolony horyzont (zwykle 14 dni).';
       }
       return 'Sprawdź wprowadzone dane i spróbuj ponownie.';
     }

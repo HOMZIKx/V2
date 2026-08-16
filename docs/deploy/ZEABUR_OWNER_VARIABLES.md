@@ -1,139 +1,228 @@
-# Zeabur — wartości do ręcznego wklejenia (właściciel)
+# Zeabur — wartości i mapping (właściciel)
 
-Wklej w Zeabur → każdy serwis → **Variable**.  
-Nie commituj tych wartości. Nie wklejaj sekretów do czatu.
+Wklej Variables w Zeabur UI. **Nie commituj sekretów. Nie wklejaj tokenów do czatu.**
 
-Odwołania typu `${POSTGRES_IDENTITY_URI}` oznaczają: użyj **Reference / połączenia z add-onu** w UI Zeabur (wklej connection string wygenerowany przez add-on).
-
----
-
-## Wspólne (wszystkie serwisy app, jeśli ustawiasz globalnie)
-
-| Klucz                          | Wartość      |
-| ------------------------------ | ------------ |
-| `NODE_ENV`                     | `production` |
-| `ALLOW_PRODUCTION_CONNECTIONS` | `true`       |
+**PRE-MERGE TEST BRANCH:** `cursor/p4-1-activity-domain` (nie `main`).
 
 ---
 
-## Add-on → zapisz sobie lokalnie (nie do Gita)
+## Service mapping (monorepo)
 
-Z UI add-onów skopiuj:
+| SERVICE                 | DOCKERFILE                         | `ZBPACK_DOCKERFILE_NAME` | BRANCH                        | REQUIRED ADD-ONS                 | HEALTH             | PUBLIC DOMAIN   |
+| ----------------------- | ---------------------------------- | ------------------------ | ----------------------------- | -------------------------------- | ------------------ | --------------- |
+| `discord-gateway`       | `Dockerfile.discord-gateway`       | `discord-gateway`        | `cursor/p4-1-activity-domain` | — (token Discord)                | `GET /health/live` | NO\*            |
+| `activity-service`      | `Dockerfile.activity-service`      | `activity-service`       | `cursor/p4-1-activity-domain` | `postgres-activity`, `redis`\*\* | `GET /health/live` | NO              |
+| `api-gateway`           | `Dockerfile.api-gateway`           | `api-gateway`            | `cursor/p4-1-activity-domain` | —                                | `GET /health/live` | YES (Admin/WWW) |
+| `identity-service`      | `Dockerfile.identity-service`      | `identity-service`       | `cursor/p4-1-activity-domain` | `postgres-identity`, `redis`     | `GET /health/live` | NO              |
+| `authorization-service` | `Dockerfile.authorization-service` | `authorization-service`  | `cursor/p4-1-activity-domain` | `postgres-authorization`         | `GET /health/live` | NO              |
+| `web`                   | `Dockerfile.web`                   | `web`                    | `cursor/p4-1-activity-domain` | —                                | `GET /health`      | YES             |
+| `admin`                 | `Dockerfile.admin`                 | `admin`                  | `cursor/p4-1-activity-domain` | —                                | `GET /`            | YES             |
 
-1. URI `postgres-identity` → użyjesz jako `IDENTITY_DATABASE_URL`
-2. URI `postgres-authorization` → użyjesz jako `AUTHORIZATION_DATABASE_URL`
-3. URI `redis` → `REDIS_URL`
-4. URI/host+user+pass `rabbitmq` → `RABBITMQ_URL` (format `amqp://USER:PASS@HOST:5672`)
+\* Opcjonalnie wystaw health `discord-gateway` publicznie do diagnostyki.  
+\*\* `redis` jest wymagany gdy `ACTIVITY_ENABLED=true` (JTI replay). Przy samym outbox worker + projection secret wystarczy Postgres; pełne Centrum z authz wymaga Redis.
 
----
+**UWAGA `ZBPACK_DOCKERFILE_NAME`:** podajesz **suffix** (np. `discord-gateway`), **nie** pełną nazwę `Dockerfile.discord-gateway`.
 
-## Serwis `identity-service`
-
-| Klucz                          | Wartość                             |
-| ------------------------------ | ----------------------------------- |
-| `NODE_ENV`                     | `production`                        |
-| `HOST`                         | `0.0.0.0`                           |
-| `IDENTITY_SERVICE_HOST`        | `0.0.0.0`                           |
-| `IDENTITY_DATABASE_URL`        | _(URI z add-onu postgres-identity)_ |
-| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                              |
-
----
-
-## Serwis `authorization-service`
-
-| Klucz                          | Wartość                                  |
-| ------------------------------ | ---------------------------------------- |
-| `NODE_ENV`                     | `production`                             |
-| `HOST`                         | `0.0.0.0`                                |
-| `AUTHORIZATION_SERVICE_HOST`   | `0.0.0.0`                                |
-| `AUTHORIZATION_DATABASE_URL`   | _(URI z add-onu postgres-authorization)_ |
-| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                                   |
+Root Directory każdego serwisu Git: `/` (repo root).  
+Builder: Dockerfile.  
+**Nie używaj** jednego serwisu `v2` na całe monorepo.
 
 ---
 
-## Serwis `api-gateway`
+## Add-ony (główna lista)
 
-| Klucz                          | Wartość                              |
-| ------------------------------ | ------------------------------------ |
-| `NODE_ENV`                     | `production`                         |
-| `HOST`                         | `0.0.0.0`                            |
-| `API_GATEWAY_HOST`             | `0.0.0.0`                            |
-| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                               |
-| `REDIS_URL`                    | _(URI z add-onu redis — rezerwa)_    |
-| `RABBITMQ_URL`                 | _(URI z add-onu rabbitmq — rezerwa)_ |
+| Add-on (sugerowana nazwa) | Cel                                   | Typ wartości |
+| ------------------------- | ------------------------------------- | ------------ |
+| `postgres-activity`       | baza `activity-service`               | REFERENCE    |
+| `postgres-identity`       | baza `identity-service`               | REFERENCE    |
+| `postgres-authorization`  | baza `authorization-service`          | REFERENCE    |
+| `redis`                   | Identity + Activity JTI (gdy enabled) | REFERENCE    |
 
----
-
-## Serwis `web`
-
-| Klucz      | Wartość      |
-| ---------- | ------------ |
-| `NODE_ENV` | `production` |
-| `HOST`     | `0.0.0.0`    |
+**Bez RabbitMQ** w tym deployu (P4.5 out of scope).
 
 ---
 
-## Serwis `admin`
+## Minimalny test Centrum (Discord 24/7)
 
-| Klucz      | Wartość      |
-| ---------- | ------------ |
-| `NODE_ENV` | `production` |
-| `HOST`     | `0.0.0.0`    |
+Wymagane:
+
+1. `postgres-activity`
+2. `activity-service`
+3. `discord-gateway`
+4. wspólny `ACTIVITY_PROJECTION_SHARED_SECRET` (SECRET) na obu usługach
+5. `ACTIVITY_DISCORD_PROJECTION_BASE_URL` → internal URL `discord-gateway`
+6. Migrations activity (patrz niżej)
+
+Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
+
+- dodatkowo `authorization-service`, `identity-service`, `redis`
+- pełna lista JWT/PEM poniżej — **bez** `ACTIVITY_TRUST_ACTOR_HEADERS=true` na production
 
 ---
 
-## Serwis `discord-gateway` (bot 24/7)
+## Legend wartości
 
-| Klucz                                  | Wartość                                                            |
+| Tag          | Znaczenie                                   |
+| ------------ | ------------------------------------------- |
+| SECRET       | sekret — tylko Zeabur Variables (Secret)    |
+| REFERENCE    | connection string / URL z add-onu Zeabur    |
+| PUBLIC VALUE | bezpieczne do checklisty (nie sekret)       |
+| INTERNAL     | URL wewnętrzny serwisu Zeabur (preferowane) |
+
+---
+
+## Wspólne (wszystkie app services)
+
+| Klucz                          | Tag          | Wartość                  |
+| ------------------------------ | ------------ | ------------------------ |
+| `NODE_ENV`                     | PUBLIC VALUE | `production`             |
+| `ALLOW_PRODUCTION_CONNECTIONS` | PUBLIC VALUE | `true`                   |
+| `HOST`                         | PUBLIC VALUE | `0.0.0.0`                |
+| `APP_VERSION`                  | PUBLIC VALUE | np. `0.1.0-zeabur`       |
+| `GIT_COMMIT_SHA`               | PUBLIC VALUE | SHA deployu (branch tip) |
+
+---
+
+## `discord-gateway`
+
+| Klucz                                  | Tag                                                                |
 | -------------------------------------- | ------------------------------------------------------------------ |
-| `NODE_ENV`                             | `production`                                                       |
-| `HOST`                                 | `0.0.0.0`                                                          |
-| `DISCORD_GATEWAY_HOST`                 | `0.0.0.0`                                                          |
-| `DISCORD_ENABLED`                      | `true`                                                             |
-| `DISCORD_APPLICATION_ID`               | _(Application ID z Discord Developer Portal)_                      |
-| `DISCORD_TOKEN`                        | _(Bot token — tylko Zeabur Variables, Secret)_                     |
-| `DISCORD_TEST_GUILD_ID`                | `1534228693017432124`                                              |
-| `DISCORD_TEST_OPERATOR_IDS`            | _(Twoje Discord User ID, snowflake)_                               |
-| `DISCORD_COMPONENT_SIGNING_SECRET`     | _(wynik lokalnego `pnpm discord:test:generate-secret`, ≥32 bajty)_ |
-| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS` | `true`                                                             |
-| `DISCORD_STRICT_GUILD_ISOLATION`       | `true`                                                             |
-| `APP_VERSION`                          | `0.1.0-zeabur`                                                     |
-| `GIT_COMMIT_SHA`                       | _(opcjonalnie SHA deployu)_                                        |
-
-Opcjonalnie:
-
-| Klucz                     | Wartość                             |
-| ------------------------- | ----------------------------------- |
-| `DISCORD_TEST_CHANNEL_ID` | _(snowflake kanału do diagnostyki)_ |
+| `ZBPACK_DOCKERFILE_NAME`               | PUBLIC VALUE = `discord-gateway`                                   |
+| `DISCORD_GATEWAY_HOST`                 | PUBLIC VALUE = `0.0.0.0`                                           |
+| `DISCORD_ENABLED`                      | PUBLIC VALUE = `true`                                              |
+| `DISCORD_APPLICATION_ID`               | PUBLIC VALUE                                                       |
+| `DISCORD_TOKEN`                        | SECRET                                                             |
+| `DISCORD_TEST_GUILD_ID`                | PUBLIC VALUE = `1534228693017432124`                               |
+| `DISCORD_TEST_OPERATOR_IDS`            | PUBLIC VALUE (Twoje Discord snowflake)                             |
+| `DISCORD_COMPONENT_SIGNING_SECRET`     | SECRET (≥32)                                                       |
+| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS` | PUBLIC VALUE = `true`                                              |
+| `DISCORD_STRICT_GUILD_ISOLATION`       | PUBLIC VALUE = `true`                                              |
+| `DISCORD_ACTIVITY_ENABLED`             | PUBLIC VALUE = `true`                                              |
+| `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co activity)                                       |
+| `ACTIVITY_SERVICE_BASE_URL`            | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur) |
+| `DISCORD_TEST_CHANNEL_ID`              | PUBLIC VALUE (opcjonalnie)                                         |
 
 ---
 
-## Serwis `activity-service` (P4 Centrum — wymagany razem z discord-gateway)
+## `activity-service`
 
-| Klucz                          | Wartość                                      |
-| ------------------------------ | -------------------------------------------- |
-| `NODE_ENV`                     | `production`                                 |
-| `HOST`                         | `0.0.0.0`                                    |
-| `ACTIVITY_SERVICE_HOST`        | `0.0.0.0`                                    |
-| `ACTIVITY_SERVICE_PORT`        | `4400`                                       |
-| `ACTIVITY_DATABASE_URL`        | _(URI z add-onu postgres-activity)_          |
-| `ACTIVITY_REDIS_URL`           | _(URI z add-onu redis)_                      |
-| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                                       |
-| `ACTIVITY_ENABLED`             | `true` (gdy pełny authz+JWT skonfigurowane)  |
-| `ACTIVITY_TRUST_ACTOR_HEADERS` | `false` (**zawsze** w production)            |
+| Klucz                                  | Tag                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`               | PUBLIC VALUE = `activity-service`                                      |
+| `ACTIVITY_SERVICE_HOST`                | PUBLIC VALUE = `0.0.0.0`                                               |
+| `ACTIVITY_SERVICE_PORT`                | PUBLIC VALUE = `4400`                                                  |
+| `ACTIVITY_DATABASE_URL`                | REFERENCE (`postgres-activity`)                                        |
+| `ACTIVITY_REDIS_URL`                   | REFERENCE (`redis`) — **wymagane gdy `ACTIVITY_ENABLED=true`**         |
+| `ACTIVITY_OUTBOX_WORKER_ENABLED`       | PUBLIC VALUE = `true`                                                  |
+| `ACTIVITY_DISCORD_PROJECTION_BASE_URL` | INTERNAL → `http://discord-gateway:4100`                               |
+| `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co discord-gateway)                                    |
+| `ACTIVITY_TRUST_ACTOR_HEADERS`         | PUBLIC VALUE = `false` (**zawsze** na production)                      |
+| `ACTIVITY_ALLOW_TEST_SEED`             | PUBLIC VALUE = `false`                                                 |
+| `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE                                                           |
+| `ACTIVITY_ENABLED`                     | PUBLIC VALUE = `false` **albo** `true` tylko z pełnym zestawem poniżej |
 
-Dodatkowe klucze przy `ACTIVITY_ENABLED=true` (JWT / Authz / projection):
-skopiuj lokalny działający zestaw z `.env` (bez wklejania PEM/tokenów do czatu)
-— m.in. `ACTIVITY_AUTHORIZATION_BASE_URL`, `ACTIVITY_INBOUND_CLIENTS_JSON`,
-`ACTIVITY_PROJECTION_SHARED_SECRET`, `ACTIVITY_DISCORD_PROJECTION_BASE_URL`,
-klucze `ACTIVITY_TO_*_PRIVATE_KEY_PEM`. Na `discord-gateway` ustaw odpowiadające
-`DISCORD_ACTIVITY_ENABLED=true` + ten sam projection secret +
-`ACTIVITY_SERVICE_BASE_URL` wskazujący na wewnętrzny URL `activity-service`.
+### Gdy `ACTIVITY_ENABLED=true` (wymagane nazwy)
+
+| Klucz                                       | Tag                                       |
+| ------------------------------------------- | ----------------------------------------- |
+| `ACTIVITY_AUTHORIZATION_BASE_URL`           | INTERNAL                                  |
+| `ACTIVITY_AUTHORIZATION_ASSERTION_AUD`      | PUBLIC VALUE                              |
+| `ACTIVITY_TO_AUTHZ_CLIENT_ID`               | PUBLIC VALUE                              |
+| `ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM`         | SECRET                                    |
+| `ACTIVITY_TO_AUTHZ_ACTIVE_KID`              | PUBLIC VALUE                              |
+| `ACTIVITY_INBOUND_CLIENTS_JSON`             | SECRET (JSON kluczy publicznych klientów) |
+| `ACTIVITY_ASSERTION_AUD`                    | PUBLIC VALUE                              |
+| `ACTIVITY_TO_DISCORD_CLIENT_ID`             | PUBLIC VALUE                              |
+| `ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM`       | SECRET                                    |
+| `ACTIVITY_TO_DISCORD_ACTIVE_KID`            | PUBLIC VALUE                              |
+| `ACTIVITY_DISCORD_ASSERTION_AUD`            | PUBLIC VALUE                              |
+| `ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS` | PUBLIC VALUE (≤60)                        |
+
+Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 
 ---
 
-## Po wklejeniu
+## `api-gateway`
 
-1. **Redeploy** wszystkich serwisów.
-2. Napisz w czacie Cursor **bez sekretów**: że Variables są ustawione + publiczne URL `web` / `api-gateway` / `discord-gateway` (jeśli wystawione).
-3. Agent zweryfikuje health i poprowadzi checklistę live testu Discord.
+| Klucz                               | Tag                                                      |
+| ----------------------------------- | -------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                             |
+| `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                 |
+| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL                                                 |
+| `IDENTITY_SERVICE_BASE_URL`         | INTERNAL (WWW session)                                   |
+| `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                    |
+| `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor) |
+
+---
+
+## `identity-service` / `authorization-service`
+
+| Serwis                  | Klucze (nazwy)                                                                                                                                                                                                                                                                           |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `identity-service`      | `ZBPACK_DOCKERFILE_NAME=identity-service`, `IDENTITY_SERVICE_HOST=0.0.0.0`, `IDENTITY_DATABASE_URL` (REFERENCE), `IDENTITY_REDIS_URL` (REFERENCE), OAuth Discord client id/secret (SECRET), `IDENTITY_BETTER_AUTH_SECRET` (SECRET), `IDENTITY_AUTH_BASE_URL`, `IDENTITY_TRUSTED_ORIGINS` |
+| `authorization-service` | `ZBPACK_DOCKERFILE_NAME=authorization-service`, `AUTHORIZATION_SERVICE_HOST=0.0.0.0`, `AUTHORIZATION_DATABASE_URL` (REFERENCE), `AUTHORIZATION_ENABLED`                                                                                                                                  |
+
+---
+
+## Migrations (bezpieczne, repeatable)
+
+Nie rób destrukcyjnego resetu DB.
+
+### Activity
+
+```text
+# z maszyny z dostępem do ACTIVITY_DATABASE_URL (URI Zeabur)
+pnpm --dir services/activity-service migrate
+```
+
+Skrypty SQL w `services/activity-service/migrations/` są idempotentne (`IF NOT EXISTS` gdzie możliwe).
+
+### Identity
+
+```text
+pnpm --dir services/identity-service migrate
+```
+
+(lub komenda migrate z package.json Identity — uruchom tylko gdy serwis Identity jest w zakresie deployu)
+
+### Authorization
+
+```text
+pnpm --dir services/authorization-service migrate
+```
+
+Kolejność przy pełnym stosie: add-ony healthy → migrate identity/authz/activity → start app services.
+
+---
+
+## Weryfikacja wersji po deployu
+
+Na każdym serwisie ustaw:
+
+- `APP_VERSION`
+- `GIT_COMMIT_SHA` = tip brancha `cursor/p4-1-activity-domain`
+
+Owner potwierdza w logach startu / health metadata:
+
+- BRANCH: `cursor/p4-1-activity-domain`
+- SHA: `<FINAL HEAD>`
+
+„Deployment successful” bez SHA **nie wystarczy**.
+
+---
+
+## Po wklejeniu Variables
+
+1. Redeploy: `activity-service` → `discord-gateway` (potem gateway/web/admin jeśli w zakresie).
+2. Sprawdź Logs (bez tokenów w output).
+3. Discord: bot online na test guild → `/centrum-reconcile` (update in place, zero duplicate panel).
+4. Napisz w czacie Cursor **bez sekretów**: Variables OK + Status serwisów + SHA.
+
+---
+
+## Explicit non-goals tego deployu
+
+- NO merge do `main`
+- NO P4.5 / RabbitMQ
+- NO P4.6
+- Issue #20 NOT implemented

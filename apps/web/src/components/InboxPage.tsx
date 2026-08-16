@@ -13,6 +13,7 @@ import {
   ErrorState,
   ForbiddenState,
   LoadingState,
+  UnauthorizedState,
   UnavailableState,
 } from './StateViews';
 
@@ -82,6 +83,7 @@ export function InboxPage() {
       </header>
 
       {state.kind === 'loading' ? <LoadingState /> : null}
+      {state.kind === 'unauthorized' ? <UnauthorizedState /> : null}
       {state.kind === 'forbidden' ? <ForbiddenState /> : null}
       {state.kind === 'unavailable' ? <UnavailableState>{state.message}</UnavailableState> : null}
       {state.kind === 'error' ? <ErrorState>{state.message}</ErrorState> : null}

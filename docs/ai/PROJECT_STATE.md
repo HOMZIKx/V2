@@ -2,53 +2,58 @@
 
 ## Status
 
-`READY_FOR_REVIEW_P4_1_TO_P4_4_CLOSURE`
+`READY_FOR_OWNER_ZEABUR_AND_DISCORD_LIVE_TEST`
 
 ## Explicit gates
 
 - **NO MERGE**
-- **NO P4.5** (RabbitMQ / multi-Discord transport not in active scope;
-  prior P4.5 commit on this branch was reverted for closure)
+- **NO P4.5**
 - **NO P4.6**
-- **OWNER LIVE TESTS REQUIRED** (Discord P4.2, Admin P4.3, OAuth WWW P4.4)
+- **NO RABBITMQ** in this deploy
+- Issue #20 **NOT IMPLEMENTED**
+- **OWNER LIVE TESTS REQUIRED** (Zeabur + Discord `/centrum-reconcile`)
 
 ## Active phase
 
-P4.1–P4.4 combined closure remediation (`P4-CLOSURE-REMEDIATION-001`) on
-PR #19. Code exists for domain, Discord Centrum, Admin, and WWW member UI;
-this pass hardens security, completes P4-D6 panel recovery, aligns SoT docs,
-and requires owner live gates before any merge decision.
+`P4-DEPLOY-CLOSURE-002` — production Docker runtime, projection secret
+contract, gateway CORS/cookie hardening, Zeabur owner checklist, WWW 401 UI,
+Discord modal ACK timing, HORIZON Polish copy.
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
+- Baseline HEAD: `bb8c17773aed229881f60adbdc07f8c52cd36f8e`
 
-## Delivered in this closure pass
+## Delivered in this delta
 
-- Security: actor-header fail-closed + DEV-ONLY trust flag; allowedMentions
-  zero-parse; signed modal custom_ids; assertion jti replay store; mandatory
-  projection shared secret; no sensitive upstream bodies in logs
-- P4-D6: channel scan adopt by panel opaque id, duplicate cleanup, nonce
-  reuse after crash, reconcile recover (not “re-publish” instruction)
-- Discord create UX: single-form → preview → publish (Owner Amendment)
-- Docs SoT realigned; P4.5 marker removed from active status
+- Projection: outbox always sends `x-activity-projection-secret`; fail-fast
+  without secret; consumer reject missing/wrong; boot fail when activity on
+  without secret
+- API gateway: CORS OPTIONS ends cleanly; Identity Cookie not forwarded to
+  activity-service
+- WWW: `UnauthorizedState` for 401 (no blank screen)
+- Discord: showModal before HTTP; modal submit defer before network;
+  HORIZON_EXCEEDED always Polish
+- Production Dockerfiles: `node dist/...` (no `pnpm run dev` / tsx runtime)
+- Docker smoke: discord-gateway, activity-service, api-gateway health/live OK
+- Docs: `ZEABUR_OWNER_VARIABLES.md` owner-friendly mapping + migrations
 
-## Owner decisions still open
+## Owner next
 
-- P4-D8 / Issue #12 visual branding (does **not** block functional closure)
-- Manual Discord live (P4.2)
-- Manual Admin → Activity → Discord (P4.3)
-- Manual WWW with `IDENTITY_AUTH_ENABLED=true` (P4.4)
+1. Top up Zeabur credit if SUSPENDED (`$0.00` blocks deploy)
+2. Follow `docs/deploy/ZEABUR_OWNER_VARIABLES.md` (branch
+   `cursor/p4-1-activity-domain`, `ZBPACK_DOCKERFILE_NAME` = suffix only)
+3. Migrate activity DB; redeploy `activity-service` + `discord-gateway`
+4. Confirm `APP_VERSION` / `GIT_COMMIT_SHA` = tip SHA
+5. Discord: `/centrum-reconcile` (in-place update, no duplicate panel)
 
 ## Explicitly not done
 
 - Merge to `main`
-- Zeabur
-- P4.5 RabbitMQ / multi-guild transport as product delivery
-- P4.6+
-- WWW activity creator
+- Live Zeabur green (owner Variables + credit)
+- P4.5 / P4.6 / RabbitMQ / Issue #20
 
 ## Last updated
 
-2026-08-16 — P4-CLOSURE-REMEDIATION-001
+2026-08-16 — P4-DEPLOY-CLOSURE-002

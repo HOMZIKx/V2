@@ -8,6 +8,7 @@ import { createLogger } from '@v2/observability';
 import { z } from 'zod';
 
 import { AppModule } from './app.module.js';
+import { applyCorsOnRequest, parseCorsOrigins } from './cors.js';
 
 const config = createConfig(
   z.object({
@@ -25,20 +26,12 @@ const config = createConfig(
 );
 const logger = createLogger('api-gateway');
 
-function parseCorsOrigins(raw: string | undefined): string[] {
-  if (raw === undefined || raw.trim() === '') {
-    return ['http://127.0.0.1:3000', 'http://localhost:3000'];
-  }
-  return raw
-    .split(',')
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
-
 type CorsRequest = { headers: { origin?: string | string[] | undefined }; method: string };
 type CorsReply = {
   header: (key: string, value: string) => unknown;
+  code: (status: number) => CorsReply;
   status: (code: number) => { send: (body?: unknown) => unknown };
+  send: (body?: unknown) => unknown;
 };
 
 const bootstrap = async (): Promise<void> => {
@@ -47,24 +40,14 @@ const bootstrap = async (): Promise<void> => {
   const instance = app.getHttpAdapter().getInstance() as unknown as {
     addHook: (
       name: 'onRequest',
-      hook: (request: CorsRequest, reply: CorsReply, done: () => void) => void,
+      hook: (request: CorsRequest, reply: CorsReply, done: (err?: Error) => void) => void,
     ) => void;
   };
+
   instance.addHook('onRequest', (request, reply, done) => {
-    const originHeader = request.headers.origin;
-    const origin = typeof originHeader === 'string' ? originHeader : undefined;
-    if (origin !== undefined && corsOrigins.includes(origin)) {
-      void reply.header('Access-Control-Allow-Origin', origin);
-      void reply.header('Access-Control-Allow-Credentials', 'true');
-      void reply.header(
-        'Access-Control-Allow-Headers',
-        'Content-Type, Accept, Idempotency-Key, If-Match, X-Request-Id, X-Correlation-Id',
-      );
-      void reply.header('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS');
-      void reply.header('Vary', 'Origin');
-    }
-    if (request.method === 'OPTIONS') {
-      void reply.status(204).send();
+    const ended = applyCorsOnRequest(request, reply, corsOrigins);
+    if (ended) {
+      // Response already sent for OPTIONS — do not call done().
       return;
     }
     done();

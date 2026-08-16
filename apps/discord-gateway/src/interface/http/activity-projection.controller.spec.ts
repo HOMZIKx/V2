@@ -98,4 +98,39 @@ describe('ActivityProjectionController', () => {
       ),
     ).rejects.toThrow(/Invalid projection secret|Unauthorized/i);
   });
+
+  it('rejects Discord activity config without projection secret (fail fast at boot)', () => {
+    expect(() => makeConfig({ ACTIVITY_PROJECTION_SHARED_SECRET: '' })).toThrow(
+      /ACTIVITY_PROJECTION_SHARED_SECRET/,
+    );
+  });
+
+  it('accepts deliver with correct projection secret', async () => {
+    const publish = vi.fn(() =>
+      Promise.resolve({
+        messageId: 'm-ok',
+        channelId: 'c1',
+      }),
+    );
+    const controller = new ActivityProjectionController(makeConfig(), {
+      publishComponentsV2Message: publish,
+      editComponentsV2Message: vi.fn(),
+    } as never);
+    const result = await controller.deliver(
+      {
+        outboxId: 'ok-1',
+        eventType: 'activity.panel.projection_repaired.v1',
+        aggregateId: 'panel-1',
+        aggregateVersion: 1,
+        payload: {
+          kind: 'hub',
+          channelId: 'c1',
+          opaquePanelId: 'a1b2c3d4e5f6',
+        },
+      },
+      'proj-secret',
+    );
+    expect(result.status).toBe('delivered');
+    expect(publish).toHaveBeenCalledOnce();
+  });
 });

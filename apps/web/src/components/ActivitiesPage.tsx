@@ -10,6 +10,7 @@ import {
   ErrorState,
   ForbiddenState,
   LoadingState,
+  UnauthorizedState,
   UnavailableState,
 } from '../components/StateViews';
 import { listActivities, listMyActivities, listParticipants } from '../lib/api';
@@ -157,6 +158,7 @@ export function ActivitiesPage() {
       </div>
 
       {state.kind === 'loading' ? <LoadingState /> : null}
+      {state.kind === 'unauthorized' ? <UnauthorizedState /> : null}
       {state.kind === 'forbidden' ? <ForbiddenState /> : null}
       {state.kind === 'unavailable' ? (
         <UnavailableState>{'message' in state ? state.message : undefined}</UnavailableState>

@@ -249,13 +249,36 @@ export class ActivityInteractionHandler {
 
     try {
       if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && opaqueId !== undefined) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const parsedForm = parseActivityFormModal(interaction);
-        const draft = await this.deps.activityClient.lookupDraftByOpaque(
-          opaqueId,
-          actorOf(interaction.user.id),
-        );
+        const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
+        const actor = actorOf(interaction.user.id);
+
+        let draftId: string;
+        if (kind === 'create' || kind === 'lfg') {
+          // Modal custom id carries panel opaque id; draft is created only after ACK.
+          const created = await this.deps.activityClient.createDraft(
+            {
+              guildId,
+              payload: { source: kind, panelOpaqueId: opaqueId },
+            },
+            {
+              ...actor,
+              idempotencyKey: idem(
+                interaction.user.id,
+                'draft-create',
+                `${guildId}:${kind}:${opaqueId}:${interaction.id}`,
+              ),
+            },
+          );
+          draftId = created.id;
+        } else {
+          const existing = await this.deps.activityClient.lookupDraftByOpaque(opaqueId, actor);
+          draftId = existing.id;
+        }
+
         const updated = await this.deps.activityClient.updateDraft(
-          draft.id,
+          draftId,
           {
             payload: scheduleToDraftPayload(parsedForm, {
               source: kind === 'lfg' ? 'lfg' : 'create',
@@ -263,7 +286,7 @@ export class ActivityInteractionHandler {
             }),
           },
           {
-            ...actorOf(interaction.user.id),
+            ...actor,
             idempotencyKey: idem(
               interaction.user.id,
               'draft-form',
@@ -280,11 +303,11 @@ export class ActivityInteractionHandler {
 
         // Edit from existing ephemeral preview → update in place (one message).
         if (isDraftPreviewMessage(interaction.message) && interaction.isFromMessage()) {
-          await interaction.update(asEditPayload(preview));
+          await interaction.editReply(asEditPayload(preview));
           return true;
         }
 
-        await interaction.reply({
+        await interaction.editReply({
           ...preview,
           flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
         });
@@ -347,25 +370,12 @@ export class ActivityInteractionHandler {
     interaction: MessageComponentInteraction,
     parsed: Extract<ParsedActivityCustomId, { scope: 'panel' }>,
   ): Promise<void> {
-    const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
     try {
-      const draft = await this.deps.activityClient.createDraft(
-        { guildId, payload: { source: parsed.action, panelOpaqueId: parsed.opaqueId } },
-        {
-          ...actorOf(interaction.user.id),
-          idempotencyKey: idem(
-            interaction.user.id,
-            'draft-create',
-            `${guildId}:${parsed.action}:${interaction.id}`,
-          ),
-        },
-      );
-
+      // First Discord response must be showModal — no unbounded HTTP beforehand.
       const modal = buildActivityFormModal({
-        opaqueDraftId: opaqueFromUuid(draft.id),
+        opaqueDraftId: parsed.opaqueId,
         signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         mode: parsed.action === 'lfg' ? 'lfg' : 'create',
-        payload: draftPayload(draft),
       });
       await interaction.showModal(modal);
     } catch (error) {
@@ -386,15 +396,11 @@ export class ActivityInteractionHandler {
     parsed: Extract<ParsedActivityCustomId, { scope: 'draft' }>,
   ): Promise<void> {
     try {
-      const draft = await this.deps.activityClient.lookupDraftByOpaque(
-        parsed.opaqueId,
-        actorOf(interaction.user.id),
-      );
+      // First Discord response must be showModal — no unbounded HTTP beforehand.
       const modal = buildActivityFormModal({
         opaqueDraftId: parsed.opaqueId,
         signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         mode: 'edit',
-        payload: draftPayload(draft),
       });
       await interaction.showModal(modal);
     } catch (error) {

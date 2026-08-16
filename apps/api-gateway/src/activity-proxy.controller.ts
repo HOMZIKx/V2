@@ -17,9 +17,10 @@ import {
 } from './activity-proxy.tokens.js';
 import { resolveSessionActor } from './session-actor.resolver.js';
 
-/** Explicit allowlist — never forward Authorization / client assertions / proxy hop headers. */
+/** Explicit allowlist — never forward Authorization / client assertions / proxy hop headers.
+ * Identity Cookie is used only for session→actor resolution and must NOT reach activity-service.
+ */
 const FORWARDED_HEADER_ALLOWLIST = new Set([
-  'cookie',
   'content-type',
   'accept',
   'accept-language',
@@ -60,11 +61,16 @@ export class ActivityProxyController {
 
     const target = new URL(request.url, ensureTrailingSlash(this.activityBaseUrl));
     const headers: Record<string, string> = {};
+    let browserCookie: string | undefined;
     for (const [key, value] of Object.entries(incoming)) {
       if (value === undefined) {
         continue;
       }
       const lower = key.toLowerCase();
+      if (lower === 'cookie') {
+        browserCookie = Array.isArray(value) ? value.join('; ') : value;
+        continue;
+      }
       if (ACTOR_HEADERS.has(lower)) {
         if (!this.forwardActorHeaders) {
           continue;
@@ -78,7 +84,7 @@ export class ActivityProxyController {
       headers[lower] = Array.isArray(value) ? value.join(', ') : value;
     }
 
-    const sessionActor = await resolveSessionActor(headers.cookie, this.identityBaseUrl);
+    const sessionActor = await resolveSessionActor(browserCookie, this.identityBaseUrl);
     if (sessionActor !== null) {
       headers['x-actor-discord-user-id'] = sessionActor.discordUserId;
       headers['x-actor-v2-user-id'] = sessionActor.v2UserId;

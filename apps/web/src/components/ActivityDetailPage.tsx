@@ -9,7 +9,13 @@ import { lifecycleLabel } from '../lib/labels';
 import { mapApiError, type LoadState } from '../lib/load-state';
 import type { ActivityDto, ParticipationDto, StatusDefDto } from '../lib/types';
 import { useSession } from './SessionProvider';
-import { ErrorState, ForbiddenState, LoadingState, UnavailableState } from './StateViews';
+import {
+  ErrorState,
+  ForbiddenState,
+  LoadingState,
+  UnauthorizedState,
+  UnavailableState,
+} from './StateViews';
 
 function findMine(
   participants: readonly ParticipationDto[],
@@ -105,6 +111,9 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
 
   if (state.kind === 'loading') {
     return <LoadingState />;
+  }
+  if (state.kind === 'unauthorized') {
+    return <UnauthorizedState />;
   }
   if (state.kind === 'forbidden') {
     return <ForbiddenState />;

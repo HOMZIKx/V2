@@ -1,9 +1,11 @@
+# Production image for @v2/activity-service
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/configuration/package.json ./packages/configuration/package.json
 COPY packages/observability/package.json ./packages/observability/package.json
@@ -11,19 +13,40 @@ COPY packages/internal-jwt/package.json ./packages/internal-jwt/package.json
 COPY services/activity-service/package.json ./services/activity-service/package.json
 RUN pnpm install --frozen-lockfile --filter @v2/activity-service...
 
-FROM deps AS runtime
+FROM deps AS build
+COPY packages/typescript-config ./packages/typescript-config
 COPY packages/configuration ./packages/configuration
 COPY packages/observability ./packages/observability
 COPY packages/internal-jwt ./packages/internal-jwt
-COPY packages/typescript-config ./packages/typescript-config
 COPY services/activity-service ./services/activity-service
+COPY infrastructure/docker/point-workspace-exports-to-dist.mjs ./infrastructure/docker/point-workspace-exports-to-dist.mjs
+RUN pnpm --filter @v2/configuration run build \
+  && pnpm --filter @v2/observability run build \
+  && pnpm --filter @v2/internal-jwt run build \
+  && node infrastructure/docker/point-workspace-exports-to-dist.mjs packages/configuration packages/observability packages/internal-jwt \
+  && rm -rf packages/configuration/src packages/observability/src packages/internal-jwt/src \
+  && pnpm --filter @v2/activity-service run build
+
+FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4400
 ENV ACTIVITY_SERVICE_HOST=0.0.0.0
 ENV ACTIVITY_SERVICE_PORT=4400
-EXPOSE 4400
 WORKDIR /app
+COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=build /app/packages/typescript-config ./packages/typescript-config
+COPY --from=build /app/packages/configuration/package.json ./packages/configuration/package.json
+COPY --from=build /app/packages/configuration/dist ./packages/configuration/dist
+COPY --from=build /app/packages/observability/package.json ./packages/observability/package.json
+COPY --from=build /app/packages/observability/dist ./packages/observability/dist
+COPY --from=build /app/packages/internal-jwt/package.json ./packages/internal-jwt/package.json
+COPY --from=build /app/packages/internal-jwt/dist ./packages/internal-jwt/dist
+COPY --from=build /app/services/activity-service/package.json ./services/activity-service/package.json
+COPY --from=build /app/services/activity-service/dist ./services/activity-service/dist
+RUN pnpm install --frozen-lockfile --prod --filter @v2/activity-service...
+WORKDIR /app/services/activity-service
+EXPOSE 4400
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4400)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["pnpm", "--filter", "@v2/activity-service", "run", "dev"]
+CMD ["node", "dist/main.js"]

@@ -25,6 +25,8 @@ const POLL_INTERVAL_MS = 2_000;
 const CLAIM_LIMIT = 10;
 const LEASE_SECONDS = 30;
 const ASSERTION_HEADER = 'discord-client-assertion';
+/** Shared contract with discord-gateway ActivityProjectionController. */
+export const PROJECTION_SECRET_HEADER = 'x-activity-projection-secret';
 
 function isRetryableHttpStatus(status: number): boolean {
   if (status === 408 || status === 429) {
@@ -66,10 +68,17 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       return;
     }
     if (this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
-      this.logger.error(
-        'Outbox worker enabled but ACTIVITY_DISCORD_PROJECTION_BASE_URL is missing',
+      throw new Error(
+        'Outbox worker enabled but ACTIVITY_DISCORD_PROJECTION_BASE_URL is missing (fail fast)',
       );
-      return;
+    }
+    if (
+      this.config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined ||
+      this.config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0
+    ) {
+      throw new Error(
+        'Outbox worker enabled but ACTIVITY_PROJECTION_SHARED_SECRET is missing (fail fast)',
+      );
     }
 
     await this.safeTick('startup');
@@ -165,8 +174,15 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
 
     const url = `${baseUrl.replace(/\/$/, '')}${DELIVER_PATH}`;
+    const secret = this.config.ACTIVITY_PROJECTION_SHARED_SECRET;
+    if (secret === undefined || secret.trim().length === 0) {
+      await this.failRetry(message, 'ACTIVITY_PROJECTION_SHARED_SECRET missing');
+      return 'retry';
+    }
+
     const headers: Record<string, string> = {
       'content-type': 'application/json',
+      [PROJECTION_SECRET_HEADER]: secret,
     };
 
     if (this.config.ACTIVITY_ENABLED) {
