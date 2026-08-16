@@ -1,14 +1,14 @@
 # P4 Centrum Aktywności — Handoff
 
-- **Task ID:** `P4-FINAL-SPEC-CLOSURE-001`
-- **Status:** `READY_FOR_FINAL_P4_SPEC_REAUDIT` (visual screenshot: `REFERENCE_IMAGE_REQUIRED`)
-- **Branch / PR:** `cursor/p4-centrum-aktywnosci-spec-v2` / **#18**
-- **Base:** `main` @ `1f23635` (PR #16)
+- **Task ID:** `P4-FINAL-SPEC-CLOSURE-001` (closed)
+- **Status:** `P4_SPEC_APPROVED — waiting for READY_FOR_CURSOR (P4.1)`
+- **PR:** **#18 merged** → `main` @ `8c1b0959ae51d131e62ed587d81be1aae5012d37`
+- **Owner marker:** `FINAL_P4_SPEC_AUDIT_APPROVED` (spec HEAD `c5c492c`)
 - **ADR-0014:** **Accepted**
 - **Service:** `activity-service` / DB `activity`
-- **Implements code:** **NO**
+- **Implements code:** **NO** (P4.1 waits for brief)
 
-## Closed in this closure
+## Closed in spec closure
 
 | ID                       | Status                                          |
 | ------------------------ | ----------------------------------------------- |
@@ -21,13 +21,22 @@
 | Discord form             | one logical V2 form; modals ≤5                  |
 | Issue #12                | does **not** block P4.2a test guild             |
 
+## Post-merge hygiene (2026-08-16)
+
+Aligned PR #18 Bugbot findings with Accepted spec (docs only):
+
+- hub `custom_id` includes `panelId`;
+- „Zgłoś” is not a hub action;
+- Discord hub actions do not require WWW login.
+
 ## Still open / blocked
 
-| Item                                   | Status                                                                                                      |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| P4-D8 assets                           | OWNER_DECISION_REQUIRED (prod visual sign-off)                                                              |
-| Screenshot visual interaction contract | **`REFERENCE_IMAGE_REQUIRED`** — image not available in agent FS; not designed from memory; doc not created |
-| P4 implementation                      | not started                                                                                                 |
+| Item                                   | Status                                                                                    |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- |
+| P4.1 implementation brief              | **missing** — needs `READY_FOR_CURSOR` in `CHATGPT_TO_CURSOR.md`                          |
+| P4-D8 assets                           | OWNER_DECISION_REQUIRED (prod visual sign-off)                                            |
+| Screenshot visual interaction contract | **`REFERENCE_IMAGE_REQUIRED`** — not a P4.1 blocker; required before P4.2 visual sign-off |
+| P4 implementation                      | not started                                                                               |
 
 ## SoT docs
 

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Data:** 2026-08-06 (zamknięcie blockerów `P4-FINAL-SPEC-CLOSURE-001`)
-- **Task:** `P4-FINAL-SPEC-CLOSURE-001` (PR #18)
+- **Task:** `P4-FINAL-SPEC-CLOSURE-001` (PR **#18 merged** → `8c1b095`)
 - **Depends on:** ADR-0001, ADR-0007, ADR-0013 (P3), Discord UX standard,
   product spec Centrum Aktywności
 
@@ -35,7 +35,7 @@ osobną bazą, bez RBAC równoległego do Authorization i bez logiki w gateway.
    Components V2 bez dekoracyjnego bannera). Blokują produkcyjny visual
    sign-off.
 8. **Implementacja kodu:** po briefie `READY_FOR_CURSOR`. P3 scalone
-   (`1f23635`, PR #16).
+   (`1f23635`, PR #16). Spec P4 scalona (`8c1b095`, PR #18).
 
 ## Alternatywy odrzucone
 

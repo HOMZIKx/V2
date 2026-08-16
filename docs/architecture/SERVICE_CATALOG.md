@@ -26,4 +26,4 @@ Pakiet: `@v2/activity-service`. Katalog: `services/activity-service`.
 Domena/kontrakty/eventy: prefiks `activity`. **Nie** `community-service`.
 
 Kod/migracje powstają dopiero w implementacyjnym P4.1 po `READY_FOR_CURSOR`.
-Stary PR #17 superseded; SoT docs = PR #18.
+Stary PR #17 superseded. Spec SoT = PR **#18 merged** (`8c1b095`).

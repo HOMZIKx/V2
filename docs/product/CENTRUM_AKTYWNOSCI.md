@@ -2,7 +2,7 @@
 
 ## Status
 
-`OWNER_PRODUCT_ACCEPTED — ADR-0014 Accepted; final P4 spec closure (no implementation)`
+`OWNER_PRODUCT_ACCEPTED — ADR-0014 Accepted; PR #18 merged; P4.1 waits for READY_FOR_CURSOR`
 
 Usługa: `activity-service` / DB `activity`. Nazwa robocza produktu „Centrum
 Aktywności” pochodzi z Issue #15. **Finalny branding, copy (poza zaakceptowanymi
@@ -16,6 +16,12 @@ Zatwierdzone etykiety funkcji głównego panelu (treść produktu, nie assety):
 - Szukam ekipy
 - Moje aktywności
 - Powiadomienia
+
+Zatwierdzone etykiety posta wydarzenia / prywatnego menu **Więcej** (nie przyciski huba):
+
+- Lista uczestników
+- Kontakt
+- Więcej
 - Zgłoś
 
 Odpowiedniki statusów RSVP (system musi je obsługiwać; administrator może
@@ -173,7 +179,8 @@ Główny panel: Utwórz aktywność | Szukam ekipy | Moje aktywności | Powiadom
 - Zarządzanie: przycisk **Więcej** → prywatne menu wg P3 + „Moje aktywności”
   (bez publicznych przycisków admin widocznych dla wszystkich).
 - Istniejący kanał głosowy: wskazanie dozwolone; **tymczasowe VC = odroczone**.
-- Przycisk „Zgłoś”; katalog powodów + „Inny powód” (admin).
+- Przycisk „Zgłoś” wyłącznie w prywatnym menu **Więcej** (nie na hubie);
+  katalog powodów + „Inny powód” (admin).
 
 ### 12.1 Kierunek interaktywny (Components V2) — obowiązkowy
 
@@ -264,13 +271,13 @@ Organizator: usunięcie uczestnika z powodem + audyt.
 
 ## 22. Mapowanie starych P4-D1–P4-D8
 
-| ID    | Nowa interpretacja                                                                                                                              |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                       |
-| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                             |
-| P4-D3 | **OWNER_ACCEPTED** — `activity-service` / `@v2/activity-service` / DB `activity`                                                                |
-| P4-D4 | **OWNER_ACCEPTED** — Discord + Admin + WWW (bez create WWW w P4.4)                                                                              |
-| P4-D5 | **OWNER_ACCEPTED** — HTTP + idempotency + PG outbox/lease; RMQ od P4.5                                                                          |
-| P4-D6 | **OWNER_ACCEPTED** — panel ops + nonce/`enforceNonce` + adopt reconcile                                                                         |
-| P4-D7 | **OWNER_ACCEPTED** — final permission catalog (architecture §6)                                                                                 |
-| P4-D8 | Assety = **OWNER_DECISION_REQUIRED** (prod sign-off); layout V2 = CONTRACT; screenshot visual contract = `REFERENCE_IMAGE_REQUIRED` w tej sesji |
+| ID    | Nowa interpretacja                                                                                                                                     |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| P4-D1 | **OWNER_ACCEPTED (superseded options)** — pełny model produktowy + etapy P4.1–P4.6 zamiast hub-only/A/B/C                                              |
+| P4-D2 | **OWNER_ACCEPTED (superseded)** — rodzaje admin-config + gry per serwer; nie jeden hardcodowany typ                                                    |
+| P4-D3 | **OWNER_ACCEPTED** — `activity-service` / `@v2/activity-service` / DB `activity`                                                                       |
+| P4-D4 | **OWNER_ACCEPTED** — Discord + Admin + WWW (bez create WWW w P4.4)                                                                                     |
+| P4-D5 | **OWNER_ACCEPTED** — HTTP + idempotency + PG outbox/lease; RMQ od P4.5                                                                                 |
+| P4-D6 | **OWNER_ACCEPTED** — panel ops + nonce/`enforceNonce` + adopt reconcile                                                                                |
+| P4-D7 | **OWNER_ACCEPTED** — final permission catalog (architecture §6)                                                                                        |
+| P4-D8 | Assety = **OWNER_DECISION_REQUIRED** (prod sign-off); layout V2 = CONTRACT; screenshot visual contract = `REFERENCE_IMAGE_REQUIRED` (nie blokuje P4.1) |

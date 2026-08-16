@@ -28,15 +28,16 @@ Issue #15 closed. Old planning PR #17 closed (superseded).
 - Admin / Discord / WWW authorization UIs
 - Final product permission / group names
 - Owner transfer UX
-- P4 Centrum Aktywności **implementation** (spec audit in progress on
-  `cursor/p4-centrum-aktywnosci-spec-v2`; old PR #17 superseded)
+- P4 Centrum Aktywności **specification** — PR #18 **merged** (`8c1b095`);
+  owner `FINAL_P4_SPEC_AUDIT_APPROVED`. Implementation waits for
+  `READY_FOR_CURSOR` (P4.1). Old PR #17 superseded.
 
 ## Next allowed stage
 
-**P4 Centrum Aktywności** — final specification audit
-(`READY_FOR_FINAL_P4_SPEC_AUDIT`), then **P4.1** after `READY_FOR_CURSOR`.
+**P4.1** — `activity-service` domain, data, contracts, outbox core
+(no Discord UI) after ChatGPT brief `READY_FOR_CURSOR`.
 No P4 product code until that brief.
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-SPEC-TRANSPLANT-AFTER-P3-001`)
+2026-08-16 — Cursor (post-merge P4 spec status)

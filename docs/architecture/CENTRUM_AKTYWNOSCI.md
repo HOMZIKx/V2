@@ -2,11 +2,12 @@
 
 ## Status
 
-`SPEC — ADR-0014 Accepted; blockers closed except screenshot visual contract`
+`SPEC — ADR-0014 Accepted; PR #18 merged; P4.1 waits for READY_FOR_CURSOR`
 
-P3 Authorization scalone (`main` @ `1f23635`, PR #16). Implementacja kodu
-zabroniona do briefu `READY_FOR_CURSOR`. Ten dokument = spec granic i etapów —
-**bez** kodu.
+P3 Authorization scalone (`main` @ `1f23635`, PR #16). Specyfikacja P4 scalona
+(PR #18 → `main` @ `8c1b095`, `FINAL_P4_SPEC_AUDIT_APPROVED`). Implementacja
+kodu zabroniona do briefu `READY_FOR_CURSOR`. Ten dokument = spec granic i
+etapów — **bez** kodu.
 
 Produkt: [CENTRUM_AKTYWNOSCI.md](../product/CENTRUM_AKTYWNOSCI.md).
 Handoff: [P4_CENTRUM_AKTYWNOSCI_HANDOFF.md](../ai/P4_CENTRUM_AKTYWNOSCI_HANDOFF.md).
@@ -347,8 +348,8 @@ Screenshot-based doc
 `docs/ux/CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` wymaga czytelnego
 załącznika w środowisku agenta.
 
-**Status tej sesji:** `REFERENCE_IMAGE_REQUIRED` — obraz niedostępny lokalnie;
-część wizualna wstrzymana (bez projektowania z pamięci).
+**Status:** `REFERENCE_IMAGE_REQUIRED` — obraz niedostępny; część wizualna
+wstrzymana (bez projektowania z pamięci). Nie blokuje P4.1.
 
 Obowiązujący kontrakt interakcji Components V2 (bez pixel-perfect referencji):
 [CENTRUM_AKTYWNOSCI_DISCORD.md](../ux/CENTRUM_AKTYWNOSCI_DISCORD.md).

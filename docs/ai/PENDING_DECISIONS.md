@@ -21,8 +21,9 @@
 
 ## P4 Centrum Aktywności — status decyzji
 
-> SoT: PR #18 `cursor/p4-centrum-aktywnosci-spec-v2`. ADR-0014 **Accepted**.
-> Implementacja zabroniona do `READY_FOR_CURSOR`.
+> SoT: PR **#18 merged** → `main` @ `8c1b095`. ADR-0014 **Accepted**.
+> Owner marker: `FINAL_P4_SPEC_AUDIT_APPROVED`.
+> Implementacja P4.1 zabroniona do briefu `READY_FOR_CURSOR`.
 
 ### P4-D1 — zakres pierwszej wersji Centrum
 
@@ -69,8 +70,8 @@
 - **Status layoutu interaktywnego (Components V2):** CONTRACT_SPECIFIED w
   `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`
 - **Status screenshot-based visual interaction contract:**
-  `REFERENCE_IMAGE_REQUIRED` — załącznik niedostępny w środowisku agenta w tej
-  sesji; nie projektowano z pamięci; plik
+  `REFERENCE_IMAGE_REQUIRED` — nie blokuje P4.1; wymagane przed P4.2 visual
+  sign-off. Załącznik nadal niedostępny; nie projektowano z pamięci; plik
   `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` **nie** utworzony.
 - **Status assetów (Issue #12):** `OWNER_DECISION_REQUIRED` dla produkcyjnego
   visual sign-off. **Nie blokuje** P4.1 ani testowego P4.2a (native V2 bez bannera).
@@ -90,6 +91,9 @@ Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED`.
 Implementacja: PR #16 **merged** do `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`.
 Issue #15 **closed**.
 
-## Historia — PR #17 (superseded)
+## Historia — PR #17 / #18
 
-- PR #17 **zamknięty jako zastąpiony**. SoT = PR #18.
+- PR #17 **zamknięty jako zastąpiony**.
+- PR **#18 merged** 2026-08-06 (`8c1b095`) — SoT specyfikacji P4.
+- Post-merge hygiene: hub `custom_id` + `panelId`; „Zgłoś” poza hubem;
+  Discord bez wymogu WWW login.

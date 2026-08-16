@@ -2,7 +2,7 @@
 
 ## Status
 
-`INTERACTIVE_LAYOUT_CONTRACT — final P4 spec audit; assets OWNER_DECISION_REQUIRED (Issue #12)`
+`INTERACTIVE_LAYOUT_CONTRACT — P4 spec APPROVED (PR #18); assets OWNER_DECISION_REQUIRED (Issue #12)`
 
 Szkielet interakcji zgodny z decyzjami właściciela A–S oraz
 `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md` (D-023, D-024).
@@ -192,7 +192,7 @@ Konwencja kolumn:
 - **label** — widoczny tekst (zaakceptowany lub OWNER_DECISION_REQUIRED)
 - **meaning** — znaczenie produktowe
 - **custom_id** — format wersjonowany
-- **perm** — wymagane permission (TECH proposal; final ID = OWNER_DECISION_REQUIRED)
+- **perm** — wymagane permission z katalogu P4-D7 (Accepted)
 - **after** — zachowanie po kliknięciu
 - **vis** — public | private (ephemeral)
 - **modal** — tak/nie
@@ -206,12 +206,12 @@ Konwencja kolumn:
 
 ### D.1 Panel Centrum
 
-| id  | type             | tree                  | label            | meaning                                | custom_id                  | perm                       | after                                              | vis     | modal        | edit_msg | loading | disabled                 | deny           | stale                       | idem                | audit         |
-| --- | ---------------- | --------------------- | ---------------- | -------------------------------------- | -------------------------- | -------------------------- | -------------------------------------------------- | ------- | ------------ | -------- | ------- | ------------------------ | -------------- | --------------------------- | ------------------- | ------------- |
-| P1  | Button accessory | Panel § Utwórz        | Utwórz aktywność | Start tworzenia one-shot               | `activity:v1:panel:create` | `….event.create`           | Otwiera prywatny formularz/modal (jeden formularz) | private | tak (form)   | nie      | defer   | brak create / Authz down | ephemeral deny | reject + hint odśwież panel | key per user+action | optional open |
-| P2  | Button accessory | Panel § Szukam        | Szukam ekipy     | Szybkie tworzenie tej samej aktywności | `activity:v1:panel:lfg`    | `….event.create`           | Uproszczony prywatny formularz                     | private | tak          | nie      | defer   | j.w.                     | ephemeral deny | j.w.                        | j.w.                | optional      |
-| P3  | Button accessory | Panel § Moje          | Moje aktywności  | Prywatny widok 4 bucketów              | `activity:v1:panel:mine`   | membership + login context | Ephemeral lista / select                           | private | nie / select | nie      | defer   | Authz/Identity down      | deny           | j.w.                        | read idempotent     | nie           |
-| P4  | Button accessory | Panel § Powiadomienia | Powiadomienia    | Prywatna skrzynka                      | `activity:v1:panel:inbox`  | membership                 | Ephemeral inbox                                    | private | nie          | nie      | defer   | j.w.                     | deny           | j.w.                        | read                | nie           |
+| id  | type             | tree                  | label            | meaning                                | custom_id                            | perm                                                      | after                                              | vis     | modal        | edit_msg | loading | disabled                 | deny           | stale                       | idem                | audit         |
+| --- | ---------------- | --------------------- | ---------------- | -------------------------------------- | ------------------------------------ | --------------------------------------------------------- | -------------------------------------------------- | ------- | ------------ | -------- | ------- | ------------------------ | -------------- | --------------------------- | ------------------- | ------------- |
+| P1  | Button accessory | Panel § Utwórz        | Utwórz aktywność | Start tworzenia one-shot               | `activity:v1:panel:<panelId>:create` | `permission.activity.event.create`                        | Otwiera prywatny formularz/modal (jeden formularz) | private | tak (form)   | nie      | defer   | brak create / Authz down | ephemeral deny | reject + hint odśwież panel | key per user+action | optional open |
+| P2  | Button accessory | Panel § Szukam        | Szukam ekipy     | Szybkie tworzenie tej samej aktywności | `activity:v1:panel:<panelId>:lfg`    | `permission.activity.event.create`                        | Uproszczony prywatny formularz                     | private | tak          | nie      | defer   | j.w.                     | ephemeral deny | j.w.                        | j.w.                | optional      |
+| P3  | Button accessory | Panel § Moje          | Moje aktywności  | Prywatny widok 4 bucketów              | `activity:v1:panel:<panelId>:mine`   | membership (Discord User ID; WWW login nie jest wymagany) | Ephemeral lista / select                           | private | nie / select | nie      | defer   | Authz/Identity down      | deny           | j.w.                        | read idempotent     | nie           |
+| P4  | Button accessory | Panel § Powiadomienia | Powiadomienia    | Prywatna skrzynka                      | `activity:v1:panel:<panelId>:inbox`  | membership (Discord User ID; WWW login nie jest wymagany) | Ephemeral inbox                                    | private | nie          | nie      | defer   | j.w.                     | deny           | j.w.                        | read                | nie           |
 
 ### D.2 Post wydarzenia — publiczne
 
@@ -252,6 +252,10 @@ activity:v1:<scope>:<…>
 
 - Prefiks domeny: `activity`
 - Wersja kontraktu: `v1` (bump przy breaking change layoutu/handlera)
+- **panelId** (hub): nieosobowy identyfikator rekordu panelu — **obowiązkowy**
+  w każdym `custom_id` huba, żeby reconcile P4-D6 mógł adoptować istniejącą
+  wiadomość po crashu (`activity:v1:panel:<panelId>:<action>`). Zgodne z
+  architecture §10. Nie używać skróconej formy bez `panelId`.
 - **opaque-id** wydarzenia: nieprzewidywalny identyfikator projekcji/korelacji
   (nie sekwencyjny „ładny” numer jako jedyny sekret)
 - **status-id**: ID definicji statusu z backendu (nie zaufanie do label z klienta)
@@ -259,10 +263,10 @@ activity:v1:<scope>:<…>
 ### Przykłady
 
 ```
-activity:v1:panel:create
-activity:v1:panel:lfg
-activity:v1:panel:mine
-activity:v1:panel:inbox
+activity:v1:panel:<panelId>:create
+activity:v1:panel:<panelId>:lfg
+activity:v1:panel:<panelId>:mine
+activity:v1:panel:<panelId>:inbox
 activity:v1:event:<opaque-id>:rsvp:<status-id>
 activity:v1:event:<opaque-id>:participants
 activity:v1:event:<opaque-id>:contact
@@ -282,8 +286,10 @@ activity:v1:event:<opaque-id>:edit:schedule
 
 Backend **zawsze** ponownie: authn → authz P3 → load event → validate transition.
 
-Limit długości Discord `custom_id` (100 znaków) — opaque-id musi być krótki
-(np. ULID/base32); mapowanie w Redis/DB jeśli potrzeba.
+Limit długości Discord `custom_id` (100 znaków) — `panelId` i opaque-id muszą
+być krótkie (np. ULID/base32); mapowanie w Redis/DB jeśli potrzeba. Przykład
+huba z ULID (26 znaków) mieści się z zapasem:
+`activity:v1:panel:<ulid>:create`.
 
 ---
 
@@ -424,13 +430,13 @@ Bez łańcuchów publicznych wiadomości.
 
 ## M. Relacja do Issue #12 / P4-D8
 
-| Warstwa                         | Status                                                  |
-| ------------------------------- | ------------------------------------------------------- |
-| Component tree / custom_id / UX | CONTRACT w tym dokumencie                               |
-| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED — **prod visual sign-off**      |
-| P4.2a test guild                | **dozwolone** native V2 **bez** dekoracyjnego bannera   |
-| Screenshot visual contract      | `REFERENCE_IMAGE_REQUIRED` w sesji closure (brak pliku) |
-| Opisy / style Button            | OWNER_DECISION_REQUIRED                                 |
+| Warstwa                         | Status                                                    |
+| ------------------------------- | --------------------------------------------------------- |
+| Component tree / custom_id / UX | CONTRACT w tym dokumencie                                 |
+| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED — **prod visual sign-off**        |
+| P4.2a test guild                | **dozwolone** native V2 **bez** dekoracyjnego bannera     |
+| Screenshot visual contract      | `REFERENCE_IMAGE_REQUIRED` (brak pliku; nie blokuje P4.1) |
+| Opisy / style Button            | OWNER_DECISION_REQUIRED                                   |
 
 Wzór = **modułowość i panelowość**, nie klikalny obraz. Issue #12 **nie** blokuje test servera.
 

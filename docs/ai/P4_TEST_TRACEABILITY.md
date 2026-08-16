@@ -2,7 +2,7 @@
 
 ## Status
 
-`SPEC — final closure; activity-service; permissions Accepted (no implementation)`
+`SPEC — PR #18 merged; activity-service; permissions Accepted (no P4.1 code)`
 
 Kolumny: decyzja → domena → kontrakt → permission → etap → test.
 
