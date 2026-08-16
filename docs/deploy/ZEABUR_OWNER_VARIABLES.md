@@ -108,6 +108,30 @@ Opcjonalnie:
 
 ---
 
+## Serwis `activity-service` (P4 Centrum — wymagany razem z discord-gateway)
+
+| Klucz                          | Wartość                                      |
+| ------------------------------ | -------------------------------------------- |
+| `NODE_ENV`                     | `production`                                 |
+| `HOST`                         | `0.0.0.0`                                    |
+| `ACTIVITY_SERVICE_HOST`        | `0.0.0.0`                                    |
+| `ACTIVITY_SERVICE_PORT`        | `4400`                                       |
+| `ACTIVITY_DATABASE_URL`        | _(URI z add-onu postgres-activity)_          |
+| `ACTIVITY_REDIS_URL`           | _(URI z add-onu redis)_                      |
+| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                                       |
+| `ACTIVITY_ENABLED`             | `true` (gdy pełny authz+JWT skonfigurowane)  |
+| `ACTIVITY_TRUST_ACTOR_HEADERS` | `false` (**zawsze** w production)            |
+
+Dodatkowe klucze przy `ACTIVITY_ENABLED=true` (JWT / Authz / projection):
+skopiuj lokalny działający zestaw z `.env` (bez wklejania PEM/tokenów do czatu)
+— m.in. `ACTIVITY_AUTHORIZATION_BASE_URL`, `ACTIVITY_INBOUND_CLIENTS_JSON`,
+`ACTIVITY_PROJECTION_SHARED_SECRET`, `ACTIVITY_DISCORD_PROJECTION_BASE_URL`,
+klucze `ACTIVITY_TO_*_PRIVATE_KEY_PEM`. Na `discord-gateway` ustaw odpowiadające
+`DISCORD_ACTIVITY_ENABLED=true` + ten sam projection secret +
+`ACTIVITY_SERVICE_BASE_URL` wskazujący na wewnętrzny URL `activity-service`.
+
+---
+
 ## Po wklejeniu
 
 1. **Redeploy** wszystkich serwisów.

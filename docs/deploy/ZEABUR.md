@@ -19,8 +19,9 @@ Dodaj **wyłącznie nowe** add-ony w tym projekcie:
 | --------------------------------- | --------------------------------------- |
 | `postgres-identity`               | baza + user dla `identity-service`      |
 | `postgres-authorization`          | baza + user dla `authorization-service` |
+| `postgres-activity`               | baza + user dla `activity-service` (P4) |
 | `redis`                           | współdzielona infrastruktura            |
-| `rabbitmq`                        | współdzielona infrastruktura            |
+| `rabbitmq`                        | współdzielona infrastruktura (P4.5+)    |
 
 Nie używaj connection stringów ze starego projektu.
 
@@ -36,6 +37,11 @@ Usuń / nie używaj jednego serwisu `v2` na całe monorepo. Utwórz **osobny ser
 | `discord-gateway`       | `Dockerfile.discord-gateway`       | `GET /health/live` oraz `/health/ready` |
 | `identity-service`      | `Dockerfile.identity-service`      | `GET /health/live`                      |
 | `authorization-service` | `Dockerfile.authorization-service` | `GET /health/live`                      |
+| `activity-service`      | `Dockerfile.activity-service`      | `GET /health/live`                      |
+
+**P4 Centrum (Discord 24/7):** wymagane co najmniej `activity-service` +
+`discord-gateway` + Postgres activity + Redis (+ Authorization/Identity gdy
+`ACTIVITY_ENABLED=true`). Nie wystarczy sam stary harness P1.
 
 Dla każdego serwisu:
 

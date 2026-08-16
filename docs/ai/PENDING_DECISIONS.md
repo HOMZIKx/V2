@@ -4,10 +4,21 @@
 
 ### DEC-001 — Deploy V2 na Zeabur (zakres i moment)
 
-- **Status:** DEFERRED
-- **Decyzja właściciela (2026-08-05):** wariant B był zatwierdzony, następnie **wstrzymany**. Najpierw 100% działający bot lokalnie na guild testowym; Zeabur i 6 serwisów odłożone.
-- **ADR-0008 / Dockerfiles:** pozostają w repo jako przygotowanie, **bez kontynuacji wdrożenia** do czasu jawnego wznowienia.
-- **Warunek wznowienia (częściowo spełniony):** lokalny live test P1 na guild `1534228693017432124` potwierdzony; P1 scalony do `main` (PR #9). Wdrożenie Zeabur nadal wymaga jawnego wznowienia przez właściciela.
+- **Status:** `OWNER_RESUME_REQUESTED` (2026-08-16) — właściciel jawnie prosi o
+  deploy na Zeabur („niech działa na serwerze”). Wcześniej: DEFERRED (2026-08-05).
+- **Blokery wykonawcze (agent nie omija):**
+  1. brak sesji Zeabur CLI / API w środowisku agenta (wymagany `zeabur auth login`
+     przez właściciela albo token w bezpiecznym kanale),
+  2. sekrety Discord / JWT / DB wyłącznie w Variables Zeabur (właściciel wkleja),
+  3. docs deploy P0/P1 nie obejmowały `activity-service` — Dockerfile dodany;
+     pełna lista zmiennych P4 wymaga uzupełnienia przy pierwszym deployu Centrum.
+- **ADR-0008:** nadal obowiązuje (osobny project, nie `dobry-temat`).
+- **Zakres minimalny pod Centrum na Discord:** add-ony Postgres(activity) +
+  Redis (+ Authz/Identity wg `ACTIVITY_ENABLED`) + serwisy `activity-service` +
+  `discord-gateway` (+ gateway/web/admin wg potrzeb).
+- **Następny krok właściciela:** zalogować Zeabur CLI **albo** utworzyć project
+  w UI wg `docs/deploy/ZEABUR.md` i wkleić Variables z
+  `docs/deploy/ZEABUR_OWNER_VARIABLES.md` (bez pastowania sekretów do czatu).
 
 ### DEC-002 — Uprawnienie Administrator dla bota testowego P1
 
