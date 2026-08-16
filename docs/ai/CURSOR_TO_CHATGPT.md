@@ -22,8 +22,15 @@ http://127.0.0.1:3000
 
 ## Cross-interface (agent)
 
-Discord/backend Activity published → gateway list → RSVP → mine list OK.
+Discord/backend Activity published → activity-service list → RSVP → mine list OK.
+Same Activity backend as WWW (gateway BFF + session actor).
 Browser OAuth not completed locally (`IDENTITY_AUTH_ENABLED=false`).
+
+## CI note
+
+Quality gates previously failed after green `pnpm validate` on
+`pnpm audit --audit-level=high` (`@fastify/static` ≤10.1.0).
+Patched via root pnpm override `@fastify/static@10.1.1`.
 
 ## Owner action
 
