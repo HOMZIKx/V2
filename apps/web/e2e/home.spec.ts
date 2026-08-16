@@ -1,11 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-test('home redirects unauthenticated users to login', async ({ page }) => {
-  await page.goto('/');
+test('login page is reachable without a session', async ({ page }) => {
+  await page.goto('/logowanie');
 
-  await expect(page).toHaveURL(/\/logowanie/);
   await expect(page.getByRole('heading', { name: 'Logowanie' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Zaloguj przez Discord' })).toBeVisible();
+});
+
+test('home redirects unauthenticated users toward login', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/logowanie/);
+  await expect(page.getByRole('heading', { name: 'Logowanie' })).toBeVisible();
 });
 
 test('health route stays available', async ({ request }) => {
