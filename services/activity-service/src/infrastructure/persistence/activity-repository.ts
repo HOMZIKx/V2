@@ -3,12 +3,15 @@ import type { Pool, PoolClient } from 'pg';
 
 import type {
   ActivityDraftRecord,
+  ActivityProjectionRecord,
   ActivityRecord,
+  ActivityReportRecord,
   ActivityRepositoryPort,
   ActivityTx,
   GuildActivitySettingsRecord,
   HubPanelRecord,
   IdempotencyHit,
+  InboxItemRecord,
   OutboxInsert,
   OutboxMessageRecord,
   ParticipationRecord,
@@ -16,6 +19,7 @@ import type {
 } from '../../application/ports/activity.ports.js';
 import { ActivityError } from '../../domain/errors.js';
 import type { ActivityStatus } from '../../domain/lifecycle.js';
+import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { DEFAULT_STATUS_SEED, type StatusBehavior } from '../../domain/status-def.js';
 
 async function withTransaction<T>(pool: Pool, fn: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -68,6 +72,7 @@ function asRequiredDate(value: unknown, field: string): Date {
 }
 
 function mapSettings(row: Record<string, unknown>): GuildActivitySettingsRecord {
+  const channels = row.allowed_publish_channel_ids;
   return {
     guildId: asRequiredString(row.guild_id, 'guild_id'),
     orgId: asRequiredString(row.org_id, 'org_id'),
@@ -75,6 +80,7 @@ function mapSettings(row: Record<string, unknown>): GuildActivitySettingsRecord 
     waitlistPromotionStatusId: asNullableString(row.waitlist_promotion_status_id),
     maxActivePerCreator: Number(row.max_active_per_creator),
     registrationDefaultClosesAtStart: Boolean(row.registration_default_closes_at_start),
+    allowedPublishChannelIds: Array.isArray(channels) ? channels.map((value) => String(value)) : [],
   };
 }
 
@@ -108,8 +114,9 @@ function mapDraft(row: Record<string, unknown>): ActivityDraftRecord {
 }
 
 function mapActivity(row: Record<string, unknown>): ActivityRecord {
+  const id = asRequiredString(row.id, 'id');
   return {
-    id: asRequiredString(row.id, 'id'),
+    id,
     guildId: asRequiredString(row.guild_id, 'guild_id'),
     organizationId: asRequiredString(row.organization_id, 'organization_id'),
     typeId: asNullableString(row.type_id),
@@ -134,6 +141,7 @@ function mapActivity(row: Record<string, unknown>): ActivityRecord {
     cancelledAt: asNullableDate(row.cancelled_at),
     version: Number(row.version),
     scheduledFinishAt: asRequiredDate(row.scheduled_finish_at, 'scheduled_finish_at'),
+    opaqueId: asNullableString(row.opaque_id) ?? opaqueIdFromUuid(id),
     createdAt: asRequiredDate(row.created_at, 'created_at'),
     updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
   };
@@ -165,8 +173,9 @@ function mapParticipation(row: Record<string, unknown>): ParticipationRecord {
 }
 
 function mapPanel(row: Record<string, unknown>): HubPanelRecord {
+  const id = asRequiredString(row.id, 'id');
   return {
-    id: asRequiredString(row.id, 'id'),
+    id,
     organizationId: asRequiredString(row.organization_id, 'organization_id'),
     discordGuildId: asRequiredString(row.discord_guild_id, 'discord_guild_id'),
     channelId: asRequiredString(row.channel_id, 'channel_id'),
@@ -174,7 +183,65 @@ function mapPanel(row: Record<string, unknown>): HubPanelRecord {
     panelType: asRequiredString(row.panel_type, 'panel_type'),
     payloadVersion: Number(row.payload_version),
     status: asRequiredString(row.status, 'status'),
+    opaqueId: asNullableString(row.opaque_id) ?? opaqueIdFromUuid(id),
   };
+}
+
+function mapInbox(row: Record<string, unknown>): InboxItemRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    recipientDiscordUserId: asNullableString(row.recipient_discord_user_id),
+    recipientV2UserId: asNullableString(row.recipient_v2_user_id),
+    kind: asRequiredString(row.kind, 'kind'),
+    payload: (row.payload ?? {}) as Record<string, unknown>,
+    readAt: asNullableDate(row.read_at),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+  };
+}
+
+function mapReport(row: Record<string, unknown>): ActivityReportRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    activityId: asRequiredString(row.activity_id, 'activity_id'),
+    reporterDiscordUserId: asRequiredString(
+      row.reporter_discord_user_id,
+      'reporter_discord_user_id',
+    ),
+    reasonCategory: asRequiredString(row.reason_category, 'reason_category'),
+    details: asNullableString(row.details),
+    status: asRequiredString(row.status, 'status'),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+  };
+}
+
+function mapProjection(row: Record<string, unknown>): ActivityProjectionRecord {
+  const activityId = asRequiredString(row.activity_id, 'activity_id');
+  return {
+    activityId,
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    channelId: asRequiredString(row.channel_id, 'channel_id'),
+    messageId: asNullableString(row.message_id),
+    status: asRequiredString(row.status, 'status'),
+    opaqueId: asNullableString(row.opaque_id) ?? opaqueIdFromUuid(activityId),
+    revision: Number(row.revision ?? 1),
+    lastError: asNullableString(row.last_error),
+    retryCount: Number(row.retry_count ?? 0),
+    leaseOwner: asNullableString(row.lease_owner),
+    leaseExpiresAt: asNullableDate(row.lease_expires_at),
+    desiredPayloadVersion: Number(row.desired_payload_version ?? 1),
+    updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
+  };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    asNullableString(error.code) === '23505'
+  );
 }
 
 function createTx(client: PoolClient): ActivityTx {
@@ -379,14 +446,16 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async insertActivity(input) {
+      const opaqueId = input.opaqueId ?? opaqueIdFromUuid(input.id);
       const result = await client.query(
         `INSERT INTO activities (
            id, guild_id, organization_id, type_id, name, description, start_at, end_at, status,
            enrollment_open, participant_limit, organizer_discord_user_id, organizer_v2_user_id,
            co_organizer_discord_user_id, co_organizer_v2_user_id, publication_channel_id,
-           timezone, location_text, cancel_reason, cancelled_at, version, scheduled_finish_at
+           timezone, location_text, cancel_reason, cancelled_at, version, scheduled_finish_at,
+           opaque_id
          ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
          ) RETURNING *`,
         [
           input.id,
@@ -411,6 +480,7 @@ function createTx(client: PoolClient): ActivityTx {
           input.cancelledAt?.toISOString() ?? null,
           input.version ?? 1,
           input.scheduledFinishAt.toISOString(),
+          opaqueId,
         ],
       );
       return mapActivity(result.rows[0] as Record<string, unknown>);
@@ -460,6 +530,14 @@ function createTx(client: PoolClient): ActivityTx {
 
     async getActivity(id) {
       const result = await client.query(`SELECT * FROM activities WHERE id = $1`, [id]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapActivity(row);
+    },
+
+    async getActivityByOpaqueId(opaqueId) {
+      const result = await client.query(`SELECT * FROM activities WHERE opaque_id = $1`, [
+        opaqueId,
+      ]);
       const row = result.rows[0] as Record<string, unknown> | undefined;
       return row === undefined ? null : mapActivity(row);
     },
@@ -616,13 +694,16 @@ function createTx(client: PoolClient): ActivityTx {
       );
       const row = existing.rows[0] as Record<string, unknown> | undefined;
       if (row === undefined) {
+        const id = randomUUID();
+        const opaqueId = input.opaqueId ?? opaqueIdFromUuid(id);
         const inserted = await client.query(
           `INSERT INTO activity_hub_panels (
-             organization_id, discord_guild_id, channel_id, message_id, panel_type,
-             payload_version, status
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+             id, organization_id, discord_guild_id, channel_id, message_id, panel_type,
+             payload_version, status, opaque_id
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
            RETURNING *`,
           [
+            id,
             input.organizationId,
             input.discordGuildId,
             input.channelId,
@@ -630,6 +711,7 @@ function createTx(client: PoolClient): ActivityTx {
             input.panelType,
             input.payloadVersion ?? 1,
             input.status ?? 'unconfigured',
+            opaqueId,
           ],
         );
         const created = inserted.rows[0] as Record<string, unknown>;
@@ -675,6 +757,14 @@ function createTx(client: PoolClient): ActivityTx {
         return null;
       }
       return mapPanel(row);
+    },
+
+    async getPanelByOpaqueId(opaqueId) {
+      const result = await client.query(`SELECT * FROM activity_hub_panels WHERE opaque_id = $1`, [
+        opaqueId,
+      ]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapPanel(row);
     },
 
     async listPanels(guildId) {
@@ -773,6 +863,221 @@ function createTx(client: PoolClient): ActivityTx {
            claim_owner = NULL, claim_expires_at = NULL, claimed_at = NULL
          WHERE id = $1`,
         [id, error, availableAt.toISOString()],
+      );
+    },
+
+    async permanentFailOutbox(id, error) {
+      await client.query(
+        `UPDATE outbox_messages SET
+           status = 'failed', last_error = $2,
+           claim_owner = NULL, claim_expires_at = NULL, claimed_at = NULL
+         WHERE id = $1`,
+        [id, error],
+      );
+    },
+
+    async listInbox(input) {
+      const limit = Math.min(Math.max(input.limit, 1), 100);
+      const cursorCreatedAt =
+        input.cursor !== undefined && input.cursor.includes('|')
+          ? input.cursor.split('|')[0]
+          : null;
+      const cursorId =
+        input.cursor !== undefined && input.cursor.includes('|')
+          ? input.cursor.split('|').slice(1).join('|')
+          : null;
+
+      const result = await client.query(
+        `SELECT * FROM notification_inbox_items
+         WHERE recipient_discord_user_id = $1
+           AND (
+             $2::timestamptz IS NULL
+             OR created_at < $2::timestamptz
+             OR (created_at = $2::timestamptz AND id < $3::uuid)
+           )
+         ORDER BY created_at DESC, id DESC
+         LIMIT $4`,
+        [input.discordUserId, cursorCreatedAt, cursorId, limit + 1],
+      );
+      const rows = result.rows.map((row) => mapInbox(row as Record<string, unknown>));
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      const last = items[items.length - 1];
+      return {
+        items,
+        nextCursor:
+          hasMore && last !== undefined ? `${last.createdAt.toISOString()}|${last.id}` : null,
+      };
+    },
+
+    async markInboxRead(id, discordUserId) {
+      const result = await client.query(
+        `UPDATE notification_inbox_items
+         SET read_at = COALESCE(read_at, now())
+         WHERE id = $1 AND recipient_discord_user_id = $2
+         RETURNING *`,
+        [id, discordUserId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Inbox item not found');
+      }
+      return mapInbox(row);
+    },
+
+    async enqueueInbox(input) {
+      const id = randomUUID();
+      const payload =
+        input.dedupeKey !== undefined
+          ? { ...input.payload, dedupeKey: input.dedupeKey }
+          : input.payload;
+
+      try {
+        const result = await client.query(
+          `INSERT INTO notification_inbox_items (
+             id, guild_id, recipient_discord_user_id, kind, payload
+           ) VALUES ($1,$2,$3,$4,$5::jsonb)
+           RETURNING *`,
+          [id, input.guildId, input.recipientDiscordUserId, input.kind, JSON.stringify(payload)],
+        );
+        return {
+          item: mapInbox(result.rows[0] as Record<string, unknown>),
+          created: true,
+        };
+      } catch (error) {
+        if (!isUniqueViolation(error) || input.dedupeKey === undefined) {
+          throw error;
+        }
+        const existing = await client.query(
+          `SELECT * FROM notification_inbox_items
+           WHERE recipient_discord_user_id = $1
+             AND kind = $2
+             AND payload->>'dedupeKey' = $3
+           LIMIT 1`,
+          [input.recipientDiscordUserId, input.kind, input.dedupeKey],
+        );
+        const row = existing.rows[0] as Record<string, unknown> | undefined;
+        if (row === undefined) {
+          throw error;
+        }
+        return { item: mapInbox(row), created: false };
+      }
+    },
+
+    async createReport(input) {
+      const result = await client.query(
+        `INSERT INTO activity_reports (
+           id, guild_id, activity_id, reporter_discord_user_id, reason_category, details
+         ) VALUES ($1,$2,$3,$4,$5,$6)
+         RETURNING *`,
+        [
+          input.id,
+          input.guildId,
+          input.activityId,
+          input.reporterDiscordUserId,
+          input.reasonCategory,
+          input.details ?? null,
+        ],
+      );
+      return mapReport(result.rows[0] as Record<string, unknown>);
+    },
+
+    async listReports(guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_reports WHERE guild_id = $1 ORDER BY created_at DESC`,
+        [guildId],
+      );
+      return result.rows.map((row) => mapReport(row as Record<string, unknown>));
+    },
+
+    async upsertActivityProjection(input) {
+      const result = await client.query(
+        `INSERT INTO activity_projections (
+           activity_id, guild_id, channel_id, message_id, status, opaque_id,
+           revision, last_error, retry_count, lease_owner, lease_expires_at,
+           desired_payload_version, updated_at
+         ) VALUES (
+           $1,$2,$3,$4,COALESCE($5, 'pending'),$6,COALESCE($7, 1),$8,COALESCE($9, 0),$10,$11,COALESCE($12, 1), now()
+         )
+         ON CONFLICT (activity_id) DO UPDATE SET
+           guild_id = EXCLUDED.guild_id,
+           channel_id = EXCLUDED.channel_id,
+           message_id = COALESCE($4, activity_projections.message_id),
+           status = COALESCE($5, activity_projections.status),
+           opaque_id = EXCLUDED.opaque_id,
+           revision = CASE
+             WHEN $7::integer IS NULL THEN activity_projections.revision + 1
+             ELSE $7::integer
+           END,
+           last_error = $8,
+           retry_count = COALESCE($9, activity_projections.retry_count),
+           lease_owner = $10,
+           lease_expires_at = $11,
+           desired_payload_version = COALESCE($12, activity_projections.desired_payload_version),
+           updated_at = now()
+         RETURNING *`,
+        [
+          input.activityId,
+          input.guildId,
+          input.channelId,
+          input.messageId === undefined ? null : input.messageId,
+          input.status ?? null,
+          input.opaqueId,
+          input.revision ?? null,
+          input.lastError === undefined ? null : input.lastError,
+          input.retryCount ?? null,
+          input.leaseOwner === undefined ? null : input.leaseOwner,
+          input.leaseExpiresAt === undefined ? null : (input.leaseExpiresAt?.toISOString() ?? null),
+          input.desiredPayloadVersion ?? null,
+        ],
+      );
+      return mapProjection(result.rows[0] as Record<string, unknown>);
+    },
+
+    async getActivityProjection(activityId) {
+      const result = await client.query(
+        `SELECT * FROM activity_projections WHERE activity_id = $1`,
+        [activityId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapProjection(row);
+    },
+
+    async claimProjectionRepair(input) {
+      const result = await client.query(
+        `WITH picked AS (
+           SELECT activity_id FROM activity_projections
+           WHERE status IN ('pending', 'failed', 'degraded', 'missing')
+             AND (lease_expires_at IS NULL OR lease_expires_at <= $1)
+           ORDER BY updated_at
+           FOR UPDATE SKIP LOCKED
+           LIMIT $2
+         )
+         UPDATE activity_projections p SET
+           lease_owner = $3,
+           lease_expires_at = $4,
+           retry_count = retry_count + 1,
+           status = 'pending',
+           updated_at = $1
+         FROM picked
+         WHERE p.activity_id = picked.activity_id
+         RETURNING p.*`,
+        [
+          input.now.toISOString(),
+          input.limit,
+          input.owner,
+          new Date(input.now.getTime() + input.leaseSeconds * 1000).toISOString(),
+        ],
+      );
+      return result.rows.map((row) => mapProjection(row as Record<string, unknown>));
+    },
+
+    async setAllowedPublishChannelIds(guildId, channelIds) {
+      await client.query(
+        `UPDATE guild_activity_settings
+         SET allowed_publish_channel_ids = $2::text[], updated_at = now()
+         WHERE guild_id = $1`,
+        [guildId, [...channelIds]],
       );
     },
 

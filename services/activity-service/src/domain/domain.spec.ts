@@ -10,6 +10,7 @@ import {
 } from './create-limits.js';
 import { ActivityError } from './errors.js';
 import { assertTransition, canPermanentlyDelete, scheduledFinishAt } from './lifecycle.js';
+import { generateOpaqueId, isValidOpaqueId, opaqueIdFromUuid } from './opaque-id.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from './reconfirmation.js';
 import { serviceName } from './service-name.js';
 import { assertValidReferenceStatus } from './status-def.js';
@@ -18,6 +19,18 @@ import { assignWaitlistPosition, nextWaitlistPromotion } from './waitlist.js';
 describe('service-name', () => {
   it('is activity-service', () => {
     expect(serviceName).toBe('activity-service');
+  });
+});
+
+describe('opaque-id', () => {
+  it('derives 12-char lowercase hex from uuid', () => {
+    const opaque = opaqueIdFromUuid('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+    expect(opaque).toBe('a1b2c3d4e5f6');
+    expect(isValidOpaqueId(opaque)).toBe(true);
+  });
+
+  it('generates valid opaque ids', () => {
+    expect(isValidOpaqueId(generateOpaqueId())).toBe(true);
   });
 });
 

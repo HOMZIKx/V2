@@ -2,37 +2,31 @@
 
 ## Task
 
-`P4.1-ACTIVITY-DOMAIN-001` — activity-service backend foundation.
+`P4.2-DISCORD-CENTRUM-CORE` — discord-gateway Centrum Aktywności core (same PR/branch as P4.1).
 
 ## Status
 
-`READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`
+`READY_FOR_REVIEW_P4_2_DISCORD_GATEWAY_CORE`
 
 ## Branch
 
 `cursor/p4-1-activity-domain`
 
-## Commit message
+## Scope delivered (gateway)
 
-`feat(activity): add P4.1 activity backend foundation`
+- Signed activity custom IDs + hub/event Components V2 renderers (teal accent, no legacy embeds)
+- `ActivityHttpClient` + `ActivityProjectionController` (`POST /internal/activity/v1/projections/deliver`)
+- Guild commands `centrum-*` + P1 LAB harness kept
+- `ActivityInteractionHandler` (create/lfg modal-before-defer, RSVP opaque→statusDefId)
+- Config: `DISCORD_ACTIVITY_ENABLED`, `ACTIVITY_SERVICE_BASE_URL`, `ACTIVITY_CLIENT_MODE`, `ACTIVITY_ORGANIZATION_ID`, projection secret, assertion keys
 
-## Scope delivered
+## Explicitly not done
 
-- Full `services/activity-service` P4.1 foundation (domain, application, PG persistence, HTTP, OpenAPI)
-- DB isolation: role/DB `activity` in postgres init + infra isolation tests
-- Env `ACTIVITY_*`, smoke hook, architecture boundaries, SERVICE_CATALOG, CI migrate + activity infra tests
-- RSVP / limit / waitlist FIFO / reconfirm / idempotency / transactional outbox claim-lease (worker off)
+- RabbitMQ / runtime outbox worker
+- Full draft opaque round-trip persistence
+- Issue #12 banner assets / prod visual sign-off
+- Merge to `main`
 
-## Explicitly not done (by design)
+## Verification
 
-- P4.2 Discord panel/UI publish
-- RabbitMQ / multi-consumer bus
-- Runtime outbox worker (`ACTIVITY_OUTBOX_WORKER_ENABLED=false`)
-- Admin / WWW UI
-- No merge to `main`
-
-## Verification notes
-
-- Local unit/typecheck/lint/architecture: green
-- Local Docker daemon unavailable → PG concurrency/isolation verified via CI `infra-integration` job
-- Marker for ChatGPT audit: `READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`
+- typecheck + 84 discord-gateway unit tests green

@@ -2,38 +2,32 @@
 
 ## Status
 
-`READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`
+`READY_FOR_REVIEW_P4_2_DISCORD_GATEWAY_CORE`
 
 ## Active phase
 
-P4.1 — activity-service domain / data / contracts / outbox core (implementation complete, awaiting audit).
+P4.2 — Discord Centrum Aktywności gateway core (same branch as P4.1).
 
 ## Active task
 
-- Task ID: `P4.1-ACTIVITY-DOMAIN-001`
+- Task ID: `P4.2-DISCORD-CENTRUM-CORE`
 - Branch: `cursor/p4-1-activity-domain`
-- PR title: `feat(activity): add P4.1 activity backend foundation`
-- Service: `@v2/activity-service` / DB `activity` / port `4400`
-- Out of scope (deferred): P4.2 Discord UI, RabbitMQ, runtime outbox publisher, Admin/WWW UI
+- Service: `@v2/discord-gateway` (+ activity-service opaque/projection support in flight)
+- Out of scope (deferred): full RSVP waitlist UX polish, RabbitMQ, Admin/WWW UI, Issue #12 banner assets
 
-## Delivered in P4.1
+## Delivered in P4.2 gateway core
 
-- NestJS 11 + Fastify service bootstrap, health, validated env, graceful shutdown, observability
-- Domain invariants: lifecycle, StatusDef behaviors, capacity/`occupiesSlot`, waitlist FIFO, reconfirm, max-4, 14-day horizon, Clock port
-- PostgreSQL foundation migration + transactional outbox (claim/lease/retry) + idempotency store
-- Application use-cases for draft → publish → RSVP/waitlist → lifecycle → reschedule/reconfirm → panel state → outbox ops
-- Authorization via S2S HTTP to P3 (AllowAll stub when `ACTIVITY_ENABLED=false`); exact P4-D7 permission IDs
-- HTTP `/activity/v1` + OpenAPI `openapi/activity-v1.yaml`
-- Architecture boundaries isolating `scope:activity`; postgres role/DB `activity`; CI migrate + infra tests
-- Unit + OpenAPI contract tests; PG concurrency/idempotency/outbox infra tests (CI `RUN_INFRA_TESTS=true`)
+- Signed activity custom IDs (`activity:v1:panel|event|draft:…`) + hub/event Components V2 renderers
+- `ActivityHttpClient` (headers/assertion) + internal projection deliver endpoint
+- Operator guild commands: `centrum-panel|status|reconcile|seed` alongside P1 `/status` `/panel-test`
+- `ActivityInteractionHandler` wired through `InteractionRouter` / `createDiscordGatewayOrNull`
+- Hub create/lfg: `showModal` before defer; RSVP resolves `statusDefId` via guild config opaque match
 
-## Open / deferred
+## Verification
 
-- P4.2 Discord Components V2 panel / gateway adapter
-- Runtime outbox worker + RabbitMQ (P4.5+)
-- Global maintenance scanners beyond HTTP maintenance endpoints
-- P4-D8 assets / screenshot visual contract (does not block P4.1)
+- `npx tsc -p apps/discord-gateway/tsconfig.json --noEmit` — green
+- `vitest run` (discord-gateway) — 84 tests green
 
 ## Last updated
 
-2026-08-16 — Cursor (`P4.1-ACTIVITY-DOMAIN-001`)
+2026-08-16 — Cursor (`P4.2-DISCORD-CENTRUM-CORE`)

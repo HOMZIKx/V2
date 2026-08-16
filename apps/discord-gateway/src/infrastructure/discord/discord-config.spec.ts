@@ -80,4 +80,23 @@ describe('discord config', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('allows activity disabled by default without activity org id', () => {
+    const parsed = DiscordGatewayConfigSchema.parse({
+      DISCORD_ENABLED: 'false',
+      DISCORD_ACTIVITY_ENABLED: 'false',
+    });
+    expect(parsed.DISCORD_ACTIVITY_ENABLED).toBe(false);
+    expect(parsed.ACTIVITY_CLIENT_MODE).toBe('headers');
+    expect(parsed.ACTIVITY_SERVICE_BASE_URL).toBe('http://127.0.0.1:4400');
+  });
+
+  it('requires organization id when Discord activity is enabled', () => {
+    const result = DiscordGatewayConfigSchema.safeParse({
+      DISCORD_ENABLED: 'false',
+      DISCORD_ACTIVITY_ENABLED: 'true',
+      ACTIVITY_ORGANIZATION_ID: '',
+    });
+    expect(result.success).toBe(false);
+  });
 });

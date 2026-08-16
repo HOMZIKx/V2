@@ -138,6 +138,28 @@ const outboxFailSchema = z.object({
   error: z.string().min(1),
 });
 
+const reportCreateSchema = z.object({
+  reasonCategory: z.string().min(1).max(100),
+  details: z.string().max(4000).nullable().optional(),
+});
+
+const projectionUpsertSchema = z.object({
+  channelId: z.string().min(1),
+  messageId: z.string().nullable().optional(),
+  status: z.string().optional(),
+  revision: z.number().int().positive().optional(),
+  lastError: z.string().nullable().optional(),
+  retryCount: z.number().int().nonnegative().optional(),
+  desiredPayloadVersion: z.number().int().positive().optional(),
+  opaqueId: z.string().length(12).optional(),
+});
+
+const seedGuildSchema = z.object({
+  guildId: z.string().min(1),
+  orgId: z.string().min(1),
+  channelId: z.string().min(1),
+});
+
 @Controller('activity/v1')
 @UseGuards(InboundAssertionGuard)
 @UseFilters(ActivityExceptionFilter)
@@ -234,6 +256,15 @@ export class ActivityController {
       throw new ActivityError('VALIDATION_FAILED', 'guildId query is required');
     }
     return this.useCases.listActivities(guildId, actorFromRequest(request));
+  }
+
+  @Get('activities/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async getActivityByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getActivityByOpaqueId(opaqueId, actorFromRequest(request));
   }
 
   @Get('activities/:id')
@@ -538,6 +569,15 @@ export class ActivityController {
     return this.useCases.listPanels(guildId, actorFromRequest(request));
   }
 
+  @Get('panels/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async getPanelByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getPanelByOpaqueId(opaqueId, actorFromRequest(request));
+  }
+
   @Get('panels/:id')
   @RequireOperation('activity_read')
   public async getPanel(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
@@ -619,5 +659,104 @@ export class ActivityController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.useCases.listMyActivities(actorFromRequest(request), guildId);
+  }
+
+  @Get('inbox')
+  @RequireOperation('activity_read')
+  public async listInbox(
+    @Query('limit') limitRaw: string | undefined,
+    @Query('cursor') cursor: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const limit =
+      limitRaw === undefined || limitRaw.trim() === '' ? undefined : Number.parseInt(limitRaw, 10);
+    if (limit !== undefined && (!Number.isFinite(limit) || limit < 1)) {
+      throw new ActivityError('VALIDATION_FAILED', 'limit must be a positive integer');
+    }
+    return this.useCases.listInbox(actorFromRequest(request), {
+      ...(limit !== undefined ? { limit } : {}),
+      ...(cursor !== undefined ? { cursor } : {}),
+    });
+  }
+
+  @Post('inbox/:id/read')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async markInboxRead(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.useCases.markInboxRead(id, actorFromRequest(request));
+  }
+
+  @Post('activities/:id/reports')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async createReport(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(reportCreateSchema, body);
+    return this.useCases.createReport(
+      id,
+      {
+        reasonCategory: parsed.reasonCategory,
+        ...(parsed.details !== undefined ? { details: parsed.details } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Get('guilds/:guildId/reports')
+  @RequireOperation('activity_read')
+  public async listReports(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.listReports(guildId, actorFromRequest(request));
+  }
+
+  @Put('activities/:id/projection')
+  @RequireOperation('activity_mutate')
+  public async upsertProjection(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(projectionUpsertSchema, body);
+    return this.useCases.upsertActivityProjection(
+      id,
+      {
+        channelId: parsed.channelId,
+        ...(parsed.messageId !== undefined ? { messageId: parsed.messageId } : {}),
+        ...(parsed.status !== undefined ? { status: parsed.status } : {}),
+        ...(parsed.revision !== undefined ? { revision: parsed.revision } : {}),
+        ...(parsed.lastError !== undefined ? { lastError: parsed.lastError } : {}),
+        ...(parsed.retryCount !== undefined ? { retryCount: parsed.retryCount } : {}),
+        ...(parsed.desiredPayloadVersion !== undefined
+          ? { desiredPayloadVersion: parsed.desiredPayloadVersion }
+          : {}),
+        ...(parsed.opaqueId !== undefined ? { opaqueId: parsed.opaqueId } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Get('activities/:id/projection')
+  @RequireOperation('activity_read')
+  public async getProjection(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.useCases.getActivityProjection(id, actorFromRequest(request));
+  }
+
+  @Post('test/seed-guild')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async seedTestGuild(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(seedGuildSchema, body);
+    return this.useCases.seedTestGuild(parsed, mutationCtx(request, idempotencyKey));
   }
 }

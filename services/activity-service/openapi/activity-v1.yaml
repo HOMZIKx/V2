@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Activity Service API
-  version: 1.0.0
-  description: P4.1 activity-service HTTP foundation (`/activity/v1`).
+  version: 1.1.0
+  description: P4.1–P4.2 activity-service HTTP API (`/activity/v1`) including Discord projection support.
 servers:
   - url: http://127.0.0.1:4400
 paths:
@@ -312,6 +312,105 @@ paths:
       responses:
         '200':
           description: Activities
+  /activity/v1/inbox:
+    get:
+      summary: List private notification inbox for the actor
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Inbox page
+  /activity/v1/inbox/{id}/read:
+    post:
+      summary: Mark inbox item read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inbox item
+  /activity/v1/activities/by-opaque/{opaqueId}:
+    get:
+      summary: Get activity by opaque id
+      parameters:
+        - name: opaqueId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{12}$'
+      responses:
+        '200':
+          description: Activity
+  /activity/v1/panels/by-opaque/{opaqueId}:
+    get:
+      summary: Get hub panel by opaque id
+      parameters:
+        - name: opaqueId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{12}$'
+      responses:
+        '200':
+          description: Panel
+  /activity/v1/activities/{id}/reports:
+    post:
+      summary: Create activity report
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Report created
+  /activity/v1/guilds/{guildId}/reports:
+    get:
+      summary: List guild reports (manage.guild or report.manage)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Reports
+  /activity/v1/activities/{id}/projection:
+    get:
+      summary: Get Discord projection row for activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+      responses:
+        '200':
+          description: Projection
+    put:
+      summary: Upsert Discord projection row
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Projection upserted
+  /activity/v1/test/seed-guild:
+    post:
+      summary: Idempotent test guild seed (non-production + ACTIVITY_ALLOW_TEST_SEED)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Seeded
 components:
   parameters:
     IdempotencyKey:
@@ -350,4 +449,6 @@ components:
         - activity.activity.schedule_changed.v1
         - activity.activity.waitlist_promoted.v1
         - activity.activity.reconfirm_required.v1
+        - activity.activity.finished.v1
+        - activity.activity.projection_requested.v1
         - activity.panel.projection_repaired.v1

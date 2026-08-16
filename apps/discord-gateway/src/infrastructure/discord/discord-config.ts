@@ -70,10 +70,73 @@ export const DiscordGatewayConfigSchema = z
       .positive()
       .max(60)
       .default(60),
+    DISCORD_ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    ACTIVITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4400'),
+    ACTIVITY_CLIENT_MODE: z.enum(['headers', 'assertion']).optional().default('headers'),
+    ACTIVITY_ORGANIZATION_ID: z.string().optional().default(''),
+    /** Mirrors activity-service ACTIVITY_ENABLED for local projection guard path. */
+    ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    ACTIVITY_PROJECTION_SHARED_SECRET: z.string().optional().default(''),
+    DISCORD_TO_ACTIVITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
+    DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: z.string().optional(),
+    DISCORD_TO_ACTIVITY_ACTIVE_KID: z.string().optional(),
+    ACTIVITY_ASSERTION_AUD: z.string().optional(),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
   })
   .superRefine((config, ctx) => {
+    if (config.DISCORD_ACTIVITY_ENABLED) {
+      try {
+        new URL(config.ACTIVITY_SERVICE_BASE_URL);
+      } catch {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_SERVICE_BASE_URL'],
+          message:
+            'ACTIVITY_SERVICE_BASE_URL must be a valid URL when Discord activity is enabled.',
+        });
+      }
+      if (config.ACTIVITY_ORGANIZATION_ID.trim().length === 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_ORGANIZATION_ID'],
+          message: 'ACTIVITY_ORGANIZATION_ID is required when Discord activity is enabled.',
+        });
+      }
+      if (config.ACTIVITY_CLIENT_MODE === 'assertion') {
+        const pem = config.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM ?? '';
+        if (!pem.includes('BEGIN PRIVATE KEY')) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM'],
+            message:
+              'DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.DISCORD_TO_ACTIVITY_ACTIVE_KID === undefined ||
+          config.DISCORD_TO_ACTIVITY_ACTIVE_KID.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_ACTIVITY_ACTIVE_KID'],
+            message:
+              'DISCORD_TO_ACTIVITY_ACTIVE_KID is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.ACTIVITY_ASSERTION_AUD === undefined ||
+          config.ACTIVITY_ASSERTION_AUD.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['ACTIVITY_ASSERTION_AUD'],
+            message: 'ACTIVITY_ASSERTION_AUD is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+      }
+    }
+
     if (config.DISCORD_AUTHORIZATION_SYNC_ENABLED) {
       if (
         config.AUTHORIZATION_BASE_URL === undefined ||

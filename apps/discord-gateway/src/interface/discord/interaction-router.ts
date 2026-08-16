@@ -16,6 +16,7 @@ import {
   isAllowedGuild,
 } from '../../application/interactions/authorization.js';
 import { claimInteractionId } from '../../application/interactions/idempotency.js';
+import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import { safeErrorMessage } from '../../infrastructure/security/secret-redaction.js';
@@ -29,6 +30,7 @@ import {
   renderDeleteConfirmation,
   renderPanelMessage,
 } from '../../presentation/discord/panel-renderer.js';
+import { ActivityInteractionHandler } from './activity-interaction-handler.js';
 
 export type InteractionRouterDeps = {
   config: DiscordGatewayConfig;
@@ -38,15 +40,27 @@ export type InteractionRouterDeps = {
     warn(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
   };
+  activityClient?: ActivityHttpClient | null;
 };
 
 export class InteractionRouter {
   private readonly secrets: string[];
+  private readonly activityHandler: ActivityInteractionHandler | null;
 
   public constructor(private readonly deps: InteractionRouterDeps) {
     this.secrets = [deps.config.DISCORD_TOKEN, deps.config.DISCORD_COMPONENT_SIGNING_SECRET].filter(
       (value) => value.length > 0,
     );
+    const activityClient = deps.activityClient ?? null;
+    this.activityHandler =
+      deps.config.DISCORD_ACTIVITY_ENABLED && activityClient !== null
+        ? new ActivityInteractionHandler({
+            config: deps.config,
+            gateway: deps.gateway,
+            activityClient,
+            logger: deps.logger,
+          })
+        : null;
   }
 
   public async handle(interaction: Interaction): Promise<void> {
@@ -117,6 +131,13 @@ export class InteractionRouter {
   }
 
   private async handleCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+    if (this.activityHandler !== null) {
+      const handled = await this.activityHandler.handleCommand(interaction);
+      if (handled) {
+        return;
+      }
+    }
+
     if (interaction.commandName === 'status') {
       await this.handleStatus(interaction);
       return;
@@ -208,6 +229,13 @@ export class InteractionRouter {
   }
 
   private async handleComponent(interaction: MessageComponentInteraction): Promise<void> {
+    if (this.activityHandler !== null) {
+      const handled = await this.activityHandler.handleComponent(interaction);
+      if (handled) {
+        return;
+      }
+    }
+
     let parsed;
     try {
       parsed = parseSignedCustomId(
@@ -378,6 +406,13 @@ export class InteractionRouter {
   }
 
   private async handleModal(interaction: ModalSubmitInteraction): Promise<void> {
+    if (this.activityHandler !== null) {
+      const handled = await this.activityHandler.handleModal(interaction);
+      if (handled) {
+        return;
+      }
+    }
+
     try {
       parseSignedCustomId(interaction.customId, this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET);
     } catch {

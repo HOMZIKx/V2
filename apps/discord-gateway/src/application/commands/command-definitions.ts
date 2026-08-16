@@ -1,6 +1,7 @@
 import type { GuildCommandDefinition } from '../ports/gateway.ports.js';
 
 export const TEST_COMMAND_VERSION = 'p1.0.0';
+export const ACTIVITY_COMMAND_VERSION = 'p4.2.0';
 
 export const guildCommandDefinitions: GuildCommandDefinition[] = [
   {
@@ -12,6 +13,26 @@ export const guildCommandDefinitions: GuildCommandDefinition[] = [
     name: 'panel-test',
     description: 'Opublikuj trwały panel testowy V2 LAB w tym kanale.',
     version: TEST_COMMAND_VERSION,
+  },
+  {
+    name: 'centrum-panel',
+    description: 'Opublikuj / uzgodnij panel Centrum Aktywności w tym kanale (operator).',
+    version: ACTIVITY_COMMAND_VERSION,
+  },
+  {
+    name: 'centrum-status',
+    description: 'Pokaż status panelu Centrum Aktywności (ephemeral).',
+    version: ACTIVITY_COMMAND_VERSION,
+  },
+  {
+    name: 'centrum-reconcile',
+    description: 'Adoptuj / uzgodnij istniejącą wiadomość Centrum (operator).',
+    version: ACTIVITY_COMMAND_VERSION,
+  },
+  {
+    name: 'centrum-seed',
+    description: 'Uruchom seed testowy activity-service (operator, non-prod).',
+    version: ACTIVITY_COMMAND_VERSION,
   },
 ];
 

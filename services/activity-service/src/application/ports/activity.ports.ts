@@ -43,6 +43,7 @@ export interface GuildActivitySettingsRecord {
   readonly waitlistPromotionStatusId: string | null;
   readonly maxActivePerCreator: number;
   readonly registrationDefaultClosesAtStart: boolean;
+  readonly allowedPublishChannelIds: readonly string[];
 }
 
 export interface ActivityDraftRecord {
@@ -80,6 +81,7 @@ export interface ActivityRecord {
   readonly cancelledAt: Date | null;
   readonly version: number;
   readonly scheduledFinishAt: Date;
+  readonly opaqueId: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -109,6 +111,60 @@ export interface HubPanelRecord {
   readonly panelType: string;
   readonly payloadVersion: number;
   readonly status: string;
+  readonly opaqueId: string;
+}
+
+export interface InboxItemRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly recipientDiscordUserId: string | null;
+  readonly recipientV2UserId: string | null;
+  readonly kind: string;
+  readonly payload: Record<string, unknown>;
+  readonly readAt: Date | null;
+  readonly createdAt: Date;
+}
+
+export interface ActivityReportRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly activityId: string;
+  readonly reporterDiscordUserId: string;
+  readonly reasonCategory: string;
+  readonly details: string | null;
+  readonly status: string;
+  readonly createdAt: Date;
+}
+
+export interface ActivityProjectionRecord {
+  readonly activityId: string;
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly messageId: string | null;
+  readonly status: string;
+  readonly opaqueId: string;
+  readonly revision: number;
+  readonly lastError: string | null;
+  readonly retryCount: number;
+  readonly leaseOwner: string | null;
+  readonly leaseExpiresAt: Date | null;
+  readonly desiredPayloadVersion: number;
+  readonly updatedAt: Date;
+}
+
+export interface UpsertActivityProjectionInput {
+  readonly activityId: string;
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly opaqueId: string;
+  readonly messageId?: string | null;
+  readonly status?: string;
+  readonly revision?: number;
+  readonly lastError?: string | null;
+  readonly retryCount?: number;
+  readonly desiredPayloadVersion?: number;
+  readonly leaseOwner?: string | null;
+  readonly leaseExpiresAt?: Date | null;
 }
 
 export interface OutboxMessageRecord {
@@ -169,10 +225,14 @@ export interface ActivityTx {
   ): Promise<ActivityDraftRecord>;
   deleteDraft(id: string): Promise<void>;
   insertActivity(
-    input: Omit<ActivityRecord, 'createdAt' | 'updatedAt' | 'version'> & { version?: number },
+    input: Omit<ActivityRecord, 'createdAt' | 'updatedAt' | 'version' | 'opaqueId'> & {
+      version?: number;
+      opaqueId?: string;
+    },
   ): Promise<ActivityRecord>;
   updateActivity(activity: ActivityRecord): Promise<ActivityRecord>;
   getActivity(id: string): Promise<ActivityRecord | null>;
+  getActivityByOpaqueId(opaqueId: string): Promise<ActivityRecord | null>;
   listActivities(guildId: string): Promise<ActivityRecord[]>;
   listMyActivities(input: {
     guildId?: string;
@@ -202,8 +262,10 @@ export interface ActivityTx {
     messageId?: string | null;
     status?: string;
     payloadVersion?: number;
+    opaqueId?: string;
   }): Promise<{ panel: HubPanelRecord; repaired: boolean }>;
   getPanel(id: string): Promise<HubPanelRecord | null>;
+  getPanelByOpaqueId(opaqueId: string): Promise<HubPanelRecord | null>;
   listPanels(guildId: string): Promise<HubPanelRecord[]>;
   insertPublishOccurrence(input: {
     panelId: string;
@@ -222,6 +284,38 @@ export interface ActivityTx {
   }): Promise<OutboxMessageRecord[]>;
   completeOutbox(id: string): Promise<void>;
   failOutbox(id: string, error: string, availableAt: Date): Promise<void>;
+  permanentFailOutbox(id: string, error: string): Promise<void>;
+  listInbox(input: {
+    discordUserId: string;
+    limit: number;
+    cursor?: string;
+  }): Promise<{ items: InboxItemRecord[]; nextCursor: string | null }>;
+  markInboxRead(id: string, discordUserId: string): Promise<InboxItemRecord>;
+  enqueueInbox(input: {
+    guildId: string;
+    recipientDiscordUserId: string;
+    kind: string;
+    payload: Record<string, unknown>;
+    dedupeKey?: string;
+  }): Promise<{ item: InboxItemRecord; created: boolean }>;
+  createReport(input: {
+    id: string;
+    guildId: string;
+    activityId: string;
+    reporterDiscordUserId: string;
+    reasonCategory: string;
+    details?: string | null;
+  }): Promise<ActivityReportRecord>;
+  listReports(guildId: string): Promise<ActivityReportRecord[]>;
+  upsertActivityProjection(input: UpsertActivityProjectionInput): Promise<ActivityProjectionRecord>;
+  getActivityProjection(activityId: string): Promise<ActivityProjectionRecord | null>;
+  claimProjectionRepair(input: {
+    owner: string;
+    limit: number;
+    leaseSeconds: number;
+    now: Date;
+  }): Promise<ActivityProjectionRecord[]>;
+  setAllowedPublishChannelIds(guildId: string, channelIds: readonly string[]): Promise<void>;
   findIdempotency(input: {
     scope: string;
     actorKey: string;
@@ -263,4 +357,6 @@ export interface ActivityUseCaseDeps {
   readonly repository: ActivityRepositoryPort;
   readonly authorize: AuthorizePort;
   readonly clock: Clock;
+  readonly allowTestSeed?: boolean;
+  readonly nodeEnv?: string;
 }

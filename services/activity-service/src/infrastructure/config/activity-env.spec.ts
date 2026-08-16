@@ -14,7 +14,18 @@ describe('parseActivityEnv', () => {
     expect(env.ACTIVITY_SERVICE_PORT).toBe(4400);
     expect(env.ACTIVITY_ENABLED).toBe(false);
     expect(env.ACTIVITY_OUTBOX_WORKER_ENABLED).toBe(false);
+    expect(env.ACTIVITY_ALLOW_TEST_SEED).toBe(false);
     expect(env.ACTIVITY_TO_AUTHZ_CLIENT_ID).toBe('v2.activity-service');
+    expect(env.ACTIVITY_TO_DISCORD_CLIENT_ID).toBe('v2.activity-service');
+  });
+
+  it('requires Discord projection base URL when outbox worker enabled', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        ACTIVITY_OUTBOX_WORKER_ENABLED: 'true',
+      }),
+    ).toThrow(/ACTIVITY_DISCORD_PROJECTION_BASE_URL/);
   });
 
   it('requires authz signing when ACTIVITY_ENABLED=true', () => {

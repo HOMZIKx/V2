@@ -42,6 +42,9 @@ class DenyHorizonAuthz implements AuthorizePort {
 function createMemoryRepo(): ActivityRepositoryPort & {
   activities: Map<string, ActivityRecord>;
   outbox: unknown[];
+  inbox: Map<string, unknown>;
+  reports: unknown[];
+  projections: Map<string, unknown>;
 } {
   const activities = new Map<string, ActivityRecord>();
   const drafts = new Map<
@@ -91,9 +94,50 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     }
   >();
   const outbox: unknown[] = [];
+  const inbox = new Map<
+    string,
+    {
+      id: string;
+      guildId: string;
+      recipientDiscordUserId: string | null;
+      recipientV2UserId: string | null;
+      kind: string;
+      payload: Record<string, unknown>;
+      readAt: Date | null;
+      createdAt: Date;
+    }
+  >();
+  const reports: {
+    id: string;
+    guildId: string;
+    activityId: string;
+    reporterDiscordUserId: string;
+    reasonCategory: string;
+    details: string | null;
+    status: string;
+    createdAt: Date;
+  }[] = [];
+  const projections = new Map<
+    string,
+    {
+      activityId: string;
+      guildId: string;
+      channelId: string;
+      messageId: string | null;
+      status: string;
+      opaqueId: string;
+      revision: number;
+      lastError: string | null;
+      retryCount: number;
+      leaseOwner: string | null;
+      leaseExpiresAt: Date | null;
+      desiredPayloadVersion: number;
+      updatedAt: Date;
+    }
+  >();
   const idempotency = new Map<string, { responseStatus: number; responseBody: unknown }>();
   let confirmedId = '';
-
+  let inboxSeq = 0;
   const tx: ActivityTx = {
     async lockCreatorAdvisory() {},
     async lockActivity(id) {
@@ -133,6 +177,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
           waitlistPromotionStatusId: confirmedId,
           maxActivePerCreator: 4,
           registrationDefaultClosesAtStart: true,
+          allowedPublishChannelIds: [],
         },
         statuses: [...statuses.values()].filter((s) => s.guildId === guildId),
       };
@@ -145,6 +190,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         waitlistPromotionStatusId: confirmedId || 'status-confirmed',
         maxActivePerCreator: 4,
         registrationDefaultClosesAtStart: true,
+        allowedPublishChannelIds: [],
       };
     },
     async updateSettings(guildId, patch) {
@@ -155,6 +201,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         waitlistPromotionStatusId: patch.waitlistPromotionStatusId ?? confirmedId,
         maxActivePerCreator: patch.maxActivePerCreator ?? 4,
         registrationDefaultClosesAtStart: patch.registrationDefaultClosesAtStart ?? true,
+        allowedPublishChannelIds: [],
       };
     },
     async listStatusDefs(guildId) {
@@ -201,12 +248,16 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       const now = new Date();
       const activity: ActivityRecord = {
         ...input,
+        opaqueId: input.opaqueId ?? input.id.replace(/-/g, '').slice(0, 12),
         version: input.version ?? 1,
         createdAt: now,
         updatedAt: now,
       };
       activities.set(activity.id, activity);
       return activity;
+    },
+    async getActivityByOpaqueId(opaqueId) {
+      return [...activities.values()].find((a) => a.opaqueId === opaqueId) ?? null;
     },
     async updateActivity(activity) {
       activities.set(activity.id, { ...activity, updatedAt: new Date() });
@@ -279,11 +330,15 @@ function createMemoryRepo(): ActivityRepositoryPort & {
           panelType: 'hub',
           payloadVersion: 1,
           status: 'unconfigured',
+          opaqueId: 'panelopaque1',
         },
         repaired: false,
       };
     },
     async getPanel() {
+      return null;
+    },
+    async getPanelByOpaqueId() {
       return null;
     },
     async listPanels() {
@@ -298,6 +353,85 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     },
     async completeOutbox() {},
     async failOutbox() {},
+    async permanentFailOutbox() {},
+    async listInbox() {
+      return { items: [], nextCursor: null };
+    },
+    async markInboxRead() {
+      throw new ActivityError('NOT_FOUND', 'Inbox item not found');
+    },
+    async enqueueInbox(input) {
+      const dedupe =
+        input.dedupeKey !== undefined
+          ? `${input.recipientDiscordUserId}:${input.kind}:${input.dedupeKey}`
+          : null;
+      if (dedupe !== null) {
+        const existing = inbox.get(dedupe);
+        if (existing !== undefined) {
+          return { item: existing, created: false };
+        }
+      }
+      inboxSeq += 1;
+      const item = {
+        id: `inbox-${inboxSeq}`,
+        guildId: input.guildId,
+        recipientDiscordUserId: input.recipientDiscordUserId,
+        recipientV2UserId: null,
+        kind: input.kind,
+        payload:
+          input.dedupeKey !== undefined
+            ? { ...input.payload, dedupeKey: input.dedupeKey }
+            : input.payload,
+        readAt: null,
+        createdAt: new Date(),
+      };
+      inbox.set(dedupe ?? item.id, item);
+      return { item, created: true };
+    },
+    async createReport(input) {
+      const report = {
+        id: input.id,
+        guildId: input.guildId,
+        activityId: input.activityId,
+        reporterDiscordUserId: input.reporterDiscordUserId,
+        reasonCategory: input.reasonCategory,
+        details: input.details ?? null,
+        status: 'open',
+        createdAt: new Date(),
+      };
+      reports.push(report);
+      return report;
+    },
+    async listReports(guildId) {
+      return reports.filter((r) => r.guildId === guildId);
+    },
+    async upsertActivityProjection(input) {
+      const existing = projections.get(input.activityId);
+      const next = {
+        activityId: input.activityId,
+        guildId: input.guildId,
+        channelId: input.channelId,
+        messageId: input.messageId ?? existing?.messageId ?? null,
+        status: input.status ?? existing?.status ?? 'pending',
+        opaqueId: input.opaqueId,
+        revision: input.revision ?? (existing ? existing.revision + 1 : 1),
+        lastError: input.lastError ?? null,
+        retryCount: input.retryCount ?? existing?.retryCount ?? 0,
+        leaseOwner: input.leaseOwner ?? null,
+        leaseExpiresAt: input.leaseExpiresAt ?? null,
+        desiredPayloadVersion: input.desiredPayloadVersion ?? 1,
+        updatedAt: new Date(),
+      };
+      projections.set(input.activityId, next);
+      return next;
+    },
+    async getActivityProjection(activityId) {
+      return projections.get(activityId) ?? null;
+    },
+    async claimProjectionRepair() {
+      return [];
+    },
+    async setAllowedPublishChannelIds() {},
     async findIdempotency(input) {
       return (
         idempotency.get(
@@ -337,6 +471,9 @@ function createMemoryRepo(): ActivityRepositoryPort & {
   return {
     activities,
     outbox,
+    inbox,
+    reports,
+    projections,
     async withTransaction<T>(fn: (inner: ActivityTx) => Promise<T>): Promise<T> {
       return fn(tx);
     },
@@ -558,5 +695,96 @@ describe('ActivityUseCases (in-memory)', () => {
     await expect(useCases.createDraft({ guildId: 'guild-1' }, { actor })).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
+  });
+
+  it('dedupes inbox enqueue by recipient+kind+dedupeKey', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const first = await useCases.enqueueInbox(
+      {
+        guildId: 'guild-1',
+        recipientDiscordUserId: 'user-1',
+        kind: 'activity.cancelled',
+        payload: { activityId: 'a1' },
+        dedupeKey: 'cancel:a1:user-1:2',
+      },
+      { actor },
+    );
+    const second = await useCases.enqueueInbox(
+      {
+        guildId: 'guild-1',
+        recipientDiscordUserId: 'user-1',
+        kind: 'activity.cancelled',
+        payload: { activityId: 'a1' },
+        dedupeKey: 'cancel:a1:user-1:2',
+      },
+      { actor },
+    );
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+    expect(second.item.id).toBe(first.item.id);
+    expect(repo.inbox.size).toBe(1);
+  });
+
+  it('creates a report against an activity', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const activity = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Raid',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+      },
+      { actor, idempotencyKey: 'report-pub' },
+    );
+    const report = await useCases.createReport(
+      activity.id,
+      { reasonCategory: 'spam', details: 'bad event' },
+      { actor: { discordUserId: 'reporter-1' } },
+    );
+    expect(report.status).toBe('open');
+    expect(report.reasonCategory).toBe('spam');
+    expect(report.activityId).toBe(activity.id);
+    const listed = await useCases.listReports('guild-1', actor);
+    expect(listed).toHaveLength(1);
+  });
+
+  it('looks up activity by opaque id and emits projection_requested on publish', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const activity = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Raid',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+        publicationChannelId: 'channel-1',
+      },
+      { actor, idempotencyKey: 'opaque-pub' },
+    );
+    expect(activity.opaqueId).toMatch(/^[0-9a-f]{12}$/);
+    const byOpaque = await useCases.getActivityByOpaqueId(activity.opaqueId, actor);
+    expect(byOpaque.id).toBe(activity.id);
+    expect(
+      repo.outbox.some(
+        (e) =>
+          (e as { eventType: string }).eventType === 'activity.activity.projection_requested.v1',
+      ),
+    ).toBe(true);
   });
 });

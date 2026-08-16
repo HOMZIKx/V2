@@ -24,6 +24,18 @@ describe('OpenAPI activity-v1 contract', () => {
     expect(raw).toContain('IdempotencyKey');
   });
 
+  it('declares P4.2 Discord support paths', () => {
+    expect(raw).toContain('/activity/v1/inbox');
+    expect(raw).toContain('/activity/v1/inbox/{id}/read');
+    expect(raw).toContain('/activity/v1/activities/by-opaque/{opaqueId}');
+    expect(raw).toContain('/activity/v1/panels/by-opaque/{opaqueId}');
+    expect(raw).toContain('/activity/v1/activities/{id}/reports');
+    expect(raw).toContain('/activity/v1/guilds/{guildId}/reports');
+    expect(raw).toContain('/activity/v1/activities/{id}/projection');
+    expect(raw).toContain('/activity/v1/test/seed-guild');
+    expect(raw).toContain('activity.activity.projection_requested.v1');
+  });
+
   it('does not invent Discord-specific API paths', () => {
     expect(raw).not.toContain('/discord/');
     expect(raw).not.toContain('slash-command');

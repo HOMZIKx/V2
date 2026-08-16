@@ -25,6 +25,14 @@ export type GuildCommandDefinition = {
   version: string;
 };
 
+export type ComponentsV2MessagePayload = {
+  readonly components?: readonly unknown[];
+  readonly files?: readonly unknown[];
+  readonly flags?: number | bigint;
+  readonly content?: string | null;
+  readonly embeds?: readonly unknown[];
+};
+
 export type GatewayRestPort = {
   fetchApplication(): Promise<{ id: string; name: string; botUserId: string }>;
   fetchGuild(guildId: string): Promise<{ id: string; name: string; botIsMember: boolean }>;
@@ -38,4 +46,18 @@ export type GatewayRestPort = {
     guildId: string,
     channelId: string,
   ): Promise<{ missing: string[]; ok: boolean }>;
+  publishComponentsV2Message?(
+    channelId: string,
+    payload: ComponentsV2MessagePayload,
+    options?: { nonce?: string },
+  ): Promise<{ messageId: string; channelId: string }>;
+  editComponentsV2Message?(
+    channelId: string,
+    messageId: string,
+    payload: ComponentsV2MessagePayload,
+  ): Promise<void>;
+  fetchChannelMessage?(
+    channelId: string,
+    messageId: string,
+  ): Promise<{ id: string; channelId: string; content: string | null }>;
 };

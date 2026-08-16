@@ -14,6 +14,7 @@ import {
   type InboundClientRegistry,
   loadInboundClientRegistry,
 } from '../infrastructure/internal/verify-inbound-assertion.js';
+import { ActivityOutboxDispatcher } from '../infrastructure/outbox/outbox-dispatcher.js';
 import { ActivityRepository } from '../infrastructure/persistence/activity-repository.js';
 import { ActivityController } from './activity.controller.js';
 import {
@@ -69,8 +70,16 @@ const providers: Provider[] = [
       repository: ActivityRepositoryPort,
       authorize: AuthorizePort,
       clock: Clock,
-    ): ActivityUseCases => new ActivityUseCases({ repository, authorize, clock }),
-    inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK],
+      config: ActivityEnv,
+    ): ActivityUseCases =>
+      new ActivityUseCases({
+        repository,
+        authorize,
+        clock,
+        allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
+        nodeEnv: config.NODE_ENV,
+      }),
+    inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK, ACTIVITY_CONFIG],
   },
   {
     provide: INBOUND_CLIENT_REGISTRY,
@@ -83,6 +92,7 @@ const providers: Provider[] = [
     inject: [ACTIVITY_CONFIG],
   },
   InboundAssertionGuard,
+  ActivityOutboxDispatcher,
 ];
 
 @Module({

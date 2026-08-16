@@ -66,6 +66,18 @@ const baseSchema = z.object({
   ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   ACTIVITY_INBOUND_CLIENTS_JSON: optionalTrimmed,
   ACTIVITY_ASSERTION_AUD: optionalTrimmed,
+  ACTIVITY_DISCORD_PROJECTION_BASE_URL: optionalTrimmed,
+  ACTIVITY_TO_DISCORD_CLIENT_ID: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === '' ? 'v2.activity-service' : trimmed;
+    }),
+  ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM: optionalTrimmed,
+  ACTIVITY_TO_DISCORD_ACTIVE_KID: optionalTrimmed,
+  ACTIVITY_DISCORD_ASSERTION_AUD: optionalTrimmed,
+  ACTIVITY_ALLOW_TEST_SEED: booleanFromEnv(false),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
@@ -99,6 +111,38 @@ function assertEnabledRequirements(
   }
 }
 
+function assertOutboxWorkerRequirements(
+  config: ActivityEnv,
+  addIssue: (path: string, message: string) => void,
+): void {
+  if (config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
+    addIssue(
+      'ACTIVITY_DISCORD_PROJECTION_BASE_URL',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true',
+    );
+  }
+  if (config.ACTIVITY_ENABLED) {
+    if (config.ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM === undefined) {
+      addIssue(
+        'ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM',
+        'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and ACTIVITY_ENABLED=true',
+      );
+    }
+    if (config.ACTIVITY_TO_DISCORD_ACTIVE_KID === undefined) {
+      addIssue(
+        'ACTIVITY_TO_DISCORD_ACTIVE_KID',
+        'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and ACTIVITY_ENABLED=true',
+      );
+    }
+    if (config.ACTIVITY_DISCORD_ASSERTION_AUD === undefined) {
+      addIssue(
+        'ACTIVITY_DISCORD_ASSERTION_AUD',
+        'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and ACTIVITY_ENABLED=true',
+      );
+    }
+  }
+}
+
 export function parseActivityEnv(env: NodeJS.ProcessEnv): ActivityEnv {
   const parsed = baseSchema.safeParse(env);
   if (!parsed.success) {
@@ -115,6 +159,15 @@ export function parseActivityEnv(env: NodeJS.ProcessEnv): ActivityEnv {
     if (issues.length > 0) {
       throw new ActivityConfigError(
         `Activity is enabled but configuration is incomplete: ${issues.join('; ')}`,
+      );
+    }
+  }
+  if (config.ACTIVITY_OUTBOX_WORKER_ENABLED) {
+    const issues: string[] = [];
+    assertOutboxWorkerRequirements(config, (path, message) => issues.push(`${path}: ${message}`));
+    if (issues.length > 0) {
+      throw new ActivityConfigError(
+        `Outbox worker is enabled but configuration is incomplete: ${issues.join('; ')}`,
       );
     }
   }

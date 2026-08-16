@@ -10,11 +10,14 @@ import {
   type GuildBasedChannel,
   type GuildMember,
   type Interaction,
+  type MessageCreateOptions,
+  type MessageEditOptions,
 } from 'discord.js';
 import { createHash } from 'node:crypto';
 
 import type { AuthorizationSyncPort } from '../../application/ports/authorization-sync.port.js';
 import type {
+  ComponentsV2MessagePayload,
   GatewayClientPort,
   GatewayHealthSnapshot,
   GatewayRestPort,
@@ -231,6 +234,55 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       }
     }
     return { ok: missing.length === 0, missing };
+  }
+
+  public async publishComponentsV2Message(
+    channelId: string,
+    payload: ComponentsV2MessagePayload,
+    options?: { nonce?: string },
+  ): Promise<{ messageId: string; channelId: string }> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for Components V2 publish.');
+    }
+
+    const createPayload = {
+      ...payload,
+      ...(options?.nonce !== undefined
+        ? { nonce: options.nonce, enforceNonce: true as const }
+        : {}),
+    } as MessageCreateOptions;
+
+    const message = await channel.send(createPayload);
+    return { messageId: message.id, channelId };
+  }
+
+  public async editComponentsV2Message(
+    channelId: string,
+    messageId: string,
+    payload: ComponentsV2MessagePayload,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for Components V2 edit.');
+    }
+    await channel.messages.edit(messageId, payload as MessageEditOptions);
+  }
+
+  public async fetchChannelMessage(
+    channelId: string,
+    messageId: string,
+  ): Promise<{ id: string; channelId: string; content: string | null }> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for message fetch.');
+    }
+    const message = await channel.messages.fetch(messageId);
+    return {
+      id: message.id,
+      channelId,
+      content: message.content.length > 0 ? message.content : null,
+    };
   }
 
   private bindEvents(): void {
