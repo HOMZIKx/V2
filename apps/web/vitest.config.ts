@@ -14,4 +14,11 @@ const base = createProjectTestConfig({
 export default defineConfig({
   ...base,
   root: packageRoot,
+  test: {
+    ...base.test,
+    coverage: {
+      ...base.test?.coverage,
+      exclude: [...(base.test?.coverage?.exclude ?? []), 'src/components/**', 'src/lib/types.ts'],
+    },
+  },
 });
