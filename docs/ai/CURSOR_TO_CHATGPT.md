@@ -6,10 +6,11 @@
 
 ## 2. HEAD
 
-See latest commit on `cursor/p4-1-activity-domain` after this remediation push
-(will be recorded in git / PR after commit). Base handoff SHA was `277c687`;
-branch also contained later P4.4/single-form work; P4.5 RabbitMQ commit was
-**reverted** (`13ba776`) to keep closure scope P4.1–P4.4 only.
+`2ea77de8ba2646306caa0b8efa6d5b6365009628` on `cursor/p4-1-activity-domain`
+
+Closure remediation code commit: `64eee10621124a27f6783e1712d4d3d22b138d6d`.
+Base handoff SHA was `277c687`; P4.5 RabbitMQ commit was **reverted** (`13ba776`)
+so active closure scope is P4.1–P4.4 only.
 
 ## 3. Changed files (grouped)
 
@@ -86,12 +87,13 @@ corepack pnpm validate   # final gate
 
 ## 6–8. Results
 
+- `pnpm validate`: **PASS** (format, lint, typecheck, unit/integration, architecture, admin+web Playwright e2e)
 - discord-gateway tests: 124 passed
 - activity-service tests: 94 passed (14 skipped infra)
 - api-gateway tests: 15 passed
 - architecture:check: PASS
-- `pnpm audit --audit-level=high`: 0 high (1 moderate reported, non-blocking for high gate)
-- CI: see GitHub Actions on final pushed HEAD
+- `pnpm audit --audit-level=high`: exit 0 — **0 high** (1 moderate reported, non-blocking for high gate)
+- CI: GitHub Actions on this HEAD after push (record run URL below once green)
 
 ## 9. Owner-required
 
