@@ -868,9 +868,7 @@ export class ActivityInteractionHandler {
           : '';
       await interaction.editReply({
         content:
-          organizer === null
-            ? 'Brak danych organizatora.'
-            : `Organizator: <@${organizer}>${co}`,
+          organizer === null ? 'Brak danych organizatora.' : `Organizator: <@${organizer}>${co}`,
       });
       return;
     }
@@ -991,8 +989,7 @@ export class ActivityInteractionHandler {
       const startRaw = typeof payload.startAt === 'string' ? payload.startAt : '';
       if (!name || !startRaw) {
         await interaction.editReply({
-          content:
-            'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
+          content: 'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
           components: renderDraftFormSummary({
             opaqueDraftId: parsed.opaqueId,
             signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
@@ -1007,9 +1004,7 @@ export class ActivityInteractionHandler {
           organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
           name,
           startAt: startRaw,
-          ...(typeof payload.description === 'string'
-            ? { description: payload.description }
-            : {}),
+          ...(typeof payload.description === 'string' ? { description: payload.description } : {}),
           ...(interaction.channelId !== null
             ? { publicationChannelId: interaction.channelId }
             : {}),

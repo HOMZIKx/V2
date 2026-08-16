@@ -83,9 +83,13 @@ async function cmdChannels() {
 }
 
 async function cmdSeed(channelId: string) {
-  await activityRequest('POST', `/activity/v1/guilds/${config.DISCORD_TEST_GUILD_ID}/ensure-defaults`, {
-    orgId,
-  });
+  await activityRequest(
+    'POST',
+    `/activity/v1/guilds/${config.DISCORD_TEST_GUILD_ID}/ensure-defaults`,
+    {
+      orgId,
+    },
+  );
   await activityRequest('POST', '/activity/v1/test/seed-guild', {
     guildId: config.DISCORD_TEST_GUILD_ID,
     orgId,

@@ -12,8 +12,7 @@ export class LocalizedDateParseError extends Error {
 
 const DEFAULT_TZ = 'Europe/Warsaw';
 
-const INPUT_RE =
-  /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+|[ T]+)(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+const INPUT_RE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+|[ T]+)(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -133,10 +132,7 @@ export function parsePolishLocalDateTime(
   return date;
 }
 
-export function formatPolishLocalDateTime(
-  date: Date,
-  timeZone: string = DEFAULT_TZ,
-): string {
+export function formatPolishLocalDateTime(date: Date, timeZone: string = DEFAULT_TZ): string {
   const parts = getZonedParts(date, timeZone);
   return `${pad2(parts.day)}.${pad2(parts.month)}.${parts.year} ${pad2(parts.hour)}:${pad2(parts.minute)}`;
 }

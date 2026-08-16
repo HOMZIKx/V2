@@ -32,7 +32,11 @@ export function toUserFacingError(error: unknown): string {
     if (error.status === 410 || bodyCode === 'GONE') {
       return 'Ten szkic wygasł. Zacznij tworzenie od nowa.';
     }
-    if (error.status === 400 || bodyCode === 'VALIDATION_FAILED' || bodyCode === 'HORIZON_EXCEEDED') {
+    if (
+      error.status === 400 ||
+      bodyCode === 'VALIDATION_FAILED' ||
+      bodyCode === 'HORIZON_EXCEEDED'
+    ) {
       const detail = extractErrorMessage(error.body);
       if (detail !== null && !TECHNICAL_LEAK.test(detail) && detail.length <= 160) {
         return detail;

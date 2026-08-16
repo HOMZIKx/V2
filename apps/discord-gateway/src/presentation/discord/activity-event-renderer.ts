@@ -16,8 +16,8 @@ import {
   type ActivityEventAction,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 
-import { V2_PANEL_COLORS } from './panel-theme.js';
 import { formatPolishLocalDateTime } from './localized-datetime.js';
+import { V2_PANEL_COLORS } from './panel-theme.js';
 
 export const ACTIVITY_EVENT_ACCENT = V2_PANEL_COLORS.embed;
 

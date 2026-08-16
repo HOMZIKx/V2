@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
+import { ActivityHttpError } from '../../infrastructure/activity/activity-http-client.js';
+import { renderDraftFormSummary } from './activity-ephemeral-renderer.js';
+import { ACTIVITY_HUB_ACCENT, renderActivityHubMessage } from './activity-hub-renderer.js';
+import { assertNoTechnicalUserCopy, toUserFacingError } from './activity-user-errors.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
   parsePolishLocalDateTime,
   zonedLocalToUtc,
 } from './localized-datetime.js';
-import { assertNoTechnicalUserCopy, toUserFacingError } from './activity-user-errors.js';
-import { ActivityHttpError } from '../../infrastructure/activity/activity-http-client.js';
-import { ACTIVITY_HUB_ACCENT, renderActivityHubMessage } from './activity-hub-renderer.js';
 import { V2_PANEL_COLORS } from './panel-theme.js';
-import { renderDraftFormSummary } from './activity-ephemeral-renderer.js';
 
 describe('localized datetime', () => {
   it('parses Polish local wall time in Europe/Warsaw', () => {
@@ -52,7 +52,12 @@ describe('localized datetime', () => {
 describe('user facing errors', () => {
   it('maps 404 without leaking service names', () => {
     const message = toUserFacingError(
-      new ActivityHttpError('Activity service rejected request (404)', 'HTTP', 404, '{"error":{"code":"NOT_FOUND"}}'),
+      new ActivityHttpError(
+        'Activity service rejected request (404)',
+        'HTTP',
+        404,
+        '{"error":{"code":"NOT_FOUND"}}',
+      ),
     );
     expect(message.toLowerCase()).not.toContain('activity service');
     expect(message.toLowerCase()).not.toContain('404');
@@ -61,7 +66,9 @@ describe('user facing errors', () => {
 
   it('keeps localized validation copy', () => {
     const message = toUserFacingError(
-      new LocalizedDateParseError('Podaj datę i godzinę w formacie DD.MM.RRRR GG:MM (np. 20.08.2026 18:00).'),
+      new LocalizedDateParseError(
+        'Podaj datę i godzinę w formacie DD.MM.RRRR GG:MM (np. 20.08.2026 18:00).',
+      ),
     );
     expect(message).toContain('DD.MM.RRRR');
   });
