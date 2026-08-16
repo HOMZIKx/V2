@@ -14,6 +14,8 @@ const config = createConfig(
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_GATEWAY_PORT: z.coerce.number().int().positive().default(4000),
     API_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
+    /** Upstream activity-service for Admin/WWW BFF proxy (`/activity/v1/*`). */
+    ACTIVITY_SERVICE_BASE_URL: z.string().url().optional(),
   }),
 );
 const logger = createLogger('api-gateway');

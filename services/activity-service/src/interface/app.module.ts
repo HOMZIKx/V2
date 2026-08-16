@@ -2,6 +2,7 @@ import { Module, type Provider } from '@nestjs/common';
 import type { Pool } from 'pg';
 
 import type { ActivityRepositoryPort, AuthorizePort } from '../application/ports/activity.ports.js';
+import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
 import { ActivityUseCases } from '../application/use-cases/activity.use-cases.js';
 import { type Clock, SystemClock } from '../domain/clock.js';
 import {
@@ -16,8 +17,10 @@ import {
 } from '../infrastructure/internal/verify-inbound-assertion.js';
 import { ActivityOutboxDispatcher } from '../infrastructure/outbox/outbox-dispatcher.js';
 import { ActivityRepository } from '../infrastructure/persistence/activity-repository.js';
+import { ActivityAdminController } from './activity-admin.controller.js';
 import { ActivityController } from './activity.controller.js';
 import {
+  ACTIVITY_ADMIN_USE_CASES,
   ACTIVITY_CLOCK,
   ACTIVITY_CONFIG,
   ACTIVITY_POOL,
@@ -82,6 +85,23 @@ const providers: Provider[] = [
     inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK, ACTIVITY_CONFIG],
   },
   {
+    provide: ACTIVITY_ADMIN_USE_CASES,
+    useFactory: (
+      repository: ActivityRepositoryPort,
+      authorize: AuthorizePort,
+      clock: Clock,
+      config: ActivityEnv,
+    ): ActivityAdminUseCases =>
+      new ActivityAdminUseCases({
+        repository,
+        authorize,
+        clock,
+        allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
+        nodeEnv: config.NODE_ENV,
+      }),
+    inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK, ACTIVITY_CONFIG],
+  },
+  {
     provide: INBOUND_CLIENT_REGISTRY,
     useFactory: async (config: ActivityEnv): Promise<InboundClientRegistry | null> => {
       if (!config.ACTIVITY_ENABLED || config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
@@ -96,7 +116,7 @@ const providers: Provider[] = [
 ];
 
 @Module({
-  controllers: [HealthController, ActivityController],
+  controllers: [HealthController, ActivityController, ActivityAdminController],
   providers,
 })
 export class AppModule {}

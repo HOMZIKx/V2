@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Activity Service API
-  version: 1.1.0
-  description: P4.1–P4.2 activity-service HTTP API (`/activity/v1`) including Discord projection support.
+  version: 1.2.0
+  description: P4.1–P4.3 activity-service HTTP API (`/activity/v1` + `/activity/v1/admin`).
 servers:
   - url: http://127.0.0.1:4400
 paths:
@@ -411,6 +411,447 @@ paths:
       responses:
         '200':
           description: Seeded
+  /activity/v1/admin/guilds/{guildId}/config:
+    get:
+      summary: Get guild admin config
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Admin config
+    put:
+      summary: Put guild admin config (expectedRevision / If-Match)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Updated
+        '409':
+          description: Config revision conflict
+  /activity/v1/admin/guilds/{guildId}/readiness:
+    get:
+      summary: Guild admin readiness (READY / NOT_READY + issues)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Readiness
+  /activity/v1/admin/guilds/{guildId}/types:
+    get:
+      summary: List activity types
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Types
+    post:
+      summary: Create activity type
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Created
+  /activity/v1/admin/guilds/{guildId}/types/{typeId}:
+    patch:
+      summary: Update activity type
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: typeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Soft-deactivate activity type (keeps history)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: typeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deactivated
+  /activity/v1/admin/guilds/{guildId}/statuses:
+    get:
+      summary: List participation status defs
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Statuses
+    post:
+      summary: Create status def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Created
+  /activity/v1/admin/guilds/{guildId}/statuses/{statusId}:
+    patch:
+      summary: Update status def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Soft-deactivate status def (protected if referenced)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: statusId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deactivated
+        '409':
+          description: Status is referenced by config
+  /activity/v1/admin/guilds/{guildId}/participant-fields:
+    get:
+      summary: List participant field defs
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Fields
+    post:
+      summary: Create participant field def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Created
+  /activity/v1/admin/guilds/{guildId}/participant-fields/{fieldId}:
+    patch:
+      summary: Update participant field def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Soft-deactivate participant field def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deactivated
+  /activity/v1/admin/guilds/{guildId}/report-reasons:
+    get:
+      summary: List report reason defs
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Reasons
+    post:
+      summary: Create report reason def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Created
+  /activity/v1/admin/guilds/{guildId}/report-reasons/{reasonId}:
+    patch:
+      summary: Update report reason def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: reasonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Soft-deactivate report reason def
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: reasonId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deactivated
+  /activity/v1/admin/guilds/{guildId}/channels:
+    get:
+      summary: Get allowed publish channels
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Channels
+    put:
+      summary: Set allowed publish channels
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Updated
+        '409':
+          description: Config revision conflict
+  /activity/v1/admin/guilds/{guildId}/ping-roles:
+    get:
+      summary: Get allowed ping role ids
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Ping roles
+    put:
+      summary: Set allowed ping role ids
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Updated
+        '409':
+          description: Config revision conflict
+  /activity/v1/admin/guilds/{guildId}/events:
+    get:
+      summary: List admin events (filters + pagination)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: organizerDiscordUserId
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Events page
+  /activity/v1/admin/guilds/{guildId}/events/{activityId}:
+    get:
+      summary: Get admin event detail
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Event detail
+  /activity/v1/admin/guilds/{guildId}/events/{activityId}/cancel:
+    post:
+      summary: Cancel event (manage.guild via cancel use case)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Cancelled
+  /activity/v1/admin/guilds/{guildId}/events/{activityId}/takeover:
+    post:
+      summary: Take over event organization (manage.guild)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Taken over
+  /activity/v1/admin/guilds/{guildId}/projections:
+    get:
+      summary: List projection problems
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Problems
+    post:
+      summary: Request re-projection for all problem rows
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Scan requested
+  /activity/v1/admin/guilds/{guildId}/projections/{activityId}/repair:
+    post:
+      summary: Repair projection (upsert + outbox)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: activityId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Repair enqueued
+  /activity/v1/admin/guilds/{guildId}/reports:
+    get:
+      summary: List reports (open/resolved filter)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, resolved]
+      responses:
+        '200':
+          description: Reports
+  /activity/v1/admin/guilds/{guildId}/reports/{reportId}:
+    patch:
+      summary: Update report status
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+  /activity/v1/admin/guilds/{guildId}/audit:
+    get:
+      summary: List audit entries (filters + pagination)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - name: actionPrefix
+          in: query
+          schema:
+            type: string
+        - name: activityId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: actorDiscordUserId
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Audit page
+  /activity/v1/admin/guilds/{guildId}/hub:
+    get:
+      summary: Get hub status / desired channel
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Hub status
+  /activity/v1/admin/guilds/{guildId}/hub/publish-intent:
+    post:
+      summary: Store desired hub channel (Discord publish stays gateway)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Intent stored
 components:
   parameters:
     IdempotencyKey:
@@ -419,6 +860,13 @@ components:
       required: false
       schema:
         type: string
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Config revision (alternative to body expectedRevision)
     DraftId:
       name: id
       in: path

@@ -178,6 +178,14 @@ function createMemoryRepo(): ActivityRepositoryPort & {
           maxActivePerCreator: 4,
           registrationDefaultClosesAtStart: true,
           allowedPublishChannelIds: [],
+          configRevision: 1,
+          allowOtherActivity: true,
+          maxCreateHorizonDays: 14,
+          postRetentionHoursAfterFinish: 72,
+          reminders: [],
+          dmNotificationsEnabled: true,
+          pingRoleIds: [],
+          hubChannelId: null,
         },
         statuses: [...statuses.values()].filter((s) => s.guildId === guildId),
       };
@@ -191,6 +199,14 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         maxActivePerCreator: 4,
         registrationDefaultClosesAtStart: true,
         allowedPublishChannelIds: [],
+        configRevision: 1,
+        allowOtherActivity: true,
+        maxCreateHorizonDays: 14,
+        postRetentionHoursAfterFinish: 72,
+        reminders: [],
+        dmNotificationsEnabled: true,
+        pingRoleIds: [],
+        hubChannelId: null,
       };
     },
     async updateSettings(guildId, patch) {
@@ -202,6 +218,14 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         maxActivePerCreator: patch.maxActivePerCreator ?? 4,
         registrationDefaultClosesAtStart: patch.registrationDefaultClosesAtStart ?? true,
         allowedPublishChannelIds: [],
+        configRevision: 1,
+        allowOtherActivity: true,
+        maxCreateHorizonDays: 14,
+        postRetentionHoursAfterFinish: 72,
+        reminders: [],
+        dmNotificationsEnabled: true,
+        pingRoleIds: [],
+        hubChannelId: null,
       };
     },
     async listStatusDefs(guildId) {
@@ -432,6 +456,90 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       return [];
     },
     async setAllowedPublishChannelIds() {},
+    async putGuildAdminConfig() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async setPingRoleIds() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async setHubChannelId() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async listActivityTypes() {
+      return [];
+    },
+    async getActivityType() {
+      return null;
+    },
+    async insertActivityType() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async updateActivityType() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async countActivitiesUsingType() {
+      return 0;
+    },
+    async deactivateActivityType() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async insertStatusDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async updateStatusDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async deactivateStatusDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async countParticipationsUsingStatus() {
+      return 0;
+    },
+    async listParticipantFieldDefs() {
+      return [];
+    },
+    async getParticipantFieldDef() {
+      return null;
+    },
+    async insertParticipantFieldDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async updateParticipantFieldDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async deactivateParticipantFieldDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async listReportReasonDefs() {
+      return [];
+    },
+    async getReportReasonDef() {
+      return null;
+    },
+    async insertReportReasonDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async updateReportReasonDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async deactivateReportReasonDef() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async listAdminEvents() {
+      return { items: [], total: 0 };
+    },
+    async listProjectionProblems() {
+      return [];
+    },
+    async updateReportStatus() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async getReport() {
+      return null;
+    },
+    async listAuditEntries() {
+      return { items: [], total: 0 };
+    },
     async findIdempotency(input) {
       return (
         idempotency.get(

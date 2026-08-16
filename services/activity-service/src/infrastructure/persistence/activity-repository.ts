@@ -8,14 +8,19 @@ import type {
   ActivityReportRecord,
   ActivityRepositoryPort,
   ActivityTx,
+  ActivityTypeRecord,
+  AuditEntryRecord,
   GuildActivitySettingsRecord,
   HubPanelRecord,
   IdempotencyHit,
   InboxItemRecord,
   OutboxInsert,
   OutboxMessageRecord,
+  ParticipantFieldDefRecord,
   ParticipationRecord,
   ParticipationStatusDefRecord,
+  ReminderConfigEntry,
+  ReportReasonDefRecord,
 } from '../../application/ports/activity.ports.js';
 import { ActivityError } from '../../domain/errors.js';
 import type { ActivityStatus } from '../../domain/lifecycle.js';
@@ -71,8 +76,19 @@ function asRequiredDate(value: unknown, field: string): Date {
   return result;
 }
 
+function asReminderList(value: unknown): ReminderConfigEntry[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (entry): entry is ReminderConfigEntry =>
+      entry !== null && typeof entry === 'object' && !Array.isArray(entry),
+  );
+}
+
 function mapSettings(row: Record<string, unknown>): GuildActivitySettingsRecord {
   const channels = row.allowed_publish_channel_ids;
+  const pingRoles = row.ping_role_ids;
   return {
     guildId: asRequiredString(row.guild_id, 'guild_id'),
     orgId: asRequiredString(row.org_id, 'org_id'),
@@ -81,6 +97,83 @@ function mapSettings(row: Record<string, unknown>): GuildActivitySettingsRecord 
     maxActivePerCreator: Number(row.max_active_per_creator),
     registrationDefaultClosesAtStart: Boolean(row.registration_default_closes_at_start),
     allowedPublishChannelIds: Array.isArray(channels) ? channels.map((value) => String(value)) : [],
+    configRevision: Number(row.config_revision ?? 1),
+    allowOtherActivity:
+      row.allow_other_activity === undefined ? true : Boolean(row.allow_other_activity),
+    maxCreateHorizonDays: Number(row.max_create_horizon_days ?? 14),
+    postRetentionHoursAfterFinish: Number(row.post_retention_hours_after_finish ?? 72),
+    reminders: asReminderList(row.reminders_json),
+    dmNotificationsEnabled:
+      row.dm_notifications_enabled === undefined ? true : Boolean(row.dm_notifications_enabled),
+    pingRoleIds: Array.isArray(pingRoles) ? pingRoles.map((value) => String(value)) : [],
+    hubChannelId: asNullableString(row.hub_channel_id),
+  };
+}
+
+function mapActivityType(
+  row: Record<string, unknown>,
+  statusDefIds: readonly string[],
+  participantFields: readonly { fieldDefId: string; required: boolean }[],
+): ActivityTypeRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    key: asRequiredString(row.key, 'key'),
+    label: asRequiredString(row.label, 'label'),
+    enabled: Boolean(row.enabled),
+    isOther: Boolean(row.is_other),
+    sortOrder: Number(row.sort_order),
+    statusDefIds,
+    participantFields,
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+    updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
+  };
+}
+
+function mapParticipantField(row: Record<string, unknown>): ParticipantFieldDefRecord {
+  const options = row.options_json;
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    key: asRequiredString(row.key, 'key'),
+    label: asRequiredString(row.label, 'label'),
+    fieldType: asRequiredString(row.field_type, 'field_type'),
+    requiredDefault: Boolean(row.required_default),
+    active: Boolean(row.active),
+    optionsJson: Array.isArray(options) ? options : [],
+    maxLength:
+      row.max_length === null || row.max_length === undefined ? null : Number(row.max_length),
+    sortOrder: Number(row.sort_order ?? 0),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+    updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
+  };
+}
+
+function mapReportReason(row: Record<string, unknown>): ReportReasonDefRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    key: asRequiredString(row.key, 'key'),
+    label: asRequiredString(row.label, 'label'),
+    active: Boolean(row.active),
+    sortOrder: Number(row.sort_order),
+    allowDetails: row.allow_details === undefined ? true : Boolean(row.allow_details),
+    requiresDetails: Boolean(row.requires_details ?? false),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+  };
+}
+
+function mapAudit(row: Record<string, unknown>): AuditEntryRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    guildId: asNullableString(row.guild_id),
+    activityId: asNullableString(row.activity_id),
+    actorDiscordUserId: asNullableString(row.actor_discord_user_id),
+    actorV2UserId: asNullableString(row.actor_v2_user_id),
+    action: asRequiredString(row.action, 'action'),
+    details: (row.details ?? {}) as Record<string, unknown>,
+    correlationId: asNullableString(row.correlation_id),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
   };
 }
 
@@ -242,6 +335,54 @@ function isUniqueViolation(error: unknown): boolean {
     'code' in error &&
     asNullableString(error.code) === '23505'
   );
+}
+
+async function loadActivityType(
+  client: PoolClient,
+  row: Record<string, unknown>,
+): Promise<ActivityTypeRecord> {
+  const typeId = asRequiredString(row.id, 'id');
+  const statusResult = await client.query(
+    `SELECT status_def_id FROM activity_type_status_defs WHERE type_id = $1`,
+    [typeId],
+  );
+  const fieldResult = await client.query(
+    `SELECT field_def_id, required FROM activity_type_participant_fields WHERE type_id = $1`,
+    [typeId],
+  );
+  return mapActivityType(
+    row,
+    statusResult.rows.map((r) => String((r as { status_def_id: unknown }).status_def_id)),
+    fieldResult.rows.map((r) => ({
+      fieldDefId: String((r as { field_def_id: unknown }).field_def_id),
+      required: Boolean((r as { required: unknown }).required),
+    })),
+  );
+}
+
+async function replaceTypeAssociations(
+  client: PoolClient,
+  typeId: string,
+  associations: {
+    statusDefIds: readonly string[];
+    participantFields: readonly { fieldDefId: string; required: boolean }[];
+  },
+): Promise<void> {
+  await client.query(`DELETE FROM activity_type_status_defs WHERE type_id = $1`, [typeId]);
+  await client.query(`DELETE FROM activity_type_participant_fields WHERE type_id = $1`, [typeId]);
+  for (const statusDefId of associations.statusDefIds) {
+    await client.query(
+      `INSERT INTO activity_type_status_defs (type_id, status_def_id) VALUES ($1, $2)`,
+      [typeId, statusDefId],
+    );
+  }
+  for (const field of associations.participantFields) {
+    await client.query(
+      `INSERT INTO activity_type_participant_fields (type_id, field_def_id, required)
+       VALUES ($1, $2, $3)`,
+      [typeId, field.fieldDefId, field.required],
+    );
+  }
 }
 
 function createTx(client: PoolClient): ActivityTx {
@@ -1075,10 +1216,530 @@ function createTx(client: PoolClient): ActivityTx {
     async setAllowedPublishChannelIds(guildId, channelIds) {
       await client.query(
         `UPDATE guild_activity_settings
-         SET allowed_publish_channel_ids = $2::text[], updated_at = now()
+         SET allowed_publish_channel_ids = $2::text[],
+             config_revision = config_revision + 1,
+             updated_at = now()
          WHERE guild_id = $1`,
         [guildId, [...channelIds]],
       );
+    },
+
+    async putGuildAdminConfig(guildId, input) {
+      const locked = await client.query(
+        `SELECT * FROM guild_activity_settings WHERE guild_id = $1 FOR UPDATE`,
+        [guildId],
+      );
+      const currentRow = locked.rows[0] as Record<string, unknown> | undefined;
+      if (currentRow === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Guild settings not found');
+      }
+      const current = mapSettings(currentRow);
+      if (current.configRevision !== input.expectedRevision) {
+        throw new ActivityError(
+          'CONFLICT',
+          `Config revision mismatch: expected ${input.expectedRevision}, actual ${current.configRevision}`,
+        );
+      }
+
+      const nextOrganizer =
+        input.organizerDefaultStatusId !== undefined
+          ? input.organizerDefaultStatusId
+          : current.organizerDefaultStatusId;
+      const nextWaitlist =
+        input.waitlistPromotionStatusId !== undefined
+          ? input.waitlistPromotionStatusId
+          : current.waitlistPromotionStatusId;
+      const nextChannels =
+        input.allowedPublishChannelIds !== undefined
+          ? input.allowedPublishChannelIds
+          : current.allowedPublishChannelIds;
+      const nextPingRoles =
+        input.pingRoleIds !== undefined ? input.pingRoleIds : current.pingRoleIds;
+      const nextReminders = input.reminders !== undefined ? input.reminders : current.reminders;
+
+      const result = await client.query(
+        `UPDATE guild_activity_settings SET
+           organizer_default_status_id = $2,
+           waitlist_promotion_status_id = $3,
+           max_active_per_creator = $4,
+           registration_default_closes_at_start = $5,
+           allow_other_activity = $6,
+           max_create_horizon_days = $7,
+           post_retention_hours_after_finish = $8,
+           reminders_json = $9::jsonb,
+           dm_notifications_enabled = $10,
+           allowed_publish_channel_ids = $11::text[],
+           ping_role_ids = $12::text[],
+           hub_channel_id = $13,
+           config_revision = config_revision + 1,
+           updated_at = now()
+         WHERE guild_id = $1
+         RETURNING *`,
+        [
+          guildId,
+          nextOrganizer,
+          nextWaitlist,
+          input.maxActivePerCreator ?? current.maxActivePerCreator,
+          input.registrationDefaultClosesAtStart ?? current.registrationDefaultClosesAtStart,
+          input.allowOtherActivity ?? current.allowOtherActivity,
+          input.maxCreateHorizonDays ?? current.maxCreateHorizonDays,
+          input.postRetentionHoursAfterFinish ?? current.postRetentionHoursAfterFinish,
+          JSON.stringify(nextReminders),
+          input.dmNotificationsEnabled ?? current.dmNotificationsEnabled,
+          [...nextChannels],
+          [...nextPingRoles],
+          input.hubChannelId !== undefined ? input.hubChannelId : current.hubChannelId,
+        ],
+      );
+      return mapSettings(result.rows[0] as Record<string, unknown>);
+    },
+
+    async setPingRoleIds(guildId, roleIds) {
+      const result = await client.query(
+        `UPDATE guild_activity_settings
+         SET ping_role_ids = $2::text[],
+             config_revision = config_revision + 1,
+             updated_at = now()
+         WHERE guild_id = $1
+         RETURNING *`,
+        [guildId, [...roleIds]],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Guild settings not found');
+      }
+      return mapSettings(row);
+    },
+
+    async setHubChannelId(guildId, channelId) {
+      const result = await client.query(
+        `UPDATE guild_activity_settings
+         SET hub_channel_id = $2,
+             config_revision = config_revision + 1,
+             updated_at = now()
+         WHERE guild_id = $1
+         RETURNING *`,
+        [guildId, channelId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Guild settings not found');
+      }
+      return mapSettings(row);
+    },
+
+    async listActivityTypes(guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_types WHERE guild_id = $1 ORDER BY sort_order, key`,
+        [guildId],
+      );
+      const types: ActivityTypeRecord[] = [];
+      for (const row of result.rows) {
+        types.push(await loadActivityType(client, row as Record<string, unknown>));
+      }
+      return types;
+    },
+
+    async getActivityType(id) {
+      const result = await client.query(`SELECT * FROM activity_types WHERE id = $1`, [id]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return loadActivityType(client, row);
+    },
+
+    async insertActivityType(input) {
+      const result = await client.query(
+        `INSERT INTO activity_types (
+           id, guild_id, key, label, enabled, is_other, sort_order
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+         RETURNING *`,
+        [
+          input.id,
+          input.guildId,
+          input.key,
+          input.label,
+          input.enabled ?? true,
+          input.isOther ?? false,
+          input.sortOrder ?? 0,
+        ],
+      );
+      await replaceTypeAssociations(client, input.id, {
+        statusDefIds: input.statusDefIds ?? [],
+        participantFields: input.participantFields ?? [],
+      });
+      return loadActivityType(client, result.rows[0] as Record<string, unknown>);
+    },
+
+    async updateActivityType(id, patch) {
+      const existing = await client.query(`SELECT * FROM activity_types WHERE id = $1`, [id]);
+      const existingRow = existing.rows[0] as Record<string, unknown> | undefined;
+      if (existingRow === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Activity type not found');
+      }
+      const result = await client.query(
+        `UPDATE activity_types SET
+           label = COALESCE($2, label),
+           enabled = COALESCE($3, enabled),
+           is_other = COALESCE($4, is_other),
+           sort_order = COALESCE($5, sort_order),
+           updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          patch.label ?? null,
+          patch.enabled ?? null,
+          patch.isOther ?? null,
+          patch.sortOrder ?? null,
+        ],
+      );
+      if (patch.statusDefIds !== undefined || patch.participantFields !== undefined) {
+        const current = await loadActivityType(client, existingRow);
+        await replaceTypeAssociations(client, id, {
+          statusDefIds: patch.statusDefIds ?? current.statusDefIds,
+          participantFields: patch.participantFields ?? current.participantFields,
+        });
+      }
+      return loadActivityType(client, result.rows[0] as Record<string, unknown>);
+    },
+
+    async countActivitiesUsingType(typeId) {
+      const result = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM activities WHERE type_id = $1`,
+        [typeId],
+      );
+      return Number(result.rows[0]?.count ?? 0);
+    },
+
+    async deactivateActivityType(id) {
+      const result = await client.query(
+        `UPDATE activity_types SET enabled = FALSE, updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [id],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Activity type not found');
+      }
+      return loadActivityType(client, row);
+    },
+
+    async insertStatusDef(input) {
+      const result = await client.query(
+        `INSERT INTO participation_status_defs (
+           id, guild_id, label, occupies_slot, behavior, selectable_by_member, active, sort_order, seed_key
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         RETURNING *`,
+        [
+          input.id,
+          input.guildId,
+          input.label,
+          input.occupiesSlot,
+          input.behavior,
+          input.selectableByMember,
+          input.active ?? true,
+          input.sortOrder ?? 0,
+          input.seedKey ?? null,
+        ],
+      );
+      return mapStatus(result.rows[0] as Record<string, unknown>);
+    },
+
+    async updateStatusDef(id, patch) {
+      const result = await client.query(
+        `UPDATE participation_status_defs SET
+           label = COALESCE($2, label),
+           occupies_slot = COALESCE($3, occupies_slot),
+           behavior = COALESCE($4, behavior),
+           selectable_by_member = COALESCE($5, selectable_by_member),
+           active = COALESCE($6, active),
+           sort_order = COALESCE($7, sort_order),
+           updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          patch.label ?? null,
+          patch.occupiesSlot ?? null,
+          patch.behavior ?? null,
+          patch.selectableByMember ?? null,
+          patch.active ?? null,
+          patch.sortOrder ?? null,
+        ],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Status definition not found');
+      }
+      return mapStatus(row);
+    },
+
+    async deactivateStatusDef(id) {
+      return this.updateStatusDef(id, { active: false });
+    },
+
+    async countParticipationsUsingStatus(statusDefId) {
+      const result = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM participations
+         WHERE status_def_id = $1 AND resigned_at IS NULL AND removed_at IS NULL`,
+        [statusDefId],
+      );
+      return Number(result.rows[0]?.count ?? 0);
+    },
+
+    async listParticipantFieldDefs(guildId) {
+      const result = await client.query(
+        `SELECT * FROM participant_field_defs WHERE guild_id = $1 ORDER BY sort_order, key`,
+        [guildId],
+      );
+      return result.rows.map((row) => mapParticipantField(row as Record<string, unknown>));
+    },
+
+    async getParticipantFieldDef(id) {
+      const result = await client.query(`SELECT * FROM participant_field_defs WHERE id = $1`, [id]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapParticipantField(row);
+    },
+
+    async insertParticipantFieldDef(input) {
+      const result = await client.query(
+        `INSERT INTO participant_field_defs (
+           id, guild_id, key, label, field_type, required_default, active, options_json, max_length, sort_order
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10)
+         RETURNING *`,
+        [
+          input.id,
+          input.guildId,
+          input.key,
+          input.label,
+          input.fieldType,
+          input.requiredDefault ?? false,
+          input.active ?? true,
+          JSON.stringify(input.optionsJson ?? []),
+          input.maxLength ?? null,
+          input.sortOrder ?? 0,
+        ],
+      );
+      return mapParticipantField(result.rows[0] as Record<string, unknown>);
+    },
+
+    async updateParticipantFieldDef(id, patch) {
+      const existing = await this.getParticipantFieldDef(id);
+      if (existing === null) {
+        throw new ActivityError('NOT_FOUND', 'Participant field not found');
+      }
+      const result = await client.query(
+        `UPDATE participant_field_defs SET
+           label = COALESCE($2, label),
+           field_type = COALESCE($3, field_type),
+           required_default = COALESCE($4, required_default),
+           active = COALESCE($5, active),
+           options_json = COALESCE($6::jsonb, options_json),
+           max_length = CASE WHEN $7::boolean THEN $8 ELSE max_length END,
+           sort_order = COALESCE($9, sort_order),
+           updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          patch.label ?? null,
+          patch.fieldType ?? null,
+          patch.requiredDefault ?? null,
+          patch.active ?? null,
+          patch.optionsJson !== undefined ? JSON.stringify(patch.optionsJson) : null,
+          patch.maxLength !== undefined,
+          patch.maxLength ?? null,
+          patch.sortOrder ?? null,
+        ],
+      );
+      return mapParticipantField(result.rows[0] as Record<string, unknown>);
+    },
+
+    async deactivateParticipantFieldDef(id) {
+      return this.updateParticipantFieldDef(id, { active: false });
+    },
+
+    async listReportReasonDefs(guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_report_reason_defs WHERE guild_id = $1 ORDER BY sort_order, key`,
+        [guildId],
+      );
+      return result.rows.map((row) => mapReportReason(row as Record<string, unknown>));
+    },
+
+    async getReportReasonDef(id) {
+      const result = await client.query(`SELECT * FROM activity_report_reason_defs WHERE id = $1`, [
+        id,
+      ]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapReportReason(row);
+    },
+
+    async insertReportReasonDef(input) {
+      const result = await client.query(
+        `INSERT INTO activity_report_reason_defs (
+           id, guild_id, key, label, active, sort_order, allow_details, requires_details
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING *`,
+        [
+          input.id,
+          input.guildId,
+          input.key,
+          input.label,
+          input.active ?? true,
+          input.sortOrder ?? 0,
+          input.allowDetails ?? true,
+          input.requiresDetails ?? false,
+        ],
+      );
+      return mapReportReason(result.rows[0] as Record<string, unknown>);
+    },
+
+    async updateReportReasonDef(id, patch) {
+      const result = await client.query(
+        `UPDATE activity_report_reason_defs SET
+           label = COALESCE($2, label),
+           active = COALESCE($3, active),
+           sort_order = COALESCE($4, sort_order),
+           allow_details = COALESCE($5, allow_details),
+           requires_details = COALESCE($6, requires_details),
+           updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          id,
+          patch.label ?? null,
+          patch.active ?? null,
+          patch.sortOrder ?? null,
+          patch.allowDetails ?? null,
+          patch.requiresDetails ?? null,
+        ],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Report reason not found');
+      }
+      return mapReportReason(row);
+    },
+
+    async deactivateReportReasonDef(id) {
+      return this.updateReportReasonDef(id, { active: false });
+    },
+
+    async listAdminEvents(filters) {
+      const params: unknown[] = [filters.guildId];
+      const where: string[] = [`guild_id = $1`, `status <> 'deleted'`];
+      if (filters.status !== undefined) {
+        params.push(filters.status);
+        where.push(`status = $${params.length}::activity_status`);
+      }
+      if (filters.organizerDiscordUserId !== undefined) {
+        params.push(filters.organizerDiscordUserId);
+        where.push(`organizer_discord_user_id = $${params.length}`);
+      }
+      if (filters.from !== undefined) {
+        params.push(filters.from.toISOString());
+        where.push(`start_at >= $${params.length}`);
+      }
+      if (filters.to !== undefined) {
+        params.push(filters.to.toISOString());
+        where.push(`start_at <= $${params.length}`);
+      }
+      const whereSql = where.join(' AND ');
+      const countResult = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM activities WHERE ${whereSql}`,
+        params,
+      );
+      params.push(filters.limit);
+      params.push(filters.offset);
+      const result = await client.query(
+        `SELECT * FROM activities
+         WHERE ${whereSql}
+         ORDER BY start_at DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params,
+      );
+      return {
+        items: result.rows.map((row) => mapActivity(row as Record<string, unknown>)),
+        total: Number(countResult.rows[0]?.count ?? 0),
+      };
+    },
+
+    async listProjectionProblems(guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_projections
+         WHERE guild_id = $1
+           AND status = ANY($2::text[])
+         ORDER BY updated_at DESC`,
+        [guildId, ['pending', 'failed', 'degraded', 'missing']],
+      );
+      return result.rows.map((row) => mapProjection(row as Record<string, unknown>));
+    },
+
+    async updateReportStatus(id, guildId, status) {
+      const result = await client.query(
+        `UPDATE activity_reports SET status = $3
+         WHERE id = $1 AND guild_id = $2
+         RETURNING *`,
+        [id, guildId, status],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Report not found');
+      }
+      return mapReport(row);
+    },
+
+    async getReport(id) {
+      const result = await client.query(`SELECT * FROM activity_reports WHERE id = $1`, [id]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapReport(row);
+    },
+
+    async listAuditEntries(filters) {
+      const params: unknown[] = [filters.guildId];
+      const where: string[] = [`guild_id = $1`];
+      if (filters.actionPrefix !== undefined) {
+        params.push(`${filters.actionPrefix}%`);
+        where.push(`action LIKE $${params.length}`);
+      }
+      if (filters.activityId !== undefined) {
+        params.push(filters.activityId);
+        where.push(`activity_id = $${params.length}`);
+      }
+      if (filters.actorDiscordUserId !== undefined) {
+        params.push(filters.actorDiscordUserId);
+        where.push(`actor_discord_user_id = $${params.length}`);
+      }
+      if (filters.from !== undefined) {
+        params.push(filters.from.toISOString());
+        where.push(`created_at >= $${params.length}`);
+      }
+      if (filters.to !== undefined) {
+        params.push(filters.to.toISOString());
+        where.push(`created_at <= $${params.length}`);
+      }
+      const whereSql = where.join(' AND ');
+      const countResult = await client.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM activity_audit_entries WHERE ${whereSql}`,
+        params,
+      );
+      params.push(filters.limit);
+      params.push(filters.offset);
+      const result = await client.query(
+        `SELECT * FROM activity_audit_entries
+         WHERE ${whereSql}
+         ORDER BY created_at DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params,
+      );
+      return {
+        items: result.rows.map((row) => mapAudit(row as Record<string, unknown>)),
+        total: Number(countResult.rows[0]?.count ?? 0),
+      };
     },
 
     async findIdempotency(input) {

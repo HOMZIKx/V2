@@ -2,31 +2,61 @@
 
 ## Task
 
-`P4.2-DISCORD-CENTRUM-CORE` — discord-gateway Centrum Aktywności core (same PR/branch as P4.1).
+`P4.1` + `P4.2` + `P4.3` delivery train — Centrum Aktywności domain, Discord, Admin.
 
 ## Status
 
-`READY_FOR_REVIEW_P4_2_DISCORD_GATEWAY_CORE`
+`READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`
 
 ## Branch
 
-`cursor/p4-1-activity-domain`
+`cursor/p4-1-activity-domain` (single PR; **do not merge**)
 
-## Scope delivered (gateway)
+## Scope delivered
 
-- Signed activity custom IDs + hub/event Components V2 renderers (teal accent, no legacy embeds)
-- `ActivityHttpClient` + `ActivityProjectionController` (`POST /internal/activity/v1/projections/deliver`)
-- Guild commands `centrum-*` + P1 LAB harness kept
-- `ActivityInteractionHandler` (create/lfg modal-before-defer, RSVP opaque→statusDefId)
-- Config: `DISCORD_ACTIVITY_ENABLED`, `ACTIVITY_SERVICE_BASE_URL`, `ACTIVITY_CLIENT_MODE`, `ACTIVITY_ORGANIZATION_ID`, projection secret, assertion keys
+### P4.1
 
-## Explicitly not done
+activity-service foundation: DB, migrations, domain, lifecycle, draft, RSVP, waitlist, reconfirm, Authz, idempotency, outbox (no RabbitMQ).
 
-- RabbitMQ / runtime outbox worker
-- Full draft opaque round-trip persistence
-- Issue #12 banner assets / prod visual sign-off
+### P4.2
+
+Discord hub/event Components V2, create/LFG/draft/preview/publish, RSVP, More/report, inbox, projection dispatcher/retry/reconcile/adopt.
+
+### P4.3
+
+Admin API + Admin UI + readiness + config versioning + projection repair/audit + gateway BFF proxy. Seed superseded by Admin as primary config path (seed no-op overwrite when admin-owned).
+
+## Explicitly not done (deferred)
+
+- P4.4 WWW user portal
+- Desktop companion
+- RabbitMQ
+- P4.5 multi-guild publication
+- P4.6 series / attendance / stats
+- Zeabur production deploy
+- Final V2 branding
 - Merge to `main`
 
-## Verification
+## Live tests
 
-- typecheck + 84 discord-gateway unit tests green
+`MANUAL_OWNER_TEST_REQUIRED` for live Discord + Admin→Discord end-to-end on test guild.
+
+## Verification commands
+
+```text
+npm exec --yes pnpm@10.14.0 -- --dir services/activity-service typecheck
+npm exec --yes pnpm@10.14.0 -- --dir services/activity-service test
+npm exec --yes pnpm@10.14.0 -- --dir apps/discord-gateway test
+npm exec --yes pnpm@10.14.0 -- --dir apps/admin typecheck
+npm exec --yes pnpm@10.14.0 -- --dir apps/admin test
+npm exec --yes pnpm@10.14.0 -- --dir apps/admin build
+npm exec --yes pnpm@10.14.0 -- --dir apps/api-gateway typecheck
+npm exec --yes pnpm@10.14.0 -- --dir apps/api-gateway test
+npm exec --yes pnpm@10.14.0 -- architecture:check
+npm exec --yes pnpm@10.14.0 -- format:check
+npm exec --yes pnpm@10.14.0 -- validate
+```
+
+## Marker
+
+`READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`

@@ -36,6 +36,24 @@ describe('OpenAPI activity-v1 contract', () => {
     expect(raw).toContain('activity.activity.projection_requested.v1');
   });
 
+  it('declares P4.3 admin paths', () => {
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/config');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/readiness');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/types');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/statuses');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/participant-fields');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/report-reasons');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/channels');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/ping-roles');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/events');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/projections');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/reports');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/audit');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub/publish-intent');
+    expect(raw).toContain('IfMatch');
+  });
+
   it('does not invent Discord-specific API paths', () => {
     expect(raw).not.toContain('/discord/');
     expect(raw).not.toContain('slash-command');

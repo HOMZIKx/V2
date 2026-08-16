@@ -1422,16 +1422,24 @@ export class ActivityUseCases {
       throw new ActivityError('FORBIDDEN', 'Test guild seed is disabled');
     }
     return this.mutate(ctx, 'test-seed-guild', `guild:${input.guildId}`, async (tx) => {
+      const existing = await tx.getSettings(input.guildId);
       const defaults = await tx.ensureGuildDefaults({
         guildId: input.guildId,
         orgId: input.orgId,
       });
-      await tx.setAllowedPublishChannelIds(input.guildId, [input.channelId]);
+      // P4.3: Admin is SoT. Seed must not overwrite real config.
+      const adminOwned =
+        existing !== null &&
+        (existing.configRevision > 1 || existing.allowedPublishChannelIds.length > 0);
+      if (!adminOwned) {
+        await tx.setAllowedPublishChannelIds(input.guildId, [input.channelId]);
+      }
       const settings = await tx.getSettings(input.guildId);
       return {
         settings: settings ?? defaults.settings,
         statuses: defaults.statuses,
         seeded: true,
+        configPreserved: adminOwned,
       };
     });
   }

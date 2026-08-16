@@ -36,6 +36,10 @@ export interface ParticipationStatusDefRecord {
   readonly seedKey: string | null;
 }
 
+export interface ReminderConfigEntry {
+  readonly [key: string]: unknown;
+}
+
 export interface GuildActivitySettingsRecord {
   readonly guildId: string;
   readonly orgId: string;
@@ -44,6 +48,107 @@ export interface GuildActivitySettingsRecord {
   readonly maxActivePerCreator: number;
   readonly registrationDefaultClosesAtStart: boolean;
   readonly allowedPublishChannelIds: readonly string[];
+  readonly configRevision: number;
+  readonly allowOtherActivity: boolean;
+  readonly maxCreateHorizonDays: number;
+  readonly postRetentionHoursAfterFinish: number;
+  readonly reminders: readonly ReminderConfigEntry[];
+  readonly dmNotificationsEnabled: boolean;
+  readonly pingRoleIds: readonly string[];
+  readonly hubChannelId: string | null;
+}
+
+export interface ActivityTypeRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly key: string;
+  readonly label: string;
+  readonly enabled: boolean;
+  readonly isOther: boolean;
+  readonly sortOrder: number;
+  readonly statusDefIds: readonly string[];
+  readonly participantFields: readonly {
+    readonly fieldDefId: string;
+    readonly required: boolean;
+  }[];
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface ParticipantFieldDefRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly key: string;
+  readonly label: string;
+  readonly fieldType: string;
+  readonly requiredDefault: boolean;
+  readonly active: boolean;
+  readonly optionsJson: readonly unknown[];
+  readonly maxLength: number | null;
+  readonly sortOrder: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface ReportReasonDefRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly key: string;
+  readonly label: string;
+  readonly active: boolean;
+  readonly sortOrder: number;
+  readonly allowDetails: boolean;
+  readonly requiresDetails: boolean;
+  readonly createdAt: Date;
+}
+
+export interface AuditEntryRecord {
+  readonly id: string;
+  readonly guildId: string | null;
+  readonly activityId: string | null;
+  readonly actorDiscordUserId: string | null;
+  readonly actorV2UserId: string | null;
+  readonly action: string;
+  readonly details: Record<string, unknown>;
+  readonly correlationId: string | null;
+  readonly createdAt: Date;
+}
+
+export interface AdminEventListFilters {
+  readonly guildId: string;
+  readonly status?: string;
+  readonly organizerDiscordUserId?: string;
+  readonly from?: Date;
+  readonly to?: Date;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface AdminAuditListFilters {
+  readonly guildId: string;
+  readonly actionPrefix?: string;
+  readonly activityId?: string;
+  readonly actorDiscordUserId?: string;
+  readonly from?: Date;
+  readonly to?: Date;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface PutGuildAdminConfigInput {
+  readonly expectedRevision: number;
+  readonly organizerDefaultStatusId?: string | null | undefined;
+  readonly waitlistPromotionStatusId?: string | null | undefined;
+  readonly maxActivePerCreator?: number | undefined;
+  readonly registrationDefaultClosesAtStart?: boolean | undefined;
+  readonly allowOtherActivity?: boolean | undefined;
+  readonly maxCreateHorizonDays?: number | undefined;
+  readonly postRetentionHoursAfterFinish?: number | undefined;
+  readonly reminders?: readonly ReminderConfigEntry[] | undefined;
+  readonly dmNotificationsEnabled?: boolean | undefined;
+  readonly allowedPublishChannelIds?: readonly string[] | undefined;
+  readonly pingRoleIds?: readonly string[] | undefined;
+  readonly hubChannelId?: string | null | undefined;
 }
 
 export interface ActivityDraftRecord {
@@ -316,6 +421,127 @@ export interface ActivityTx {
     now: Date;
   }): Promise<ActivityProjectionRecord[]>;
   setAllowedPublishChannelIds(guildId: string, channelIds: readonly string[]): Promise<void>;
+  putGuildAdminConfig(
+    guildId: string,
+    input: PutGuildAdminConfigInput,
+  ): Promise<GuildActivitySettingsRecord>;
+  setPingRoleIds(guildId: string, roleIds: readonly string[]): Promise<GuildActivitySettingsRecord>;
+  setHubChannelId(guildId: string, channelId: string | null): Promise<GuildActivitySettingsRecord>;
+  listActivityTypes(guildId: string): Promise<ActivityTypeRecord[]>;
+  getActivityType(id: string): Promise<ActivityTypeRecord | null>;
+  insertActivityType(input: {
+    id: string;
+    guildId: string;
+    key: string;
+    label: string;
+    enabled?: boolean;
+    isOther?: boolean;
+    sortOrder?: number;
+    statusDefIds?: readonly string[];
+    participantFields?: readonly { fieldDefId: string; required: boolean }[];
+  }): Promise<ActivityTypeRecord>;
+  updateActivityType(
+    id: string,
+    patch: {
+      label?: string | undefined;
+      enabled?: boolean | undefined;
+      isOther?: boolean | undefined;
+      sortOrder?: number | undefined;
+      statusDefIds?: readonly string[] | undefined;
+      participantFields?: readonly { fieldDefId: string; required: boolean }[] | undefined;
+    },
+  ): Promise<ActivityTypeRecord>;
+  countActivitiesUsingType(typeId: string): Promise<number>;
+  deactivateActivityType(id: string): Promise<ActivityTypeRecord>;
+  insertStatusDef(input: {
+    id: string;
+    guildId: string;
+    label: string;
+    occupiesSlot: boolean;
+    behavior: StatusBehavior;
+    selectableByMember: boolean;
+    active?: boolean;
+    sortOrder?: number;
+    seedKey?: string | null;
+  }): Promise<ParticipationStatusDefRecord>;
+  updateStatusDef(
+    id: string,
+    patch: {
+      label?: string | undefined;
+      occupiesSlot?: boolean | undefined;
+      behavior?: StatusBehavior | undefined;
+      selectableByMember?: boolean | undefined;
+      active?: boolean | undefined;
+      sortOrder?: number | undefined;
+    },
+  ): Promise<ParticipationStatusDefRecord>;
+  deactivateStatusDef(id: string): Promise<ParticipationStatusDefRecord>;
+  countParticipationsUsingStatus(statusDefId: string): Promise<number>;
+  listParticipantFieldDefs(guildId: string): Promise<ParticipantFieldDefRecord[]>;
+  getParticipantFieldDef(id: string): Promise<ParticipantFieldDefRecord | null>;
+  insertParticipantFieldDef(input: {
+    id: string;
+    guildId: string;
+    key: string;
+    label: string;
+    fieldType: string;
+    requiredDefault?: boolean;
+    active?: boolean;
+    optionsJson?: readonly unknown[];
+    maxLength?: number | null;
+    sortOrder?: number;
+  }): Promise<ParticipantFieldDefRecord>;
+  updateParticipantFieldDef(
+    id: string,
+    patch: {
+      label?: string | undefined;
+      fieldType?: string | undefined;
+      requiredDefault?: boolean | undefined;
+      active?: boolean | undefined;
+      optionsJson?: readonly unknown[] | undefined;
+      maxLength?: number | null | undefined;
+      sortOrder?: number | undefined;
+    },
+  ): Promise<ParticipantFieldDefRecord>;
+  deactivateParticipantFieldDef(id: string): Promise<ParticipantFieldDefRecord>;
+  listReportReasonDefs(guildId: string): Promise<ReportReasonDefRecord[]>;
+  getReportReasonDef(id: string): Promise<ReportReasonDefRecord | null>;
+  insertReportReasonDef(input: {
+    id: string;
+    guildId: string;
+    key: string;
+    label: string;
+    active?: boolean;
+    sortOrder?: number;
+    allowDetails?: boolean;
+    requiresDetails?: boolean;
+  }): Promise<ReportReasonDefRecord>;
+  updateReportReasonDef(
+    id: string,
+    patch: {
+      label?: string | undefined;
+      active?: boolean | undefined;
+      sortOrder?: number | undefined;
+      allowDetails?: boolean | undefined;
+      requiresDetails?: boolean | undefined;
+    },
+  ): Promise<ReportReasonDefRecord>;
+  deactivateReportReasonDef(id: string): Promise<ReportReasonDefRecord>;
+  listAdminEvents(filters: AdminEventListFilters): Promise<{
+    items: ActivityRecord[];
+    total: number;
+  }>;
+  listProjectionProblems(guildId: string): Promise<ActivityProjectionRecord[]>;
+  updateReportStatus(
+    id: string,
+    guildId: string,
+    status: 'open' | 'resolved',
+  ): Promise<ActivityReportRecord>;
+  getReport(id: string): Promise<ActivityReportRecord | null>;
+  listAuditEntries(filters: AdminAuditListFilters): Promise<{
+    items: AuditEntryRecord[];
+    total: number;
+  }>;
   findIdempotency(input: {
     scope: string;
     actorKey: string;
