@@ -143,20 +143,9 @@ export class ActivityProjectionController {
     }
 
     const expected = this.config.ACTIVITY_PROJECTION_SHARED_SECRET;
-    if (expected.length > 0) {
-      if (projectionSecret !== expected) {
-        throw new UnauthorizedException('Invalid projection secret.');
-      }
-      return;
+    if (projectionSecret !== expected) {
+      throw new UnauthorizedException('Invalid projection secret.');
     }
-
-    if (!this.config.ACTIVITY_ENABLED && this.config.ACTIVITY_CLIENT_MODE === 'headers') {
-      return;
-    }
-
-    throw new UnauthorizedException(
-      'Projection delivery requires ACTIVITY_PROJECTION_SHARED_SECRET outside local headers mode.',
-    );
   }
 
   private async applyProjection(

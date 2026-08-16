@@ -12,6 +12,7 @@ import {
   type ModalSubmitInteraction,
 } from 'discord.js';
 
+import { createModalCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
@@ -351,7 +352,8 @@ export function whenKindFromDraftPayload(payload: Record<string, unknown>): When
 }
 
 export function buildActivityFormModal(input: {
-  draftId: string;
+  opaqueDraftId: string;
+  signingSecret: string;
   mode: 'create' | 'lfg' | 'edit';
   payload?: Record<string, unknown>;
 }): ModalBuilder {
@@ -417,7 +419,7 @@ export function buildActivityFormModal(input: {
   if (description.length > 0) descriptionInput.setValue(description);
 
   return new ModalBuilder()
-    .setCustomId(`activity:v1:modal:${input.mode}:${input.draftId}`)
+    .setCustomId(createModalCustomId(input.mode, input.opaqueDraftId, input.signingSecret))
     .setTitle(title)
     .addLabelComponents(
       new LabelBuilder().setLabel('Nazwa').setTextInputComponent(nameInput),

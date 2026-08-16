@@ -2,7 +2,7 @@
 
 ## Status
 
-`P4.1 + P4.2 + P4.3 implemented — READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`
+`P4.1–P4.4 implemented — READY_FOR_REVIEW_P4_1_TO_P4_4_CLOSURE`
 
 Kolumny: decyzja → domena → kontrakt → permission → etap → test.
 
@@ -19,8 +19,8 @@ Kolumny: decyzja → domena → kontrakt → permission → etap → test.
 | E reconfirm on schedule change | confirmationState      | reschedule / reconfirm     | manage.self / join        | P4.1   | seat held; deadline release → FIFO promote          |
 | F limit + waitlist FIFO        | Waitlist               | rsvp / resign              | join                      | P4.1   | Activity row lock; concurrent last seat (CI infra)  |
 | G horizon 14d                  | Activity               | publish + admin limits     | create (+ Authz extend)   | P4.1/3 | FixedClock unit; admin horizon bounds               |
-| H panel nonce/adopt            | PanelPublishOccurrence | panels + admin hub         | `….panel.manage`          | P4.2/3 | Discord operator + Admin hub intent                 |
-| I form draft 24h               | FormDraft              | drafts                     | create                    | P4.1   | draft TTL domain; Discord modals P4.2               |
+| H panel nonce/adopt            | PanelPublishOccurrence | panels + admin hub         | `….panel.manage`          | P4.2/3 | scan/adopt/dup cleanup + crash-window unit          |
+| I form draft 24h               | FormDraft              | drafts                     | create                    | P4.1   | draft TTL; single-form Discord (Owner Amendment)    |
 | J Więcej private               | More menu              | ephemeral                  | manage.\* / join          | P4.2   | no public admin buttons                             |
 | K report                       | Report                 | report + admin reports     | `….report.manage`         | P4.2–3 | reasons catalog + Admin resolve                     |
 | L attendance                   | AttendanceRecord       | attendance                 | `….attendance.record`     | P4.6   | 24h window                                          |

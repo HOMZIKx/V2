@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export const ACTIVITY_CUSTOM_ID_PREFIX = 'activity';
 export const ACTIVITY_CUSTOM_ID_VERSION = 'v1';
 
-export type ActivityCustomScope = 'panel' | 'event' | 'draft';
+export type ActivityCustomScope = 'panel' | 'event' | 'draft' | 'modal';
 
 export type ActivityPanelAction = 'create' | 'lfg' | 'mine' | 'inbox';
 
@@ -36,6 +36,8 @@ export type ActivityDraftAction =
   | 'section_limit'
   | 'section_extra';
 
+export type ActivityModalKind = 'create' | 'lfg' | 'edit' | 'report' | 'basics' | 'schedule';
+
 export type ParsedActivityCustomId =
   | {
       scope: 'panel';
@@ -54,6 +56,12 @@ export type ParsedActivityCustomId =
       scope: 'draft';
       opaqueId: string;
       action: ActivityDraftAction;
+      signature: string;
+    }
+  | {
+      scope: 'modal';
+      kind: ActivityModalKind;
+      opaqueId: string;
       signature: string;
     };
 
@@ -86,6 +94,14 @@ const DRAFT_ACTIONS = new Set<ActivityDraftAction>([
   'section_place',
   'section_limit',
   'section_extra',
+]);
+const MODAL_KINDS = new Set<ActivityModalKind>([
+  'create',
+  'lfg',
+  'edit',
+  'report',
+  'basics',
+  'schedule',
 ]);
 
 function base64Url(buffer: Buffer): string {
@@ -161,6 +177,30 @@ export function createDraftCustomId(
   return finalize(body, secret);
 }
 
+export function createModalCustomId(
+  kind: ActivityModalKind,
+  opaqueDraftId: string,
+  secret: string,
+): string {
+  assertOpaque(opaqueDraftId);
+  if (!MODAL_KINDS.has(kind)) {
+    throw new Error(`Unknown modal kind: ${kind}`);
+  }
+  const body = `${ACTIVITY_CUSTOM_ID_PREFIX}:${ACTIVITY_CUSTOM_ID_VERSION}:modal:${opaqueDraftId}:${kind}`;
+  return finalize(body, secret);
+}
+
+export function parseModalCustomId(
+  raw: string,
+  secret: string,
+): Extract<ParsedActivityCustomId, { scope: 'modal' }> {
+  const parsed = parseActivityCustomId(raw, secret);
+  if (parsed.scope !== 'modal') {
+    throw new Error('Expected modal custom ID scope.');
+  }
+  return parsed;
+}
+
 export function parseActivityCustomId(raw: string, secret: string): ParsedActivityCustomId {
   const parts = raw.split(':');
   if (parts.length < 6) {
@@ -213,6 +253,18 @@ export function parseActivityCustomId(raw: string, secret: string): ParsedActivi
     };
   }
 
+  if (scope === 'modal') {
+    if (!MODAL_KINDS.has(action as ActivityModalKind)) {
+      throw new Error('Unknown modal kind.');
+    }
+    return {
+      scope: 'modal',
+      kind: action as ActivityModalKind,
+      opaqueId,
+      signature,
+    };
+  }
+
   if (scope === 'event') {
     if (action === 'rsvp') {
       if (maybeStatus === undefined || maybeStatus === signature) {
@@ -243,4 +295,8 @@ export function parseActivityCustomId(raw: string, secret: string): ParsedActivi
 
 export function isActivityCustomId(raw: string): boolean {
   return raw.startsWith(`${ACTIVITY_CUSTOM_ID_PREFIX}:${ACTIVITY_CUSTOM_ID_VERSION}:`);
+}
+
+export function isActivityModalCustomId(raw: string): boolean {
+  return raw.startsWith(`${ACTIVITY_CUSTOM_ID_PREFIX}:${ACTIVITY_CUSTOM_ID_VERSION}:modal:`);
 }

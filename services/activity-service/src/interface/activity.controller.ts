@@ -135,6 +135,13 @@ const panelUpsertSchema = z.object({
   operationId: z.string().optional(),
   nonce: z.string().max(25).optional(),
   correlationId: z.string().optional(),
+  occurrenceOutcome: z.enum(['sent', 'adopted']).optional(),
+  incident: z
+    .object({
+      action: z.string().min(1),
+      details: z.record(z.string(), z.unknown()).optional(),
+    })
+    .optional(),
 });
 
 const outboxClaimSchema = z.object({
@@ -632,9 +639,31 @@ export class ActivityController {
         ...(parsed.operationId !== undefined ? { operationId: parsed.operationId } : {}),
         ...(parsed.nonce !== undefined ? { nonce: parsed.nonce } : {}),
         ...(parsed.correlationId !== undefined ? { correlationId: parsed.correlationId } : {}),
+        ...(parsed.occurrenceOutcome !== undefined
+          ? { occurrenceOutcome: parsed.occurrenceOutcome }
+          : {}),
+        ...(parsed.incident !== undefined
+          ? {
+              incident: {
+                action: parsed.incident.action,
+                ...(parsed.incident.details !== undefined
+                  ? { details: parsed.incident.details }
+                  : {}),
+              },
+            }
+          : {}),
       },
       mutationCtx(request, idempotencyKey),
     );
+  }
+
+  @Get('panels/:id/pending-occurrence')
+  @RequireOperation('activity_read')
+  public async getPanelPendingOccurrence(
+    @Param('id') id: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getPanelPendingOccurrence(id, actorFromRequest(request));
   }
 
   @Post('outbox/claim')

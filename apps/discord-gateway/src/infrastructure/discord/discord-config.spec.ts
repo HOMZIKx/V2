@@ -99,4 +99,14 @@ describe('discord config', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('requires projection shared secret when Discord activity is enabled', () => {
+    const result = DiscordGatewayConfigSchema.safeParse({
+      DISCORD_ENABLED: 'false',
+      DISCORD_ACTIVITY_ENABLED: 'true',
+      ACTIVITY_ORGANIZATION_ID: 'org-1',
+      ACTIVITY_PROJECTION_SHARED_SECRET: '',
+    });
+    expect(result.success).toBe(false);
+  });
 });

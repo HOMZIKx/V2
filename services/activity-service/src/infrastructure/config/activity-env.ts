@@ -82,6 +82,18 @@ const baseSchema = z.object({
   ACTIVITY_TO_DISCORD_ACTIVE_KID: optionalTrimmed,
   ACTIVITY_DISCORD_ASSERTION_AUD: optionalTrimmed,
   ACTIVITY_ALLOW_TEST_SEED: booleanFromEnv(false),
+  /** DEV-ONLY: trust x-actor-* headers when ACTIVITY_ENABLED=false. Never in production. */
+  ACTIVITY_TRUST_ACTOR_HEADERS: booleanFromEnv(false),
+  ACTIVITY_REDIS_URL: optionalTrimmed,
+  ACTIVITY_ASSERTION_JTI_REDIS_PREFIX: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'v2:activity:client-assertion:jti:'
+        : trimmed;
+    }),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
@@ -112,6 +124,9 @@ function assertEnabledRequirements(
   }
   if (config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
     addIssue('ACTIVITY_INBOUND_CLIENTS_JSON', 'is required when ACTIVITY_ENABLED=true');
+  }
+  if (config.ACTIVITY_REDIS_URL === undefined) {
+    addIssue('ACTIVITY_REDIS_URL', 'is required when ACTIVITY_ENABLED=true');
   }
 }
 
@@ -174,6 +189,10 @@ export function parseActivityEnv(env: NodeJS.ProcessEnv): ActivityEnv {
         `Outbox worker is enabled but configuration is incomplete: ${issues.join('; ')}`,
       );
     }
+  }
+
+  if (config.NODE_ENV === 'production' && config.ACTIVITY_TRUST_ACTOR_HEADERS) {
+    throw new ActivityConfigError('ACTIVITY_TRUST_ACTOR_HEADERS cannot be enabled in production');
   }
 
   return config;

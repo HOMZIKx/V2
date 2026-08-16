@@ -2,39 +2,53 @@
 
 ## Status
 
-`READY_FOR_OWNER_SINGLE_FORM_SCHEDULING_RETEST` — Discord single-form
-scheduling UX on PR #19 (`cursor/p4-1-activity-domain`).
+`READY_FOR_REVIEW_P4_1_TO_P4_4_CLOSURE`
+
+## Explicit gates
+
+- **NO MERGE**
+- **NO P4.5** (RabbitMQ / multi-Discord transport not in active scope;
+  prior P4.5 commit on this branch was reverted for closure)
+- **NO P4.6**
+- **OWNER LIVE TESTS REQUIRED** (Discord P4.2, Admin P4.3, OAuth WWW P4.4)
 
 ## Active phase
 
-P4.1–P4.4 delivered earlier on same PR. **Do not start P4.5.** No merge.
-
-This pass is a Discord create/edit UX correction (Prompt 1/3 closure), not P4.4 WWW.
+P4.1–P4.4 combined closure remediation (`P4-CLOSURE-REMEDIATION-001`) on
+PR #19. Code exists for domain, Discord Centrum, Admin, and WWW member UI;
+this pass hardens security, completes P4-D6 panel recovery, aligns SoT docs,
+and requires owner live gates before any merge decision.
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
 
-## Single-form scheduling (this task)
+## Delivered in this closure pass
 
-- Create / LFG → **one** Modal (Label + „Kiedy?” select + OD/DO + opis)
-- Submit → **one** ephemeral preview [Edytuj | Publikuj | Anuluj]
-- Edit → same modal prefilled; preview **update-in-place**
-- Schedule model: `exact` | `range` | `flexible_period` + `periodKey`
-  (`today` | `tomorrow` | `this_week` | `weekend` | `flexible`)
-- Migration: `004_activity_schedule.sql`
-- Public post prefers `scheduleLabel` (no ISO/enums)
+- Security: actor-header fail-closed + DEV-ONLY trust flag; allowedMentions
+  zero-parse; signed modal custom_ids; assertion jti replay store; mandatory
+  projection shared secret; no sensitive upstream bodies in logs
+- P4-D6: channel scan adopt by panel opaque id, duplicate cleanup, nonce
+  reuse after crash, reconcile recover (not “re-publish” instruction)
+- Discord create UX: single-form → preview → publish (Owner Amendment)
+- Docs SoT realigned; P4.5 marker removed from active status
 
-## Owner UX note
+## Owner decisions still open
 
-Accepted architecture §12 sectional draft panel is **overridden for create**
-by OWNER decision in this task (one full modal). Recorded for audit.
+- P4-D8 / Issue #12 visual branding (does **not** block functional closure)
+- Manual Discord live (P4.2)
+- Manual Admin → Activity → Discord (P4.3)
+- Manual WWW with `IDENTITY_AUTH_ENABLED=true` (P4.4)
 
 ## Explicitly not done
 
-P4.5, merge, Zeabur, WWW creator, palette rebrand.
+- Merge to `main`
+- Zeabur
+- P4.5 RabbitMQ / multi-guild transport as product delivery
+- P4.6+
+- WWW activity creator
 
 ## Last updated
 
-2026-08-16 — P4 Discord single-form scheduling UX
+2026-08-16 — P4-CLOSURE-REMEDIATION-001

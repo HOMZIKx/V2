@@ -14,6 +14,7 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
+import { deliverHubPanel } from '../../application/interactions/hub-panel-delivery.js';
 import {
   ActivityHttpError,
   type ActivityHttpClient,
@@ -23,7 +24,9 @@ import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/disco
 import {
   createEventCustomId,
   isActivityCustomId,
+  isActivityModalCustomId,
   parseActivityCustomId,
+  parseModalCustomId,
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
@@ -211,7 +214,7 @@ export class ActivityInteractionHandler {
       this.deps.logger.error('Centrum component failed', {
         error: error instanceof Error ? error.message : String(error),
         status: error instanceof ActivityHttpError ? error.status : undefined,
-        body: error instanceof ActivityHttpError ? error.body?.slice(0, 300) : undefined,
+        operation: 'component',
       });
       await interaction.editReply({ content: toUserFacingError(error) });
       return true;
@@ -224,18 +227,35 @@ export class ActivityInteractionHandler {
     if (!this.deps.config.DISCORD_ACTIVITY_ENABLED) {
       return false;
     }
-    if (!interaction.customId.startsWith('activity:v1:modal:')) {
+    if (!isActivityModalCustomId(interaction.customId)) {
       return false;
     }
-    const parts = interaction.customId.split(':');
-    const kind = parts[3];
-    const draftId = parts[4];
+
+    let parsedModal;
+    try {
+      parsedModal = parseModalCustomId(
+        interaction.customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+    } catch {
+      await interaction.reply({
+        content: 'Nieprawidłowy formularz Centrum.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return true;
+    }
+
+    const { kind, opaqueId } = parsedModal;
 
     try {
-      if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && draftId !== undefined) {
+      if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && opaqueId !== undefined) {
         const parsedForm = parseActivityFormModal(interaction);
-        const draft = await this.deps.activityClient.updateDraft(
-          draftId,
+        const draft = await this.deps.activityClient.lookupDraftByOpaque(
+          opaqueId,
+          actorOf(interaction.user.id),
+        );
+        const updated = await this.deps.activityClient.updateDraft(
+          draft.id,
           {
             payload: scheduleToDraftPayload(parsedForm, {
               source: kind === 'lfg' ? 'lfg' : 'create',
@@ -244,14 +264,18 @@ export class ActivityInteractionHandler {
           },
           {
             ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'draft-form', `${draftId}:${interaction.id}`),
+            idempotencyKey: idem(
+              interaction.user.id,
+              'draft-form',
+              `${opaqueId}:${interaction.id}`,
+            ),
           },
         );
         const preview = renderDraftFormSummary({
-          opaqueDraftId: opaqueFromUuid(draft.id),
+          opaqueDraftId: opaqueFromUuid(updated.id),
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
           title: parsedForm.name,
-          lines: draftSummaryLines(draftPayload(draft)),
+          lines: draftSummaryLines(draftPayload(updated)),
         });
 
         // Edit from existing ephemeral preview → update in place (one message).
@@ -268,7 +292,7 @@ export class ActivityInteractionHandler {
       }
 
       // Legacy section modals → migrate into full-form preview without stacking.
-      if ((kind === 'basics' || kind === 'schedule') && draftId !== undefined) {
+      if ((kind === 'basics' || kind === 'schedule') && opaqueId !== undefined) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         await interaction.editReply({
           content:
@@ -279,20 +303,21 @@ export class ActivityInteractionHandler {
 
       if (kind === 'report') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const activityId = parts[4];
+        const activity = await this.deps.activityClient.lookupActivityByOpaque(
+          opaqueId,
+          actorOf(interaction.user.id),
+        );
         const reason = interaction.fields.getTextInputValue('reason');
         const details = interaction.fields.getTextInputValue('details');
-        if (activityId !== undefined) {
-          await this.deps.activityClient.createReport(
-            activityId,
-            { reasonCategory: reason, details },
-            {
-              ...actorOf(interaction.user.id),
-              idempotencyKey: idem(interaction.user.id, 'report', `${activityId}:${reason}`),
-            },
-          );
-          await interaction.editReply({ content: 'Zgłoszenie zapisane. Dziękujemy.' });
-        }
+        await this.deps.activityClient.createReport(
+          activity.id,
+          { reasonCategory: reason, details },
+          {
+            ...actorOf(interaction.user.id),
+            idempotencyKey: idem(interaction.user.id, 'report', `${opaqueId}:${reason}`),
+          },
+        );
+        await interaction.editReply({ content: 'Zgłoszenie zapisane. Dziękujemy.' });
         return true;
       }
 
@@ -303,7 +328,7 @@ export class ActivityInteractionHandler {
       this.deps.logger.error('Centrum modal failed', {
         error: error instanceof Error ? error.message : String(error),
         status: error instanceof ActivityHttpError ? error.status : undefined,
-        body: error instanceof ActivityHttpError ? error.body?.slice(0, 300) : undefined,
+        operation: 'modal',
       });
       const content =
         error instanceof LocalizedDateParseError ? error.message : toUserFacingError(error);
@@ -337,7 +362,8 @@ export class ActivityInteractionHandler {
       );
 
       const modal = buildActivityFormModal({
-        draftId: draft.id,
+        opaqueDraftId: opaqueFromUuid(draft.id),
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         mode: parsed.action === 'lfg' ? 'lfg' : 'create',
         payload: draftPayload(draft),
       });
@@ -365,7 +391,8 @@ export class ActivityInteractionHandler {
         actorOf(interaction.user.id),
       );
       const modal = buildActivityFormModal({
-        draftId: draft.id,
+        opaqueDraftId: parsed.opaqueId,
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         mode: 'edit',
         payload: draftPayload(draft),
       });
@@ -382,16 +409,36 @@ export class ActivityInteractionHandler {
   }
 
   private async publishHub(interaction: ChatInputCommandInteraction): Promise<void> {
+    await this.runHubPanelOperation(interaction, {
+      preferScanFirst: false,
+      ackSuffix: 'panel-ack',
+    });
+  }
+
+  private async reconcileHub(interaction: ChatInputCommandInteraction): Promise<void> {
+    await this.runHubPanelOperation(interaction, {
+      preferScanFirst: true,
+      ackSuffix: 'panel-reconcile',
+    });
+  }
+
+  private async runHubPanelOperation(
+    interaction: ChatInputCommandInteraction,
+    options: { preferScanFirst: boolean; ackSuffix: string },
+  ): Promise<void> {
     if (!isOperator(interaction, this.deps.config)) {
       await interaction.reply({
-        content: 'Tylko operatorzy testowi mogą publikować panel Centrum.',
+        content:
+          options.preferScanFirst === true
+            ? 'Tylko operatorzy testowi mogą uzgadniać panel.'
+            : 'Tylko operatorzy testowi mogą publikować panel Centrum.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (!interaction.channelId) {
       await interaction.reply({
-        content: 'Centrum można opublikować tylko na kanale tekstowym.',
+        content: 'Centrum wymaga kanału tekstowego.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -411,8 +458,15 @@ export class ActivityInteractionHandler {
       );
     });
 
-    const operationId = randomUUID();
-    const nonce = operationId.replace(/-/g, '').slice(0, 25);
+    let operationId: string = randomUUID();
+    let nonce = operationId.replace(/-/g, '').slice(0, 25);
+    if (hub?.id) {
+      const pending = await this.deps.activityClient.getPanelPendingOccurrence(hub.id, actor);
+      if (pending !== null) {
+        operationId = pending.operationId;
+        nonce = pending.nonce;
+      }
+    }
 
     const panel = await this.deps.activityClient.upsertPanel(
       {
@@ -444,59 +498,76 @@ export class ActivityInteractionHandler {
       }),
     );
 
-    let messageId =
+    const knownMessageId =
       typeof panel.messageId === 'string'
         ? panel.messageId
         : typeof hub?.messageId === 'string'
           ? hub.messageId
           : null;
-    let mode: 'updated' | 'created' = 'created';
 
-    if (messageId) {
-      try {
-        await this.deps.gateway.fetchChannelMessage(channelId, messageId);
-        await this.deps.gateway.editComponentsV2Message(channelId, messageId, payload);
-        mode = 'updated';
-      } catch (error) {
-        this.deps.logger.warn('Hub message missing or not editable; publishing new message', {
-          messageId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        messageId = null;
-      }
-    }
-
-    if (!messageId) {
-      const published = await this.deps.gateway.publishComponentsV2Message(channelId, payload, {
+    const delivered = await deliverHubPanel(
+      { gateway: this.deps.gateway, logger: this.deps.logger },
+      {
+        channelId,
+        opaquePanelId,
+        payload,
         nonce,
+        knownMessageId,
+        preferScanFirst: options.preferScanFirst,
+      },
+    );
+
+    if (delivered.duplicateMessageIds.length > 0) {
+      this.deps.logger.warn('Duplicate hub panel messages cleaned up', {
+        guildId,
+        channelId,
+        opaquePanelId,
+        canonicalMessageId: delivered.messageId,
+        removedMessageIds: delivered.duplicateMessageIds,
       });
-      messageId = published.messageId;
-      mode = 'created';
     }
 
+    const occurrenceOutcome = delivered.mode === 'adopted' ? 'adopted' : 'sent';
     await this.deps.activityClient.upsertPanel(
       {
         organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
         discordGuildId: guildId,
         channelId,
         panelType: 'hub',
-        messageId,
+        messageId: delivered.messageId,
         status: 'active',
         operationId: `${operationId}:ack`,
         nonce,
+        occurrenceOutcome,
+        ...(delivered.duplicateMessageIds.length > 0
+          ? {
+              incident: {
+                action: 'panel.duplicate_cleanup',
+                details: {
+                  opaquePanelId,
+                  canonicalMessageId: delivered.messageId,
+                  removedMessageIds: delivered.duplicateMessageIds,
+                },
+              },
+            }
+          : {}),
       },
       {
         ...actor,
-        idempotencyKey: idem(interaction.user.id, 'panel-ack', messageId),
+        idempotencyKey: idem(interaction.user.id, options.ackSuffix, delivered.messageId),
       },
     );
 
-    await interaction.editReply({
-      content:
-        mode === 'updated'
-          ? 'Panel Centrum zaktualizowany w istniejącej wiadomości.'
+    const replyByMode = {
+      updated: 'Panel Centrum zaktualizowany w istniejącej wiadomości.',
+      adopted: 'Panel uzgodniony — przyjęto istniejącą wiadomość (bez duplikatu).',
+      created:
+        options.preferScanFirst === true
+          ? 'Panel odtworzony — opublikowano nową wiadomość.'
           : 'Panel Centrum opublikowany.',
-    });
+    } as const;
+
+    await interaction.editReply({ content: replyByMode[delivered.mode] });
   }
 
   private async hubStatus(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -512,60 +583,6 @@ export class ActivityInteractionHandler {
             return `• status: **${status}** · wiadomość: ${hasMsg ? 'jest' : 'brak'}`;
           });
     await interaction.editReply({ content: ['**Centrum — status**', ...lines].join('\n') });
-  }
-
-  private async reconcileHub(interaction: ChatInputCommandInteraction): Promise<void> {
-    if (!isOperator(interaction, this.deps.config)) {
-      await interaction.reply({
-        content: 'Tylko operatorzy testowi mogą uzgadniać panel.',
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
-    const channelId = interaction.channelId;
-    const panels = await this.deps.activityClient.listPanels(guildId, actorOf(interaction.user.id));
-    const hub =
-      panels.find((p) => {
-        const row = p as { panelType?: string; channelId?: string };
-        return (
-          (row.panelType === 'hub' || row.panelType === undefined) &&
-          (channelId === null || row.channelId === undefined || row.channelId === channelId)
-        );
-      }) ?? panels[0];
-    if (hub === undefined) {
-      await interaction.editReply({
-        content: 'Brak panelu do uzgodnienia — użyj `/centrum-panel`.',
-      });
-      return;
-    }
-    if (hub.messageId && hub.channelId) {
-      try {
-        await this.deps.gateway.fetchChannelMessage(hub.channelId, hub.messageId);
-        const opaquePanelId =
-          typeof hub.opaqueId === 'string' && /^[a-f0-9]{12}$/.test(hub.opaqueId)
-            ? hub.opaqueId
-            : opaqueFromUuid(hub.id);
-        const payload = toComponentsV2Payload(
-          renderActivityHubMessage({
-            opaquePanelId,
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-          }),
-        );
-        await this.deps.gateway.editComponentsV2Message(hub.channelId, hub.messageId, payload);
-        await interaction.editReply({
-          content: 'Panel uzgodniony — zaktualizowano istniejącą wiadomość (bez duplikatu).',
-        });
-        return;
-      } catch {
-        // fall through
-      }
-    }
-    await interaction.editReply({
-      content:
-        'Nie znaleziono wiadomości panelu. Uruchom `/centrum-panel` w docelowym kanale, aby odtworzyć jedną wiadomość.',
-    });
   }
 
   private async seedGuild(interaction: ChatInputCommandInteraction): Promise<void> {

@@ -60,4 +60,10 @@ export type GatewayRestPort = {
     channelId: string,
     messageId: string,
   ): Promise<{ id: string; channelId: string; content: string | null }>;
+  findBotMessagesWithPanelOpaqueId?(
+    channelId: string,
+    opaquePanelId: string,
+    options?: { limit?: number },
+  ): Promise<Array<{ messageId: string; channelId: string }>>;
+  deleteChannelMessage?(channelId: string, messageId: string): Promise<void>;
 };

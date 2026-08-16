@@ -1269,6 +1269,8 @@ export class ActivityUseCases {
       operationId?: string;
       nonce?: string;
       correlationId?: string;
+      occurrenceOutcome?: 'sent' | 'adopted';
+      incident?: { action: string; details?: Record<string, unknown> };
     },
     ctx: MutationContext,
   ) {
@@ -1289,12 +1291,35 @@ export class ActivityUseCases {
         ...(input.status !== undefined ? { status: input.status } : {}),
       });
       if (input.operationId !== undefined && input.nonce !== undefined) {
-        await tx.insertPublishOccurrence({
-          panelId: panel.id,
-          operationId: input.operationId,
-          nonce: input.nonce.slice(0, 25),
-          payloadVersion: panel.payloadVersion,
-          desiredChannelId: input.channelId,
+        const isAck = input.operationId.endsWith(':ack');
+        if (!isAck) {
+          await tx.insertPublishOccurrence({
+            panelId: panel.id,
+            operationId: input.operationId,
+            nonce: input.nonce.slice(0, 25),
+            payloadVersion: panel.payloadVersion,
+            desiredChannelId: input.channelId,
+            ...(input.correlationId !== undefined ? { correlationId: input.correlationId } : {}),
+          });
+        }
+        if (input.occurrenceOutcome !== undefined) {
+          const baseOperationId = input.operationId.replace(/:ack$/, '');
+          await tx.updatePublishOccurrenceStatus({
+            panelId: panel.id,
+            operationId: baseOperationId,
+            status: input.occurrenceOutcome,
+          });
+        }
+      }
+      if (input.incident !== undefined) {
+        await tx.insertAudit({
+          guildId: input.discordGuildId,
+          action: input.incident.action,
+          details: input.incident.details ?? {},
+          ...(ctx.actor.discordUserId !== undefined
+            ? { actorDiscordUserId: ctx.actor.discordUserId }
+            : {}),
+          ...(ctx.actor.v2UserId !== undefined ? { actorV2UserId: ctx.actor.v2UserId } : {}),
           ...(input.correlationId !== undefined ? { correlationId: input.correlationId } : {}),
         });
       }
@@ -1309,6 +1334,22 @@ export class ActivityUseCases {
         });
       }
       return panel;
+    });
+  }
+
+  public async getPanelPendingOccurrence(panelId: string, actor: ActorSubject) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const panel = await tx.getPanel(panelId);
+      if (panel === null) {
+        throw new ActivityError('NOT_FOUND', 'Panel not found');
+      }
+      await this.requirePermission(
+        actor,
+        ACTIVITY_PERMISSIONS.PANEL_MANAGE,
+        panel.discordGuildId,
+        'sensitive',
+      );
+      return tx.getLatestPendingPublishOccurrence(panelId);
     });
   }
 

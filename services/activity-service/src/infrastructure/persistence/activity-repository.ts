@@ -957,6 +957,37 @@ function createTx(client: PoolClient): ActivityTx {
       );
     },
 
+    async getLatestPendingPublishOccurrence(panelId) {
+      const result = await client.query(
+        `SELECT operation_id, nonce, payload_version, desired_channel_id, correlation_id
+         FROM panel_publish_occurrences
+         WHERE panel_id = $1 AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [panelId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        operationId: asRequiredString(row.operation_id, 'operation_id'),
+        nonce: asRequiredString(row.nonce, 'nonce'),
+        payloadVersion: Number(row.payload_version),
+        desiredChannelId: asRequiredString(row.desired_channel_id, 'desired_channel_id'),
+        correlationId: asNullableString(row.correlation_id),
+      };
+    },
+
+    async updatePublishOccurrenceStatus(input) {
+      await client.query(
+        `UPDATE panel_publish_occurrences
+         SET status = $3
+         WHERE panel_id = $1 AND operation_id = $2`,
+        [input.panelId, input.operationId, input.status],
+      );
+    },
+
     async insertOutbox(message: OutboxInsert) {
       await client.query(
         `INSERT INTO outbox_messages (

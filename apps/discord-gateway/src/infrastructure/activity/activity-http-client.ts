@@ -64,6 +64,16 @@ const panelSchema = z
   })
   .passthrough();
 
+const pendingOccurrenceSchema = z
+  .object({
+    operationId: z.string().min(1),
+    nonce: z.string().min(1),
+    payloadVersion: z.number().optional(),
+    desiredChannelId: z.string().optional(),
+    correlationId: z.string().nullable().optional(),
+  })
+  .nullable();
+
 const panelListSchema = z
   .union([z.array(panelSchema), z.object({ items: z.array(panelSchema).optional() }).passthrough()])
   .transform((value): Array<z.infer<typeof panelSchema>> =>
@@ -322,6 +332,15 @@ export class ActivityHttpClient {
     return this.request('GET', `/activity/v1/panels/${encodeURIComponent(id)}`, panelSchema, {
       actor,
     });
+  }
+
+  public async getPanelPendingOccurrence(panelId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/panels/${encodeURIComponent(panelId)}/pending-occurrence`,
+      pendingOccurrenceSchema,
+      { actor },
+    );
   }
 
   public async listPanels(guildId: string, actor: ActivityActorContext) {

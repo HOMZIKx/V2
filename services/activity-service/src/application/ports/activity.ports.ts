@@ -390,6 +390,18 @@ export interface ActivityTx {
     desiredChannelId: string;
     correlationId?: string;
   }): Promise<void>;
+  getLatestPendingPublishOccurrence(panelId: string): Promise<{
+    operationId: string;
+    nonce: string;
+    payloadVersion: number;
+    desiredChannelId: string;
+    correlationId: string | null;
+  } | null>;
+  updatePublishOccurrenceStatus(input: {
+    panelId: string;
+    operationId: string;
+    status: 'sent' | 'adopted' | 'failed' | 'cancelled';
+  }): Promise<void>;
   insertOutbox(message: OutboxInsert): Promise<void>;
   claimOutbox(input: {
     owner: string;

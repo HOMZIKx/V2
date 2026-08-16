@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from './app.module.js';
 
 /**
- * HTTP smoke with ACTIVITY_ENABLED=false (allow-all authz + actor headers).
+ * HTTP smoke with ACTIVITY_ENABLED=false and ACTIVITY_TRUST_ACTOR_HEADERS=true (DEV-ONLY).
  * Requires ACTIVITY_DATABASE_URL when RUN_INFRA_TESTS=true; otherwise skipped.
  */
 const wantInfra = process.env.RUN_INFRA_TESTS === 'true';
@@ -18,6 +18,7 @@ describe.skipIf(!wantInfra)('Activity HTTP (ACTIVITY_ENABLED=false)', () => {
 
   beforeAll(async () => {
     process.env.ACTIVITY_ENABLED = 'false';
+    process.env.ACTIVITY_TRUST_ACTOR_HEADERS = 'true';
     process.env.ACTIVITY_OUTBOX_WORKER_ENABLED = 'false';
     process.env.ACTIVITY_DATABASE_URL =
       process.env.ACTIVITY_DATABASE_URL ??

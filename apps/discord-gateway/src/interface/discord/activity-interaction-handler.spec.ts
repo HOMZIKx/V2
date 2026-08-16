@@ -10,8 +10,10 @@ import { ActivityInteractionHandler } from './activity-interaction-handler.js';
 
 const secret = 's'.repeat(32);
 const guildId = '1534228693017432124';
+const channelId = '222222222222222222';
 const operatorId = '111111111111111111';
 const opaquePanel = 'a1b2c3d4e5f6';
+const panelId = '33333333-4444-5555-6666-777777777777';
 
 function makeConfig() {
   return normalizeDiscordConfig(
@@ -24,6 +26,7 @@ function makeConfig() {
       DISCORD_COMPONENT_SIGNING_SECRET: secret,
       DISCORD_ACTIVITY_ENABLED: 'true',
       ACTIVITY_ORGANIZATION_ID: 'org-test',
+      ACTIVITY_PROJECTION_SHARED_SECRET: 'proj-secret',
       ACTIVITY_CLIENT_MODE: 'headers',
       ACTIVITY_ENABLED: 'false',
     }),
@@ -33,6 +36,188 @@ function makeConfig() {
 function createLogger() {
   return { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
+
+function makeOperatorCommand(overrides: Record<string, unknown> = {}) {
+  return {
+    commandName: 'centrum-panel',
+    guildId,
+    channelId,
+    user: { id: operatorId },
+    memberPermissions: { bitfield: 8n },
+    deferReply: vi.fn(() => Promise.resolve(undefined)),
+    editReply: vi.fn(() => Promise.resolve(undefined)),
+    reply: vi.fn(() => Promise.resolve(undefined)),
+    ...overrides,
+  };
+}
+
+describe('ActivityInteractionHandler hub recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('adopts existing message on publish without creating a new one', async () => {
+    const upsertPanel = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: null,
+        channelId,
+      })
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: 'msg-adopt',
+        channelId,
+      });
+    const activityClient = {
+      listPanels: vi.fn(() => Promise.resolve([])),
+      getPanelPendingOccurrence: vi.fn(() => Promise.resolve(null)),
+      upsertPanel,
+    };
+    const gateway = {
+      fetchChannelMessage: vi.fn(),
+      findBotMessagesWithPanelOpaqueId: vi.fn(() =>
+        Promise.resolve([{ messageId: 'msg-adopt', channelId }]),
+      ),
+      editComponentsV2Message: vi.fn(() => Promise.resolve(undefined)),
+      publishComponentsV2Message: vi.fn(),
+      deleteChannelMessage: vi.fn(),
+    };
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: gateway as never,
+      activityClient: activityClient as never,
+      logger: createLogger(),
+    });
+
+    await handler.handleCommand(makeOperatorCommand() as never);
+
+    expect(gateway.publishComponentsV2Message).not.toHaveBeenCalled();
+    expect(gateway.editComponentsV2Message).toHaveBeenCalledWith(
+      channelId,
+      'msg-adopt',
+      expect.objectContaining({ flags: expect.any(Number) as number }),
+    );
+    expect(upsertPanel).toHaveBeenCalledTimes(2);
+    expect(upsertPanel.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        messageId: 'msg-adopt',
+        status: 'active',
+        occurrenceOutcome: 'adopted',
+      }),
+    );
+  });
+
+  it('reconcile adopts scanned message instead of telling operator to re-publish', async () => {
+    const upsertPanel = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: null,
+        channelId,
+      })
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: 'msg-reconcile',
+        channelId,
+      });
+    const activityClient = {
+      listPanels: vi.fn(() =>
+        Promise.resolve([{ id: panelId, opaqueId: opaquePanel, panelType: 'hub', channelId }]),
+      ),
+      getPanelPendingOccurrence: vi.fn(() =>
+        Promise.resolve({ operationId: 'op-crash', nonce: 'noncefrompendingocc1234' }),
+      ),
+      upsertPanel,
+    };
+    const gateway = {
+      fetchChannelMessage: vi.fn(() => Promise.reject(new Error('Unknown Message'))),
+      findBotMessagesWithPanelOpaqueId: vi.fn(() =>
+        Promise.resolve([{ messageId: 'msg-reconcile', channelId }]),
+      ),
+      editComponentsV2Message: vi.fn(() => Promise.resolve(undefined)),
+      publishComponentsV2Message: vi.fn(),
+      deleteChannelMessage: vi.fn(),
+    };
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: gateway as never,
+      activityClient: activityClient as never,
+      logger: createLogger(),
+    });
+
+    await handler.handleCommand(
+      makeOperatorCommand({ commandName: 'centrum-reconcile', editReply }) as never,
+    );
+
+    expect(gateway.publishComponentsV2Message).not.toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('przyjęto istniejącą wiadomość') as unknown as string,
+      }),
+    );
+    expect(upsertPanel.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ nonce: 'noncefrompendingocc1234' }),
+    );
+  });
+
+  it('repairs with new publish when message deleted and scan finds nothing', async () => {
+    const upsertPanel = vi
+      .fn()
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: 'msg-gone',
+        channelId,
+      })
+      .mockResolvedValueOnce({
+        id: panelId,
+        opaqueId: opaquePanel,
+        messageId: 'msg-new',
+        channelId,
+      });
+    const activityClient = {
+      listPanels: vi.fn(() =>
+        Promise.resolve([
+          {
+            id: panelId,
+            opaqueId: opaquePanel,
+            panelType: 'hub',
+            channelId,
+            messageId: 'msg-gone',
+          },
+        ]),
+      ),
+      getPanelPendingOccurrence: vi.fn(() => Promise.resolve(null)),
+      upsertPanel,
+    };
+    const gateway = {
+      fetchChannelMessage: vi.fn(() => Promise.reject(new Error('Unknown Message'))),
+      findBotMessagesWithPanelOpaqueId: vi.fn(() => Promise.resolve([])),
+      editComponentsV2Message: vi.fn(),
+      publishComponentsV2Message: vi.fn(() => Promise.resolve({ messageId: 'msg-new', channelId })),
+      deleteChannelMessage: vi.fn(),
+    };
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: gateway as never,
+      activityClient: activityClient as never,
+      logger: createLogger(),
+    });
+
+    await handler.handleCommand(makeOperatorCommand({ commandName: 'centrum-reconcile' }) as never);
+
+    expect(gateway.publishComponentsV2Message).toHaveBeenCalledOnce();
+    expect(upsertPanel.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({ messageId: 'msg-new', occurrenceOutcome: 'sent' }),
+    );
+  });
+});
 
 describe('ActivityInteractionHandler', () => {
   beforeEach(() => {
@@ -167,6 +352,69 @@ describe('ActivityInteractionHandler', () => {
     } as never);
     expect(handled).toBe(false);
   });
+
+  it('rejects forged modal custom id without valid signature', async () => {
+    const logger = createLogger();
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { updateDraft: vi.fn() } as never,
+      logger,
+    });
+    const reply = vi.fn(() => Promise.resolve(undefined));
+    const handled = await handler.handleModal({
+      customId: 'activity:v1:modal:deadbeefcafe:create:invalidsig12',
+      user: { id: operatorId },
+      reply,
+      deferred: false,
+      replied: false,
+      fields: { getTextInputValue: vi.fn(), getStringSelectValues: vi.fn(() => ['exact']) },
+    } as never);
+    expect(handled).toBe(true);
+    expect(reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining('Nieprawidłowy') as unknown as string,
+      }),
+    );
+  });
+
+  it('does not log ActivityHttpError response bodies', async () => {
+    const logger = createLogger();
+    const { ActivityHttpError } =
+      await import('../../infrastructure/activity/activity-http-client.js');
+    const { createEventCustomId } =
+      await import('../../infrastructure/security/activity-signed-custom-id.js');
+    const sensitiveBody = JSON.stringify({ code: 'SECRET', detail: 'super-secret-token-xyz' });
+    const activityClient = {
+      lookupActivityByOpaque: vi.fn(() =>
+        Promise.reject(new ActivityHttpError('fail', 'HTTP', 403, sensitiveBody)),
+      ),
+    };
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: activityClient as never,
+      logger,
+    });
+    const customId = createEventCustomId('f6e5d4c3b2a1', 'participants', secret);
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId,
+      guildId,
+      user: { id: operatorId },
+      id: 'interaction-log-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      deferReply: vi.fn(() => Promise.resolve(undefined)),
+      editReply,
+      reply: vi.fn(),
+      showModal: vi.fn(),
+    } as never);
+    expect(logger.error).toHaveBeenCalled();
+    const logPayload = JSON.stringify(logger.error.mock.calls);
+    expect(logPayload).not.toContain('super-secret-token-xyz');
+    expect(logPayload).not.toContain('SECRET');
+  });
 });
 
 describe('ActivityInteractionHandler flags', () => {
@@ -181,6 +429,7 @@ describe('ActivityInteractionHandler flags', () => {
         DISCORD_COMPONENT_SIGNING_SECRET: secret,
         DISCORD_ACTIVITY_ENABLED: 'true',
         ACTIVITY_ORGANIZATION_ID: 'org-test',
+        ACTIVITY_PROJECTION_SHARED_SECRET: 'proj-secret',
         ACTIVITY_CLIENT_MODE: 'headers',
         ACTIVITY_ENABLED: 'false',
       }),

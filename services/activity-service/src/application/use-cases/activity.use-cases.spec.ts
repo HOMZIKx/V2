@@ -377,6 +377,10 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       return [];
     },
     async insertPublishOccurrence() {},
+    async getLatestPendingPublishOccurrence() {
+      return null;
+    },
+    async updatePublishOccurrenceStatus() {},
     async insertOutbox(message) {
       outbox.push(message);
     },

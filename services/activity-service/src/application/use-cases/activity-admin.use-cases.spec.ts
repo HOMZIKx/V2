@@ -262,6 +262,10 @@ function createAdminMemoryRepo(): {
       return [];
     },
     async insertPublishOccurrence() {},
+    async getLatestPendingPublishOccurrence() {
+      return null;
+    },
+    async updatePublishOccurrenceStatus() {},
     async insertOutbox() {},
     async claimOutbox() {
       return [];

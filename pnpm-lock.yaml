@@ -379,6 +379,9 @@ importers:
       fastify:
         specifier: ^5.5.0
         version: 5.11.2
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1
       jose:
         specifier: 6.2.8
         version: 6.2.8

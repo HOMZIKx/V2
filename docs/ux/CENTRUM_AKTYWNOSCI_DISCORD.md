@@ -509,12 +509,18 @@ zniknęło** — obecnie nie. Nie jest blockerem P4.1 (domain-only).
 
 **Zakaz:** implementować „udawane V2” przez PNG + rząd przycisków jako obejście.
 
-## O. Jeden logiczny formularz (Accepted)
+## O. Jeden spójny formularz użytkownika (Owner Amendment)
 
-Discord modal ≤5 komponentów. Formularz = **prywatny panel** Components V2 ze
-szkicem 24h i sekcjami: podstawowe / termin / publikacja / uczestnicy-limity /
-opcje. Edytuj sekcję → modal ≤5 pól lub selecty w panelu. Nie kreator krokowy.
-Podgląd → Publikuj. Walidacja daty + timezone user/fallback guild; błędy bez
-utraty draftu; cancel; stale; mobile.
+**Owner Amendment (P4-CLOSURE-REMEDIATION-001)** — zastępuje model sekcyjnych
+przycisków edycji.
+
+Flow: **Utwórz aktywność → jeden formularz → Podgląd → Publikuj**.
+
+- Jeden prywatny ekran Components V2 ze wszystkimi wymaganymi informacjami.
+- Natywne selecty (rodzaj, kanał); jeden modal ≤5 pól na tekst/datę/opis.
+- **Zakaz** przycisków „Nazwa i opis”, „Data i godzina”, itd. jako osobnych
+  ścieżek.
+- Draft 24h; walidacja bez utraty danych; cancel; stale; mobile.
+- P4.4 WWW bez kreatora.
 
 Mapowanie pól: architecture §12. Permissions: `event.create` / `event.manage.self`.

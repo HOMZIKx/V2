@@ -14,6 +14,10 @@ import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/act
 import { createActivityPool } from '../infrastructure/db/pg-pool.js';
 import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
 import {
+  type AssertionJtiStore,
+  createAssertionJtiStore,
+} from '../infrastructure/internal/assertion-jti-store.js';
+import {
   type InboundClientRegistry,
   loadInboundClientRegistry,
 } from '../infrastructure/internal/verify-inbound-assertion.js';
@@ -28,6 +32,7 @@ import {
   ACTIVITY_POOL,
   ACTIVITY_REPOSITORY,
   ACTIVITY_USE_CASES,
+  ASSERTION_JTI_STORE,
   AUTHORIZE_PORT,
   DISCORD_CHANNEL_VALIDATION,
   INBOUND_CLIENT_REGISTRY,
@@ -125,6 +130,19 @@ const providers: Provider[] = [
         return null;
       }
       return loadInboundClientRegistry(config.ACTIVITY_INBOUND_CLIENTS_JSON);
+    },
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ASSERTION_JTI_STORE,
+    useFactory: (config: ActivityEnv): AssertionJtiStore | null => {
+      if (!config.ACTIVITY_ENABLED || config.ACTIVITY_REDIS_URL === undefined) {
+        return null;
+      }
+      return createAssertionJtiStore(
+        config.ACTIVITY_REDIS_URL,
+        config.ACTIVITY_ASSERTION_JTI_REDIS_PREFIX,
+      );
     },
     inject: [ACTIVITY_CONFIG],
   },

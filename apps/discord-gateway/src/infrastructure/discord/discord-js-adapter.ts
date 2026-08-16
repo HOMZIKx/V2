@@ -27,7 +27,13 @@ import {
   createAuthorizationSyncClient,
   hashAuthzPayload,
 } from '../authorization/authorization-sync-client.js';
+import { buildSafeAllowedMentions } from '../discord/allowed-mentions.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
+import {
+  filterBotPanelMatches,
+  PANEL_MESSAGE_SCAN_DEFAULT_LIMIT,
+  type ScannedChannelMessage,
+} from '../discord/panel-message-scan.js';
 import { redactSecrets, safeErrorMessage } from '../security/secret-redaction.js';
 
 export type DiscordClientLifecycleDeps = {
@@ -327,6 +333,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
 
     const createPayload = {
       ...payload,
+      allowedMentions: buildSafeAllowedMentions(),
       ...(options?.nonce !== undefined
         ? { nonce: options.nonce, enforceNonce: true as const }
         : {}),
@@ -345,7 +352,10 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     if (!channel || !channel.isTextBased() || channel.isDMBased()) {
       throw new Error('Channel unavailable for Components V2 edit.');
     }
-    await channel.messages.edit(messageId, payload as MessageEditOptions);
+    await channel.messages.edit(messageId, {
+      ...payload,
+      allowedMentions: buildSafeAllowedMentions(),
+    } as MessageEditOptions);
   }
 
   public async fetchChannelMessage(
@@ -362,6 +372,43 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       channelId,
       content: message.content.length > 0 ? message.content : null,
     };
+  }
+
+  /**
+   * Scan recent channel messages for bot-authored hub panels containing opaquePanelId in custom_id.
+   */
+  public async findBotMessagesWithPanelOpaqueId(
+    channelId: string,
+    opaquePanelId: string,
+    options?: { limit?: number },
+  ): Promise<Array<{ messageId: string; channelId: string }>> {
+    const limit = options?.limit ?? PANEL_MESSAGE_SCAN_DEFAULT_LIMIT;
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for panel message scan.');
+    }
+
+    const botUserId = this.client.user?.id ?? (await this.fetchApplication()).botUserId;
+    const fetched = await channel.messages.fetch({ limit });
+    const scanned: ScannedChannelMessage[] = [...fetched.values()].map((message) => ({
+      messageId: message.id,
+      channelId,
+      authorId: message.author.id,
+      components: message.components,
+    }));
+
+    return filterBotPanelMatches(scanned, opaquePanelId, botUserId).map((message) => ({
+      messageId: message.messageId,
+      channelId: message.channelId,
+    }));
+  }
+
+  public async deleteChannelMessage(channelId: string, messageId: string): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for message delete.');
+    }
+    await channel.messages.delete(messageId);
   }
 
   private bindEvents(): void {

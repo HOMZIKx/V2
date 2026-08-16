@@ -106,6 +106,14 @@ export const DiscordGatewayConfigSchema = z
           message: 'ACTIVITY_ORGANIZATION_ID is required when Discord activity is enabled.',
         });
       }
+      if (config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_PROJECTION_SHARED_SECRET'],
+          message:
+            'ACTIVITY_PROJECTION_SHARED_SECRET is required when Discord activity is enabled.',
+        });
+      }
       if (config.ACTIVITY_CLIENT_MODE === 'assertion') {
         const pem = config.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM ?? '';
         if (!pem.includes('BEGIN PRIVATE KEY')) {

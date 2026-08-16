@@ -80,4 +80,22 @@ describe('ActivityProjectionController', () => {
       ),
     ).rejects.toThrow(/Invalid projection secret|Unauthorized/i);
   });
+
+  it('rejects deliver without projection secret', async () => {
+    const controller = new ActivityProjectionController(makeConfig(), {
+      publishComponentsV2Message: vi.fn(),
+    } as never);
+    await expect(
+      controller.deliver(
+        {
+          outboxId: 'x2',
+          eventType: 'activity.activity.created.v1',
+          aggregateId: 'a',
+          aggregateVersion: 1,
+          payload: {},
+        },
+        undefined,
+      ),
+    ).rejects.toThrow(/Invalid projection secret|Unauthorized/i);
+  });
 });

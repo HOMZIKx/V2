@@ -15,6 +15,7 @@ describe('parseActivityEnv', () => {
     expect(env.ACTIVITY_ENABLED).toBe(false);
     expect(env.ACTIVITY_OUTBOX_WORKER_ENABLED).toBe(false);
     expect(env.ACTIVITY_ALLOW_TEST_SEED).toBe(false);
+    expect(env.ACTIVITY_TRUST_ACTOR_HEADERS).toBe(false);
     expect(env.ACTIVITY_TO_AUTHZ_CLIENT_ID).toBe('v2.activity-service');
     expect(env.ACTIVITY_TO_DISCORD_CLIENT_ID).toBe('v2.activity-service');
   });
@@ -35,6 +36,31 @@ describe('parseActivityEnv', () => {
         ACTIVITY_ENABLED: 'true',
       }),
     ).toThrow(/ACTIVITY_AUTHORIZATION_BASE_URL/);
+  });
+
+  it('rejects ACTIVITY_TRUST_ACTOR_HEADERS in production', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        ACTIVITY_TRUST_ACTOR_HEADERS: 'true',
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/ACTIVITY_TRUST_ACTOR_HEADERS cannot be enabled in production/);
+  });
+
+  it('requires ACTIVITY_REDIS_URL when ACTIVITY_ENABLED=true', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        ACTIVITY_ENABLED: 'true',
+        ACTIVITY_AUTHORIZATION_BASE_URL: 'http://127.0.0.1:4300',
+        ACTIVITY_AUTHORIZATION_ASSERTION_AUD: 'http://127.0.0.1:4300/authorization/v1',
+        ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM:
+          '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----',
+        ACTIVITY_TO_AUTHZ_ACTIVE_KID: 'kid-1',
+        ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
+      }),
+    ).toThrow(/ACTIVITY_REDIS_URL/);
   });
 
   it('caps client assertion TTL at 60', () => {
