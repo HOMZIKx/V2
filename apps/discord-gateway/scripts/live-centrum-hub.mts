@@ -105,6 +105,29 @@ async function cmdPublish(channelId: string) {
   const operationId = randomUUID();
   const nonce = operationId.replace(/-/g, '').slice(0, 25);
 
+  const listed = await activityRequest(
+    'GET',
+    `/activity/v1/panels?guildId=${encodeURIComponent(config.DISCORD_TEST_GUILD_ID)}`,
+  );
+  const panelRows = Array.isArray(listed)
+    ? listed
+    : listed !== null && typeof listed === 'object'
+      ? [listed]
+      : [];
+  const existingHub = panelRows.find((row) => {
+    const panel = row as { panelType?: string; channelId?: string; messageId?: string };
+    return (
+      (panel.panelType === 'hub' || panel.panelType === undefined) &&
+      (panel.channelId === undefined || panel.channelId === channelId) &&
+      typeof panel.messageId === 'string'
+    );
+  });
+  const knownMessageId =
+    existingHub !== undefined &&
+    typeof (existingHub as { messageId?: string }).messageId === 'string'
+      ? (existingHub as { messageId: string }).messageId
+      : null;
+
   const panel = await activityRequest(
     'POST',
     '/activity/v1/panels',
@@ -117,6 +140,7 @@ async function cmdPublish(channelId: string) {
       operationId,
       nonce,
       correlationId: operationId,
+      ...(knownMessageId ? { messageId: knownMessageId } : {}),
     },
     { 'Idempotency-Key': `live-hub-upsert:${config.DISCORD_TEST_GUILD_ID}:${channelId}` },
   );
@@ -141,11 +165,16 @@ async function cmdPublish(channelId: string) {
     flags: rendered.flags,
   };
 
-  let messageId = typeof panel.messageId === 'string' ? panel.messageId : null;
+  let messageId = typeof panel.messageId === 'string' ? panel.messageId : knownMessageId;
+  let mode: 'updated' | 'created' = 'created';
   if (messageId) {
     try {
+      await rest.get(Routes.channelMessage(channelId, messageId));
       await rest.patch(Routes.channelMessage(channelId, messageId), { body });
-    } catch {
+      mode = 'updated';
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error(JSON.stringify({ hubEditFailed: true, messageId, detail }));
       messageId = null;
     }
   }
@@ -154,6 +183,7 @@ async function cmdPublish(channelId: string) {
       id: string;
     };
     messageId = created.id;
+    mode = 'created';
   }
 
   const published = await activityRequest(
@@ -185,6 +215,7 @@ async function cmdPublish(channelId: string) {
         panelId: published.id ?? panelId,
         opaqueId: opaquePanelId,
         status: published.status ?? 'active',
+        mode,
         jumpUrl: `https://discord.com/channels/${config.DISCORD_TEST_GUILD_ID}/${channelId}/${messageId}`,
       },
       null,

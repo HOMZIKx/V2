@@ -23,8 +23,11 @@ P4.1–P4.3 + Discord product pass. **Do not start P4.4.** PR #19 open; no merge
 
 ## Live stack
 
-Local bot may be running for owner retest on guild `1534228693017432124`.
+Local bot running for owner retest:
+- guild `1534228693017432124`
+- channel `1534228693449179146`
+- hub message `1538562670494744717`
 
 ## Last updated
 
-2026-08-16 — P4 Discord product UX pass
+2026-08-16 — P4 Discord product UX pass; CI green; hub reconciled for owner retest
