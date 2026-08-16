@@ -67,6 +67,10 @@ const baseSchema = z.object({
   ACTIVITY_INBOUND_CLIENTS_JSON: optionalTrimmed,
   ACTIVITY_ASSERTION_AUD: optionalTrimmed,
   ACTIVITY_DISCORD_PROJECTION_BASE_URL: optionalTrimmed,
+  /** Optional override for Discord Gateway base (channel validate). Falls back to projection URL. */
+  ACTIVITY_DISCORD_GATEWAY_BASE_URL: optionalTrimmed,
+  /** Shared secret for Discord Gateway internal activity routes (optional; headers mode otherwise). */
+  ACTIVITY_PROJECTION_SHARED_SECRET: optionalTrimmed,
   ACTIVITY_TO_DISCORD_CLIENT_ID: z
     .string()
     .optional()

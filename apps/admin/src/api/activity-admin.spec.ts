@@ -34,6 +34,23 @@ describe('activity-admin API client', () => {
     expect(init?.credentials).toBe('include');
   });
 
+  it('maps API status READY to UI state', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ status: 'READY', ready: true, issues: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+
+    const result = await getReadiness('guild-1');
+    expect(result.state).toBe('READY');
+  });
+
   it('maps forbidden API errors', async () => {
     vi.stubGlobal(
       'fetch',

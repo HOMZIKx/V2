@@ -2,9 +2,28 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ActivityProxyController } from './activity-proxy.controller.js';
 
+function mockReply() {
+  const sent: { status?: number; body?: Buffer; headers?: Record<string, string> } = {};
+  const reply = {
+    status(code: number) {
+      sent.status = code;
+      return this;
+    },
+    headers(value: Record<string, string>) {
+      sent.headers = value;
+      return this;
+    },
+    send(body: Buffer) {
+      sent.body = body;
+      return Promise.resolve();
+    },
+  };
+  return { reply, sent };
+}
+
 describe('ActivityProxyController', () => {
   it('rejects when activity base URL is missing', async () => {
-    const controller = new ActivityProxyController(null);
+    const controller = new ActivityProxyController(null, false);
     await expect(
       controller.proxy(
         { url: '/activity/v1/admin/guilds/g1/config', method: 'GET', body: undefined } as never,
@@ -14,7 +33,7 @@ describe('ActivityProxyController', () => {
     ).rejects.toMatchObject({ status: 503 });
   });
 
-  it('forwards GET to activity-service', async () => {
+  it('forwards allowlisted headers and GET to activity-service', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
@@ -23,34 +42,108 @@ describe('ActivityProxyController', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
 
-    const sent: { status?: number; body?: Buffer } = {};
-    const reply = {
-      status(code: number) {
-        sent.status = code;
-        return this;
-      },
-      headers() {
-        return this;
-      },
-      send(body: Buffer) {
-        sent.body = body;
-        return Promise.resolve();
-      },
-    };
-
-    const controller = new ActivityProxyController('http://127.0.0.1:4400');
+    const { reply, sent } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', false);
     await controller.proxy(
       { url: '/activity/v1/admin/guilds/g1/readiness', method: 'GET', body: undefined } as never,
       reply as never,
-      { 'x-actor-discord-user-id': '123' },
+      {
+        cookie: 'session=abc',
+        accept: 'application/json',
+        'x-request-id': 'req-1',
+        'x-correlation-id': 'corr-1',
+      },
     );
 
     expect(fetchMock).toHaveBeenCalledOnce();
     const [url, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
     expect(url.toString()).toContain('/activity/v1/admin/guilds/g1/readiness');
-    expect((init.headers as Record<string, string>)['x-actor-discord-user-id']).toBe('123');
+    const headers = init.headers as Record<string, string>;
+    expect(headers.cookie).toBe('session=abc');
+    expect(headers.accept).toBe('application/json');
+    expect(headers['x-request-id']).toBe('req-1');
+    expect(headers['x-correlation-id']).toBe('corr-1');
     expect(sent.status).toBe(200);
     expect(sent.body?.toString('utf8')).toContain('"ok":true');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('strips activity-client-assertion and authorization by default', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', false);
+    await controller.proxy(
+      { url: '/activity/v1/admin/guilds/g1/config', method: 'GET', body: undefined } as never,
+      reply as never,
+      {
+        authorization: 'Bearer secret',
+        'activity-client-assertion': 'jwt-should-not-forward',
+        'proxy-connection': 'keep-alive',
+        cookie: 'ok=1',
+      },
+    );
+
+    const headers = (fetchMock.mock.calls[0] as [URL, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers.authorization).toBeUndefined();
+    expect(headers['activity-client-assertion']).toBeUndefined();
+    expect(headers['proxy-connection']).toBeUndefined();
+    expect(headers.cookie).toBe('ok=1');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('strips actor headers when API_GATEWAY_FORWARD_ACTOR_HEADERS is false', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', false);
+    await controller.proxy(
+      { url: '/activity/v1/admin/guilds/g1/config', method: 'GET', body: undefined } as never,
+      reply as never,
+      {
+        'x-actor-discord-user-id': '123',
+        'x-actor-v2-user-id': 'uuid',
+      },
+    );
+
+    const headers = (fetchMock.mock.calls[0] as [URL, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers['x-actor-discord-user-id']).toBeUndefined();
+    expect(headers['x-actor-v2-user-id']).toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('forwards actor headers only when explicitly enabled', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', true);
+    await controller.proxy(
+      { url: '/activity/v1/admin/guilds/g1/config', method: 'GET', body: undefined } as never,
+      reply as never,
+      {
+        'x-actor-discord-user-id': '123',
+        authorization: 'Bearer no',
+      },
+    );
+
+    const headers = (fetchMock.mock.calls[0] as [URL, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers['x-actor-discord-user-id']).toBe('123');
+    expect(headers.authorization).toBeUndefined();
 
     vi.unstubAllGlobals();
   });

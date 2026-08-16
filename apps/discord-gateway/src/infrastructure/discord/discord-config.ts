@@ -76,6 +76,9 @@ export const DiscordGatewayConfigSchema = z
     ACTIVITY_ORGANIZATION_ID: z.string().optional().default(''),
     /** Mirrors activity-service ACTIVITY_ENABLED for local projection guard path. */
     ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    /** Mirrors activity-service ACTIVITY_ALLOW_TEST_SEED for /centrum-seed. */
+    ACTIVITY_ALLOW_TEST_SEED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    NODE_ENV: z.enum(['development', 'test', 'production']).optional().default('development'),
     ACTIVITY_PROJECTION_SHARED_SECRET: z.string().optional().default(''),
     DISCORD_TO_ACTIVITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
     DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: z.string().optional(),

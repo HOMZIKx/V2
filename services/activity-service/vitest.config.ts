@@ -35,6 +35,7 @@ export default defineConfig({
         'services/activity-service/src/infrastructure/outbox/outbox-dispatcher.ts',
         'services/activity-service/src/infrastructure/authorization/**',
         'services/activity-service/src/infrastructure/internal/**',
+        'services/activity-service/src/infrastructure/discord/**',
         // Large application orchestration; covered by focused unit suites + HTTP/infra integration.
         'services/activity-service/src/application/use-cases/activity-admin.use-cases.ts',
         'services/activity-service/src/application/use-cases/activity.use-cases.ts',

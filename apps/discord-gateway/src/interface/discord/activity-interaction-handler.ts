@@ -471,9 +471,30 @@ export class ActivityInteractionHandler {
       });
       return;
     }
+    if (this.deps.config.NODE_ENV === 'production') {
+      await interaction.reply({
+        content: 'Seed testowy jest wyłączony w production.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (!this.deps.config.ACTIVITY_ALLOW_TEST_SEED) {
+      await interaction.reply({
+        content: 'Seed wymaga `ACTIVITY_ALLOW_TEST_SEED=true` (oraz nie-production).',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
     if (this.deps.config.ACTIVITY_ENABLED) {
       await interaction.reply({
         content: 'Seed jest dostępny tylko gdy `ACTIVITY_ENABLED=false` (ścieżka testowa).',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    if (interaction.channelId === null) {
+      await interaction.reply({
+        content: 'Seed wymaga uruchomienia w kanale tekstowym (channelId).',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -492,8 +513,8 @@ export class ActivityInteractionHandler {
     const result = await this.deps.activityClient.seedTestData(
       {
         guildId,
-        organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-        ...(interaction.channelId !== null ? { channelId: interaction.channelId } : {}),
+        orgId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
+        channelId: interaction.channelId,
       },
       {
         ...actorOf(interaction.user.id),

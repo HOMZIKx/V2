@@ -183,9 +183,21 @@ export async function listAdminGuilds(): Promise<AdminGuildListItem[]> {
 
 export async function getReadiness(guildId: string): Promise<ReadinessResponse> {
   const payload = await apiRequest<unknown>(adminGuild(guildId, '/readiness'));
-  const obj = asObject<ReadinessResponse & { readiness?: ReadinessState }>(payload);
+  const obj = asObject<
+    ReadinessResponse & {
+      readiness?: ReadinessState;
+      status?: string;
+      ready?: boolean;
+    }
+  >(payload);
+  const mappedFromStatus: ReadinessState | undefined =
+    obj.status === 'READY' || obj.ready === true
+      ? 'READY'
+      : obj.status === 'NOT_READY' || obj.ready === false
+        ? 'CONFIGURATION_REQUIRED'
+        : undefined;
   return {
-    state: obj.state ?? obj.readiness ?? 'CONFIGURATION_REQUIRED',
+    state: obj.state ?? obj.readiness ?? mappedFromStatus ?? 'CONFIGURATION_REQUIRED',
     issues: Array.isArray(obj.issues) ? obj.issues : [],
     ...(obj.counts !== undefined ? { counts: obj.counts } : {}),
   };

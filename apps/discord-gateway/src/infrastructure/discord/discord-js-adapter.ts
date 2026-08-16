@@ -211,19 +211,89 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 
   public async checkChannelPermissions(guildId: string, channelId: string) {
-    const channel = await this.client.channels.fetch(channelId);
-    if (!channel || channel.type === ChannelType.DM) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
+    const detailed = await this.validateActivityPublishChannel(guildId, channelId);
+    return {
+      ok: detailed.ok,
+      missing: detailed.missing ?? (detailed.ok ? [] : [...REQUIRED_PERMISSION_NAMES]),
+    };
+  }
+
+  /**
+   * Narrow channel check for Activity publish/config: guild text-based channels only.
+   * Does not use activity-service; Discord SDK stays in this adapter.
+   */
+  public async validateActivityPublishChannel(
+    guildId: string,
+    channelId: string,
+  ): Promise<{
+    ok: boolean;
+    code:
+      | 'CHANNEL_MISSING'
+      | 'CHANNEL_WRONG_GUILD'
+      | 'CHANNEL_UNSUPPORTED'
+      | 'BOT_PERMISSION_MISSING'
+      | 'CHANNEL_OK';
+    detail?: string;
+    missing?: string[];
+  }> {
+    let channel;
+    try {
+      channel = await this.client.channels.fetch(channelId);
+    } catch {
+      return { ok: false, code: 'CHANNEL_MISSING', detail: 'Channel fetch failed' };
+    }
+
+    if (!channel) {
+      return { ok: false, code: 'CHANNEL_MISSING', detail: 'Channel not found' };
+    }
+
+    if (channel.type === ChannelType.DM || channel.type === ChannelType.GroupDM) {
+      return { ok: false, code: 'CHANNEL_UNSUPPORTED', detail: 'DM channels are not supported' };
+    }
+
+    const unsupportedTypes = new Set<number>([
+      ChannelType.GuildForum,
+      ChannelType.GuildMedia,
+      ChannelType.GuildCategory,
+      ChannelType.GuildDirectory,
+    ]);
+    if (unsupportedTypes.has(channel.type)) {
+      return {
+        ok: false,
+        code: 'CHANNEL_UNSUPPORTED',
+        detail: `Channel type ${String(channel.type)} is not supported for activity publish`,
+      };
+    }
+
+    if (!('guildId' in channel) || typeof channel.guildId !== 'string') {
+      return { ok: false, code: 'CHANNEL_UNSUPPORTED', detail: 'Not a guild channel' };
+    }
+
+    if (channel.guildId !== guildId) {
+      return {
+        ok: false,
+        code: 'CHANNEL_WRONG_GUILD',
+        detail: 'Channel does not belong to the requested guild',
+      };
+    }
+
+    if (!channel.isTextBased() || channel.isDMBased()) {
+      return {
+        ok: false,
+        code: 'CHANNEL_UNSUPPORTED',
+        detail: 'Channel must be guild text-based',
+      };
     }
 
     const guildChannel = channel as GuildBasedChannel;
-    if (guildChannel.guildId !== guildId) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
-    }
-
     const me = guildChannel.guild.members.me;
     if (!me) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
+      return {
+        ok: false,
+        code: 'BOT_PERMISSION_MISSING',
+        detail: 'Bot member unavailable in guild',
+        missing: [...REQUIRED_PERMISSION_NAMES],
+      };
     }
 
     const permissions = guildChannel.permissionsFor(me);
@@ -233,7 +303,16 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
         missing.push(REQUIRED_PERMISSION_NAMES[index] ?? 'Unknown');
       }
     }
-    return { ok: missing.length === 0, missing };
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        code: 'BOT_PERMISSION_MISSING',
+        detail: `Missing permissions: ${missing.join(', ')}`,
+        missing,
+      };
+    }
+
+    return { ok: true, code: 'CHANNEL_OK' };
   }
 
   public async publishComponentsV2Message(

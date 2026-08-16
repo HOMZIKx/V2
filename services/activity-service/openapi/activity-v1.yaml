@@ -405,12 +405,18 @@ paths:
           description: Projection upserted
   /activity/v1/test/seed-guild:
     post:
-      summary: Idempotent test guild seed (non-production + ACTIVITY_ALLOW_TEST_SEED)
+      summary: Test-only guild seed (non-production; requires ACTIVITY_ALLOW_TEST_SEED=true)
+      description: |
+        **Test-only.** Disabled when `NODE_ENV=production` or `ACTIVITY_ALLOW_TEST_SEED` is not true.
+        Must not overwrite admin-owned channel config (configRevision > 1 or existing allowed channels).
+        Rejects guildIds that match forbidden hardcoded domain constants.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '200':
-          description: Seeded
+          description: Seeded (test-only)
+        '403':
+          description: Seed disabled (production or allowTestSeed false)
   /activity/v1/admin/guilds/{guildId}/config:
     get:
       summary: Get guild admin config

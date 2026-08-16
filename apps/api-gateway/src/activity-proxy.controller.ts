@@ -9,29 +9,35 @@ import {
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import { ACTIVITY_SERVICE_BASE_URL } from './activity-proxy.tokens.js';
+import {
+  ACTIVITY_SERVICE_BASE_URL,
+  API_GATEWAY_FORWARD_ACTOR_HEADERS,
+} from './activity-proxy.tokens.js';
 
-const HOP_BY_HOP = new Set([
-  'connection',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailers',
-  'transfer-encoding',
-  'upgrade',
-  'host',
-  'content-length',
+/** Explicit allowlist — never forward Authorization / client assertions / proxy hop headers. */
+const FORWARDED_HEADER_ALLOWLIST = new Set([
+  'cookie',
+  'content-type',
+  'accept',
+  'accept-language',
+  'idempotency-key',
+  'if-match',
+  'x-request-id',
+  'x-correlation-id',
 ]);
+
+const ACTOR_HEADERS = new Set(['x-actor-discord-user-id', 'x-actor-v2-user-id']);
 
 /**
  * Public BFF proxy: browser/admin → api-gateway → activity-service.
- * Does not interpret Activity domain; forwards identity cookies + actor headers.
+ * Forwards only an explicit header allowlist (+ optional actor headers in dev).
  */
 @Controller()
 export class ActivityProxyController {
   public constructor(
     @Inject(ACTIVITY_SERVICE_BASE_URL) private readonly activityBaseUrl: string | null,
+    @Inject(API_GATEWAY_FORWARD_ACTOR_HEADERS)
+    private readonly forwardActorHeaders: boolean,
   ) {}
 
   @All(['activity/v1', 'activity/v1/*'])
@@ -49,10 +55,21 @@ export class ActivityProxyController {
     const target = new URL(request.url, ensureTrailingSlash(this.activityBaseUrl));
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(incoming)) {
-      if (value === undefined || HOP_BY_HOP.has(key.toLowerCase())) {
+      if (value === undefined) {
         continue;
       }
-      headers[key] = Array.isArray(value) ? value.join(', ') : value;
+      const lower = key.toLowerCase();
+      if (ACTOR_HEADERS.has(lower)) {
+        if (!this.forwardActorHeaders) {
+          continue;
+        }
+        headers[lower] = Array.isArray(value) ? value.join(', ') : value;
+        continue;
+      }
+      if (!FORWARDED_HEADER_ALLOWLIST.has(lower)) {
+        continue;
+      }
+      headers[lower] = Array.isArray(value) ? value.join(', ') : value;
     }
 
     const method = request.method.toUpperCase();
@@ -67,15 +84,27 @@ export class ActivityProxyController {
         typeof request.body === 'string' || Buffer.isBuffer(request.body)
           ? request.body
           : JSON.stringify(request.body);
-      if (headers['content-type'] === undefined && headers['Content-Type'] === undefined) {
+      if (headers['content-type'] === undefined) {
         headers['content-type'] = 'application/json';
       }
     }
 
     const upstream = await fetch(target, init);
     const responseHeaders: Record<string, string> = {};
+    const hopByHop = new Set([
+      'connection',
+      'keep-alive',
+      'proxy-authenticate',
+      'proxy-authorization',
+      'te',
+      'trailers',
+      'transfer-encoding',
+      'upgrade',
+      'host',
+      'content-length',
+    ]);
     upstream.headers.forEach((value, key) => {
-      if (!HOP_BY_HOP.has(key.toLowerCase())) {
+      if (!hopByHop.has(key.toLowerCase())) {
         responseHeaders[key] = value;
       }
     });

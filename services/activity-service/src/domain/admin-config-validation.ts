@@ -33,7 +33,12 @@ export type AdminReadinessIssueCode =
   | 'NO_ENABLED_ACTIVITY_TYPES'
   | 'NO_ACTIVE_STATUS_DEFS'
   | 'HUB_CHANNEL_MISSING'
-  | 'NO_ALLOWED_PUBLISH_CHANNELS';
+  | 'NO_ALLOWED_PUBLISH_CHANNELS'
+  | 'DISCORD_DEPENDENCY_UNAVAILABLE'
+  | 'CHANNEL_MISSING'
+  | 'CHANNEL_WRONG_GUILD'
+  | 'CHANNEL_UNSUPPORTED'
+  | 'BOT_PERMISSION_MISSING';
 
 export interface AdminReadinessIssue {
   readonly code: AdminReadinessIssueCode;

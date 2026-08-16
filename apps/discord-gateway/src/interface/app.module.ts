@@ -14,11 +14,16 @@ import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
 } from './discord/discord.tokens.js';
+import { ActivityChannelValidationController } from './http/activity-channel-validation.controller.js';
 import { ActivityProjectionController } from './http/activity-projection.controller.js';
 import { HealthController } from './http/health.controller.js';
 
 @Module({
-  controllers: [HealthController, ActivityProjectionController],
+  controllers: [
+    HealthController,
+    ActivityProjectionController,
+    ActivityChannelValidationController,
+  ],
   providers: [
     {
       provide: DISCORD_CONFIG_TOKEN,

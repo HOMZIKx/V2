@@ -1,6 +1,7 @@
 import type { Clock } from '../../domain/clock.js';
 import type { ActivityStatus } from '../../domain/lifecycle.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
+import type { DiscordChannelValidationPort } from './discord-channel-validation.port.js';
 
 export interface ActorSubject {
   readonly discordUserId?: string;
@@ -585,4 +586,5 @@ export interface ActivityUseCaseDeps {
   readonly clock: Clock;
   readonly allowTestSeed?: boolean;
   readonly nodeEnv?: string;
+  readonly discordChannelValidation?: DiscordChannelValidationPort | null;
 }

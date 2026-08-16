@@ -493,6 +493,18 @@ describe('ActivityAdminUseCases (in-memory)', () => {
       repository: mem.repo,
       authorize: new AllowAuthz(),
       clock,
+      discordChannelValidation: {
+        validateChannels(guildId, channelIds) {
+          return Promise.resolve(
+            channelIds.map((channelId) => ({
+              channelId,
+              guildId,
+              ok: true,
+              code: 'CHANNEL_OK' as const,
+            })),
+          );
+        },
+      },
     });
     const readiness = await useCases.getReadiness('guild-1', actor);
     expect(readiness.status).toBe('READY');
@@ -515,6 +527,70 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     expect(readiness.issues.map((i) => i.code)).toEqual(
       expect.arrayContaining(['HUB_CHANNEL_MISSING', 'NO_ALLOWED_PUBLISH_CHANNELS']),
     );
+  });
+
+  it('returns CONFIGURATION_REQUIRED when Discord validation is unavailable', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordChannelValidation: null,
+    });
+    const readiness = await useCases.getReadiness('guild-1', actor);
+    expect(readiness.status).toBe('CONFIGURATION_REQUIRED');
+    expect(readiness.ready).toBe(false);
+    expect(readiness.issues.map((i) => i.code)).toContain('DISCORD_DEPENDENCY_UNAVAILABLE');
+  });
+
+  it('rejects putChannels when Discord reports a channel as invalid', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordChannelValidation: {
+        validateChannels(_guildId, channelIds) {
+          return Promise.resolve(
+            channelIds.map((channelId) =>
+              channelId === 'bad'
+                ? {
+                    channelId,
+                    ok: false,
+                    code: 'CHANNEL_WRONG_GUILD' as const,
+                    detail: 'wrong guild',
+                  }
+                : { channelId, ok: true, code: 'CHANNEL_OK' as const },
+            ),
+          );
+        },
+      },
+    });
+    await expect(
+      useCases.putChannels('guild-1', ['good', 'bad'], 1, { actor }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+
+  it('accepts putChannels when Discord validates all channels', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordChannelValidation: {
+        validateChannels(_guildId, channelIds) {
+          return Promise.resolve(
+            channelIds.map((channelId) => ({
+              channelId,
+              ok: true,
+              code: 'CHANNEL_OK' as const,
+            })),
+          );
+        },
+      },
+    });
+    const updated = await useCases.putChannels('guild-1', ['chan-a', 'chan-b'], 1, { actor });
+    expect(updated.allowedPublishChannelIds).toEqual(['chan-a', 'chan-b']);
   });
 
   it('protects referenced status from deactivation', async () => {

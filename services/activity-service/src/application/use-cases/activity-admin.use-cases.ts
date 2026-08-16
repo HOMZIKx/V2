@@ -9,8 +9,10 @@ import {
   evaluateAdminReadiness,
   validateOrganizerDefault,
   validateWaitlistPromotion,
+  type AdminReadinessIssue,
 } from '../../domain/admin-config-validation.js';
 import { ActivityError } from '../../domain/errors.js';
+import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
 import type {
@@ -20,10 +22,35 @@ import type {
   ActorSubject,
   PutGuildAdminConfigInput,
 } from '../ports/activity.ports.js';
+import type { ChannelValidationResult } from '../ports/discord-channel-validation.port.js';
 import type { MutationContext } from './activity.use-cases.js';
 
 function actorKey(actor: ActorSubject): string {
   return actor.discordUserId ?? actor.v2UserId ?? 'anonymous';
+}
+
+function channelIssueFromResult(result: ChannelValidationResult): AdminReadinessIssue | null {
+  if (result.ok || result.code === 'CHANNEL_OK' || result.code === undefined) {
+    return null;
+  }
+  const code = result.code as AdminReadinessIssue['code'];
+  return {
+    code,
+    message: result.detail ?? `Channel ${result.channelId} failed validation (${result.code})`,
+  };
+}
+
+function assertChannelsValid(results: readonly ChannelValidationResult[]): void {
+  const failed = results.filter((row) => !row.ok);
+  if (failed.length === 0) {
+    return;
+  }
+  const detail = failed
+    .map(
+      (row) => `${row.channelId}:${row.code ?? 'UNKNOWN'}${row.detail ? ` (${row.detail})` : ''}`,
+    )
+    .join('; ');
+  throw new ActivityError('VALIDATION_FAILED', `Channel validation failed: ${detail}`);
 }
 
 export class ActivityAdminUseCases {
@@ -69,6 +96,20 @@ export class ActivityAdminUseCases {
       return;
     }
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.REPORT_MANAGE, guildId, 'sensitive');
+  }
+
+  private async requireDiscordChannelValidation(
+    guildId: string,
+    channelIds: readonly string[],
+  ): Promise<readonly ChannelValidationResult[]> {
+    const port = this.deps.discordChannelValidation;
+    if (port === undefined || port === null) {
+      throw new ActivityError(
+        'CONFIG_INVALID',
+        'Discord channel validation is unavailable (DISCORD_DEPENDENCY_UNAVAILABLE)',
+      );
+    }
+    return port.validateChannels(guildId, channelIds);
   }
 
   private async audit(
@@ -172,6 +213,13 @@ export class ActivityAdminUseCases {
     if (input.maxActivePerCreator !== undefined && input.maxActivePerCreator < 1) {
       throw new ActivityError('VALIDATION_FAILED', 'maxActivePerCreator must be >= 1');
     }
+    if (input.allowedPublishChannelIds !== undefined) {
+      const results = await this.requireDiscordChannelValidation(
+        guildId,
+        input.allowedPublishChannelIds,
+      );
+      assertChannelsValid(results);
+    }
 
     return this.mutate(ctx, 'admin-config-put', `guild:${guildId}`, async (tx) => {
       const current = await tx.getSettings(guildId);
@@ -225,11 +273,57 @@ export class ActivityAdminUseCases {
         hubChannelId: settings.hubChannelId,
         allowedPublishChannelCount: settings.allowedPublishChannelIds.length,
       });
+
+      const issues: AdminReadinessIssue[] = [...result.issues];
+      const channelIds = [
+        ...settings.allowedPublishChannelIds,
+        ...(settings.hubChannelId !== null && settings.hubChannelId.trim().length > 0
+          ? [settings.hubChannelId]
+          : []),
+      ];
+
+      const port = this.deps.discordChannelValidation;
+      if (channelIds.length > 0) {
+        if (port === undefined || port === null) {
+          issues.push({
+            code: 'DISCORD_DEPENDENCY_UNAVAILABLE',
+            message: 'Discord channel validation dependency is unavailable',
+          });
+          return {
+            guildId,
+            ready: false,
+            status: 'CONFIGURATION_REQUIRED' as const,
+            issues,
+          };
+        }
+        try {
+          const validation = await port.validateChannels(guildId, channelIds);
+          for (const row of validation) {
+            const issue = channelIssueFromResult(row);
+            if (issue !== null) {
+              issues.push(issue);
+            }
+          }
+        } catch {
+          issues.push({
+            code: 'DISCORD_DEPENDENCY_UNAVAILABLE',
+            message: 'Discord channel validation dependency is unavailable',
+          });
+          return {
+            guildId,
+            ready: false,
+            status: 'CONFIGURATION_REQUIRED' as const,
+            issues,
+          };
+        }
+      }
+
+      const ready = issues.length === 0;
       return {
         guildId,
-        ready: result.ready,
-        status: result.ready ? 'READY' : 'NOT_READY',
-        issues: result.issues,
+        ready,
+        status: ready ? ('READY' as const) : ('NOT_READY' as const),
+        issues,
       };
     });
   }
@@ -557,6 +651,8 @@ export class ActivityAdminUseCases {
     ctx: MutationContext,
   ) {
     await this.requireConfigManage(ctx.actor, guildId);
+    const results = await this.requireDiscordChannelValidation(guildId, channelIds);
+    assertChannelsValid(results);
     return this.mutate(ctx, 'admin-channels-put', `guild:${guildId}`, async (tx) => {
       const current = await tx.getSettings(guildId);
       if (current === null) {
@@ -681,7 +777,7 @@ export class ActivityAdminUseCases {
           status: 'pending',
         });
         await tx.insertOutbox({
-          eventType: 'activity.activity.projection_requested.v1',
+          eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
           aggregateType: 'activity',
           aggregateId: activity.id,
           aggregateVersion: activity.version,
@@ -718,7 +814,7 @@ export class ActivityAdminUseCases {
         status: 'pending',
       });
       await tx.insertOutbox({
-        eventType: 'activity.panel.projection_repaired.v1',
+        eventType: OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
         aggregateType: 'activity',
         aggregateId: activity.id,
         aggregateVersion: activity.version,

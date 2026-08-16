@@ -359,7 +359,7 @@ export class ActivityHttpClient {
   }
 
   public async seedTestData(body: Record<string, unknown>, actor: ActivityActorContext) {
-    return this.request('POST', '/activity/v1/test/seed', z.record(z.string(), z.unknown()), {
+    return this.request('POST', '/activity/v1/test/seed-guild', z.record(z.string(), z.unknown()), {
       body,
       actor,
     });

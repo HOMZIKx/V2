@@ -2,6 +2,7 @@ import { Module, type Provider } from '@nestjs/common';
 import type { Pool } from 'pg';
 
 import type { ActivityRepositoryPort, AuthorizePort } from '../application/ports/activity.ports.js';
+import type { DiscordChannelValidationPort } from '../application/ports/discord-channel-validation.port.js';
 import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
 import { ActivityUseCases } from '../application/use-cases/activity.use-cases.js';
 import { type Clock, SystemClock } from '../domain/clock.js';
@@ -11,6 +12,7 @@ import {
 } from '../infrastructure/authorization/authorization-client.js';
 import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/activity-env.js';
 import { createActivityPool } from '../infrastructure/db/pg-pool.js';
+import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
 import {
   type InboundClientRegistry,
   loadInboundClientRegistry,
@@ -27,6 +29,7 @@ import {
   ACTIVITY_REPOSITORY,
   ACTIVITY_USE_CASES,
   AUTHORIZE_PORT,
+  DISCORD_CHANNEL_VALIDATION,
   INBOUND_CLIENT_REGISTRY,
 } from './activity.tokens.js';
 import { HealthController } from './health.controller.js';
@@ -68,6 +71,12 @@ const providers: Provider[] = [
     useFactory: (): Clock => new SystemClock(),
   },
   {
+    provide: DISCORD_CHANNEL_VALIDATION,
+    useFactory: (config: ActivityEnv): DiscordChannelValidationPort | null =>
+      createDiscordChannelValidationPort(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
     provide: ACTIVITY_USE_CASES,
     useFactory: (
       repository: ActivityRepositoryPort,
@@ -91,6 +100,7 @@ const providers: Provider[] = [
       authorize: AuthorizePort,
       clock: Clock,
       config: ActivityEnv,
+      discordChannelValidation: DiscordChannelValidationPort | null,
     ): ActivityAdminUseCases =>
       new ActivityAdminUseCases({
         repository,
@@ -98,8 +108,15 @@ const providers: Provider[] = [
         clock,
         allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
         nodeEnv: config.NODE_ENV,
+        discordChannelValidation,
       }),
-    inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK, ACTIVITY_CONFIG],
+    inject: [
+      ACTIVITY_REPOSITORY,
+      AUTHORIZE_PORT,
+      ACTIVITY_CLOCK,
+      ACTIVITY_CONFIG,
+      DISCORD_CHANNEL_VALIDATION,
+    ],
   },
   {
     provide: INBOUND_CLIENT_REGISTRY,

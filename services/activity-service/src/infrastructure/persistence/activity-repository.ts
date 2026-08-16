@@ -26,6 +26,7 @@ import { ActivityError } from '../../domain/errors.js';
 import type { ActivityStatus } from '../../domain/lifecycle.js';
 import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { DEFAULT_STATUS_SEED, type StatusBehavior } from '../../domain/status-def.js';
+import { asNullableDate } from './pg-value-mappers.js';
 
 async function withTransaction<T>(pool: Pool, fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
@@ -61,11 +62,6 @@ function asRequiredString(value: unknown, field: string): string {
     throw new Error(`Expected non-null string for ${field}`);
   }
   return result;
-}
-
-function asNullableDate(value: unknown): Date | null {
-  const raw = asNullableString(value);
-  return raw === null ? null : new Date(raw);
 }
 
 function asRequiredDate(value: unknown, field: string): Date {

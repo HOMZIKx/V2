@@ -26,6 +26,15 @@ Discord hub/event Components V2, create/LFG/draft/preview/publish, RSVP, More/re
 
 Admin API + Admin UI + readiness + config versioning + projection repair/audit + gateway BFF proxy. Seed superseded by Admin as primary config path (seed no-op overwrite when admin-owned).
 
+## Remediation — P4.3 security (2026-08-16)
+
+- **A** Outbox catalog + use-case constants; namespace `activity.activity.*` unchanged
+- **B** Seed production / `ACTIVITY_ALLOW_TEST_SEED` + Discord `/centrum-seed` parity; OpenAPI test-only
+- **C** Discord Gateway channel validate API; activity-service validates on put + readiness (fail closed)
+- **D** api-gateway activity-proxy header allowlist; actor headers opt-in via `API_GATEWAY_FORWARD_ACTOR_HEADERS`
+- `asNullableDate(Date)` regression via `pg-value-mappers`
+- **Not committed**
+
 ## Explicitly not done (deferred)
 
 - P4.4 WWW user portal
@@ -41,20 +50,12 @@ Admin API + Admin UI + readiness + config versioning + projection repair/audit +
 
 `MANUAL_OWNER_TEST_REQUIRED` for live Discord + Admin→Discord end-to-end on test guild.
 
-## Verification commands
+## Verification (this remediation)
 
 ```text
-npm exec --yes pnpm@10.14.0 -- --dir services/activity-service typecheck
-npm exec --yes pnpm@10.14.0 -- --dir services/activity-service test
-npm exec --yes pnpm@10.14.0 -- --dir apps/discord-gateway test
-npm exec --yes pnpm@10.14.0 -- --dir apps/admin typecheck
-npm exec --yes pnpm@10.14.0 -- --dir apps/admin test
-npm exec --yes pnpm@10.14.0 -- --dir apps/admin build
-npm exec --yes pnpm@10.14.0 -- --dir apps/api-gateway typecheck
-npm exec --yes pnpm@10.14.0 -- --dir apps/api-gateway test
-npm exec --yes pnpm@10.14.0 -- architecture:check
-npm exec --yes pnpm@10.14.0 -- format:check
-npm exec --yes pnpm@10.14.0 -- validate
+activity-service typecheck + test → 68 passed (14 infra skipped)
+discord-gateway typecheck + test → 86 passed
+api-gateway typecheck + test → 11 passed
 ```
 
 ## Marker

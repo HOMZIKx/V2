@@ -8,6 +8,7 @@ import {
   isDraftExpired,
 } from '../../domain/create-limits.js';
 import { ActivityError } from '../../domain/errors.js';
+import { assertGuildIdAllowedForTestSeed } from '../../domain/guild-id-guards.js';
 import {
   assertTransition,
   canPermanentlyDelete,
@@ -15,6 +16,7 @@ import {
   type ActivityStatus,
 } from '../../domain/lifecycle.js';
 import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
+import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
@@ -139,7 +141,7 @@ export class ActivityUseCases {
       status: 'pending',
     });
     await tx.insertOutbox({
-      eventType: 'activity.activity.projection_requested.v1',
+      eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
       aggregateType: 'activity',
       aggregateId: activity.id,
       aggregateVersion: activity.version,
@@ -418,7 +420,7 @@ export class ActivityUseCases {
       }
 
       await tx.insertOutbox({
-        eventType: 'activity.activity.created.v1',
+        eventType: OUTBOX_EVENT_TYPES.CREATED,
         aggregateType: 'activity',
         aggregateId: activity.id,
         aggregateVersion: activity.version,
@@ -523,7 +525,7 @@ export class ActivityUseCases {
         version: activity.version + 1,
       });
       await tx.insertOutbox({
-        eventType: 'activity.activity.cancelled.v1',
+        eventType: OUTBOX_EVENT_TYPES.CANCELLED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: updated.version,
@@ -673,7 +675,7 @@ export class ActivityUseCases {
       });
 
       await tx.insertOutbox({
-        eventType: 'activity.activity.rsvp_changed.v1',
+        eventType: OUTBOX_EVENT_TYPES.RSVP_CHANGED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: activity.version,
@@ -708,7 +710,7 @@ export class ActivityUseCases {
       await tx.markParticipationResigned(participation.id, now);
       const promoted = freedSlot ? await this.promoteWaitlist(tx, activity, now) : null;
       await tx.insertOutbox({
-        eventType: 'activity.activity.rsvp_changed.v1',
+        eventType: OUTBOX_EVENT_TYPES.RSVP_CHANGED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: activity.version,
@@ -768,7 +770,7 @@ export class ActivityUseCases {
       waitlistPosition: null,
     });
     await tx.insertOutbox({
-      eventType: 'activity.activity.waitlist_promoted.v1',
+      eventType: OUTBOX_EVENT_TYPES.WAITLIST_PROMOTED,
       aggregateType: 'activity',
       aggregateId: activity.id,
       aggregateVersion: activity.version,
@@ -922,7 +924,7 @@ export class ActivityUseCases {
         version: activity.version + 1,
       });
       await tx.insertOutbox({
-        eventType: 'activity.activity.finished.v1',
+        eventType: OUTBOX_EVENT_TYPES.FINISHED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: updated.version,
@@ -995,7 +997,7 @@ export class ActivityUseCases {
       }
 
       await tx.insertOutbox({
-        eventType: 'activity.activity.schedule_changed.v1',
+        eventType: OUTBOX_EVENT_TYPES.SCHEDULE_CHANGED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: updated.version,
@@ -1007,7 +1009,7 @@ export class ActivityUseCases {
         occurredAt: now,
       });
       await tx.insertOutbox({
-        eventType: 'activity.activity.reconfirm_required.v1',
+        eventType: OUTBOX_EVENT_TYPES.RECONFIRM_REQUIRED,
         aggregateType: 'activity',
         aggregateId: id,
         aggregateVersion: updated.version,
@@ -1131,7 +1133,7 @@ export class ActivityUseCases {
           version: activity.version + 1,
         });
         await tx.insertOutbox({
-          eventType: 'activity.activity.finished.v1',
+          eventType: OUTBOX_EVENT_TYPES.FINISHED,
           aggregateType: 'activity',
           aggregateId: updated.id,
           aggregateVersion: updated.version,
@@ -1187,7 +1189,7 @@ export class ActivityUseCases {
       }
       if (repaired) {
         await tx.insertOutbox({
-          eventType: 'activity.panel.projection_repaired.v1',
+          eventType: OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
           aggregateType: 'panel',
           aggregateId: panel.id,
           aggregateVersion: panel.payloadVersion,
@@ -1421,6 +1423,7 @@ export class ActivityUseCases {
     if (this.deps.nodeEnv === 'production' || this.deps.allowTestSeed !== true) {
       throw new ActivityError('FORBIDDEN', 'Test guild seed is disabled');
     }
+    assertGuildIdAllowedForTestSeed(input.guildId);
     return this.mutate(ctx, 'test-seed-guild', `guild:${input.guildId}`, async (tx) => {
       const existing = await tx.getSettings(input.guildId);
       const defaults = await tx.ensureGuildDefaults({

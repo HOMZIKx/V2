@@ -38,13 +38,20 @@ Do not start P4.4 / WWW portal / merge.
 - `api-gateway` BFF proxy `/activity/v1/*` → `ACTIVITY_SERVICE_BASE_URL`
 - Test seed no longer overwrites admin-owned channel config
 
+## Remediation — P4.3 security (this session)
+
+- Outbox catalog `domain/outbox-events.ts` (`activity.activity.*` namespace kept); use-cases import constants; catalog unit test
+- Seed: production/`ACTIVITY_ALLOW_TEST_SEED` guards + domain guild hardcode scan; OpenAPI test-only; Discord `/centrum-seed` mirrors production + `ACTIVITY_ALLOW_TEST_SEED` + path `/test/seed-guild`
+- Channel validation: Discord Gateway `POST /internal/activity/v1/channels/validate`; activity-service port + client; `putChannels`/`putAdminConfig` validate; readiness fail-closed (`CONFIGURATION_REQUIRED` / `DISCORD_DEPENDENCY_UNAVAILABLE`)
+- BFF: explicit header allowlist; actor headers only when `API_GATEWAY_FORWARD_ACTOR_HEADERS=true`
+- `asNullableDate` extracted to `pg-value-mappers.ts` with regression tests
+
 ## Verification (local agent)
 
-- activity-service: typecheck green; unit 53 passed (7 infra skipped without Docker)
-- discord-gateway: 84 passed
-- admin: typecheck/test/build green
-- api-gateway: typecheck/test green (incl. activity proxy)
-- architecture:check green
+- activity-service: typecheck green; unit **68 passed**, 14 infra skipped
+- discord-gateway: typecheck green; **86 passed**
+- api-gateway: typecheck green; **11 passed**
+- No commit (per request)
 
 ## Live Discord / Admin
 
@@ -52,4 +59,4 @@ Do not start P4.4 / WWW portal / merge.
 
 ## Last updated
 
-2026-08-16 — Cursor (`P4.3-ACTIVITY-ADMIN-001` end of 3/3 train)
+2026-08-16 — Cursor (`P4.3` security remediation A–D)

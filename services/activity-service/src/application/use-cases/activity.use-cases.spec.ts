@@ -895,4 +895,38 @@ describe('ActivityUseCases (in-memory)', () => {
       ),
     ).toBe(true);
   });
+
+  it('forbids seedTestGuild when nodeEnv is production', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+      nodeEnv: 'production',
+      allowTestSeed: true,
+    });
+    await expect(
+      useCases.seedTestGuild(
+        { guildId: 'guild-1', orgId: 'org-1', channelId: 'chan-1' },
+        { actor },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('forbids seedTestGuild when allowTestSeed is not enabled', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+      nodeEnv: 'development',
+      allowTestSeed: false,
+    });
+    await expect(
+      useCases.seedTestGuild(
+        { guildId: 'guild-1', orgId: 'org-1', channelId: 'chan-1' },
+        { actor },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
 });
