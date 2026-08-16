@@ -28,6 +28,12 @@ paths:
       responses:
         '200':
           description: Draft created
+  /activity/v1/drafts/by-opaque/{opaqueId}:
+    get:
+      summary: Get draft by opaque id prefix
+      responses:
+        '200':
+          description: Draft
   /activity/v1/drafts/{id}:
     get:
       summary: Get draft

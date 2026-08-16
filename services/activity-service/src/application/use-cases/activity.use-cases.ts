@@ -37,6 +37,35 @@ export interface MutationContext {
   readonly correlationId?: string;
 }
 
+/** Reject non-ISO startAt values stored on drafts (e.g. DAS12 from Discord UX). */
+export function normalizeDraftPayloadStartAt(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!Object.prototype.hasOwnProperty.call(payload, 'startAt')) {
+    return payload;
+  }
+  const raw = payload.startAt;
+  if (raw === null || raw === undefined || raw === '') {
+    const next = { ...payload };
+    delete next.startAt;
+    return next;
+  }
+  if (typeof raw !== 'string') {
+    throw new ActivityError('VALIDATION_FAILED', 'Nieprawidłowa data i godzina.');
+  }
+  const isoOk = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(
+    raw.trim(),
+  );
+  const parsed = new Date(raw);
+  if (!isoOk || Number.isNaN(parsed.getTime())) {
+    throw new ActivityError(
+      'VALIDATION_FAILED',
+      'Nieprawidłowa data i godzina. Użyj lokalnego formatu w Discordzie (np. 20.08.2026 18:00).',
+    );
+  }
+  return { ...payload, startAt: parsed.toISOString() };
+}
+
 function actorKey(actor: ActorSubject): string {
   return actor.discordUserId ?? actor.v2UserId ?? 'anonymous';
 }
@@ -290,6 +319,20 @@ export class ActivityUseCases {
     });
   }
 
+  public async getDraftByOpaque(opaqueId: string, actor: ActorSubject) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const draft = await tx.getDraftByOpaque(opaqueId);
+      if (draft === null) {
+        throw new ActivityError('NOT_FOUND', 'Draft not found');
+      }
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, draft.guildId);
+      if (isDraftExpired(draft.expiresAt, this.deps.clock.now())) {
+        throw new ActivityError('GONE', 'Draft expired');
+      }
+      return draft;
+    });
+  }
+
   public async updateDraft(id: string, payload: Record<string, unknown>, ctx: MutationContext) {
     return this.mutate(ctx, 'draft-update', `draft:${id}`, async (tx) => {
       const draft = await tx.getDraft(id);
@@ -310,7 +353,8 @@ export class ActivityUseCases {
       if (isDraftExpired(draft.expiresAt, this.deps.clock.now())) {
         throw new ActivityError('GONE', 'Draft expired');
       }
-      return tx.updateDraft(id, { payload });
+      const normalized = normalizeDraftPayloadStartAt(payload);
+      return tx.updateDraft(id, { payload: { ...draft.payload, ...normalized } });
     });
   }
 

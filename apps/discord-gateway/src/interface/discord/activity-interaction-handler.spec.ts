@@ -39,9 +39,9 @@ describe('ActivityInteractionHandler', () => {
     vi.clearAllMocks();
   });
 
-  it('shows modal for create without deferring first', async () => {
+  it('opens ephemeral draft summary for create without deferring first', async () => {
     const createDraft = vi.fn(() =>
-      Promise.resolve({ id: '11111111-2222-3333-4444-555555555555' }),
+      Promise.resolve({ id: '11111111-2222-3333-4444-555555555555', payload: {} }),
     );
     const activityClient = {
       createDraft,
@@ -60,6 +60,7 @@ describe('ActivityInteractionHandler', () => {
 
     const showModal = vi.fn(() => Promise.resolve(undefined));
     const deferReply = vi.fn(() => Promise.resolve(undefined));
+    const reply = vi.fn(() => Promise.resolve(undefined));
     const interaction = {
       customId: createPanelCustomId(opaquePanel, 'create', secret),
       guildId,
@@ -69,15 +70,18 @@ describe('ActivityInteractionHandler', () => {
       isStringSelectMenu: () => false,
       showModal,
       deferReply,
-      reply: vi.fn(),
+      reply,
       editReply: vi.fn(),
     };
 
     const handled = await handler.handleComponent(interaction as never);
     expect(handled).toBe(true);
     expect(createDraft).toHaveBeenCalledOnce();
-    expect(showModal).toHaveBeenCalledOnce();
+    expect(showModal).not.toHaveBeenCalled();
+    expect(reply).toHaveBeenCalledOnce();
     expect(deferReply).not.toHaveBeenCalled();
+    const payload = reply.mock.calls[0]?.[0] as { flags?: number };
+    expect(payload.flags).toBeDefined();
   });
 
   it('resolves RSVP statusDefId from guild config opaque ids', async () => {
@@ -130,7 +134,7 @@ describe('ActivityInteractionHandler', () => {
     );
     expect(editReply).toHaveBeenCalledWith(
       expect.objectContaining({
-        content: expect.stringContaining('RSVP') as unknown as string,
+        content: expect.stringContaining('Zapis') as unknown as string,
       }),
     );
   });

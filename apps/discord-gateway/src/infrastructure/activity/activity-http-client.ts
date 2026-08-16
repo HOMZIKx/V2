@@ -342,7 +342,7 @@ export class ActivityHttpClient {
       params.set('cursor', query.cursor);
     }
     const suffix = params.size > 0 ? `?${params.toString()}` : '';
-    return this.request('GET', `/activity/v1/me/inbox${suffix}`, inboxSchema, { actor });
+    return this.request('GET', `/activity/v1/inbox${suffix}`, inboxSchema, { actor });
   }
 
   public async createReport(
@@ -390,7 +390,7 @@ export class ActivityHttpClient {
   public async lookupActivityByOpaque(opaqueId: string, actor: ActivityActorContext) {
     return this.request(
       'GET',
-      `/activity/v1/opaque/activities/${encodeURIComponent(opaqueId)}`,
+      `/activity/v1/activities/by-opaque/${encodeURIComponent(opaqueId)}`,
       activitySchema,
       { actor },
     );
@@ -399,8 +399,18 @@ export class ActivityHttpClient {
   public async lookupPanelByOpaque(opaqueId: string, actor: ActivityActorContext) {
     return this.request(
       'GET',
-      `/activity/v1/opaque/panels/${encodeURIComponent(opaqueId)}`,
+      `/activity/v1/panels/by-opaque/${encodeURIComponent(opaqueId)}`,
       panelSchema,
+      { actor },
+    );
+  }
+
+  /** Resolve draft UUID from signed 12-hex opaque prefix used in custom_id. */
+  public async lookupDraftByOpaque(opaqueId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/drafts/by-opaque/${encodeURIComponent(opaqueId)}`,
+      draftSchema,
       { actor },
     );
   }

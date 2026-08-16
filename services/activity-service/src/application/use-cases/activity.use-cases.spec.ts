@@ -253,6 +253,14 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async getDraft(id) {
       return drafts.get(id) ?? null;
     },
+    async getDraftByOpaque(opaqueId) {
+      for (const draft of drafts.values()) {
+        if (draft.id.replace(/-/g, '').slice(0, 12) === opaqueId) {
+          return draft;
+        }
+      }
+      return null;
+    },
     async updateDraft(id, patch) {
       const draft = drafts.get(id);
       if (draft === undefined) throw new ActivityError('NOT_FOUND', 'draft');

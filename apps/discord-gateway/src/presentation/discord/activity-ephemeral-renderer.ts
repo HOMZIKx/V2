@@ -21,24 +21,31 @@ export type DraftFormSummaryInput = {
 };
 
 export function renderDraftFormSummary(input: DraftFormSummaryInput): InteractionReplyOptions {
-  const actions: Array<{ label: string; action: ActivityDraftAction; style: ButtonStyle }> = [
+  const editActions: Array<{ label: string; action: ActivityDraftAction; style: ButtonStyle }> = [
+    { label: 'Nazwa i opis', action: 'section_basics', style: ButtonStyle.Secondary },
+    { label: 'Data i godzina', action: 'section_schedule', style: ButtonStyle.Secondary },
+  ];
+  const mainActions: Array<{ label: string; action: ActivityDraftAction; style: ButtonStyle }> = [
     { label: 'Podgląd', action: 'preview', style: ButtonStyle.Secondary },
-    { label: 'Opublikuj', action: 'publish', style: ButtonStyle.Success },
+    { label: 'Publikuj', action: 'publish', style: ButtonStyle.Success },
     { label: 'Odrzuć', action: 'discard', style: ButtonStyle.Danger },
   ];
 
   return {
     components: [
       new TextDisplayBuilder().setContent(
-        [
-          `## ${input.title ?? 'Szkic aktywności'}`,
-          ...input.lines,
-          '',
-          '_Draft zapisany — dokończ pola albo opublikuj._',
-        ].join('\n'),
+        [`## ${input.title ?? 'Szkic aktywności'}`, ...input.lines].join('\n'),
       ),
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...actions.map((item) =>
+        ...editActions.map((item) =>
+          new ButtonBuilder()
+            .setCustomId(createDraftCustomId(input.opaqueDraftId, item.action, input.signingSecret))
+            .setLabel(item.label)
+            .setStyle(item.style),
+        ),
+      ),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ...mainActions.map((item) =>
           new ButtonBuilder()
             .setCustomId(createDraftCustomId(input.opaqueDraftId, item.action, input.signingSecret))
             .setLabel(item.label)

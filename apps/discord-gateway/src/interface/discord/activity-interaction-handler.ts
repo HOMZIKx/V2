@@ -1,6 +1,6 @@
 /**
- * Activity Centrum interaction handlers (P4.2).
- * Business rules stay in activity-service; gateway only maps Discord ↔ HTTP.
+ * Activity Centrum interaction handlers (P4.2 product UX pass).
+ * Business rules stay in activity-service; gateway maps Discord ↔ HTTP.
  */
 import {
   ActionRowBuilder,
@@ -17,18 +17,29 @@ import {
 import { createHash, randomUUID } from 'node:crypto';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
-import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
+import {
+  ActivityHttpError,
+  type ActivityHttpClient,
+} from '../../infrastructure/activity/activity-http-client.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import {
-  createDraftCustomId,
   createEventCustomId,
   isActivityCustomId,
   parseActivityCustomId,
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import {
+  renderDraftFormSummary,
+  renderInboxList,
+} from '../../presentation/discord/activity-ephemeral-renderer.js';
 import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
+import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
 import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
+import {
+  formatPolishLocalDateTime,
+  parsePolishLocalDateTime,
+} from '../../presentation/discord/localized-datetime.js';
 
 export type ActivityInteractionDeps = {
   config: DiscordGatewayConfig;
@@ -65,6 +76,32 @@ function isOperator(
     operatorIds: config.operatorIds,
     memberPermissionsBitfield: interaction.memberPermissions?.bitfield ?? null,
   }).allowed;
+}
+
+function draftPayload(draft: { payload?: Record<string, unknown> }): Record<string, unknown> {
+  return draft.payload ?? {};
+}
+
+function draftSummaryLines(payload: Record<string, unknown>): string[] {
+  const name = typeof payload.name === 'string' && payload.name.trim() ? payload.name : '—';
+  const description =
+    typeof payload.description === 'string' && payload.description.trim()
+      ? payload.description.trim().slice(0, 180)
+      : '—';
+  let when = '—';
+  if (typeof payload.startAt === 'string' && payload.startAt.length > 0) {
+    const parsed = new Date(payload.startAt);
+    when = Number.isNaN(parsed.getTime()) ? '—' : formatPolishLocalDateTime(parsed);
+  } else if (typeof payload.startAtDisplay === 'string') {
+    when = payload.startAtDisplay;
+  }
+  return [
+    `**Nazwa:** ${name}`,
+    `**Data i godzina:** ${when}`,
+    `**Opis:** ${description}`,
+    '',
+    'Edytuj sekcje w dowolnej kolejności, potem użyj Podgląd lub Publikuj.',
+  ];
 }
 
 export class ActivityInteractionHandler {
@@ -121,9 +158,13 @@ export class ActivityInteractionHandler {
       return true;
     }
 
-    // create/lfg must showModal BEFORE any defer.
     if (parsed.scope === 'panel' && (parsed.action === 'create' || parsed.action === 'lfg')) {
-      await this.openCreateOrLfgModal(interaction, parsed);
+      await this.openCreateOrLfg(interaction, parsed);
+      return true;
+    }
+
+    if (parsed.scope === 'draft' && parsed.action.startsWith('section_')) {
+      await this.openDraftSectionModal(interaction, parsed);
       return true;
     }
 
@@ -143,10 +184,12 @@ export class ActivityInteractionHandler {
         return true;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany błąd';
-      await interaction.editReply({
-        content: `Nie udało się wykonać akcji Centrum: ${message.slice(0, 180)}`,
+      this.deps.logger.error('Centrum component failed', {
+        error: error instanceof Error ? error.message : String(error),
+        status: error instanceof ActivityHttpError ? error.status : undefined,
+        body: error instanceof ActivityHttpError ? error.body?.slice(0, 300) : undefined,
       });
+      await interaction.editReply({ content: toUserFacingError(error) });
       return true;
     }
 
@@ -165,103 +208,128 @@ export class ActivityInteractionHandler {
     const kind = parts[3];
     const draftId = parts[4];
 
-    if (kind === 'basics' && draftId !== undefined) {
-      const name = interaction.fields.getTextInputValue('name');
-      const description = interaction.fields.getTextInputValue('description');
-      const startAt = interaction.fields.getTextInputValue('startAt');
-      await this.deps.activityClient.updateDraft(
-        draftId,
-        { payload: { name, description, startAt } },
-        {
-          ...actorOf(interaction.user.id),
-          idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
-        },
-      );
-      await interaction.editReply({
-        content: `Zapisano sekcję podstawową draftu.\n**Nazwa:** ${name}\n**Start:** ${startAt}`,
-        components: [
-          new ActionRowBuilder<ButtonBuilder>().addComponents(
-            new ButtonBuilder()
-              .setCustomId(
-                createDraftCustomId(
-                  opaqueFromUuid(draftId),
-                  'preview',
-                  this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-                ),
-              )
-              .setLabel('Podgląd')
-              .setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder()
-              .setCustomId(
-                createDraftCustomId(
-                  opaqueFromUuid(draftId),
-                  'publish',
-                  this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-                ),
-              )
-              .setLabel('Publikuj')
-              .setStyle(ButtonStyle.Success),
-          ),
-        ],
-      });
-      return true;
-    }
-
-    if (kind === 'lfg' && draftId !== undefined) {
-      const name = interaction.fields.getTextInputValue('name');
-      const startAt = interaction.fields.getTextInputValue('startAt');
-      await this.deps.activityClient.updateDraft(
-        draftId,
-        { payload: { name, startAt, lfg: true } },
-        {
-          ...actorOf(interaction.user.id),
-          idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
-        },
-      );
-      const published = await this.deps.activityClient.publishDraft(
-        draftId,
-        {
-          organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-          name,
-          startAt,
-          ...(interaction.channelId !== null
-            ? { publicationChannelId: interaction.channelId }
-            : {}),
-        },
-        {
-          ...actorOf(interaction.user.id),
-          idempotencyKey: idem(interaction.user.id, 'draft-publish', draftId),
-        },
-      );
-      await interaction.editReply({
-        content: `Opublikowano „Szukam ekipy”: **${published.name ?? name}** (\`${published.id}\`).`,
-      });
-      return true;
-    }
-
-    if (kind === 'report') {
-      const activityId = parts[4];
-      const reason = interaction.fields.getTextInputValue('reason');
-      const details = interaction.fields.getTextInputValue('details');
-      if (activityId !== undefined) {
-        await this.deps.activityClient.createReport(
-          activityId,
-          { reasonCategory: reason, details },
+    try {
+      if (kind === 'basics' && draftId !== undefined) {
+        const name = interaction.fields.getTextInputValue('name');
+        const description = interaction.fields.getTextInputValue('description');
+        const draft = await this.deps.activityClient.updateDraft(
+          draftId,
+          { payload: { name, description } },
           {
             ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'report', `${activityId}:${reason}`),
+            idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
           },
         );
-        await interaction.editReply({ content: 'Zgłoszenie zapisane. Dziękujemy.' });
+        await interaction.editReply(
+          renderDraftFormSummary({
+            opaqueDraftId: opaqueFromUuid(draft.id),
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            title: 'Szkic aktywności',
+            lines: draftSummaryLines(draftPayload(draft)),
+          }),
+        );
+        return true;
       }
+
+      if (kind === 'schedule' && draftId !== undefined) {
+        const rawWhen = interaction.fields.getTextInputValue('when');
+        const startAt = parsePolishLocalDateTime(rawWhen);
+        const draft = await this.deps.activityClient.updateDraft(
+          draftId,
+          {
+            payload: {
+              startAt: startAt.toISOString(),
+              startAtDisplay: formatPolishLocalDateTime(startAt),
+            },
+          },
+          {
+            ...actorOf(interaction.user.id),
+            idempotencyKey: idem(interaction.user.id, 'draft-schedule', draftId),
+          },
+        );
+        await interaction.editReply(
+          renderDraftFormSummary({
+            opaqueDraftId: opaqueFromUuid(draft.id),
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            title: 'Szkic aktywności',
+            lines: draftSummaryLines(draftPayload(draft)),
+          }),
+        );
+        return true;
+      }
+
+      if (kind === 'lfg' && draftId !== undefined) {
+        const name = interaction.fields.getTextInputValue('name');
+        const rawWhen = interaction.fields.getTextInputValue('when');
+        const startAt = parsePolishLocalDateTime(rawWhen);
+        await this.deps.activityClient.updateDraft(
+          draftId,
+          {
+            payload: {
+              name,
+              startAt: startAt.toISOString(),
+              startAtDisplay: formatPolishLocalDateTime(startAt),
+              lfg: true,
+            },
+          },
+          {
+            ...actorOf(interaction.user.id),
+            idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
+          },
+        );
+        const published = await this.deps.activityClient.publishDraft(
+          draftId,
+          {
+            organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
+            name,
+            startAt: startAt.toISOString(),
+            ...(interaction.channelId !== null
+              ? { publicationChannelId: interaction.channelId }
+              : {}),
+          },
+          {
+            ...actorOf(interaction.user.id),
+            idempotencyKey: idem(interaction.user.id, 'draft-publish', draftId),
+          },
+        );
+        await interaction.editReply({
+          content: `Opublikowano „Szukam ekipy”: **${String(published.name ?? name)}**.`,
+        });
+        return true;
+      }
+
+      if (kind === 'report') {
+        const activityId = parts[4];
+        const reason = interaction.fields.getTextInputValue('reason');
+        const details = interaction.fields.getTextInputValue('details');
+        if (activityId !== undefined) {
+          await this.deps.activityClient.createReport(
+            activityId,
+            { reasonCategory: reason, details },
+            {
+              ...actorOf(interaction.user.id),
+              idempotencyKey: idem(interaction.user.id, 'report', `${activityId}:${reason}`),
+            },
+          );
+          await interaction.editReply({ content: 'Zgłoszenie zapisane. Dziękujemy.' });
+        }
+        return true;
+      }
+
+      await interaction.editReply({ content: 'Nieobsługiwany formularz Centrum.' });
+      return true;
+    } catch (error) {
+      this.deps.logger.error('Centrum modal failed', {
+        error: error instanceof Error ? error.message : String(error),
+        status: error instanceof ActivityHttpError ? error.status : undefined,
+        body: error instanceof ActivityHttpError ? error.body?.slice(0, 300) : undefined,
+      });
+      await interaction.editReply({ content: toUserFacingError(error) });
       return true;
     }
-
-    await interaction.editReply({ content: 'Nieobsługiwany modal Centrum.' });
-    return true;
   }
 
-  private async openCreateOrLfgModal(
+  private async openCreateOrLfg(
     interaction: MessageComponentInteraction,
     parsed: Extract<ParsedActivityCustomId, { scope: 'panel' }>,
   ): Promise<void> {
@@ -279,46 +347,131 @@ export class ActivityInteractionHandler {
         },
       );
 
-      const modal = new ModalBuilder()
-        .setCustomId(`activity:v1:modal:${parsed.action === 'lfg' ? 'lfg' : 'basics'}:${draft.id}`)
-        .setTitle(parsed.action === 'lfg' ? 'Szukam ekipy' : 'Utwórz aktywność');
+      if (parsed.action === 'lfg') {
+        const modal = new ModalBuilder()
+          .setCustomId(`activity:v1:modal:lfg:${draft.id}`)
+          .setTitle('Szukam ekipy');
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('name')
+              .setLabel('Nazwa')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(100),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('when')
+              .setLabel('Data i godzina (np. 20.08.2026 18:00)')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(32)
+              .setPlaceholder('DD.MM.RRRR GG:MM'),
+          ),
+        );
+        await interaction.showModal(modal);
+        return;
+      }
 
-      modal.addComponents(
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId('name')
-            .setLabel('Nazwa')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setMaxLength(100),
-        ),
-        ...(parsed.action === 'create'
-          ? [
-              new ActionRowBuilder<TextInputBuilder>().addComponents(
-                new TextInputBuilder()
-                  .setCustomId('description')
-                  .setLabel('Opis')
-                  .setStyle(TextInputStyle.Paragraph)
-                  .setRequired(false)
-                  .setMaxLength(1000),
-              ),
-            ]
-          : []),
-        new ActionRowBuilder<TextInputBuilder>().addComponents(
-          new TextInputBuilder()
-            .setCustomId('startAt')
-            .setLabel('Start (ISO, np. 2026-08-20T18:00:00.000Z)')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true)
-            .setMaxLength(40),
-        ),
+      await interaction.reply(
+        renderDraftFormSummary({
+          opaqueDraftId: opaqueFromUuid(draft.id),
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          title: 'Szkic aktywności',
+          lines: draftSummaryLines(draftPayload(draft)),
+        }),
       );
-
-      await interaction.showModal(modal);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany błąd';
+      this.deps.logger.error('Centrum create/lfg open failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const content = toUserFacingError(error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      }
+    }
+  }
+
+  private async openDraftSectionModal(
+    interaction: MessageComponentInteraction,
+    parsed: Extract<ParsedActivityCustomId, { scope: 'draft' }>,
+  ): Promise<void> {
+    try {
+      const draft = await this.deps.activityClient.lookupDraftByOpaque(
+        parsed.opaqueId,
+        actorOf(interaction.user.id),
+      );
+      const payload = draftPayload(draft);
+
+      if (parsed.action === 'section_basics') {
+        const modal = new ModalBuilder()
+          .setCustomId(`activity:v1:modal:basics:${draft.id}`)
+          .setTitle('Nazwa i opis');
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('name')
+              .setLabel('Nazwa')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(100)
+              .setValue(typeof payload.name === 'string' ? payload.name.slice(0, 100) : ''),
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('description')
+              .setLabel('Opis')
+              .setStyle(TextInputStyle.Paragraph)
+              .setRequired(false)
+              .setMaxLength(1000)
+              .setValue(
+                typeof payload.description === 'string' ? payload.description.slice(0, 1000) : '',
+              ),
+          ),
+        );
+        await interaction.showModal(modal);
+        return;
+      }
+
+      if (parsed.action === 'section_schedule') {
+        const modal = new ModalBuilder()
+          .setCustomId(`activity:v1:modal:schedule:${draft.id}`)
+          .setTitle('Data i godzina');
+        const preset =
+          typeof payload.startAtDisplay === 'string'
+            ? payload.startAtDisplay
+            : typeof payload.startAt === 'string'
+              ? formatPolishLocalDateTime(new Date(payload.startAt))
+              : '';
+        modal.addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('when')
+              .setLabel('Data i godzina (np. 20.08.2026 18:00)')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(32)
+              .setPlaceholder('DD.MM.RRRR GG:MM')
+              .setValue(preset.slice(0, 32)),
+          ),
+        );
+        await interaction.showModal(modal);
+        return;
+      }
+
       await interaction.reply({
-        content: `Nie udało się otworzyć formularza: ${message.slice(0, 180)}`,
+        content: 'Ta sekcja nie jest jeszcze dostępna w tym widoku.',
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (error) {
+      this.deps.logger.error('Centrum draft section modal failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await interaction.reply({
+        content: toUserFacingError(error),
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -343,6 +496,17 @@ export class ActivityInteractionHandler {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const channelId = interaction.channelId;
     const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
+    const actor = actorOf(interaction.user.id);
+
+    const existing = await this.deps.activityClient.listPanels(guildId, actor);
+    const hub = existing.find((p) => {
+      const row = p as { panelType?: string; channelId?: string };
+      return (
+        (row.panelType === 'hub' || row.panelType === undefined) &&
+        (row.channelId === undefined || row.channelId === channelId)
+      );
+    });
+
     const operationId = randomUUID();
     const nonce = operationId.replace(/-/g, '').slice(0, 25);
 
@@ -356,9 +520,10 @@ export class ActivityInteractionHandler {
         operationId,
         nonce,
         correlationId: operationId,
+        ...(hub?.messageId ? { messageId: hub.messageId } : {}),
       },
       {
-        ...actorOf(interaction.user.id),
+        ...actor,
         idempotencyKey: idem(interaction.user.id, 'panel-upsert', `${guildId}:${channelId}`),
       },
     );
@@ -375,19 +540,34 @@ export class ActivityInteractionHandler {
       }),
     );
 
-    let messageId = typeof panel.messageId === 'string' ? panel.messageId : null;
+    let messageId =
+      typeof panel.messageId === 'string'
+        ? panel.messageId
+        : typeof hub?.messageId === 'string'
+          ? hub.messageId
+          : null;
+    let mode: 'updated' | 'created' = 'created';
+
     if (messageId) {
       try {
+        await this.deps.gateway.fetchChannelMessage(channelId, messageId);
         await this.deps.gateway.editComponentsV2Message(channelId, messageId, payload);
-      } catch {
+        mode = 'updated';
+      } catch (error) {
+        this.deps.logger.warn('Hub message missing or not editable; publishing new message', {
+          messageId,
+          error: error instanceof Error ? error.message : String(error),
+        });
         messageId = null;
       }
     }
+
     if (!messageId) {
       const published = await this.deps.gateway.publishComponentsV2Message(channelId, payload, {
         nonce,
       });
       messageId = published.messageId;
+      mode = 'created';
     }
 
     await this.deps.activityClient.upsertPanel(
@@ -402,13 +582,16 @@ export class ActivityInteractionHandler {
         nonce,
       },
       {
-        ...actorOf(interaction.user.id),
+        ...actor,
         idempotencyKey: idem(interaction.user.id, 'panel-ack', messageId),
       },
     );
 
     await interaction.editReply({
-      content: `Panel Centrum opublikowany (opaque \`${opaquePanelId}\`, message \`${messageId}\`).`,
+      content:
+        mode === 'updated'
+          ? 'Panel Centrum zaktualizowany w istniejącej wiadomości.'
+          : 'Panel Centrum opublikowany.',
     });
   }
 
@@ -418,55 +601,73 @@ export class ActivityInteractionHandler {
     const panels = await this.deps.activityClient.listPanels(guildId, actorOf(interaction.user.id));
     const lines =
       panels.length === 0
-        ? ['Brak paneli w activity-service.']
-        : panels.map(
-            (p) =>
-              `• \`${p.id}\` opaque=\`${p.opaqueId ?? '?'}\` status=\`${p.status ?? '?'}\` msg=\`${p.messageId ?? 'brak'}\``,
-          );
-    await interaction.editReply({ content: ['**Centrum — status paneli**', ...lines].join('\n') });
+        ? ['Brak panelu Centrum.']
+        : panels.map((p) => {
+            const status = typeof p.status === 'string' ? p.status : '?';
+            const hasMsg = typeof p.messageId === 'string' && p.messageId.length > 0;
+            return `• status: **${status}** · wiadomość: ${hasMsg ? 'jest' : 'brak'}`;
+          });
+    await interaction.editReply({ content: ['**Centrum — status**', ...lines].join('\n') });
   }
 
   private async reconcileHub(interaction: ChatInputCommandInteraction): Promise<void> {
     if (!isOperator(interaction, this.deps.config)) {
       await interaction.reply({
-        content: 'Tylko operatorzy testowi mogą reconcile panelu.',
+        content: 'Tylko operatorzy testowi mogą uzgadniać panel.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
+    const channelId = interaction.channelId;
     const panels = await this.deps.activityClient.listPanels(guildId, actorOf(interaction.user.id));
     const hub =
       panels.find((p) => {
-        const row = p as { panelType?: string };
-        return row.panelType === 'hub' || row.panelType === undefined;
+        const row = p as { panelType?: string; channelId?: string };
+        return (
+          (row.panelType === 'hub' || row.panelType === undefined) &&
+          (channelId === null || row.channelId === undefined || row.channelId === channelId)
+        );
       }) ?? panels[0];
     if (hub === undefined) {
-      await interaction.editReply({ content: 'Brak panelu do reconcile — użyj `/centrum-panel`.' });
+      await interaction.editReply({
+        content: 'Brak panelu do uzgodnienia — użyj `/centrum-panel`.',
+      });
       return;
     }
     if (hub.messageId && hub.channelId) {
       try {
         await this.deps.gateway.fetchChannelMessage(hub.channelId, hub.messageId);
+        const opaquePanelId =
+          typeof hub.opaqueId === 'string' && /^[a-f0-9]{12}$/.test(hub.opaqueId)
+            ? hub.opaqueId
+            : opaqueFromUuid(hub.id);
+        const payload = toComponentsV2Payload(
+          renderActivityHubMessage({
+            opaquePanelId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          }),
+        );
+        await this.deps.gateway.editComponentsV2Message(hub.channelId, hub.messageId, payload);
         await interaction.editReply({
-          content: `Adopt OK — istniejąca wiadomość \`${hub.messageId}\` pozostaje kanoniczna.`,
+          content: 'Panel uzgodniony — zaktualizowano istniejącą wiadomość (bez duplikatu).',
         });
         return;
       } catch {
-        // recreate hint below
+        // fall through
       }
     }
     await interaction.editReply({
       content:
-        'Wiadomość panelu nieznaleziona. Uruchom ponownie `/centrum-panel` (nonce/adopt po stronie occurrence).',
+        'Nie znaleziono wiadomości panelu. Uruchom `/centrum-panel` w docelowym kanale, aby odtworzyć jedną wiadomość.',
     });
   }
 
   private async seedGuild(interaction: ChatInputCommandInteraction): Promise<void> {
     if (!isOperator(interaction, this.deps.config)) {
       await interaction.reply({
-        content: 'Tylko operatorzy testowi mogą seedować guild.',
+        content: 'Tylko operatorzy testowi mogą uruchomić seed.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -480,21 +681,21 @@ export class ActivityInteractionHandler {
     }
     if (!this.deps.config.ACTIVITY_ALLOW_TEST_SEED) {
       await interaction.reply({
-        content: 'Seed wymaga `ACTIVITY_ALLOW_TEST_SEED=true` (oraz nie-production).',
+        content: 'Seed wymaga włączenia trybu testowego seed.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (this.deps.config.ACTIVITY_ENABLED) {
       await interaction.reply({
-        content: 'Seed jest dostępny tylko gdy `ACTIVITY_ENABLED=false` (ścieżka testowa).',
+        content: 'Seed jest dostępny tylko w trybie testowym Authorization.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
     if (interaction.channelId === null) {
       await interaction.reply({
-        content: 'Seed wymaga uruchomienia w kanale tekstowym (channelId).',
+        content: 'Seed wymaga uruchomienia w kanale tekstowym.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -523,7 +724,7 @@ export class ActivityInteractionHandler {
     );
     const statuses = (result as { statuses?: unknown }).statuses;
     await interaction.editReply({
-      content: `Seed testowy OK. Statusów: ${Array.isArray(statuses) ? statuses.length : '?'}`,
+      content: `Konfiguracja testowa gotowa. Statusów: ${Array.isArray(statuses) ? statuses.length : '?'}`,
     });
   }
 
@@ -536,11 +737,37 @@ export class ActivityInteractionHandler {
 
     if (parsed.action === 'mine') {
       const activities = await this.deps.activityClient.listMyActivities(guildId, actorOf(userId));
-      const lines =
-        activities.length === 0
-          ? ['Brak aktywności.']
-          : activities.slice(0, 15).map((a) => `• **${a.name ?? a.id}** — \`${a.status ?? '?'}\``);
-      await interaction.editReply({ content: ['**Moje aktywności**', ...lines].join('\n') });
+      const organizing: string[] = [];
+      const joined: string[] = [];
+      const finished: string[] = [];
+      for (const a of activities.slice(0, 40)) {
+        const name = typeof a.name === 'string' ? a.name : 'Aktywność';
+        const status = typeof a.status === 'string' ? a.status : '';
+        const line = `• **${name}**`;
+        if (status === 'finished' || status === 'cancelled') {
+          finished.push(line);
+        } else if (
+          typeof a.organizerDiscordUserId === 'string' &&
+          a.organizerDiscordUserId === userId
+        ) {
+          organizing.push(line);
+        } else {
+          joined.push(line);
+        }
+      }
+      const blocks = [
+        '## Moje aktywności',
+        '',
+        '**Organizuję**',
+        ...(organizing.length > 0 ? organizing : ['_Brak._']),
+        '',
+        '**Jestem zapisany**',
+        ...(joined.length > 0 ? joined : ['_Brak._']),
+        '',
+        '**Zakończone / anulowane**',
+        ...(finished.length > 0 ? finished.slice(0, 10) : ['_Brak._']),
+      ];
+      await interaction.editReply({ content: blocks.join('\n') });
       return;
     }
 
@@ -549,12 +776,25 @@ export class ActivityInteractionHandler {
       const items = Array.isArray(inbox.items) ? inbox.items : [];
       const lines =
         items.length === 0
-          ? ['Skrzynka pusta.']
+          ? []
           : items.slice(0, 15).map((item) => {
-              const row = item as { kind?: string; readAt?: string | null };
-              return `• ${row.readAt ? '✓' : '•'} \`${row.kind ?? 'notice'}\``;
+              const row = item as {
+                kind?: string;
+                readAt?: string | null;
+                title?: string;
+                body?: string;
+              };
+              const kindLabel = humanizeInboxKind(row.kind);
+              const mark = row.readAt ? '✓' : '•';
+              const title =
+                typeof row.title === 'string'
+                  ? row.title
+                  : typeof row.body === 'string'
+                    ? row.body.slice(0, 80)
+                    : kindLabel;
+              return `${mark} **${kindLabel}** — ${title}`;
             });
-      await interaction.editReply({ content: ['**Powiadomienia**', ...lines].join('\n') });
+      await interaction.editReply(renderInboxList({ lines }));
     }
   }
 
@@ -594,7 +834,7 @@ export class ActivityInteractionHandler {
         typeof participation.waitlistPosition === 'number'
           ? `\nLista rezerwowa: pozycja ${participation.waitlistPosition}.`
           : '';
-      await interaction.editReply({ content: `RSVP zapisane.${waitlist}` });
+      await interaction.editReply({ content: `Zapis przyjęty.${waitlist}` });
       return;
     }
 
@@ -609,7 +849,7 @@ export class ActivityInteractionHandler {
           : list.slice(0, 30).map((p) => {
               const wl =
                 p.waitlistPosition !== null && p.waitlistPosition !== undefined
-                  ? ` (WL #${p.waitlistPosition})`
+                  ? ` (lista rezerwowa #${p.waitlistPosition})`
                   : '';
               return `• <@${p.discordUserId ?? '?'}>${wl}`;
             });
@@ -621,20 +861,23 @@ export class ActivityInteractionHandler {
       const organizer =
         typeof activity.organizerDiscordUserId === 'string'
           ? activity.organizerDiscordUserId
-          : 'unknown';
+          : null;
       const co =
         typeof activity.coOrganizerDiscordUserId === 'string'
           ? `\nWspółorganizator: <@${activity.coOrganizerDiscordUserId}>`
           : '';
       await interaction.editReply({
-        content: `Organizator: <@${organizer}>${co}`,
+        content:
+          organizer === null
+            ? 'Brak danych organizatora.'
+            : `Organizator: <@${organizer}>${co}`,
       });
       return;
     }
 
     if (parsed.action === 'more') {
       await interaction.editReply({
-        content: '**Więcej** — akcje zależą od uprawnień (sprawdzane przy każdej akcji).',
+        content: '**Więcej** — wybierz akcję:',
         components: [
           new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
@@ -665,7 +908,7 @@ export class ActivityInteractionHandler {
                   this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
                 ),
               )
-              .setLabel('Potwierdź obecność')
+              .setLabel('Potwierdź udział')
               .setStyle(ButtonStyle.Success),
           ),
         ],
@@ -704,15 +947,95 @@ export class ActivityInteractionHandler {
       return;
     }
 
-    await interaction.editReply({ content: `Akcja \`${parsed.action}\` przyjęta (P4.2).` });
+    await interaction.editReply({ content: 'Ta akcja nie jest jeszcze dostępna.' });
   }
 
   private async handleDraftAction(
     interaction: MessageComponentInteraction,
     parsed: Extract<ParsedActivityCustomId, { scope: 'draft' }>,
   ): Promise<void> {
+    const draft = await this.deps.activityClient.lookupDraftByOpaque(
+      parsed.opaqueId,
+      actorOf(interaction.user.id),
+    );
+    const payload = draftPayload(draft);
+
+    if (parsed.action === 'preview') {
+      const name = typeof payload.name === 'string' ? payload.name : 'Bez nazwy';
+      const when =
+        typeof payload.startAt === 'string'
+          ? formatPolishLocalDateTime(new Date(payload.startAt))
+          : 'brak terminu';
+      const description =
+        typeof payload.description === 'string' && payload.description.trim()
+          ? payload.description
+          : '—';
+      await interaction.editReply(
+        renderDraftFormSummary({
+          opaqueDraftId: parsed.opaqueId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          title: `Podgląd — ${name}`,
+          lines: [
+            `**Data i godzina:** ${when}`,
+            `**Opis:** ${description}`,
+            '',
+            '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
+          ],
+        }),
+      );
+      return;
+    }
+
+    if (parsed.action === 'publish') {
+      const name = typeof payload.name === 'string' ? payload.name.trim() : '';
+      const startRaw = typeof payload.startAt === 'string' ? payload.startAt : '';
+      if (!name || !startRaw) {
+        await interaction.editReply({
+          content:
+            'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
+          components: renderDraftFormSummary({
+            opaqueDraftId: parsed.opaqueId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            lines: draftSummaryLines(payload),
+          }).components,
+        });
+        return;
+      }
+      const published = await this.deps.activityClient.publishDraft(
+        draft.id,
+        {
+          organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
+          name,
+          startAt: startRaw,
+          ...(typeof payload.description === 'string'
+            ? { description: payload.description }
+            : {}),
+          ...(interaction.channelId !== null
+            ? { publicationChannelId: interaction.channelId }
+            : {}),
+        },
+        {
+          ...actorOf(interaction.user.id),
+          idempotencyKey: idem(interaction.user.id, 'draft-publish', draft.id),
+        },
+      );
+      await interaction.editReply({
+        content: `Opublikowano **${String(published.name ?? name)}**. Publiczny post pojawi się na kanale aktywności.`,
+      });
+      return;
+    }
+
+    if (parsed.action === 'discard') {
+      await this.deps.activityClient.discardDraft(draft.id, {
+        ...actorOf(interaction.user.id),
+        idempotencyKey: idem(interaction.user.id, 'draft-discard', draft.id),
+      });
+      await interaction.editReply({ content: 'Szkic odrzucony.' });
+      return;
+    }
+
     await interaction.editReply({
-      content: `Draft action \`${parsed.action}\` — użyj formularza z „Utwórz aktywność” / LFG (opaque=\`${parsed.opaqueId}\`).`,
+      content: 'Nieznana akcja szkicu.',
     });
   }
 
@@ -731,8 +1054,26 @@ export class ActivityInteractionHandler {
       return opaque === statusOpaqueId;
     });
     if (match === undefined) {
-      throw new Error(`Nie znaleziono statusu RSVP dla opaque \`${statusOpaqueId}\`.`);
+      throw new Error('Nie znaleziono wybranego statusu zapisu.');
     }
     return match.id;
+  }
+}
+
+function humanizeInboxKind(kind: string | undefined): string {
+  switch (kind) {
+    case 'waitlist_promoted':
+    case 'waitlist':
+      return 'Lista rezerwowa';
+    case 'reconfirm':
+    case 'reconfirmation':
+      return 'Ponowne potwierdzenie';
+    case 'cancelled':
+    case 'cancel':
+      return 'Anulowanie';
+    case 'reschedule':
+      return 'Zmiana terminu';
+    default:
+      return 'Powiadomienie';
   }
 }

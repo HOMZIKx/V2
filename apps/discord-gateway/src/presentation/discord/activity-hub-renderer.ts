@@ -12,9 +12,10 @@ import {
 } from 'discord.js';
 
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
+import { V2_PANEL_COLORS } from './panel-theme.js';
 
-/** V2 Centrum module accent — teal, distinct from P1 LAB purple. */
-export const ACTIVITY_HUB_ACCENT = 0x0d9488;
+/** Centrum uses the coordinated V2 palette (`panel-theme` / live LAB accent). */
+export const ACTIVITY_HUB_ACCENT = V2_PANEL_COLORS.embed;
 
 export type ActivityHubRenderInput = {
   opaquePanelId: string;
@@ -50,28 +51,28 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
   }> = [
     {
       title: 'Utwórz aktywność',
-      description: 'Pełny formularz one-shot z draftem i podglądem.',
+      description: 'Szkic prywatny — edytujesz sekcje w dowolnej kolejności, potem publikujesz.',
       label: 'Utwórz aktywność',
       action: 'create',
       style: ButtonStyle.Primary,
     },
     {
       title: 'Szukam ekipy',
-      description: 'Szybka publikacja tej samej aktywności — krótszy flow.',
+      description: 'Szybsza publikacja tej samej aktywności — mniej pól na start.',
       label: 'Szukam ekipy',
       action: 'lfg',
       style: ButtonStyle.Secondary,
     },
     {
       title: 'Moje aktywności',
-      description: 'Utworzone, zapisane, zakończone i anulowane.',
+      description: 'Organizuję, zapisane, najbliższe oraz zakończone.',
       label: 'Moje aktywności',
       action: 'mine',
       style: ButtonStyle.Secondary,
     },
     {
       title: 'Powiadomienia',
-      description: 'Skrzynka zmian terminu, waitlist, anulowań i reconfirm.',
+      description: 'Zmiany terminu, lista rezerwowa, anulowania i ponowne potwierdzenia.',
       label: 'Powiadomienia',
       action: 'inbox',
       style: ButtonStyle.Secondary,

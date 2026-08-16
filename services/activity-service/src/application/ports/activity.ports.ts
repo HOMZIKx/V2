@@ -325,6 +325,7 @@ export interface ActivityTx {
     input: Omit<ActivityDraftRecord, 'createdAt' | 'updatedAt'>,
   ): Promise<ActivityDraftRecord>;
   getDraft(id: string): Promise<ActivityDraftRecord | null>;
+  getDraftByOpaque(opaqueId: string): Promise<ActivityDraftRecord | null>;
   updateDraft(
     id: string,
     patch: { payload?: Record<string, unknown>; expiresAt?: Date },

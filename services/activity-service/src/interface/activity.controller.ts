@@ -184,6 +184,15 @@ export class ActivityController {
     );
   }
 
+  @Get('drafts/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async getDraftByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getDraftByOpaque(opaqueId, actorFromRequest(request));
+  }
+
   @Get('drafts/:id')
   @RequireOperation('activity_read')
   public async getDraft(@Param('id') id: string, @Req() request: AuthenticatedRequest) {

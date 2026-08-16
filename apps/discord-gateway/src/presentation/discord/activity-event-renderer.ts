@@ -16,7 +16,18 @@ import {
   type ActivityEventAction,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 
-export const ACTIVITY_EVENT_ACCENT = 0x0d9488;
+import { V2_PANEL_COLORS } from './panel-theme.js';
+import { formatPolishLocalDateTime } from './localized-datetime.js';
+
+export const ACTIVITY_EVENT_ACCENT = V2_PANEL_COLORS.embed;
+
+function formatEventWhen(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  return formatPolishLocalDateTime(date);
+}
 
 export type EventStatusDefView = {
   opaqueId: string;
@@ -64,8 +75,8 @@ export function renderActivityEventMessage(
       : `Miejsca: ${input.occupiedSlots} / ${input.participantLimit}`;
 
   const schedule = [
-    input.startAtIso,
-    input.endAtIso ? `→ ${input.endAtIso}` : null,
+    formatEventWhen(input.startAtIso),
+    input.endAtIso ? `→ ${formatEventWhen(input.endAtIso)}` : null,
     input.locationText ? `· ${input.locationText}` : null,
   ]
     .filter(Boolean)

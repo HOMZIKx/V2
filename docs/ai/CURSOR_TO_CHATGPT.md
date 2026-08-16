@@ -2,62 +2,23 @@
 
 ## Task
 
-`P4.1` + `P4.2` + `P4.3` delivery train — Centrum Aktywności domain, Discord, Admin.
+`P4-DISCORD-PRODUCT-PASS-001` on PR #19 (P4.1–P4.3 train).
 
 ## Status
 
-`BLOCKED_P4_1_TO_P4_3` until GitHub Actions green after CI remediation follow-up (projection lease isolation + gitleaks allowlist).
+`READY_FOR_OWNER_P4_DISCORD_RETEST`
 
 ## Branch
 
-`cursor/p4-1-activity-domain` (single PR; **do not merge**)
+`cursor/p4-1-activity-domain` — **do not merge**; do not start P4.4.
 
-## Scope delivered
+## Highlights
 
-### P4.1
+- Hub duplicate: publish/reconcile edit-first
+- 404 root cause: Discord client path mismatch vs OpenAPI (`opaque/*`, `me/inbox`)
+- UX: Polish datetime, draft summary session, Polish copy, V2 accent from `panel-theme`
+- Draft startAt validation rejects non-ISO (e.g. DAS12)
 
-activity-service foundation: DB, migrations, domain, lifecycle, draft, RSVP, waitlist, reconfirm, Authz, idempotency, outbox (no RabbitMQ).
+## Explicitly not done
 
-### P4.2
-
-Discord hub/event Components V2, create/LFG/draft/preview/publish, RSVP, More/report, inbox, projection dispatcher/retry/reconcile/adopt.
-
-### P4.3
-
-Admin API + Admin UI + readiness + config versioning + projection repair/audit + gateway BFF proxy. Seed superseded by Admin as primary config path (seed no-op overwrite when admin-owned).
-
-## Remediation — P4.3 security (2026-08-16)
-
-- **A** Outbox catalog + use-case constants; namespace `activity.activity.*` unchanged
-- **B** Seed production / `ACTIVITY_ALLOW_TEST_SEED` + Discord `/centrum-seed` parity; OpenAPI test-only
-- **C** Discord Gateway channel validate API; activity-service validates on put + readiness (fail closed)
-- **D** api-gateway activity-proxy header allowlist; actor headers opt-in via `API_GATEWAY_FORWARD_ACTOR_HEADERS`
-- `asNullableDate(Date)` regression via `pg-value-mappers`
-- CI follow-up: neutralize leftover claimable projections before concurrent lease test; expand `.gitleaks.toml` allowlist for documented Discord test snowflakes
-
-## Explicitly not done (deferred)
-
-- P4.4 WWW user portal
-- Desktop companion
-- RabbitMQ
-- P4.5 multi-guild publication
-- P4.6 series / attendance / stats
-- Zeabur production deploy
-- Final V2 branding
-- Merge to `main`
-
-## Live tests
-
-`MANUAL_OWNER_TEST_REQUIRED` for live Discord + Admin→Discord end-to-end on test guild.
-
-## Verification (this remediation)
-
-```text
-activity-service typecheck + test → 68 passed (14 infra skipped)
-discord-gateway typecheck + test → 86 passed
-api-gateway typecheck + test → 11 passed
-```
-
-## Marker
-
-`READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`
+P4.4 WWW, RabbitMQ, Zeabur prod, merge, final owner visual sign-off beyond retest.

@@ -557,6 +557,18 @@ function createTx(client: PoolClient): ActivityTx {
       return row === undefined ? null : mapDraft(row);
     },
 
+    async getDraftByOpaque(opaqueId) {
+      const result = await client.query(
+        `SELECT * FROM activity_drafts
+         WHERE LEFT(REPLACE(id::text, '-', ''), 12) = $1
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [opaqueId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapDraft(row);
+    },
+
     async updateDraft(id, patch) {
       const result = await client.query(
         `UPDATE activity_drafts SET

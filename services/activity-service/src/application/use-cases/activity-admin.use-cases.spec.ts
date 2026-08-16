@@ -212,6 +212,9 @@ function createAdminMemoryRepo(): {
     async getDraft() {
       return null;
     },
+    async getDraftByOpaque() {
+      return null;
+    },
     async updateDraft() {
       return notImpl();
     },
