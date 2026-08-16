@@ -93,7 +93,13 @@ corepack pnpm validate   # final gate
 - api-gateway tests: 15 passed
 - architecture:check: PASS
 - `pnpm audit --audit-level=high`: exit 0 — **0 high** (1 moderate reported, non-blocking for high gate)
-- CI: GitHub Actions on this HEAD after push (record run URL below once green)
+- CI: GitHub Actions on tip `2c4cabcd490379b589b513d324cae88c87b91662`
+  - Quality gates: success
+  - Infrastructure integration: success
+  - Secret scan: success
+  - Conventional PR title: success (after conventional lowercase subject)
+  - CI run: https://github.com/HOMZIKx/V2/actions/runs/31962384964
+  - PR: https://github.com/HOMZIKx/V2/pull/19
 
 ## 9. Owner-required
 
