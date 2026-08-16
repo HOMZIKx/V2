@@ -6,9 +6,9 @@
 
 ## 2. HEAD
 
-`2ea77de8ba2646306caa0b8efa6d5b6365009628` on `cursor/p4-1-activity-domain`
+`64eee10621124a27f6783e1712d4d3d22b138d6d` on `cursor/p4-1-activity-domain`
+(closure remediation; branch tip may include follow-up docs commits)
 
-Closure remediation code commit: `64eee10621124a27f6783e1712d4d3d22b138d6d`.
 Base handoff SHA was `277c687`; P4.5 RabbitMQ commit was **reverted** (`13ba776`)
 so active closure scope is P4.1–P4.4 only.
 
