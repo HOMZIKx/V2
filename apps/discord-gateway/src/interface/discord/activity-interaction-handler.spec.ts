@@ -139,51 +139,6 @@ describe('ActivityInteractionHandler', () => {
     );
   });
 
-  it('refuses event custom_id when interaction guild mismatches activity guild under strict isolation', async () => {
-    const activityClient = {
-      lookupActivityByOpaque: vi.fn(() =>
-        Promise.resolve({
-          id: 'act-foreign',
-          guildId: '999999999999999999',
-          name: 'Foreign raid',
-        }),
-      ),
-      rsvp: vi.fn(),
-    };
-    const handler = new ActivityInteractionHandler({
-      config: makeConfig(),
-      gateway: {} as never,
-      activityClient: activityClient as never,
-      logger: createLogger(),
-    });
-
-    const { createEventCustomId } =
-      await import('../../infrastructure/security/activity-signed-custom-id.js');
-    const statusOpaque = 'aabbccddeeff';
-    const customId = createEventCustomId('f6e5d4c3b2a1', 'rsvp', secret, statusOpaque);
-    const editReply = vi.fn(() => Promise.resolve(undefined));
-    const interaction = {
-      customId,
-      guildId,
-      user: { id: operatorId },
-      id: 'interaction-rsvp-cross-guild',
-      isButton: () => true,
-      isStringSelectMenu: () => false,
-      deferReply: vi.fn(() => Promise.resolve(undefined)),
-      editReply,
-      reply: vi.fn(),
-      showModal: vi.fn(),
-    };
-
-    await handler.handleComponent(interaction as never);
-    expect(activityClient.rsvp).not.toHaveBeenCalled();
-    expect(editReply).toHaveBeenCalledWith(
-      expect.objectContaining({
-        content: expect.stringContaining('innego serwera') as unknown as string,
-      }),
-    );
-  });
-
   it('ignores non-activity commands when feature enabled', async () => {
     const handler = new ActivityInteractionHandler({
       config: makeConfig(),

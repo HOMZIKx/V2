@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ActivityProjectionDeliveryService } from '../../infrastructure/activity/activity-projection-delivery.service.js';
 import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
@@ -40,14 +39,11 @@ describe('ActivityProjectionController', () => {
       publishComponentsV2Message: publish,
       editComponentsV2Message: vi.fn(),
     };
-    const config = makeConfig();
-    const delivery = new ActivityProjectionDeliveryService(config, gateway as never);
-    const controller = new ActivityProjectionController(config, delivery);
+    const controller = new ActivityProjectionController(makeConfig(), gateway as never);
 
     const body = {
       outboxId: 'outbox-1',
       eventType: 'activity.panel.projection_repaired.v1',
-      aggregateType: 'panel',
       aggregateId: 'panel-1',
       aggregateVersion: 1,
       payload: {
@@ -68,17 +64,14 @@ describe('ActivityProjectionController', () => {
   });
 
   it('rejects missing projection secret when configured', async () => {
-    const config = makeConfig();
-    const delivery = new ActivityProjectionDeliveryService(config, {
+    const controller = new ActivityProjectionController(makeConfig(), {
       publishComponentsV2Message: vi.fn(),
     } as never);
-    const controller = new ActivityProjectionController(config, delivery);
     await expect(
       controller.deliver(
         {
           outboxId: 'x',
           eventType: 'activity.activity.created.v1',
-          aggregateType: 'activity',
           aggregateId: 'a',
           aggregateVersion: 1,
           payload: {},

@@ -33,24 +33,6 @@ const optionalTrimmed = z
     return trimmed === undefined || trimmed === '' ? undefined : trimmed;
   });
 
-const outboxTransportSchema = z
-  .string()
-  .optional()
-  .transform((value, ctx) => {
-    if (value === undefined || value.trim() === '') {
-      return undefined;
-    }
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'rabbitmq' || normalized === 'http') {
-      return normalized;
-    }
-    ctx.addIssue({
-      code: 'custom',
-      message: 'must be rabbitmq|http',
-    });
-    return z.NEVER;
-  });
-
 const baseSchema = z.object({
   ACTIVITY_DATABASE_URL: z
     .string()
@@ -70,9 +52,6 @@ const baseSchema = z.object({
   ACTIVITY_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
   ACTIVITY_ENABLED: booleanFromEnv(false),
   ACTIVITY_OUTBOX_WORKER_ENABLED: booleanFromEnv(false),
-  /** Explicit override; when unset, rabbitmq if RABBITMQ_URL is set, else http. */
-  ACTIVITY_OUTBOX_TRANSPORT: outboxTransportSchema,
-  RABBITMQ_URL: optionalTrimmed,
   ACTIVITY_AUTHORIZATION_BASE_URL: optionalTrimmed,
   ACTIVITY_AUTHORIZATION_ASSERTION_AUD: optionalTrimmed,
   ACTIVITY_TO_AUTHZ_CLIENT_ID: z
@@ -106,26 +85,13 @@ const baseSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
-type ActivityEnvBase = z.output<typeof baseSchema>;
-
-export type ActivityOutboxTransport = 'rabbitmq' | 'http';
-
-export type ActivityEnv = Omit<ActivityEnvBase, 'ACTIVITY_OUTBOX_TRANSPORT'> & {
-  readonly ACTIVITY_OUTBOX_TRANSPORT: ActivityOutboxTransport;
-};
+export type ActivityEnv = z.output<typeof baseSchema>;
 
 export class ActivityConfigError extends Error {
   public constructor(message: string) {
     super(message);
     this.name = 'ActivityConfigError';
   }
-}
-
-function resolveOutboxTransport(config: ActivityEnvBase): ActivityOutboxTransport {
-  if (config.ACTIVITY_OUTBOX_TRANSPORT !== undefined) {
-    return config.ACTIVITY_OUTBOX_TRANSPORT;
-  }
-  return config.RABBITMQ_URL !== undefined ? 'rabbitmq' : 'http';
 }
 
 function assertEnabledRequirements(
@@ -153,20 +119,10 @@ function assertOutboxWorkerRequirements(
   config: ActivityEnv,
   addIssue: (path: string, message: string) => void,
 ): void {
-  if (config.ACTIVITY_OUTBOX_TRANSPORT === 'rabbitmq') {
-    if (config.RABBITMQ_URL === undefined) {
-      addIssue(
-        'RABBITMQ_URL',
-        'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and ACTIVITY_OUTBOX_TRANSPORT=rabbitmq',
-      );
-    }
-    return;
-  }
-
   if (config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
     addIssue(
       'ACTIVITY_DISCORD_PROJECTION_BASE_URL',
-      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and ACTIVITY_OUTBOX_TRANSPORT=http',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true',
     );
   }
   if (config.ACTIVITY_ENABLED) {
@@ -200,11 +156,7 @@ export function parseActivityEnv(env: NodeJS.ProcessEnv): ActivityEnv {
     throw new ActivityConfigError(`Invalid activity configuration: ${details}`);
   }
 
-  const config: ActivityEnv = {
-    ...parsed.data,
-    ACTIVITY_OUTBOX_TRANSPORT: resolveOutboxTransport(parsed.data),
-  };
-
+  const config = parsed.data;
   if (config.ACTIVITY_ENABLED) {
     const issues: string[] = [];
     assertEnabledRequirements(config, (path, message) => issues.push(`${path}: ${message}`));

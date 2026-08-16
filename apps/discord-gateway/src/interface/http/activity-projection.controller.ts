@@ -10,29 +10,87 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { z } from 'zod';
 
-import {
-  projectionDeliveryEnvelopeSchema,
-  type ProjectionDeliveryResult,
-} from '../../application/activity/activity-projection-envelope.js';
-import { ActivityProjectionDeliveryService } from '../../infrastructure/activity/activity-projection-delivery.service.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
-import { DISCORD_CONFIG_TOKEN } from '../discord/discord.tokens.js';
+import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { renderActivityEventMessage } from '../../presentation/discord/activity-event-renderer.js';
+import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
+import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
+import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
 
-export type { ProjectionDeliveryResult };
+const deliverySchema = z.object({
+  outboxId: z.string().min(1),
+  eventType: z.string().min(1),
+  aggregateId: z.string().min(1),
+  aggregateVersion: z.number().int().nonnegative(),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+const hubPayloadSchema = z.object({
+  kind: z.literal('hub').optional(),
+  channelId: z.string().min(1),
+  messageId: z.string().nullable().optional(),
+  opaquePanelId: z.string().regex(/^[a-f0-9]{12}$/),
+  nonce: z.string().max(25).optional(),
+});
+
+const eventPayloadSchema = z.object({
+  kind: z.literal('event').optional(),
+  channelId: z.string().min(1),
+  messageId: z.string().nullable().optional(),
+  opaqueEventId: z.string().regex(/^[a-f0-9]{12}$/),
+  name: z.string().min(1),
+  typeLabel: z.string().min(1),
+  statusLabel: z.string().min(1),
+  startAtIso: z.string().min(1),
+  endAtIso: z.string().nullable().optional(),
+  scheduleLabel: z.string().min(1).nullable().optional(),
+  scheduleKind: z.enum(['exact', 'range', 'flexible_period']).optional(),
+  periodKey: z
+    .enum(['today', 'tomorrow', 'this_week', 'weekend', 'flexible'])
+    .nullable()
+    .optional(),
+  locationText: z.string().nullable().optional(),
+  organizerLabel: z.string().min(1),
+  coOrganizerLabel: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  occupiedSlots: z.number().int().nonnegative(),
+  participantLimit: z.number().int().positive().nullable(),
+  statusSummaries: z.array(z.object({ label: z.string(), count: z.number().int() })),
+  participantPreview: z.array(z.string()).optional(),
+  statusDefs: z.array(
+    z.object({
+      opaqueId: z.string().regex(/^[a-f0-9]{12}$/),
+      label: z.string().min(1),
+      occupiesSlot: z.boolean(),
+    }),
+  ),
+  rsvpDisabled: z.boolean().optional(),
+  secondaryDisabled: z.boolean().optional(),
+  nonce: z.string().max(25).optional(),
+});
+
+export type ProjectionDeliveryResult = {
+  readonly status: 'delivered' | 'duplicate' | 'rate_limited' | 'upstream_error' | 'rejected';
+  readonly outboxId: string;
+  readonly messageId?: string;
+  readonly channelId?: string;
+  readonly detail?: string;
+};
 
 /**
- * Internal projection HTTP endpoint — NOT a general "send message" API.
+ * Internal projection consumer — NOT a general "send message" API.
  * Accepts only typed hub/event projection payloads from activity-service.
- *
- * HTTP = operator / reconcile / diagnostic path.
- * RabbitMQ (`activity.projection.discord`) = normal async path.
  */
 @Controller('internal/activity/v1/projections')
 export class ActivityProjectionController {
+  private readonly delivered = new Map<string, ProjectionDeliveryResult>();
+
   public constructor(
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
-    private readonly delivery: ActivityProjectionDeliveryService,
+    @Inject(DISCORD_GATEWAY_TOKEN)
+    private readonly gateway: DiscordJsGatewayAdapter | null,
   ) {}
 
   @Post('deliver')
@@ -43,14 +101,14 @@ export class ActivityProjectionController {
   ): Promise<ProjectionDeliveryResult> {
     this.assertAuthorized(projectionSecret);
 
-    if (!this.config.DISCORD_ENABLED) {
+    if (!this.config.DISCORD_ENABLED || this.gateway === null) {
       throw new ServiceUnavailableException({
         status: 'unavailable',
         detail: 'Discord gateway is disabled.',
       });
     }
 
-    const parsed = projectionDeliveryEnvelopeSchema.safeParse(body);
+    const parsed = deliverySchema.safeParse(body);
     if (!parsed.success) {
       throw new HttpException(
         { status: 'rejected', detail: 'Invalid projection payload.' },
@@ -58,17 +116,25 @@ export class ActivityProjectionController {
       );
     }
 
-    const result = await this.delivery.deliver(parsed.data);
-    if (result.status === 'rate_limited') {
-      throw new HttpException(result, HttpStatus.TOO_MANY_REQUESTS);
+    const existing = this.delivered.get(parsed.data.outboxId);
+    if (existing !== undefined) {
+      return { ...existing, status: 'duplicate' };
     }
-    if (result.status === 'upstream_error') {
-      throw new HttpException(result, HttpStatus.BAD_GATEWAY);
+
+    try {
+      const result = await this.applyProjection(parsed.data);
+      this.delivered.set(parsed.data.outboxId, result);
+      return result;
+    } catch (error) {
+      const classified = classifyDiscordError(parsed.data.outboxId, error);
+      if (classified.status === 'rate_limited') {
+        throw new HttpException(classified, HttpStatus.TOO_MANY_REQUESTS);
+      }
+      if (classified.status === 'upstream_error') {
+        throw new HttpException(classified, HttpStatus.BAD_GATEWAY);
+      }
+      throw new HttpException(classified, HttpStatus.BAD_REQUEST);
     }
-    if (result.status === 'rejected') {
-      throw new HttpException(result, HttpStatus.BAD_REQUEST);
-    }
-    return result;
   }
 
   private assertAuthorized(projectionSecret: string | undefined): void {
@@ -92,4 +158,125 @@ export class ActivityProjectionController {
       'Projection delivery requires ACTIVITY_PROJECTION_SHARED_SECRET outside local headers mode.',
     );
   }
+
+  private async applyProjection(
+    input: z.infer<typeof deliverySchema>,
+  ): Promise<ProjectionDeliveryResult> {
+    const gateway = this.gateway;
+    if (gateway === null) {
+      throw new Error('Gateway unavailable');
+    }
+
+    const kind =
+      typeof input.payload.kind === 'string'
+        ? input.payload.kind
+        : input.eventType.includes('panel')
+          ? 'hub'
+          : 'event';
+
+    if (kind === 'hub') {
+      const hub = hubPayloadSchema.parse(input.payload);
+      const message = toComponentsV2Payload(
+        renderActivityHubMessage({
+          opaquePanelId: hub.opaquePanelId,
+          signingSecret: this.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        }),
+      );
+      if (hub.messageId) {
+        await gateway.editComponentsV2Message(hub.channelId, hub.messageId, message);
+        return {
+          status: 'delivered',
+          outboxId: input.outboxId,
+          messageId: hub.messageId,
+          channelId: hub.channelId,
+        };
+      }
+      const published = await gateway.publishComponentsV2Message(
+        hub.channelId,
+        message,
+        hub.nonce !== undefined ? { nonce: hub.nonce } : undefined,
+      );
+      return {
+        status: 'delivered',
+        outboxId: input.outboxId,
+        messageId: published.messageId,
+        channelId: published.channelId,
+      };
+    }
+
+    const event = eventPayloadSchema.parse(input.payload);
+    const message = toComponentsV2Payload(
+      renderActivityEventMessage({
+        opaqueEventId: event.opaqueEventId,
+        signingSecret: this.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        name: event.name,
+        typeLabel: event.typeLabel,
+        statusLabel: event.statusLabel,
+        startAtIso: event.startAtIso,
+        occupiedSlots: event.occupiedSlots,
+        participantLimit: event.participantLimit,
+        statusSummaries: event.statusSummaries,
+        statusDefs: event.statusDefs,
+        organizerLabel: event.organizerLabel,
+        ...(event.endAtIso !== undefined ? { endAtIso: event.endAtIso } : {}),
+        ...(event.scheduleLabel !== undefined && event.scheduleLabel !== null
+          ? { scheduleLabel: event.scheduleLabel }
+          : {}),
+        ...(event.locationText !== undefined ? { locationText: event.locationText } : {}),
+        ...(event.coOrganizerLabel !== undefined
+          ? { coOrganizerLabel: event.coOrganizerLabel }
+          : {}),
+        ...(event.description !== undefined ? { description: event.description } : {}),
+        ...(event.participantPreview !== undefined
+          ? { participantPreview: event.participantPreview }
+          : {}),
+        ...(event.rsvpDisabled !== undefined ? { rsvpDisabled: event.rsvpDisabled } : {}),
+        ...(event.secondaryDisabled !== undefined
+          ? { secondaryDisabled: event.secondaryDisabled }
+          : {}),
+      }),
+    );
+
+    if (event.messageId) {
+      await gateway.editComponentsV2Message(event.channelId, event.messageId, message);
+      return {
+        status: 'delivered',
+        outboxId: input.outboxId,
+        messageId: event.messageId,
+        channelId: event.channelId,
+      };
+    }
+
+    const published = await gateway.publishComponentsV2Message(
+      event.channelId,
+      message,
+      event.nonce !== undefined ? { nonce: event.nonce } : undefined,
+    );
+    return {
+      status: 'delivered',
+      outboxId: input.outboxId,
+      messageId: published.messageId,
+      channelId: published.channelId,
+    };
+  }
+}
+
+function classifyDiscordError(outboxId: string, error: unknown): ProjectionDeliveryResult {
+  const message = error instanceof Error ? error.message : 'unknown';
+  let statusCode: number | undefined;
+  if (typeof error === 'object' && error !== null) {
+    if ('status' in error && typeof error.status === 'number') {
+      statusCode = error.status;
+    } else if ('httpStatus' in error && typeof error.httpStatus === 'number') {
+      statusCode = error.httpStatus;
+    }
+  }
+
+  if (statusCode === 429 || /429|rate.?limit/i.test(message)) {
+    return { status: 'rate_limited', outboxId, detail: message };
+  }
+  if ((statusCode !== undefined && statusCode >= 500) || /5\d\d|ECONN|timeout/i.test(message)) {
+    return { status: 'upstream_error', outboxId, detail: message };
+  }
+  return { status: 'rejected', outboxId, detail: message };
 }

@@ -1055,15 +1055,14 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `SELECT * FROM notification_inbox_items
          WHERE recipient_discord_user_id = $1
-           AND ($2::text IS NULL OR guild_id = $2)
            AND (
-             $3::timestamptz IS NULL
-             OR created_at < $3::timestamptz
-             OR (created_at = $3::timestamptz AND id < $4::uuid)
+             $2::timestamptz IS NULL
+             OR created_at < $2::timestamptz
+             OR (created_at = $2::timestamptz AND id < $3::uuid)
            )
          ORDER BY created_at DESC, id DESC
-         LIMIT $5`,
-        [input.discordUserId, input.guildId ?? null, cursorCreatedAt, cursorId, limit + 1],
+         LIMIT $4`,
+        [input.discordUserId, cursorCreatedAt, cursorId, limit + 1],
       );
       const rows = result.rows.map((row) => mapInbox(row as Record<string, unknown>));
       const hasMore = rows.length > limit;

@@ -694,7 +694,6 @@ export class ActivityController {
   public async listInbox(
     @Query('limit') limitRaw: string | undefined,
     @Query('cursor') cursor: string | undefined,
-    @Query('guildId') guildId: string | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
     const limit =
@@ -702,13 +701,9 @@ export class ActivityController {
     if (limit !== undefined && (!Number.isFinite(limit) || limit < 1)) {
       throw new ActivityError('VALIDATION_FAILED', 'limit must be a positive integer');
     }
-    if (guildId !== undefined && guildId.trim().length === 0) {
-      throw new ActivityError('VALIDATION_FAILED', 'guildId must be non-empty when provided');
-    }
     return this.useCases.listInbox(actorFromRequest(request), {
       ...(limit !== undefined ? { limit } : {}),
       ...(cursor !== undefined ? { cursor } : {}),
-      ...(guildId !== undefined ? { guildId } : {}),
     });
   }
 

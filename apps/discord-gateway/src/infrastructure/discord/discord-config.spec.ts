@@ -99,29 +99,4 @@ describe('discord config', () => {
     });
     expect(result.success).toBe(false);
   });
-
-  it('defaults projection consumer enabled when activity + RABBITMQ_URL are set', () => {
-    const normalized = normalizeDiscordConfig(
-      DiscordGatewayConfigSchema.parse({
-        DISCORD_ENABLED: 'false',
-        DISCORD_ACTIVITY_ENABLED: 'true',
-        ACTIVITY_ORGANIZATION_ID: 'org-test',
-        RABBITMQ_URL: 'amqp://guest:guest@localhost:5672',
-      }),
-    );
-    expect(normalized.activityProjectionConsumerEnabled).toBe(true);
-  });
-
-  it('allows explicit disable of projection consumer', () => {
-    const normalized = normalizeDiscordConfig(
-      DiscordGatewayConfigSchema.parse({
-        DISCORD_ENABLED: 'false',
-        DISCORD_ACTIVITY_ENABLED: 'true',
-        ACTIVITY_ORGANIZATION_ID: 'org-test',
-        RABBITMQ_URL: 'amqp://guest:guest@localhost:5672',
-        DISCORD_ACTIVITY_PROJECTION_CONSUMER_ENABLED: 'false',
-      }),
-    );
-    expect(normalized.activityProjectionConsumerEnabled).toBe(false);
-  });
 });

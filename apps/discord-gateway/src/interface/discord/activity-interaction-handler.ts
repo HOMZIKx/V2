@@ -723,25 +723,6 @@ export class ActivityInteractionHandler {
         ? activity.guildId
         : (interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID);
 
-    if (
-      this.deps.config.DISCORD_STRICT_GUILD_ISOLATION &&
-      typeof activity.guildId === 'string' &&
-      interaction.guildId !== null &&
-      interaction.guildId !== undefined &&
-      interaction.guildId !== activity.guildId
-    ) {
-      this.deps.logger.warn('Refusing activity custom_id across guild boundary', {
-        interactionGuildId: interaction.guildId,
-        activityGuildId: activity.guildId,
-        opaqueId: parsed.opaqueId,
-        action: parsed.action,
-      });
-      await interaction.editReply({
-        content: 'Ta aktywność należy do innego serwera. Operacja odrzucona.',
-      });
-      return;
-    }
-
     if (parsed.action === 'rsvp' && parsed.statusOpaqueId !== undefined) {
       const statusDefId = await this.resolveStatusDefId(
         guildId,
