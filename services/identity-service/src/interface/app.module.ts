@@ -24,6 +24,7 @@ import { InternalJwtLifecycleService } from './internal-jwt-lifecycle.service.js
 import { InternalTokenController } from './internal-token.controller.js';
 import { ProofUiController } from './proof-ui.controller.js';
 import { SystemRevokeController } from './system-revoke.controller.js';
+import { WebOauthController } from './web-oauth.controller.js';
 
 const providers: Provider[] = [
   {
@@ -83,6 +84,7 @@ const providers: Provider[] = [
     InternalTokenController,
     SystemRevokeController,
     ProofUiController,
+    WebOauthController,
   ],
   providers,
 })

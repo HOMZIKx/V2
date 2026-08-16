@@ -3,6 +3,7 @@ import {
   Controller,
   Headers,
   Inject,
+  Optional,
   Req,
   Res,
   ServiceUnavailableException,
@@ -12,7 +13,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   ACTIVITY_SERVICE_BASE_URL,
   API_GATEWAY_FORWARD_ACTOR_HEADERS,
+  IDENTITY_SERVICE_BASE_URL,
 } from './activity-proxy.tokens.js';
+import { resolveSessionActor } from './session-actor.resolver.js';
 
 /** Explicit allowlist — never forward Authorization / client assertions / proxy hop headers. */
 const FORWARDED_HEADER_ALLOWLIST = new Set([
@@ -30,7 +33,7 @@ const ACTOR_HEADERS = new Set(['x-actor-discord-user-id', 'x-actor-v2-user-id'])
 
 /**
  * Public BFF proxy: browser/admin → api-gateway → activity-service.
- * Forwards only an explicit header allowlist (+ optional actor headers in dev).
+ * Forwards allowlisted headers; resolves Identity session → actor for WWW.
  */
 @Controller()
 export class ActivityProxyController {
@@ -38,6 +41,9 @@ export class ActivityProxyController {
     @Inject(ACTIVITY_SERVICE_BASE_URL) private readonly activityBaseUrl: string | null,
     @Inject(API_GATEWAY_FORWARD_ACTOR_HEADERS)
     private readonly forwardActorHeaders: boolean,
+    @Optional()
+    @Inject(IDENTITY_SERVICE_BASE_URL)
+    private readonly identityBaseUrl: string | null = null,
   ) {}
 
   @All(['activity/v1', 'activity/v1/*'])
@@ -70,6 +76,12 @@ export class ActivityProxyController {
         continue;
       }
       headers[lower] = Array.isArray(value) ? value.join(', ') : value;
+    }
+
+    const sessionActor = await resolveSessionActor(headers.cookie, this.identityBaseUrl);
+    if (sessionActor !== null) {
+      headers['x-actor-discord-user-id'] = sessionActor.discordUserId;
+      headers['x-actor-v2-user-id'] = sessionActor.v2UserId;
     }
 
     const method = request.method.toUpperCase();

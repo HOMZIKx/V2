@@ -4,8 +4,10 @@ import { ActivityProxyController } from './activity-proxy.controller.js';
 import {
   ACTIVITY_SERVICE_BASE_URL,
   API_GATEWAY_FORWARD_ACTOR_HEADERS,
+  IDENTITY_SERVICE_BASE_URL,
 } from './activity-proxy.tokens.js';
 import { HealthController } from './health.controller.js';
+import { SessionController } from './session.controller.js';
 
 function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined || value.trim() === '') {
@@ -30,6 +32,15 @@ const providers: Provider[] = [
     },
   },
   {
+    provide: IDENTITY_SERVICE_BASE_URL,
+    useFactory: (): string | null => {
+      const value =
+        process.env.IDENTITY_SERVICE_BASE_URL?.trim() ??
+        process.env.INTERNAL_JWT_IDENTITY_BASE_URL?.trim();
+      return value !== undefined && value.length > 0 ? value : null;
+    },
+  },
+  {
     provide: API_GATEWAY_FORWARD_ACTOR_HEADERS,
     useFactory: (): boolean =>
       parseBooleanEnv(process.env.API_GATEWAY_FORWARD_ACTOR_HEADERS, false),
@@ -37,7 +48,7 @@ const providers: Provider[] = [
 ];
 
 @Module({
-  controllers: [HealthController, ActivityProxyController],
+  controllers: [HealthController, ActivityProxyController, SessionController],
   providers,
 })
 export class AppModule {}

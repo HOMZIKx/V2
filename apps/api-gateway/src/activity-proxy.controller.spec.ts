@@ -147,4 +147,39 @@ describe('ActivityProxyController', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('injects actor headers from Identity session cookie', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 'v2-1', name: 'User' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ accounts: [{ provider: 'discord', accountId: 'discord-9' }] }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response('{"items":[]}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController(
+      'http://127.0.0.1:4400',
+      false,
+      'http://127.0.0.1:4200',
+    );
+    await controller.proxy(
+      { url: '/activity/v1/activities?guildId=g1', method: 'GET', body: undefined } as never,
+      reply as never,
+      { cookie: 'v2.identity.session=abc', accept: 'application/json' },
+    );
+
+    const activityCall = fetchMock.mock.calls[2] as [URL, RequestInit];
+    const headers = activityCall[1].headers as Record<string, string>;
+    expect(headers['x-actor-discord-user-id']).toBe('discord-9');
+    expect(headers['x-actor-v2-user-id']).toBe('v2-1');
+
+    vi.unstubAllGlobals();
+  });
 });

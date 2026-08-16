@@ -2,29 +2,34 @@
 
 ## Task
 
-`P4-DISCORD-PRODUCT-PASS-001` on PR #19 (P4.1–P4.3 train).
+`P4.4-ACTIVITY-WEB-001` on PR #19.
 
 ## Status
 
-`READY_FOR_OWNER_P4_DISCORD_RETEST`
+`READY_FOR_OWNER_P4_4_WEB_TEST`
 
 ## Branch
 
-`cursor/p4-1-activity-domain` — **do not merge**; do not start P4.4.
+`cursor/p4-1-activity-domain` — do not merge; do not start P4.5.
 
-## Highlights
+## WWW URL
 
-- Hub duplicate: publish/reconcile edit-first (live script adopts existing messageId)
-- 404 root cause: Discord client path mismatch vs OpenAPI (`opaque/*`, `me/inbox`)
-- UX: Polish datetime, draft summary session, Polish copy, V2 accent from `panel-theme`
-- Draft startAt validation rejects non-ISO (e.g. DAS12)
-- CI Quality gates / Infra / Secret scan green on `9cbb82a`
+http://127.0.0.1:3000
 
-## Live retest
+## Views
 
-- guild `1534228693017432124` / channel `1534228693449179146` / message `1538562670494744717`
-- `OWNER_LIVE_TEST_READY` yes
+`/logowanie`, `/aktywnosci`, `/aktywnosci/[id]`, `/moje`, `/powiadomienia`
+
+## Cross-interface (agent)
+
+Discord/backend Activity published → gateway list → RSVP → mine list OK.
+Browser OAuth not completed locally (`IDENTITY_AUTH_ENABLED=false`).
+
+## Owner action
+
+Enable Identity Discord OAuth (`IDENTITY_AUTH_ENABLED=true`, trusted origins
+include `http://127.0.0.1:3000`) then sign in at `/logowanie`.
 
 ## Explicitly not done
 
-P4.4 WWW, RabbitMQ, Zeabur prod, merge, final owner visual sign-off beyond retest.
+P4.5, merge, Zeabur.
