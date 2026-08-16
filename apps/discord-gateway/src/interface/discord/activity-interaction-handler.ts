@@ -64,6 +64,24 @@ function opaqueFromUuid(id: string): string {
   return id.replace(/-/g, '').toLowerCase().slice(0, 12);
 }
 
+/** Discord.js editReply + Components V2 is awkward under exactOptionalPropertyTypes. */
+function asEditPayload(view: {
+  content?: string | undefined;
+  components?: unknown;
+  flags?: unknown;
+}): Parameters<MessageComponentInteraction['editReply']>[0] {
+  const payload: Record<string, unknown> = {
+    flags: MessageFlags.IsComponentsV2,
+  };
+  if (typeof view.content === 'string') {
+    payload.content = view.content;
+  }
+  if (view.components !== undefined) {
+    payload.components = view.components;
+  }
+  return payload;
+}
+
 function isOperator(
   interaction: {
     user: { id: string };
@@ -78,7 +96,9 @@ function isOperator(
   }).allowed;
 }
 
-function draftPayload(draft: { payload?: Record<string, unknown> }): Record<string, unknown> {
+function draftPayload(draft: {
+  payload?: Record<string, unknown> | undefined;
+}): Record<string, unknown> {
   return draft.payload ?? {};
 }
 
@@ -221,12 +241,14 @@ export class ActivityInteractionHandler {
           },
         );
         await interaction.editReply(
-          renderDraftFormSummary({
-            opaqueDraftId: opaqueFromUuid(draft.id),
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            title: 'Szkic aktywności',
-            lines: draftSummaryLines(draftPayload(draft)),
-          }),
+          asEditPayload(
+            renderDraftFormSummary({
+              opaqueDraftId: opaqueFromUuid(draft.id),
+              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+              title: 'Szkic aktywności',
+              lines: draftSummaryLines(draftPayload(draft)),
+            }),
+          ),
         );
         return true;
       }
@@ -248,12 +270,14 @@ export class ActivityInteractionHandler {
           },
         );
         await interaction.editReply(
-          renderDraftFormSummary({
-            opaqueDraftId: opaqueFromUuid(draft.id),
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            title: 'Szkic aktywności',
-            lines: draftSummaryLines(draftPayload(draft)),
-          }),
+          asEditPayload(
+            renderDraftFormSummary({
+              opaqueDraftId: opaqueFromUuid(draft.id),
+              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+              title: 'Szkic aktywności',
+              lines: draftSummaryLines(draftPayload(draft)),
+            }),
+          ),
         );
         return true;
       }
@@ -374,14 +398,15 @@ export class ActivityInteractionHandler {
         return;
       }
 
-      await interaction.reply(
-        renderDraftFormSummary({
+      await interaction.reply({
+        ...renderDraftFormSummary({
           opaqueDraftId: opaqueFromUuid(draft.id),
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
           title: 'Szkic aktywności',
           lines: draftSummaryLines(draftPayload(draft)),
         }),
-      );
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+      });
     } catch (error) {
       this.deps.logger.error('Centrum create/lfg open failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -794,7 +819,7 @@ export class ActivityInteractionHandler {
                     : kindLabel;
               return `${mark} **${kindLabel}** — ${title}`;
             });
-      await interaction.editReply(renderInboxList({ lines }));
+      await interaction.editReply(asEditPayload(renderInboxList({ lines })));
     }
   }
 
@@ -969,17 +994,19 @@ export class ActivityInteractionHandler {
           ? payload.description
           : '—';
       await interaction.editReply(
-        renderDraftFormSummary({
-          opaqueDraftId: parsed.opaqueId,
-          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-          title: `Podgląd — ${name}`,
-          lines: [
-            `**Data i godzina:** ${when}`,
-            `**Opis:** ${description}`,
-            '',
-            '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
-          ],
-        }),
+        asEditPayload(
+          renderDraftFormSummary({
+            opaqueDraftId: parsed.opaqueId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            title: `Podgląd — ${name}`,
+            lines: [
+              `**Data i godzina:** ${when}`,
+              `**Opis:** ${description}`,
+              '',
+              '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
+            ],
+          }),
+        ),
       );
       return;
     }
@@ -988,14 +1015,15 @@ export class ActivityInteractionHandler {
       const name = typeof payload.name === 'string' ? payload.name.trim() : '';
       const startRaw = typeof payload.startAt === 'string' ? payload.startAt : '';
       if (!name || !startRaw) {
-        await interaction.editReply({
-          content: 'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
-          components: renderDraftFormSummary({
-            opaqueDraftId: parsed.opaqueId,
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            lines: draftSummaryLines(payload),
-          }).components,
+        const summary = renderDraftFormSummary({
+          opaqueDraftId: parsed.opaqueId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          lines: [
+            'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
+            ...draftSummaryLines(payload),
+          ],
         });
+        await interaction.editReply(asEditPayload(summary));
         return;
       }
       const published = await this.deps.activityClient.publishDraft(

@@ -80,8 +80,11 @@ describe('ActivityInteractionHandler', () => {
     expect(showModal).not.toHaveBeenCalled();
     expect(reply).toHaveBeenCalledOnce();
     expect(deferReply).not.toHaveBeenCalled();
-    const payload = reply.mock.calls[0]?.[0] as { flags?: number };
-    expect(payload.flags).toBeDefined();
+    expect(reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+      }),
+    );
   });
 
   it('resolves RSVP statusDefId from guild config opaque ids', async () => {

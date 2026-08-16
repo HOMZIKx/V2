@@ -53,7 +53,7 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
         ),
       ),
     ],
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 
@@ -112,7 +112,7 @@ export function renderMoreMenu(input: MoreMenuInput): InteractionReplyOptions {
       new TextDisplayBuilder().setContent(lines.join('\n')),
       new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons.slice(0, 5)),
     ],
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 
@@ -128,7 +128,7 @@ export function renderParticipantsList(input: ParticipantsListInput): Interactio
     components: [
       new TextDisplayBuilder().setContent(`## Lista uczestników — ${input.activityName}\n${body}`),
     ],
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 
@@ -141,7 +141,7 @@ export function renderInboxList(input: InboxListInput): InteractionReplyOptions 
     input.lines.length === 0 ? '_Brak powiadomień._' : input.lines.slice(0, 30).join('\n');
   return {
     components: [new TextDisplayBuilder().setContent(`## Powiadomienia\n${body}`)],
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
 
@@ -157,6 +157,6 @@ export function renderActivityPreview(input: PreviewInput): InteractionReplyOpti
         [`## Podgląd — ${input.title}`, ...input.lines].join('\n'),
       ),
     ],
-    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+    flags: MessageFlags.IsComponentsV2,
   };
 }
