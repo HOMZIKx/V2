@@ -389,10 +389,21 @@ describe.skipIf(!wantInfra)('ActivityRepository (infra)', () => {
   });
 
   it('claims disjoint projection repair leases under concurrent workers', async ({ skip }) => {
-    if (!infraReady || useCases === undefined || repository === undefined) {
+    if (!infraReady || useCases === undefined || repository === undefined || pool === undefined) {
       skip();
       return;
     }
+    // Claim queue is global. Neutralize leftovers from earlier tests so this
+    // case only contends on the four projections created below.
+    await pool.query(
+      `UPDATE activity_projections
+       SET status = 'ok',
+           lease_owner = 'held-by-isolation',
+           lease_expires_at = $1
+       WHERE status IN ('pending', 'failed', 'degraded', 'missing')`,
+      [new Date('2099-01-01T00:00:00.000Z').toISOString()],
+    );
+
     const guildId = `guild-${randomUUID()}`;
     const organizer = { discordUserId: `org-${randomUUID()}` };
     const activityIds: string[] = [];
@@ -438,6 +449,7 @@ describe.skipIf(!wantInfra)('ActivityRepository (infra)', () => {
       expect(idsB.has(id)).toBe(false);
     }
     expect(idsA.size + idsB.size).toBe(4);
+    expect(activityIds.every((id) => idsA.has(id) || idsB.has(id))).toBe(true);
     expect([...idsA, ...idsB].every((id) => activityIds.includes(id))).toBe(true);
     expect(a.every((p) => p.leaseOwner === 'worker-a')).toBe(true);
     expect(b.every((p) => p.leaseOwner === 'worker-b')).toBe(true);

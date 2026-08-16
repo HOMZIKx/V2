@@ -6,7 +6,7 @@
 
 ## Status
 
-`READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`
+`BLOCKED_P4_1_TO_P4_3` until GitHub Actions green after CI remediation follow-up (projection lease isolation + gitleaks allowlist).
 
 ## Branch
 
@@ -33,7 +33,7 @@ Admin API + Admin UI + readiness + config versioning + projection repair/audit +
 - **C** Discord Gateway channel validate API; activity-service validates on put + readiness (fail closed)
 - **D** api-gateway activity-proxy header allowlist; actor headers opt-in via `API_GATEWAY_FORWARD_ACTOR_HEADERS`
 - `asNullableDate(Date)` regression via `pg-value-mappers`
-- **Not committed**
+- CI follow-up: neutralize leftover claimable projections before concurrent lease test; expand `.gitleaks.toml` allowlist for documented Discord test snowflakes
 
 ## Explicitly not done (deferred)
 

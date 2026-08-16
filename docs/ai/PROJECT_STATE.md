@@ -2,7 +2,7 @@
 
 ## Status
 
-`READY_FOR_FULL_AUDIT_P4_1_TO_P4_3`
+Awaiting green CI on remediation follow-up (`BLOCKED_P4_1_TO_P4_3` until Actions confirm).
 
 ## Active phase
 
@@ -45,13 +45,14 @@ Do not start P4.4 / WWW portal / merge.
 - Channel validation: Discord Gateway `POST /internal/activity/v1/channels/validate`; activity-service port + client; `putChannels`/`putAdminConfig` validate; readiness fail-closed (`CONFIGURATION_REQUIRED` / `DISCORD_DEPENDENCY_UNAVAILABLE`)
 - BFF: explicit header allowlist; actor headers only when `API_GATEWAY_FORWARD_ACTOR_HEADERS=true`
 - `asNullableDate` extracted to `pg-value-mappers.ts` with regression tests
+- Infra: concurrent projection claim test isolates global claim queue from earlier suite leftovers
+- Secret scan: `.gitleaks.toml` allowlists documented Discord test snowflakes (discord-client-id false positives on new e2e/spec files)
 
 ## Verification (local agent)
 
-- activity-service: typecheck green; unit **68 passed**, 14 infra skipped
-- discord-gateway: typecheck green; **86 passed**
-- api-gateway: typecheck green; **11 passed**
-- No commit (per request)
+- activity-service: typecheck green; unit **68 passed**, 14 infra skipped (Docker unavailable locally)
+- discord-gateway / api-gateway unit tests green
+- `pnpm audit --audit-level=high` green (nanoid override)
 
 ## Live Discord / Admin
 
