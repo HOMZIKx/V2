@@ -1,6 +1,7 @@
 import { Module, type Provider } from '@nestjs/common';
 import type { Pool } from 'pg';
 
+import type { ActivityEventPublisherPort } from '../application/ports/activity-event-publisher.port.js';
 import type { ActivityRepositoryPort, AuthorizePort } from '../application/ports/activity.ports.js';
 import type { DiscordChannelValidationPort } from '../application/ports/discord-channel-validation.port.js';
 import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
@@ -17,6 +18,7 @@ import {
   type InboundClientRegistry,
   loadInboundClientRegistry,
 } from '../infrastructure/internal/verify-inbound-assertion.js';
+import { RabbitMqActivityEventPublisher } from '../infrastructure/messaging/rabbitmq-publisher.js';
 import { ActivityOutboxDispatcher } from '../infrastructure/outbox/outbox-dispatcher.js';
 import { ActivityRepository } from '../infrastructure/persistence/activity-repository.js';
 import { ActivityAdminController } from './activity-admin.controller.js';
@@ -25,6 +27,7 @@ import {
   ACTIVITY_ADMIN_USE_CASES,
   ACTIVITY_CLOCK,
   ACTIVITY_CONFIG,
+  ACTIVITY_EVENT_PUBLISHER,
   ACTIVITY_POOL,
   ACTIVITY_REPOSITORY,
   ACTIVITY_USE_CASES,
@@ -125,6 +128,16 @@ const providers: Provider[] = [
         return null;
       }
       return loadInboundClientRegistry(config.ACTIVITY_INBOUND_CLIENTS_JSON);
+    },
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ACTIVITY_EVENT_PUBLISHER,
+    useFactory: (config: ActivityEnv): ActivityEventPublisherPort | null => {
+      if (config.ACTIVITY_OUTBOX_TRANSPORT !== 'rabbitmq' || config.RABBITMQ_URL === undefined) {
+        return null;
+      }
+      return new RabbitMqActivityEventPublisher({ url: config.RABBITMQ_URL });
     },
     inject: [ACTIVITY_CONFIG],
   },

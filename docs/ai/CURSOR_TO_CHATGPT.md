@@ -2,50 +2,59 @@
 
 ## Task
 
-`P4-DISCORD-SINGLE-FORM-SCHEDULING-UX-001` on PR #19.
+`P4.5-ACTIVITY-MULTIGUILD-TRANSPORT-001` on PR #19.
 
 ## Status
 
-`READY_FOR_OWNER_SINGLE_FORM_SCHEDULING_RETEST`
+`READY_FOR_3_PROMPT_CHECKPOINT_P4`
+
+**STOP** — do not start P4.6; await owner/ChatGPT control of the next three
+prompts.
 
 ## Branch
 
-`cursor/p4-1-activity-domain` — do not merge; do not start P4.4/P4.5 work from here
-(P4.4 WWW already on same PR; this pass only corrects Discord create scheduling UX).
+`cursor/p4-1-activity-domain` — do not merge without owner approval.
 
-## Schedule model
+## What landed
 
-- `scheduleKind`: `exact` | `range` | `flexible_period`
-- `periodKey` (flexible only): `today` | `tomorrow` | `this_week` | `weekend` | `flexible`
-- Resolved `startAt` / `endAt` / `scheduledFinishAt` for sort + expiry
-- UX label via `scheduleLabel` (Polish)
+### Transport
 
-## „Kiedy?” options
+```text
+domain TX → PG outbox → dispatcher → RabbitMQ (activity.events)
+  → discord-gateway consumer (activity.projection.discord)
+  → ActivityProjectionDeliveryService (idempotent by outboxId)
+```
 
-Dokładny termin · Przedział OD–DO · Dzisiaj · Jutro · W tym tygodniu · W weekend ·
-Do ustalenia
+- Shared contracts: `packages/contracts/src/events/activity/`
+- Publisher: `services/activity-service/.../messaging/rabbitmq-*.ts`
+- Consumer: `apps/discord-gateway/.../activity-projection-rabbitmq.consumer.ts`
+- Retry: `x-retry-count` republish; ≥5 → DLQ+ack; permanent failures → DLQ+ack
+- HTTP deliver retained as operator/reconcile/diagnostic path only
 
-## Modal fields (one form)
+### Multi-guild
 
-Nazwa · Kiedy? · OD (opcjonalnie) · DO (opcjonalnie) · Opis
+- `activity-multiguild.spec.ts` — config, hubs, activities, participants/RSVP,
+  inbox, reports, outbox routing, cross-guild IDOR
+- Discord interaction refuses wrong-guild custom_id when isolation enabled
 
-## Edit pre-filled
+## Verify (local)
 
-Yes — draft payload restores name/description/when/OD/DO defaults.
+```text
+corepack pnpm --dir apps/discord-gateway test
+corepack pnpm --dir services/activity-service test
+corepack pnpm validate
+```
 
-## Ephemeral policy
+## Known blockers / limits
 
-One preview message per create/edit session; edit uses modal `update` in place.
-
-## Live API smoke (guild `1534228693017432124`)
-
-- this_week publish: OK
-- exact publish: OK
-- weekend publish: OK
-- range publish: OK
-- reschedule flexible→exact: OK
-- Owner Discord click-through (modal + ephemeral count) still required
+- Idempotency Map is process-local (single replica OK for P4.5)
+- No second live Discord guild configured — automated two-guild tests only
+- Live smoke depends on local stack (RabbitMQ + worker + consumer enabled)
+- `projection_requested` outbox payload is still a thin pointer (ids/schedule),
+  not a full Discord render DTO — consumer rejects incomplete apply payloads
+  to DLQ. Discord hub/event publish remains primarily via interaction handler;
+  enriching the SoT outbox payload is follow-up (not P4.6 product scope)
 
 ## Explicitly not done
 
-P4.5, merge, Zeabur.
+Merge, Zeabur, P4.6+, WWW creator, palette rebrand.

@@ -333,13 +333,19 @@ export class ActivityHttpClient {
     );
   }
 
-  public async listInbox(actor: ActivityActorContext, query?: { limit?: number; cursor?: string }) {
+  public async listInbox(
+    actor: ActivityActorContext,
+    query?: { limit?: number; cursor?: string; guildId?: string },
+  ) {
     const params = new URLSearchParams();
     if (query?.limit !== undefined) {
       params.set('limit', String(query.limit));
     }
     if (query?.cursor !== undefined) {
       params.set('cursor', query.cursor);
+    }
+    if (query?.guildId !== undefined) {
+      params.set('guildId', query.guildId);
     }
     const suffix = params.size > 0 ? `?${params.toString()}` : '';
     return this.request('GET', `/activity/v1/inbox${suffix}`, inboxSchema, { actor });

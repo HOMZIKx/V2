@@ -280,6 +280,9 @@ export class ActivityUseCases {
     return this.mutate(ctx, 'config-update', `guild:${guildId}`, async (tx) => {
       if (patch.organizerDefaultStatusId !== undefined && patch.organizerDefaultStatusId !== null) {
         const def = await tx.getStatusDef(patch.organizerDefaultStatusId);
+        if (def !== null && def.guildId !== guildId) {
+          throw new ActivityError('VALIDATION_FAILED', 'Status definition is not in this guild');
+        }
         assertValidReferenceStatus(def ?? undefined, 'organizerDefault');
       }
       if (
@@ -287,6 +290,9 @@ export class ActivityUseCases {
         patch.waitlistPromotionStatusId !== null
       ) {
         const def = await tx.getStatusDef(patch.waitlistPromotionStatusId);
+        if (def !== null && def.guildId !== guildId) {
+          throw new ActivityError('VALIDATION_FAILED', 'Status definition is not in this guild');
+        }
         assertValidReferenceStatus(def ?? undefined, 'waitlistPromotion');
       }
       return tx.updateSettings(guildId, patch);
@@ -715,7 +721,12 @@ export class ActivityUseCases {
         throw new ActivityError('PRECONDITION_FAILED', 'Enrollment is closed');
       }
       const statusDef = await tx.getStatusDef(input.statusDefId);
-      if (statusDef === null || !statusDef.active || !statusDef.selectableByMember) {
+      if (
+        statusDef === null ||
+        statusDef.guildId !== activity.guildId ||
+        !statusDef.active ||
+        !statusDef.selectableByMember
+      ) {
         throw new ActivityError('VALIDATION_FAILED', 'Invalid status definition');
       }
 
@@ -1363,13 +1374,17 @@ export class ActivityUseCases {
     });
   }
 
-  public async listInbox(actor: ActorSubject, input: { limit?: number; cursor?: string } = {}) {
+  public async listInbox(
+    actor: ActorSubject,
+    input: { limit?: number; cursor?: string; guildId?: string } = {},
+  ) {
     const discordUserId = requireDiscord(actor);
     return this.deps.repository.withTransaction((tx) =>
       tx.listInbox({
         discordUserId,
         limit: input.limit ?? 20,
         ...(input.cursor !== undefined ? { cursor: input.cursor } : {}),
+        ...(input.guildId !== undefined ? { guildId: input.guildId } : {}),
       }),
     );
   }

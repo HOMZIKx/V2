@@ -80,6 +80,18 @@ export const DiscordGatewayConfigSchema = z
     ACTIVITY_ALLOW_TEST_SEED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
     NODE_ENV: z.enum(['development', 'test', 'production']).optional().default('development'),
     ACTIVITY_PROJECTION_SHARED_SECRET: z.string().optional().default(''),
+    /** Optional AMQP URL for activity projection consumer (P4.5). */
+    RABBITMQ_URL: z.string().optional().default(''),
+    /**
+     * When unset, defaults to true iff DISCORD_ACTIVITY_ENABLED && RABBITMQ_URL is set.
+     * Explicit false disables the consumer even when URL is present.
+     */
+    DISCORD_ACTIVITY_PROJECTION_CONSUMER_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === '') {
+        return undefined;
+      }
+      return parseBoolean(value, true);
+    }, z.boolean().optional()),
     DISCORD_TO_ACTIVITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
     DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: z.string().optional(),
     DISCORD_TO_ACTIVITY_ACTIVE_KID: z.string().optional(),
@@ -243,13 +255,20 @@ export const DiscordGatewayConfigSchema = z
 export type DiscordGatewayConfigInput = z.input<typeof DiscordGatewayConfigSchema>;
 export type DiscordGatewayConfig = z.output<typeof DiscordGatewayConfigSchema> & {
   operatorIds: string[];
+  /** Effective flag after applying default: activity enabled + RABBITMQ_URL present. */
+  activityProjectionConsumerEnabled: boolean;
 };
 
 export function normalizeDiscordConfig(
   parsed: z.output<typeof DiscordGatewayConfigSchema>,
 ): DiscordGatewayConfig {
+  const rabbitUrl = parsed.RABBITMQ_URL.trim();
+  const activityProjectionConsumerEnabled =
+    parsed.DISCORD_ACTIVITY_PROJECTION_CONSUMER_ENABLED ??
+    (parsed.DISCORD_ACTIVITY_ENABLED && rabbitUrl.length > 0);
   return {
     ...parsed,
     operatorIds: parseOperatorIds(parsed.DISCORD_TEST_OPERATOR_IDS),
+    activityProjectionConsumerEnabled,
   };
 }

@@ -404,6 +404,7 @@ export interface ActivityTx {
     discordUserId: string;
     limit: number;
     cursor?: string;
+    guildId?: string;
   }): Promise<{ items: InboxItemRecord[]; nextCursor: string | null }>;
   markInboxRead(id: string, discordUserId: string): Promise<InboxItemRecord>;
   enqueueInbox(input: {

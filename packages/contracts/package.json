@@ -7,7 +7,9 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./health": "./src/health.ts"
+    "./health": "./src/health.ts",
+    "./events/activity/activity-projection-delivery.v1": "./src/events/activity/activity-projection-delivery.v1.ts",
+    "./events/activity/topology": "./src/events/activity/topology.ts"
   },
   "dependencies": {
     "zod": "^4.0.14"

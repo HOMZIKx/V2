@@ -8,7 +8,10 @@ P4.1–P4.2 Centrum Aktywności — domain SoT for events, RSVP, limits, outbox,
 - HTTP: `/activity/v1`
 - Authorization: S2S HTTP to `authorization-service` (no local RBAC)
 - Outbox worker: **off by default** (`ACTIVITY_OUTBOX_WORKER_ENABLED=false`)
-  - Enable only when `ACTIVITY_DISCORD_PROJECTION_BASE_URL` points at discord-gateway deliver
+  - P4.5 transport: `ACTIVITY_OUTBOX_TRANSPORT=rabbitmq|http` (defaults to
+    `rabbitmq` when `RABBITMQ_URL` is set, else `http`)
+  - RabbitMQ: requires `RABBITMQ_URL`; publishes to `activity.events` with confirms
+  - HTTP: requires `ACTIVITY_DISCORD_PROJECTION_BASE_URL` (legacy/reconcile deliver)
 
 ## Local
 

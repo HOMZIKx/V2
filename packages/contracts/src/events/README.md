@@ -1,4 +1,9 @@
 # Event contracts
 
-This directory intentionally contains no event contracts yet. Each service will own and version
-the event schemas it publishes before exposing them here as shared transport contracts.
+Versioned async transport envelopes live under this tree. Producers own
+semantics and versioning; consumers validate with the shared Zod schemas.
+
+## Activity (P4.5)
+
+- `activity/activity-projection-delivery.v1.ts` — outbox → projection delivery envelope
+- `activity/topology.ts` — RabbitMQ exchange/queue/binding name constants

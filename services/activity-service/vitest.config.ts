@@ -32,7 +32,6 @@ export default defineConfig({
         'services/activity-service/src/infrastructure/config/load-env-file.ts',
         // Exercised by infra integration tests (skipped without Docker locally / CI unit coverage).
         'services/activity-service/src/infrastructure/persistence/activity-repository.ts',
-        'services/activity-service/src/infrastructure/outbox/outbox-dispatcher.ts',
         'services/activity-service/src/infrastructure/authorization/**',
         'services/activity-service/src/infrastructure/internal/**',
         'services/activity-service/src/infrastructure/discord/**',

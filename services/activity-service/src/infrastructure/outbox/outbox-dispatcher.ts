@@ -2,12 +2,18 @@ import {
   Inject,
   Injectable,
   Logger,
+  Optional,
   type OnModuleDestroy,
   type OnModuleInit,
 } from '@nestjs/common';
+import {
+  ActivityProjectionDeliveryV1Schema,
+  type ActivityProjectionDeliveryV1,
+} from '@v2/contracts';
 import { importPKCS8, SignJWT } from 'jose';
 import { randomUUID } from 'node:crypto';
 
+import type { ActivityEventPublisherPort } from '../../application/ports/activity-event-publisher.port.js';
 import type {
   ActivityRepositoryPort,
   OutboxMessageRecord,
@@ -16,6 +22,7 @@ import type { Clock } from '../../domain/clock.js';
 import {
   ACTIVITY_CLOCK,
   ACTIVITY_CONFIG,
+  ACTIVITY_EVENT_PUBLISHER,
   ACTIVITY_REPOSITORY,
 } from '../../interface/activity.tokens.js';
 import type { ActivityEnv } from '../config/activity-env.js';
@@ -38,6 +45,29 @@ function backoffMs(attemptCount: number): number {
   return Math.min(300_000, 5_000 * 2 ** exponent);
 }
 
+function optionalStringField(payload: Record<string, unknown>, key: string): string | undefined {
+  const value = payload[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+export function buildProjectionDeliveryEnvelope(
+  message: OutboxMessageRecord,
+): ActivityProjectionDeliveryV1 {
+  const guildId = optionalStringField(message.payload, 'guildId');
+  const correlationId = optionalStringField(message.payload, 'correlationId');
+  return ActivityProjectionDeliveryV1Schema.parse({
+    outboxId: message.id,
+    eventType: message.eventType,
+    aggregateType: message.aggregateType,
+    aggregateId: message.aggregateId,
+    aggregateVersion: message.aggregateVersion,
+    payload: message.payload,
+    attemptCount: message.attemptCount,
+    ...(guildId !== undefined ? { guildId } : {}),
+    ...(correlationId !== undefined ? { correlationId } : {}),
+  });
+}
+
 @Injectable()
 export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ActivityOutboxDispatcher.name);
@@ -51,6 +81,9 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     @Inject(ACTIVITY_CONFIG) private readonly config: ActivityEnv,
     @Inject(ACTIVITY_REPOSITORY) private readonly repository: ActivityRepositoryPort,
     @Inject(ACTIVITY_CLOCK) private readonly clock: Clock,
+    @Optional()
+    @Inject(ACTIVITY_EVENT_PUBLISHER)
+    private readonly publisher: ActivityEventPublisherPort | null = null,
   ) {
     this.fetchImpl = globalThis.fetch.bind(globalThis);
   }
@@ -65,7 +98,21 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Activity outbox dispatcher disabled (ACTIVITY_OUTBOX_WORKER_ENABLED=false)');
       return;
     }
-    if (this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
+
+    if (this.config.ACTIVITY_OUTBOX_TRANSPORT === 'rabbitmq') {
+      if (this.publisher === null) {
+        this.logger.error('Outbox worker enabled (rabbitmq) but publisher is not configured');
+        return;
+      }
+      try {
+        await this.publisher.connect();
+      } catch (error) {
+        this.logger.error('Failed to connect RabbitMQ outbox publisher', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return;
+      }
+    } else if (this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
       this.logger.error(
         'Outbox worker enabled but ACTIVITY_DISCORD_PROJECTION_BASE_URL is missing',
       );
@@ -79,7 +126,10 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     this.timer.unref?.();
     this.logger.log('Activity outbox dispatcher started', {
       leaseOwner: this.leaseOwner,
-      baseUrl: this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL,
+      transport: this.config.ACTIVITY_OUTBOX_TRANSPORT,
+      ...(this.config.ACTIVITY_OUTBOX_TRANSPORT === 'http'
+        ? { baseUrl: this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL }
+        : {}),
     });
   }
 
@@ -91,6 +141,9 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
     if (this.tickInFlight !== null) {
       await this.tickInFlight.catch(() => undefined);
+    }
+    if (this.publisher !== null) {
+      await this.publisher.close().catch(() => undefined);
     }
   }
 
@@ -127,25 +180,32 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      let delivered = 0;
-      let retried = 0;
-      let permanent = 0;
+      let published = 0;
+      let retrying = 0;
+      let failed = 0;
       for (const message of claimed) {
+        this.logger.log('Activity outbox queued', {
+          outboxId: message.id,
+          eventType: message.eventType,
+          guildId: optionalStringField(message.payload, 'guildId'),
+          correlationId: optionalStringField(message.payload, 'correlationId'),
+        });
         const outcome = await this.deliver(message);
-        if (outcome === 'delivered') {
-          delivered += 1;
-        } else if (outcome === 'retry') {
-          retried += 1;
+        if (outcome === 'published') {
+          published += 1;
+        } else if (outcome === 'retrying') {
+          retrying += 1;
         } else {
-          permanent += 1;
+          failed += 1;
         }
       }
       this.logger.log('Activity outbox tick', {
         source,
         claimed: claimed.length,
-        delivered,
-        retried,
-        permanent,
+        published,
+        retrying,
+        failed,
+        transport: this.config.ACTIVITY_OUTBOX_TRANSPORT,
       });
     } catch (error) {
       this.logger.error('Activity outbox tick failed', {
@@ -157,11 +217,53 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
 
   private async deliver(
     message: OutboxMessageRecord,
-  ): Promise<'delivered' | 'retry' | 'permanent'> {
+  ): Promise<'published' | 'retrying' | 'failed'> {
+    if (this.config.ACTIVITY_OUTBOX_TRANSPORT === 'rabbitmq') {
+      return this.deliverViaRabbitMq(message);
+    }
+    return this.deliverViaHttp(message);
+  }
+
+  private async deliverViaRabbitMq(
+    message: OutboxMessageRecord,
+  ): Promise<'published' | 'retrying' | 'failed'> {
+    if (this.publisher === null) {
+      await this.failRetry(message, 'RabbitMQ publisher is not configured');
+      this.logOutcome('retrying', message, 'publisher missing');
+      return 'retrying';
+    }
+
+    let envelope: ActivityProjectionDeliveryV1;
+    try {
+      envelope = buildProjectionDeliveryEnvelope(message);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Invalid delivery envelope';
+      await this.repository.withTransaction((tx) => tx.permanentFailOutbox(message.id, detail));
+      this.logOutcome('failed', message, detail);
+      return 'failed';
+    }
+
+    try {
+      await this.publisher.publish(envelope);
+      await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
+      this.logOutcome('published', message);
+      return 'published';
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'RabbitMQ publish failed';
+      await this.failRetry(message, detail);
+      this.logOutcome('retrying', message, detail);
+      return 'retrying';
+    }
+  }
+
+  private async deliverViaHttp(
+    message: OutboxMessageRecord,
+  ): Promise<'published' | 'retrying' | 'failed'> {
     const baseUrl = this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL;
     if (baseUrl === undefined) {
       await this.failRetry(message, 'ACTIVITY_DISCORD_PROJECTION_BASE_URL missing');
-      return 'retry';
+      this.logOutcome('retrying', message, 'ACTIVITY_DISCORD_PROJECTION_BASE_URL missing');
+      return 'retrying';
     }
 
     const url = `${baseUrl.replace(/\/$/, '')}${DELIVER_PATH}`;
@@ -173,51 +275,60 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       try {
         headers[ASSERTION_HEADER] = await this.signAssertion();
       } catch (error) {
-        await this.failRetry(
-          message,
-          error instanceof Error ? error.message : 'Failed to sign Discord assertion',
-        );
-        return 'retry';
+        const detail = error instanceof Error ? error.message : 'Failed to sign Discord assertion';
+        await this.failRetry(message, detail);
+        this.logOutcome('retrying', message, detail);
+        return 'retrying';
       }
     }
+
+    const envelope = buildProjectionDeliveryEnvelope(message);
 
     let response: Response;
     try {
       response = await this.fetchImpl(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          outboxId: message.id,
-          eventType: message.eventType,
-          aggregateType: message.aggregateType,
-          aggregateId: message.aggregateId,
-          aggregateVersion: message.aggregateVersion,
-          payload: message.payload,
-          attemptCount: message.attemptCount,
-        }),
+        body: JSON.stringify(envelope),
       });
     } catch (error) {
-      await this.failRetry(
-        message,
-        error instanceof Error ? error.message : 'Projection deliver network error',
-      );
-      return 'retry';
+      const detail = error instanceof Error ? error.message : 'Projection deliver network error';
+      await this.failRetry(message, detail);
+      this.logOutcome('retrying', message, detail);
+      return 'retrying';
     }
 
     if (response.ok) {
       await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
-      return 'delivered';
+      this.logOutcome('published', message);
+      return 'published';
     }
 
     const bodyText = await response.text().catch(() => '');
     const errorText = `HTTP ${response.status}: ${bodyText.slice(0, 500)}`;
     if (isRetryableHttpStatus(response.status)) {
       await this.failRetry(message, errorText);
-      return 'retry';
+      this.logOutcome('retrying', message, errorText);
+      return 'retrying';
     }
 
     await this.repository.withTransaction((tx) => tx.permanentFailOutbox(message.id, errorText));
-    return 'permanent';
+    this.logOutcome('failed', message, errorText);
+    return 'failed';
+  }
+
+  private logOutcome(
+    status: 'published' | 'retrying' | 'failed',
+    message: OutboxMessageRecord,
+    detail?: string,
+  ): void {
+    this.logger.log(`Activity outbox ${status}`, {
+      outboxId: message.id,
+      eventType: message.eventType,
+      guildId: optionalStringField(message.payload, 'guildId'),
+      correlationId: optionalStringField(message.payload, 'correlationId'),
+      ...(detail !== undefined ? { detail: detail.slice(0, 200) } : {}),
+    });
   }
 
   private async failRetry(message: OutboxMessageRecord, error: string): Promise<void> {

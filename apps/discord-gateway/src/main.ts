@@ -12,6 +12,7 @@ import { AppModule } from './interface/app.module.js';
 import { loadDiscordConfig } from './interface/discord/discord-bootstrap.service.js';
 
 loadEnvFile(path.resolve(process.cwd(), '.env'));
+loadEnvFile(path.resolve(process.cwd(), '../../.env'));
 loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
 
 function resolveGitCommitSha(): string {

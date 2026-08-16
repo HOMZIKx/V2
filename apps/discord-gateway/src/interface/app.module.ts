@@ -4,6 +4,8 @@ import {
   createActivityHttpClientOrNull,
   type ActivityHttpClient,
 } from '../infrastructure/activity/activity-http-client.js';
+import { ActivityProjectionDeliveryService } from '../infrastructure/activity/activity-projection-delivery.service.js';
+import { ActivityProjectionRabbitMqConsumer } from '../infrastructure/activity/activity-projection-rabbitmq.consumer.js';
 import {
   createDiscordGatewayOrNull,
   DiscordBootstrapService,
@@ -40,6 +42,8 @@ import { HealthController } from './http/health.controller.js';
       useFactory: createDiscordGatewayOrNull,
       inject: [DISCORD_CONFIG_TOKEN, DISCORD_ACTIVITY_CLIENT_TOKEN],
     },
+    ActivityProjectionDeliveryService,
+    ActivityProjectionRabbitMqConsumer,
     DiscordBootstrapService,
   ],
 })
