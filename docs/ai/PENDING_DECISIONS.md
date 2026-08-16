@@ -69,12 +69,15 @@
 
 - **Status layoutu interaktywnego (Components V2):** CONTRACT_SPECIFIED w
   `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`
+- **Module accent Centrum:** OWNER ACCEPTED `#D48632` (D-038 /
+  `P4-DISCORD-VISUAL-CORRECTION-001`); Centrum decoupled from V2 LAB purple.
 - **Status screenshot-based visual interaction contract:**
   `REFERENCE_IMAGE_REQUIRED` — załącznik niedostępny w środowisku agenta w tej
   sesji; nie projektowano z pamięci; plik
   `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` **nie** utworzony.
-- **Status assetów (Issue #12):** `OWNER_DECISION_REQUIRED` dla produkcyjnego
-  visual sign-off. **Nie blokuje** P4.1 ani testowego P4.2a (native V2 bez bannera).
+- **Status assetów (Issue #12):** banner/emoji/pełny global DS nadal
+  `OWNER_DECISION_REQUIRED`. Accent modułu Centrum **nie** czeka na pełne #12.
+- **Issue #20** (dungeon LFG discovery-first): osobny etap — **nie** w tym tasku.
 
 ### P4-T1 — ADR-0014
 

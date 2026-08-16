@@ -71,7 +71,7 @@ Jedna wiadomość, **jeden Container**, flaga `IS_COMPONENTS_V2`.
 
 ```
 Message [flags: IS_COMPONENTS_V2]
-└── Container (accent = OWNER_DECISION_REQUIRED / MODULE_ACCENT_PENDING)
+└── Container (accent = `#D48632` / `0xD48632` — OWNER ACCEPTED module accent, D-038)
     ├── [opcjonalnie] Media Gallery — dekoracyjny banner
     │     OR Text Display — nazwa panelu (copy OWNER_DECISION_REQUIRED)
     ├── Text Display — krótki opis panelu (copy OWNER_DECISION_REQUIRED)
@@ -424,13 +424,28 @@ Bez łańcuchów publicznych wiadomości.
 
 ## M. Relacja do Issue #12 / P4-D8
 
+### OWNER VISUAL DECISION — CENTRUM AKTYWNOŚCI
+(`P4-DISCORD-VISUAL-CORRECTION-001` / D-038; powiązane z Issue #12)
+
+- **Activity module accent:** `#D48632` (`0xD48632`)
+- Kierunek: dark graphite / burnt amber / steel navy / parchment / small old gold
+  (Issue #12) — **zatwierdzony accent modułu**, nie pełny globalny design system V2
+- Centrum **nie** korzysta z V2 LAB `panel-theme.ts` / `#7C3AED`
+- Normalne przyciski Discord: `ButtonStyle.Secondary` (nie Primary/niebieski CTA)
+- Destructive: `Danger`; Success tylko gdy naprawdę success
+- Struktura Components V2 (one Container + Section accessories) **bez zmian**
+- Bannery / emoji / pełny design system: nadal mogą być rozwijane w Issue #12
+- **Szukam ekipy / dungeon LFG discovery:** przyszły etap = Issue #20 — **nie**
+  zaimplementowane w tym tasku; publiczne copy pozostaje neutralne
+
 | Warstwa                         | Status                                                  |
 | ------------------------------- | ------------------------------------------------------- |
 | Component tree / custom_id / UX | CONTRACT w tym dokumencie                               |
-| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED — **prod visual sign-off**      |
+| Module accent Container         | **OWNER ACCEPTED** `#D48632` (D-038)                    |
+| Banner, emoji, global DS        | OWNER_DECISION_REQUIRED — Issue #12 (poza accentem)     |
 | P4.2a test guild                | **dozwolone** native V2 **bez** dekoracyjnego bannera   |
 | Screenshot visual contract      | `REFERENCE_IMAGE_REQUIRED` w sesji closure (brak pliku) |
-| Opisy / style Button            | OWNER_DECISION_REQUIRED                                 |
+| Style Button (Secondary/…)      | OWNER ACCEPTED dla Centrum (Secondary = normal)         |
 
 Wzór = **modułowość i panelowość**, nie klikalny obraz. Issue #12 **nie** blokuje test servera.
 

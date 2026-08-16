@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ActivityHttpError } from '../../infrastructure/activity/activity-http-client.js';
 import { renderDraftFormSummary } from './activity-ephemeral-renderer.js';
 import { ACTIVITY_HUB_ACCENT, renderActivityHubMessage } from './activity-hub-renderer.js';
+import { ACTIVITY_MODULE_ACCENT } from './activity-theme.js';
 import { assertNoTechnicalUserCopy, toUserFacingError } from './activity-user-errors.js';
 import {
   formatPolishLocalDateTime,
@@ -10,7 +11,6 @@ import {
   parsePolishLocalDateTime,
   zonedLocalToUtc,
 } from './localized-datetime.js';
-import { V2_PANEL_COLORS } from './panel-theme.js';
 
 describe('localized datetime', () => {
   it('parses Polish local wall time in Europe/Warsaw', () => {
@@ -75,9 +75,10 @@ describe('user facing errors', () => {
 });
 
 describe('hub visual identity', () => {
-  it('uses coordinated V2 panel accent (not prototype teal)', () => {
-    expect(ACTIVITY_HUB_ACCENT).toBe(V2_PANEL_COLORS.embed);
-    expect(ACTIVITY_HUB_ACCENT).toBe(0x7c3aed);
+  it('uses Centrum module accent decoupled from V2 LAB purple', () => {
+    expect(ACTIVITY_HUB_ACCENT).toBe(ACTIVITY_MODULE_ACCENT);
+    expect(ACTIVITY_HUB_ACCENT).toBe(0xd48632);
+    expect(ACTIVITY_HUB_ACCENT).not.toBe(0x7c3aed);
     const payload = renderActivityHubMessage({
       opaquePanelId: 'aabbccddeeff',
       signingSecret: 's'.repeat(32),
@@ -86,6 +87,8 @@ describe('hub visual identity', () => {
     expect(json).not.toMatch(/one-shot|waitlist|reconfirm|opaque/i);
     expect(json).toContain('Utwórz aktywność');
     expect(json).toContain('lista rezerwowa');
+    expect(json).not.toContain('edytujesz sekcje w dowolnej kolejności');
+    expect(json).not.toContain('Szybsza publikacja tej samej aktywności');
   });
 });
 

@@ -12,10 +12,9 @@ import {
 } from 'discord.js';
 
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
-import { V2_PANEL_COLORS } from './panel-theme.js';
+import { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 
-/** Centrum uses the coordinated V2 palette (`panel-theme` / live LAB accent). */
-export const ACTIVITY_HUB_ACCENT = V2_PANEL_COLORS.embed;
+export { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 
 export type ActivityHubRenderInput = {
   opaquePanelId: string;
@@ -51,14 +50,14 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
   }> = [
     {
       title: 'Utwórz aktywność',
-      description: 'Szkic prywatny — edytujesz sekcje w dowolnej kolejności, potem publikujesz.',
+      description: 'Utwórz wydarzenie, sprawdź podgląd i opublikuj.',
       label: 'Utwórz aktywność',
       action: 'create',
-      style: ButtonStyle.Primary,
+      style: ButtonStyle.Secondary,
     },
     {
       title: 'Szukam ekipy',
-      description: 'Szybsza publikacja tej samej aktywności — mniej pól na start.',
+      description: 'Szukaj ekipy do wspólnej aktywności.',
       label: 'Szukam ekipy',
       action: 'lfg',
       style: ButtonStyle.Secondary,

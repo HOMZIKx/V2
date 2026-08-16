@@ -16,10 +16,10 @@ import {
   type ActivityEventAction,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 
+import { ACTIVITY_EVENT_ACCENT } from './activity-theme.js';
 import { formatPolishLocalDateTime } from './localized-datetime.js';
-import { V2_PANEL_COLORS } from './panel-theme.js';
 
-export const ACTIVITY_EVENT_ACCENT = V2_PANEL_COLORS.embed;
+export { ACTIVITY_EVENT_ACCENT } from './activity-theme.js';
 
 function formatEventWhen(iso: string): string {
   const date = new Date(iso);
@@ -153,7 +153,7 @@ export function renderActivityEventMessage(
   }> = [
     { label: 'Lista uczestników', action: 'participants', style: ButtonStyle.Secondary },
     { label: 'Kontakt', action: 'contact', style: ButtonStyle.Secondary },
-    { label: 'Więcej', action: 'more', style: ButtonStyle.Primary },
+    { label: 'Więcej', action: 'more', style: ButtonStyle.Secondary },
   ];
 
   container.addActionRowComponents(
