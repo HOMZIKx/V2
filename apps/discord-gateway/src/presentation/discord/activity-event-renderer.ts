@@ -43,6 +43,8 @@ export type ActivityEventRenderInput = {
   statusLabel: string;
   startAtIso: string;
   endAtIso?: string | null;
+  /** Natural Polish schedule line; preferred over raw start/end ISO. */
+  scheduleLabel?: string | null;
   locationText?: string | null;
   organizerLabel: string;
   coOrganizerLabel?: string | null;
@@ -74,11 +76,16 @@ export function renderActivityEventMessage(
       ? `Miejsca: ${input.occupiedSlots} / ∞`
       : `Miejsca: ${input.occupiedSlots} / ${input.participantLimit}`;
 
-  const schedule = [
-    formatEventWhen(input.startAtIso),
-    input.endAtIso ? `→ ${formatEventWhen(input.endAtIso)}` : null,
-    input.locationText ? `· ${input.locationText}` : null,
-  ]
+  const scheduleCore =
+    typeof input.scheduleLabel === 'string' && input.scheduleLabel.trim().length > 0
+      ? input.scheduleLabel.trim()
+      : [
+          formatEventWhen(input.startAtIso),
+          input.endAtIso ? `→ ${formatEventWhen(input.endAtIso)}` : null,
+        ]
+          .filter(Boolean)
+          .join(' ');
+  const schedule = [scheduleCore, input.locationText ? `· ${input.locationText}` : null]
     .filter(Boolean)
     .join(' ');
 

@@ -62,4 +62,24 @@ describe('activity-event-renderer', () => {
     const json = JSON.stringify(toJson(payload.components![0]));
     expect(json).toMatch(/"disabled"\s*:\s*true/);
   });
+
+  it('prefers natural scheduleLabel over raw ISO timestamps', () => {
+    const payload = renderActivityEventMessage({
+      opaqueEventId: 'f6e5d4c3b2a1',
+      signingSecret: secret,
+      name: 'Azrael',
+      typeLabel: 'Dungeon',
+      statusLabel: 'Zapisy otwarte',
+      startAtIso: '2026-08-20T16:00:00.000Z',
+      scheduleLabel: 'W tym tygodniu',
+      organizerLabel: 'Org#1',
+      occupiedSlots: 0,
+      participantLimit: 8,
+      statusSummaries: [],
+      statusDefs: [],
+    });
+    const json = JSON.stringify(toJson(payload.components![0]));
+    expect(json).toContain('W tym tygodniu');
+    expect(json).not.toContain('2026-08-20T16:00:00.000Z');
+  });
 });

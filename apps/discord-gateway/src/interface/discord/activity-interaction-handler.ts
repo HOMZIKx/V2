@@ -7,9 +7,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
   type ChatInputCommandInteraction,
   type MessageComponentInteraction,
   type ModalSubmitInteraction,
@@ -30,15 +27,21 @@ import {
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
+  isDraftPreviewMessage,
   renderDraftFormSummary,
   renderInboxList,
 } from '../../presentation/discord/activity-ephemeral-renderer.js';
 import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
+import {
+  buildActivityFormModal,
+  parseActivityFormModal,
+  scheduleToDraftPayload,
+} from '../../presentation/discord/activity-schedule-form.js';
 import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
 import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
 import {
   formatPolishLocalDateTime,
-  parsePolishLocalDateTime,
+  LocalizedDateParseError,
 } from '../../presentation/discord/localized-datetime.js';
 
 export type ActivityInteractionDeps = {
@@ -108,20 +111,15 @@ function draftSummaryLines(payload: Record<string, unknown>): string[] {
     typeof payload.description === 'string' && payload.description.trim()
       ? payload.description.trim().slice(0, 180)
       : '—';
-  let when = '—';
-  if (typeof payload.startAt === 'string' && payload.startAt.length > 0) {
-    const parsed = new Date(payload.startAt);
-    when = Number.isNaN(parsed.getTime()) ? '—' : formatPolishLocalDateTime(parsed);
-  } else if (typeof payload.startAtDisplay === 'string') {
-    when = payload.startAtDisplay;
-  }
-  return [
-    `**Nazwa:** ${name}`,
-    `**Data i godzina:** ${when}`,
-    `**Opis:** ${description}`,
-    '',
-    'Edytuj sekcje w dowolnej kolejności, potem użyj Podgląd lub Publikuj.',
-  ];
+  const when =
+    typeof payload.scheduleLabel === 'string' && payload.scheduleLabel.trim()
+      ? payload.scheduleLabel.trim()
+      : typeof payload.startAtDisplay === 'string'
+        ? payload.startAtDisplay
+        : typeof payload.startAt === 'string' && payload.startAt.length > 0
+          ? formatPolishLocalDateTime(new Date(payload.startAt))
+          : '—';
+  return [`**${name}**`, `Kiedy: ${when}`, `Opis: ${description}`];
 }
 
 export class ActivityInteractionHandler {
@@ -183,8 +181,14 @@ export class ActivityInteractionHandler {
       return true;
     }
 
+    if (parsed.scope === 'draft' && parsed.action === 'edit') {
+      await this.openDraftEditModal(interaction, parsed);
+      return true;
+    }
+
+    // Legacy sectional actions → open the same full form.
     if (parsed.scope === 'draft' && parsed.action.startsWith('section_')) {
-      await this.openDraftSectionModal(interaction, parsed);
+      await this.openDraftEditModal(interaction, parsed);
       return true;
     }
 
@@ -223,106 +227,58 @@ export class ActivityInteractionHandler {
     if (!interaction.customId.startsWith('activity:v1:modal:')) {
       return false;
     }
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const parts = interaction.customId.split(':');
     const kind = parts[3];
     const draftId = parts[4];
 
     try {
-      if (kind === 'basics' && draftId !== undefined) {
-        const name = interaction.fields.getTextInputValue('name');
-        const description = interaction.fields.getTextInputValue('description');
-        const draft = await this.deps.activityClient.updateDraft(
-          draftId,
-          { payload: { name, description } },
-          {
-            ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
-          },
-        );
-        await interaction.editReply(
-          asEditPayload(
-            renderDraftFormSummary({
-              opaqueDraftId: opaqueFromUuid(draft.id),
-              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-              title: 'Szkic aktywności',
-              lines: draftSummaryLines(draftPayload(draft)),
-            }),
-          ),
-        );
-        return true;
-      }
-
-      if (kind === 'schedule' && draftId !== undefined) {
-        const rawWhen = interaction.fields.getTextInputValue('when');
-        const startAt = parsePolishLocalDateTime(rawWhen);
+      if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && draftId !== undefined) {
+        const parsedForm = parseActivityFormModal(interaction);
         const draft = await this.deps.activityClient.updateDraft(
           draftId,
           {
-            payload: {
-              startAt: startAt.toISOString(),
-              startAtDisplay: formatPolishLocalDateTime(startAt),
-            },
+            payload: scheduleToDraftPayload(parsedForm, {
+              source: kind === 'lfg' ? 'lfg' : 'create',
+              lfg: kind === 'lfg',
+            }),
           },
           {
             ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'draft-schedule', draftId),
+            idempotencyKey: idem(interaction.user.id, 'draft-form', `${draftId}:${interaction.id}`),
           },
         );
-        await interaction.editReply(
-          asEditPayload(
-            renderDraftFormSummary({
-              opaqueDraftId: opaqueFromUuid(draft.id),
-              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-              title: 'Szkic aktywności',
-              lines: draftSummaryLines(draftPayload(draft)),
-            }),
-          ),
-        );
+        const preview = renderDraftFormSummary({
+          opaqueDraftId: opaqueFromUuid(draft.id),
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          title: parsedForm.name,
+          lines: draftSummaryLines(draftPayload(draft)),
+        });
+
+        // Edit from existing ephemeral preview → update in place (one message).
+        if (isDraftPreviewMessage(interaction.message) && interaction.isFromMessage()) {
+          await interaction.update(asEditPayload(preview));
+          return true;
+        }
+
+        await interaction.reply({
+          ...preview,
+          flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+        });
         return true;
       }
 
-      if (kind === 'lfg' && draftId !== undefined) {
-        const name = interaction.fields.getTextInputValue('name');
-        const rawWhen = interaction.fields.getTextInputValue('when');
-        const startAt = parsePolishLocalDateTime(rawWhen);
-        await this.deps.activityClient.updateDraft(
-          draftId,
-          {
-            payload: {
-              name,
-              startAt: startAt.toISOString(),
-              startAtDisplay: formatPolishLocalDateTime(startAt),
-              lfg: true,
-            },
-          },
-          {
-            ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'draft-update', draftId),
-          },
-        );
-        const published = await this.deps.activityClient.publishDraft(
-          draftId,
-          {
-            organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-            name,
-            startAt: startAt.toISOString(),
-            ...(interaction.channelId !== null
-              ? { publicationChannelId: interaction.channelId }
-              : {}),
-          },
-          {
-            ...actorOf(interaction.user.id),
-            idempotencyKey: idem(interaction.user.id, 'draft-publish', draftId),
-          },
-        );
+      // Legacy section modals → migrate into full-form preview without stacking.
+      if ((kind === 'basics' || kind === 'schedule') && draftId !== undefined) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         await interaction.editReply({
-          content: `Opublikowano „Szukam ekipy”: **${String(published.name ?? name)}**.`,
+          content:
+            'Ten formularz został zastąpiony. Kliknij **Edytuj** na podglądzie albo utwórz aktywność ponownie.',
         });
         return true;
       }
 
       if (kind === 'report') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const activityId = parts[4];
         const reason = interaction.fields.getTextInputValue('reason');
         const details = interaction.fields.getTextInputValue('details');
@@ -340,6 +296,7 @@ export class ActivityInteractionHandler {
         return true;
       }
 
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       await interaction.editReply({ content: 'Nieobsługiwany formularz Centrum.' });
       return true;
     } catch (error) {
@@ -348,7 +305,15 @@ export class ActivityInteractionHandler {
         status: error instanceof ActivityHttpError ? error.status : undefined,
         body: error instanceof ActivityHttpError ? error.body?.slice(0, 300) : undefined,
       });
-      await interaction.editReply({ content: toUserFacingError(error) });
+      const content =
+        error instanceof LocalizedDateParseError ? error.message : toUserFacingError(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content });
+      } else if (isDraftPreviewMessage(interaction.message) && interaction.isFromMessage()) {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      }
       return true;
     }
   }
@@ -371,42 +336,12 @@ export class ActivityInteractionHandler {
         },
       );
 
-      if (parsed.action === 'lfg') {
-        const modal = new ModalBuilder()
-          .setCustomId(`activity:v1:modal:lfg:${draft.id}`)
-          .setTitle('Szukam ekipy');
-        modal.addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('name')
-              .setLabel('Nazwa')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMaxLength(100),
-          ),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('when')
-              .setLabel('Data i godzina (np. 20.08.2026 18:00)')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMaxLength(32)
-              .setPlaceholder('DD.MM.RRRR GG:MM'),
-          ),
-        );
-        await interaction.showModal(modal);
-        return;
-      }
-
-      await interaction.reply({
-        ...renderDraftFormSummary({
-          opaqueDraftId: opaqueFromUuid(draft.id),
-          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-          title: 'Szkic aktywności',
-          lines: draftSummaryLines(draftPayload(draft)),
-        }),
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+      const modal = buildActivityFormModal({
+        draftId: draft.id,
+        mode: parsed.action === 'lfg' ? 'lfg' : 'create',
+        payload: draftPayload(draft),
       });
+      await interaction.showModal(modal);
     } catch (error) {
       this.deps.logger.error('Centrum create/lfg open failed', {
         error: error instanceof Error ? error.message : String(error),
@@ -420,7 +355,7 @@ export class ActivityInteractionHandler {
     }
   }
 
-  private async openDraftSectionModal(
+  private async openDraftEditModal(
     interaction: MessageComponentInteraction,
     parsed: Extract<ParsedActivityCustomId, { scope: 'draft' }>,
   ): Promise<void> {
@@ -429,70 +364,14 @@ export class ActivityInteractionHandler {
         parsed.opaqueId,
         actorOf(interaction.user.id),
       );
-      const payload = draftPayload(draft);
-
-      if (parsed.action === 'section_basics') {
-        const modal = new ModalBuilder()
-          .setCustomId(`activity:v1:modal:basics:${draft.id}`)
-          .setTitle('Nazwa i opis');
-        modal.addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('name')
-              .setLabel('Nazwa')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMaxLength(100)
-              .setValue(typeof payload.name === 'string' ? payload.name.slice(0, 100) : ''),
-          ),
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('description')
-              .setLabel('Opis')
-              .setStyle(TextInputStyle.Paragraph)
-              .setRequired(false)
-              .setMaxLength(1000)
-              .setValue(
-                typeof payload.description === 'string' ? payload.description.slice(0, 1000) : '',
-              ),
-          ),
-        );
-        await interaction.showModal(modal);
-        return;
-      }
-
-      if (parsed.action === 'section_schedule') {
-        const modal = new ModalBuilder()
-          .setCustomId(`activity:v1:modal:schedule:${draft.id}`)
-          .setTitle('Data i godzina');
-        const preset =
-          typeof payload.startAtDisplay === 'string'
-            ? payload.startAtDisplay
-            : typeof payload.startAt === 'string'
-              ? formatPolishLocalDateTime(new Date(payload.startAt))
-              : '';
-        modal.addComponents(
-          new ActionRowBuilder<TextInputBuilder>().addComponents(
-            new TextInputBuilder()
-              .setCustomId('when')
-              .setLabel('Data i godzina (np. 20.08.2026 18:00)')
-              .setStyle(TextInputStyle.Short)
-              .setRequired(true)
-              .setMaxLength(32)
-              .setPlaceholder('DD.MM.RRRR GG:MM')
-              .setValue(preset.slice(0, 32)),
-          ),
-        );
-        await interaction.showModal(modal);
-        return;
-      }
-
-      await interaction.reply({
-        content: 'Ta sekcja nie jest jeszcze dostępna w tym widoku.',
-        flags: MessageFlags.Ephemeral,
+      const modal = buildActivityFormModal({
+        draftId: draft.id,
+        mode: 'edit',
+        payload: draftPayload(draft),
       });
+      await interaction.showModal(modal);
     } catch (error) {
-      this.deps.logger.error('Centrum draft section modal failed', {
+      this.deps.logger.error('Centrum draft edit modal failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       await interaction.reply({
@@ -808,15 +687,22 @@ export class ActivityInteractionHandler {
                 readAt?: string | null;
                 title?: string;
                 body?: string;
+                payload?: { scheduleLabel?: string; activityName?: string };
               };
               const kindLabel = humanizeInboxKind(row.kind);
               const mark = row.readAt ? '✓' : '•';
+              const scheduleLabel =
+                typeof row.payload?.scheduleLabel === 'string' ? row.payload.scheduleLabel : null;
+              const activityName =
+                typeof row.payload?.activityName === 'string' ? row.payload.activityName : null;
               const title =
-                typeof row.title === 'string'
-                  ? row.title
-                  : typeof row.body === 'string'
-                    ? row.body.slice(0, 80)
-                    : kindLabel;
+                scheduleLabel !== null && activityName !== null
+                  ? `Termin aktywności ${activityName} zmieniono na: ${scheduleLabel}`
+                  : typeof row.title === 'string'
+                    ? row.title
+                    : typeof row.body === 'string'
+                      ? row.body.slice(0, 80)
+                      : kindLabel;
               return `${mark} **${kindLabel}** — ${title}`;
             });
       await interaction.editReply(asEditPayload(renderInboxList({ lines })));
@@ -985,23 +871,14 @@ export class ActivityInteractionHandler {
 
     if (parsed.action === 'preview') {
       const name = typeof payload.name === 'string' ? payload.name : 'Bez nazwy';
-      const when =
-        typeof payload.startAt === 'string'
-          ? formatPolishLocalDateTime(new Date(payload.startAt))
-          : 'brak terminu';
-      const description =
-        typeof payload.description === 'string' && payload.description.trim()
-          ? payload.description
-          : '—';
       await interaction.editReply(
         asEditPayload(
           renderDraftFormSummary({
             opaqueDraftId: parsed.opaqueId,
             signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            title: `Podgląd — ${name}`,
+            title: name,
             lines: [
-              `**Data i godzina:** ${when}`,
-              `**Opis:** ${description}`,
+              ...draftSummaryLines(payload),
               '',
               '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
             ],
@@ -1014,12 +891,15 @@ export class ActivityInteractionHandler {
     if (parsed.action === 'publish') {
       const name = typeof payload.name === 'string' ? payload.name.trim() : '';
       const startRaw = typeof payload.startAt === 'string' ? payload.startAt : '';
+      const scheduleKind =
+        typeof payload.scheduleKind === 'string' ? payload.scheduleKind : 'exact';
       if (!name || !startRaw) {
         const summary = renderDraftFormSummary({
           opaqueDraftId: parsed.opaqueId,
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          title: name || 'Podgląd aktywności',
           lines: [
-            'Uzupełnij nazwę oraz datę i godzinę przed publikacją.',
+            'Uzupełnij formularz (nazwa + termin) przed publikacją — kliknij **Edytuj**.',
             ...draftSummaryLines(payload),
           ],
         });
@@ -1032,7 +912,18 @@ export class ActivityInteractionHandler {
           organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
           name,
           startAt: startRaw,
+          scheduleKind,
+          timezone: 'Europe/Warsaw',
           ...(typeof payload.description === 'string' ? { description: payload.description } : {}),
+          ...(typeof payload.endAt === 'string' || payload.endAt === null
+            ? { endAt: payload.endAt }
+            : {}),
+          ...(typeof payload.periodKey === 'string' || payload.periodKey === null
+            ? { periodKey: payload.periodKey }
+            : {}),
+          ...(typeof payload.scheduleHasExplicitTime === 'boolean'
+            ? { scheduleHasExplicitTime: payload.scheduleHasExplicitTime }
+            : {}),
           ...(interaction.channelId !== null
             ? { publicationChannelId: interaction.channelId }
             : {}),

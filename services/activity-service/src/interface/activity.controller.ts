@@ -60,12 +60,18 @@ const draftUpdateSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 
+const scheduleKindSchema = z.enum(['exact', 'range', 'flexible_period']);
+const periodKeySchema = z.enum(['today', 'tomorrow', 'this_week', 'weekend', 'flexible']);
+
 const publishSchema = z.object({
   organizationId: z.string().min(1),
   name: z.string().min(1).max(200),
   description: z.string().max(4000).optional(),
   startAt: z.string().datetime(),
   endAt: z.string().datetime().nullable().optional(),
+  scheduleKind: scheduleKindSchema.optional(),
+  periodKey: periodKeySchema.nullable().optional(),
+  scheduleHasExplicitTime: z.boolean().optional(),
   participantLimit: z.number().int().positive().nullable().optional(),
   publicationChannelId: z.string().optional(),
   timezone: z.string().optional(),
@@ -102,6 +108,9 @@ const coOrganizerSchema = z.object({
 const rescheduleSchema = z.object({
   startAt: z.string().datetime(),
   endAt: z.string().datetime().nullable().optional(),
+  scheduleKind: scheduleKindSchema.optional(),
+  periodKey: periodKeySchema.nullable().optional(),
+  scheduleHasExplicitTime: z.boolean().optional(),
   reconfirmDeadline: z.string().datetime().nullable().optional(),
 });
 
@@ -240,6 +249,11 @@ export class ActivityController {
         ...(parsed.description !== undefined ? { description: parsed.description } : {}),
         ...(parsed.endAt !== undefined
           ? { endAt: parsed.endAt === null ? null : new Date(parsed.endAt) }
+          : {}),
+        ...(parsed.scheduleKind !== undefined ? { scheduleKind: parsed.scheduleKind } : {}),
+        ...(parsed.periodKey !== undefined ? { periodKey: parsed.periodKey } : {}),
+        ...(parsed.scheduleHasExplicitTime !== undefined
+          ? { scheduleHasExplicitTime: parsed.scheduleHasExplicitTime }
           : {}),
         ...(parsed.participantLimit !== undefined
           ? { participantLimit: parsed.participantLimit }
@@ -465,6 +479,11 @@ export class ActivityController {
         startAt: new Date(parsed.startAt),
         ...(parsed.endAt !== undefined
           ? { endAt: parsed.endAt === null ? null : new Date(parsed.endAt) }
+          : {}),
+        ...(parsed.scheduleKind !== undefined ? { scheduleKind: parsed.scheduleKind } : {}),
+        ...(parsed.periodKey !== undefined ? { periodKey: parsed.periodKey } : {}),
+        ...(parsed.scheduleHasExplicitTime !== undefined
+          ? { scheduleHasExplicitTime: parsed.scheduleHasExplicitTime }
           : {}),
         ...(parsed.reconfirmDeadline !== undefined
           ? {

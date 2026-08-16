@@ -204,6 +204,8 @@ function mapDraft(row: Record<string, unknown>): ActivityDraftRecord {
 
 function mapActivity(row: Record<string, unknown>): ActivityRecord {
   const id = asRequiredString(row.id, 'id');
+  const scheduleKindRaw = asNullableString(row.schedule_kind) ?? 'exact';
+  const periodKeyRaw = asNullableString(row.period_key);
   return {
     id,
     guildId: asRequiredString(row.guild_id, 'guild_id'),
@@ -213,6 +215,12 @@ function mapActivity(row: Record<string, unknown>): ActivityRecord {
     description: asRequiredString(row.description, 'description'),
     startAt: asRequiredDate(row.start_at, 'start_at'),
     endAt: asNullableDate(row.end_at),
+    scheduleKind: scheduleKindRaw as ActivityRecord['scheduleKind'],
+    periodKey: (periodKeyRaw as ActivityRecord['periodKey']) ?? null,
+    scheduleHasExplicitTime:
+      row.schedule_has_explicit_time === undefined || row.schedule_has_explicit_time === null
+        ? true
+        : Boolean(row.schedule_has_explicit_time),
     status: asRequiredString(row.status, 'status') as ActivityStatus,
     enrollmentOpen: Boolean(row.enrollment_open),
     participantLimit:
@@ -602,9 +610,9 @@ function createTx(client: PoolClient): ActivityTx {
            enrollment_open, participant_limit, organizer_discord_user_id, organizer_v2_user_id,
            co_organizer_discord_user_id, co_organizer_v2_user_id, publication_channel_id,
            timezone, location_text, cancel_reason, cancelled_at, version, scheduled_finish_at,
-           opaque_id
+           opaque_id, schedule_kind, period_key, schedule_has_explicit_time
          ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
          ) RETURNING *`,
         [
           input.id,
@@ -630,6 +638,9 @@ function createTx(client: PoolClient): ActivityTx {
           input.version ?? 1,
           input.scheduledFinishAt.toISOString(),
           opaqueId,
+          input.scheduleKind,
+          input.periodKey,
+          input.scheduleHasExplicitTime,
         ],
       );
       return mapActivity(result.rows[0] as Record<string, unknown>);
@@ -644,7 +655,9 @@ function createTx(client: PoolClient): ActivityTx {
            publication_channel_id = $11, timezone = $12, location_text = $13,
            cancel_reason = $14, cancelled_at = $15, version = $16,
            scheduled_finish_at = $17, organizer_discord_user_id = $18,
-           organizer_v2_user_id = $19, type_id = $20, updated_at = now()
+           organizer_v2_user_id = $19, type_id = $20,
+           schedule_kind = $21, period_key = $22, schedule_has_explicit_time = $23,
+           updated_at = now()
          WHERE id = $1
          RETURNING *`,
         [
@@ -668,6 +681,9 @@ function createTx(client: PoolClient): ActivityTx {
           activity.organizerDiscordUserId,
           activity.organizerV2UserId,
           activity.typeId,
+          activity.scheduleKind,
+          activity.periodKey,
+          activity.scheduleHasExplicitTime,
         ],
       );
       const row = result.rows[0] as Record<string, unknown> | undefined;

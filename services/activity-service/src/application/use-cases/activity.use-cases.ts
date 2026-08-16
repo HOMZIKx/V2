@@ -1,12 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { countOccupiedSlots, hasOpenSeat } from '../../domain/capacity.js';
-import {
-  assertCreateLimit,
-  assertStartHorizon,
-  draftExpiresAt,
-  isDraftExpired,
-} from '../../domain/create-limits.js';
+import { assertCreateLimit, draftExpiresAt, isDraftExpired } from '../../domain/create-limits.js';
 import { ActivityError } from '../../domain/errors.js';
 import { assertGuildIdAllowedForTestSeed } from '../../domain/guild-id-guards.js';
 import {
@@ -19,6 +14,12 @@ import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
+import {
+  assertScheduleValid,
+  buildSchedulePayloadFields,
+  type PeriodKey,
+  type ScheduleKind,
+} from '../../domain/schedule.js';
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
 import type {
@@ -162,6 +163,14 @@ export class ActivityUseCases {
     now: Date,
   ): Promise<void> {
     const channelId = activity.publicationChannelId ?? '';
+    const scheduleFields = buildSchedulePayloadFields({
+      scheduleKind: activity.scheduleKind,
+      periodKey: activity.periodKey,
+      startAt: activity.startAt,
+      endAt: activity.endAt,
+      timeZone: activity.timezone,
+      scheduleHasExplicitTime: activity.scheduleHasExplicitTime,
+    });
     await tx.upsertActivityProjection({
       activityId: activity.id,
       guildId: activity.guildId,
@@ -179,6 +188,8 @@ export class ActivityUseCases {
         opaqueId: activity.opaqueId,
         guildId: activity.guildId,
         channelId,
+        ...scheduleFields,
+        ...(activity.endAt !== null ? { endAtIso: activity.endAt.toISOString() } : {}),
       },
       occurredAt: now,
     });
@@ -385,6 +396,9 @@ export class ActivityUseCases {
       description?: string;
       startAt: Date;
       endAt?: Date | null;
+      scheduleKind?: ScheduleKind;
+      periodKey?: PeriodKey | null;
+      scheduleHasExplicitTime?: boolean;
       participantLimit?: number | null;
       publicationChannelId?: string;
       timezone?: string;
@@ -405,9 +419,18 @@ export class ActivityUseCases {
       }
       await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.CREATE, draft.guildId);
 
+      const scheduleKind: ScheduleKind = input.scheduleKind ?? 'exact';
+      const periodKey: PeriodKey | null =
+        scheduleKind === 'flexible_period' ? (input.periodKey ?? null) : null;
+      const scheduleHasExplicitTime = input.scheduleHasExplicitTime ?? true;
+      const endAt = input.endAt ?? null;
+
       const extended = await this.resolveExtendedHorizon(ctx.actor, draft.guildId);
-      assertStartHorizon({
+      assertScheduleValid({
+        kind: scheduleKind,
+        periodKey,
         startAt: input.startAt,
+        endAt,
         now,
         allowExtendedHorizon: extended,
       });
@@ -423,7 +446,8 @@ export class ActivityUseCases {
         maxActivePerCreator: defaults.settings.maxActivePerCreator,
       });
 
-      const finish = scheduledFinishAt(input.startAt, input.endAt ?? null);
+      // Period end / explicit endAt / start+2h existing rule.
+      const finish = scheduledFinishAt(input.startAt, endAt);
       const activityId = randomUUID();
       const activity = await tx.insertActivity({
         id: activityId,
@@ -433,7 +457,10 @@ export class ActivityUseCases {
         name: input.name,
         description: input.description ?? '',
         startAt: input.startAt,
-        endAt: input.endAt ?? null,
+        endAt,
+        scheduleKind,
+        periodKey,
+        scheduleHasExplicitTime,
         status: 'registrations_open',
         enrollmentOpen: true,
         participantLimit: input.participantLimit ?? null,
@@ -982,15 +1009,35 @@ export class ActivityUseCases {
 
   public async reschedule(
     id: string,
-    input: { startAt: Date; endAt?: Date | null; reconfirmDeadline?: Date | null },
+    input: {
+      startAt: Date;
+      endAt?: Date | null;
+      scheduleKind?: ScheduleKind;
+      periodKey?: PeriodKey | null;
+      scheduleHasExplicitTime?: boolean;
+      reconfirmDeadline?: Date | null;
+    },
     ctx: MutationContext,
   ) {
     const now = this.deps.clock.now();
     return this.mutate(ctx, 'reschedule', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requireManageSelfOrGuild(ctx.actor, activity);
+      const scheduleKind: ScheduleKind = input.scheduleKind ?? 'exact';
+      const periodKey: PeriodKey | null =
+        scheduleKind === 'flexible_period' ? (input.periodKey ?? null) : null;
+      const scheduleHasExplicitTime =
+        input.scheduleHasExplicitTime ?? activity.scheduleHasExplicitTime;
+      const endAt = input.endAt === undefined ? null : input.endAt;
       const extended = await this.resolveExtendedHorizon(ctx.actor, activity.guildId);
-      assertStartHorizon({ startAt: input.startAt, now, allowExtendedHorizon: extended });
+      assertScheduleValid({
+        kind: scheduleKind,
+        periodKey,
+        startAt: input.startAt,
+        endAt,
+        now,
+        allowExtendedHorizon: extended,
+      });
       const deadline = resolveReconfirmDeadline({
         now,
         startAt: input.startAt,
@@ -998,13 +1045,25 @@ export class ActivityUseCases {
           ? { requestedDeadline: input.reconfirmDeadline }
           : {}),
       });
-      const finish = scheduledFinishAt(input.startAt, input.endAt ?? null);
+      const finish = scheduledFinishAt(input.startAt, endAt);
       const updated = await tx.updateActivity({
         ...activity,
         startAt: input.startAt,
-        endAt: input.endAt ?? null,
+        endAt,
+        scheduleKind,
+        periodKey,
+        scheduleHasExplicitTime,
         scheduledFinishAt: finish,
         version: activity.version + 1,
+      });
+
+      const scheduleFields = buildSchedulePayloadFields({
+        scheduleKind: updated.scheduleKind,
+        periodKey: updated.periodKey,
+        startAt: updated.startAt,
+        endAt: updated.endAt,
+        timeZone: updated.timezone,
+        scheduleHasExplicitTime: updated.scheduleHasExplicitTime,
       });
 
       const participants = await tx.listParticipations(id);
@@ -1034,6 +1093,11 @@ export class ActivityUseCases {
               activityId: id,
               opaqueId: updated.opaqueId,
               deadline: deadline.toISOString(),
+              startAtIso: scheduleFields.startAtIso,
+              scheduleLabel: scheduleFields.scheduleLabel,
+              scheduleKind: scheduleFields.scheduleKind,
+              periodKey: scheduleFields.periodKey,
+              scheduleHasExplicitTime: scheduleFields.scheduleHasExplicitTime,
             },
             dedupeKey: `reconfirm:${id}:${p.discordUserId}:${updated.version}`,
           });
@@ -1049,6 +1113,8 @@ export class ActivityUseCases {
           activityId: id,
           opaqueId: updated.opaqueId,
           startAt: input.startAt.toISOString(),
+          ...scheduleFields,
+          ...(updated.endAt !== null ? { endAtIso: updated.endAt.toISOString() } : {}),
         },
         occurredAt: now,
       });
@@ -1061,6 +1127,7 @@ export class ActivityUseCases {
           activityId: id,
           opaqueId: updated.opaqueId,
           deadline: deadline.toISOString(),
+          scheduleLabel: scheduleFields.scheduleLabel,
         },
         occurredAt: now,
       });

@@ -64,6 +64,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DraftId'
         - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishActivityRequest'
       responses:
         '200':
           description: Activity created
@@ -207,6 +213,12 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ActivityId'
         - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleActivityRequest'
       responses:
         '200':
           description: Rescheduled
@@ -900,6 +912,78 @@ components:
       schema:
         type: string
   schemas:
+    ScheduleKind:
+      type: string
+      enum: [exact, range, flexible_period]
+      default: exact
+    PeriodKey:
+      type: string
+      enum: [today, tomorrow, this_week, weekend, flexible]
+    PublishActivityRequest:
+      type: object
+      required: [organizationId, name, startAt]
+      properties:
+        organizationId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+          description: Resolved schedule start (NOT NULL bounds for sort/expiry)
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduleKind:
+          $ref: '#/components/schemas/ScheduleKind'
+        periodKey:
+          allOf:
+            - $ref: '#/components/schemas/PeriodKey'
+          nullable: true
+          description: Required when scheduleKind=flexible_period
+        scheduleHasExplicitTime:
+          type: boolean
+          default: true
+        participantLimit:
+          type: integer
+          nullable: true
+        publicationChannelId:
+          type: string
+        timezone:
+          type: string
+        locationText:
+          type: string
+          nullable: true
+        typeId:
+          type: string
+          format: uuid
+          nullable: true
+    RescheduleActivityRequest:
+      type: object
+      required: [startAt]
+      properties:
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduleKind:
+          $ref: '#/components/schemas/ScheduleKind'
+        periodKey:
+          allOf:
+            - $ref: '#/components/schemas/PeriodKey'
+          nullable: true
+        scheduleHasExplicitTime:
+          type: boolean
+        reconfirmDeadline:
+          type: string
+          format: date-time
+          nullable: true
     ActivityEventNames:
       type: string
       enum:

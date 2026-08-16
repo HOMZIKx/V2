@@ -90,15 +90,18 @@ describe('hub visual identity', () => {
 });
 
 describe('draft summary', () => {
-  it('exposes section edit actions without technical copy', () => {
+  it('exposes Edit/Publish/Cancel without sectional wizard copy', () => {
     const view = renderDraftFormSummary({
       opaqueDraftId: 'aabbccddeeff',
       signingSecret: 's'.repeat(32),
-      lines: ['**Nazwa:** Test'],
+      lines: ['**Nazwa:** Test', 'Kiedy: W tym tygodniu'],
     });
     const raw = JSON.stringify(view);
-    expect(raw).toContain('Data i godzina');
+    expect(raw).toContain('Edytuj');
     expect(raw).toContain('Publikuj');
-    expect(raw).not.toMatch(/ISO|opaque|Draft action/i);
+    expect(raw).toContain('Anuluj');
+    expect(raw).not.toContain('Data i godzina');
+    expect(raw).not.toContain('Nazwa i opis');
+    expect(raw).not.toMatch(/ISO|opaque|Draft action|scheduleKind|periodKey/i);
   });
 });

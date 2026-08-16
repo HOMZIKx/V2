@@ -18,6 +18,11 @@ describe('OpenAPI activity-v1 contract', () => {
     expect(raw).toContain('/activity/v1/drafts/{id}/publish');
     expect(raw).toContain('/activity/v1/activities/{id}/rsvp');
     expect(raw).toContain('/activity/v1/activities/{id}/reschedule');
+    expect(raw).toContain('PublishActivityRequest');
+    expect(raw).toContain('scheduleKind');
+    expect(raw).toContain('flexible_period');
+    expect(raw).toContain('periodKey');
+    expect(raw).toContain('scheduleHasExplicitTime');
     expect(raw).toContain('/activity/v1/activities/{id}/reconfirm');
     expect(raw).toContain('/activity/v1/outbox/claim');
     expect(raw).toContain('/activity/v1/panels');

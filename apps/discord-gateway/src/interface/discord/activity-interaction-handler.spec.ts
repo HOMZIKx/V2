@@ -39,7 +39,7 @@ describe('ActivityInteractionHandler', () => {
     vi.clearAllMocks();
   });
 
-  it('opens ephemeral draft summary for create without deferring first', async () => {
+  it('opens full create modal without sectional ephemeral first', async () => {
     const createDraft = vi.fn(() =>
       Promise.resolve({ id: '11111111-2222-3333-4444-555555555555', payload: {} }),
     );
@@ -77,14 +77,11 @@ describe('ActivityInteractionHandler', () => {
     const handled = await handler.handleComponent(interaction as never);
     expect(handled).toBe(true);
     expect(createDraft).toHaveBeenCalledOnce();
-    expect(showModal).not.toHaveBeenCalled();
-    expect(reply).toHaveBeenCalledOnce();
+    expect(showModal).toHaveBeenCalledOnce();
+    expect(reply).not.toHaveBeenCalled();
     expect(deferReply).not.toHaveBeenCalled();
-    expect(reply).toHaveBeenCalledWith(
-      expect.objectContaining({
-        flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
-      }),
-    );
+    const calls = showModal.mock.calls as unknown as Array<[{ toJSON: () => { title?: string } }]>;
+    expect(calls[0]?.[0]?.toJSON().title).toBe('Utwórz aktywność');
   });
 
   it('resolves RSVP statusDefId from guild config opaque ids', async () => {

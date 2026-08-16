@@ -164,6 +164,9 @@ export interface ActivityDraftRecord {
   readonly updatedAt: Date;
 }
 
+export type ActivityScheduleKind = 'exact' | 'range' | 'flexible_period';
+export type ActivityPeriodKey = 'today' | 'tomorrow' | 'this_week' | 'weekend' | 'flexible';
+
 export interface ActivityRecord {
   readonly id: string;
   readonly guildId: string;
@@ -173,6 +176,11 @@ export interface ActivityRecord {
   readonly description: string;
   readonly startAt: Date;
   readonly endAt: Date | null;
+  /** exact (default) | range | flexible_period — resolved bounds stay in startAt/endAt. */
+  readonly scheduleKind: ActivityScheduleKind;
+  /** Required when scheduleKind = flexible_period; otherwise null. */
+  readonly periodKey: ActivityPeriodKey | null;
+  readonly scheduleHasExplicitTime: boolean;
   readonly status: ActivityStatus;
   readonly enrollmentOpen: boolean;
   readonly participantLimit: number | null;

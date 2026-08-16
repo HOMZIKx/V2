@@ -85,6 +85,16 @@
 - **Status:** TECHNICAL_OPEN (szkic Accepted w architecture; stabilizacja P4.1)
 - Prefiks: `/activity/v1`, eventy `activity.*.v1`
 
+### P4-UX-001 — Discord create: jeden pełny modal (override §12)
+
+- **Status:** OWNER_ACCEPTED (task `P4-DISCORD-SINGLE-FORM-SCHEDULING-UX-001`)
+- **Kontekst:** Accepted architecture §12 / UX Discord §O opisują prywatny panel
+  sekcyjny (modal ≤5 na sekcję). Owner wymaga create = **jeden** pełny modal →
+  jeden ephemeral preview → Publikuj, z elastycznym modelem „Kiedy?”.
+- **Implementacja:** PR #19 branch `cursor/p4-1-activity-domain` (Discord gateway +
+  `scheduleKind`/`periodKey` w activity-service). Docs Accepted §12 pozostają
+  historycznym kontekstem do aktualizacji w osobnym docs pass.
+
 ## Rozstrzygnięte (P3 Authorization — 2026-08-05 / merge 2026-08-06)
 
 Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED`.

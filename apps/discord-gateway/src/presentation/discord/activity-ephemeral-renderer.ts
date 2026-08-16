@@ -5,6 +5,7 @@ import {
   MessageFlags,
   TextDisplayBuilder,
   type InteractionReplyOptions,
+  type Message,
 } from 'discord.js';
 
 import {
@@ -20,29 +21,18 @@ export type DraftFormSummaryInput = {
   lines: string[];
 };
 
+/** Single ephemeral preview: Edit / Publish / Cancel — no sectional wizard. */
 export function renderDraftFormSummary(input: DraftFormSummaryInput): InteractionReplyOptions {
-  const editActions: Array<{ label: string; action: ActivityDraftAction; style: ButtonStyle }> = [
-    { label: 'Nazwa i opis', action: 'section_basics', style: ButtonStyle.Secondary },
-    { label: 'Data i godzina', action: 'section_schedule', style: ButtonStyle.Secondary },
-  ];
   const mainActions: Array<{ label: string; action: ActivityDraftAction; style: ButtonStyle }> = [
-    { label: 'Podgląd', action: 'preview', style: ButtonStyle.Secondary },
+    { label: 'Edytuj', action: 'edit', style: ButtonStyle.Secondary },
     { label: 'Publikuj', action: 'publish', style: ButtonStyle.Success },
-    { label: 'Odrzuć', action: 'discard', style: ButtonStyle.Danger },
+    { label: 'Anuluj', action: 'discard', style: ButtonStyle.Danger },
   ];
 
   return {
     components: [
       new TextDisplayBuilder().setContent(
-        [`## ${input.title ?? 'Szkic aktywności'}`, ...input.lines].join('\n'),
-      ),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...editActions.map((item) =>
-          new ButtonBuilder()
-            .setCustomId(createDraftCustomId(input.opaqueDraftId, item.action, input.signingSecret))
-            .setLabel(item.label)
-            .setStyle(item.style),
-        ),
+        [`## ${input.title ?? 'Podgląd aktywności'}`, ...input.lines].join('\n'),
       ),
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         ...mainActions.map((item) =>
@@ -55,6 +45,22 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
     ],
     flags: MessageFlags.IsComponentsV2,
   };
+}
+
+export function isDraftPreviewMessage(message: Message | null | undefined): boolean {
+  if (message === null || message === undefined) {
+    return false;
+  }
+  for (const row of message.components) {
+    const rowData = row as { components?: Array<{ customId?: string | null }> };
+    for (const component of rowData.components ?? []) {
+      const customId = component.customId ?? '';
+      if (customId.includes(':draft:')) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 export type MoreMenuInput = {

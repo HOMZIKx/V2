@@ -45,6 +45,12 @@ const eventPayloadSchema = z.object({
   statusLabel: z.string().min(1),
   startAtIso: z.string().min(1),
   endAtIso: z.string().nullable().optional(),
+  scheduleLabel: z.string().min(1).nullable().optional(),
+  scheduleKind: z.enum(['exact', 'range', 'flexible_period']).optional(),
+  periodKey: z
+    .enum(['today', 'tomorrow', 'this_week', 'weekend', 'flexible'])
+    .nullable()
+    .optional(),
   locationText: z.string().nullable().optional(),
   organizerLabel: z.string().min(1),
   coOrganizerLabel: z.string().nullable().optional(),
@@ -213,6 +219,9 @@ export class ActivityProjectionController {
         statusDefs: event.statusDefs,
         organizerLabel: event.organizerLabel,
         ...(event.endAtIso !== undefined ? { endAtIso: event.endAtIso } : {}),
+        ...(event.scheduleLabel !== undefined && event.scheduleLabel !== null
+          ? { scheduleLabel: event.scheduleLabel }
+          : {}),
         ...(event.locationText !== undefined ? { locationText: event.locationText } : {}),
         ...(event.coOrganizerLabel !== undefined
           ? { coOrganizerLabel: event.coOrganizerLabel }

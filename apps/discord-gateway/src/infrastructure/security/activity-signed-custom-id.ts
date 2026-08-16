@@ -29,6 +29,7 @@ export type ActivityDraftAction =
   | 'preview'
   | 'publish'
   | 'discard'
+  | 'edit'
   | 'section_basics'
   | 'section_schedule'
   | 'section_place'
@@ -78,6 +79,7 @@ const EVENT_ACTIONS = new Set<ActivityEventAction>([
 const DRAFT_ACTIONS = new Set<ActivityDraftAction>([
   'preview',
   'publish',
+  'edit',
   'discard',
   'section_basics',
   'section_schedule',
