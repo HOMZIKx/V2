@@ -1,0 +1,353 @@
+openapi: 3.1.0
+info:
+  title: Activity Service API
+  version: 1.0.0
+  description: P4.1 activity-service HTTP foundation (`/activity/v1`).
+servers:
+  - url: http://127.0.0.1:4400
+paths:
+  /health/live:
+    get:
+      summary: Liveness
+      responses:
+        '200':
+          description: OK
+  /health/ready:
+    get:
+      summary: Readiness (DB ping)
+      responses:
+        '200':
+          description: Ready
+        '503':
+          description: Database unavailable
+  /activity/v1/drafts:
+    post:
+      summary: Create activity draft (24h TTL)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Draft created
+  /activity/v1/drafts/{id}:
+    get:
+      summary: Get draft
+      parameters:
+        - $ref: '#/components/parameters/DraftId'
+      responses:
+        '200':
+          description: Draft
+    patch:
+      summary: Update draft payload
+      parameters:
+        - $ref: '#/components/parameters/DraftId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Discard draft
+      parameters:
+        - $ref: '#/components/parameters/DraftId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Discarded
+  /activity/v1/drafts/{id}/publish:
+    post:
+      summary: Publish draft into an activity
+      parameters:
+        - $ref: '#/components/parameters/DraftId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Activity created
+  /activity/v1/activities:
+    get:
+      summary: List guild activities
+      parameters:
+        - name: guildId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activities
+  /activity/v1/activities/{id}:
+    get:
+      summary: Get activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+      responses:
+        '200':
+          description: Activity
+    patch:
+      summary: Edit activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Permanent delete (before start, zero participants)
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Deleted
+  /activity/v1/activities/{id}/cancel:
+    post:
+      summary: Cancel activity (reason required)
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Cancelled
+  /activity/v1/activities/{id}/enrollment/open:
+    post:
+      summary: Open enrollment
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Opened
+  /activity/v1/activities/{id}/enrollment/close:
+    post:
+      summary: Close enrollment
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Closed
+  /activity/v1/activities/{id}/rsvp:
+    post:
+      summary: RSVP / waitlist
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Participation upserted
+  /activity/v1/activities/{id}/resign:
+    post:
+      summary: Resign participation
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Resigned
+  /activity/v1/activities/{id}/participants:
+    get:
+      summary: List participants
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+      responses:
+        '200':
+          description: Participants
+  /activity/v1/activities/{id}/participants/remove:
+    post:
+      summary: Remove participant
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Removed
+  /activity/v1/activities/{id}/co-organizer:
+    post:
+      summary: Assign co-organizer (max 1)
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Assigned
+  /activity/v1/activities/{id}/takeover:
+    post:
+      summary: Take over as organizer (manage.guild)
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Taken over
+  /activity/v1/activities/{id}/start:
+    post:
+      summary: Start activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Started
+  /activity/v1/activities/{id}/finish:
+    post:
+      summary: Finish activity
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Finished
+  /activity/v1/activities/{id}/reschedule:
+    post:
+      summary: Reschedule (requires_reconfirmation)
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Rescheduled
+  /activity/v1/activities/{id}/reconfirm:
+    post:
+      summary: Reconfirm participation after schedule change
+      parameters:
+        - $ref: '#/components/parameters/ActivityId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Reconfirmed
+  /activity/v1/maintenance/expire-reconfirmations:
+    post:
+      summary: Expire overdue reconfirmations and promote waitlist
+      responses:
+        '200':
+          description: Processed
+  /activity/v1/maintenance/finish-due:
+    post:
+      summary: Auto-finish due activities
+      responses:
+        '200':
+          description: Processed
+  /activity/v1/guilds/{guildId}/config:
+    get:
+      summary: Read guild activity config
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Config
+    put:
+      summary: Update guild activity config (config.manage)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Updated
+  /activity/v1/guilds/{guildId}/ensure-defaults:
+    post:
+      summary: Ensure default status defs and settings
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Defaults ensured
+  /activity/v1/panels:
+    get:
+      summary: List panels for guild
+      parameters:
+        - name: guildId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Panels
+    post:
+      summary: Upsert panel state (no Discord send)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Panel
+  /activity/v1/panels/{id}:
+    get:
+      summary: Get panel
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Panel
+  /activity/v1/outbox/claim:
+    post:
+      summary: Claim outbox messages (test/admin; worker off by default)
+      responses:
+        '200':
+          description: Claimed
+  /activity/v1/outbox/{id}/complete:
+    post:
+      summary: Mark outbox delivered
+      responses:
+        '200':
+          description: Delivered
+  /activity/v1/outbox/{id}/fail:
+    post:
+      summary: Mark outbox failed / retry
+      responses:
+        '200':
+          description: Re-queued
+  /activity/v1/me/activities:
+    get:
+      summary: Activities for the actor
+      parameters:
+        - name: guildId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activities
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+    DraftId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ActivityId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GuildId:
+      name: guildId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    ActivityEventNames:
+      type: string
+      enum:
+        - activity.activity.created.v1
+        - activity.activity.rsvp_changed.v1
+        - activity.activity.cancelled.v1
+        - activity.activity.schedule_changed.v1
+        - activity.activity.waitlist_promoted.v1
+        - activity.activity.reconfirm_required.v1
+        - activity.panel.projection_repaired.v1

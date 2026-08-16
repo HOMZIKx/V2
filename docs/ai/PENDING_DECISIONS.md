@@ -22,7 +22,8 @@
 ## P4 Centrum Aktywności — status decyzji
 
 > SoT: PR #18 `cursor/p4-centrum-aktywnosci-spec-v2`. ADR-0014 **Accepted**.
-> Implementacja zabroniona do `READY_FOR_CURSOR`.
+> P4.1 implementation: branch `cursor/p4-1-activity-domain` —
+> `READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN` (no merge yet).
 
 ### P4-D1 — zakres pierwszej wersji Centrum
 

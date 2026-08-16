@@ -2,40 +2,38 @@
 
 ## Status
 
-`READY_FOR_FINAL_P4_SPEC_REAUDIT`
-
-Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
+`READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`
 
 ## Active phase
 
-P4 Centrum Aktywności — final specification closure (docs only).
-P0–P3 completed. P4 implementation not started.
+P4.1 — activity-service domain / data / contracts / outbox core (implementation complete, awaiting audit).
 
 ## Active task
 
-- Task ID: `P4-FINAL-SPEC-CLOSURE-001`
-- Branch: `cursor/p4-centrum-aktywnosci-spec-v2`
-- Draft PR: **#18**
-- Base: `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`
-- ADR-0014: **Accepted**
-- Service name: **`activity-service`** / DB **`activity`**
+- Task ID: `P4.1-ACTIVITY-DOMAIN-001`
+- Branch: `cursor/p4-1-activity-domain`
+- PR title: `feat(activity): add P4.1 activity backend foundation`
+- Service: `@v2/activity-service` / DB `activity` / port `4400`
+- Out of scope (deferred): P4.2 Discord UI, RabbitMQ, runtime outbox publisher, Admin/WWW UI
 
-## Closed blockers
+## Delivered in P4.1
 
-P4-D3, P4-D5, P4-D6 (nonce/adopt), P4-D7 permissions, RSVP confirmationState,
-transactional invariants, one logical Discord form, Issue #12 non-blocking for
-P4.2a test.
+- NestJS 11 + Fastify service bootstrap, health, validated env, graceful shutdown, observability
+- Domain invariants: lifecycle, StatusDef behaviors, capacity/`occupiesSlot`, waitlist FIFO, reconfirm, max-4, 14-day horizon, Clock port
+- PostgreSQL foundation migration + transactional outbox (claim/lease/retry) + idempotency store
+- Application use-cases for draft → publish → RSVP/waitlist → lifecycle → reschedule/reconfirm → panel state → outbox ops
+- Authorization via S2S HTTP to P3 (AllowAll stub when `ACTIVITY_ENABLED=false`); exact P4-D7 permission IDs
+- HTTP `/activity/v1` + OpenAPI `openapi/activity-v1.yaml`
+- Architecture boundaries isolating `scope:activity`; postgres role/DB `activity`; CI migrate + infra tests
+- Unit + OpenAPI contract tests; PG concurrency/idempotency/outbox infra tests (CI `RUN_INFRA_TESTS=true`)
 
-## Open
+## Open / deferred
 
-- P4-D8 assets = OWNER_DECISION_REQUIRED (prod visual sign-off)
-- Screenshot-based `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` blocked —
-  image file unavailable in agent environment
-
-## Out of scope
-
-Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
+- P4.2 Discord Components V2 panel / gateway adapter
+- Runtime outbox worker + RabbitMQ (P4.5+)
+- Global maintenance scanners beyond HTTP maintenance endpoints
+- P4-D8 assets / screenshot visual contract (does not block P4.1)
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-FINAL-SPEC-CLOSURE-001`)
+2026-08-16 — Cursor (`P4.1-ACTIVITY-DOMAIN-001`)

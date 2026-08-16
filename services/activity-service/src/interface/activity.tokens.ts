@@ -1,0 +1,7 @@
+export const ACTIVITY_CONFIG = Symbol('ACTIVITY_CONFIG');
+export const ACTIVITY_POOL = Symbol('ACTIVITY_POOL');
+export const ACTIVITY_REPOSITORY = Symbol('ACTIVITY_REPOSITORY');
+export const AUTHORIZE_PORT = Symbol('AUTHORIZE_PORT');
+export const ACTIVITY_CLOCK = Symbol('ACTIVITY_CLOCK');
+export const ACTIVITY_USE_CASES = Symbol('ACTIVITY_USE_CASES');
+export const INBOUND_CLIENT_REGISTRY = Symbol('INBOUND_CLIENT_REGISTRY');

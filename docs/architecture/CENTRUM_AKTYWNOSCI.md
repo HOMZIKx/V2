@@ -164,7 +164,8 @@ Zdarzenia (porty; broker nie w P4.1):
 Cel: agregaty, migracje DB `activity`, OpenAPI, idempotency, outbox schema +
 claim/lease/retry + **testowy** handler; runtime worker **domyślnie wyłączony**
 do P4.2 realnego consumer projekcji. **Bez** UI Discord/WWW/Admin.
-Marker: `READY_FOR_AUDIT_P4_1_DOMAIN`.
+Marker dostarczenia: `READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN` (implementacja na branchu P4.1).
+Historyczny marker planu: `READY_FOR_AUDIT_P4_1_DOMAIN`.
 
 ### P4.2 — Jednorazowe Discord (+ panel)
 

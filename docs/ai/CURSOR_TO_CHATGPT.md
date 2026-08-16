@@ -1,35 +1,38 @@
-﻿# Cursor → ChatGPT
+﻿# Cursor → ChatGPT handoff
 
-## 1. Status
+## Task
 
-`READY_FOR_FINAL_P4_SPEC_REAUDIT`
+`P4.1-ACTIVITY-DOMAIN-001` — activity-service backend foundation.
 
-Visual part: `REFERENCE_IMAGE_REQUIRED` (screenshot not available in agent FS;
-no design-from-memory).
+## Status
 
-## 2. Task
+`READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`
 
-`P4-FINAL-SPEC-CLOSURE-001` — PR #18
+## Branch
 
-## 3. Closed blockers
+`cursor/p4-1-activity-domain`
 
-| Item       | Resolution                                                           |
-| ---------- | -------------------------------------------------------------------- |
-| P4-D3      | `activity-service` / `@v2/activity-service` / DB `activity`          |
-| P4-D5      | HTTP + idempotency + PG outbox/lease; RMQ from P4.5; no no-op worker |
-| P4-D6      | publish occurrence + nonce/enforceNonce + adopt reconcile + tests    |
-| P4-D7      | final permission catalog (no edit.self/cancel.self/…)                |
-| RSVP       | StatusDef.behavior + confirmationState + waitlist rules              |
-| Invariants | TX locks; Clock horizon; concurrent tests required                   |
-| Form       | one logical V2 form; modals ≤5; not wizard                           |
-| Issue #12  | does not block P4.2a test guild                                      |
-| ADR-0014   | **Accepted**                                                         |
+## Commit message
 
-## 4. Still open
+`feat(activity): add P4.1 activity backend foundation`
 
-- P4-D8 assets for prod visual sign-off
-- Screenshot visual interaction contract (`REFERENCE_IMAGE_REQUIRED`)
+## Scope delivered
 
-## 5. Marker
+- Full `services/activity-service` P4.1 foundation (domain, application, PG persistence, HTTP, OpenAPI)
+- DB isolation: role/DB `activity` in postgres init + infra isolation tests
+- Env `ACTIVITY_*`, smoke hook, architecture boundaries, SERVICE_CATALOG, CI migrate + activity infra tests
+- RSVP / limit / waitlist FIFO / reconfirm / idempotency / transactional outbox claim-lease (worker off)
 
-`READY_FOR_FINAL_P4_SPEC_REAUDIT`
+## Explicitly not done (by design)
+
+- P4.2 Discord panel/UI publish
+- RabbitMQ / multi-consumer bus
+- Runtime outbox worker (`ACTIVITY_OUTBOX_WORKER_ENABLED=false`)
+- Admin / WWW UI
+- No merge to `main`
+
+## Verification notes
+
+- Local unit/typecheck/lint/architecture: green
+- Local Docker daemon unavailable → PG concurrency/isolation verified via CI `infra-integration` job
+- Marker for ChatGPT audit: `READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN`

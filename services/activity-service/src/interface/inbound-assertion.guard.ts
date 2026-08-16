@@ -1,0 +1,122 @@
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Inject,
+  Injectable,
+  SetMetadata,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import type { FastifyRequest } from 'fastify';
+
+import type { ActorSubject } from '../application/ports/activity.ports.js';
+import { ActivityError } from '../domain/errors.js';
+import type { ActivityEnv } from '../infrastructure/config/activity-env.js';
+import {
+  type InboundClientRegistry,
+  verifyInboundAssertion,
+} from '../infrastructure/internal/verify-inbound-assertion.js';
+import { ACTIVITY_CONFIG, INBOUND_CLIENT_REGISTRY } from './activity.tokens.js';
+
+const ASSERTION_HEADER = 'activity-client-assertion';
+export const REQUIRED_OPERATION = 'activity:required_operation';
+
+export const RequireOperation = (operation: string): MethodDecorator =>
+  SetMetadata(REQUIRED_OPERATION, operation);
+
+export interface AuthenticatedRequest extends FastifyRequest {
+  verifiedClientId?: string;
+  verifiedActor?: ActorSubject;
+}
+
+@Injectable()
+export class InboundAssertionGuard implements CanActivate {
+  public constructor(
+    @Inject(ACTIVITY_CONFIG) private readonly config: ActivityEnv,
+    @Inject(INBOUND_CLIENT_REGISTRY)
+    private readonly registry: InboundClientRegistry | null,
+    private readonly reflector: Reflector,
+  ) {}
+
+  public async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
+    if (!this.config.ACTIVITY_ENABLED) {
+      const discordHeader = headerValue(request, 'x-actor-discord-user-id');
+      const v2Header = headerValue(request, 'x-actor-v2-user-id');
+      request.verifiedActor = {
+        ...(discordHeader !== undefined ? { discordUserId: discordHeader } : {}),
+        ...(v2Header !== undefined ? { v2UserId: v2Header } : {}),
+      };
+      return true;
+    }
+
+    if (this.registry === null) {
+      throw new ActivityError('CONFIG_INVALID', 'Inbound client registry is not configured');
+    }
+
+    const assertion = headerValue(request, ASSERTION_HEADER);
+    if (assertion === undefined || assertion.length === 0) {
+      throw new ActivityError(
+        'CLIENT_ASSERTION_INVALID',
+        'Missing Activity-Client-Assertion header',
+      );
+    }
+
+    const expectedAudience = this.config.ACTIVITY_ASSERTION_AUD ?? buildRequestAudience(request);
+
+    const verified = await verifyInboundAssertion(
+      assertion,
+      {
+        expectedAudience,
+        maxTtlSeconds: this.config.ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS,
+      },
+      this.registry,
+    );
+
+    const requiredOperation = this.reflector.get<string | undefined>(
+      REQUIRED_OPERATION,
+      context.getHandler(),
+    );
+    if (requiredOperation !== undefined) {
+      const client = this.registry.clients.get(verified.clientId);
+      if (client === undefined || !client.allowedOperations.has(requiredOperation)) {
+        throw new ActivityError(
+          'FORBIDDEN',
+          `Client not allowed for operation ${requiredOperation}`,
+        );
+      }
+    }
+
+    request.verifiedClientId = verified.clientId;
+    request.verifiedActor = {
+      ...(verified.actorDiscordUserId !== undefined
+        ? { discordUserId: verified.actorDiscordUserId }
+        : {}),
+      ...(verified.actorV2UserId !== undefined ? { v2UserId: verified.actorV2UserId } : {}),
+    };
+    return true;
+  }
+}
+
+function headerValue(request: FastifyRequest, name: string): string | undefined {
+  const raw = request.headers[name];
+  if (typeof raw === 'string') {
+    return raw;
+  }
+  if (Array.isArray(raw) && raw[0] !== undefined) {
+    return raw[0];
+  }
+  return undefined;
+}
+
+function buildRequestAudience(request: FastifyRequest): string {
+  const host = request.headers.host ?? '127.0.0.1';
+  const protoHeader = request.headers['x-forwarded-proto'];
+  const proto =
+    typeof protoHeader === 'string'
+      ? protoHeader
+      : Array.isArray(protoHeader)
+        ? protoHeader[0]
+        : 'http';
+  return `${proto}://${host}${request.url.split('?')[0]}`;
+}

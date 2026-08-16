@@ -116,4 +116,25 @@ describe('architecture boundaries', () => {
       ),
     ).toBe(false);
   });
+
+  it('keeps activity isolated from identity and authorization packages', () => {
+    expect(
+      isDependencyAllowed(['type:service', 'scope:activity'], ['type:util', 'scope:identity']),
+    ).toBe(false);
+    expect(
+      isDependencyAllowed(
+        ['type:service', 'scope:activity'],
+        ['type:contracts', 'scope:authorization'],
+      ),
+    ).toBe(false);
+    expect(
+      isDependencyAllowed(['type:service', 'scope:identity'], ['type:util', 'scope:activity']),
+    ).toBe(false);
+    expect(
+      isDependencyAllowed(
+        ['type:service', 'scope:authorization'],
+        ['type:contracts', 'scope:activity'],
+      ),
+    ).toBe(false);
+  });
 });

@@ -1,0 +1,266 @@
+import type { Clock } from '../../domain/clock.js';
+import type { ActivityStatus } from '../../domain/lifecycle.js';
+import type { StatusBehavior } from '../../domain/status-def.js';
+
+export interface ActorSubject {
+  readonly discordUserId?: string;
+  readonly v2UserId?: string;
+}
+
+export interface AuthorizeRequest {
+  readonly subject: ActorSubject;
+  readonly permissionId: string;
+  readonly scope: { readonly type: 'guild' | 'organization'; readonly guildId?: string };
+  readonly operationClass?: 'ordinary' | 'sensitive';
+}
+
+export interface AuthorizeResult {
+  readonly allowed: boolean;
+  readonly permissionId: string;
+  readonly decision: 'allow' | 'deny';
+}
+
+export interface AuthorizePort {
+  authorize(request: AuthorizeRequest): Promise<AuthorizeResult>;
+}
+
+export interface ParticipationStatusDefRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly label: string;
+  readonly occupiesSlot: boolean;
+  readonly behavior: StatusBehavior;
+  readonly selectableByMember: boolean;
+  readonly active: boolean;
+  readonly sortOrder: number;
+  readonly seedKey: string | null;
+}
+
+export interface GuildActivitySettingsRecord {
+  readonly guildId: string;
+  readonly orgId: string;
+  readonly organizerDefaultStatusId: string | null;
+  readonly waitlistPromotionStatusId: string | null;
+  readonly maxActivePerCreator: number;
+  readonly registrationDefaultClosesAtStart: boolean;
+}
+
+export interface ActivityDraftRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly creatorSubjectType: 'discord' | 'v2';
+  readonly creatorDiscordUserId: string | null;
+  readonly creatorV2UserId: string | null;
+  readonly payload: Record<string, unknown>;
+  readonly expiresAt: Date;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface ActivityRecord {
+  readonly id: string;
+  readonly guildId: string;
+  readonly organizationId: string;
+  readonly typeId: string | null;
+  readonly name: string;
+  readonly description: string;
+  readonly startAt: Date;
+  readonly endAt: Date | null;
+  readonly status: ActivityStatus;
+  readonly enrollmentOpen: boolean;
+  readonly participantLimit: number | null;
+  readonly organizerDiscordUserId: string | null;
+  readonly organizerV2UserId: string | null;
+  readonly coOrganizerDiscordUserId: string | null;
+  readonly coOrganizerV2UserId: string | null;
+  readonly publicationChannelId: string | null;
+  readonly timezone: string;
+  readonly locationText: string | null;
+  readonly cancelReason: string | null;
+  readonly cancelledAt: Date | null;
+  readonly version: number;
+  readonly scheduledFinishAt: Date;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface ParticipationRecord {
+  readonly id: string;
+  readonly activityId: string;
+  readonly discordUserId: string | null;
+  readonly v2UserId: string | null;
+  readonly statusDefId: string;
+  readonly confirmationState: 'confirmed' | 'requires_reconfirmation';
+  readonly reconfirmDeadline: Date | null;
+  readonly waitlistPosition: number | null;
+  readonly resignedAt: Date | null;
+  readonly removedAt: Date | null;
+  readonly removeReason: string | null;
+  readonly occupiesSlot: boolean;
+  readonly statusBehavior: StatusBehavior;
+}
+
+export interface HubPanelRecord {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly discordGuildId: string;
+  readonly channelId: string;
+  readonly messageId: string | null;
+  readonly panelType: string;
+  readonly payloadVersion: number;
+  readonly status: string;
+}
+
+export interface OutboxMessageRecord {
+  readonly id: string;
+  readonly eventType: string;
+  readonly aggregateType: string;
+  readonly aggregateId: string;
+  readonly aggregateVersion: number;
+  readonly payload: Record<string, unknown>;
+  readonly status: string;
+  readonly attemptCount: number;
+}
+
+export interface IdempotencyHit {
+  readonly responseStatus: number;
+  readonly responseBody: unknown;
+}
+
+export interface OutboxInsert {
+  readonly eventType: string;
+  readonly aggregateType: string;
+  readonly aggregateId: string;
+  readonly aggregateVersion: number;
+  readonly payload: Record<string, unknown>;
+  readonly occurredAt: Date;
+}
+
+export interface ActivityTx {
+  lockCreatorAdvisory(guildId: string, creatorKey: string): Promise<void>;
+  lockActivity(activityId: string): Promise<ActivityRecord>;
+  ensureGuildDefaults(input: { guildId: string; orgId: string }): Promise<{
+    settings: GuildActivitySettingsRecord;
+    statuses: ParticipationStatusDefRecord[];
+  }>;
+  getSettings(guildId: string): Promise<GuildActivitySettingsRecord | null>;
+  updateSettings(
+    guildId: string,
+    patch: Partial<
+      Pick<
+        GuildActivitySettingsRecord,
+        | 'organizerDefaultStatusId'
+        | 'waitlistPromotionStatusId'
+        | 'maxActivePerCreator'
+        | 'registrationDefaultClosesAtStart'
+      >
+    >,
+  ): Promise<GuildActivitySettingsRecord>;
+  listStatusDefs(guildId: string): Promise<ParticipationStatusDefRecord[]>;
+  getStatusDef(id: string): Promise<ParticipationStatusDefRecord | null>;
+  countActiveOwn(guildId: string, organizerDiscordUserId: string): Promise<number>;
+  insertDraft(
+    input: Omit<ActivityDraftRecord, 'createdAt' | 'updatedAt'>,
+  ): Promise<ActivityDraftRecord>;
+  getDraft(id: string): Promise<ActivityDraftRecord | null>;
+  updateDraft(
+    id: string,
+    patch: { payload?: Record<string, unknown>; expiresAt?: Date },
+  ): Promise<ActivityDraftRecord>;
+  deleteDraft(id: string): Promise<void>;
+  insertActivity(
+    input: Omit<ActivityRecord, 'createdAt' | 'updatedAt' | 'version'> & { version?: number },
+  ): Promise<ActivityRecord>;
+  updateActivity(activity: ActivityRecord): Promise<ActivityRecord>;
+  getActivity(id: string): Promise<ActivityRecord | null>;
+  listActivities(guildId: string): Promise<ActivityRecord[]>;
+  listMyActivities(input: {
+    guildId?: string;
+    discordUserId?: string;
+    v2UserId?: string;
+  }): Promise<ActivityRecord[]>;
+  listParticipations(activityId: string): Promise<ParticipationRecord[]>;
+  getParticipation(activityId: string, discordUserId: string): Promise<ParticipationRecord | null>;
+  upsertParticipation(
+    input: Omit<
+      ParticipationRecord,
+      'occupiesSlot' | 'statusBehavior' | 'resignedAt' | 'removedAt' | 'removeReason'
+    > & {
+      resignedAt?: Date | null;
+      removedAt?: Date | null;
+      removeReason?: string | null;
+    },
+  ): Promise<ParticipationRecord>;
+  markParticipationResigned(id: string, at: Date): Promise<void>;
+  markParticipationRemoved(id: string, at: Date, reason: string): Promise<void>;
+  clearWaitlistPosition(id: string): Promise<void>;
+  upsertPanel(input: {
+    organizationId: string;
+    discordGuildId: string;
+    channelId: string;
+    panelType: string;
+    messageId?: string | null;
+    status?: string;
+    payloadVersion?: number;
+  }): Promise<{ panel: HubPanelRecord; repaired: boolean }>;
+  getPanel(id: string): Promise<HubPanelRecord | null>;
+  listPanels(guildId: string): Promise<HubPanelRecord[]>;
+  insertPublishOccurrence(input: {
+    panelId: string;
+    operationId: string;
+    nonce: string;
+    payloadVersion: number;
+    desiredChannelId: string;
+    correlationId?: string;
+  }): Promise<void>;
+  insertOutbox(message: OutboxInsert): Promise<void>;
+  claimOutbox(input: {
+    owner: string;
+    limit: number;
+    leaseSeconds: number;
+    now: Date;
+  }): Promise<OutboxMessageRecord[]>;
+  completeOutbox(id: string): Promise<void>;
+  failOutbox(id: string, error: string, availableAt: Date): Promise<void>;
+  findIdempotency(input: {
+    scope: string;
+    actorKey: string;
+    operation: string;
+    idempotencyKey: string;
+  }): Promise<IdempotencyHit | null>;
+  saveIdempotency(input: {
+    scope: string;
+    actorKey: string;
+    operation: string;
+    idempotencyKey: string;
+    responseStatus: number;
+    responseBody: unknown;
+  }): Promise<void>;
+  insertAudit(input: {
+    guildId?: string;
+    activityId?: string;
+    actorDiscordUserId?: string;
+    actorV2UserId?: string;
+    action: string;
+    details?: Record<string, unknown>;
+    correlationId?: string;
+  }): Promise<void>;
+  ping(): Promise<void>;
+  listExpiredReconfirmations(
+    now: Date,
+  ): Promise<
+    readonly { activityId: string; participationId: string; discordUserId: string | null }[]
+  >;
+  listActivitiesDueForFinish(now: Date): Promise<readonly ActivityRecord[]>;
+}
+
+export interface ActivityRepositoryPort {
+  withTransaction<T>(fn: (tx: ActivityTx) => Promise<T>): Promise<T>;
+  ping(): Promise<void>;
+}
+
+export interface ActivityUseCaseDeps {
+  readonly repository: ActivityRepositoryPort;
+  readonly authorize: AuthorizePort;
+  readonly clock: Clock;
+}
