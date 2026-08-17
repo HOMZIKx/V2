@@ -34,6 +34,19 @@ Kod, dokumentacja, decyzje i raporty są wersjonowane w Git. Historia czatów ni
 
 Cursor nie rozpoczyna kolejnego dużego etapu bez `APPROVED` dla poprzedniego.
 
+## ROLLING AUDIT MODE
+
+Owner-approved amendment (2026-08-17). Nie zastępuje phase gates.
+
+1. Każde zakończone zadanie ma **immutable checkpoint SHA** (commit + push). Ten SHA jest przedmiotem audytu ChatGPT.
+2. Kolejne **niezależne** zadanie może ruszyć przed zakończeniem audytu poprzedniego.
+3. ChatGPT audytuje konkretny checkpoint albo zakres commitów (`PREVIOUS_CHECKPOINT_SHA` …), nawet gdy branch ma już nowsze commity.
+4. Wykryte corrections są **FIXUP PRIORITY** następnego promptu.
+5. **HIGH / CRITICAL** z wcześniejszego checkpointu: bieżąca praca zatrzymuje się na bezpiecznym checkpoint (`SAFE_*_WIP_CHECKPOINT`, commit + push), a poprawka bezpieczeństwa ma pierwszeństwo.
+6. Podczas audit queue: **zero** amend, interactive rebase, force push i squash — tylko additive commits. Nie wolno przepisywać historii checkpointu.
+7. Merge nadal wymaga: wszystkie audyty zamknięte, owner gates, final approval.
+8. Tego mechanizmu **nie wolno** używać do omijania phase gates **P4.5 / P4.6** (ani RabbitMQ poza zatwierdzonym zakresem).
+
 ## Pliki komunikacyjne
 
 ### `CHATGPT_TO_CURSOR.md`

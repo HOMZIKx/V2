@@ -11,10 +11,9 @@ import {
   type MessageComponentInteraction,
   type ModalSubmitInteraction,
 } from 'discord.js';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
-import { deliverHubPanel } from '../../application/interactions/hub-panel-delivery.js';
 import {
   ActivityHttpError,
   type ActivityHttpClient,
@@ -39,18 +38,17 @@ import {
   renderDraftFormSummary,
   renderInboxList,
 } from '../../presentation/discord/activity-ephemeral-renderer.js';
-import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
 import {
   buildActivityFormModal,
   parseActivityFormModal,
   scheduleToDraftPayload,
 } from '../../presentation/discord/activity-schedule-form.js';
 import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
-import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
 } from '../../presentation/discord/localized-datetime.js';
+import { executeHubPanelOperation } from './hub-panel-operation.js';
 
 export type ActivityInteractionDeps = {
   config: DiscordGatewayConfig;
@@ -515,114 +513,20 @@ export class ActivityInteractionHandler {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const channelId = interaction.channelId;
     const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
-    const actor = actorOf(interaction.user.id);
 
-    const existing = await this.deps.activityClient.listPanels(guildId, actor);
-    const hub = existing.find((p) => {
-      const row = p as { panelType?: string; channelId?: string };
-      return (
-        (row.panelType === 'hub' || row.panelType === undefined) &&
-        (row.channelId === undefined || row.channelId === channelId)
-      );
-    });
-
-    let operationId: string = randomUUID();
-    let nonce = operationId.replace(/-/g, '').slice(0, 25);
-    if (hub?.id) {
-      const pending = await this.deps.activityClient.getPanelPendingOccurrence(hub.id, actor);
-      if (pending !== null) {
-        operationId = pending.operationId;
-        nonce = pending.nonce;
-      }
-    }
-
-    const panel = await this.deps.activityClient.upsertPanel(
+    const delivered = await executeHubPanelOperation(
       {
-        organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-        discordGuildId: guildId,
-        channelId,
-        panelType: 'hub',
-        status: 'publishing',
-        operationId,
-        nonce,
-        correlationId: operationId,
-        ...(hub?.messageId ? { messageId: hub.messageId } : {}),
+        gateway: this.deps.gateway,
+        logger: this.deps.logger,
+        activityClient: this.deps.activityClient,
       },
       {
-        ...actor,
-        idempotencyKey: idem(interaction.user.id, 'panel-upsert', `${guildId}:${channelId}`),
-      },
-    );
-
-    const opaquePanelId =
-      typeof panel.opaqueId === 'string' && /^[a-f0-9]{12}$/.test(panel.opaqueId)
-        ? panel.opaqueId
-        : opaqueFromUuid(panel.id);
-
-    const payload = toComponentsV2Payload(
-      renderActivityHubMessage({
-        opaquePanelId,
-        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-      }),
-    );
-
-    const knownMessageId =
-      typeof panel.messageId === 'string'
-        ? panel.messageId
-        : typeof hub?.messageId === 'string'
-          ? hub.messageId
-          : null;
-
-    const delivered = await deliverHubPanel(
-      { gateway: this.deps.gateway, logger: this.deps.logger },
-      {
-        channelId,
-        opaquePanelId,
-        payload,
-        nonce,
-        knownMessageId,
-        preferScanFirst: options.preferScanFirst,
-      },
-    );
-
-    if (delivered.duplicateMessageIds.length > 0) {
-      this.deps.logger.warn('Duplicate hub panel messages cleaned up', {
         guildId,
         channelId,
-        opaquePanelId,
-        canonicalMessageId: delivered.messageId,
-        removedMessageIds: delivered.duplicateMessageIds,
-      });
-    }
-
-    const occurrenceOutcome = delivered.mode === 'adopted' ? 'adopted' : 'sent';
-    await this.deps.activityClient.upsertPanel(
-      {
+        actorDiscordUserId: interaction.user.id,
         organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-        discordGuildId: guildId,
-        channelId,
-        panelType: 'hub',
-        messageId: delivered.messageId,
-        status: 'active',
-        operationId: `${operationId}:ack`,
-        nonce,
-        occurrenceOutcome,
-        ...(delivered.duplicateMessageIds.length > 0
-          ? {
-              incident: {
-                action: 'panel.duplicate_cleanup',
-                details: {
-                  opaquePanelId,
-                  canonicalMessageId: delivered.messageId,
-                  removedMessageIds: delivered.duplicateMessageIds,
-                },
-              },
-            }
-          : {}),
-      },
-      {
-        ...actor,
-        idempotencyKey: idem(interaction.user.id, options.ackSuffix, delivered.messageId),
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        preferScanFirst: options.preferScanFirst,
       },
     );
 

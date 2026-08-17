@@ -40,7 +40,7 @@ export function ReportsPage() {
 
   return (
     <section>
-      <PageHeader title="Reports" description="Open activity reports and resolve." />
+      <PageHeader title="Zgłoszenia" description="Zgłoszenia wymagające decyzji." />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 

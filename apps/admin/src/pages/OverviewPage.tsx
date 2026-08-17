@@ -1,132 +1,106 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { Link } from 'react-router';
 
-import {
-  ensureGuildDefaults,
-  getReadiness,
-  type ReadinessResponse,
-} from '../api/activity-admin.js';
-import { readAdminSession } from '../auth/session.js';
-import { Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
+import { Badge, Button, Panel } from '@v2/design-system';
+
+import { getHub, getReadiness, type ReadinessIssue } from '../api/activity-admin.js';
+import { Flash, LoadGate, PageHeader } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
-export function OverviewPage() {
-  const session = readAdminSession();
-  const loader = useCallback((guildId: string) => getReadiness(guildId), []);
-  const { guildId, state, reload } = useGuildResource(loader);
-  const [orgId, setOrgId] = useState(session.orgId ?? '');
-  const [busy, setBusy] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+function hasIssue(issues: readonly ReadinessIssue[], codes: readonly string[]): boolean {
+  return issues.some((issue) => codes.includes(issue.code));
+}
 
-  const counts = useMemo(() => {
+export function OverviewPage() {
+  const loader = useCallback(async (guildId: string) => {
+    const [readiness, hub] = await Promise.all([getReadiness(guildId), getHub(guildId)]);
+    return { readiness, hub };
+  }, []);
+  const { guildId, state } = useGuildResource(loader);
+
+  const items = useMemo(() => {
     if (state.kind !== 'ready') {
-      return null;
+      return [];
     }
-    return state.data.counts ?? null;
+    const issues = state.data.readiness.issues;
+    return [
+      {
+        label: 'Typy aktywności',
+        ok: !hasIssue(issues, ['NO_ENABLED_ACTIVITY_TYPES', 'NO_TYPES']),
+        to: '/activity/types',
+      },
+      {
+        label: 'Statusy',
+        ok: !hasIssue(issues, [
+          'NO_ACTIVE_STATUS_DEFS',
+          'NO_STATUSES',
+          'ORGANIZER_DEFAULT_MISSING',
+          'NO_ORGANIZER_DEFAULT',
+          'WAITLIST_PROMOTION_MISSING',
+          'NO_WAITLIST_DEFAULT',
+        ]),
+        to: '/activity/statuses',
+      },
+      {
+        label: 'Kanał publikacji',
+        ok: !hasIssue(issues, ['NO_ALLOWED_PUBLISH_CHANNELS', 'NO_CHANNELS']),
+        to: '/activity/channels',
+      },
+      {
+        label: 'Role i pingi',
+        ok: true,
+        to: '/activity/pings',
+      },
+      {
+        label: 'Panel Centrum',
+        ok: !hasIssue(issues, ['HUB_CHANNEL_MISSING']) && Boolean(state.data.hub.channelId),
+        to: '/activity/channels',
+      },
+      {
+        label: 'Powiadomienia',
+        ok: true,
+        to: '/activity/notifications',
+      },
+    ];
   }, [state]);
 
-  async function onEnsureDefaults() {
-    if (guildId === null) {
-      return;
-    }
-    if (orgId.trim() === '') {
-      setError('Organization ID is required to ensure defaults.');
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setFlash(null);
-    try {
-      await ensureGuildDefaults(guildId, orgId.trim());
-      setFlash('Defaults ensured.');
-      reload();
-    } catch (err) {
-      setError(errorFromUnknown(err).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const firstMissing = items.find((item) => !item.ok);
 
   return (
     <section>
       <PageHeader
-        title="Centrum Aktywności — Overview"
-        description="Guild readiness and configuration health."
+        title="Konfiguracja Centrum"
+        description="Sprawdź, co jest gotowe, a czego jeszcze brakuje."
       />
-      {guildId === null ? <p className="state-empty">Select a guild to continue.</p> : null}
-      {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
-      {error !== null ? <Flash tone="error">{error}</Flash> : null}
+      {guildId === null ? <p className="state-empty">Wybierz serwer, aby kontynuować.</p> : null}
 
-      <LoadGate<ReadinessResponse> state={state} emptyMessage="No readiness data.">
+      <LoadGate state={state} emptyMessage="Brak danych o konfiguracji.">
         {(data) => (
           <div className="stack">
-            <div className="panel row">
-              <span className={`badge ${data.state === 'READY' ? 'badge-ok' : 'badge-warn'}`}>
-                {data.state}
-              </span>
-              <button type="button" onClick={reload} disabled={busy}>
-                Refresh
-              </button>
-            </div>
-
-            {counts !== null ? (
-              <div className="panel">
-                <h2>Counts</h2>
-                <ul>
-                  {Object.entries(counts).map(([key, value]) => (
-                    <li key={key}>
-                      <code>{key}</code>: {value}
-                    </li>
-                  ))}
-                </ul>
+            <Panel>
+              <div className="row">
+                <Badge tone={data.readiness.state === 'READY' ? 'ok' : 'warn'}>
+                  {data.readiness.state === 'READY' ? 'Gotowe' : 'Wymaga konfiguracji'}
+                </Badge>
               </div>
-            ) : null}
-
-            <div className="panel">
-              <h2>Issues</h2>
-              {data.issues.length === 0 ? (
-                <p className="muted">No issues reported.</p>
-              ) : (
-                <ul>
-                  {data.issues.map((issue) => (
-                    <li key={`${issue.code}-${issue.message}`}>
-                      <strong>{issue.code}</strong>: {issue.message}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {data.state === 'CONFIGURATION_REQUIRED' ? (
-              <div className="panel stack">
-                <h2>Ensure defaults</h2>
-                <p className="muted">
-                  Calls <code>POST /activity/v1/guilds/:id/ensure-defaults</code>.
-                </p>
-                <label>
-                  Organization ID
-                  <input
-                    value={orgId}
-                    onChange={(event) => {
-                      setOrgId(event.target.value);
-                    }}
-                    disabled={busy}
-                  />
-                </label>
-                <div className="row">
-                  <button
-                    type="button"
-                    className="primary"
-                    disabled={busy}
-                    onClick={() => {
-                      void onEnsureDefaults();
-                    }}
-                  >
-                    {busy ? 'Working…' : 'Ensure defaults'}
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            </Panel>
+            <Panel title="Checklista">
+              <ul className="checklist">
+                {items.map((item) => (
+                  <li key={item.label}>
+                    <Badge tone={item.ok ? 'ok' : 'warn'}>{item.ok ? 'Gotowe' : 'Brakuje'}</Badge>
+                    <Link to={item.to}>{item.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+            {firstMissing !== undefined ? (
+              <Link to={firstMissing.to}>
+                <Button variant="primary">Przejdź do brakujących ustawień</Button>
+              </Link>
+            ) : (
+              <Flash tone="success">Konfiguracja Centrum jest kompletna.</Flash>
+            )}
           </div>
         )}
       </LoadGate>

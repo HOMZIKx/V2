@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router';
 
+import { Badge, Button, Panel } from '@v2/design-system';
+
 import { cancelEvent, getEvent, type ActivityEventDetailDto } from '../api/activity-admin.js';
 import {
   Flash,
@@ -19,63 +21,82 @@ export function EventDetailPage() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   async function onCancel(detail: ActivityEventDetailDto) {
     if (guildId === null) {
       return;
     }
-    const reason = window.prompt('Cancel reason (required):');
+    const reason = window.prompt('Powód anulowania (wymagany):');
     if (reason === null || reason.trim() === '') {
       return;
     }
-    if (!confirmDestructive(`Cancel event "${detail.name}"?`)) {
+    if (!confirmDestructive(`Anulować wydarzenie „${detail.name}”?`)) {
       return;
     }
     setBusy(true);
     setError(null);
+    setErrorDetail(null);
     try {
       await cancelEvent(guildId, eventId, reason.trim());
-      setFlash('Event cancelled.');
+      setFlash('Wydarzenie anulowane.');
       reload();
     } catch (err) {
-      setError(errorFromUnknown(err).message);
+      const parsed = errorFromUnknown(err);
+      setError(parsed.message);
+      setErrorDetail(parsed.detail);
     } finally {
       setBusy(false);
     }
   }
 
   if (eventId === '') {
-    return <p className="state-error">Missing event id.</p>;
+    return <p className="state-error">Brak identyfikatora wydarzenia.</p>;
   }
 
   return (
     <section>
-      <PageHeader title="Event detail" description={`ID ${eventId}`} />
+      <PageHeader title="Szczegóły wydarzenia" />
       <p>
-        <Link to="/activity/events">← Back to events</Link>
+        <Link to="/activity/events">← Wróć do wydarzeń</Link>
       </p>
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
-      {error !== null ? <Flash tone="error">{error}</Flash> : null}
+      {error !== null ? (
+        <Flash tone="error" detail={errorDetail}>
+          {error}
+        </Flash>
+      ) : null}
 
       <LoadGate<ActivityEventDetailDto> state={state}>
         {(detail) => (
           <div className="stack">
-            <div className="panel row">
-              <span className="badge">{detail.status}</span>
-              <span className="muted">Participants: {detail.participantCount ?? '—'}</span>
-              <button
-                type="button"
-                className="danger"
-                disabled={busy || detail.status === 'cancelled'}
-                onClick={() => void onCancel(detail)}
-              >
-                Cancel with reason
-              </button>
-            </div>
-            <div className="panel">
-              <h2>{detail.name}</h2>
-              <div className="pre-block">{JSON.stringify(detail, null, 2)}</div>
-            </div>
+            <Panel>
+              <div className="row">
+                <Badge tone={detail.status === 'cancelled' ? 'error' : 'ok'}>{detail.status}</Badge>
+                <span className="muted">Uczestnicy: {detail.participantCount ?? '—'}</span>
+                <Button
+                  variant="danger"
+                  disabled={busy || detail.status === 'cancelled'}
+                  onClick={() => void onCancel(detail)}
+                >
+                  Anuluj z powodem
+                </Button>
+              </div>
+            </Panel>
+            <Panel title={detail.name}>
+              <p>Termin: {detail.startAt}</p>
+              {detail.description !== undefined && detail.description !== '' ? (
+                <p>{detail.description}</p>
+              ) : null}
+            </Panel>
+            <details className="details-toggle">
+              <summary>Szczegóły techniczne</summary>
+              <p className="muted">ID: {detail.id}</p>
+              {detail.organizerDiscordUserId !== undefined &&
+              detail.organizerDiscordUserId !== null ? (
+                <p className="muted">Organizator ID: {detail.organizerDiscordUserId}</p>
+              ) : null}
+            </details>
           </div>
         )}
       </LoadGate>

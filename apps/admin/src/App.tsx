@@ -1,10 +1,9 @@
 import { Route, Routes } from 'react-router';
 
-import { StatusBadge } from '@v2/design-system';
-
 import { AdminShell } from './layout/AdminShell.js';
 import { AuditPage } from './pages/AuditPage.js';
 import { ChannelsPage } from './pages/ChannelsPage.js';
+import { DashboardPage } from './pages/DashboardPage.js';
 import { EventDetailPage } from './pages/EventDetailPage.js';
 import { EventsPage } from './pages/EventsPage.js';
 import { FieldsPage } from './pages/FieldsPage.js';
@@ -19,20 +18,11 @@ import { ReportsPage } from './pages/ReportsPage.js';
 import { StatusesPage } from './pages/StatusesPage.js';
 import { TypesPage } from './pages/TypesPage.js';
 
-export function AdminStatusPage() {
-  return (
-    <main>
-      <h1>V2 Admin is running</h1>
-      <StatusBadge label="Technical bootstrap" tone="ok" />
-    </main>
-  );
-}
-
 export function App() {
   return (
     <Routes>
       <Route element={<AdminShell />}>
-        <Route path="/" element={<AdminStatusPage />} />
+        <Route path="/" element={<DashboardPage />} />
         <Route path="/activity" element={<OverviewPage />} />
         <Route path="/activity/types" element={<TypesPage />} />
         <Route path="/activity/statuses" element={<StatusesPage />} />

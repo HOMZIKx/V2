@@ -1,63 +1,53 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { getPings, updatePings } from '../api/activity-admin.js';
-import {
-  FieldError,
-  Flash,
-  LoadGate,
-  PageHeader,
-  errorFromUnknown,
-  parseIdList,
-} from '../components/ui.js';
+import { Button, MultiSelect, Panel } from '@v2/design-system';
+
+import { getPings, listDiscordRoles, updatePings } from '../api/activity-admin.js';
+import { FieldError, Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
 export function PingsPage() {
-  const loader = useCallback((guildId: string) => getPings(guildId), []);
+  const loader = useCallback(async (guildId: string) => {
+    const [pings, roles] = await Promise.all([
+      getPings(guildId),
+      listDiscordRoles(guildId).catch(() => []),
+    ]);
+    return { pings, roles };
+  }, []);
   const { guildId, state, reload } = useGuildResource(loader);
-  const [raw, setRaw] = useState('');
-  const [maxNote, setMaxNote] = useState(2);
-  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
+  const [selected, setSelected] = useState<readonly string[]>([]);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (state.kind === 'ready' && !dirty) {
-      setRaw(state.data.roleIds.join('\n'));
-      setMaxNote(state.data.maxOrganizerRoles ?? 2);
+      setSelected(state.data.pings.roleIds);
     }
   }, [state, dirty]);
 
-  function onCancel() {
-    if (state.kind === 'ready') {
-      setRaw(state.data.roleIds.join('\n'));
-      setMaxNote(state.data.maxOrganizerRoles ?? 2);
-    }
-    setDirty(false);
-    setFieldErrors({});
-  }
+  const options = useMemo(() => {
+    const roles = state.kind === 'ready' ? state.data.roles : [];
+    return roles.map((role) => ({
+      value: role.id,
+      label: role.everyone ? '@everyone' : role.name,
+      disabled: role.everyone || role.name.toLowerCase() === 'here',
+      hint: role.everyone ? 'niedostępne jako zwykły ping' : undefined,
+    }));
+  }, [state]);
 
   async function onSave() {
     if (guildId === null) {
-      return;
-    }
-    const roleIds = parseIdList(raw);
-    const errors: Record<string, string> = {};
-    const invalid = roleIds.filter((id) => !/^\d{5,32}$/.test(id));
-    if (invalid.length > 0) {
-      errors['roleIds'] = `Invalid role ID(s): ${invalid.join(', ')}`;
-    }
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
       return;
     }
     setBusy(true);
     setError(null);
     setFlash(null);
     try {
-      await updatePings(guildId, roleIds);
-      setFlash('Ping roles saved.');
+      await updatePings(guildId, selected);
+      setFlash('Role do pingowania zapisane.');
       setDirty(false);
       reload();
     } catch (err) {
@@ -74,45 +64,33 @@ export function PingsPage() {
   return (
     <section>
       <PageHeader
-        title="Allowed pings"
-        description={`Role IDs organizers may ping (product max ≤ ${String(maxNote)}).`}
+        title="Role i pingi"
+        description="Wybierz role, które organizator może oznaczyć. @everyone i @here nie są zwykłymi rolami."
       />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
-      <LoadGate state={state} emptyMessage="No ping config.">
+      <LoadGate state={state} emptyMessage="Brak ról do wyświetlenia.">
         {() => (
-          <div className="panel form-grid">
-            <p className="muted">
-              Note: organizers may select at most <strong>{maxNote}</strong> ping role(s) when
-              creating an activity.
-            </p>
-            <label>
-              Role IDs (one per line)
-              <textarea
-                value={raw}
+          <Panel title="Role dostępne do pingowania">
+            <div className="form-grid">
+              <MultiSelect
+                legend="Role"
+                options={options}
+                selected={selected}
                 disabled={busy}
-                onChange={(event) => {
-                  setRaw(event.target.value);
+                error={fieldErrors['roleIds']}
+                onChange={(next) => {
+                  setSelected(next);
                   setDirty(true);
                 }}
               />
               <FieldError message={fieldErrors['roleIds']} />
-            </label>
-            <div className="row">
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={() => void onSave()}
-              >
-                {busy ? 'Saving…' : 'Save'}
-              </button>
-              <button type="button" disabled={busy} onClick={onCancel}>
-                Cancel
-              </button>
+              <Button variant="primary" disabled={busy} onClick={() => void onSave()}>
+                {busy ? 'Zapisywanie…' : 'Zapisz'}
+              </Button>
             </div>
-          </div>
+          </Panel>
         )}
       </LoadGate>
     </section>

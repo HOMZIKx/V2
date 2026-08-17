@@ -15,6 +15,7 @@ import {
   DISCORD_GATEWAY_TOKEN,
 } from './discord/discord.tokens.js';
 import { ActivityChannelValidationController } from './http/activity-channel-validation.controller.js';
+import { ActivityGuildMetadataController } from './http/activity-guild-metadata.controller.js';
 import { ActivityProjectionController } from './http/activity-projection.controller.js';
 import { HealthController } from './http/health.controller.js';
 
@@ -23,6 +24,7 @@ import { HealthController } from './http/health.controller.js';
     HealthController,
     ActivityProjectionController,
     ActivityChannelValidationController,
+    ActivityGuildMetadataController,
   ],
   providers: [
     {

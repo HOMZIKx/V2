@@ -937,6 +937,85 @@ export class ActivityAdminUseCases {
     });
   }
 
+  public async listAdminGuilds(actor: ActorSubject) {
+    if (actor.discordUserId === undefined && actor.v2UserId === undefined) {
+      throw new ActivityError('UNAUTHENTICATED', 'Actor identity required');
+    }
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null) {
+      return [];
+    }
+    return port.listGuilds();
+  }
+
+  public async listDiscordChannels(guildId: string, actor: ActorSubject) {
+    await this.requireConfigManage(actor, guildId);
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null) {
+      return [];
+    }
+    return port.listChannels(guildId);
+  }
+
+  public async listDiscordRoles(guildId: string, actor: ActorSubject) {
+    await this.requireConfigManage(actor, guildId);
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null) {
+      return [];
+    }
+    return port.listRoles(guildId);
+  }
+
+  public async executeHubPublish(guildId: string, preferScanFirst: boolean, ctx: MutationContext) {
+    await this.requirePanelManage(ctx.actor, guildId);
+    const actorDiscordUserId = ctx.actor.discordUserId;
+    if (actorDiscordUserId === undefined) {
+      throw new ActivityError('UNAUTHENTICATED', 'Discord actor is required to publish the panel');
+    }
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null) {
+      throw new ActivityError('CONFIG_INVALID', 'Discord gateway is not configured');
+    }
+    const settings = await this.deps.repository.withTransaction((tx) => tx.getSettings(guildId));
+    if (
+      settings === null ||
+      settings.hubChannelId === null ||
+      settings.hubChannelId.trim() === ''
+    ) {
+      throw new ActivityError('VALIDATION_FAILED', 'Hub channel is not configured');
+    }
+    const channelId = settings.hubChannelId;
+    const result = preferScanFirst
+      ? await port.reconcileHub(guildId, channelId, actorDiscordUserId)
+      : await port.publishHub(guildId, channelId, actorDiscordUserId);
+    await this.deps.repository.withTransaction(async (tx) => {
+      await this.audit(
+        tx,
+        ctx,
+        guildId,
+        preferScanFirst ? 'admin.hub.reconcile' : 'admin.hub.publish',
+        {
+          channelId,
+          mode: result.mode,
+        },
+      );
+    });
+    return result;
+  }
+
+  public async resolveMemberDisplays(
+    guildId: string,
+    userIds: readonly string[],
+    actor: ActorSubject,
+  ) {
+    await this.requireManageGuild(actor, guildId);
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null || userIds.length === 0) {
+      return [];
+    }
+    return port.resolveMembers(guildId, userIds);
+  }
+
   /** Expose activity detail shape for cancel/takeover permission checks by guild. */
   public async assertActivityInGuild(guildId: string, activityId: string): Promise<ActivityRecord> {
     return this.deps.repository.withTransaction(async (tx) => {

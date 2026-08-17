@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 
 import type { ActivityRepositoryPort, AuthorizePort } from '../application/ports/activity.ports.js';
 import type { DiscordChannelValidationPort } from '../application/ports/discord-channel-validation.port.js';
+import type { DiscordGuildMetadataPort } from '../application/ports/discord-guild-metadata.port.js';
 import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
 import { ActivityUseCases } from '../application/use-cases/activity.use-cases.js';
 import { type Clock, SystemClock } from '../domain/clock.js';
@@ -13,6 +14,7 @@ import {
 import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/activity-env.js';
 import { createActivityPool } from '../infrastructure/db/pg-pool.js';
 import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
+import { createDiscordGuildMetadataPort } from '../infrastructure/discord/discord-guild-metadata-client.js';
 import {
   type AssertionJtiStore,
   createAssertionJtiStore,
@@ -35,6 +37,7 @@ import {
   ASSERTION_JTI_STORE,
   AUTHORIZE_PORT,
   DISCORD_CHANNEL_VALIDATION,
+  DISCORD_GUILD_METADATA,
   INBOUND_CLIENT_REGISTRY,
 } from './activity.tokens.js';
 import { HealthController } from './health.controller.js';
@@ -82,6 +85,12 @@ const providers: Provider[] = [
     inject: [ACTIVITY_CONFIG],
   },
   {
+    provide: DISCORD_GUILD_METADATA,
+    useFactory: (config: ActivityEnv): DiscordGuildMetadataPort | null =>
+      createDiscordGuildMetadataPort(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
     provide: ACTIVITY_USE_CASES,
     useFactory: (
       repository: ActivityRepositoryPort,
@@ -106,6 +115,7 @@ const providers: Provider[] = [
       clock: Clock,
       config: ActivityEnv,
       discordChannelValidation: DiscordChannelValidationPort | null,
+      discordGuildMetadata: DiscordGuildMetadataPort | null,
     ): ActivityAdminUseCases =>
       new ActivityAdminUseCases({
         repository,
@@ -114,6 +124,7 @@ const providers: Provider[] = [
         allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
         nodeEnv: config.NODE_ENV,
         discordChannelValidation,
+        discordGuildMetadata,
       }),
     inject: [
       ACTIVITY_REPOSITORY,
@@ -121,6 +132,7 @@ const providers: Provider[] = [
       ACTIVITY_CLOCK,
       ACTIVITY_CONFIG,
       DISCORD_CHANNEL_VALIDATION,
+      DISCORD_GUILD_METADATA,
     ],
   },
   {

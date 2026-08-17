@@ -44,7 +44,7 @@ export function ProjectionsPage() {
 
   return (
     <section>
-      <PageHeader title="Projections" description="Discord projection problems and repair." />
+      <PageHeader title="Projekcje" description="Stan techniczny publikacji na Discordzie." />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 

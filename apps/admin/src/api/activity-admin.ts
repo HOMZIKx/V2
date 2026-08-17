@@ -49,12 +49,13 @@ export interface FieldDefDto {
 
 export interface ChannelsConfigDto {
   readonly channelIds: readonly string[];
+  readonly configRevision?: number;
 }
 
 export interface PingsConfigDto {
   readonly roleIds: readonly string[];
-  /** Product rule: organizers may ping ≤2 roles. */
   readonly maxOrganizerRoles?: number;
+  readonly configRevision?: number;
 }
 
 export interface LimitsConfigDto {
@@ -86,6 +87,13 @@ export interface ActivityEventDto {
   readonly organizerDiscordUserId?: string | null;
   readonly participantCount?: number;
   readonly publicationChannelId?: string | null;
+  readonly typeLabel?: string | null;
+  readonly typeId?: string | null;
+}
+
+export interface MemberDisplayDto {
+  readonly id: string;
+  readonly displayName: string;
 }
 
 export interface ActivityEventDetailDto {
@@ -142,11 +150,45 @@ export interface HubConfigDto {
   readonly panelId?: string | null;
   readonly status?: string | null;
   readonly messageId?: string | null;
+  readonly lastSyncedAt?: string | null;
+  readonly configRevision?: number;
+}
+
+export interface DiscordChannelOption {
+  readonly id: string;
+  readonly name: string;
+  readonly type: number;
+  readonly usable: boolean;
+  readonly reason?: string;
+}
+
+export interface DiscordRoleOption {
+  readonly id: string;
+  readonly name: string;
+  readonly managed: boolean;
+  readonly everyone: boolean;
+}
+
+export interface ReminderEntry {
+  readonly offsetMinutes: number;
 }
 
 export interface AdminGuildListItem {
   readonly id: string;
   readonly name: string;
+}
+
+export interface GuildAdminConfigDto {
+  readonly configRevision: number;
+  readonly maxActivePerCreator: number;
+  readonly maxCreateHorizonDays: number;
+  readonly allowOtherActivity: boolean;
+  readonly postRetentionHoursAfterFinish: number;
+  readonly dmNotificationsEnabled: boolean;
+  readonly reminders: unknown;
+  readonly hubChannelId: string | null;
+  readonly allowedPublishChannelIds?: readonly string[];
+  readonly pingRoleIds?: readonly string[];
 }
 
 function asList<T>(payload: unknown, keys: readonly string[] = ['items', 'data']): T[] {
@@ -286,7 +328,7 @@ export async function deleteStatus(guildId: string, statusId: string): Promise<v
 }
 
 export async function listFields(guildId: string): Promise<FieldDefDto[]> {
-  return asList(await apiRequest(adminGuild(guildId, '/fields')));
+  return asList(await apiRequest(adminGuild(guildId, '/participant-fields')));
 }
 
 export async function createField(
@@ -294,7 +336,11 @@ export async function createField(
   body: Omit<FieldDefDto, 'id'>,
 ): Promise<FieldDefDto> {
   return asObject(
-    await apiRequest(adminGuild(guildId, '/fields'), { method: 'POST', body, idempotent: true }),
+    await apiRequest(adminGuild(guildId, '/participant-fields'), {
+      method: 'POST',
+      body,
+      idempotent: true,
+    }),
   );
 }
 
@@ -304,7 +350,7 @@ export async function updateField(
   body: Partial<Omit<FieldDefDto, 'id'>>,
 ): Promise<FieldDefDto> {
   return asObject(
-    await apiRequest(adminGuild(guildId, `/fields/${encodeURIComponent(fieldId)}`), {
+    await apiRequest(adminGuild(guildId, `/participant-fields/${encodeURIComponent(fieldId)}`), {
       method: 'PATCH',
       body,
       idempotent: true,
@@ -313,18 +359,19 @@ export async function updateField(
 }
 
 export async function deleteField(guildId: string, fieldId: string): Promise<void> {
-  await apiRequest(adminGuild(guildId, `/fields/${encodeURIComponent(fieldId)}`), {
+  await apiRequest(adminGuild(guildId, `/participant-fields/${encodeURIComponent(fieldId)}`), {
     method: 'DELETE',
     idempotent: true,
   });
 }
 
 export async function getChannels(guildId: string): Promise<ChannelsConfigDto> {
-  const payload = asObject<ChannelsConfigDto & { allowedPublishChannelIds?: string[] }>(
-    await apiRequest(adminGuild(guildId, '/channels')),
-  );
+  const payload = asObject<
+    ChannelsConfigDto & { allowedPublishChannelIds?: string[]; configRevision?: number }
+  >(await apiRequest(adminGuild(guildId, '/channels')));
   return {
     channelIds: payload.channelIds ?? payload.allowedPublishChannelIds ?? [],
+    ...(payload.configRevision !== undefined ? { configRevision: payload.configRevision } : {}),
   };
 }
 
@@ -343,10 +390,13 @@ export async function updateChannels(
 }
 
 export async function getPings(guildId: string): Promise<PingsConfigDto> {
-  const payload = asObject<PingsConfigDto>(await apiRequest(adminGuild(guildId, '/pings')));
+  const payload = asObject<PingsConfigDto & { pingRoleIds?: string[] }>(
+    await apiRequest(adminGuild(guildId, '/ping-roles')),
+  );
   return {
-    roleIds: payload.roleIds ?? [],
+    roleIds: payload.roleIds ?? payload.pingRoleIds ?? [],
     maxOrganizerRoles: payload.maxOrganizerRoles ?? 2,
+    ...(payload.configRevision !== undefined ? { configRevision: payload.configRevision } : {}),
   };
 }
 
@@ -355,7 +405,7 @@ export async function updatePings(
   roleIds: readonly string[],
 ): Promise<PingsConfigDto> {
   return asObject(
-    await apiRequest(adminGuild(guildId, '/pings'), {
+    await apiRequest(adminGuild(guildId, '/ping-roles'), {
       method: 'PUT',
       body: { roleIds },
       idempotent: true,
@@ -363,15 +413,33 @@ export async function updatePings(
   );
 }
 
-export async function getLimits(guildId: string): Promise<LimitsConfigDto> {
-  const payload = asObject<Partial<LimitsConfigDto>>(
-    await apiRequest(adminGuild(guildId, '/limits')),
+export async function getAdminConfig(guildId: string): Promise<GuildAdminConfigDto> {
+  const payload = asObject<Partial<GuildAdminConfigDto>>(
+    await apiRequest(adminGuild(guildId, '/config')),
   );
   return {
+    configRevision: payload.configRevision ?? 1,
     maxActivePerCreator: payload.maxActivePerCreator ?? 4,
-    horizonDays: payload.horizonDays ?? 14,
-    otherActivityEnabled: payload.otherActivityEnabled ?? true,
-    retentionHours: payload.retentionHours ?? 24,
+    maxCreateHorizonDays: payload.maxCreateHorizonDays ?? 14,
+    allowOtherActivity: payload.allowOtherActivity ?? true,
+    postRetentionHoursAfterFinish: payload.postRetentionHoursAfterFinish ?? 24,
+    dmNotificationsEnabled: payload.dmNotificationsEnabled ?? false,
+    reminders: payload.reminders ?? [],
+    hubChannelId: payload.hubChannelId ?? null,
+    ...(payload.allowedPublishChannelIds !== undefined
+      ? { allowedPublishChannelIds: payload.allowedPublishChannelIds }
+      : {}),
+    ...(payload.pingRoleIds !== undefined ? { pingRoleIds: payload.pingRoleIds } : {}),
+  };
+}
+
+export async function getLimits(guildId: string): Promise<LimitsConfigDto> {
+  const config = await getAdminConfig(guildId);
+  return {
+    maxActivePerCreator: config.maxActivePerCreator,
+    horizonDays: config.maxCreateHorizonDays,
+    otherActivityEnabled: config.allowOtherActivity,
+    retentionHours: config.postRetentionHoursAfterFinish,
   };
 }
 
@@ -379,22 +447,26 @@ export async function updateLimits(
   guildId: string,
   body: LimitsConfigDto,
 ): Promise<LimitsConfigDto> {
-  return asObject(
-    await apiRequest(adminGuild(guildId, '/limits'), {
-      method: 'PUT',
-      body,
-      idempotent: true,
-    }),
-  );
+  const current = await getAdminConfig(guildId);
+  await apiRequest(adminGuild(guildId, '/config'), {
+    method: 'PUT',
+    body: {
+      expectedRevision: current.configRevision,
+      maxActivePerCreator: body.maxActivePerCreator,
+      maxCreateHorizonDays: body.horizonDays,
+      allowOtherActivity: body.otherActivityEnabled,
+      postRetentionHoursAfterFinish: body.retentionHours,
+    },
+    idempotent: true,
+  });
+  return body;
 }
 
 export async function getNotifications(guildId: string): Promise<NotificationsConfigDto> {
-  const payload = asObject<Partial<NotificationsConfigDto>>(
-    await apiRequest(adminGuild(guildId, '/notifications')),
-  );
+  const config = await getAdminConfig(guildId);
   return {
-    dmEnabled: payload.dmEnabled ?? false,
-    reminders: payload.reminders ?? [],
+    dmEnabled: config.dmNotificationsEnabled,
+    reminders: config.reminders,
   };
 }
 
@@ -402,13 +474,17 @@ export async function updateNotifications(
   guildId: string,
   body: NotificationsConfigDto,
 ): Promise<NotificationsConfigDto> {
-  return asObject(
-    await apiRequest(adminGuild(guildId, '/notifications'), {
-      method: 'PUT',
-      body,
-      idempotent: true,
-    }),
-  );
+  const current = await getAdminConfig(guildId);
+  await apiRequest(adminGuild(guildId, '/config'), {
+    method: 'PUT',
+    body: {
+      expectedRevision: current.configRevision,
+      dmNotificationsEnabled: body.dmEnabled,
+      reminders: body.reminders,
+    },
+    idempotent: true,
+  });
+  return body;
 }
 
 export async function listReportReasons(guildId: string): Promise<ReportReasonDto[]> {
@@ -461,7 +537,42 @@ export async function listEvents(
 }
 
 export async function getEvent(guildId: string, eventId: string): Promise<ActivityEventDetailDto> {
-  return asObject(await apiRequest(adminGuild(guildId, `/events/${encodeURIComponent(eventId)}`)));
+  const payload = asObject<
+    {
+      activity?: ActivityEventDetailDto & { participantCount?: number };
+      participations?: readonly unknown[];
+    } & ActivityEventDetailDto
+  >(await apiRequest(adminGuild(guildId, `/events/${encodeURIComponent(eventId)}`)));
+  const activity = payload.activity ?? payload;
+  const participantCount =
+    activity.participantCount ??
+    (Array.isArray(payload.participations) ? payload.participations.length : undefined);
+  return {
+    id: activity.id,
+    name: activity.name,
+    status: activity.status,
+    startAt:
+      typeof activity.startAt === 'string' ? activity.startAt : String(activity.startAt ?? ''),
+    ...(activity.endAt !== undefined ? { endAt: activity.endAt } : {}),
+    ...(activity.organizerDiscordUserId !== undefined
+      ? { organizerDiscordUserId: activity.organizerDiscordUserId }
+      : {}),
+    ...(participantCount !== undefined ? { participantCount } : {}),
+    ...(activity.publicationChannelId !== undefined
+      ? { publicationChannelId: activity.publicationChannelId }
+      : {}),
+    ...(activity.description !== undefined ? { description: activity.description } : {}),
+    ...(activity.typeId !== undefined ? { typeId: activity.typeId } : {}),
+    ...(activity.enrollmentOpen !== undefined ? { enrollmentOpen: activity.enrollmentOpen } : {}),
+    ...(activity.participantLimit !== undefined
+      ? { participantLimit: activity.participantLimit }
+      : {}),
+    ...(activity.cancelReason !== undefined ? { cancelReason: activity.cancelReason } : {}),
+    ...(activity.timezone !== undefined ? { timezone: activity.timezone } : {}),
+    ...(activity.locationText !== undefined ? { locationText: activity.locationText } : {}),
+    ...(activity.version !== undefined ? { version: activity.version } : {}),
+    ...(activity.opaqueId !== undefined ? { opaqueId: activity.opaqueId } : {}),
+  };
 }
 
 export async function cancelEvent(
@@ -503,9 +614,9 @@ export async function resolveReport(
   resolution?: string,
 ): Promise<ReportDto> {
   return asObject(
-    await apiRequest(adminGuild(guildId, `/reports/${encodeURIComponent(reportId)}/resolve`), {
-      method: 'POST',
-      body: { resolution: resolution ?? 'resolved' },
+    await apiRequest(adminGuild(guildId, `/reports/${encodeURIComponent(reportId)}`), {
+      method: 'PATCH',
+      body: { status: resolution ?? 'resolved' },
       idempotent: true,
     }),
   );
@@ -537,12 +648,39 @@ export async function listAudit(
 }
 
 export async function getHub(guildId: string): Promise<HubConfigDto> {
-  const payload = asObject<HubConfigDto>(await apiRequest(adminGuild(guildId, '/hub')));
+  const payload = asObject<
+    HubConfigDto & {
+      hubChannelId?: string | null;
+      panel?: {
+        id?: string;
+        status?: string;
+        messageId?: string;
+        updatedAt?: string;
+        lastSyncedAt?: string;
+      };
+    }
+  >(await apiRequest(adminGuild(guildId, '/hub')));
+  const panel = payload.panel;
+  const lastSyncedAt = payload.lastSyncedAt ?? panel?.lastSyncedAt ?? panel?.updatedAt;
   return {
-    channelId: payload.channelId ?? null,
-    ...(payload.panelId !== undefined ? { panelId: payload.panelId } : {}),
-    ...(payload.status !== undefined ? { status: payload.status } : {}),
-    ...(payload.messageId !== undefined ? { messageId: payload.messageId } : {}),
+    channelId: payload.channelId ?? payload.hubChannelId ?? null,
+    ...(payload.panelId !== undefined
+      ? { panelId: payload.panelId }
+      : panel?.id !== undefined
+        ? { panelId: panel.id }
+        : {}),
+    ...(payload.status !== undefined
+      ? { status: payload.status }
+      : panel?.status !== undefined
+        ? { status: panel.status }
+        : {}),
+    ...(payload.messageId !== undefined
+      ? { messageId: payload.messageId }
+      : panel?.messageId !== undefined
+        ? { messageId: panel.messageId }
+        : {}),
+    ...(lastSyncedAt !== undefined ? { lastSyncedAt } : {}),
+    ...(payload.configRevision !== undefined ? { configRevision: payload.configRevision } : {}),
   };
 }
 
@@ -550,11 +688,52 @@ export async function updateHub(
   guildId: string,
   body: { channelId: string },
 ): Promise<HubConfigDto> {
+  const current = await getAdminConfig(guildId);
+  await apiRequest(adminGuild(guildId, '/hub/publish-intent'), {
+    method: 'POST',
+    body: { channelId: body.channelId, expectedRevision: current.configRevision },
+    idempotent: true,
+  });
+  return getHub(guildId);
+}
+
+export async function listDiscordChannels(guildId: string): Promise<DiscordChannelOption[]> {
+  return asList(await apiRequest(adminGuild(guildId, '/discord/channels')), ['channels', 'items']);
+}
+
+export async function listDiscordRoles(guildId: string): Promise<DiscordRoleOption[]> {
+  return asList(await apiRequest(adminGuild(guildId, '/discord/roles')), ['roles', 'items']);
+}
+
+export async function publishHubPanel(
+  guildId: string,
+): Promise<{ mode: string; messageId: string }> {
   return asObject(
-    await apiRequest(adminGuild(guildId, '/hub'), {
-      method: 'PUT',
-      body,
+    await apiRequest(adminGuild(guildId, '/hub/publish'), { method: 'POST', idempotent: true }),
+  );
+}
+
+export async function reconcileHubPanel(
+  guildId: string,
+): Promise<{ mode: string; messageId: string }> {
+  return asObject(
+    await apiRequest(adminGuild(guildId, '/hub/reconcile'), { method: 'POST', idempotent: true }),
+  );
+}
+
+export async function resolveMemberDisplays(
+  guildId: string,
+  userIds: readonly string[],
+): Promise<MemberDisplayDto[]> {
+  if (userIds.length === 0) {
+    return [];
+  }
+  return asList(
+    await apiRequest(adminGuild(guildId, '/discord/members/resolve'), {
+      method: 'POST',
+      body: { userIds },
       idempotent: true,
     }),
+    ['members', 'items'],
   );
 }

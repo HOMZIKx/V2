@@ -2,56 +2,56 @@
 
 ## 1. Status
 
-`READY_FOR_OWNER_DISCORD_VISUAL_REVIEW`
+`READY_FOR_OWNER_ADMIN_VISUAL_REVIEW`
 
-## 2. HEAD
+ROLLING AUDIT MODE: **ACTIVE**
 
-See git tip on `cursor/p4-1-activity-domain` after
-`P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001`.
-Baseline was `885ee5789dd1440d7b883657db46aa4fa9e920a0`.
+## 2. Checkpoints
 
-## 3. Delta summary (this task)
+PREVIOUS_TASK_ID: `P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001`  
+PREVIOUS_CHECKPOINT_SHA: `e53b1a49890702885ee494811f410aa499cf845b`  
+PREVIOUS_CHECKPOINT_PUSHED: YES
 
-### PHASE A
+CURRENT_TASK_ID: `P4-ADMIN-PRODUCTIZATION-001`  
+CURRENT_BASELINE_SHA: `e53b1a49890702885ee494811f410aa499cf845b`  
+CURRENT_CHECKPOINT_SHA: _(git tip after Admin push — do not amend)_
 
-- Format: Prettier on this file
-- Preview stacking: edit modal `deferUpdate` + `editReply` on the same
-  ephemeral; create still one new preview via `deferReply`
-- ACK before delayed activity HTTP (create and edit)
-- Edit prefill: signed UI snapshot in the preview; `showModal` without GET
-- Unchanged fields preserved (merge + prefill)
-- WWW 401: UnauthorizedState on the four activity pages; tests added
+ChatGPT may audit `PREVIOUS_CHECKPOINT_SHA` even though this branch now has
+newer Admin commits. Zero amend / rebase / force push / squash.
 
-### PHASE B
+## 3. Delta summary (Admin)
 
-- OWNER VISUAL CORRECTION: previous accent-only pass rejected as insufficient
-- Hub: one Container, groups **DZIAŁAJ** / **TWOJE**, Secondary buttons,
-  accent `#D48632`
-- Event renderer hierarchy pass (termin above secondary data)
-- Preview visually aligned; one-message edit flow kept
-- No V2 LAB coupling; Issue #20 not implemented
+- Workflow: ROLLING AUDIT MODE amendment in `docs/ai/WORKFLOW.md`
+- Admin IA rebuilt: Pulpit / Centrum Aktywności / Zaawansowane (Polish)
+- Dashboard answers: which guild, Discord connected?, Centrum ready?, panel status
+- Channel and role pickers use Discord metadata names
+- Notifications: DM toggle + reminder list (no JSON textarea)
+- Types / statuses / fields / report reasons: list + Edytuj / Dodaj
+- Hub publish / reconcile from Kanały i panel
+- Technical IDs under Diagnostyka
+- Owner-facing 409/403 mapping with Szczegóły
+- Shared design-system tokens/primitives expanded; web not productized
 
-## 4. Validation
+## 4. New contracts
 
-- Targeted Discord + WWW tests GREEN
-- `pnpm validate` (local) after visual changes
-- `pnpm audit --audit-level=high` → high = 0 unless deps changed
+- `GET /activity/v1/admin/guilds`
+- `GET .../discord/channels`, `GET .../discord/roles`
+- `POST .../discord/members/resolve`
+- `POST .../hub/publish`, `POST .../hub/reconcile`
+- Internal discord-gateway `internal/activity/v1/guilds/*` (projection secret)
 
-## 5. Owner actions
+Browser does not call Discord API.
 
-Review live Discord panel only:
+## 5. Validation
 
-1. overall look
-2. hierarchy
-3. whether it feels premium enough
-4. copy
-5. DZIAŁAJ / TWOJE grouping
-6. public event post + preview consistency
+Targeted design-system + admin + Playwright + metadata controller, then
+`pnpm validate`. See the Cursor report in chat for command results.
 
-Run `/centrum-reconcile` if the existing message was not updated in place.
-Do not publish a second panel.
+Screenshots (not committed): `tmp/ui-review/admin/`
 
 ## 6. Explicit
 
-NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ · ISSUE #20 NOT IMPLEMENTED
-ADMIN REDESIGN NOT STARTED · WWW REDESIGN NOT STARTED
+NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ · ISSUE #20 NOT IMPLEMENTED  
+WWW PRODUCTIZATION NOT STARTED  
+GLOBAL DESIGN SYSTEM: OWNER_VISUAL_REVIEW_REQUIRED  
+DISCORD RENDERER: not restyled in this task

@@ -1,7 +1,15 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 
-import { cancelEvent, listEvents, type ActivityEventDto } from '../api/activity-admin.js';
+import { Button, DataTable, Panel } from '@v2/design-system';
+
+import {
+  cancelEvent,
+  listEvents,
+  listTypes,
+  resolveMemberDisplays,
+  type ActivityEventDto,
+} from '../api/activity-admin.js';
 import {
   Flash,
   LoadGate,
@@ -11,42 +19,76 @@ import {
 } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
+function formatWhen(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+  return new Intl.DateTimeFormat('pl-PL', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
 export function EventsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const loader = useCallback(
-    (guildId: string) =>
-      listEvents(guildId, statusFilter.trim() === '' ? undefined : { status: statusFilter.trim() }),
+    async (guildId: string) => {
+      const items = await listEvents(
+        guildId,
+        statusFilter.trim() === '' ? undefined : { status: statusFilter.trim() },
+      );
+      const types = await listTypes(guildId).catch(() => []);
+      const typeLabels = new Map(types.map((type) => [type.id, type.label]));
+      const organizerIds = [
+        ...new Set(
+          items
+            .map((item) => item.organizerDiscordUserId)
+            .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+      const members =
+        organizerIds.length === 0
+          ? []
+          : await resolveMemberDisplays(guildId, organizerIds).catch(() => []);
+      const names = new Map(members.map((member) => [member.id, member.displayName]));
+      return { items, names, typeLabels };
+    },
     [statusFilter],
   );
   const { guildId, state, reload } = useGuildResource(loader);
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   async function onCancel(item: ActivityEventDto) {
     if (guildId === null) {
       return;
     }
-    const reason = window.prompt('Cancel reason (required):');
+    const reason = window.prompt('Powód anulowania (wymagany):');
     if (reason === null) {
       return;
     }
     if (reason.trim() === '') {
-      setError('Cancel reason is required.');
+      setError('Podaj powód anulowania.');
       return;
     }
-    if (!confirmDestructive(`Cancel event "${item.name}"?`)) {
+    if (!confirmDestructive(`Anulować wydarzenie „${item.name}”?`)) {
       return;
     }
     setBusy(true);
     setError(null);
+    setErrorDetail(null);
     setFlash(null);
     try {
       await cancelEvent(guildId, item.id, reason.trim());
-      setFlash('Event cancelled.');
+      setFlash('Wydarzenie anulowane.');
       reload();
     } catch (err) {
-      setError(errorFromUnknown(err).message);
+      const parsed = errorFromUnknown(err);
+      setError(parsed.message);
+      setErrorDetail(parsed.detail);
     } finally {
       setBusy(false);
     }
@@ -54,67 +96,91 @@ export function EventsPage() {
 
   return (
     <section>
-      <PageHeader title="Events" description="List activities with status filter and cancel." />
+      <PageHeader title="Wydarzenia" description="Zarządzanie aktywnościami serwera." />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
-      {error !== null ? <Flash tone="error">{error}</Flash> : null}
+      {error !== null ? (
+        <Flash tone="error" detail={errorDetail}>
+          {error}
+        </Flash>
+      ) : null}
 
-      <div className="panel row">
-        <label>
-          Status filter
-          <input
-            value={statusFilter}
-            disabled={busy}
-            placeholder="e.g. published"
-            onChange={(event) => {
-              setStatusFilter(event.target.value);
-            }}
-          />
-        </label>
-        <button type="button" disabled={busy} onClick={reload}>
-          Apply
-        </button>
-      </div>
+      <Panel>
+        <div className="row">
+          <label htmlFor="event-status-filter">
+            Status
+            <input
+              id="event-status-filter"
+              className="v2-input"
+              value={statusFilter}
+              disabled={busy}
+              placeholder="np. published"
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+              }}
+            />
+          </label>
+          <Button disabled={busy} onClick={reload}>
+            Filtruj
+          </Button>
+        </div>
+      </Panel>
 
-      <LoadGate<ActivityEventDto[]> state={state} emptyMessage="No events.">
-        {(items) => (
-          <div className="panel">
-            <table className="data">
+      <LoadGate<{
+        items: ActivityEventDto[];
+        names: Map<string, string>;
+        typeLabels: Map<string, string>;
+      }>
+        state={state}
+        emptyMessage="Brak wydarzeń."
+      >
+        {(data) => (
+          <Panel>
+            <DataTable>
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Nazwa</th>
+                  <th>Typ</th>
+                  <th>Termin</th>
+                  <th>Organizator</th>
                   <th>Status</th>
-                  <th>Start</th>
-                  <th>Participants</th>
-                  <th>Actions</th>
+                  <th>Uczestnicy</th>
+                  <th>Akcje</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item) => (
+                {data.items.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <Link to={`/activity/events/${item.id}`}>{item.name}</Link>
                     </td>
                     <td>
-                      <code>{item.status}</code>
+                      {item.typeId !== undefined && item.typeId !== null
+                        ? (data.typeLabels.get(item.typeId) ?? '—')
+                        : (item.typeLabel ?? '—')}
                     </td>
-                    <td>{item.startAt}</td>
+                    <td>{formatWhen(item.startAt)}</td>
+                    <td>
+                      {item.organizerDiscordUserId
+                        ? (data.names.get(item.organizerDiscordUserId) ?? 'Organizator')
+                        : '—'}
+                    </td>
+                    <td>{item.status}</td>
                     <td>{item.participantCount ?? '—'}</td>
                     <td className="row">
-                      <Link to={`/activity/events/${item.id}`}>Detail</Link>
-                      <button
-                        type="button"
-                        className="danger"
+                      <Link to={`/activity/events/${item.id}`}>Szczegóły</Link>
+                      <Button
+                        variant="danger"
                         disabled={busy || item.status === 'cancelled'}
                         onClick={() => void onCancel(item)}
                       >
-                        Cancel
-                      </button>
+                        Anuluj
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+            </DataTable>
+          </Panel>
         )}
       </LoadGate>
     </section>

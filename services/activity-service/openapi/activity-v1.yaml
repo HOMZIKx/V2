@@ -435,6 +435,12 @@ paths:
           description: Seeded (test-only)
         '403':
           description: Seed disabled (production or allowTestSeed false)
+  /activity/v1/admin/guilds:
+    get:
+      summary: List guilds with Discord display names
+      responses:
+        '200':
+          description: Guild list
   /activity/v1/admin/guilds/{guildId}/config:
     get:
       summary: Get guild admin config
@@ -876,6 +882,48 @@ paths:
       responses:
         '200':
           description: Intent stored
+  /activity/v1/admin/guilds/{guildId}/discord/channels:
+    get:
+      summary: Discord channel metadata for Admin pickers (read-only)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Channel list with names
+  /activity/v1/admin/guilds/{guildId}/discord/roles:
+    get:
+      summary: Discord role metadata for Admin pickers (read-only)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Role list with names
+  /activity/v1/admin/guilds/{guildId}/hub/publish:
+    post:
+      summary: Publish Centrum panel via Discord gateway
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Panel published or updated in place
+  /activity/v1/admin/guilds/{guildId}/hub/reconcile:
+    post:
+      summary: Reconcile Centrum panel via Discord gateway
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Panel reconciled
+  /activity/v1/admin/guilds/{guildId}/discord/members/resolve:
+    post:
+      summary: Resolve Discord member display names for Admin (read-only)
+      parameters:
+        - $ref: '#/components/parameters/GuildId'
+      responses:
+        '200':
+          description: Member display names
 components:
   parameters:
     IdempotencyKey:

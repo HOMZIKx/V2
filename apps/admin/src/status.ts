@@ -1,1 +1,1 @@
-export const adminStatusMessage = () => 'V2 Admin is running';
+export const adminStatusMessage = () => 'V2 Control Center';

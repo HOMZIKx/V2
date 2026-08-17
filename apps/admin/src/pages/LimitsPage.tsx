@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { Button, FormField, Panel, Toggle } from '@v2/design-system';
+
 import { getLimits, updateLimits, type LimitsConfigDto } from '../api/activity-admin.js';
-import { FieldError, Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
+import { Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
 const defaults: LimitsConfigDto = {
@@ -19,6 +21,7 @@ export function LimitsPage() {
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -41,13 +44,13 @@ export function LimitsPage() {
     }
     const errors: Record<string, string> = {};
     if (form.maxActivePerCreator < 1) {
-      errors['maxActivePerCreator'] = 'Must be ≥ 1.';
+      errors['maxActivePerCreator'] = 'Wartość musi być co najmniej 1.';
     }
     if (form.horizonDays < 1) {
-      errors['horizonDays'] = 'Must be ≥ 1.';
+      errors['horizonDays'] = 'Wartość musi być co najmniej 1.';
     }
     if (form.retentionHours < 1) {
-      errors['retentionHours'] = 'Must be ≥ 1.';
+      errors['retentionHours'] = 'Wartość musi być co najmniej 1.';
     }
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -55,15 +58,17 @@ export function LimitsPage() {
     }
     setBusy(true);
     setError(null);
+    setErrorDetail(null);
     setFlash(null);
     try {
       await updateLimits(guildId, form);
-      setFlash('Limits saved.');
+      setFlash('Limity zapisane.');
       setDirty(false);
       reload();
     } catch (err) {
       const parsed = errorFromUnknown(err);
       setError(parsed.message);
+      setErrorDetail(parsed.detail);
       if (Object.keys(parsed.fields).length > 0) {
         setFieldErrors(parsed.fields);
       }
@@ -75,83 +80,98 @@ export function LimitsPage() {
   return (
     <section>
       <PageHeader
-        title="Limits"
-        description="Max active, create horizon, other-activity toggle, retention."
+        title="Limity"
+        description="Ograniczenia, które naprawdę istnieją w konfiguracji serwera."
       />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
-      {error !== null ? <Flash tone="error">{error}</Flash> : null}
+      {error !== null ? (
+        <Flash tone="error" detail={errorDetail}>
+          {error}
+        </Flash>
+      ) : null}
 
-      <LoadGate state={state} emptyMessage="No limits config.">
+      <LoadGate state={state} emptyMessage="Brak konfiguracji limitów.">
         {() => (
-          <div className="panel form-grid">
-            <label>
-              Max active per creator
-              <input
-                type="number"
-                value={form.maxActivePerCreator}
-                disabled={busy}
-                onChange={(event) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    maxActivePerCreator: Number(event.target.value),
-                  }));
-                  setDirty(true);
-                }}
-              />
-              <FieldError message={fieldErrors['maxActivePerCreator']} />
-            </label>
-            <label>
-              Horizon (days)
-              <input
-                type="number"
-                value={form.horizonDays}
-                disabled={busy}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, horizonDays: Number(event.target.value) }));
-                  setDirty(true);
-                }}
-              />
-              <FieldError message={fieldErrors['horizonDays']} />
-            </label>
-            <label>
-              Retention (hours)
-              <input
-                type="number"
-                value={form.retentionHours}
-                disabled={busy}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, retentionHours: Number(event.target.value) }));
-                  setDirty(true);
-                }}
-              />
-              <FieldError message={fieldErrors['retentionHours']} />
-            </label>
-            <label className="inline-check">
-              <input
-                type="checkbox"
+          <Panel>
+            <div className="form-grid">
+              <FormField
+                label="Maksymalna liczba aktywności użytkownika"
+                htmlFor="limit-max-active"
+                error={fieldErrors['maxActivePerCreator']}
+              >
+                <input
+                  id="limit-max-active"
+                  className="v2-input"
+                  type="number"
+                  min={1}
+                  value={form.maxActivePerCreator}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      maxActivePerCreator: Number(event.target.value),
+                    }));
+                    setDirty(true);
+                  }}
+                />
+              </FormField>
+              <FormField
+                label="Horyzont planowania (dni)"
+                htmlFor="limit-horizon"
+                hint="Ile dni naprzód można zaplanować aktywność."
+                error={fieldErrors['horizonDays']}
+              >
+                <input
+                  id="limit-horizon"
+                  className="v2-input"
+                  type="number"
+                  min={1}
+                  value={form.horizonDays}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, horizonDays: Number(event.target.value) }));
+                    setDirty(true);
+                  }}
+                />
+              </FormField>
+              <FormField
+                label="Czas przechowywania posta (godziny)"
+                htmlFor="limit-retention"
+                error={fieldErrors['retentionHours']}
+              >
+                <input
+                  id="limit-retention"
+                  className="v2-input"
+                  type="number"
+                  min={1}
+                  value={form.retentionHours}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setForm((prev) => ({ ...prev, retentionHours: Number(event.target.value) }));
+                    setDirty(true);
+                  }}
+                />
+              </FormField>
+              <Toggle
+                id="limit-other"
+                label="Inna aktywność dostępna"
                 checked={form.otherActivityEnabled}
                 disabled={busy}
-                onChange={(event) => {
-                  setForm((prev) => ({ ...prev, otherActivityEnabled: event.target.checked }));
+                onChange={(checked) => {
+                  setForm((prev) => ({ ...prev, otherActivityEnabled: checked }));
                   setDirty(true);
                 }}
               />
-              Other activity enabled
-            </label>
-            <div className="row">
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={() => void onSave()}
-              >
-                {busy ? 'Saving…' : 'Save'}
-              </button>
-              <button type="button" disabled={busy} onClick={onCancel}>
-                Cancel
-              </button>
+              <div className="row">
+                <Button variant="primary" disabled={busy} onClick={() => void onSave()}>
+                  {busy ? 'Zapisywanie…' : 'Zapisz'}
+                </Button>
+                <Button disabled={busy} onClick={onCancel}>
+                  Anuluj
+                </Button>
+              </div>
             </div>
-          </div>
+          </Panel>
         )}
       </LoadGate>
     </section>

@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 
+import { Badge, Button, FormField, Panel, Toggle } from '@v2/design-system';
+
 import {
   createReportReason,
   deleteReportReason,
@@ -8,7 +10,6 @@ import {
   type ReportReasonDto,
 } from '../api/activity-admin.js';
 import {
-  FieldError,
   Flash,
   LoadGate,
   PageHeader,
@@ -24,12 +25,16 @@ export function ReportReasonsPage() {
   const { guildId, state, reload } = useGuildResource(loader);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Readonly<Record<string, string>>>({});
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   function startEdit(item: ReportReasonDto) {
+    setCreating(false);
     setEditingId(item.id);
     setForm({
       key: item.key,
@@ -37,11 +42,21 @@ export function ReportReasonsPage() {
       active: item.active,
       sortOrder: item.sortOrder,
     });
+    setShowAdvanced(false);
+    setFieldErrors({});
+  }
+
+  function startCreate() {
+    setEditingId(null);
+    setCreating(true);
+    setForm(emptyForm);
+    setShowAdvanced(true);
     setFieldErrors({});
   }
 
   function cancelEdit() {
     setEditingId(null);
+    setCreating(false);
     setForm(emptyForm);
     setFieldErrors({});
   }
@@ -52,10 +67,10 @@ export function ReportReasonsPage() {
     }
     const errors: Record<string, string> = {};
     if (form.key.trim() === '') {
-      errors['key'] = 'Key is required.';
+      errors['key'] = 'Podaj klucz techniczny.';
     }
     if (form.label.trim() === '') {
-      errors['label'] = 'Label is required.';
+      errors['label'] = 'Podaj nazwę powodu.';
     }
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -63,6 +78,7 @@ export function ReportReasonsPage() {
     }
     setBusy(true);
     setError(null);
+    setErrorDetail(null);
     setFlash(null);
     try {
       if (editingId === null) {
@@ -72,20 +88,21 @@ export function ReportReasonsPage() {
           active: form.active,
           sortOrder: form.sortOrder,
         });
-        setFlash('Reason created.');
+        setFlash('Powód dodany.');
       } else {
         await updateReportReason(guildId, editingId, {
           label: form.label.trim(),
           active: form.active,
           sortOrder: form.sortOrder,
         });
-        setFlash('Reason updated.');
+        setFlash('Powód zaktualizowany.');
       }
       cancelEdit();
       reload();
     } catch (err) {
       const parsed = errorFromUnknown(err);
       setError(parsed.message);
+      setErrorDetail(parsed.detail);
       if (Object.keys(parsed.fields).length > 0) {
         setFieldErrors(parsed.fields);
       }
@@ -98,124 +115,143 @@ export function ReportReasonsPage() {
     if (guildId === null) {
       return;
     }
-    if (!confirmDestructive(`Delete reason "${item.label}"?`)) {
+    if (!confirmDestructive(`Usunąć powód „${item.label}”?`)) {
       return;
     }
     setBusy(true);
     setError(null);
     try {
       await deleteReportReason(guildId, item.id);
-      setFlash('Reason deleted.');
+      setFlash('Powód usunięty.');
       reload();
     } catch (err) {
-      setError(errorFromUnknown(err).message);
+      const parsed = errorFromUnknown(err);
+      setError(parsed.message);
+      setErrorDetail(parsed.detail);
     } finally {
       setBusy(false);
     }
   }
 
+  const editorOpen = creating || editingId !== null;
+
   return (
     <section>
-      <PageHeader title="Report reasons" description="CRUD for moderation report categories." />
+      <PageHeader
+        title="Powody zgłoszeń"
+        description="Kategorie zgłoszeń widoczne przy zgłaszaniu aktywności."
+      />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
-      {error !== null ? <Flash tone="error">{error}</Flash> : null}
+      {error !== null ? (
+        <Flash tone="error" detail={errorDetail}>
+          {error}
+        </Flash>
+      ) : null}
 
-      <div className="panel form-grid">
-        <h2>{editingId === null ? 'Create reason' : 'Edit reason'}</h2>
-        <label>
-          Key
-          <input
-            value={form.key}
-            disabled={busy || editingId !== null}
-            onChange={(event) => {
-              setForm((prev) => ({ ...prev, key: event.target.value }));
-            }}
-          />
-          <FieldError message={fieldErrors['key']} />
-        </label>
-        <label>
-          Label
-          <input
-            value={form.label}
-            disabled={busy}
-            onChange={(event) => {
-              setForm((prev) => ({ ...prev, label: event.target.value }));
-            }}
-          />
-          <FieldError message={fieldErrors['label']} />
-        </label>
-        <label>
-          Sort order
-          <input
-            type="number"
-            value={form.sortOrder}
-            disabled={busy}
-            onChange={(event) => {
-              setForm((prev) => ({ ...prev, sortOrder: Number(event.target.value) }));
-            }}
-          />
-        </label>
-        <label className="inline-check">
-          <input
-            type="checkbox"
-            checked={form.active}
-            disabled={busy}
-            onChange={(event) => {
-              setForm((prev) => ({ ...prev, active: event.target.checked }));
-            }}
-          />
-          Active
-        </label>
-        <div className="row">
-          <button type="button" className="primary" disabled={busy} onClick={() => void onSave()}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-          <button type="button" disabled={busy} onClick={cancelEdit}>
-            Cancel
-          </button>
-        </div>
-      </div>
-
-      <LoadGate<ReportReasonDto[]> state={state} emptyMessage="No report reasons yet.">
+      <LoadGate<ReportReasonDto[]> state={state} emptyMessage="Brak powodów. Dodaj pierwszy.">
         {(items) => (
-          <div className="panel">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Label</th>
-                  <th>Active</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <code>{item.key}</code>
-                    </td>
-                    <td>{item.label}</td>
-                    <td>{item.active ? 'yes' : 'no'}</td>
-                    <td className="row">
-                      <button type="button" disabled={busy} onClick={() => startEdit(item)}>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="danger"
-                        disabled={busy}
-                        onClick={() => void onDelete(item)}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="stack">
+            {[...items]
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((item) => (
+                <Panel key={item.id}>
+                  <div className="row">
+                    <strong>{item.label}</strong>
+                    <Badge tone={item.active ? 'ok' : 'info'}>
+                      {item.active ? 'Aktywny' : 'Wyłączony'}
+                    </Badge>
+                    <Button disabled={busy} onClick={() => startEdit(item)}>
+                      Edytuj
+                    </Button>
+                  </div>
+                </Panel>
+              ))}
           </div>
         )}
       </LoadGate>
+
+      <div className="row" style={{ marginTop: '1rem' }}>
+        <Button variant="primary" disabled={busy} onClick={startCreate}>
+          Dodaj
+        </Button>
+      </div>
+
+      {editorOpen ? (
+        <Panel title={editingId === null ? 'Nowy powód' : 'Edycja powodu'} className="form-grid">
+          <FormField label="Nazwa" htmlFor="reason-label" error={fieldErrors['label']}>
+            <input
+              id="reason-label"
+              className="v2-input"
+              value={form.label}
+              disabled={busy}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, label: event.target.value }));
+              }}
+            />
+          </FormField>
+          <Toggle
+            id="reason-active"
+            label={form.active ? 'Aktywny' : 'Wyłączony'}
+            checked={form.active}
+            disabled={busy}
+            onChange={(checked) => {
+              setForm((prev) => ({ ...prev, active: checked }));
+            }}
+          />
+          {showAdvanced || creating ? (
+            <FormField
+              label="Klucz techniczny"
+              htmlFor="reason-key"
+              hint="Zaawansowane — wymagane przy tworzeniu."
+              error={fieldErrors['key']}
+            >
+              <input
+                id="reason-key"
+                className="v2-input"
+                value={form.key}
+                disabled={busy || editingId !== null}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, key: event.target.value }));
+                }}
+              />
+            </FormField>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowAdvanced(true);
+              }}
+            >
+              Pokaż zaawansowane
+            </Button>
+          )}
+          <div className="row">
+            <Button variant="primary" disabled={busy} onClick={() => void onSave()}>
+              {busy ? 'Zapisywanie…' : 'Zapisz'}
+            </Button>
+            <Button disabled={busy} onClick={cancelEdit}>
+              Anuluj
+            </Button>
+            {editingId !== null ? (
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => {
+                  const current =
+                    state.kind === 'ready'
+                      ? state.data.find((item) => item.id === editingId)
+                      : undefined;
+                  if (current !== undefined) {
+                    void onDelete(current);
+                  }
+                }}
+              >
+                Usuń
+              </Button>
+            ) : null}
+          </div>
+        </Panel>
+      ) : null}
     </section>
   );
 }

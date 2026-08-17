@@ -199,6 +199,12 @@ export class ActivityAdminController {
     @Inject(ACTIVITY_USE_CASES) private readonly activities: ActivityUseCases,
   ) {}
 
+  @Get('guilds')
+  @RequireOperation('activity_read')
+  public async listGuilds(@Req() request: AuthenticatedRequest) {
+    return { guilds: await this.admin.listAdminGuilds(actorFromRequest(request)) };
+  }
+
   @Get('guilds/:guildId/config')
   @RequireOperation('activity_read')
   public async getConfig(@Param('guildId') guildId: string, @Req() request: AuthenticatedRequest) {
@@ -702,5 +708,63 @@ export class ActivityAdminController {
       expectedRevision,
       mutationCtx(request, idempotencyKey),
     );
+  }
+
+  @Get('guilds/:guildId/discord/channels')
+  @RequireOperation('activity_read')
+  public async listDiscordChannels(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return { channels: await this.admin.listDiscordChannels(guildId, actorFromRequest(request)) };
+  }
+
+  @Get('guilds/:guildId/discord/roles')
+  @RequireOperation('activity_read')
+  public async listDiscordRoles(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return { roles: await this.admin.listDiscordRoles(guildId, actorFromRequest(request)) };
+  }
+
+  @Post('guilds/:guildId/hub/publish')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async hubPublish(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.admin.executeHubPublish(guildId, false, mutationCtx(request, idempotencyKey));
+  }
+
+  @Post('guilds/:guildId/hub/reconcile')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async hubReconcile(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.admin.executeHubPublish(guildId, true, mutationCtx(request, idempotencyKey));
+  }
+
+  @Post('guilds/:guildId/discord/members/resolve')
+  @HttpCode(200)
+  @RequireOperation('activity_read')
+  public async resolveDiscordMembers(
+    @Param('guildId') guildId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = parseOrThrow(z.object({ userIds: z.array(z.string().min(1)).max(50) }), body);
+    return {
+      members: await this.admin.resolveMemberDisplays(
+        guildId,
+        parsed.userIds,
+        actorFromRequest(request),
+      ),
+    };
   }
 }

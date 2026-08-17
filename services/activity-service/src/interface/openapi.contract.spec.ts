@@ -56,11 +56,17 @@ describe('OpenAPI activity-v1 contract', () => {
     expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/audit');
     expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub');
     expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub/publish-intent');
+    expect(raw).toContain('/activity/v1/admin/guilds');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/discord/channels');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/discord/roles');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub/publish');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/hub/reconcile');
+    expect(raw).toContain('/activity/v1/admin/guilds/{guildId}/discord/members/resolve');
     expect(raw).toContain('IfMatch');
   });
 
-  it('does not invent Discord-specific API paths', () => {
-    expect(raw).not.toContain('/discord/');
+  it('does not invent Discord REST API paths', () => {
+    expect(raw).not.toContain('https://discord.com');
     expect(raw).not.toContain('slash-command');
   });
 });

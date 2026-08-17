@@ -2,7 +2,10 @@
 
 ## Status
 
-`READY_FOR_OWNER_DISCORD_VISUAL_REVIEW`
+`READY_FOR_OWNER_ADMIN_VISUAL_REVIEW`
+
+Rolling audit: Discord visual checkpoint remains under ChatGPT audit.
+Admin Control Center is a new immutable checkpoint on the same branch.
 
 ## Explicit gates
 
@@ -11,56 +14,45 @@
 - **NO P4.6**
 - **NO RABBITMQ**
 - Issue #20 **NOT IMPLEMENTED**
-- **ADMIN REDESIGN NOT STARTED**
-- **WWW REDESIGN NOT STARTED**
-- Discord visual is **not** approved until owner reviews the live panel
+- **WWW PRODUCTIZATION NOT STARTED**
+- Global design system: **OWNER_VISUAL_REVIEW_REQUIRED** (not APPROVED)
+- Discord visual: still not owner-approved; do not amend that checkpoint
 
 ## Active phase
 
-`P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001`
+`P4-ADMIN-PRODUCTIZATION-001` (rolling; previous Discord closure is auditable by SHA)
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- Baseline HEAD: `885ee5789dd1440d7b883657db46aa4fa9e920a0`
+- Previous checkpoint (Discord closure): `e53b1a49890702885ee494811f410aa499cf845b`
+- Admin checkpoint: see git tip after this task push
 
 ## Delivered in this delta
 
-### PHASE A
-
-- Prettier on `docs/ai/CURSOR_TO_CHATGPT.md`
-- Draft edit uses `deferUpdate` on the existing preview (no stacked ephemerals)
-- Create/LFG still `deferReply` then HTTP; ACK before delayed ActivityHttpClient
-- Edit modal prefill from signed preview snapshot (no HTTP before `showModal`)
-- Unchanged draft fields merged on submit
-- WWW 401: UnauthorizedState on Activities / Detail / My / Inbox; My Activities
-  anonymous no longer stuck on loading
-
-### PHASE B
-
-- Hub rebuilt into **DZIAŁAJ** / **TWOJE** groups, short Polish copy
-- Accent remains `#D48632` / `0xD48632`; hub buttons Secondary only
-- Event post: title → termin → miejsca, then description/organizer, RSVP first
-- Draft preview: Container + name/termin/opis + Edytuj/Publikuj
-- No V2 LAB import; no decorative emoji; Issue #20 not claimed in copy
+- Owner-approved **ROLLING AUDIT MODE** in `docs/ai/WORKFLOW.md`
+- Admin rebuilt as **V2 Control Center** (Polish IA, Issue #12 tokens)
+- Human-readable guild / channel / role pickers
+- Reminder editor without raw JSON
+- Hub publish / reconcile from Admin (no slash-command instruction)
+- Technical screens under Zaawansowane
+- Minimal Discord metadata + hub execute contract (browser never talks to Discord)
 
 ## Owner next
 
-1. Review the live Discord Centrum panel (look, hierarchy, premium feel, copy,
-   DZIAŁAJ/TWOJE, event post + preview consistency)
-2. Run `/centrum-reconcile` on the test guild if the panel was not updated
-   in place after local discord-gateway restart
-3. Do **not** publish a second panel
-4. Zeabur deploy only on owner signal
+1. Visual review of Admin at 1440×900 and 390×844 (`tmp/ui-review/admin/`)
+2. ChatGPT audits Discord checkpoint `e53b1a4` and this Admin checkpoint independently
+3. Do **not** merge; do **not** start P4.5 / P4.6
 
 ## Explicitly not done
 
 - Merge to `main`
 - P4.5 / P4.6 / RabbitMQ / Issue #20
-- Admin / WWW redesign
-- Owner Discord visual approval
+- WWW productization
+- Owner approval of Admin or Discord visuals
+- Global design-system APPROVED
 
 ## Last updated
 
-2026-08-17 — P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001
+2026-08-17 — P4-ADMIN-PRODUCTIZATION-001

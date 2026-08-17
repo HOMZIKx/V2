@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { ApiClientError } from '../api/http.js';
+import { ownerFacingMessage } from '../owner-errors.js';
 
 export type LoadState<T> =
   | { readonly kind: 'loading' }
@@ -12,18 +12,15 @@ export function errorFromUnknown(error: unknown): {
   message: string;
   forbidden: boolean;
   fields: Readonly<Record<string, string>>;
+  detail: string | null;
 } {
-  if (error instanceof ApiClientError) {
-    return {
-      message: error.message,
-      forbidden: error.isForbidden,
-      fields: error.fields,
-    };
-  }
-  if (error instanceof Error) {
-    return { message: error.message, forbidden: false, fields: {} };
-  }
-  return { message: 'Unexpected error', forbidden: false, fields: {} };
+  const mapped = ownerFacingMessage(error);
+  return {
+    message: mapped.message,
+    forbidden: mapped.forbidden,
+    fields: mapped.fields,
+    detail: mapped.detail,
+  };
 }
 
 export function PageHeader(props: { title: string; description?: string }) {
@@ -35,8 +32,22 @@ export function PageHeader(props: { title: string; description?: string }) {
   );
 }
 
-export function Flash(props: { tone: 'success' | 'error' | 'info'; children: ReactNode }) {
-  return <div className={`flash flash-${props.tone}`}>{props.children}</div>;
+export function Flash(props: {
+  tone: 'success' | 'error' | 'info';
+  children: ReactNode;
+  detail?: string | null;
+}) {
+  return (
+    <div className={`flash flash-${props.tone}`} role={props.tone === 'error' ? 'alert' : 'status'}>
+      <div>{props.children}</div>
+      {props.detail !== undefined && props.detail !== null && props.detail !== '' ? (
+        <details className="details-toggle">
+          <summary>Szczegóły</summary>
+          <p>{props.detail}</p>
+        </details>
+      ) : null}
+    </div>
+  );
 }
 
 export function LoadGate<T>(props: {
@@ -45,16 +56,23 @@ export function LoadGate<T>(props: {
   children: (data: T) => ReactNode;
 }) {
   if (props.state.kind === 'loading') {
-    return <p className="state-loading">Loading…</p>;
+    return <p className="state-loading">Ładowanie…</p>;
   }
   if (props.state.kind === 'empty') {
-    return <p className="state-empty">{props.emptyMessage ?? 'Nothing here yet.'}</p>;
+    return <p className="state-empty">{props.emptyMessage ?? 'Nic tu jeszcze nie ma.'}</p>;
   }
   if (props.state.kind === 'error') {
     if (props.state.forbidden === true) {
-      return <p className="state-forbidden">Forbidden — you lack permission for this action.</p>;
+      return (
+        <p className="state-forbidden">
+          Nie masz uprawnień do tej operacji.
+          {props.state.message !== '' ? (
+            <span className="muted"> Szczegóły: {props.state.message}</span>
+          ) : null}
+        </p>
+      );
     }
-    return <p className="state-error">Error: {props.state.message}</p>;
+    return <p className="state-error">{props.state.message}</p>;
   }
   return <>{props.children(props.state.data)}</>;
 }

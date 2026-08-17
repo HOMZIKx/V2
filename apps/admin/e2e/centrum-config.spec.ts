@@ -1,3 +1,6 @@
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+
 import { expect, test, type Page, type Route } from '@playwright/test';
 
 const GUILD_A = 'guild-e2e-1';
@@ -33,10 +36,19 @@ type MockField = {
   active: boolean;
 };
 
+type MockReason = {
+  id: string;
+  key: string;
+  label: string;
+  active: boolean;
+  sortOrder: number;
+};
+
 type GuildStore = {
   types: MockType[];
   statuses: MockStatus[];
   fields: MockField[];
+  reasons: MockReason[];
   channelIds: string[];
   roleIds: string[];
   configRevision: number;
@@ -59,6 +71,7 @@ function emptyStore(): GuildStore {
     types: [],
     statuses: [],
     fields: [],
+    reasons: [],
     channelIds: [],
     roleIds: [],
     configRevision: 1,
@@ -225,6 +238,10 @@ async function installActivityAdminMocks(page: Page): Promise<{
         ...body,
       };
       store.statuses.push(created);
+      if (created.behavior === 'confirmed') {
+        store.organizerDefaultStatusId = created.id;
+        store.waitlistPromotionStatusId = created.id;
+      }
       store.audit.unshift({
         id: `audit-${store.audit.length + 1}`,
         action: 'admin.status.create',
@@ -237,11 +254,11 @@ async function installActivityAdminMocks(page: Page): Promise<{
       return;
     }
 
-    if (rest === '/fields' && method === 'GET') {
+    if ((rest === '/fields' || rest === '/participant-fields') && method === 'GET') {
       await json(route, 200, { items: store.fields });
       return;
     }
-    if (rest === '/fields' && method === 'POST') {
+    if ((rest === '/fields' || rest === '/participant-fields') && method === 'POST') {
       const body = request.postDataJSON() as Omit<MockField, 'id'>;
       const created: MockField = {
         id: `field-${store.fields.length + 1}`,
@@ -287,11 +304,11 @@ async function installActivityAdminMocks(page: Page): Promise<{
       return;
     }
 
-    if (rest === '/pings' && method === 'GET') {
+    if ((rest === '/pings' || rest === '/ping-roles') && method === 'GET') {
       await json(route, 200, { roleIds: store.roleIds, maxOrganizerRoles: 2 });
       return;
     }
-    if (rest === '/pings' && method === 'PUT') {
+    if ((rest === '/pings' || rest === '/ping-roles') && method === 'PUT') {
       const body = request.postDataJSON() as { roleIds: string[] };
       store.roleIds = body.roleIds;
       store.audit.unshift({
@@ -301,6 +318,84 @@ async function installActivityAdminMocks(page: Page): Promise<{
         createdAt: new Date().toISOString(),
       });
       await json(route, 200, { roleIds: store.roleIds, maxOrganizerRoles: 2 });
+      return;
+    }
+
+    if (rest === '/report-reasons' && method === 'GET') {
+      await json(route, 200, { items: store.reasons });
+      return;
+    }
+    if (rest === '/report-reasons' && method === 'POST') {
+      const body = request.postDataJSON() as Omit<MockReason, 'id'>;
+      const created: MockReason = {
+        id: `reason-${store.reasons.length + 1}`,
+        ...body,
+      };
+      store.reasons.push(created);
+      await json(route, 200, created);
+      return;
+    }
+
+    if (rest === '/discord/members/resolve' && method === 'POST') {
+      await json(route, 200, { members: [] });
+      return;
+    }
+
+    if (rest === '/discord/channels' && method === 'GET') {
+      await json(route, 200, {
+        channels: [
+          { id: '123456789012345678', name: 'centrum-aktywnosci', type: 0, usable: true },
+          { id: '111111111111111111', name: 'ogloszenia', type: 0, usable: true },
+        ],
+      });
+      return;
+    }
+    if (rest === '/discord/roles' && method === 'GET') {
+      await json(route, 200, {
+        roles: [
+          { id: '987654321098765432', name: 'Smok', managed: false, everyone: false },
+          { id: guildId, name: '@everyone', managed: false, everyone: true },
+        ],
+      });
+      return;
+    }
+    if (rest === '/hub' && method === 'GET') {
+      await json(route, 200, {
+        hubChannelId: store.channelIds[0] ?? null,
+        status: store.channelIds.length > 0 ? 'active' : null,
+        configRevision: store.configRevision,
+      });
+      return;
+    }
+    if (rest === '/hub/publish-intent' && method === 'POST') {
+      const body = request.postDataJSON() as { channelId: string };
+      store.channelIds = [body.channelId];
+      await json(route, 200, {
+        hubChannelId: body.channelId,
+        configRevision: store.configRevision,
+      });
+      return;
+    }
+    if ((rest === '/hub/publish' || rest === '/hub/reconcile') && method === 'POST') {
+      await json(route, 200, { mode: 'updated', messageId: 'msg-1' });
+      return;
+    }
+    if (rest === '/config' && method === 'GET') {
+      await json(route, 200, {
+        configRevision: store.configRevision,
+        maxActivePerCreator: 4,
+        maxCreateHorizonDays: 14,
+        allowOtherActivity: true,
+        postRetentionHoursAfterFinish: 72,
+        dmNotificationsEnabled: true,
+        reminders: [{ offsetMinutes: 30 }],
+        hubChannelId: store.channelIds[0] ?? null,
+      });
+      return;
+    }
+    if (rest === '/config' && method === 'PUT') {
+      store.configRevision += 1;
+      await json(route, 200, { configRevision: store.configRevision });
       return;
     }
 
@@ -328,113 +423,154 @@ async function installActivityAdminMocks(page: Page): Promise<{
 }
 
 test.describe('Centrum admin config flow (mocked API)', () => {
-  test('guild selector → configure → READY → persist → 409/403 → audit', async ({ page }) => {
+  test('guild selector → configure → checklist → persist → 409/403 → mobile', async ({ page }) => {
     const { stores } = await installActivityAdminMocks(page);
+    const nav = page.getByLabel('V2 Control Center');
+
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'V2 Control Center' })).toBeVisible();
+    await expect(page.locator('#guild-select')).toHaveValue(GUILD_A);
+    await expect(page.locator('#guild-select')).toContainText('E2E Guild Alpha');
+    await expect(page.locator('#guild-select')).not.toContainText(`Guild ${GUILD_A}`);
+
+    await nav.getByRole('link', { name: 'Przegląd' }).click();
+    await expect(page.getByRole('heading', { name: 'Konfiguracja Centrum' })).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Statusy zapisów' }).click();
+    await expect(page.getByRole('heading', { name: 'Statusy zapisów' })).toBeVisible();
+
+    async function createStatus(label: string, behavior: string) {
+      await page.getByRole('button', { name: 'Dodaj status' }).click();
+      await page.getByLabel('Nazwa', { exact: true }).fill(label);
+      await page.getByLabel('Znaczenie').selectOption(behavior);
+      await page.getByRole('button', { name: 'Zapisz' }).click();
+      await expect(page.getByText('Status dodany.')).toBeVisible();
+    }
+
+    await createStatus('Potwierdzony', 'confirmed');
+    await createStatus('Niepewny', 'tentative');
+    await createStatus('Odrzucony', 'declined');
+    await expect(page.getByText('Potwierdzony').first()).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Typy aktywności' }).click();
+    await page.getByRole('button', { name: 'Dodaj typ' }).click();
+    await page.getByLabel('Nazwa', { exact: true }).fill('Raid night');
+    await page.getByLabel('Klucz techniczny').fill('raid');
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Typ dodany.')).toBeVisible();
+    await expect(page.getByText('Raid night')).toBeVisible();
+    await expect(page.getByText('Aktywny').first()).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Formularz uczestnika' }).click();
+    await page.getByRole('button', { name: 'Dodaj pole' }).click();
+    await page.getByLabel('Nazwa', { exact: true }).fill('Klasa');
+    await page.getByLabel('Klucz techniczny').fill('player_class');
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Pole dodane.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
+    await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
+    await expect(page.locator('#publish-channel')).toContainText('centrum-aktywnosci');
+    await page.locator('#publish-channel').selectOption('123456789012345678');
+    await page.getByRole('button', { name: 'Zapisz kanał publikacji' }).click();
+    await expect(page.getByText('Kanał publikacji zapisany.')).toBeVisible();
+    await page.locator('#hub-channel').selectOption('123456789012345678');
+    await page.getByRole('button', { name: 'Opublikuj / odśwież' }).click();
+    await expect(page.getByText(/Panel opublikowany/)).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Role i pingi' }).click();
+    await expect(page.getByText('Smok')).toBeVisible();
+    await page.getByRole('checkbox', { name: /Smok/ }).check();
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Role do pingowania zapisane.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Powiadomienia' }).click();
+    await expect(page.getByRole('heading', { name: 'Powiadomienia' })).toBeVisible();
+    await expect(page.locator('textarea')).toHaveCount(0);
+    await expect(page.getByText('Reminders JSON')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Dodaj przypomnienie' }).click();
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Powiadomienia zapisane.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Limity' }).click();
+    await page.getByLabel('Maksymalna liczba aktywności użytkownika').fill('3');
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Limity zapisane.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Powody zgłoszeń' }).click();
+    await page.getByRole('button', { name: 'Dodaj' }).click();
+    await page.getByLabel('Nazwa', { exact: true }).fill('Spam');
+    await page.getByLabel('Klucz techniczny').fill('spam');
+    await page.getByRole('button', { name: 'Zapisz' }).click();
+    await expect(page.getByText('Powód dodany.')).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Przegląd' }).click();
+    await expect(page.getByText('Konfiguracja Centrum jest kompletna.')).toBeVisible();
+
+    const cwd = process.cwd().replace(/\\/g, '/');
+    const repoRoot = cwd.endsWith('/apps/admin')
+      ? path.resolve(process.cwd(), '../..')
+      : process.cwd();
+    const reviewDir = path.join(repoRoot, 'tmp', 'ui-review', 'admin');
+    await mkdir(reviewDir, { recursive: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/');
+    await page.screenshot({ path: path.join(reviewDir, 'desktop-dashboard.png'), fullPage: true });
+    await page.goto('/activity');
+    await page.screenshot({ path: path.join(reviewDir, 'desktop-przeglad.png'), fullPage: true });
+    await page.goto('/activity/channels');
+    await page.screenshot({ path: path.join(reviewDir, 'desktop-kanaly.png'), fullPage: true });
+    await page.goto('/activity/pings');
+    await page.screenshot({ path: path.join(reviewDir, 'desktop-role.png'), fullPage: true });
+    await page.goto('/activity/notifications');
+    await page.screenshot({
+      path: path.join(reviewDir, 'desktop-powiadomienia.png'),
+      fullPage: true,
+    });
+    await page.goto('/activity/types');
+    await page.screenshot({ path: path.join(reviewDir, 'desktop-typy.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.screenshot({ path: path.join(reviewDir, 'mobile-dashboard.png'), fullPage: true });
+    await page.goto('/activity/channels');
+    await page.screenshot({ path: path.join(reviewDir, 'mobile-kanaly.png'), fullPage: true });
+    await page.goto('/activity/types');
+    await page.screenshot({ path: path.join(reviewDir, 'mobile-typy.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     await page.goto('/activity');
-    await expect(
-      page.getByRole('heading', { name: 'Centrum Aktywności — Overview' }),
-    ).toBeVisible();
-    await expect(page.locator('#guild-select')).toBeVisible();
-    await expect(page.locator('#guild-select')).toHaveValue(GUILD_A);
-    await expect(page.getByText(ACTOR_ID)).toBeVisible();
 
-    // Statuses (confirmed / tentative / declined)
-    await page.getByRole('link', { name: 'Statuses' }).click();
-    await expect(page.getByRole('heading', { name: 'Participation statuses' })).toBeVisible();
-
-    async function createStatus(label: string, behavior: string, occupiesSlot: boolean) {
-      const form = page.locator('.panel.form-grid').filter({
-        has: page.getByRole('heading', { name: /Create status|Edit status/ }),
-      });
-      await form.getByRole('textbox').first().fill(label);
-      await form.getByRole('combobox').selectOption(behavior);
-      const occupies = form.getByRole('checkbox').first();
-      if ((await occupies.isChecked()) !== occupiesSlot) {
-        await occupies.click();
-      }
-      await form.getByRole('button', { name: 'Save' }).click();
-      await expect(page.getByText('Status created.')).toBeVisible();
-    }
-
-    await createStatus('Confirmed', 'confirmed', true);
-    await createStatus('Tentative', 'tentative', true);
-    await createStatus('Declined', 'declined', false);
-    await expect(page.getByRole('cell', { name: 'Confirmed', exact: true })).toBeVisible();
-
-    // Types
-    await page.getByRole('link', { name: 'Types' }).click();
-    await expect(page.getByRole('heading', { name: 'Activity types' })).toBeVisible();
-    {
-      const form = page.locator('.panel.form-grid').filter({
-        has: page.getByRole('heading', { name: /Create type|Edit type/ }),
-      });
-      await form.getByRole('textbox').nth(0).fill('raid');
-      await form.getByRole('textbox').nth(1).fill('Raid night');
-      await form.getByRole('button', { name: 'Save' }).click();
-    }
-    await expect(page.getByText('Type created.')).toBeVisible();
-    await expect(page.getByText('Raid night')).toBeVisible();
-
-    // Fields
-    await page.getByRole('link', { name: 'Fields' }).click();
-    await expect(page.getByRole('heading', { name: 'Participant fields' })).toBeVisible();
-    {
-      const form = page.locator('.panel.form-grid').filter({
-        has: page.getByRole('heading', { name: /Create field|Edit field/ }),
-      });
-      await form.getByRole('textbox').nth(0).fill('player_class');
-      await form.getByRole('textbox').nth(1).fill('Class');
-      await form.getByRole('button', { name: 'Save' }).click();
-    }
-    await expect(page.getByText('Field created.')).toBeVisible();
-
-    // Channels
-    await page.getByRole('link', { name: 'Channels' }).click();
-    await page.getByLabel(/Channel IDs/).fill('123456789012345678');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Channels saved.')).toBeVisible();
-
-    // Pings
-    await page.getByRole('link', { name: 'Pings' }).click();
-    await page.getByLabel(/Role IDs/).fill('987654321098765432');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText('Ping roles saved.')).toBeVisible();
-
-    // Ensure defaults (organizer + waitlist) then readiness READY
-    await page.getByRole('link', { name: 'Overview', exact: true }).click();
-    await page.getByLabel('Organization ID').fill('org-e2e');
-    await page.getByRole('button', { name: 'Ensure defaults' }).click();
-    await expect(page.getByText('Defaults ensured.')).toBeVisible();
-    await page.getByRole('button', { name: 'Refresh' }).click();
-    await expect(page.getByText('READY', { exact: true })).toBeVisible();
-
-    // Reload persistence
     await page.reload();
-    await expect(page.getByText('READY', { exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'Types' }).click();
+    await expect(page.getByText('Konfiguracja Centrum jest kompletna.')).toBeVisible();
+    await nav.getByRole('link', { name: 'Typy aktywności' }).click();
     await expect(page.getByText('Raid night')).toBeVisible();
-    await page.getByRole('link', { name: 'Channels' }).click();
-    await expect(page.getByLabel(/Channel IDs/)).toHaveValue('123456789012345678');
 
-    // Conflict 409 on stale revision
+    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
     const storeA = stores.get(GUILD_A)!;
     storeA.forceChannelsConflict = true;
-    await page.getByLabel(/Channel IDs/).fill('111111111111111111');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByText(/Config revision mismatch|revision/i)).toBeVisible();
+    await page.locator('#publish-channel').selectOption('111111111111111111');
+    await page.getByRole('button', { name: 'Zapisz kanał publikacji' }).click();
+    await expect(page.getByText('Konfiguracja zmieniła się w międzyczasie.')).toBeVisible();
     storeA.forceChannelsConflict = false;
 
-    // Forbidden cross-guild 403
     storeA.forceForbidden = true;
-    await page.getByRole('link', { name: 'Overview', exact: true }).click();
-    await expect(page.getByText(/Forbidden/i)).toBeVisible();
+    await nav.getByRole('link', { name: 'Przegląd' }).click();
+    await expect(page.getByText('Nie masz uprawnień do tej operacji.')).toBeVisible();
     storeA.forceForbidden = false;
 
-    // Audit list has entry
-    await page.getByRole('link', { name: 'Audit' }).click();
-    await expect(page.getByRole('heading', { name: 'Audit' })).toBeVisible();
+    await nav.getByRole('link', { name: 'Audyt' }).click();
+    await expect(page.getByRole('heading', { name: 'Audyt' })).toBeVisible();
     await expect(page.getByText('admin.type.create')).toBeVisible();
-    await expect(page.getByText(ACTOR_ID).first()).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'V2 Control Center' })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(overflow).toBe(false);
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
+    await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
   });
 });

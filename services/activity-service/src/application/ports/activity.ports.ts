@@ -2,6 +2,7 @@ import type { Clock } from '../../domain/clock.js';
 import type { ActivityStatus } from '../../domain/lifecycle.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
 import type { DiscordChannelValidationPort } from './discord-channel-validation.port.js';
+import type { DiscordGuildMetadataPort } from './discord-guild-metadata.port.js';
 
 export interface ActorSubject {
   readonly discordUserId?: string;
@@ -608,4 +609,5 @@ export interface ActivityUseCaseDeps {
   readonly allowTestSeed?: boolean;
   readonly nodeEnv?: string;
   readonly discordChannelValidation?: DiscordChannelValidationPort | null;
+  readonly discordGuildMetadata?: DiscordGuildMetadataPort | null;
 }

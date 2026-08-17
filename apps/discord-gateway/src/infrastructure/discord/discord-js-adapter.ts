@@ -321,6 +321,122 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return { ok: true, code: 'CHANNEL_OK' };
   }
 
+  public listGuildPresentations(): readonly { id: string; name: string }[] {
+    return [...this.client.guilds.cache.values()].map((guild) => ({
+      id: guild.id,
+      name: guild.name,
+    }));
+  }
+
+  public async getGuildPresentation(guildId: string): Promise<{ id: string; name: string } | null> {
+    const cached = this.client.guilds.cache.get(guildId);
+    if (cached) {
+      return { id: cached.id, name: cached.name };
+    }
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+      return { id: guild.id, name: guild.name };
+    } catch {
+      return null;
+    }
+  }
+
+  public async listGuildChannelsForAdmin(guildId: string): Promise<
+    readonly {
+      id: string;
+      name: string;
+      type: number;
+      usable: boolean;
+      reason?: string;
+    }[]
+  > {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    await guild.channels.fetch();
+    const rows: Array<{
+      id: string;
+      name: string;
+      type: number;
+      usable: boolean;
+      reason?: string;
+    }> = [];
+    for (const channel of guild.channels.cache.values()) {
+      if (!('name' in channel) || typeof channel.name !== 'string') {
+        continue;
+      }
+      if (channel.type === ChannelType.GuildCategory) {
+        continue;
+      }
+      const validated = await this.validateActivityPublishChannel(guildId, channel.id);
+      rows.push({
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        usable: validated.ok,
+        ...(validated.ok ? {} : { reason: validated.detail ?? validated.code }),
+      });
+    }
+    return rows.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  }
+
+  public async listGuildRolesForAdmin(guildId: string): Promise<
+    readonly {
+      id: string;
+      name: string;
+      managed: boolean;
+      everyone: boolean;
+    }[]
+  > {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    await guild.roles.fetch();
+    return [...guild.roles.cache.values()]
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        managed: role.managed,
+        everyone: role.id === guild.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  }
+
+  public async resolveMemberDisplays(
+    guildId: string,
+    userIds: readonly string[],
+  ): Promise<readonly { id: string; displayName: string }[]> {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    const unique = [...new Set(userIds.filter((id) => id.trim().length > 0))].slice(0, 50);
+    const out: Array<{ id: string; displayName: string }> = [];
+    for (const userId of unique) {
+      try {
+        const member = await guild.members.fetch(userId);
+        out.push({ id: member.id, displayName: member.displayName });
+      } catch {
+        out.push({ id: userId, displayName: 'Organizator' });
+      }
+    }
+    return out;
+  }
+
+  private async fetchGuildOrNull(guildId: string): Promise<Guild | null> {
+    const cached = this.client.guilds.cache.get(guildId);
+    if (cached) {
+      return cached;
+    }
+    try {
+      return await this.client.guilds.fetch(guildId);
+    } catch {
+      return null;
+    }
+  }
+
   public async publishComponentsV2Message(
     channelId: string,
     payload: ComponentsV2MessagePayload,

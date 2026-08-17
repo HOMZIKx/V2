@@ -10,14 +10,16 @@ describe('Admin App', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders the technical status route through React Router', () => {
+  it('renders the Control Center dashboard', () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>
         <App />
       </MemoryRouter>,
     );
 
-    expect(markup).toContain('V2 Admin is running');
+    expect(markup).toContain('V2 Control Center');
+    expect(markup).not.toContain('V2 Admin is running');
+    expect(markup).toContain('Pulpit');
   });
 
   it('renders activity overview route with mocked fetch', () => {
@@ -26,9 +28,9 @@ describe('Admin App', () => {
       vi.fn((input: RequestInfo | URL) => {
         const url =
           typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-        if (url.includes('/admin/guilds') && !url.includes('/readiness')) {
+        if (url.includes('/admin/guilds') && !url.includes('/readiness') && !url.includes('/hub')) {
           return Promise.resolve(
-            new Response(JSON.stringify({ guilds: [{ id: 'g1', name: 'Test Guild' }] }), {
+            new Response(JSON.stringify({ guilds: [{ id: 'g1', name: 'Destiny' }] }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' },
             }),
@@ -46,6 +48,14 @@ describe('Admin App', () => {
             ),
           );
         }
+        if (url.includes('/hub')) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ hubChannelId: '111', status: 'active' }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          );
+        }
         return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
       }),
     );
@@ -56,7 +66,7 @@ describe('Admin App', () => {
       </MemoryRouter>,
     );
 
-    expect(markup).toContain('Centrum Aktywności — Overview');
-    expect(markup).toContain('Loading');
+    expect(markup).toContain('Konfiguracja Centrum');
+    expect(markup).toContain('Ładowanie');
   });
 });

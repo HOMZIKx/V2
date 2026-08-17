@@ -55,7 +55,7 @@ export function AuditPage() {
 
   return (
     <section>
-      <PageHeader title="Audit" description="Paginated activity audit log." />
+      <PageHeader title="Audyt" description="Historia zmian konfiguracji i działań." />
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
       <LoadGate<AuditEntryDto[]> state={state} emptyMessage="No audit entries.">
