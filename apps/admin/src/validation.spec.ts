@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  validateActivityTypeCreateForm,
   validateActivityTypeForm,
   validateChannelList,
   validateRemindersJson,
@@ -8,11 +9,11 @@ import {
 } from './form-validation.js';
 
 describe('admin form validation', () => {
-  it('requires type key and label', () => {
-    expect(validateActivityTypeForm({ key: '', label: '' })).toEqual({
-      key: 'Podaj klucz techniczny.',
+  it('requires type label and accepts generated keys on create', () => {
+    expect(validateActivityTypeCreateForm({ label: '' })).toEqual({
       label: 'Podaj nazwę.',
     });
+    expect(validateActivityTypeCreateForm({ label: 'Raid' })).toEqual({});
     expect(validateActivityTypeForm({ key: 'raid', label: 'Raid' })).toEqual({});
   });
 

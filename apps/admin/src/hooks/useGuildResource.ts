@@ -34,6 +34,7 @@ export function useGuildResource<T>(loader: (guildId: string) => Promise<T>) {
         setState({
           kind: 'error',
           message: parsed.message,
+          detail: parsed.detail,
           ...(parsed.forbidden ? { forbidden: true } : {}),
         });
       }

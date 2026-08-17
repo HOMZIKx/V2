@@ -347,7 +347,15 @@ export class ActivityAdminUseCases {
     ctx: MutationContext,
   ) {
     await this.requireConfigManage(ctx.actor, guildId);
+    const key = input.key.trim();
+    if (!/^[a-z0-9_:-]+$/i.test(key)) {
+      throw new ActivityError('VALIDATION_FAILED', 'Activity type key format is invalid');
+    }
     return this.mutate(ctx, 'admin-type-create', `guild:${guildId}`, async (tx) => {
+      const existing = await tx.listActivityTypes(guildId);
+      if (existing.some((row) => row.key === key)) {
+        throw new ActivityError('CONFLICT', 'Activity type key already exists');
+      }
       const created = await tx.insertActivityType({
         id: randomUUID(),
         guildId,

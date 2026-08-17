@@ -1,4 +1,5 @@
 import { readAdminSession } from '../auth/session.js';
+import { classifyNetworkFailure } from './network-error.js';
 
 export class ApiClientError extends Error {
   public readonly status: number;
@@ -115,12 +116,17 @@ export async function apiRequest<T>(
     }
   }
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    credentials: 'include',
-    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      credentials: 'include',
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    });
+  } catch (error) {
+    throw classifyNetworkFailure(error, url, method);
+  }
 
   const text = await response.text();
   let parsed: unknown = null;

@@ -2,10 +2,15 @@ import { useCallback, useState } from 'react';
 
 import { Badge, Button, FormField, Panel, Toggle } from '@v2/design-system';
 
+import { deriveActivityTypeKey } from '../activity-type-key.js';
 import { createType, listTypes, updateType, type ActivityTypeDto } from '../api/activity-admin.js';
 import { Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
+import {
+  resolveActivityTypeKeyForCreate,
+  validateActivityTypeCreateForm,
+  validateActivityTypeEditForm,
+} from '../form-validation.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
-import { validateActivityTypeForm } from './validation.js';
 
 const emptyForm = { key: '', label: '', enabled: true, isOther: false };
 
@@ -38,7 +43,7 @@ export function TypesPage() {
     setEditingId(null);
     setCreating(true);
     setForm(emptyForm);
-    setShowAdvanced(true);
+    setShowAdvanced(false);
     setFieldErrors({});
   }
 
@@ -53,7 +58,10 @@ export function TypesPage() {
     if (guildId === null) {
       return;
     }
-    const errors = validateActivityTypeForm(form);
+    const errors =
+      editingId === null
+        ? validateActivityTypeCreateForm({ label: form.label, key: form.key })
+        : validateActivityTypeEditForm({ label: form.label });
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       return;
@@ -63,8 +71,9 @@ export function TypesPage() {
     setFlash(null);
     try {
       if (editingId === null) {
+        const key = resolveActivityTypeKeyForCreate({ label: form.label, key: form.key });
         await createType(guildId, {
-          key: form.key.trim(),
+          key,
           label: form.label.trim(),
           enabled: form.enabled,
           isOther: form.isOther,
@@ -92,6 +101,8 @@ export function TypesPage() {
   }
 
   const editorOpen = creating || editingId !== null;
+  const previewKey =
+    creating && form.label.trim() !== '' ? deriveActivityTypeKey(form.label) : form.key.trim();
 
   return (
     <section>
@@ -152,24 +163,39 @@ export function TypesPage() {
               setForm((prev) => ({ ...prev, enabled: checked }));
             }}
           />
-          {showAdvanced || creating ? (
+          {editingId !== null && showAdvanced ? (
             <FormField
               label="Klucz techniczny"
               htmlFor="type-key"
-              hint="Zaawansowane — wymagane przy tworzeniu."
+              hint="Nie zmienia się po zapisaniu typu."
+            >
+              <input id="type-key" className="v2-input" value={form.key} disabled readOnly />
+            </FormField>
+          ) : null}
+          {creating && showAdvanced ? (
+            <FormField
+              label="Klucz techniczny (opcjonalnie)"
+              htmlFor="type-key"
+              hint={
+                previewKey !== ''
+                  ? `Domyślnie: ${previewKey}`
+                  : 'System wygeneruje klucz automatycznie z nazwy.'
+              }
               error={fieldErrors['key']}
             >
               <input
                 id="type-key"
                 className="v2-input"
                 value={form.key}
-                disabled={busy || editingId !== null}
+                disabled={busy}
+                placeholder={previewKey !== '' ? previewKey : 'lodowa_wiedzma'}
                 onChange={(event) => {
                   setForm((prev) => ({ ...prev, key: event.target.value }));
                 }}
               />
             </FormField>
-          ) : (
+          ) : null}
+          {!showAdvanced ? (
             <Button
               variant="ghost"
               onClick={() => {
@@ -178,7 +204,7 @@ export function TypesPage() {
             >
               Pokaż zaawansowane
             </Button>
-          )}
+          ) : null}
           <div className="row">
             <Button variant="primary" disabled={busy} onClick={() => void onSave()}>
               {busy ? 'Zapisywanie…' : 'Zapisz'}

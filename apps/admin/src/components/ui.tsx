@@ -5,7 +5,12 @@ import { ownerFacingMessage } from '../owner-errors.js';
 export type LoadState<T> =
   | { readonly kind: 'loading' }
   | { readonly kind: 'empty' }
-  | { readonly kind: 'error'; readonly message: string; readonly forbidden?: boolean }
+  | {
+      readonly kind: 'error';
+      readonly message: string;
+      readonly detail?: string | null;
+      readonly forbidden?: boolean;
+    }
   | { readonly kind: 'ready'; readonly data: T };
 
 export function errorFromUnknown(error: unknown): {
@@ -72,7 +77,19 @@ export function LoadGate<T>(props: {
         </p>
       );
     }
-    return <p className="state-error">{props.state.message}</p>;
+    return (
+      <div className="state-error">
+        <p>{props.state.message}</p>
+        {props.state.detail !== undefined &&
+        props.state.detail !== null &&
+        props.state.detail !== '' ? (
+          <details className="details-toggle">
+            <summary>Szczegóły</summary>
+            <p>{props.state.detail}</p>
+          </details>
+        ) : null}
+      </div>
+    );
   }
   return <>{props.children(props.state.data)}</>;
 }

@@ -23,6 +23,7 @@ describe('decideGuildInventory', () => {
     });
     expect(decision.guilds).toEqual([guildA]);
     expect(decision.selectedGuildId).toBe('guild-a');
+    expect(decision.devFallbackActive).toBe(true);
     expect(decision.loadState.kind).toBe('error');
     if (decision.loadState.kind !== 'error') {
       throw new Error('expected error state');
@@ -41,6 +42,7 @@ describe('decideGuildInventory', () => {
     expect(decision.guilds).toEqual([]);
     expect(decision.selectedGuildId).toBeNull();
     expect(decision.loadState).toEqual({ kind: 'empty' });
+    expect(decision.devFallbackActive).toBe(false);
   });
 
   it('shows an explicit identity-cookie API failure without DEV fallback', () => {
@@ -107,7 +109,7 @@ describe('decideGuildInventory', () => {
     });
     expect(decision.guilds).toEqual([guildA]);
     expect(decision.selectedGuildId).toBe('guild-a');
-    expect(decision.loadState).toEqual({ kind: 'ready' });
+    expect(decision.loadState).toEqual({ kind: 'ready', devFallbackActive: false });
     expect(JSON.stringify(decision.guilds)).not.toContain('guild-b');
     expect(JSON.stringify(decision.guilds)).not.toContain('Bravo');
   });
@@ -139,6 +141,7 @@ describe('decideGuildInventory', () => {
     expect(source).toContain('Brak serwerów, którymi możesz zarządzać.');
     expect(source).toContain('Spróbuj ponownie');
     expect(source).not.toContain('ustaw listę deweloperską');
+    expect(source).toContain('DEV_FALLBACK_ONLY');
     expect(source).not.toContain('VITE_ADMIN_DEV_GUILDS');
   });
 });

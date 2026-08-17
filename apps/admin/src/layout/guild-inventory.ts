@@ -4,7 +4,7 @@ export type GuildLoadState =
   | { readonly kind: 'loading' }
   | { readonly kind: 'error'; readonly message: string; readonly detail: string | null }
   | { readonly kind: 'empty' }
-  | { readonly kind: 'ready' };
+  | { readonly kind: 'ready'; readonly devFallbackActive?: boolean };
 
 export type GuildRemoteResult =
   | { readonly kind: 'ok'; readonly guilds: readonly AdminGuildOption[] }
@@ -30,6 +30,14 @@ export function resolveGuildListUserMessage(error: {
   if (code === 'UNAUTHENTICATED' || combined.includes('http 401')) {
     return 'Nie udało się potwierdzić sesji.';
   }
+  if (
+    code === 'CONNECTION_REFUSED' ||
+    code === 'SERVICE_NOT_RUNNING' ||
+    code === 'CORS' ||
+    combined.includes('nie udało się połączyć z usługą centrum aktywności')
+  ) {
+    return 'Nie udało się połączyć z usługą Centrum Aktywności.';
+  }
   return 'Nie udało się pobrać listy serwerów.';
 }
 
@@ -37,6 +45,7 @@ export type GuildInventoryDecision = {
   readonly guilds: readonly AdminGuildOption[];
   readonly selectedGuildId: string | null;
   readonly loadState: Exclude<GuildLoadState, { kind: 'loading' }>;
+  readonly devFallbackActive: boolean;
 };
 
 function pickSelected(
@@ -64,7 +73,9 @@ export function decideGuildInventory(input: {
     return {
       guilds,
       selectedGuildId: pickSelected(input.currentGuildId, guilds),
-      loadState: guilds.length === 0 ? { kind: 'empty' } : { kind: 'ready' },
+      loadState:
+        guilds.length === 0 ? { kind: 'empty' } : { kind: 'ready', devFallbackActive: false },
+      devFallbackActive: false,
     };
   }
 
@@ -79,6 +90,7 @@ export function decideGuildInventory(input: {
         message: 'Nie udało się odświeżyć listy serwerów. Pokazuję lokalną listę deweloperską.',
         detail: input.remote.detail ?? input.remote.message,
       },
+      devFallbackActive: true,
     };
   }
 
@@ -90,6 +102,7 @@ export function decideGuildInventory(input: {
       message: userMessage,
       detail: input.remote.detail ?? input.remote.message,
     },
+    devFallbackActive: false,
   };
 }
 

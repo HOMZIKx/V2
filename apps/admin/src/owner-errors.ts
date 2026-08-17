@@ -1,4 +1,7 @@
 import { ApiClientError } from './api/http.js';
+import { ApiNetworkError, isRawFetchFailureMessage } from './api/network-error.js';
+
+export const ACTIVITY_SERVICE_UNAVAILABLE = 'Nie udało się połączyć z usługą Centrum Aktywności.';
 
 export function ownerFacingMessage(error: unknown): {
   message: string;
@@ -7,6 +10,17 @@ export function ownerFacingMessage(error: unknown): {
   conflict: boolean;
   fields: Readonly<Record<string, string>>;
 } {
+  if (error instanceof ApiNetworkError) {
+    const url = new URL(error.url);
+    return {
+      message: ACTIVITY_SERVICE_UNAVAILABLE,
+      detail: `${error.kind} · ${error.method} ${url.origin}${url.pathname}`,
+      forbidden: false,
+      conflict: false,
+      fields: {},
+    };
+  }
+
   if (error instanceof ApiClientError) {
     const conflict =
       error.status === 409 ||
@@ -15,12 +29,20 @@ export function ownerFacingMessage(error: unknown): {
       error.code === 'IDEMPOTENCY_CONFLICT';
     const forbidden = error.isForbidden;
     if (conflict) {
+      const duplicateTypeKey =
+        error.message.toLowerCase().includes('activity type key') ||
+        error.message.toLowerCase().includes('key already exists');
       return {
-        message: 'Konfiguracja zmieniła się w międzyczasie. Odśwież dane i spróbuj ponownie.',
+        message: duplicateTypeKey
+          ? 'Typ o tej nazwie już istnieje. Zmień nazwę lub użyj innej w zaawansowanych ustawieniach.'
+          : 'Konfiguracja zmieniła się w międzyczasie. Odśwież dane i spróbuj ponownie.',
         detail: error.message,
         forbidden: false,
         conflict: true,
-        fields: error.fields,
+        fields:
+          duplicateTypeKey && error.fields.key === undefined
+            ? { key: 'Klucz jest już zajęty w tym serwerze.' }
+            : error.fields,
       };
     }
     if (forbidden) {
@@ -32,8 +54,19 @@ export function ownerFacingMessage(error: unknown): {
         fields: error.fields,
       };
     }
+    if (error.status === 401 || error.code === 'UNAUTHENTICATED') {
+      return {
+        message: 'Nie udało się potwierdzić sesji.',
+        detail: `${error.code} · HTTP ${String(error.status)}`,
+        forbidden: false,
+        conflict: false,
+        fields: error.fields,
+      };
+    }
     return {
-      message: error.message,
+      message: isRawFetchFailureMessage(error.message)
+        ? ACTIVITY_SERVICE_UNAVAILABLE
+        : error.message,
       detail: `${error.code} · HTTP ${String(error.status)}`,
       forbidden: false,
       conflict: false,
@@ -41,6 +74,15 @@ export function ownerFacingMessage(error: unknown): {
     };
   }
   if (error instanceof Error) {
+    if (isRawFetchFailureMessage(error.message)) {
+      return {
+        message: ACTIVITY_SERVICE_UNAVAILABLE,
+        detail: error.message,
+        forbidden: false,
+        conflict: false,
+        fields: {},
+      };
+    }
     return {
       message: error.message,
       detail: null,

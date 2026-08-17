@@ -223,7 +223,7 @@ async function installActivityAdminMocks(
       };
       const created: MockType = {
         id: `type-${store.types.length + 1}`,
-        key: body.key,
+        key: body.key ?? 'raid',
         label: body.label,
         enabled: body.enabled ?? true,
         isOther: body.isOther ?? false,
@@ -491,7 +491,6 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await nav.getByRole('link', { name: 'Typy aktywności' }).click();
     await page.getByRole('button', { name: 'Dodaj typ' }).click();
     await page.getByLabel('Nazwa', { exact: true }).fill('Raid night');
-    await page.getByLabel('Klucz techniczny').fill('raid');
     await page.getByRole('button', { name: 'Zapisz' }).click();
     await expect(page.getByText('Typ dodany.')).toBeVisible();
     await expect(page.getByText('Raid night')).toBeVisible();

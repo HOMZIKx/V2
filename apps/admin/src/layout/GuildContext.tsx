@@ -11,6 +11,7 @@ import {
 
 import { listAdminGuilds } from '../api/activity-admin.js';
 import { ApiClientError } from '../api/http.js';
+import { ApiNetworkError } from '../api/network-error.js';
 import { readAdminSession, type AdminGuildOption } from '../auth/session.js';
 import { errorFromUnknown } from '../components/ui.js';
 import { decideGuildInventory, initialDevGuilds, type GuildLoadState } from './guild-inventory.js';
@@ -21,6 +22,7 @@ interface GuildContextValue {
   readonly setGuildId: (id: string) => void;
   readonly loadingGuilds: boolean;
   readonly guildLoadState: GuildLoadState;
+  readonly devFallbackActive: boolean;
   readonly reloadGuilds: () => void;
 }
 
@@ -49,6 +51,7 @@ export function GuildProvider(props: { children: ReactNode }) {
   const fallbackGuilds = useMemo(() => [...initialDevGuilds(session)], [session]);
   const [guilds, setGuilds] = useState<AdminGuildOption[]>(() => [...fallbackGuilds]);
   const [guildLoadState, setGuildLoadState] = useState<GuildLoadState>({ kind: 'loading' });
+  const [devFallbackActive, setDevFallbackActive] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
   const [guildId, setGuildIdState] = useState<string | null>(() => {
     const stored = readStoredGuildId();
@@ -83,6 +86,7 @@ export function GuildProvider(props: { children: ReactNode }) {
         setGuilds([...decision.guilds]);
         setGuildIdState(decision.selectedGuildId);
         setGuildLoadState(decision.loadState);
+        setDevFallbackActive(decision.devFallbackActive);
       } catch (error) {
         if (cancelled) {
           return;
@@ -96,12 +100,17 @@ export function GuildProvider(props: { children: ReactNode }) {
             kind: 'error',
             message: parsed.message,
             detail: parsed.detail,
-            ...(error instanceof ApiClientError ? { code: error.code } : {}),
+            ...(error instanceof ApiClientError
+              ? { code: error.code }
+              : error instanceof ApiNetworkError
+                ? { code: error.kind }
+                : {}),
           },
         });
         setGuilds([...decision.guilds]);
         setGuildIdState(decision.selectedGuildId);
         setGuildLoadState(decision.loadState);
+        setDevFallbackActive(decision.devFallbackActive);
       }
     })();
     return () => {
@@ -120,6 +129,7 @@ export function GuildProvider(props: { children: ReactNode }) {
     setGuildId,
     loadingGuilds: guildLoadState.kind === 'loading',
     guildLoadState,
+    devFallbackActive,
     reloadGuilds,
   };
 

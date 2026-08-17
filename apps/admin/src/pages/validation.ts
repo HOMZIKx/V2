@@ -1,4 +1,7 @@
 export {
+  resolveActivityTypeKeyForCreate,
+  validateActivityTypeCreateForm,
+  validateActivityTypeEditForm,
   validateActivityTypeForm,
   validateChannelList,
   validateRemindersJson,

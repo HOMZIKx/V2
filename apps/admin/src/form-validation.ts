@@ -1,17 +1,41 @@
-export function validateActivityTypeForm(input: {
-  key: string;
+import { deriveActivityTypeKey, isValidActivityTypeKey } from './activity-type-key.js';
+
+export function validateActivityTypeCreateForm(input: {
+  label: string;
+  key?: string;
+}): Readonly<Record<string, string>> {
+  const errors: Record<string, string> = {};
+  const label = input.label.trim();
+  if (label === '') {
+    errors['label'] = 'Podaj nazwę.';
+    return errors;
+  }
+  const explicitKey = input.key?.trim() ?? '';
+  const key = explicitKey !== '' ? explicitKey : deriveActivityTypeKey(label);
+  if (key === '') {
+    errors['label'] = 'Nazwa musi zawierać litery lub cyfry.';
+  } else if (!isValidActivityTypeKey(key)) {
+    errors['key'] = 'Klucz może zawierać litery, cyfry, _ : -';
+  }
+  return errors;
+}
+
+export function validateActivityTypeEditForm(input: {
   label: string;
 }): Readonly<Record<string, string>> {
   const errors: Record<string, string> = {};
-  if (input.key.trim() === '') {
-    errors['key'] = 'Podaj klucz techniczny.';
-  } else if (!/^[a-z0-9_:-]+$/i.test(input.key.trim())) {
-    errors['key'] = 'Klucz może zawierać litery, cyfry, _ : -';
-  }
   if (input.label.trim() === '') {
     errors['label'] = 'Podaj nazwę.';
   }
   return errors;
+}
+
+/** @deprecated use validateActivityTypeCreateForm / validateActivityTypeEditForm */
+export function validateActivityTypeForm(input: {
+  key: string;
+  label: string;
+}): Readonly<Record<string, string>> {
+  return validateActivityTypeCreateForm({ label: input.label, key: input.key });
 }
 
 export function validateStatusForm(input: { label: string }): Readonly<Record<string, string>> {
@@ -47,4 +71,9 @@ export function validateRemindersJson(raw: string): {
   } catch {
     return { errors: { reminders: 'Przypomnienia mają nieprawidłowy format.' }, value: null };
   }
+}
+
+export function resolveActivityTypeKeyForCreate(input: { label: string; key?: string }): string {
+  const explicit = input.key?.trim() ?? '';
+  return explicit !== '' ? explicit : deriveActivityTypeKey(input.label);
 }

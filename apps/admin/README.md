@@ -25,6 +25,10 @@ For a real guild list (not only DEV fallback), also run `activity-service` with
 (dev-only). Discord Gateway must be running with `DISCORD_ENABLED=true` and the
 bot logged into the target guild.
 
+When `activity-service` is not running on `VITE_API_BASE_URL`, the UI shows
+**„Nie udało się połączyć z usługą Centrum Aktywności.”** (not raw browser
+`Failed to fetch`). DEV actor fallback guilds are labeled **DEV_FALLBACK_ONLY**.
+
 ## Auth (P4.3 pragmatic)
 
 - **Local/dev:** set `VITE_ADMIN_DEV_ACTOR_DISCORD_ID` (sent as `X-Actor-Discord-User-Id`).
