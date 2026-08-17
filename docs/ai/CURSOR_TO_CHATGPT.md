@@ -2,56 +2,45 @@
 
 ## 1. Status
 
-`READY_FOR_OWNER_ADMIN_VISUAL_REVIEW`
+`READY_FOR_OWNER_DISCORD_FIXUP_REVIEW`
 
 ROLLING AUDIT MODE: **ACTIVE**
 
 ## 2. Checkpoints
 
-PREVIOUS_TASK_ID: `P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001`  
-PREVIOUS_CHECKPOINT_SHA: `e53b1a49890702885ee494811f410aa499cf845b`  
-PREVIOUS_CHECKPOINT_PUSHED: YES
+PREVIOUS_TASK_ID: `P4-ADMIN-PRODUCTIZATION-001`  
+ADMIN_CHECKPOINT_SHA: `2824489cf788622587800e401c709c1083ae627b`  
+ADMIN_CHECKPOINT_PUSHED: YES
 
-CURRENT_TASK_ID: `P4-ADMIN-PRODUCTIZATION-001`  
-CURRENT_BASELINE_SHA: `e53b1a49890702885ee494811f410aa499cf845b`  
-CURRENT_CHECKPOINT_SHA: _(git tip after Admin push — do not amend)_
+AUDITED_DISCORD_SHA: `ba082b3cfe39d5c3a58a0f6384425750368fe811`
 
-ChatGPT may audit `PREVIOUS_CHECKPOINT_SHA` even though this branch now has
-newer Admin commits. Zero amend / rebase / force push / squash.
+CURRENT_TASK_ID: Discord audit fixup (Phase A)  
+DISCORD_FIXUP_SHA: _(git tip of this commit — do not amend)_
 
-## 3. Delta summary (Admin)
+ChatGPT may audit `ADMIN_CHECKPOINT_SHA` and `AUDITED_DISCORD_SHA` independently.
+Zero amend / rebase / force push / squash.
 
-- Workflow: ROLLING AUDIT MODE amendment in `docs/ai/WORKFLOW.md`
-- Admin IA rebuilt: Pulpit / Centrum Aktywności / Zaawansowane (Polish)
-- Dashboard answers: which guild, Discord connected?, Centrum ready?, panel status
-- Channel and role pickers use Discord metadata names
-- Notifications: DM toggle + reminder list (no JSON textarea)
-- Types / statuses / fields / report reasons: list + Edytuj / Dodaj
-- Hub publish / reconcile from Kanały i panel
-- Technical IDs under Diagnostyka
-- Owner-facing 409/403 mapping with Szczegóły
-- Shared design-system tokens/primitives expanded; web not productized
+## 3. Delta summary (Discord audit fixup)
 
-## 4. New contracts
+- Removed `v2dui.v1` / signed JSON from TextDisplay preview copy
+- `DraftUiStateCache`: in-memory, TTL 20 min, max 512, key = guildId + discordUserId + opaqueDraftId
+- Presentation cache only; activity-service remains draft SoT
+- Edit cache hit: `showModal` with zero HTTP
+- Edit cache miss: `deferUpdate` → HTTP → rebuild cache → update the same preview
+- Capacity: `Miejsca: 3/8` vs `Miejsca: bez limitu · zapisanych: 3`
+- WWW 401 pages already render `UnauthorizedState`; targeted test GREEN
+- GitHub Bugbot thread not resolved (`gh` unauthenticated):
+  https://github.com/HOMZIKx/V2/pull/19#discussion_r3792126672
 
-- `GET /activity/v1/admin/guilds`
-- `GET .../discord/channels`, `GET .../discord/roles`
-- `POST .../discord/members/resolve`
-- `POST .../hub/publish`, `POST .../hub/reconcile`
-- Internal discord-gateway `internal/activity/v1/guilds/*` (projection secret)
+## 4. Validation
 
-Browser does not call Discord API.
+Targeted discord interaction / cache / event renderer / WWW unauthorized, then
+`pnpm validate` — all full validation checks passed.
 
-## 5. Validation
-
-Targeted design-system + admin + Playwright + metadata controller, then
-`pnpm validate`. See the Cursor report in chat for command results.
-
-Screenshots (not committed): `tmp/ui-review/admin/`
-
-## 6. Explicit
+## 5. Explicit
 
 NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ · ISSUE #20 NOT IMPLEMENTED  
 WWW PRODUCTIZATION NOT STARTED  
 GLOBAL DESIGN SYSTEM: OWNER_VISUAL_REVIEW_REQUIRED  
-DISCORD RENDERER: not restyled in this task
+ADMIN: OWNER_VISUAL_REVIEW_REQUIRED  
+DISCORD: OWNER_VISUAL_REVIEW_REQUIRED

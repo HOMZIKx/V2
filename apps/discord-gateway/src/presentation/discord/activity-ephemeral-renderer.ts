@@ -16,11 +16,7 @@ import {
   createEventCustomId,
   type ActivityDraftAction,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
-import {
-  collectComponentStrings,
-  signDraftFormUiState,
-  type DraftFormUiState,
-} from './activity-draft-ui-state.js';
+import { collectComponentStrings } from './activity-draft-ui-state.js';
 import { ACTIVITY_MODULE_ACCENT } from './activity-theme.js';
 
 export type DraftFormSummaryInput = {
@@ -28,7 +24,6 @@ export type DraftFormSummaryInput = {
   signingSecret: string;
   title?: string;
   lines: string[];
-  formState?: DraftFormUiState;
 };
 
 /** Single ephemeral preview: Edit / Publish / Cancel — no sectional wizard. */
@@ -58,14 +53,6 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
       ),
     ),
   );
-
-  if (input.formState !== undefined) {
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        `\u2063${signDraftFormUiState(input.formState, input.signingSecret)}\u2063`,
-      ),
-    );
-  }
 
   return {
     components: [container],

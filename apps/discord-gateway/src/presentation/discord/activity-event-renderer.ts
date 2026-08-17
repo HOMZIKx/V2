@@ -60,6 +60,16 @@ export type ActivityEventRenderInput = {
 
 export type ActivityEventMessagePayload = MessageCreateOptions & MessageEditOptions;
 
+export function formatEventCapacity(
+  occupiedSlots: number,
+  participantLimit: number | null,
+): string {
+  if (participantLimit === null) {
+    return `Miejsca: bez limitu · zapisanych: ${occupiedSlots}`;
+  }
+  return `Miejsca: ${occupiedSlots}/${participantLimit}`;
+}
+
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
@@ -71,10 +81,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 export function renderActivityEventMessage(
   input: ActivityEventRenderInput,
 ): ActivityEventMessagePayload {
-  const seats =
-    input.participantLimit === null
-      ? `${input.occupiedSlots} miejsc`
-      : `${input.occupiedSlots} / ${input.participantLimit} miejsc`;
+  const seats = formatEventCapacity(input.occupiedSlots, input.participantLimit);
 
   const scheduleCore =
     typeof input.scheduleLabel === 'string' && input.scheduleLabel.trim().length > 0

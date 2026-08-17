@@ -10,6 +10,7 @@ import {
   createModalCustomId,
   createPanelCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import { DraftUiStateCache } from '../../presentation/discord/draft-ui-state-cache.js';
 import { ActivityInteractionHandler } from './activity-interaction-handler.js';
 
 const secret = 's'.repeat(32);
@@ -583,14 +584,6 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
       signingSecret: secret,
       title: 'A',
       lines: ['**A**', 'Kiedy: 20 sierpnia', 'Opis: B'],
-      formState: {
-        name: 'A',
-        description: 'B',
-        scheduleFromDisplay: '20.08.2026 18:00',
-        scheduleToDisplay: '',
-        whenKind: 'exact',
-        source: 'create',
-      },
     });
     const order: string[] = [];
     let releaseLookup!: () => void;
@@ -655,6 +648,26 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     expect(sent.payload.name).toBe('D');
     expect(sent.payload.description).toBe('B');
     expect(sent.payload.extraKeep).toBe('stay');
+    const previewJson = JSON.stringify((editReply.mock.calls[0] as unknown as [unknown])[0]);
+    expect(previewJson).not.toContain('v2dui.v1');
+    expect(previewJson).not.toContain('scheduleFromDisplay');
+
+    const showModal = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-after-submit-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: preview.components },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate: vi.fn(),
+      reply: vi.fn(),
+    } as never);
+    expect(showModal).toHaveBeenCalledOnce();
+    expect(lookupDraftByOpaque).toHaveBeenCalledTimes(1);
   });
 
   it('second edit still updates in place without a new reply', async () => {
@@ -665,14 +678,6 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
       signingSecret: secret,
       title: 'D',
       lines: ['**D**'],
-      formState: {
-        name: 'D',
-        description: 'B',
-        scheduleFromDisplay: '20.08.2026 18:00',
-        scheduleToDisplay: '',
-        whenKind: 'exact',
-        source: 'create',
-      },
     });
     const handler = new ActivityInteractionHandler({
       config: makeConfig(),
@@ -710,7 +715,16 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     expect(editReply).toHaveBeenCalledOnce();
   });
 
-  it('opens edit modal with existing values from signed snapshot and without HTTP', async () => {
+  const cachedFormState = {
+    name: 'A',
+    description: 'B',
+    scheduleFromDisplay: 'C',
+    scheduleToDisplay: '',
+    whenKind: 'exact' as const,
+    source: 'create' as const,
+  };
+
+  it('opens edit modal from cache hit before any HTTP', async () => {
     const { renderDraftFormSummary } =
       await import('../../presentation/discord/activity-ephemeral-renderer.js');
     const preview = renderDraftFormSummary({
@@ -718,23 +732,19 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
       signingSecret: secret,
       title: 'A',
       lines: ['**A**', 'Opis: B'],
-      formState: {
-        name: 'A',
-        description: 'B',
-        scheduleFromDisplay: 'C',
-        scheduleToDisplay: '',
-        whenKind: 'exact',
-        source: 'create',
-      },
     });
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
     const lookupDraftByOpaque = vi.fn();
     const handler = new ActivityInteractionHandler({
       config: makeConfig(),
       gateway: {} as never,
       activityClient: { lookupDraftByOpaque } as never,
       logger: createLogger(),
+      draftUiStateCache: cache,
     });
     const showModal = vi.fn(() => Promise.resolve(undefined));
+    const deferUpdate = vi.fn();
     await handler.handleComponent({
       customId: createDraftCustomId(opaqueDraft, 'edit', secret),
       guildId,
@@ -745,10 +755,11 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
       message: { components: preview.components },
       showModal,
       deferReply: vi.fn(),
-      deferUpdate: vi.fn(),
+      deferUpdate,
       reply: vi.fn(),
     } as never);
     expect(lookupDraftByOpaque).not.toHaveBeenCalled();
+    expect(deferUpdate).not.toHaveBeenCalled();
     expect(showModal).toHaveBeenCalledOnce();
     const firstModalCall = showModal.mock.calls[0] as unknown as
       [{ toJSON: () => unknown }] | undefined;
@@ -762,7 +773,169 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     expect(modalFieldValue(modal, 'schedule_from')).toBe('C');
   });
 
-  it('rejects forged edit snapshot fail-closed and ACKs before HTTP fallback', async () => {
+  it('does not let another user open a cached modal and ACKs before HTTP on miss', async () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
+    const order: string[] = [];
+    const lookupDraftByOpaque = vi.fn(() => {
+      order.push('http');
+      return Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      });
+    });
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    const showModal = vi.fn();
+    const deferUpdate = vi.fn(() => {
+      order.push('ack');
+      return Promise.resolve();
+    });
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: '999999999999999999' },
+      id: 'edit-other-user-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply,
+      reply: vi.fn(),
+    } as never);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(order[0]).toBe('ack');
+    expect(lookupDraftByOpaque).toHaveBeenCalled();
+  });
+
+  it('does not reuse cache across guilds', async () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
+    const lookupDraftByOpaque = vi.fn(() =>
+      Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      }),
+    );
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    const showModal = vi.fn();
+    const deferUpdate = vi.fn(() => Promise.resolve());
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId: '999000999000999000',
+      user: { id: operatorId },
+      id: 'edit-other-guild-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply: vi.fn(() => Promise.resolve(undefined)),
+      reply: vi.fn(),
+    } as never);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(deferUpdate).toHaveBeenCalledOnce();
+    expect(lookupDraftByOpaque).toHaveBeenCalled();
+  });
+
+  it('on cache miss defers immediately, updates the same preview, then opens modal on second click', async () => {
+    const { renderDraftFormSummary } =
+      await import('../../presentation/discord/activity-ephemeral-renderer.js');
+    const preview = renderDraftFormSummary({
+      opaqueDraftId: opaqueDraft,
+      signingSecret: secret,
+      title: 'A',
+      lines: ['**A**', 'Opis: B'],
+    });
+    const order: string[] = [];
+    const lookupDraftByOpaque = vi.fn(() => {
+      order.push('http');
+      return Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      });
+    });
+    const cache = new DraftUiStateCache();
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    const showModal = vi.fn(() => Promise.resolve(undefined));
+    const deferUpdate = vi.fn(() => {
+      order.push('ack');
+      return Promise.resolve();
+    });
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    const reply = vi.fn();
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-miss-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: preview.components },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply,
+      reply,
+    } as never);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(order[0]).toBe('ack');
+    expect(lookupDraftByOpaque).toHaveBeenCalledOnce();
+    expect(reply).not.toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledOnce();
+    const refreshed = JSON.stringify((editReply.mock.calls[0] as unknown as [unknown])[0]);
+    expect(refreshed).toContain('Edytuj');
+    expect(refreshed).toContain('Dane formularza zostały odświeżone');
+    expect(refreshed).toContain('Kliknij Edytuj ponownie');
+    expect(refreshed).not.toContain('v2dui.v1');
+
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-hit-2',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: preview.components },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply,
+      reply,
+    } as never);
+    expect(lookupDraftByOpaque).toHaveBeenCalledOnce();
+    expect(showModal).toHaveBeenCalledOnce();
+    const firstModalCall = showModal.mock.calls[0] as unknown as
+      [{ toJSON: () => unknown }] | undefined;
+    expect(firstModalCall).toBeDefined();
+    if (firstModalCall === undefined) {
+      throw new Error('expected showModal to receive a modal');
+    }
+    expect(modalFieldValue(firstModalCall[0], 'name')).toBe('A');
+  });
+
+  it('ignores forged v2dui tokens in preview copy and still fail-closes unsigned custom ids', async () => {
     const order: string[] = [];
     const lookupDraftByOpaque = vi.fn(() => {
       order.push('http');
@@ -787,7 +960,7 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
       customId: createDraftCustomId(opaqueDraft, 'edit', secret),
       guildId,
       user: { id: operatorId },
-      id: 'edit-forged-1',
+      id: 'edit-forged-token-1',
       isButton: () => true,
       isStringSelectMenu: () => false,
       message: {
@@ -808,5 +981,23 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     expect(order[0]).toBe('ack');
     expect(lookupDraftByOpaque).toHaveBeenCalled();
     expect(editReply).toHaveBeenCalledOnce();
+
+    const reply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: `activity:v1:draft:${opaqueDraft}:edit:forged`,
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-forged-custom-id-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate: vi.fn(),
+      editReply: vi.fn(),
+      reply,
+    } as never);
+    expect(reply).toHaveBeenCalledOnce();
+    expect(showModal).not.toHaveBeenCalled();
   });
 });

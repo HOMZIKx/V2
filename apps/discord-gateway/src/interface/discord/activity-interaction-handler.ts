@@ -30,8 +30,8 @@ import {
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
   draftPayloadToFormUiState,
-  extractDraftFormUiState,
   formUiStateToModalPayload,
+  type DraftFormUiState,
 } from '../../presentation/discord/activity-draft-ui-state.js';
 import {
   isDraftPreviewMessage,
@@ -44,6 +44,7 @@ import {
   scheduleToDraftPayload,
 } from '../../presentation/discord/activity-schedule-form.js';
 import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
+import { DraftUiStateCache } from '../../presentation/discord/draft-ui-state-cache.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
@@ -59,6 +60,7 @@ export type ActivityInteractionDeps = {
     warn(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
   };
+  draftUiStateCache?: DraftUiStateCache;
 };
 
 function actorOf(userId: string) {
@@ -134,7 +136,43 @@ function draftSummaryLines(payload: Record<string, unknown>): string[] {
 }
 
 export class ActivityInteractionHandler {
-  public constructor(private readonly deps: ActivityInteractionDeps) {}
+  private readonly draftUiCache: DraftUiStateCache;
+
+  public constructor(private readonly deps: ActivityInteractionDeps) {
+    this.draftUiCache = deps.draftUiStateCache ?? new DraftUiStateCache();
+  }
+
+  private resolveGuildId(guildId: string | null): string {
+    return guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
+  }
+
+  private rememberDraftFormUiState(
+    guildId: string | null,
+    discordUserId: string,
+    opaqueDraftId: string,
+    state: DraftFormUiState,
+  ): void {
+    this.draftUiCache.set(
+      {
+        guildId: this.resolveGuildId(guildId),
+        discordUserId,
+        opaqueDraftId,
+      },
+      state,
+    );
+  }
+
+  private readDraftFormUiState(
+    guildId: string | null,
+    discordUserId: string,
+    opaqueDraftId: string,
+  ): DraftFormUiState | null {
+    return this.draftUiCache.get({
+      guildId: this.resolveGuildId(guildId),
+      discordUserId,
+      opaqueDraftId,
+    });
+  }
 
   public isActivityComponent(customId: string): boolean {
     return isActivityCustomId(customId);
@@ -318,12 +356,19 @@ export class ActivityInteractionHandler {
           },
         );
         const nextPayload = draftPayload(updated);
+        const opaqueDraftId = opaqueFromUuid(updated.id);
+        const formState = draftPayloadToFormUiState(nextPayload);
+        this.rememberDraftFormUiState(
+          interaction.guildId,
+          interaction.user.id,
+          opaqueDraftId,
+          formState,
+        );
         const preview = renderDraftFormSummary({
-          opaqueDraftId: opaqueFromUuid(updated.id),
+          opaqueDraftId,
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
           title: parsedForm.name,
           lines: draftSummaryLines(nextPayload),
-          formState: draftPayloadToFormUiState(nextPayload),
         });
 
         if (fromExistingPreview) {
@@ -421,7 +466,11 @@ export class ActivityInteractionHandler {
   ): Promise<void> {
     try {
       const signingSecret = this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET;
-      const snapshot = extractDraftFormUiState(interaction.message, signingSecret);
+      const snapshot = this.readDraftFormUiState(
+        interaction.guildId,
+        interaction.user.id,
+        parsed.opaqueId,
+      );
       if (snapshot !== null) {
         // First Discord response must be showModal — no unbounded HTTP beforehand.
         const modal = buildActivityFormModal({
@@ -434,7 +483,6 @@ export class ActivityInteractionHandler {
         return;
       }
 
-      // Missing/invalid snapshot: ACK first, reload preview with signed state, same message.
       await interaction.deferUpdate();
       const draft = await this.deps.activityClient.lookupDraftByOpaque(
         parsed.opaqueId,
@@ -442,6 +490,12 @@ export class ActivityInteractionHandler {
       );
       const payload = draftPayload(draft);
       const formState = draftPayloadToFormUiState(payload);
+      this.rememberDraftFormUiState(
+        interaction.guildId,
+        interaction.user.id,
+        parsed.opaqueId,
+        formState,
+      );
       const name = typeof payload.name === 'string' ? payload.name : 'Podgląd aktywności';
       await interaction.editReply(
         asEditPayload(
@@ -452,9 +506,9 @@ export class ActivityInteractionHandler {
             lines: [
               ...draftSummaryLines(payload),
               '',
-              'Kliknij **Edytuj**, aby otworzyć formularz z obecnymi danymi.',
+              'Dane formularza zostały odświeżone.',
+              'Kliknij Edytuj ponownie.',
             ],
-            formState,
           }),
         ),
       );
@@ -860,6 +914,13 @@ export class ActivityInteractionHandler {
 
     if (parsed.action === 'preview') {
       const name = typeof payload.name === 'string' ? payload.name : 'Bez nazwy';
+      const formState = draftPayloadToFormUiState(payload);
+      this.rememberDraftFormUiState(
+        interaction.guildId,
+        interaction.user.id,
+        parsed.opaqueId,
+        formState,
+      );
       await interaction.editReply(
         asEditPayload(
           renderDraftFormSummary({
@@ -871,7 +932,6 @@ export class ActivityInteractionHandler {
               '',
               '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
             ],
-            formState: draftPayloadToFormUiState(payload),
           }),
         ),
       );
@@ -884,6 +944,13 @@ export class ActivityInteractionHandler {
       const scheduleKind =
         typeof payload.scheduleKind === 'string' ? payload.scheduleKind : 'exact';
       if (!name || !startRaw) {
+        const formState = draftPayloadToFormUiState(payload);
+        this.rememberDraftFormUiState(
+          interaction.guildId,
+          interaction.user.id,
+          parsed.opaqueId,
+          formState,
+        );
         const summary = renderDraftFormSummary({
           opaqueDraftId: parsed.opaqueId,
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
@@ -892,7 +959,6 @@ export class ActivityInteractionHandler {
             'Uzupełnij formularz (nazwa + termin) przed publikacją — kliknij **Edytuj**.',
             ...draftSummaryLines(payload),
           ],
-          formState: draftPayloadToFormUiState(payload),
         });
         await interaction.editReply(asEditPayload(summary));
         return;

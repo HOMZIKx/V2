@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { createDraftCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
-import { extractDraftFormUiState } from './activity-draft-ui-state.js';
 import { isDraftPreviewMessage, renderDraftFormSummary } from './activity-ephemeral-renderer.js';
 import { renderActivityEventMessage } from './activity-event-renderer.js';
 import { renderActivityHubMessage } from './activity-hub-renderer.js';
@@ -85,20 +84,13 @@ describe('Activity Discord visual contract', () => {
       signingSecret: secret,
       title: 'Azrael',
       lines: ['**20 sierpnia 18:00**', 'Klucz + 4 DPS'],
-      formState: {
-        name: 'Azrael',
-        description: 'Klucz + 4 DPS',
-        scheduleFromDisplay: '20.08.2026 18:00',
-        scheduleToDisplay: '',
-        whenKind: 'exact',
-        source: 'create',
-      },
     });
     expect(view.components).toHaveLength(1);
     expect(view.flags).toBe(MessageFlags.IsComponentsV2);
     expect(isDraftPreviewMessage({ components: view.components } as never)).toBe(true);
-    expect(extractDraftFormUiState(view, secret)?.name).toBe('Azrael');
     const json = JSON.stringify(toJson(view.components![0]));
+    expect(json).not.toContain('v2dui.v1');
+    expect(json).not.toContain('scheduleFromDisplay');
     expect(json).toContain('Edytuj');
     expect(json).toContain('Publikuj');
     expect(json).toContain(createDraftCustomId('aabbccddeeff', 'edit', secret));
