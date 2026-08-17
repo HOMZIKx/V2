@@ -339,6 +339,18 @@ export function resolveWhenKindSchedule(input: {
 }
 
 export function whenKindFromDraftPayload(payload: Record<string, unknown>): WhenKind {
+  const whenKind = payload.whenKind;
+  if (
+    whenKind === 'exact' ||
+    whenKind === 'range' ||
+    whenKind === 'today' ||
+    whenKind === 'tomorrow' ||
+    whenKind === 'this_week' ||
+    whenKind === 'weekend' ||
+    whenKind === 'flexible'
+  ) {
+    return whenKind;
+  }
   const kind = typeof payload.scheduleKind === 'string' ? payload.scheduleKind : '';
   const period = typeof payload.periodKey === 'string' ? payload.periodKey : '';
   if (kind === 'exact') return 'exact';

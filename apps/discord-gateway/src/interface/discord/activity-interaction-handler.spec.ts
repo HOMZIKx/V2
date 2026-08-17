@@ -5,7 +5,11 @@ import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
 } from '../../infrastructure/discord/discord-config.js';
-import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
+import {
+  createDraftCustomId,
+  createModalCustomId,
+  createPanelCustomId,
+} from '../../infrastructure/security/activity-signed-custom-id.js';
 import { ActivityInteractionHandler } from './activity-interaction-handler.js';
 
 const secret = 's'.repeat(32);
@@ -448,5 +452,361 @@ describe('ActivityInteractionHandler flags', () => {
       reply,
     } as never);
     expect(reply).toHaveBeenCalledWith(expect.objectContaining({ flags: MessageFlags.Ephemeral }));
+  });
+});
+
+const draftUuid = 'aabbccdd-eeff-4011-8222-334455667788';
+const opaqueDraft = 'aabbccddeeff';
+
+function modalFieldValue(modal: { toJSON: () => unknown }, customId: string): string | undefined {
+  const found: string[] = [];
+  const walk = (node: unknown): void => {
+    if (typeof node !== 'object' || node === null) {
+      return;
+    }
+    const rec = node as Record<string, unknown>;
+    if (rec.custom_id === customId && typeof rec.value === 'string') {
+      found.push(rec.value);
+    }
+    for (const value of Object.values(rec)) {
+      walk(value);
+    }
+  };
+  walk(modal.toJSON());
+  return found[0];
+}
+
+function makeFormFields(values: {
+  name: string;
+  description: string;
+  from?: string;
+  to?: string;
+  when?: string;
+}) {
+  return {
+    getTextInputValue: vi.fn((id: string) => {
+      if (id === 'name') return values.name;
+      if (id === 'description') return values.description;
+      if (id === 'schedule_from') return values.from ?? '20.08.2026 18:00';
+      if (id === 'schedule_to') return values.to ?? '';
+      return '';
+    }),
+    getStringSelectValues: vi.fn((id: string) =>
+      id === 'when_kind' ? [values.when ?? 'exact'] : [],
+    ),
+  };
+}
+
+describe('ActivityInteractionHandler draft preview / edit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('create modal submit ACKs before delayed backend and yields one preview', async () => {
+    const order: string[] = [];
+    let releaseCreate!: () => void;
+    let releaseUpdate!: () => void;
+    const createDraft = vi.fn(
+      () =>
+        new Promise<{ id: string; payload: Record<string, unknown> }>((resolve) => {
+          order.push('http');
+          releaseCreate = () => resolve({ id: draftUuid, payload: {} });
+        }),
+    );
+    const updateDraft = vi.fn(
+      (_id: string, body: { payload: Record<string, unknown> }) =>
+        new Promise<{ id: string; payload: Record<string, unknown> }>((resolve) => {
+          releaseUpdate = () => resolve({ id: draftUuid, payload: body.payload });
+        }),
+    );
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { createDraft, updateDraft } as never,
+      logger: createLogger(),
+    });
+    const deferReply = vi.fn(() => {
+      order.push('ack');
+      return Promise.resolve();
+    });
+    const deferUpdate = vi.fn();
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    const reply = vi.fn();
+    const pending = handler.handleModal({
+      customId: createModalCustomId('create', opaquePanel, secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'modal-create-1',
+      message: { components: [] },
+      deferred: false,
+      replied: false,
+      deferReply,
+      deferUpdate,
+      editReply,
+      reply,
+      fields: makeFormFields({ name: 'Azrael', description: 'Klucz' }),
+    } as never);
+
+    await vi.waitFor(() => {
+      expect(deferReply).toHaveBeenCalledOnce();
+    });
+    expect(order[0]).toBe('ack');
+    expect(editReply).not.toHaveBeenCalled();
+    releaseCreate();
+    await vi.waitFor(() => {
+      expect(updateDraft).toHaveBeenCalled();
+    });
+    releaseUpdate();
+    await pending;
+
+    expect(deferUpdate).not.toHaveBeenCalled();
+    expect(reply).not.toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledOnce();
+    expect(JSON.stringify((editReply.mock.calls[0] as unknown as [unknown])[0])).toContain(
+      'Edytuj',
+    );
+  });
+
+  it('edit modal submit updates the same preview and does not stack a new ephemeral', async () => {
+    const { renderDraftFormSummary } =
+      await import('../../presentation/discord/activity-ephemeral-renderer.js');
+    const existingPayload = {
+      name: 'A',
+      description: 'B',
+      scheduleFromDisplay: '20.08.2026 18:00',
+      scheduleKind: 'exact',
+      source: 'create',
+      extraKeep: 'stay',
+    };
+    const preview = renderDraftFormSummary({
+      opaqueDraftId: opaqueDraft,
+      signingSecret: secret,
+      title: 'A',
+      lines: ['**A**', 'Kiedy: 20 sierpnia', 'Opis: B'],
+      formState: {
+        name: 'A',
+        description: 'B',
+        scheduleFromDisplay: '20.08.2026 18:00',
+        scheduleToDisplay: '',
+        whenKind: 'exact',
+        source: 'create',
+      },
+    });
+    const order: string[] = [];
+    let releaseLookup!: () => void;
+    let releaseUpdate!: () => void;
+    const lookupDraftByOpaque = vi.fn(
+      () =>
+        new Promise<{ id: string; payload: Record<string, unknown> }>((resolve) => {
+          order.push('http');
+          releaseLookup = () => resolve({ id: draftUuid, payload: existingPayload });
+        }),
+    );
+    const updateDraft = vi.fn(
+      (_id: string, body: { payload: Record<string, unknown> }) =>
+        new Promise<{ id: string; payload: Record<string, unknown> }>((resolve) => {
+          releaseUpdate = () => resolve({ id: draftUuid, payload: body.payload });
+        }),
+    );
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque, updateDraft } as never,
+      logger: createLogger(),
+    });
+    const deferUpdate = vi.fn(() => {
+      order.push('ack');
+      return Promise.resolve();
+    });
+    const deferReply = vi.fn();
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    const reply = vi.fn();
+    const pending = handler.handleModal({
+      customId: createModalCustomId('edit', opaqueDraft, secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'modal-edit-1',
+      message: { components: preview.components },
+      deferred: false,
+      replied: false,
+      deferReply,
+      deferUpdate,
+      editReply,
+      reply,
+      fields: makeFormFields({ name: 'D', description: 'B' }),
+    } as never);
+
+    await vi.waitFor(() => {
+      expect(deferUpdate).toHaveBeenCalledOnce();
+    });
+    expect(order[0]).toBe('ack');
+    expect(editReply).not.toHaveBeenCalled();
+    releaseLookup();
+    await vi.waitFor(() => {
+      expect(updateDraft).toHaveBeenCalled();
+    });
+    releaseUpdate();
+    await pending;
+
+    expect(deferReply).not.toHaveBeenCalled();
+    expect(reply).not.toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledOnce();
+    const sent = updateDraft.mock.calls[0]?.[1] as { payload: Record<string, unknown> };
+    expect(sent.payload.name).toBe('D');
+    expect(sent.payload.description).toBe('B');
+    expect(sent.payload.extraKeep).toBe('stay');
+  });
+
+  it('second edit still updates in place without a new reply', async () => {
+    const { renderDraftFormSummary } =
+      await import('../../presentation/discord/activity-ephemeral-renderer.js');
+    const preview = renderDraftFormSummary({
+      opaqueDraftId: opaqueDraft,
+      signingSecret: secret,
+      title: 'D',
+      lines: ['**D**'],
+      formState: {
+        name: 'D',
+        description: 'B',
+        scheduleFromDisplay: '20.08.2026 18:00',
+        scheduleToDisplay: '',
+        whenKind: 'exact',
+        source: 'create',
+      },
+    });
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: {
+        lookupDraftByOpaque: vi.fn(() =>
+          Promise.resolve({
+            id: draftUuid,
+            payload: { name: 'D', description: 'B', extraKeep: 'stay' },
+          }),
+        ),
+        updateDraft: vi.fn((_id: string, body: { payload: Record<string, unknown> }) =>
+          Promise.resolve({ id: draftUuid, payload: body.payload }),
+        ),
+      } as never,
+      logger: createLogger(),
+    });
+    const deferReply = vi.fn();
+    const reply = vi.fn();
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleModal({
+      customId: createModalCustomId('edit', opaqueDraft, secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'modal-edit-2',
+      message: { components: preview.components },
+      deferReply,
+      deferUpdate: vi.fn(() => Promise.resolve(undefined)),
+      editReply,
+      reply,
+      fields: makeFormFields({ name: 'E', description: 'B' }),
+    } as never);
+    expect(deferReply).not.toHaveBeenCalled();
+    expect(reply).not.toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledOnce();
+  });
+
+  it('opens edit modal with existing values from signed snapshot and without HTTP', async () => {
+    const { renderDraftFormSummary } =
+      await import('../../presentation/discord/activity-ephemeral-renderer.js');
+    const preview = renderDraftFormSummary({
+      opaqueDraftId: opaqueDraft,
+      signingSecret: secret,
+      title: 'A',
+      lines: ['**A**', 'Opis: B'],
+      formState: {
+        name: 'A',
+        description: 'B',
+        scheduleFromDisplay: 'C',
+        scheduleToDisplay: '',
+        whenKind: 'exact',
+        source: 'create',
+      },
+    });
+    const lookupDraftByOpaque = vi.fn();
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque } as never,
+      logger: createLogger(),
+    });
+    const showModal = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-click-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: preview.components },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate: vi.fn(),
+      reply: vi.fn(),
+    } as never);
+    expect(lookupDraftByOpaque).not.toHaveBeenCalled();
+    expect(showModal).toHaveBeenCalledOnce();
+    const firstModalCall = showModal.mock.calls[0] as unknown as
+      [{ toJSON: () => unknown }] | undefined;
+    expect(firstModalCall).toBeDefined();
+    if (firstModalCall === undefined) {
+      throw new Error('expected showModal to receive a modal');
+    }
+    const modal = firstModalCall[0];
+    expect(modalFieldValue(modal, 'name')).toBe('A');
+    expect(modalFieldValue(modal, 'description')).toBe('B');
+    expect(modalFieldValue(modal, 'schedule_from')).toBe('C');
+  });
+
+  it('rejects forged edit snapshot fail-closed and ACKs before HTTP fallback', async () => {
+    const order: string[] = [];
+    const lookupDraftByOpaque = vi.fn(() => {
+      order.push('http');
+      return Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      });
+    });
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque } as never,
+      logger: createLogger(),
+    });
+    const showModal = vi.fn();
+    const deferUpdate = vi.fn(() => {
+      order.push('ack');
+      return Promise.resolve();
+    });
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-forged-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: {
+        components: [
+          {
+            content: 'v2dui.v1.forgedsig.eyJuYW1lIjoiWCJ9',
+            custom_id: `activity:v1:draft:${opaqueDraft}:edit:x`,
+          },
+        ],
+      },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply,
+      reply: vi.fn(),
+    } as never);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(order[0]).toBe('ack');
+    expect(lookupDraftByOpaque).toHaveBeenCalled();
+    expect(editReply).toHaveBeenCalledOnce();
   });
 });

@@ -30,6 +30,11 @@ import {
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
+  draftPayloadToFormUiState,
+  extractDraftFormUiState,
+  formUiStateToModalPayload,
+} from '../../presentation/discord/activity-draft-ui-state.js';
+import {
   isDraftPreviewMessage,
   renderDraftFormSummary,
   renderInboxList,
@@ -249,12 +254,19 @@ export class ActivityInteractionHandler {
 
     try {
       if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && opaqueId !== undefined) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const fromExistingPreview = isDraftPreviewMessage(interaction.message);
+        // Create: new ephemeral preview. Edit: ACK+update the same preview (no stack).
+        if (fromExistingPreview) {
+          await interaction.deferUpdate();
+        } else {
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        }
         const parsedForm = parseActivityFormModal(interaction);
         const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
         const actor = actorOf(interaction.user.id);
 
         let draftId: string;
+        let previousPayload: Record<string, unknown> = {};
         if (kind === 'create' || kind === 'lfg') {
           // Modal custom id carries panel opaque id; draft is created only after ACK.
           const created = await this.deps.activityClient.createDraft(
@@ -275,15 +287,23 @@ export class ActivityInteractionHandler {
         } else {
           const existing = await this.deps.activityClient.lookupDraftByOpaque(opaqueId, actor);
           draftId = existing.id;
+          previousPayload = draftPayload(existing);
         }
 
+        const source =
+          previousPayload.source === 'lfg' || previousPayload.lfg === true || kind === 'lfg'
+            ? 'lfg'
+            : 'create';
         const updated = await this.deps.activityClient.updateDraft(
           draftId,
           {
-            payload: scheduleToDraftPayload(parsedForm, {
-              source: kind === 'lfg' ? 'lfg' : 'create',
-              lfg: kind === 'lfg',
-            }),
+            payload: {
+              ...previousPayload,
+              ...scheduleToDraftPayload(parsedForm, {
+                source,
+                lfg: source === 'lfg',
+              }),
+            },
           },
           {
             ...actor,
@@ -294,15 +314,16 @@ export class ActivityInteractionHandler {
             ),
           },
         );
+        const nextPayload = draftPayload(updated);
         const preview = renderDraftFormSummary({
           opaqueDraftId: opaqueFromUuid(updated.id),
           signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
           title: parsedForm.name,
-          lines: draftSummaryLines(draftPayload(updated)),
+          lines: draftSummaryLines(nextPayload),
+          formState: draftPayloadToFormUiState(nextPayload),
         });
 
-        // Edit from existing ephemeral preview → update in place (one message).
-        if (isDraftPreviewMessage(interaction.message) && interaction.isFromMessage()) {
+        if (fromExistingPreview) {
           await interaction.editReply(asEditPayload(preview));
           return true;
         }
@@ -396,21 +417,57 @@ export class ActivityInteractionHandler {
     parsed: Extract<ParsedActivityCustomId, { scope: 'draft' }>,
   ): Promise<void> {
     try {
-      // First Discord response must be showModal — no unbounded HTTP beforehand.
-      const modal = buildActivityFormModal({
-        opaqueDraftId: parsed.opaqueId,
-        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-        mode: 'edit',
-      });
-      await interaction.showModal(modal);
+      const signingSecret = this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET;
+      const snapshot = extractDraftFormUiState(interaction.message, signingSecret);
+      if (snapshot !== null) {
+        // First Discord response must be showModal — no unbounded HTTP beforehand.
+        const modal = buildActivityFormModal({
+          opaqueDraftId: parsed.opaqueId,
+          signingSecret,
+          mode: 'edit',
+          payload: formUiStateToModalPayload(snapshot),
+        });
+        await interaction.showModal(modal);
+        return;
+      }
+
+      // Missing/invalid snapshot: ACK first, reload preview with signed state, same message.
+      await interaction.deferUpdate();
+      const draft = await this.deps.activityClient.lookupDraftByOpaque(
+        parsed.opaqueId,
+        actorOf(interaction.user.id),
+      );
+      const payload = draftPayload(draft);
+      const formState = draftPayloadToFormUiState(payload);
+      const name = typeof payload.name === 'string' ? payload.name : 'Podgląd aktywności';
+      await interaction.editReply(
+        asEditPayload(
+          renderDraftFormSummary({
+            opaqueDraftId: parsed.opaqueId,
+            signingSecret,
+            title: name,
+            lines: [
+              ...draftSummaryLines(payload),
+              '',
+              'Kliknij **Edytuj**, aby otworzyć formularz z obecnymi danymi.',
+            ],
+            formState,
+          }),
+        ),
+      );
     } catch (error) {
       this.deps.logger.error('Centrum draft edit modal failed', {
         error: error instanceof Error ? error.message : String(error),
       });
-      await interaction.reply({
-        content: toUserFacingError(error),
-        flags: MessageFlags.Ephemeral,
-      });
+      const content = toUserFacingError(error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({
+          content,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
     }
   }
 
@@ -905,6 +962,7 @@ export class ActivityInteractionHandler {
               '',
               '_Podgląd — wydarzenie nie zostało jeszcze opublikowane._',
             ],
+            formState: draftPayloadToFormUiState(payload),
           }),
         ),
       );
@@ -925,6 +983,7 @@ export class ActivityInteractionHandler {
             'Uzupełnij formularz (nazwa + termin) przed publikacją — kliknij **Edytuj**.',
             ...draftSummaryLines(payload),
           ],
+          formState: draftPayloadToFormUiState(payload),
         });
         await interaction.editReply(asEditPayload(summary));
         return;

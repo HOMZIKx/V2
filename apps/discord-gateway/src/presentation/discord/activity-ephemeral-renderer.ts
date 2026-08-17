@@ -13,12 +13,18 @@ import {
   createEventCustomId,
   type ActivityDraftAction,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import {
+  collectComponentStrings,
+  signDraftFormUiState,
+  type DraftFormUiState,
+} from './activity-draft-ui-state.js';
 
 export type DraftFormSummaryInput = {
   opaqueDraftId: string;
   signingSecret: string;
   title?: string;
   lines: string[];
+  formState?: DraftFormUiState;
 };
 
 /** Single ephemeral preview: Edit / Publish / Cancel — no sectional wizard. */
@@ -29,20 +35,31 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
     { label: 'Anuluj', action: 'discard', style: ButtonStyle.Danger },
   ];
 
-  return {
-    components: [
+  const components = [
+    new TextDisplayBuilder().setContent(
+      [`## ${input.title ?? 'Podgląd aktywności'}`, ...input.lines].join('\n'),
+    ),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ...mainActions.map((item) =>
+        new ButtonBuilder()
+          .setCustomId(createDraftCustomId(input.opaqueDraftId, item.action, input.signingSecret))
+          .setLabel(item.label)
+          .setStyle(item.style),
+      ),
+    ),
+  ];
+
+  if (input.formState !== undefined) {
+    // Invisible signed snapshot for edit prefill (no HTTP before showModal).
+    components.push(
       new TextDisplayBuilder().setContent(
-        [`## ${input.title ?? 'Podgląd aktywności'}`, ...input.lines].join('\n'),
+        `\u2063${signDraftFormUiState(input.formState, input.signingSecret)}\u2063`,
       ),
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...mainActions.map((item) =>
-          new ButtonBuilder()
-            .setCustomId(createDraftCustomId(input.opaqueDraftId, item.action, input.signingSecret))
-            .setLabel(item.label)
-            .setStyle(item.style),
-        ),
-      ),
-    ],
+    );
+  }
+
+  return {
+    components,
     flags: MessageFlags.IsComponentsV2,
   };
 }
@@ -51,16 +68,7 @@ export function isDraftPreviewMessage(message: Message | null | undefined): bool
   if (message === null || message === undefined) {
     return false;
   }
-  for (const row of message.components) {
-    const rowData = row as { components?: Array<{ customId?: string | null }> };
-    for (const component of rowData.components ?? []) {
-      const customId = component.customId ?? '';
-      if (customId.includes(':draft:')) {
-        return true;
-      }
-    }
-  }
-  return false;
+  return collectComponentStrings(message.components).some((value) => value.includes(':draft:'));
 }
 
 export type MoreMenuInput = {

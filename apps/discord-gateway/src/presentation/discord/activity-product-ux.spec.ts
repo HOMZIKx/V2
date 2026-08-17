@@ -99,12 +99,12 @@ describe('draft summary', () => {
       signingSecret: 's'.repeat(32),
       lines: ['**Nazwa:** Test', 'Kiedy: W tym tygodniu'],
     });
-    const raw = JSON.stringify(view);
-    expect(raw).toContain('Edytuj');
-    expect(raw).toContain('Publikuj');
-    expect(raw).toContain('Anuluj');
-    expect(raw).not.toContain('Data i godzina');
-    expect(raw).not.toContain('Nazwa i opis');
-    expect(raw).not.toMatch(/ISO|opaque|Draft action|scheduleKind|periodKey/i);
+    const visible = JSON.stringify([view.components?.[0], view.components?.[1]]);
+    expect(visible).toContain('Edytuj');
+    expect(visible).toContain('Publikuj');
+    expect(visible).toContain('Anuluj');
+    expect(visible).not.toContain('Data i godzina');
+    expect(visible).not.toContain('Nazwa i opis');
+    expect(visible).not.toMatch(/ISO|Draft action|scheduleKind|periodKey/i);
   });
 });

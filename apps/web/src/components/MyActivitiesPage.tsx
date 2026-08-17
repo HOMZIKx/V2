@@ -53,7 +53,7 @@ function findMine(
 
 export function MyActivitiesPage() {
   const { guildId, unavailable } = useGuild();
-  const { session } = useSession();
+  const { session, status } = useSession();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [buckets, setBuckets] = useState<Record<BucketKey, ActivityDto[]>>({
     organizing: [],
@@ -63,7 +63,12 @@ export function MyActivitiesPage() {
   });
 
   const load = useCallback(async () => {
-    if (session === null) {
+    if (status === 'loading') {
+      setState({ kind: 'loading' });
+      return;
+    }
+    if (status === 'anonymous' || session === null) {
+      setState({ kind: 'unauthorized' });
       return;
     }
     if (unavailable) {
@@ -121,7 +126,7 @@ export function MyActivitiesPage() {
     } catch (err) {
       setState(mapApiError(err));
     }
-  }, [guildId, unavailable, session]);
+  }, [guildId, unavailable, session, status]);
 
   useEffect(() => {
     void load();
