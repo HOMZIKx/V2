@@ -34,14 +34,22 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.gateway.start();
+    try {
+      await this.gateway.start();
 
-    if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
-      await this.gateway.putGuildCommands(
-        this.config.DISCORD_TEST_GUILD_ID,
-        guildCommandDefinitions,
+      if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
+        await this.gateway.putGuildCommands(
+          this.config.DISCORD_TEST_GUILD_ID,
+          guildCommandDefinitions,
+        );
+        this.nestLogger.log('Guild commands auto-registered for test guild.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.nestLogger.error(
+        'Discord client failed to start; HTTP listener stays up for diagnostics and projection APIs.',
+        message,
       );
-      this.nestLogger.log('Guild commands auto-registered for test guild.');
     }
   }
 

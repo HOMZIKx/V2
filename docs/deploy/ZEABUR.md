@@ -67,10 +67,17 @@ Pełna lista wartości do ręcznego wklejenia: [ZEABUR_OWNER_VARIABLES.md](./ZEA
 
 ## 6. Redeploy i weryfikacja
 
-1. Wklej Variables → **Redeploy** każdego serwisu.
-2. Sprawdź Logs (brak tokenów w logach).
-3. HTTP health publiczny / wewnętrzny.
-4. Discord: bot online na `1534228693017432124`, `/status`, `/panel-test`.
+**Jeśli `discord-gateway` ma status Crashed:** najpierw upewnij się, że deploy idzie z
+**najnowszego** commita na `cursor/p4-1-activity-domain` (SHA ≥ `e53b1a4` — poprawka
+`CMD` → `dist/apps/discord-gateway/src/main.js`). Stary obraz szukał `dist/main.js` i
+padał w pętli restartów.
+
+1. Variables → **Redeploy** każdego serwisu (kolejność: add-ony → migrate → apps).
+2. `discord-gateway` — wymagane przy `DISCORD_ACTIVITY_ENABLED=true`:
+   `ACTIVITY_ORGANIZATION_ID`, `ACTIVITY_PROJECTION_SHARED_SECRET`, `ACTIVITY_SERVICE_BASE_URL`.
+3. Sprawdź Logs (brak tokenów w logach).
+4. `GET /health/live` → 200; `GET /health/discord` → `state: ready` gdy bot online.
+5. Discord: bot online na `1534228693017432124`, Centrum hub z accent #D48632 (DZIAŁAJ/TWOJE).
 
 ## 7. Lokalne budowanie obrazów (opcjonalnie)
 

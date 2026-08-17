@@ -47,4 +47,12 @@ Branch: `cursor/p4-1-activity-domain` · PR #19
 
 ## Live Discord redeploy (if hub still purple)
 
+**Root cause seen on Zeabur:** service stuck on deploy **before** `e53b1a4` (wrong
+`dist/main.js` CMD) → crash loop → old hub message stays in Discord channel.
+
+1. Zeabur → `discord-gateway` → **Redeploy** branch `cursor/p4-1-activity-domain` @ HEAD.
+2. Confirm Variables: `ACTIVITY_ORGANIZATION_ID`, projection secret, Discord token.
+3. `GET /health/discord` → `state: ready`.
+4. Admin → hub channel → **Reconcile** (in-place update, no duplicate panel).
+
 Zeabur service `discord-gateway` → branch `cursor/p4-1-activity-domain` → redeploy → reconcile hub from Admin.

@@ -73,9 +73,13 @@ const bootstrap = async (): Promise<void> => {
     discordEnabled: config.DISCORD_ENABLED,
     gitCommitSha: process.env.GIT_COMMIT_SHA ?? 'unknown',
     gitBranch: resolveGitBranch(),
-    buildMode: 'tsx-dev-source',
+    buildMode: 'production-node-dist',
     panelRenderer: 'components-v2-container',
   });
 };
 
-void bootstrap();
+bootstrap().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error('Discord gateway failed to bootstrap', { error: message });
+  process.exitCode = 1;
+});

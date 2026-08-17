@@ -98,6 +98,7 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `DISCORD_AUTO_REGISTER_GUILD_COMMANDS` | PUBLIC VALUE = `true`                                              |
 | `DISCORD_STRICT_GUILD_ISOLATION`       | PUBLIC VALUE = `true`                                              |
 | `DISCORD_ACTIVITY_ENABLED`             | PUBLIC VALUE = `true`                                              |
+| `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)        |
 | `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co activity)                                       |
 | `ACTIVITY_SERVICE_BASE_URL`            | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur) |
 | `DISCORD_TEST_CHANNEL_ID`              | PUBLIC VALUE (opcjonalnie)                                         |
