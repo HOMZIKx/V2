@@ -35,7 +35,7 @@ weakening CONFIG_MANAGE filtering. No new feature work.
 - Discord fixup checkpoint: `efef493fbdc7060acf551bd14b6b07ccc1460d5f`
 - WWW checkpoint: `ae0a8f0f0169197eee1e72de9c9cba53eedac121`
 - Closure checkpoint: `f85b2468d834549c73d2ad203e36aa84991e6327`
-- Guild-fallback fixup: git tip of this commit
+- Guild-fallback fixup: `fe31e29cb4c3b410794111c713561f767a969aed`
 
 ## Process note
 
