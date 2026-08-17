@@ -4,6 +4,7 @@ import { createLogger } from '@v2/observability';
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
 import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
+import { runStartupHubReconcile } from '../../application/interactions/hub-startup-reconcile.js';
 import { InteractionRouter } from './interaction-router.js';
 
 import {
@@ -26,6 +27,8 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
     @Inject(DISCORD_GATEWAY_TOKEN)
     private readonly gateway: DiscordJsGatewayAdapter | null,
+    @Inject(DISCORD_ACTIVITY_CLIENT_TOKEN)
+    private readonly activityClient: ActivityHttpClient | null,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -43,6 +46,16 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
           guildCommandDefinitions,
         );
         this.nestLogger.log('Guild commands auto-registered for test guild.');
+      }
+
+      if (this.activityClient !== null) {
+        const logger = createLogger('discord-gateway');
+        await runStartupHubReconcile({
+          config: this.config,
+          gateway: this.gateway,
+          activityClient: this.activityClient,
+          logger,
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

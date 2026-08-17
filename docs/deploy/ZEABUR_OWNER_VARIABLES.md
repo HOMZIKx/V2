@@ -96,6 +96,7 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `DISCORD_TEST_OPERATOR_IDS`            | PUBLIC VALUE (Twoje Discord snowflake)                             |
 | `DISCORD_COMPONENT_SIGNING_SECRET`     | SECRET (≥32)                                                       |
 | `DISCORD_AUTO_REGISTER_GUILD_COMMANDS` | PUBLIC VALUE = `true`                                              |
+| `DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP` | PUBLIC VALUE = `true` (domyślnie — hub odświeża się po każdym redeploy gateway) |
 | `DISCORD_STRICT_GUILD_ISOLATION`       | PUBLIC VALUE = `true`                                              |
 | `DISCORD_ACTIVITY_ENABLED`             | PUBLIC VALUE = `true`                                              |
 | `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)        |

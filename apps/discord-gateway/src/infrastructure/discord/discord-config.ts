@@ -71,6 +71,10 @@ export const DiscordGatewayConfigSchema = z
       .max(60)
       .default(60),
     DISCORD_ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP: z.preprocess(
+      (value) => parseBoolean(value, true),
+      z.boolean(),
+    ),
     ACTIVITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4400'),
     ACTIVITY_CLIENT_MODE: z.enum(['headers', 'assertion']).optional().default('headers'),
     ACTIVITY_ORGANIZATION_ID: z.string().optional().default(''),
