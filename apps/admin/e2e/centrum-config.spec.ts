@@ -6,6 +6,11 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 const GUILD_A = 'guild-e2e-1';
 const GUILD_B = 'guild-e2e-2';
 const ACTOR_ID = '999888777666555444';
+const CH_CENTRUM = '123456789012345678';
+const CH_OGLOSZENIA = '111111111111111111';
+const CH_EVENTY = '222222222222222222';
+const CH_HANDEL = '333333333333333333';
+const CH_OFFTOPIC = '444444444444444444';
 
 type MockType = {
   id: string;
@@ -129,7 +134,10 @@ function readinessFor(store: GuildStore): {
   };
 }
 
-async function installActivityAdminMocks(page: Page): Promise<{
+async function installActivityAdminMocks(
+  page: Page,
+  options: { failDiscordChannels?: boolean; failDiscordRoles?: boolean } = {},
+): Promise<{
   stores: Map<string, GuildStore>;
 }> {
   const stores = new Map<string, GuildStore>([
@@ -145,10 +153,7 @@ async function installActivityAdminMocks(page: Page): Promise<{
 
     if (pathname === '/activity/v1/admin/guilds' && method === 'GET') {
       await json(route, 200, {
-        guilds: [
-          { id: GUILD_A, name: 'E2E Guild Alpha' },
-          { id: GUILD_B, name: 'E2E Guild Beta' },
-        ],
+        guilds: [{ id: GUILD_A, name: 'E2E Guild Alpha' }],
       });
       return;
     }
@@ -342,15 +347,30 @@ async function installActivityAdminMocks(page: Page): Promise<{
     }
 
     if (rest === '/discord/channels' && method === 'GET') {
+      if (options.failDiscordChannels === true) {
+        await json(route, 503, {
+          error: { code: 'CONFIG_INVALID', message: 'Discord channel metadata is unavailable' },
+        });
+        return;
+      }
       await json(route, 200, {
         channels: [
-          { id: '123456789012345678', name: 'centrum-aktywnosci', type: 0, usable: true },
-          { id: '111111111111111111', name: 'ogloszenia', type: 0, usable: true },
+          { id: CH_CENTRUM, name: 'centrum-aktywnosci', type: 0, usable: true },
+          { id: CH_OGLOSZENIA, name: 'ogloszenia', type: 0, usable: true },
+          { id: CH_EVENTY, name: 'eventy', type: 0, usable: true },
+          { id: CH_HANDEL, name: 'handel', type: 0, usable: true },
+          { id: CH_OFFTOPIC, name: 'offtopic', type: 0, usable: true },
         ],
       });
       return;
     }
     if (rest === '/discord/roles' && method === 'GET') {
+      if (options.failDiscordRoles === true) {
+        await json(route, 503, {
+          error: { code: 'CONFIG_INVALID', message: 'Discord role metadata is unavailable' },
+        });
+        return;
+      }
       await json(route, 200, {
         roles: [
           { id: '987654321098765432', name: 'Smok', managed: false, everyone: false },
@@ -432,6 +452,7 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await expect(page.locator('#guild-select')).toHaveValue(GUILD_A);
     await expect(page.locator('#guild-select')).toContainText('E2E Guild Alpha');
     await expect(page.locator('#guild-select')).not.toContainText(`Guild ${GUILD_A}`);
+    await expect(page.locator('#guild-select')).not.toContainText('E2E Guild Beta');
 
     await nav.getByRole('link', { name: 'Przegląd' }).click();
     await expect(page.getByRole('heading', { name: 'Konfiguracja Centrum' })).toBeVisible();
@@ -451,6 +472,11 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await createStatus('Niepewny', 'tentative');
     await createStatus('Odrzucony', 'declined');
     await expect(page.getByText('Potwierdzony').first()).toBeVisible();
+    await page.getByRole('button', { name: 'Dodaj status' }).click();
+    await page.getByLabel('Znaczenie').selectOption('declined');
+    await expect(page.getByText(/osobnymi polami/)).toBeVisible();
+    await expect(page.getByLabel('Znaczenie')).not.toContainText('nie zajmuje miejsca');
+    await page.getByRole('button', { name: 'Anuluj' }).click();
 
     await nav.getByRole('link', { name: 'Typy aktywności' }).click();
     await page.getByRole('button', { name: 'Dodaj typ' }).click();
@@ -470,11 +496,29 @@ test.describe('Centrum admin config flow (mocked API)', () => {
 
     await nav.getByRole('link', { name: 'Kanały i panel' }).click();
     await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
-    await expect(page.locator('#publish-channel')).toContainText('centrum-aktywnosci');
-    await page.locator('#publish-channel').selectOption('123456789012345678');
-    await page.getByRole('button', { name: 'Zapisz kanał publikacji' }).click();
-    await expect(page.getByText('Kanał publikacji zapisany.')).toBeVisible();
-    await page.locator('#hub-channel').selectOption('123456789012345678');
+    await page.getByRole('checkbox', { name: '#centrum-aktywnosci' }).check();
+    await page.getByRole('checkbox', { name: '#ogloszenia' }).check();
+    await page.getByRole('checkbox', { name: '#eventy' }).check();
+    await page.getByRole('checkbox', { name: '#handel' }).check();
+    await page.getByRole('button', { name: 'Zapisz kanały publikacji' }).click();
+    await expect(page.getByText('Kanały publikacji zapisane.')).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: '#centrum-aktywnosci' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#ogloszenia' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#eventy' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#handel' })).toBeChecked();
+    await page.getByRole('checkbox', { name: '#eventy' }).uncheck();
+    await page.getByRole('button', { name: 'Zapisz kanały publikacji' }).click();
+    await expect(page.getByText('Kanały publikacji zapisane.')).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: '#eventy' })).not.toBeChecked();
+    await page.getByRole('checkbox', { name: '#offtopic' }).check();
+    await page.getByRole('button', { name: 'Zapisz kanały publikacji' }).click();
+    await expect(page.getByText('Kanały publikacji zapisane.')).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: '#centrum-aktywnosci' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#ogloszenia' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#handel' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#offtopic' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: '#eventy' })).not.toBeChecked();
+    await page.locator('#hub-channel').selectOption(CH_CENTRUM);
     await page.getByRole('button', { name: 'Opublikuj / odśwież' }).click();
     await expect(page.getByText(/Panel opublikowany/)).toBeVisible();
 
@@ -548,8 +592,8 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await nav.getByRole('link', { name: 'Kanały i panel' }).click();
     const storeA = stores.get(GUILD_A)!;
     storeA.forceChannelsConflict = true;
-    await page.locator('#publish-channel').selectOption('111111111111111111');
-    await page.getByRole('button', { name: 'Zapisz kanał publikacji' }).click();
+    await page.getByRole('checkbox', { name: '#handel' }).uncheck();
+    await page.getByRole('button', { name: 'Zapisz kanały publikacji' }).click();
     await expect(page.getByText('Konfiguracja zmieniła się w międzyczasie.')).toBeVisible();
     storeA.forceChannelsConflict = false;
 
@@ -572,5 +616,20 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await page.getByRole('button', { name: 'Menu' }).click();
     await nav.getByRole('link', { name: 'Kanały i panel' }).click();
     await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
+  });
+
+  test('Discord channel metadata failure is visible', async ({ page }) => {
+    await installActivityAdminMocks(page, { failDiscordChannels: true });
+    await page.goto('/activity/channels');
+    await expect(page.getByText('Nie udało się pobrać kanałów z Discorda.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Spróbuj ponownie' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zapisz kanały publikacji' })).toBeDisabled();
+  });
+
+  test('Discord role metadata failure is visible', async ({ page }) => {
+    await installActivityAdminMocks(page, { failDiscordRoles: true });
+    await page.goto('/activity/pings');
+    await expect(page.getByText('Nie udało się pobrać ról z Discorda.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible();
   });
 });

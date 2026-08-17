@@ -2,9 +2,10 @@
 
 ## Status
 
-`READY_FOR_OWNER_WWW_VISUAL_REVIEW`
+`READY_FOR_OWNER_PRODUCTIZATION_VISUAL_AND_LIVE_REVIEW`
 
-Rolling audit: Admin, Discord fixup, and WWW productization are separate immutable checkpoints on the same branch.
+Rolling audit: Admin, Discord fixup, WWW, and this audit-closure fixup are
+separate immutable checkpoints on the same branch.
 
 ## Explicit gates
 
@@ -23,31 +24,39 @@ Rolling audit: Admin, Discord fixup, and WWW productization are separate immutab
 
 ## Active phase
 
-WWW productization after Discord audit fixup.
+P4-PRODUCTIZATION-AUDIT-CLOSURE-001 — close Admin HIGH + Discord LOW + WWW
+findings. No new feature work.
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- Discord visual audited SHA: `ba082b3cfe39d5c3a58a0f6384425750368fe811`
 - Admin checkpoint: `2824489cf788622587800e401c709c1083ae627b`
 - Discord fixup checkpoint: `efef493fbdc7060acf551bd14b6b07ccc1460d5f`
-- WWW checkpoint: git tip of this commit
+- WWW checkpoint: `ae0a8f0f0169197eee1e72de9c9cba53eedac121`
+- Closure checkpoint: git tip of this commit
+
+## Process note
+
+Admin HIGH was reported during later rolling WWW work and did not stop the
+pipeline. Existing WORKFLOW rule 5 is now enforced: HIGH/CRITICAL of an earlier
+checkpoint → SAFE WIP → STOP → FIX PRIORITY. Workflow document not redesigned.
 
 ## Delivered in this delta
 
-- Member WWW P4.4 product shell (login, list, detail, RSVP, Moje, inbox)
-- Shared Issue #12 tokens via `@v2/design-system` (not APPROVED)
-- Member list read model: occupiedSlots, typeLabel, organizerDisplay, myParticipationStatus
-- No N+1 `listParticipants` on list / Moje
-- Guild/session request identity + abort so stale responses cannot win
-- Screenshots (not in git): `tmp/ui-review/web/`
+- Admin channel allowlist MultiSelect (no silent truncation)
+- Admin guild list filtered by CONFIG_MANAGE; denied guilds not disclosed
+- Discord metadata failure UX for channels and roles
+- Declined copy/warning; occupiesSlot remains independent (architecture SoT)
+- Draft UI cache cleared after successful discard and terminal publish
+- WWW detail facts semantic grid; CTA/link-button hover contrast ownership
+- 401 UnauthorizedState verified on member pages
 
 ## Owner next
 
-1. Visual review of WWW (`tmp/ui-review/web/`)
-2. ChatGPT may audit Admin, Discord fixup, and WWW checkpoints independently
-3. Do **not** merge; do **not** start P4.5 / P4.6 until the next rolling prompt
+1. Visual/live review of Discord, Admin, WWW
+2. ChatGPT may resolve the stale WWW unauthorized review thread
+3. Do **not** merge; do **not** start P4.5 / P4.6 / RabbitMQ / Issue #20 / G8
 
 ## Explicitly not done
 
@@ -59,4 +68,4 @@ WWW productization after Discord audit fixup.
 
 ## Last updated
 
-2026-08-17 — P4-WWW-PRODUCTIZATION-001 after Discord audit fixup
+2026-08-17 — P4-PRODUCTIZATION-AUDIT-CLOSURE-001

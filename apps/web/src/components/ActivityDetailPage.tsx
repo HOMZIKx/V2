@@ -190,19 +190,15 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
       </div>
 
       <dl className="detail-facts">
-        <div>
-          <dt>Miejsca</dt>
-          <dd>{formatEventCapacity(occupied, activity.participantLimit)}</dd>
-        </div>
-        <div>
-          <dt>Prowadzi</dt>
-          <dd>{organizerDisplayName(activity)}</dd>
-        </div>
+        <dt>Miejsca</dt>
+        <dd>{formatEventCapacity(occupied, activity.participantLimit)}</dd>
+        <dt>Prowadzi</dt>
+        <dd>{organizerDisplayName(activity)}</dd>
         {activity.coOrganizerDisplay !== undefined && activity.coOrganizerDisplay !== null ? (
-          <div>
+          <>
             <dt>Razem z</dt>
             <dd>{activity.coOrganizerDisplay}</dd>
-          </div>
+          </>
         ) : null}
       </dl>
 

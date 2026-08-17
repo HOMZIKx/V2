@@ -174,6 +174,18 @@ export class ActivityInteractionHandler {
     });
   }
 
+  private forgetDraftFormUiState(
+    guildId: string | null,
+    discordUserId: string,
+    opaqueDraftId: string,
+  ): void {
+    this.draftUiCache.delete({
+      guildId: this.resolveGuildId(guildId),
+      discordUserId,
+      opaqueDraftId,
+    });
+  }
+
   public isActivityComponent(customId: string): boolean {
     return isActivityCustomId(customId);
   }
@@ -990,6 +1002,7 @@ export class ActivityInteractionHandler {
           idempotencyKey: idem(interaction.user.id, 'draft-publish', draft.id),
         },
       );
+      this.forgetDraftFormUiState(interaction.guildId, interaction.user.id, parsed.opaqueId);
       await interaction.editReply({
         content: `Opublikowano **${String(published.name ?? name)}**. Publiczny post pojawi się na kanale aktywności.`,
       });
@@ -1001,6 +1014,7 @@ export class ActivityInteractionHandler {
         ...actorOf(interaction.user.id),
         idempotencyKey: idem(interaction.user.id, 'draft-discard', draft.id),
       });
+      this.forgetDraftFormUiState(interaction.guildId, interaction.user.id, parsed.opaqueId);
       await interaction.editReply({ content: 'Szkic odrzucony.' });
       return;
     }

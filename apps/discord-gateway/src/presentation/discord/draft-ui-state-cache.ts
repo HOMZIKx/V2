@@ -62,6 +62,10 @@ export class DraftUiStateCache {
     });
   }
 
+  public delete(key: DraftUiStateCacheKey): void {
+    this.entries.delete(encodeKey(key));
+  }
+
   public size(): number {
     this.purgeExpired();
     return this.entries.size;

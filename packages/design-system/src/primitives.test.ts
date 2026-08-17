@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -56,6 +58,14 @@ describe('design-system primitives', () => {
     );
     expect(markup).toContain('Smok');
     expect(markup).not.toContain('textarea');
+  });
+
+  it('keeps link-button contrast on hover instead of inheriting text-link color', () => {
+    const css = readFileSync(new URL('./primitives.css', import.meta.url), 'utf8');
+    expect(css).toContain('a.v2-btn-primary:hover');
+    expect(css).toMatch(/a\.v2-btn-primary:hover[\s\S]*color: #141516/);
+    expect(css).toContain('.v2-btn:hover:not(:disabled)');
+    expect(css).toContain('color: var(--v2-text)');
   });
 
   it('renders remaining product primitives', () => {

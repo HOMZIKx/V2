@@ -2,17 +2,29 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button, MultiSelect, Panel } from '@v2/design-system';
 
-import { getPings, listDiscordRoles, updatePings } from '../api/activity-admin.js';
+import {
+  getPings,
+  listDiscordRoles,
+  updatePings,
+  type DiscordRoleOption,
+} from '../api/activity-admin.js';
 import { FieldError, Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
+type DiscordRolesMeta =
+  | { readonly kind: 'ready'; readonly roles: readonly DiscordRoleOption[] }
+  | { readonly kind: 'error' };
+
 export function PingsPage() {
   const loader = useCallback(async (guildId: string) => {
-    const [pings, roles] = await Promise.all([
-      getPings(guildId),
-      listDiscordRoles(guildId).catch(() => []),
-    ]);
-    return { pings, roles };
+    const pings = await getPings(guildId);
+    let discord: DiscordRolesMeta;
+    try {
+      discord = { kind: 'ready', roles: await listDiscordRoles(guildId) };
+    } catch {
+      discord = { kind: 'error' };
+    }
+    return { pings, discord };
   }, []);
   const { guildId, state, reload } = useGuildResource(loader);
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -29,7 +41,8 @@ export function PingsPage() {
   }, [state, dirty]);
 
   const options = useMemo(() => {
-    const roles = state.kind === 'ready' ? state.data.roles : [];
+    const roles =
+      state.kind === 'ready' && state.data.discord.kind === 'ready' ? state.data.discord.roles : [];
     return roles.map((role) => ({
       value: role.id,
       label: role.everyone ? '@everyone' : role.name,
@@ -71,22 +84,42 @@ export function PingsPage() {
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
       <LoadGate state={state} emptyMessage="Brak ról do wyświetlenia.">
-        {() => (
+        {(data) => (
           <Panel title="Role dostępne do pingowania">
             <div className="form-grid">
-              <MultiSelect
-                legend="Role"
-                options={options}
-                selected={selected}
-                disabled={busy}
-                error={fieldErrors['roleIds']}
-                onChange={(next) => {
-                  setSelected(next);
-                  setDirty(true);
-                }}
-              />
+              {data.discord.kind === 'error' ? (
+                <>
+                  <Flash tone="error">Nie udało się pobrać ról z Discorda.</Flash>
+                  <Button disabled={busy} onClick={() => reload()}>
+                    Spróbuj ponownie
+                  </Button>
+                  <MultiSelect
+                    legend="Role"
+                    options={[]}
+                    selected={selected}
+                    disabled
+                    onChange={() => undefined}
+                  />
+                </>
+              ) : (
+                <MultiSelect
+                  legend="Role"
+                  options={options}
+                  selected={selected}
+                  disabled={busy}
+                  error={fieldErrors['roleIds']}
+                  onChange={(next) => {
+                    setSelected(next);
+                    setDirty(true);
+                  }}
+                />
+              )}
               <FieldError message={fieldErrors['roleIds']} />
-              <Button variant="primary" disabled={busy} onClick={() => void onSave()}>
+              <Button
+                variant="primary"
+                disabled={busy || data.discord.kind === 'error'}
+                onClick={() => void onSave()}
+              >
                 {busy ? 'Zapisywanie…' : 'Zapisz'}
               </Button>
             </div>

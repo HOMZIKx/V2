@@ -57,6 +57,13 @@ describe('DraftUiStateCache', () => {
     expect(cache.get({ guildId: 'g1', discordUserId: 'u1', opaqueDraftId: 'd3' })).toEqual(sampleB);
   });
 
+  it('deletes an entry so the next get is a miss', () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId: 'g1', discordUserId: 'u1', opaqueDraftId: 'd1' }, sampleA);
+    cache.delete({ guildId: 'g1', discordUserId: 'u1', opaqueDraftId: 'd1' });
+    expect(cache.get({ guildId: 'g1', discordUserId: 'u1', opaqueDraftId: 'd1' })).toBeNull();
+  });
+
   it('does not store secrets', () => {
     const source = DraftUiStateCache.toString();
     expect(source).not.toMatch(/secret|token|hmac|sign/i);

@@ -95,4 +95,21 @@ describe('WWW productization contracts', () => {
     expect(source).not.toContain('OWNER_LOGIN');
     expect(source).not.toContain('permission.platform');
   });
+
+  it('uses semantic dt/dd as direct children of the detail facts grid', () => {
+    const source = read('components/ActivityDetailPage.tsx');
+    expect(source).toContain('<dl className="detail-facts">');
+    expect(source).toContain('<dt>Miejsca</dt>');
+    expect(source).toContain('<dd>{formatEventCapacity(occupied, activity.participantLimit)}</dd>');
+    expect(source).not.toMatch(/className="detail-facts">\s*<div>/);
+    const css = readFileSync(join(srcRoot, '../app/web.css'), 'utf8');
+    expect(css).toContain('.detail-facts');
+    expect(css).toMatch(/\.detail-facts \{[\s\S]*display: grid;/);
+  });
+
+  it('does not let text-link hover override design-system button links', () => {
+    const css = readFileSync(join(srcRoot, '../app/web.css'), 'utf8');
+    expect(css).toContain('a:not(.v2-btn):hover');
+    expect(css).not.toMatch(/^a:hover \{/m);
+  });
 });

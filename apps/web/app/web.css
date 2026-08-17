@@ -19,12 +19,12 @@ body {
   line-height: 1.5;
 }
 
-a {
+a:not(.v2-btn) {
   color: var(--v2-centrum);
   text-decoration: none;
 }
 
-a:hover {
+a:not(.v2-btn):hover {
   color: var(--v2-centrum-hover);
 }
 

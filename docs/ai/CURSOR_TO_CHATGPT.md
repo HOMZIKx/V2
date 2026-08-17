@@ -2,47 +2,90 @@
 
 ## 1. Status
 
-`READY_FOR_OWNER_WWW_VISUAL_REVIEW`
+`READY_FOR_OWNER_PRODUCTIZATION_VISUAL_AND_LIVE_REVIEW`
 
 ROLLING AUDIT MODE: **ACTIVE**
 
-## 2. Checkpoints
+CURRENT_TASK_ID: `P4-PRODUCTIZATION-AUDIT-CLOSURE-001`  
+BASELINE_SHA: `ae0a8f0f0169197eee1e72de9c9cba53eedac121`  
+CLOSURE_CHECKPOINT_SHA: _(git tip of this commit — do not amend)_
 
-PREVIOUS_TASK_ID: `P4-ADMIN-PRODUCTIZATION-001`  
-ADMIN_CHECKPOINT_SHA: `2824489cf788622587800e401c709c1083ae627b`  
-ADMIN_CHECKPOINT_PUSHED: YES
+NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ  
+ISSUE #20 NOT IMPLEMENTED · G8 / ISSUE #21 NOT IMPLEMENTED
 
-AUDITED_DISCORD_SHA: `ba082b3cfe39d5c3a58a0f6384425750368fe811`  
-DISCORD_FIXUP_SHA: `efef493fbdc7060acf551bd14b6b07ccc1460d5f`
+## 2. Process correction (G1)
 
-CURRENT_TASK_ID: `P4-WWW-PRODUCTIZATION-001`  
-WWW_CHECKPOINT_SHA: _(git tip of this commit — do not amend)_
+Admin HIGH (channel allowlist truncation at `ADMIN_CHECKPOINT_SHA`
+`2824489cf788622587800e401c709c1083ae627b`) was reported during later rolling
+WWW work and **did not stop the pipeline**.
 
-ChatGPT may audit Admin, Discord fixup, and WWW checkpoints independently.
-Zero amend / rebase / force push / squash.
+Workflow was **not** redesigned. From now the existing rule is enforced:
 
-## 3. Delta summary (WWW productization)
+HIGH / CRITICAL of an earlier checkpoint → SAFE WIP checkpoint → STOP → FIX PRIORITY.
 
-- Member WWW rebuilt on shared `@v2/design-system` (Issue #12 foundation, not APPROVED)
-- Purple / LAB cyan / ENV debug / raw Discord IDs removed from member UX
-- List/detail/Moje use presentation extras: occupiedSlots, organizerDisplay, myParticipationStatus
-- No N+1 participants fan-out on list or Moje
-- RSVP labels come from backend status defs
-- Inbox uses product titles (Awans z rezerwy, zmiana terminu, anulowanie)
-- Guild/session races abort stale requests
-- Screenshots: `tmp/ui-review/web/` (not committed)
+## 3. Findings closed
 
-## 4. Validation
+### ADMIN HIGH — channel allowlist data loss
 
-Targeted design-system / web unit / activity presentation / Playwright, then
-`pnpm validate`.
+FIXED. Owner MultiSelect of all `allowedPublishChannelIds`. Hub channel remains
+separate. No artificial limit of 2. Missing Discord channels show as
+„Kanał niedostępny”, not raw IDs.
+
+### ADMIN SECURITY — guild inventory
+
+GET `/activity/v1/admin/guilds` filters Discord candidate guilds by
+`ACTIVITY_PERMISSIONS.CONFIG_MANAGE` guild scope. Denied guilds are not
+returned (no id/name). Authz dependency failure → `CONFIG_INVALID` (fail closed).
+Unauthenticated → `UNAUTHENTICATED`. No ACL in Admin. No owner Discord ID hardcode.
+
+### ADMIN product
+
+- Discord channel/role metadata failure is a visible error + Spróbuj ponownie,
+  not an empty picker.
+- Declined copy no longer claims „nie zajmuje miejsca”. OccupiesSlot stays an
+  independent field (SoT below). Warning when `declined && occupiesSlot`.
+
+### DISCORD LOW
+
+Successful discard and successful terminal publish delete `DraftUiStateCache`
+for guild+user+opaqueDraft. Failure does not clear cache. Stale Edit after
+discard is a cache miss.
+
+### WWW
+
+- `.detail-facts` is a semantic `<dl>` with `dt`/`dd` as direct grid children.
+- Global `a:hover` no longer overrides `.v2-btn` / `.v2-btn-primary` contrast
+  (selector ownership in design-system + `a:not(.v2-btn):hover` in web/admin CSS).
+- 401 → `UnauthorizedState` on Activities / Detail / My / Inbox (HEAD verified).
+
+OLD REVIEW THREAD: `VERIFIED_FIXED_THREAD_PENDING_CHATGPT_RESOLUTION`
+(no GitHub CLI auth in this environment).
+
+## 4. SoT — declined / occupiesSlot
+
+`docs/architecture/CENTRUM_AKTYWNOSCI.md` §5: `occupiesSlot` **nie wystarcza**;
+`behavior` is independent (`confirmed` | `tentative` | `declined` | `custom`).
+
+`docs/product/CENTRUM_AKTYWNOSCI.md`: same independence.
+
+Domain seed declined uses `occupiesSlot: false`, but `assertValidReferenceStatus`
+does **not** forbid `declined + occupiesSlot=true`. Domain therefore **allows**
+the combination; UI warns and does not auto-flip the toggle.
 
 ## 5. Explicit
 
-NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ · ISSUE #20 NOT IMPLEMENTED  
-G8 / ISSUE #21 NOT IMPLEMENTED · MEMBER CREATOR NOT IMPLEMENTED  
-GLOBAL DESIGN SYSTEM: OWNER_VISUAL_REVIEW_REQUIRED  
-ADMIN: OWNER_VISUAL_REVIEW_REQUIRED  
-DISCORD: OWNER_VISUAL_REVIEW_REQUIRED  
-WWW: OWNER_VISUAL_REVIEW_REQUIRED  
-ISSUE #12: OWNER_VISUAL_REVIEW_REQUIRED
+NO MERGE  
+NO P4.5  
+NO P4.6  
+NO RABBITMQ  
+ISSUE #20 NOT IMPLEMENTED  
+G8 / ISSUE #21 NOT IMPLEMENTED
+
+OWNER GATES STILL REQUIRED:
+
+- DISCORD VISUAL/LIVE
+- ADMIN VISUAL/LIVE
+- WWW VISUAL/LIVE
+- GLOBAL DESIGN SYSTEM: OWNER_VISUAL_REVIEW_REQUIRED
+
+STOP.

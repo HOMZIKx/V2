@@ -945,25 +945,58 @@ export class ActivityAdminUseCases {
     if (port === undefined || port === null) {
       return [];
     }
-    return port.listGuilds();
+    let candidates: readonly { readonly id: string; readonly name: string }[];
+    try {
+      candidates = await port.listGuilds();
+    } catch {
+      throw new ActivityError('CONFIG_INVALID', 'Discord guild metadata is unavailable');
+    }
+    let decisions: readonly { guild: (typeof candidates)[number]; allowed: boolean }[];
+    try {
+      decisions = await Promise.all(
+        candidates.map(async (guild) => {
+          const result = await this.deps.authorize.authorize({
+            subject: actor,
+            permissionId: ACTIVITY_PERMISSIONS.CONFIG_MANAGE,
+            scope: { type: 'guild', guildId: guild.id },
+            operationClass: 'sensitive',
+          });
+          return { guild, allowed: result.allowed };
+        }),
+      );
+    } catch (error) {
+      if (error instanceof ActivityError) {
+        throw error;
+      }
+      throw new ActivityError('CONFIG_INVALID', 'Authorization is unavailable');
+    }
+    return decisions.filter((row) => row.allowed).map((row) => row.guild);
   }
 
   public async listDiscordChannels(guildId: string, actor: ActorSubject) {
     await this.requireConfigManage(actor, guildId);
     const port = this.deps.discordGuildMetadata;
     if (port === undefined || port === null) {
-      return [];
+      throw new ActivityError('CONFIG_INVALID', 'Discord channel metadata is unavailable');
     }
-    return port.listChannels(guildId);
+    try {
+      return await port.listChannels(guildId);
+    } catch {
+      throw new ActivityError('CONFIG_INVALID', 'Discord channel metadata is unavailable');
+    }
   }
 
   public async listDiscordRoles(guildId: string, actor: ActorSubject) {
     await this.requireConfigManage(actor, guildId);
     const port = this.deps.discordGuildMetadata;
     if (port === undefined || port === null) {
-      return [];
+      throw new ActivityError('CONFIG_INVALID', 'Discord role metadata is unavailable');
     }
-    return port.listRoles(guildId);
+    try {
+      return await port.listRoles(guildId);
+    } catch {
+      throw new ActivityError('CONFIG_INVALID', 'Discord role metadata is unavailable');
+    }
   }
 
   public async executeHubPublish(guildId: string, preferScanFirst: boolean, ctx: MutationContext) {

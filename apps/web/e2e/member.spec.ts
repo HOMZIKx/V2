@@ -176,8 +176,23 @@ test('login → member shell → activities → detail → RSVP → my → inbox
   await expect(page.locator('body')).not.toContainText('NEXT_PUBLIC_');
   await expect(page.locator('body')).not.toContainText('111111');
 
-  await page.getByRole('link', { name: 'Szczegóły' }).click();
+  const detailCta = page.getByRole('article').getByRole('link', { name: 'Szczegóły' });
+  const otherNav = page.getByRole('navigation', { name: 'Główne' }).getByRole('link', {
+    name: 'Moje',
+  });
+  const ctaRest = await detailCta.evaluate((el) => getComputedStyle(el).color);
+  await detailCta.hover();
+  const ctaHover = await detailCta.evaluate((el) => getComputedStyle(el).color);
+  expect(ctaHover).toBe(ctaRest);
+  await otherNav.hover();
+  const navHover = await otherNav.evaluate((el) => getComputedStyle(el).color);
+  expect(navHover).not.toBe(ctaHover);
+
+  await detailCta.click();
   await expect(page.getByRole('heading', { name: 'Azrael' })).toBeVisible();
+  await expect(page.locator('.detail-facts > dt')).toHaveCount(2);
+  await expect(page.locator('.detail-facts > dd')).toHaveCount(2);
+  await expect(page.locator('.detail-facts > div')).toHaveCount(0);
   await page.getByRole('button', { name: 'Może będę' }).click();
   await expect(page.getByText('Status zapisany.')).toBeVisible();
 
@@ -229,6 +244,11 @@ test('mobile smoke for list and detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Azrael' })).toBeVisible();
   await page.getByRole('link', { name: 'Szczegóły' }).click();
   await expect(page.getByRole('button', { name: 'Będę', exact: true })).toBeVisible();
+  await expect(page.locator('.detail-facts > dt')).toHaveCount(2);
+  const columns = await page
+    .locator('.detail-facts')
+    .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
+  expect(columns.split(' ').length).toBe(1);
 });
 
 test('screenshot review set', async ({ page }) => {

@@ -31,8 +31,8 @@ const emptyForm = {
 
 const BEHAVIOR_OPTIONS = [
   { value: 'confirmed', label: 'Potwierdzenie — uczestnik jest na liście' },
-  { value: 'tentative', label: 'Niepewny — rezerwa / lista oczekujących' },
-  { value: 'declined', label: 'Odrzucenie — nie zajmuje miejsca' },
+  { value: 'tentative', label: 'Niepewny — osobne od zajmowania miejsca' },
+  { value: 'declined', label: 'Odrzucenie — RSVP „nie biorę udziału”' },
   { value: 'custom', label: 'Własny status' },
 ] as const;
 
@@ -215,6 +215,12 @@ export function StatusesPage() {
               }}
             />
           </FormField>
+          {form.behavior === 'declined' && form.occupiesSlot ? (
+            <p className="muted" role="status">
+              Behavior i zajmowanie miejsca są osobnymi polami. Seed „Nie będę” nie zajmuje miejsca
+              — zostaw włączone tylko świadomie.
+            </p>
+          ) : null}
           <Toggle
             id="status-slot"
             label={form.occupiesSlot ? 'Zajmuje miejsce' : 'Nie zajmuje miejsca'}

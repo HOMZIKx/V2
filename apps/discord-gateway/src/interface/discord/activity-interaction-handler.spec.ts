@@ -1000,4 +1000,143 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     expect(reply).toHaveBeenCalledOnce();
     expect(showModal).not.toHaveBeenCalled();
   });
+
+  it('clears draft UI cache after successful discard and does not reopen from cache', async () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
+    const lookupDraftByOpaque = vi.fn(() =>
+      Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      }),
+    );
+    const discardDraft = vi.fn(() => Promise.resolve(undefined));
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque, discardDraft } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'discard', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'discard-ok-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal: vi.fn(),
+      deferReply: vi.fn(() => Promise.resolve()),
+      deferUpdate: vi.fn(),
+      editReply,
+      reply: vi.fn(),
+    } as never);
+    expect(discardDraft).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledWith({ content: 'Szkic odrzucony.' });
+    expect(
+      cache.get({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }),
+    ).toBeNull();
+
+    const showModal = vi.fn();
+    const deferUpdate = vi.fn(() => Promise.resolve());
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'edit', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'edit-after-discard-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal,
+      deferReply: vi.fn(),
+      deferUpdate,
+      editReply: vi.fn(() => Promise.resolve()),
+      reply: vi.fn(),
+    } as never);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(deferUpdate).toHaveBeenCalledOnce();
+  });
+
+  it('does not clear draft UI cache when discard fails', async () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
+    const lookupDraftByOpaque = vi.fn(() =>
+      Promise.resolve({
+        id: draftUuid,
+        payload: { name: 'A', description: 'B', scheduleFromDisplay: 'C', scheduleKind: 'exact' },
+      }),
+    );
+    const discardDraft = vi.fn(() => Promise.reject(new Error('backend down')));
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque, discardDraft } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'discard', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'discard-fail-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal: vi.fn(),
+      deferReply: vi.fn(() => Promise.resolve()),
+      deferUpdate: vi.fn(),
+      editReply,
+      reply: vi.fn(),
+    } as never);
+    expect(discardDraft).toHaveBeenCalledOnce();
+    expect(editReply).not.toHaveBeenCalledWith({ content: 'Szkic odrzucony.' });
+    expect(cache.get({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft })).toEqual(
+      cachedFormState,
+    );
+  });
+
+  it('clears draft UI cache after successful terminal publish', async () => {
+    const cache = new DraftUiStateCache();
+    cache.set({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }, cachedFormState);
+    const lookupDraftByOpaque = vi.fn(() =>
+      Promise.resolve({
+        id: draftUuid,
+        payload: {
+          name: 'Azrael',
+          startAt: '2026-08-20T18:00:00.000Z',
+          scheduleKind: 'exact',
+        },
+      }),
+    );
+    const publishDraft = vi.fn(() => Promise.resolve({ name: 'Azrael' }));
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: { lookupDraftByOpaque, publishDraft } as never,
+      logger: createLogger(),
+      draftUiStateCache: cache,
+    });
+    await handler.handleComponent({
+      customId: createDraftCustomId(opaqueDraft, 'publish', secret),
+      guildId,
+      channelId,
+      user: { id: operatorId },
+      id: 'publish-ok-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { components: [] },
+      showModal: vi.fn(),
+      deferReply: vi.fn(() => Promise.resolve()),
+      deferUpdate: vi.fn(),
+      editReply: vi.fn(() => Promise.resolve()),
+      reply: vi.fn(),
+    } as never);
+    expect(publishDraft).toHaveBeenCalledOnce();
+    expect(
+      cache.get({ guildId, discordUserId: operatorId, opaqueDraftId: opaqueDraft }),
+    ).toBeNull();
+  });
 });

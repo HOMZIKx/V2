@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Button, FormField, Panel, Select } from '@v2/design-system';
+import { Button, FormField, MultiSelect, Panel, Select } from '@v2/design-system';
 
 import {
   getChannels,
@@ -14,24 +14,25 @@ import {
 } from '../api/activity-admin.js';
 import { FieldError, Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
+import { channelPickerOptions } from './channels-picker.js';
 
-function channelLabel(channel: DiscordChannelOption): string {
-  const prefix = channel.usable ? '#' : '#';
-  return `${prefix}${channel.name}`;
-}
+type DiscordChannelsMeta =
+  | { readonly kind: 'ready'; readonly channels: readonly DiscordChannelOption[] }
+  | { readonly kind: 'error' };
 
 export function ChannelsPage() {
   const loader = useCallback(async (guildId: string) => {
-    const [channels, hub, discordChannels] = await Promise.all([
-      getChannels(guildId),
-      getHub(guildId),
-      listDiscordChannels(guildId).catch(() => [] as DiscordChannelOption[]),
-    ]);
-    return { channels, hub, discordChannels };
+    const [channels, hub] = await Promise.all([getChannels(guildId), getHub(guildId)]);
+    let discord: DiscordChannelsMeta;
+    try {
+      discord = { kind: 'ready', channels: await listDiscordChannels(guildId) };
+    } catch {
+      discord = { kind: 'error' };
+    }
+    return { channels, hub, discord };
   }, []);
   const { guildId, state, reload } = useGuildResource(loader);
-  const [publishChannelId, setPublishChannelId] = useState('');
-  const [extraChannelId, setExtraChannelId] = useState('');
+  const [selectedChannelIds, setSelectedChannelIds] = useState<readonly string[]>([]);
   const [hubChannelId, setHubChannelId] = useState('');
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
@@ -42,50 +43,53 @@ export function ChannelsPage() {
 
   useEffect(() => {
     if (state.kind === 'ready' && !dirty) {
-      setPublishChannelId(state.data.channels.channelIds[0] ?? '');
-      setExtraChannelId(state.data.channels.channelIds[1] ?? '');
+      setSelectedChannelIds(state.data.channels.channelIds);
       setHubChannelId(state.data.hub.channelId ?? '');
     }
   }, [state, dirty]);
 
-  const options = useMemo(() => {
-    const list = state.kind === 'ready' ? state.data.discordChannels : [];
+  const discordChannels: readonly DiscordChannelOption[] =
+    state.kind === 'ready' && state.data.discord.kind === 'ready'
+      ? state.data.discord.channels
+      : [];
+
+  const publishOptions = useMemo(
+    () => channelPickerOptions(discordChannels, selectedChannelIds),
+    [discordChannels, selectedChannelIds],
+  );
+
+  const hubOptions = useMemo(() => {
     return [
       { value: '', label: 'Wybierz kanał', disabled: true },
-      ...list.map((channel) => ({
+      ...discordChannels.map((channel) => ({
         value: channel.id,
-        label: channelLabel(channel),
+        label: `#${channel.name}`,
         disabled: !channel.usable,
       })),
     ];
-  }, [state]);
+  }, [discordChannels]);
 
   async function onSaveChannels() {
     if (guildId === null) {
-      return;
-    }
-    if (publishChannelId.trim() === '') {
-      setFieldErrors({ channelIds: 'Wybierz kanał publikacji.' });
       return;
     }
     setBusy(true);
     setError(null);
     setErrorDetail(null);
     setFlash(null);
+    setFieldErrors({});
     try {
-      await updateChannels(
-        guildId,
-        extraChannelId.trim() === '' || extraChannelId === publishChannelId
-          ? [publishChannelId]
-          : [publishChannelId, extraChannelId],
-      );
-      setFlash('Kanał publikacji zapisany.');
+      await updateChannels(guildId, selectedChannelIds);
+      setFlash('Kanały publikacji zapisane.');
       setDirty(false);
       reload();
     } catch (err) {
       const parsed = errorFromUnknown(err);
       setError(parsed.message);
       setErrorDetail(parsed.detail);
+      if (Object.keys(parsed.fields).length > 0) {
+        setFieldErrors(parsed.fields);
+      }
     } finally {
       setBusy(false);
     }
@@ -159,39 +163,43 @@ export function ChannelsPage() {
       <LoadGate state={state} emptyMessage="Brak konfiguracji kanałów.">
         {(data) => (
           <div className="stack">
-            <Panel title="Kanał publikacji">
+            <Panel title="Kanały publikacji">
               <div className="form-grid">
-                <FormField label="Kanał publikacji" htmlFor="publish-channel">
-                  <Select
-                    id="publish-channel"
-                    value={publishChannelId}
+                {data.discord.kind === 'error' ? (
+                  <>
+                    <Flash tone="error">Nie udało się pobrać kanałów z Discorda.</Flash>
+                    <Button disabled={busy} onClick={() => reload()}>
+                      Spróbuj ponownie
+                    </Button>
+                    <MultiSelect
+                      legend="Kanały publikacji"
+                      options={[]}
+                      selected={selectedChannelIds}
+                      disabled
+                      onChange={() => undefined}
+                    />
+                  </>
+                ) : (
+                  <MultiSelect
+                    legend="Kanały publikacji"
+                    options={publishOptions}
+                    selected={selectedChannelIds}
                     disabled={busy}
-                    options={options}
-                    onChange={(event) => {
-                      setPublishChannelId(event.target.value);
+                    error={fieldErrors['channelIds']}
+                    onChange={(next) => {
+                      setSelectedChannelIds(next);
                       setDirty(true);
                     }}
                   />
-                  <FieldError message={fieldErrors['channelIds']} />
-                </FormField>
-                <Button variant="primary" disabled={busy} onClick={() => void onSaveChannels()}>
-                  {busy ? 'Zapisywanie…' : 'Zapisz kanał publikacji'}
+                )}
+                <FieldError message={fieldErrors['channelIds']} />
+                <Button
+                  variant="primary"
+                  disabled={busy || data.discord.kind === 'error'}
+                  onClick={() => void onSaveChannels()}
+                >
+                  {busy ? 'Zapisywanie…' : 'Zapisz kanały publikacji'}
                 </Button>
-                <FormField label="Kanał dodatkowy (opcjonalnie)" htmlFor="extra-channel">
-                  <Select
-                    id="extra-channel"
-                    value={extraChannelId}
-                    disabled={busy}
-                    options={[
-                      { value: '', label: 'Brak' },
-                      ...options.filter((option) => option.value !== ''),
-                    ]}
-                    onChange={(event) => {
-                      setExtraChannelId(event.target.value);
-                      setDirty(true);
-                    }}
-                  />
-                </FormField>
               </div>
             </Panel>
 
@@ -215,27 +223,47 @@ export function ChannelsPage() {
                     ? data.hub.lastSyncedAt
                     : '—'}
                 </p>
-                <FormField label="Kanał panelu" htmlFor="hub-channel">
+                {data.discord.kind === 'error' ? (
                   <Select
                     id="hub-channel"
                     value={hubChannelId}
-                    disabled={busy}
-                    options={options}
-                    onChange={(event) => {
-                      setHubChannelId(event.target.value);
-                      setDirty(true);
-                    }}
+                    disabled
+                    options={[{ value: '', label: 'Lista kanałów niedostępna' }]}
+                    onChange={() => undefined}
                   />
-                  <FieldError message={fieldErrors['hubChannelId']} />
-                </FormField>
+                ) : (
+                  <FormField label="Kanał panelu" htmlFor="hub-channel">
+                    <Select
+                      id="hub-channel"
+                      value={hubChannelId}
+                      disabled={busy}
+                      options={hubOptions}
+                      onChange={(event) => {
+                        setHubChannelId(event.target.value);
+                        setDirty(true);
+                      }}
+                    />
+                    <FieldError message={fieldErrors['hubChannelId']} />
+                  </FormField>
+                )}
                 <div className="row">
-                  <Button disabled={busy} onClick={() => void onSaveHub()}>
+                  <Button
+                    disabled={busy || data.discord.kind === 'error'}
+                    onClick={() => void onSaveHub()}
+                  >
                     Zapisz kanał
                   </Button>
-                  <Button variant="primary" disabled={busy} onClick={() => void onPublish(false)}>
+                  <Button
+                    variant="primary"
+                    disabled={busy || data.discord.kind === 'error'}
+                    onClick={() => void onPublish(false)}
+                  >
                     Opublikuj / odśwież
                   </Button>
-                  <Button disabled={busy} onClick={() => void onPublish(true)}>
+                  <Button
+                    disabled={busy || data.discord.kind === 'error'}
+                    onClick={() => void onPublish(true)}
+                  >
                     Uzgodnij panel
                   </Button>
                 </div>

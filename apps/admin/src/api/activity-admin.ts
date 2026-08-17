@@ -215,12 +215,8 @@ function asObject<T extends object>(payload: unknown): T {
 }
 
 export async function listAdminGuilds(): Promise<AdminGuildListItem[]> {
-  try {
-    const payload = await apiRequest<unknown>('/activity/v1/admin/guilds');
-    return asList<AdminGuildListItem>(payload, ['guilds', 'items', 'data']);
-  } catch {
-    return [];
-  }
+  const payload = await apiRequest<unknown>('/activity/v1/admin/guilds');
+  return asList<AdminGuildListItem>(payload, ['guilds', 'items', 'data']);
 }
 
 export async function getReadiness(guildId: string): Promise<ReadinessResponse> {

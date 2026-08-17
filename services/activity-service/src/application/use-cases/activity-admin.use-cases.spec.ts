@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { FixedClock } from '../../domain/clock.js';
 import { ActivityError } from '../../domain/errors.js';
+import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
 import type {
   ActivityRecord,
   ActivityRepositoryPort,
@@ -313,8 +314,20 @@ function createAdminMemoryRepo(): {
     async updateActivityType() {
       return notImpl();
     },
-    async insertStatusDef() {
-      return notImpl();
+    async insertStatusDef(input) {
+      const created: ParticipationStatusDefRecord = {
+        id: input.id,
+        guildId: input.guildId,
+        label: input.label,
+        occupiesSlot: input.occupiesSlot,
+        behavior: input.behavior,
+        selectableByMember: input.selectableByMember,
+        active: input.active ?? true,
+        sortOrder: input.sortOrder ?? 0,
+        seedKey: input.seedKey ?? null,
+      };
+      statuses.set(created.id, created);
+      return created;
     },
     async countParticipationsUsingStatus() {
       return 0;
@@ -616,5 +629,183 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     await expect(
       useCases.deactivateStatus('guild-1', 'status-confirmed', { actor }),
     ).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+
+  it('allows declined behavior with occupiesSlot=true because fields are independent', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const created = await useCases.createStatus(
+      'guild-1',
+      {
+        label: 'Nie, ale rezerwuję',
+        occupiesSlot: true,
+        behavior: 'declined',
+        selectableByMember: true,
+      },
+      { actor },
+    );
+    expect(created.behavior).toBe('declined');
+    expect(created.occupiesSlot).toBe(true);
+  });
+
+  it('filters admin guild inventory to CONFIG_MANAGE and hides denied guilds', async () => {
+    const mem = createAdminMemoryRepo();
+    class SelectiveAuthz implements AuthorizePort {
+      public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+        expect(request.permissionId).toBe(ACTIVITY_PERMISSIONS.CONFIG_MANAGE);
+        expect(request.scope.type).toBe('guild');
+        const allowed = request.scope.guildId === 'guild-a';
+        return Promise.resolve({
+          allowed,
+          permissionId: request.permissionId,
+          decision: allowed ? 'allow' : 'deny',
+        });
+      }
+    }
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new SelectiveAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [
+          { id: 'guild-a', name: 'Alpha' },
+          { id: 'guild-b', name: 'Bravo' },
+        ],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    const guilds = await useCases.listAdminGuilds(actor);
+    expect(guilds).toEqual([{ id: 'guild-a', name: 'Alpha' }]);
+    expect(JSON.stringify(guilds)).not.toContain('guild-b');
+    expect(JSON.stringify(guilds)).not.toContain('Bravo');
+  });
+
+  it('rejects unauthenticated admin guild listing', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [{ id: 'guild-a', name: 'Alpha' }],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds({})).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+  });
+
+  it('fails closed when authorization dependency throws during guild listing', async () => {
+    const mem = createAdminMemoryRepo();
+    class BrokenAuthz implements AuthorizePort {
+      public authorize(): Promise<AuthorizeResult> {
+        return Promise.reject(new Error('authz down'));
+      }
+    }
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new BrokenAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [
+          { id: 'guild-a', name: 'Alpha' },
+          { id: 'guild-b', name: 'Bravo' },
+        ],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({ code: 'CONFIG_INVALID' });
+  });
+
+  it('returns an empty guild list when the actor cannot manage any candidate', async () => {
+    const mem = createAdminMemoryRepo();
+    class DenyAll implements AuthorizePort {
+      public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+        return Promise.resolve({
+          allowed: false,
+          permissionId: request.permissionId,
+          decision: 'deny',
+        });
+      }
+    }
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new DenyAll(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [{ id: 'guild-b', name: 'Bravo' }],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).resolves.toEqual([]);
+  });
+
+  it('fails closed when Discord channel metadata is unavailable', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [],
+        getGuild: async () => null,
+        listChannels: async () => {
+          throw new Error('discord down');
+        },
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listDiscordChannels('guild-1', actor)).rejects.toMatchObject({
+      code: 'CONFIG_INVALID',
+    });
+  });
+
+  it('fails closed when Discord role metadata is unavailable', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => {
+          throw new Error('discord down');
+        },
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listDiscordRoles('guild-1', actor)).rejects.toMatchObject({
+      code: 'CONFIG_INVALID',
+    });
   });
 });

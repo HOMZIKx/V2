@@ -1,9 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-const DEV_GUILDS = JSON.stringify([
-  { id: 'guild-e2e-1', name: 'E2E Guild Alpha' },
-  { id: 'guild-e2e-2', name: 'E2E Guild Beta' },
-]);
+const DEV_GUILDS = JSON.stringify([{ id: 'guild-e2e-1', name: 'E2E Guild Alpha' }]);
 
 export default defineConfig({
   testDir: './e2e',

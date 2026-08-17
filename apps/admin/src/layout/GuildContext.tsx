@@ -50,18 +50,19 @@ export function GuildProvider(props: { children: ReactNode }) {
         if (cancelled) {
           return;
         }
-        if (remote.length > 0) {
-          setGuilds(remote);
-          setGuildIdState((current) => {
-            if (current !== null && remote.some((g) => g.id === current)) {
-              return current;
-            }
-            return remote[0]?.id ?? null;
-          });
-        } else if (session.guilds.length > 0) {
-          setGuilds([...session.guilds]);
-          setGuildIdState((current) => current ?? session.guilds[0]?.id ?? null);
+        setGuilds(remote);
+        setGuildIdState((current) => {
+          if (current !== null && remote.some((g) => g.id === current)) {
+            return current;
+          }
+          return remote[0]?.id ?? null;
+        });
+      } catch {
+        if (cancelled) {
+          return;
         }
+        setGuilds([]);
+        setGuildIdState(null);
       } finally {
         if (!cancelled) {
           setLoadingGuilds(false);
