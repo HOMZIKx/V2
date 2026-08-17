@@ -138,10 +138,11 @@ const providers: Provider[] = [
   {
     provide: INBOUND_CLIENT_REGISTRY,
     useFactory: async (config: ActivityEnv): Promise<InboundClientRegistry | null> => {
-      if (config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
+      const clientsJson = resolveInboundClientsJson(config);
+      if (clientsJson === undefined) {
         return null;
       }
-      return loadInboundClientRegistry(config.ACTIVITY_INBOUND_CLIENTS_JSON);
+      return loadInboundClientRegistry(clientsJson);
     },
     inject: [ACTIVITY_CONFIG],
   },
@@ -149,7 +150,7 @@ const providers: Provider[] = [
     provide: ASSERTION_JTI_STORE,
     useFactory: (config: ActivityEnv): AssertionJtiStore | null => {
       if (
-        config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined ||
+        resolveInboundClientsJson(config) === undefined ||
         config.ACTIVITY_REDIS_URL === undefined
       ) {
         return null;
@@ -164,6 +165,16 @@ const providers: Provider[] = [
   InboundAssertionGuard,
   ActivityOutboxDispatcher,
 ];
+
+function resolveInboundClientsJson(config: ActivityEnv): string | undefined {
+  if (config.ACTIVITY_INBOUND_CLIENTS_JSON !== undefined) {
+    return config.ACTIVITY_INBOUND_CLIENTS_JSON;
+  }
+  if (config.ACTIVITY_INBOUND_CLIENTS_B64 === undefined) {
+    return undefined;
+  }
+  return Buffer.from(config.ACTIVITY_INBOUND_CLIENTS_B64, 'base64').toString('utf8');
+}
 
 @Module({
   controllers: [HealthController, ActivityController, ActivityAdminController],

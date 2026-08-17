@@ -260,8 +260,13 @@ export type DiscordGatewayConfig = z.output<typeof DiscordGatewayConfigSchema> &
 export function normalizeDiscordConfig(
   parsed: z.output<typeof DiscordGatewayConfigSchema>,
 ): DiscordGatewayConfig {
+  const privateKeyPem =
+    parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM !== undefined
+      ? parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM.replace(/\\n/g, '\n')
+      : undefined;
   return {
     ...parsed,
+    ...(privateKeyPem !== undefined ? { DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: privateKeyPem } : {}),
     operatorIds: parseOperatorIds(parsed.DISCORD_TEST_OPERATOR_IDS),
   };
 }

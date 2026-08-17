@@ -65,6 +65,8 @@ const baseSchema = z.object({
   ACTIVITY_TO_AUTHZ_ACTIVE_KID: optionalTrimmed,
   ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   ACTIVITY_INBOUND_CLIENTS_JSON: optionalTrimmed,
+  /** Zeabur-friendly alternative when JSON commas break CLI `-k` flags. */
+  ACTIVITY_INBOUND_CLIENTS_B64: optionalTrimmed,
   ACTIVITY_ASSERTION_AUD: optionalTrimmed,
   ACTIVITY_DISCORD_PROJECTION_BASE_URL: optionalTrimmed,
   /** Optional override for Discord Gateway base (channel validate). Falls back to projection URL. */
