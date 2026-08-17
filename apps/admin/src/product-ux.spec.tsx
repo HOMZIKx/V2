@@ -20,6 +20,7 @@ describe('Admin product UX', () => {
   });
 
   it('shows a human-readable guild name, not the snowflake as the label', () => {
+    vi.stubEnv('VITE_ADMIN_DEV_ACTOR_DISCORD_ID', '999888777666555444');
     vi.stubEnv(
       'VITE_ADMIN_DEV_GUILDS',
       JSON.stringify([{ id: '1534228693017432124', name: 'Destiny' }]),

@@ -14,6 +14,8 @@ Default: http://127.0.0.1:3001
 
 - **Local/dev:** set `VITE_ADMIN_DEV_ACTOR_DISCORD_ID` (sent as `X-Actor-Discord-User-Id`).
 - Optional guild list: `VITE_ADMIN_DEV_GUILDS` JSON array of `{ "id", "name" }`.
+  Used only in DEV actor mode, and only as a local fallback when
+  `GET /activity/v1/admin/guilds` fails. Identity-cookie mode never reads it.
 - Optional org for ensure-defaults: `VITE_ADMIN_DEV_ORG_ID`.
 - **Production:** Identity session cookie via API gateway. All fetches use
   `credentials: 'include'`. No password login in this app.

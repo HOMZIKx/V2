@@ -49,14 +49,13 @@ function parseDevGuilds(raw: string | undefined): AdminGuildOption[] {
  */
 export function readAdminSession(): AdminSession {
   const actorDiscordUserId = import.meta.env.VITE_ADMIN_DEV_ACTOR_DISCORD_ID?.trim() || null;
-  const guilds = parseDevGuilds(import.meta.env.VITE_ADMIN_DEV_GUILDS);
   const orgId = import.meta.env.VITE_ADMIN_DEV_ORG_ID?.trim() || null;
 
   if (actorDiscordUserId !== null) {
     return {
       mode: 'dev-actor',
       actorDiscordUserId,
-      guilds,
+      guilds: parseDevGuilds(import.meta.env.VITE_ADMIN_DEV_GUILDS),
       orgId,
     };
   }
@@ -64,7 +63,7 @@ export function readAdminSession(): AdminSession {
   return {
     mode: 'identity-cookie',
     actorDiscordUserId: null,
-    guilds,
+    guilds: [],
     orgId,
   };
 }

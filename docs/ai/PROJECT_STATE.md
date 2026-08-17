@@ -24,8 +24,8 @@ separate immutable checkpoints on the same branch.
 
 ## Active phase
 
-P4-PRODUCTIZATION-AUDIT-CLOSURE-001 — close Admin HIGH + Discord LOW + WWW
-findings. No new feature work.
+P4-PRODUCTIZATION-AUDIT-CLOSURE-FIXUP-002 — restore DEV guild fallback without
+weakening CONFIG_MANAGE filtering. No new feature work.
 
 ## Active branch / PR
 
@@ -34,7 +34,8 @@ findings. No new feature work.
 - Admin checkpoint: `2824489cf788622587800e401c709c1083ae627b`
 - Discord fixup checkpoint: `efef493fbdc7060acf551bd14b6b07ccc1460d5f`
 - WWW checkpoint: `ae0a8f0f0169197eee1e72de9c9cba53eedac121`
-- Closure checkpoint: git tip of this commit
+- Closure checkpoint: `f85b2468d834549c73d2ad203e36aa84991e6327`
+- Guild-fallback fixup: git tip of this commit
 
 ## Process note
 
@@ -44,13 +45,10 @@ checkpoint → SAFE WIP → STOP → FIX PRIORITY. Workflow document not redesig
 
 ## Delivered in this delta
 
-- Admin channel allowlist MultiSelect (no silent truncation)
-- Admin guild list filtered by CONFIG_MANAGE; denied guilds not disclosed
-- Discord metadata failure UX for channels and roles
-- Declined copy/warning; occupiesSlot remains independent (architecture SoT)
-- Draft UI cache cleared after successful discard and terminal publish
-- WWW detail facts semantic grid; CTA/link-button hover contrast ownership
-- 401 UnauthorizedState verified on member pages
+- DEV actor guild fallback restored on API failure (explicit warning + retry)
+- Identity-cookie mode never uses `VITE_ADMIN_DEV_GUILDS`
+- Empty authorized guilds vs API failure are distinct owner states
+- CONFIG_MANAGE guild filtering unchanged
 
 ## Owner next
 
@@ -68,4 +66,4 @@ checkpoint → SAFE WIP → STOP → FIX PRIORITY. Workflow document not redesig
 
 ## Last updated
 
-2026-08-17 — P4-PRODUCTIZATION-AUDIT-CLOSURE-001
+2026-08-17 — P4-PRODUCTIZATION-AUDIT-CLOSURE-FIXUP-002

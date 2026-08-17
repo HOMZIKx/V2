@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 import { Button } from '@v2/design-system';
 
 import { isDevActorMode, readAdminSession } from '../auth/session.js';
+import { Flash } from '../components/ui.js';
 import { GuildProvider, useGuildContext } from './GuildContext.js';
 
 const PULPIT = { to: '/', label: 'Pulpit' } as const;
@@ -29,22 +30,38 @@ const ADVANCED_NAV: readonly { readonly to: string; readonly label: string }[] =
 ];
 
 function GuildSelector() {
-  const { guildId, guilds, setGuildId, loadingGuilds } = useGuildContext();
+  const { guildId, guilds, setGuildId, guildLoadState, reloadGuilds } = useGuildContext();
 
-  if (loadingGuilds) {
+  if (guildLoadState.kind === 'loading' && guilds.length === 0) {
     return <div className="guild-selector muted">Wczytywanie serwerów…</div>;
   }
 
-  if (guilds.length === 0) {
+  if (guildLoadState.kind === 'error' && guilds.length === 0) {
     return (
-      <div className="guild-selector muted">
-        Brak serwerów do konfiguracji. Połącz bota Discord albo ustaw listę deweloperską.
+      <div className="guild-selector">
+        <Flash tone="error" detail={guildLoadState.detail}>
+          {guildLoadState.message}
+        </Flash>
+        <Button onClick={() => reloadGuilds()}>Spróbuj ponownie</Button>
       </div>
     );
   }
 
+  if (guildLoadState.kind === 'empty') {
+    return <div className="guild-selector muted">Brak serwerów, którymi możesz zarządzać.</div>;
+  }
+
   return (
     <div className="guild-selector">
+      {guildLoadState.kind === 'error' ? (
+        <>
+          <Flash tone="error" detail={guildLoadState.detail}>
+            {guildLoadState.message}
+          </Flash>
+          <Button onClick={() => reloadGuilds()}>Spróbuj ponownie</Button>
+        </>
+      ) : null}
+      {guildLoadState.kind === 'loading' ? <p className="muted">Wczytywanie serwerów…</p> : null}
       <label htmlFor="guild-select">Serwer</label>
       <select
         id="guild-select"

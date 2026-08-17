@@ -1,13 +1,26 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { listAdminGuilds } from '../api/activity-admin.js';
 import { readAdminSession, type AdminGuildOption } from '../auth/session.js';
+import { errorFromUnknown } from '../components/ui.js';
+import { decideGuildInventory, initialDevGuilds, type GuildLoadState } from './guild-inventory.js';
 
 interface GuildContextValue {
   readonly guildId: string | null;
   readonly guilds: readonly AdminGuildOption[];
   readonly setGuildId: (id: string) => void;
   readonly loadingGuilds: boolean;
+  readonly guildLoadState: GuildLoadState;
+  readonly reloadGuilds: () => void;
 }
 
 const GuildContext = createContext<GuildContextValue | null>(null);
@@ -32,47 +45,63 @@ function writeStoredGuildId(id: string): void {
 
 export function GuildProvider(props: { children: ReactNode }) {
   const session = useMemo(() => readAdminSession(), []);
-  const [guilds, setGuilds] = useState<AdminGuildOption[]>([...session.guilds]);
-  const [loadingGuilds, setLoadingGuilds] = useState(session.guilds.length === 0);
+  const fallbackGuilds = useMemo(() => [...initialDevGuilds(session)], [session]);
+  const [guilds, setGuilds] = useState<AdminGuildOption[]>(() => [...fallbackGuilds]);
+  const [guildLoadState, setGuildLoadState] = useState<GuildLoadState>({ kind: 'loading' });
+  const [reloadToken, setReloadToken] = useState(0);
   const [guildId, setGuildIdState] = useState<string | null>(() => {
     const stored = readStoredGuildId();
-    if (stored !== null && session.guilds.some((g) => g.id === stored)) {
+    if (stored !== null && fallbackGuilds.some((guild) => guild.id === stored)) {
       return stored;
     }
-    return session.guilds[0]?.id ?? null;
+    return fallbackGuilds[0]?.id ?? null;
   });
+  const guildIdRef = useRef(guildId);
+  guildIdRef.current = guildId;
+
+  const reloadGuilds = useCallback(() => {
+    setGuildLoadState({ kind: 'loading' });
+    setReloadToken((token) => token + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      setGuildLoadState({ kind: 'loading' });
       try {
         const remote = await listAdminGuilds();
         if (cancelled) {
           return;
         }
-        setGuilds(remote);
-        setGuildIdState((current) => {
-          if (current !== null && remote.some((g) => g.id === current)) {
-            return current;
-          }
-          return remote[0]?.id ?? null;
+        const decision = decideGuildInventory({
+          mode: session.mode,
+          sessionGuilds: fallbackGuilds,
+          currentGuildId: guildIdRef.current,
+          remote: { kind: 'ok', guilds: remote },
         });
-      } catch {
+        setGuilds([...decision.guilds]);
+        setGuildIdState(decision.selectedGuildId);
+        setGuildLoadState(decision.loadState);
+      } catch (error) {
         if (cancelled) {
           return;
         }
-        setGuilds([]);
-        setGuildIdState(null);
-      } finally {
-        if (!cancelled) {
-          setLoadingGuilds(false);
-        }
+        const parsed = errorFromUnknown(error);
+        const decision = decideGuildInventory({
+          mode: session.mode,
+          sessionGuilds: fallbackGuilds,
+          currentGuildId: guildIdRef.current,
+          remote: { kind: 'error', message: parsed.message, detail: parsed.detail },
+        });
+        setGuilds([...decision.guilds]);
+        setGuildIdState(decision.selectedGuildId);
+        setGuildLoadState(decision.loadState);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [session.guilds]);
+  }, [session.mode, fallbackGuilds, reloadToken]);
 
   const setGuildId = (id: string) => {
     setGuildIdState(id);
@@ -83,7 +112,9 @@ export function GuildProvider(props: { children: ReactNode }) {
     guildId,
     guilds,
     setGuildId,
-    loadingGuilds,
+    loadingGuilds: guildLoadState.kind === 'loading',
+    guildLoadState,
+    reloadGuilds,
   };
 
   return <GuildContext.Provider value={value}>{props.children}</GuildContext.Provider>;

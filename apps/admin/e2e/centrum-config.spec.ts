@@ -136,7 +136,11 @@ function readinessFor(store: GuildStore): {
 
 async function installActivityAdminMocks(
   page: Page,
-  options: { failDiscordChannels?: boolean; failDiscordRoles?: boolean } = {},
+  options: {
+    failDiscordChannels?: boolean;
+    failDiscordRoles?: boolean;
+    failAdminGuilds?: boolean;
+  } = {},
 ): Promise<{
   stores: Map<string, GuildStore>;
 }> {
@@ -152,6 +156,12 @@ async function installActivityAdminMocks(
     const pathname = url.pathname;
 
     if (pathname === '/activity/v1/admin/guilds' && method === 'GET') {
+      if (options.failAdminGuilds === true) {
+        await json(route, 503, {
+          error: { code: 'CONFIG_INVALID', message: 'Authorization is unavailable' },
+        });
+        return;
+      }
       await json(route, 200, {
         guilds: [{ id: GUILD_A, name: 'E2E Guild Alpha' }],
       });
@@ -630,6 +640,15 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await installActivityAdminMocks(page, { failDiscordRoles: true });
     await page.goto('/activity/pings');
     await expect(page.getByText('Nie udało się pobrać ról z Discorda.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible();
+  });
+
+  test('DEV actor keeps local guilds when the guild list API fails', async ({ page }) => {
+    await installActivityAdminMocks(page, { failAdminGuilds: true });
+    await page.goto('/');
+    await expect(page.locator('#guild-select')).toHaveValue(GUILD_A);
+    await expect(page.locator('#guild-select')).toContainText('E2E Guild Alpha');
+    await expect(page.getByText(/lokalną listę deweloperską/)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible();
   });
 });
