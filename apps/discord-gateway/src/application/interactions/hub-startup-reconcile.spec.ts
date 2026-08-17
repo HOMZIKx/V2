@@ -21,13 +21,13 @@ describe('runStartupHubReconcile', () => {
       config: { ...baseConfig, DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP: false },
       gateway: {} as never,
       activityClient: activityClient as never,
-      logger: { info: vi.fn(), warn: vi.fn() },
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     });
     expect(activityClient.listPanels).not.toHaveBeenCalled();
   });
 
   it('skips when hub channel cannot be resolved', async () => {
-    const logger = { info: vi.fn(), warn: vi.fn() };
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const activityClient = {
       listPanels: vi.fn(() => Promise.resolve([])),
       getGuildConfig: vi.fn(() => Promise.reject(new Error('not found'))),
@@ -47,7 +47,7 @@ describe('runStartupHubReconcile', () => {
   });
 
   it('reconciles hub panel on startup when channel is known', async () => {
-    const logger = { info: vi.fn(), warn: vi.fn() };
+    const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const panelId = '11111111-1111-4111-8111-111111111111';
     const activityClient = {
       listPanels: vi.fn(() =>
