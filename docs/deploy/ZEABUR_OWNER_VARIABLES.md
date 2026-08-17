@@ -143,6 +143,21 @@ Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 
 ---
 
+## `web` / `admin` (frontend)
+
+Te serwisy budują się przez Dockerfile (`Dockerfile.web`, `Dockerfile.admin`). Build **musi** przejść przed startem kontenera.
+
+| Klucz | Tag | Kiedy |
+| ----- | --- | ----- |
+| `ZBPACK_DOCKERFILE_NAME` | PUBLIC VALUE = `web` lub `admin` | zawsze |
+| `VITE_API_BASE_URL` | PUBLIC VALUE — publiczny URL `api-gateway` (np. `https://api-gateway-xxx.zeabur.app`) | **build-time** (Zeabur Variables → dostępne przy buildzie) |
+
+Bez `VITE_API_BASE_URL` frontend zbuduje się, ale Admin/WWW będą wołać zły host → „Failed to fetch” mimo że backend stoi.
+
+**Typowy błąd buildu (naprawiony w repo):** `Cannot find module '../../tools/vitest.shared.js'` — wynikał z typechecku `vitest.config.ts` w obrazie Docker bez folderu `tools/`. Po redeploy z najnowszego SHA build powinien przejść.
+
+---
+
 ## `api-gateway`
 
 | Klucz                               | Tag                                                      |
