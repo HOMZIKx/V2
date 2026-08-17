@@ -46,7 +46,7 @@ Dla każdego serwisu:
 
 - Root Directory: `/` (repo root)
 - Builder: Dockerfile — ustaw `ZBPACK_DOCKERFILE_NAME=<suffix>` (np. `discord-gateway`, **nie** `Dockerfile.discord-gateway`)
-- Runtime: production `node dist/main.js` (obrazy Nest **nie** używają `pnpm run dev` / tsx)
+- Runtime: production `node dist/<package-path>/src/main.js` (same as package `start`; obrazy Nest **nie** używają `pnpm run dev` / tsx)
 - Restart: domyślny restart Zeabur (always / on-failure)
 - Public networking: włącz dla `web`, `admin`, `api-gateway` (oraz opcjonalnie health `discord-gateway`)
 - `discord-gateway` musi mieć stały proces (WebSocket outbound do Discord) — nie używaj scale-to-zero

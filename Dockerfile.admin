@@ -4,12 +4,14 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system/package.json ./packages/design-system/package.json
 COPY apps/admin/package.json ./apps/admin/package.json
 RUN pnpm install --frozen-lockfile --filter @v2/admin...
 
 FROM deps AS build
+COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system ./packages/design-system
 COPY apps/admin ./apps/admin
