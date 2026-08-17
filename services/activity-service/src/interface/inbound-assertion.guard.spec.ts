@@ -137,6 +137,20 @@ describe('InboundAssertionGuard', () => {
     expect(req.verifiedActor).toEqual({ discordUserId: 'dev-user' });
   });
 
+  it('accepts assertion when ACTIVITY_ENABLED=false but inbound registry is configured', async () => {
+    const guard = new InboundAssertionGuard(
+      baseConfig({ ACTIVITY_ENABLED: false }),
+      registry,
+      null,
+      makeReflector(),
+    );
+    const token = await sign({ actor_discord_user_id: '111' });
+    const req = request({ 'activity-client-assertion': token });
+
+    await expect(guard.canActivate(makeContext(req))).resolves.toBe(true);
+    expect(req.verifiedActor).toEqual({ discordUserId: '111' });
+  });
+
   it('accepts first assertion jti and rejects replay', async () => {
     const jtiStore = new MemoryAssertionJtiStore();
     const guard = new InboundAssertionGuard(

@@ -138,7 +138,7 @@ const providers: Provider[] = [
   {
     provide: INBOUND_CLIENT_REGISTRY,
     useFactory: async (config: ActivityEnv): Promise<InboundClientRegistry | null> => {
-      if (!config.ACTIVITY_ENABLED || config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
+      if (config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
         return null;
       }
       return loadInboundClientRegistry(config.ACTIVITY_INBOUND_CLIENTS_JSON);
@@ -148,7 +148,10 @@ const providers: Provider[] = [
   {
     provide: ASSERTION_JTI_STORE,
     useFactory: (config: ActivityEnv): AssertionJtiStore | null => {
-      if (!config.ACTIVITY_ENABLED || config.ACTIVITY_REDIS_URL === undefined) {
+      if (
+        config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined ||
+        config.ACTIVITY_REDIS_URL === undefined
+      ) {
         return null;
       }
       return createAssertionJtiStore(

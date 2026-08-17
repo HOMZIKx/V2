@@ -49,7 +49,7 @@ export class InboundAssertionGuard implements CanActivate {
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    if (this.config.ACTIVITY_ENABLED) {
+    if (this.config.ACTIVITY_ENABLED || this.registry !== null) {
       return this.assertWithClientAssertion(context, request);
     }
 
