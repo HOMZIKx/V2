@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { decideGuildInventory, initialDevGuilds } from './guild-inventory.js';
+import {
+  decideGuildInventory,
+  initialDevGuilds,
+  resolveGuildListUserMessage,
+} from './guild-inventory.js';
 
 const guildA = { id: 'guild-a', name: 'Alpha' };
 const guildB = { id: 'guild-b', name: 'Bravo' };
@@ -55,6 +59,43 @@ describe('decideGuildInventory', () => {
     expect(decision.loadState.message).toBe('Nie udało się pobrać listy serwerów.');
     expect(JSON.stringify(decision.guilds)).not.toContain('guild-a');
     expect(JSON.stringify(decision.guilds)).not.toContain('Alpha');
+  });
+
+  it('maps Discord metadata dependency failures to owner-facing copy', () => {
+    expect(
+      resolveGuildListUserMessage({
+        message: 'Discord guild metadata is unavailable',
+        detail: 'CONFIG_INVALID · HTTP 503',
+        code: 'CONFIG_INVALID',
+      }),
+    ).toBe('Nie udało się pobrać serwerów z Discorda.');
+    const decision = decideGuildInventory({
+      mode: 'identity-cookie',
+      sessionGuilds: [guildA],
+      currentGuildId: null,
+      remote: {
+        kind: 'error',
+        message: 'Discord guild metadata is unavailable',
+        detail: 'CONFIG_INVALID · HTTP 503',
+        code: 'CONFIG_INVALID',
+      },
+    });
+    expect(decision.loadState.kind).toBe('error');
+    if (decision.loadState.kind !== 'error') {
+      throw new Error('expected error state');
+    }
+    expect(decision.loadState.message).toBe('Nie udało się pobrać serwerów z Discorda.');
+    expect(decision.guilds).toEqual([]);
+  });
+
+  it('maps session failures without exposing env configuration hints', () => {
+    expect(
+      resolveGuildListUserMessage({
+        message: 'Actor identity required',
+        detail: 'UNAUTHENTICATED · HTTP 401',
+        code: 'UNAUTHENTICATED',
+      }),
+    ).toBe('Nie udało się potwierdzić sesji.');
   });
 
   it('uses only authorized remote guilds on success', () => {

@@ -8,7 +8,30 @@ export type GuildLoadState =
 
 export type GuildRemoteResult =
   | { readonly kind: 'ok'; readonly guilds: readonly AdminGuildOption[] }
-  | { readonly kind: 'error'; readonly message: string; readonly detail: string | null };
+  | {
+      readonly kind: 'error';
+      readonly message: string;
+      readonly detail: string | null;
+      readonly code?: string;
+    };
+
+/** Owner-facing guild list errors — no env var names in copy. */
+export function resolveGuildListUserMessage(error: {
+  readonly message: string;
+  readonly detail: string | null;
+  readonly code?: string;
+}): string {
+  const code = error.code ?? '';
+  const detail = error.detail ?? '';
+  const combined = `${code} ${detail} ${error.message}`.toLowerCase();
+  if (code === 'CONFIG_INVALID' || combined.includes('discord guild metadata')) {
+    return 'Nie udało się pobrać serwerów z Discorda.';
+  }
+  if (code === 'UNAUTHENTICATED' || combined.includes('http 401')) {
+    return 'Nie udało się potwierdzić sesji.';
+  }
+  return 'Nie udało się pobrać listy serwerów.';
+}
 
 export type GuildInventoryDecision = {
   readonly guilds: readonly AdminGuildOption[];
@@ -45,6 +68,7 @@ export function decideGuildInventory(input: {
     };
   }
 
+  const userMessage = resolveGuildListUserMessage(input.remote);
   const mayUseDevFallback = input.mode === 'dev-actor' && input.sessionGuilds.length > 0;
   if (mayUseDevFallback) {
     return {
@@ -63,7 +87,7 @@ export function decideGuildInventory(input: {
     selectedGuildId: null,
     loadState: {
       kind: 'error',
-      message: 'Nie udało się pobrać listy serwerów.',
+      message: userMessage,
       detail: input.remote.detail ?? input.remote.message,
     },
   };

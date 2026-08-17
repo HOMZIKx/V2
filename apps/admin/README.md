@@ -10,6 +10,21 @@ pnpm --dir apps/admin dev
 
 Default: http://127.0.0.1:3001
 
+Vite loads `VITE_*` from the **monorepo root** `.env` (see `vite.config.ts` `envDir`).
+Copy `.env.example` → `.env` at repo root and set at least:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:4400
+VITE_ADMIN_DEV_ACTOR_DISCORD_ID=<your-discord-user-id>
+VITE_ADMIN_DEV_GUILDS=[{"id":"<guild-id>","name":"<human-readable name>"}]
+```
+
+For a real guild list (not only DEV fallback), also run `activity-service` with
+`ACTIVITY_DISCORD_PROJECTION_BASE_URL=http://127.0.0.1:4100`,
+`ACTIVITY_PROJECTION_SHARED_SECRET`, and local `ACTIVITY_TRUST_ACTOR_HEADERS=true`
+(dev-only). Discord Gateway must be running with `DISCORD_ENABLED=true` and the
+bot logged into the target guild.
+
 ## Auth (P4.3 pragmatic)
 
 - **Local/dev:** set `VITE_ADMIN_DEV_ACTOR_DISCORD_ID` (sent as `X-Actor-Discord-User-Id`).

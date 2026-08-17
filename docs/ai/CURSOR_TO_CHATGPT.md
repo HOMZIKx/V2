@@ -2,29 +2,34 @@
 
 ## 1. Status
 
-`READY_FOR_OWNER_PRODUCTIZATION_VISUAL_AND_LIVE_REVIEW`
+`CHANGES_REQUIRED` — owner gate P4-LOCAL-ADMIN-AND-LIVE-DISCORD-ALIGNMENT-OWNER-GATE-001
 
 ROLLING AUDIT MODE: **ACTIVE**
 
-CURRENT_TASK_ID: `P4-PRODUCTIZATION-AUDIT-CLOSURE-FIXUP-002`  
+CURRENT_TASK_ID: `P4-LOCAL-ADMIN-AND-LIVE-DISCORD-ALIGNMENT-OWNER-GATE-001`  
 BASELINE_SHA: `f85b2468d834549c73d2ad203e36aa84991e6327`  
 FIXUP_CHECKPOINT_SHA: `fe31e29cb4c3b410794111c713561f767a969aed`
 
 NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ  
 ISSUE #20 NOT IMPLEMENTED · G8 / ISSUE #21 NOT IMPLEMENTED
 
-## 2. Delta
+## 2. Delta (owner gate)
 
-MEDIUM regression: GuildProvider treated remote failure as zero guilds and
-dropped documented DEV fallback.
+**Local Admin root causes diagnosed:**
 
-- DEV actor (`session.mode === 'dev-actor'`): `VITE_ADMIN_DEV_GUILDS` is a local
-  fallback **only when** `GET /activity/v1/admin/guilds` fails. Selector stays
-  usable; explicit warning + retry. Remote success remains authoritative.
-- Identity cookie: never reads `VITE_ADMIN_DEV_GUILDS`. Empty remote →
-  „Brak serwerów, którymi możesz zarządzać.” Failed request → error + retry,
-  no guilds, no DEV substitute.
-- CONFIG_MANAGE filtering unchanged in activity-service.
+1. Vite Admin did not load root `.env` → `VITE_ADMIN_*` unset → identity-cookie
+   mode with empty guilds. Fixed: `apps/admin/vite.config.ts` `envDir: '../..'`.
+2. Stale local `activity-service` on `:4400` returned 404 for
+   `GET /activity/v1/admin/guilds` (route missing in running process). Owner must
+   restart stack after pull.
+3. Missing Discord metadata port returned `[]` instead of dependency error.
+   Fixed: `listAdminGuilds()` → `CONFIG_INVALID` when port absent; Admin maps to
+   „Nie udało się pobrać serwerów z Discorda.”
+
+**Live Discord:** current repo renderer is correct (#D48632, DZIAŁAJ/TWOJE,
+Secondary buttons). Old purple hub is not in HEAD — **LIVE_VERSION_MISMATCH** /
+**OWNER_DEPLOY_ACTION_REQUIRED** for Zeabur `discord-gateway` on branch
+`cursor/p4-1-activity-domain` + hub reconcile.
 
 ## 3. Explicit
 

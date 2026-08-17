@@ -943,7 +943,7 @@ export class ActivityAdminUseCases {
     }
     const port = this.deps.discordGuildMetadata;
     if (port === undefined || port === null) {
-      return [];
+      throw new ActivityError('CONFIG_INVALID', 'Discord guild metadata is unavailable');
     }
     let candidates: readonly { readonly id: string; readonly name: string }[];
     try {

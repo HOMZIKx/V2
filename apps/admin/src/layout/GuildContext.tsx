@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import { listAdminGuilds } from '../api/activity-admin.js';
+import { ApiClientError } from '../api/http.js';
 import { readAdminSession, type AdminGuildOption } from '../auth/session.js';
 import { errorFromUnknown } from '../components/ui.js';
 import { decideGuildInventory, initialDevGuilds, type GuildLoadState } from './guild-inventory.js';
@@ -91,7 +92,12 @@ export function GuildProvider(props: { children: ReactNode }) {
           mode: session.mode,
           sessionGuilds: fallbackGuilds,
           currentGuildId: guildIdRef.current,
-          remote: { kind: 'error', message: parsed.message, detail: parsed.detail },
+          remote: {
+            kind: 'error',
+            message: parsed.message,
+            detail: parsed.detail,
+            ...(error instanceof ApiClientError ? { code: error.code } : {}),
+          },
         });
         setGuilds([...decision.guilds]);
         setGuildIdState(decision.selectedGuildId);

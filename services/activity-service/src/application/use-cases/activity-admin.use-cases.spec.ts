@@ -763,6 +763,20 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     await expect(useCases.listAdminGuilds(actor)).resolves.toEqual([]);
   });
 
+  it('fails closed when Discord guild metadata port is not configured', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: null,
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'CONFIG_INVALID',
+      message: 'Discord guild metadata is unavailable',
+    });
+  });
+
   it('fails closed when Discord channel metadata is unavailable', async () => {
     const mem = createAdminMemoryRepo();
     const useCases = new ActivityAdminUseCases({

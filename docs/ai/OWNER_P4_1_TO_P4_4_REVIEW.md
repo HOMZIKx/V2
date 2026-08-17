@@ -1,0 +1,50 @@
+# Owner review — P4.1 → P4.4 (local + live gate)
+
+Branch: `cursor/p4-1-activity-domain` · PR #19
+
+## LOCAL ADMIN
+
+- [ ] local guild visible
+- [ ] human-readable guild
+- [ ] real backend connected
+- [ ] channels/roles metadata works
+
+## DISCORD
+
+- [ ] deployed SHA == branch HEAD
+- [ ] current Activity Hub live
+- [ ] no purple old renderer
+- [ ] DZIAŁAJ/TWOJE
+- [ ] create/edit/publish
+- [ ] RSVP
+- [ ] reconcile
+
+## ADMIN
+
+- [ ] dashboard
+- [ ] channels
+- [ ] roles
+- [ ] config screens
+- [ ] Admin → Discord
+- [ ] mobile
+
+## WWW
+
+- [ ] login
+- [ ] activities
+- [ ] detail
+- [ ] RSVP
+- [ ] My
+- [ ] Inbox
+- [ ] mobile
+
+## Local owner prerequisites (DEV ACTOR)
+
+1. Root `.env` from `.env.example` with `VITE_ADMIN_DEV_ACTOR_DISCORD_ID` + `VITE_ADMIN_DEV_GUILDS`.
+2. `pnpm infra:up` then `pnpm dev` (or activity + discord-gateway + admin).
+3. Activity: `ACTIVITY_DISCORD_PROJECTION_BASE_URL`, projection secret, `ACTIVITY_TRUST_ACTOR_HEADERS=true` (local only).
+4. Discord Gateway: `DISCORD_ENABLED=true`, bot in target guild.
+
+## Live Discord redeploy (if hub still purple)
+
+Zeabur service `discord-gateway` → branch `cursor/p4-1-activity-domain` → redeploy → reconcile hub from Admin.
