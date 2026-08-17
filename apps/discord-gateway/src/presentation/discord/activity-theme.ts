@@ -1,7 +1,7 @@
 /**
  * Centrum Aktywności module visual tokens.
  *
- * Intentionally decoupled from P1 V2 LAB `panel-theme.ts` (purple harness).
+ * Intentionally decoupled from P1 lab harness `panel-theme.ts` (purple).
  * Owner visual correction: P4-DISCORD-VISUAL-CORRECTION-001 (Issue #12 direction).
  *
  * Module accent only — not a full global V2 design-system approval.

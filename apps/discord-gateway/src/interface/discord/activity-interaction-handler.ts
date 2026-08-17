@@ -114,11 +114,10 @@ function draftPayload(draft: {
 }
 
 function draftSummaryLines(payload: Record<string, unknown>): string[] {
-  const name = typeof payload.name === 'string' && payload.name.trim() ? payload.name : '—';
   const description =
     typeof payload.description === 'string' && payload.description.trim()
       ? payload.description.trim().slice(0, 180)
-      : '—';
+      : null;
   const when =
     typeof payload.scheduleLabel === 'string' && payload.scheduleLabel.trim()
       ? payload.scheduleLabel.trim()
@@ -126,8 +125,14 @@ function draftSummaryLines(payload: Record<string, unknown>): string[] {
         ? payload.startAtDisplay
         : typeof payload.startAt === 'string' && payload.startAt.length > 0
           ? formatPolishLocalDateTime(new Date(payload.startAt))
-          : '—';
-  return [`**${name}**`, `Kiedy: ${when}`, `Opis: ${description}`];
+          : 'Termin do uzupełnienia';
+  const limit =
+    typeof payload.participantLimit === 'number'
+      ? `Miejsca: ${payload.participantLimit}`
+      : typeof payload.limit === 'number'
+        ? `Miejsca: ${payload.limit}`
+        : null;
+  return [`**${when}**`, description, limit].filter((line): line is string => line !== null);
 }
 
 export class ActivityInteractionHandler {

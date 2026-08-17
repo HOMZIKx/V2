@@ -35,6 +35,7 @@ describe('activity-event-renderer', () => {
     const container = toJson(payload.components![0]);
     expect(container.type).toBe(ComponentType.Container);
     const json = JSON.stringify(container);
+    expect(container.accent_color).toBe(0xd48632);
     expect(json).toContain(':event:f6e5d4c3b2a1:rsvp:112233445566');
     expect(json).toContain('Lista uczestników');
     expect(json).toContain('Kontakt');

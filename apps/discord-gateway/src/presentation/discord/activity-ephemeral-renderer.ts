@@ -2,7 +2,10 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
   MessageFlags,
+  SeparatorBuilder,
+  SeparatorSpacingSize,
   TextDisplayBuilder,
   type InteractionReplyOptions,
   type Message,
@@ -18,6 +21,7 @@ import {
   signDraftFormUiState,
   type DraftFormUiState,
 } from './activity-draft-ui-state.js';
+import { ACTIVITY_MODULE_ACCENT } from './activity-theme.js';
 
 export type DraftFormSummaryInput = {
   opaqueDraftId: string;
@@ -35,10 +39,16 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
     { label: 'Anuluj', action: 'discard', style: ButtonStyle.Danger },
   ];
 
-  const components = [
+  const container = new ContainerBuilder().setAccentColor(ACTIVITY_MODULE_ACCENT);
+  container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
       [`## ${input.title ?? 'Podgląd aktywności'}`, ...input.lines].join('\n'),
     ),
+  );
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+  );
+  container.addActionRowComponents(
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       ...mainActions.map((item) =>
         new ButtonBuilder()
@@ -47,11 +57,10 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
           .setStyle(item.style),
       ),
     ),
-  ];
+  );
 
   if (input.formState !== undefined) {
-    // Invisible signed snapshot for edit prefill (no HTTP before showModal).
-    components.push(
+    container.addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
         `\u2063${signDraftFormUiState(input.formState, input.signingSecret)}\u2063`,
       ),
@@ -59,7 +68,7 @@ export function renderDraftFormSummary(input: DraftFormSummaryInput): Interactio
   }
 
   return {
-    components,
+    components: [container],
     flags: MessageFlags.IsComponentsV2,
   };
 }

@@ -2,7 +2,17 @@
 
 ## Status
 
-`INTERACTIVE_LAYOUT_CONTRACT — final P4 spec audit; assets OWNER_DECISION_REQUIRED (Issue #12)`
+`READY_FOR_OWNER_DISCORD_VISUAL_REVIEW`
+
+OWNER VISUAL CORRECTION: previous accent-only pass rejected as insufficient.
+
+CURRENT: Discord Activity visual layout redesigned (Hub groups DZIAŁAJ / TWOJE,
+event hierarchy, draft preview). Not a global design-system approval and not a
+Discord visual approval until the owner reviews the live panel.
+
+`INTERACTIVE_LAYOUT_CONTRACT` remains in force. Assets / iconography still
+`OWNER_DECISION_REQUIRED` (Issue #12). Issue #20 (dungeon LFG discovery)
+**NOT IMPLEMENTED**.
 
 Szkielet interakcji zgodny z decyzjami właściciela A–S oraz
 `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md` (D-023, D-024).
@@ -72,25 +82,23 @@ Jedna wiadomość, **jeden Container**, flaga `IS_COMPONENTS_V2`.
 ```
 Message [flags: IS_COMPONENTS_V2]
 └── Container (accent = `#D48632` / `0xD48632` — OWNER ACCEPTED module accent, D-038)
-    ├── [opcjonalnie] Media Gallery — dekoracyjny banner
-    │     OR Text Display — nazwa panelu (copy OWNER_DECISION_REQUIRED)
-    ├── Text Display — krótki opis panelu (copy OWNER_DECISION_REQUIRED)
+    ├── Text Display — Centrum Aktywności + jedno zdanie intro
     ├── Separator
+    ├── Text Display — **DZIAŁAJ**
     ├── Section „Utwórz aktywność”
-    │     ├── Text Display — etykieta + krótki opis (opis = OWNER_DECISION_REQUIRED)
-    │     └── accessory Button — label: „Utwórz aktywność”
-    ├── Separator
+    │     ├── Text Display — etykieta + krótki opis
+    │     └── accessory Button — label: „Utwórz” (Secondary)
     ├── Section „Szukam ekipy”
     │     ├── Text Display — etykieta + krótki opis
-    │     └── accessory Button — label: „Szukam ekipy”
+    │     └── accessory Button — label: „Szukaj” (Secondary)
     ├── Separator
+    ├── Text Display — **TWOJE**
     ├── Section „Moje aktywności”
     │     ├── Text Display — etykieta + krótki opis
-    │     └── accessory Button — label: „Moje aktywności”
-    ├── Separator
+    │     └── accessory Button — label: „Otwórz” (Secondary)
     └── Section „Powiadomienia”
           ├── Text Display — etykieta + krótki opis
-          └── accessory Button — label: „Powiadomienia”
+          └── accessory Button — label: „Sprawdź” (Secondary)
 ```
 
 **Wymóg:** przyciski przy odpowiadających sekcjach (Section.accessory),

@@ -2,58 +2,65 @@
 
 ## Status
 
-`READY_FOR_OWNER_ZEABUR_AND_DISCORD_LIVE_TEST`
+`READY_FOR_OWNER_DISCORD_VISUAL_REVIEW`
 
 ## Explicit gates
 
 - **NO MERGE**
 - **NO P4.5**
 - **NO P4.6**
-- **NO RABBITMQ** in this deploy
+- **NO RABBITMQ**
 - Issue #20 **NOT IMPLEMENTED**
-- **OWNER LIVE TESTS REQUIRED** (Zeabur + Discord `/centrum-reconcile`)
+- **ADMIN REDESIGN NOT STARTED**
+- **WWW REDESIGN NOT STARTED**
+- Discord visual is **not** approved until owner reviews the live panel
 
 ## Active phase
 
-`P4-DEPLOY-CLOSURE-002` — production Docker runtime, projection secret
-contract, gateway CORS/cookie hardening, Zeabur owner checklist, WWW 401 UI,
-Discord modal ACK timing, HORIZON Polish copy.
+`P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001`
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- Baseline HEAD: `bb8c17773aed229881f60adbdc07f8c52cd36f8e`
+- Baseline HEAD: `885ee5789dd1440d7b883657db46aa4fa9e920a0`
 
 ## Delivered in this delta
 
-- Projection: outbox always sends `x-activity-projection-secret`; fail-fast
-  without secret; consumer reject missing/wrong; boot fail when activity on
-  without secret
-- API gateway: CORS OPTIONS ends cleanly; Identity Cookie not forwarded to
-  activity-service
-- WWW: `UnauthorizedState` for 401 (no blank screen)
-- Discord: showModal before HTTP; modal submit defer before network;
-  HORIZON_EXCEEDED always Polish
-- Production Dockerfiles: `node dist/...` (no `pnpm run dev` / tsx runtime)
-- Docker smoke: discord-gateway, activity-service, api-gateway health/live OK
-- Docs: `ZEABUR_OWNER_VARIABLES.md` owner-friendly mapping + migrations
+### PHASE A
+
+- Prettier on `docs/ai/CURSOR_TO_CHATGPT.md`
+- Draft edit uses `deferUpdate` on the existing preview (no stacked ephemerals)
+- Create/LFG still `deferReply` then HTTP; ACK before delayed ActivityHttpClient
+- Edit modal prefill from signed preview snapshot (no HTTP before `showModal`)
+- Unchanged draft fields merged on submit
+- WWW 401: UnauthorizedState on Activities / Detail / My / Inbox; My Activities
+  anonymous no longer stuck on loading
+
+### PHASE B
+
+- Hub rebuilt into **DZIAŁAJ** / **TWOJE** groups, short Polish copy
+- Accent remains `#D48632` / `0xD48632`; hub buttons Secondary only
+- Event post: title → termin → miejsca, then description/organizer, RSVP first
+- Draft preview: Container + name/termin/opis + Edytuj/Publikuj
+- No V2 LAB import; no decorative emoji; Issue #20 not claimed in copy
 
 ## Owner next
 
-1. Top up Zeabur credit if SUSPENDED (`$0.00` blocks deploy)
-2. Follow `docs/deploy/ZEABUR_OWNER_VARIABLES.md` (branch
-   `cursor/p4-1-activity-domain`, `ZBPACK_DOCKERFILE_NAME` = suffix only)
-3. Migrate activity DB; redeploy `activity-service` + `discord-gateway`
-4. Confirm `APP_VERSION` / `GIT_COMMIT_SHA` = tip SHA
-5. Discord: `/centrum-reconcile` (in-place update, no duplicate panel)
+1. Review the live Discord Centrum panel (look, hierarchy, premium feel, copy,
+   DZIAŁAJ/TWOJE, event post + preview consistency)
+2. Run `/centrum-reconcile` on the test guild if the panel was not updated
+   in place after local discord-gateway restart
+3. Do **not** publish a second panel
+4. Zeabur deploy only on owner signal
 
 ## Explicitly not done
 
 - Merge to `main`
-- Live Zeabur green (owner Variables + credit)
 - P4.5 / P4.6 / RabbitMQ / Issue #20
+- Admin / WWW redesign
+- Owner Discord visual approval
 
 ## Last updated
 
-2026-08-16 — P4-DEPLOY-CLOSURE-002
+2026-08-17 — P4-DISCORD-FINAL-CLOSURE-AND-VISUAL-001

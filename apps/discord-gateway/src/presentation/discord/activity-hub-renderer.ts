@@ -23,9 +23,11 @@ export type ActivityHubRenderInput = {
 
 export type ActivityHubMessagePayload = MessageCreateOptions & MessageEditOptions;
 
+const HUB_INTRO = 'Organizuj wieczory, zbieraj ekipę i pilnuj swoich zapisów.';
+
 /**
- * Public Centrum Aktywności hub — Components V2, one Container, Section+accessory.
- * No legacy embeds. No technical/debug footer (ready/version/SHA).
+ * Public Centrum Aktywności hub — one Container, two groups (DZIAŁAJ / TWOJE).
+ * No legacy embeds. No lab harness theme. No decorative emoji.
  */
 export function renderActivityHubMessage(input: ActivityHubRenderInput): ActivityHubMessagePayload {
   const { opaquePanelId, signingSecret } = input;
@@ -33,70 +35,77 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
   const container = new ContainerBuilder().setAccentColor(ACTIVITY_HUB_ACCENT);
 
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      [
-        '## Centrum Aktywności',
-        'Twórz wydarzenia, szukaj ekipy i zarządzaj swoimi zapisami — wszystko na Discordzie.',
-      ].join('\n'),
-    ),
+    new TextDisplayBuilder().setContent(['## Centrum Aktywności', HUB_INTRO].join('\n')),
   );
 
-  const sections: Array<{
-    title: string;
-    description: string;
-    label: string;
-    action: 'create' | 'lfg' | 'mine' | 'inbox';
-    style: ButtonStyle;
-  }> = [
-    {
-      title: 'Utwórz aktywność',
-      description: 'Utwórz wydarzenie, sprawdź podgląd i opublikuj.',
-      label: 'Utwórz aktywność',
-      action: 'create',
-      style: ButtonStyle.Secondary,
-    },
-    {
-      title: 'Szukam ekipy',
-      description: 'Szukaj ekipy do wspólnej aktywności.',
-      label: 'Szukam ekipy',
-      action: 'lfg',
-      style: ButtonStyle.Secondary,
-    },
-    {
-      title: 'Moje aktywności',
-      description: 'Organizuję, zapisane, najbliższe oraz zakończone.',
-      label: 'Moje aktywności',
-      action: 'mine',
-      style: ButtonStyle.Secondary,
-    },
-    {
-      title: 'Powiadomienia',
-      description: 'Zmiany terminu, lista rezerwowa, anulowania i ponowne potwierdzenia.',
-      label: 'Powiadomienia',
-      action: 'inbox',
-      style: ButtonStyle.Secondary,
-    },
-  ];
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
+  );
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**DZIAŁAJ**'));
+  addHubAction(container, {
+    opaquePanelId,
+    signingSecret,
+    title: 'Utwórz aktywność',
+    description: 'Organizujesz wydarzenie dla innych.',
+    label: 'Utwórz',
+    action: 'create',
+  });
+  addHubAction(container, {
+    opaquePanelId,
+    signingSecret,
+    title: 'Szukam ekipy',
+    description: 'Znajdź ludzi do wspólnej aktywności.',
+    label: 'Szukaj',
+    action: 'lfg',
+  });
 
-  for (const section of sections) {
-    container.addSeparatorComponents(
-      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
-    );
-    const button = new ButtonBuilder()
-      .setCustomId(createPanelCustomId(opaquePanelId, section.action, signingSecret))
-      .setLabel(section.label)
-      .setStyle(section.style);
-    container.addSectionComponents(
-      new SectionBuilder()
-        .addTextDisplayComponents(
-          new TextDisplayBuilder().setContent(`**${section.title}**\n${section.description}`),
-        )
-        .setButtonAccessory(button),
-    );
-  }
+  container.addSeparatorComponents(
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
+  );
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**TWOJE**'));
+  addHubAction(container, {
+    opaquePanelId,
+    signingSecret,
+    title: 'Moje aktywności',
+    description: 'Organizowane, zapisane i najbliższe wydarzenia.',
+    label: 'Otwórz',
+    action: 'mine',
+  });
+  addHubAction(container, {
+    opaquePanelId,
+    signingSecret,
+    title: 'Powiadomienia',
+    description: 'Zmiany terminów, lista rezerwowa i ważne informacje.',
+    label: 'Sprawdź',
+    action: 'inbox',
+  });
 
   return {
     components: [container],
     flags: MessageFlags.IsComponentsV2,
   };
+}
+
+function addHubAction(
+  container: ContainerBuilder,
+  input: {
+    opaquePanelId: string;
+    signingSecret: string;
+    title: string;
+    description: string;
+    label: string;
+    action: 'create' | 'lfg' | 'mine' | 'inbox';
+  },
+): void {
+  const button = new ButtonBuilder()
+    .setCustomId(createPanelCustomId(input.opaquePanelId, input.action, input.signingSecret))
+    .setLabel(input.label)
+    .setStyle(ButtonStyle.Secondary);
+  container.addSectionComponents(
+    new SectionBuilder()
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`**${input.title}**\n${input.description}`),
+      )
+      .setButtonAccessory(button),
+  );
 }

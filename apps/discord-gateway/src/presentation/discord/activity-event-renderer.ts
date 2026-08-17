@@ -73,8 +73,8 @@ export function renderActivityEventMessage(
 ): ActivityEventMessagePayload {
   const seats =
     input.participantLimit === null
-      ? `Miejsca: ${input.occupiedSlots} / ∞`
-      : `Miejsca: ${input.occupiedSlots} / ${input.participantLimit}`;
+      ? `${input.occupiedSlots} miejsc`
+      : `${input.occupiedSlots} / ${input.participantLimit} miejsc`;
 
   const scheduleCore =
     typeof input.scheduleLabel === 'string' && input.scheduleLabel.trim().length > 0
@@ -90,22 +90,21 @@ export function renderActivityEventMessage(
     .join(' ');
 
   const orgLine = [
-    `Organizator: ${input.organizerLabel}`,
-    input.coOrganizerLabel ? `Współorganizator: ${input.coOrganizerLabel}` : null,
+    `Prowadzi: ${input.organizerLabel}`,
+    input.coOrganizerLabel ? `razem z ${input.coOrganizerLabel}` : null,
   ]
     .filter(Boolean)
-    .join(' · ');
+    .join(' ');
 
   const aggregates =
     input.statusSummaries.length === 0
-      ? 'Brak zapisów'
+      ? null
       : input.statusSummaries.map((s) => `${s.label}: ${s.count}`).join(' · ');
 
   const preview =
     input.participantPreview !== undefined && input.participantPreview.length > 0
-      ? `Uczestnicy: ${input.participantPreview.slice(0, 8).join(', ')}${
-          input.participantPreview.length > 8 ? '…' : ''
-        }`
+      ? input.participantPreview.slice(0, 8).join(', ') +
+        (input.participantPreview.length > 8 ? '…' : '')
       : null;
 
   const container = new ContainerBuilder().setAccentColor(ACTIVITY_EVENT_ACCENT);
@@ -113,21 +112,26 @@ export function renderActivityEventMessage(
     new TextDisplayBuilder().setContent(
       [
         `## ${input.name}`,
-        `${input.typeLabel} · **${input.statusLabel}**`,
-        schedule,
-        orgLine,
-        input.description ? input.description.slice(0, 500) : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
+        `**${schedule}**`,
+        `${input.typeLabel} · ${seats} · ${input.statusLabel}`,
+      ].join('\n'),
     ),
   );
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
-  );
-  container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent([seats, aggregates, preview].filter(Boolean).join('\n')),
-  );
+
+  const bodyLines = [
+    input.description ? input.description.slice(0, 500) : null,
+    orgLine.length > 0 ? orgLine : null,
+    aggregates,
+    preview,
+  ].filter((line): line is string => line !== null && line.length > 0);
+
+  if (bodyLines.length > 0) {
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
+    );
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(bodyLines.join('\n')));
+  }
+
   container.addSeparatorComponents(
     new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );

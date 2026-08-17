@@ -87,8 +87,11 @@ describe('hub visual identity', () => {
     expect(json).not.toMatch(/one-shot|waitlist|reconfirm|opaque/i);
     expect(json).toContain('Utwórz aktywność');
     expect(json).toContain('lista rezerwowa');
+    expect(json).toContain('**DZIAŁAJ**');
+    expect(json).toContain('**TWOJE**');
     expect(json).not.toContain('edytujesz sekcje w dowolnej kolejności');
     expect(json).not.toContain('Szybsza publikacja tej samej aktywności');
+    expect(json).not.toMatch(/ButtonStyle\.Primary|"style":1/);
   });
 });
 
@@ -99,7 +102,7 @@ describe('draft summary', () => {
       signingSecret: 's'.repeat(32),
       lines: ['**Nazwa:** Test', 'Kiedy: W tym tygodniu'],
     });
-    const visible = JSON.stringify([view.components?.[0], view.components?.[1]]);
+    const visible = JSON.stringify(view.components?.[0]);
     expect(visible).toContain('Edytuj');
     expect(visible).toContain('Publikuj');
     expect(visible).toContain('Anuluj');
