@@ -44,6 +44,8 @@ COPY --from=build /app/packages/internal-jwt/package.json ./packages/internal-jw
 COPY --from=build /app/packages/internal-jwt/dist ./packages/internal-jwt/dist
 COPY --from=build /app/services/activity-service/package.json ./services/activity-service/package.json
 COPY --from=build /app/services/activity-service/dist ./services/activity-service/dist
+COPY --from=build /app/services/activity-service/migrations ./services/activity-service/migrations
+COPY --from=build /app/services/activity-service/scripts/migrate-prod.mjs ./services/activity-service/scripts/migrate-prod.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/activity-service...
 WORKDIR /app/services/activity-service
 EXPOSE 4400
