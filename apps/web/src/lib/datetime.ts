@@ -43,3 +43,29 @@ export function formatPolishDateTime(
   const parts = getZonedParts(date, timeZone);
   return `${pad2(parts.day)}.${pad2(parts.month)}.${parts.year} ${pad2(parts.hour)}:${pad2(parts.minute)}`;
 }
+
+function startOfDayMinutes(parts: { year: number; month: number; day: number }): number {
+  return Date.UTC(parts.year, parts.month - 1, parts.day) / 60_000;
+}
+
+/** Compact Polish when-line: Dziś/Jutro when possible. */
+export function formatActivityWhen(
+  value: Date | string | number,
+  timeZone: string = DEFAULT_TZ,
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  const parts = getZonedParts(date, timeZone);
+  const now = getZonedParts(new Date(), timeZone);
+  const time = `${pad2(parts.hour)}:${pad2(parts.minute)}`;
+  const deltaDays = Math.round(startOfDayMinutes(parts) - startOfDayMinutes(now)) / (24 * 60);
+  if (deltaDays === 0) {
+    return `Dziś, ${time}`;
+  }
+  if (deltaDays === 1) {
+    return `Jutro, ${time}`;
+  }
+  return formatPolishDateTime(date, timeZone);
+}

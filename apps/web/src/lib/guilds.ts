@@ -27,7 +27,7 @@ function parseGuildsJson(raw: string | undefined): WebGuildOption[] {
       ) {
         guilds.push({
           id: (item as { id: string }).id.trim(),
-          name: (item as { name: string }).name.trim() || (item as { id: string }).id.trim(),
+          name: (item as { name: string }).name.trim() || 'Serwer',
         });
       }
     }

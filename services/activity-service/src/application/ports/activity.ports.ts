@@ -356,6 +356,7 @@ export interface ActivityTx {
     v2UserId?: string;
   }): Promise<ActivityRecord[]>;
   listParticipations(activityId: string): Promise<ParticipationRecord[]>;
+  listParticipationsForActivities(activityIds: readonly string[]): Promise<ParticipationRecord[]>;
   getParticipation(activityId: string, discordUserId: string): Promise<ParticipationRecord | null>;
   upsertParticipation(
     input: Omit<

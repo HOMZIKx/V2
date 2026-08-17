@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { Button, Select } from '@v2/design-system';
+
 import { useGuild } from './GuildProvider';
 import { useSession } from './SessionProvider';
 
@@ -17,6 +19,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { session, logout } = useSession();
   const { guilds, guildId, setGuildId } = useGuild();
+  const currentGuild = guilds.find((guild) => guild.id === guildId) ?? guilds[0];
+  const displayName = session?.displayName?.trim() || 'Konto';
 
   return (
     <div className="web-shell">
@@ -39,31 +43,33 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="web-topbar-tools">
           {guilds.length > 1 ? (
-            <div className="field" style={{ minWidth: '12rem', margin: 0 }}>
-              <label htmlFor="guild-switcher">Serwer</label>
-              <select
-                id="guild-switcher"
-                value={guildId ?? ''}
-                onChange={(event) => {
-                  setGuildId(event.target.value);
-                }}
-              >
-                {guilds.map((guild) => (
-                  <option key={guild.id} value={guild.id}>
-                    {guild.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              id="guild-switcher"
+              aria-label="Serwer"
+              value={guildId ?? ''}
+              options={guilds.map((guild) => ({ value: guild.id, label: guild.name }))}
+              onChange={(event) => {
+                setGuildId(event.target.value);
+              }}
+            />
+          ) : currentGuild !== undefined ? (
+            <p className="guild-current" aria-label="Aktualny serwer">
+              {currentGuild.name}
+            </p>
           ) : null}
           {session !== null ? (
-            <span className="user-chip" title={session.v2UserId}>
-              Discord {session.discordUserId}
-            </span>
+            <div className="user-menu">
+              {session.avatarUrl !== undefined &&
+              session.avatarUrl !== null &&
+              session.avatarUrl !== '' ? (
+                <img src={session.avatarUrl} alt="" className="user-avatar" />
+              ) : null}
+              <span className="user-name">{displayName}</span>
+            </div>
           ) : null}
-          <button type="button" className="btn btn-secondary" onClick={() => void logout()}>
+          <Button variant="ghost" onClick={() => void logout()}>
             Wyloguj
-          </button>
+          </Button>
         </div>
       </header>
       <main className="web-main">{children}</main>

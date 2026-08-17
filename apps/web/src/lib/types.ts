@@ -26,6 +26,16 @@ export interface ActivityDto {
   readonly opaqueId?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
+  readonly occupiedSlots?: number;
+  readonly typeLabel?: string | null;
+  readonly organizerDisplay?: string | null;
+  readonly coOrganizerDisplay?: string | null;
+  readonly myParticipationStatus?: {
+    readonly statusDefId: string;
+    readonly statusLabel: string;
+    readonly confirmationState: 'confirmed' | 'requires_reconfirmation';
+    readonly waitlistPosition: number | null;
+  } | null;
 }
 
 export interface ParticipationDto {
@@ -42,6 +52,7 @@ export interface ParticipationDto {
   readonly removeReason: string | null;
   readonly occupiesSlot: boolean;
   readonly statusBehavior: StatusBehavior;
+  readonly displayName?: string | null;
 }
 
 export interface StatusDefDto {
@@ -79,4 +90,6 @@ export interface SessionMeDto {
   readonly authenticated: true;
   readonly v2UserId: string;
   readonly discordUserId: string;
+  readonly displayName?: string | null;
+  readonly avatarUrl?: string | null;
 }

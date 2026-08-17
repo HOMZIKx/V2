@@ -22,12 +22,20 @@ import {
 } from '../../domain/schedule.js';
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
+import {
+  collectOrganizerDiscordIds,
+  collectParticipantDiscordIds,
+  toMemberActivityListItem,
+  UNKNOWN_MEMBER_DISPLAY,
+  type MemberActivityListItem,
+} from '../member-activity-presentation.js';
 import type {
   ActivityRecord,
   ActivityTx,
   ActivityUseCaseDeps,
   ActorSubject,
   GuildActivitySettingsRecord,
+  ParticipationRecord,
   ParticipationStatusDefRecord,
   UpsertActivityProjectionInput,
 } from '../ports/activity.ports.js';
@@ -80,6 +88,94 @@ function requireDiscord(actor: ActorSubject): string {
 
 export class ActivityUseCases {
   public constructor(private readonly deps: ActivityUseCaseDeps) {}
+
+  private async resolveDisplayNames(
+    guildId: string,
+    userIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const port = this.deps.discordGuildMetadata;
+    if (port === undefined || port === null || userIds.length === 0) {
+      return map;
+    }
+    try {
+      const resolved = await port.resolveMembers(guildId, userIds);
+      for (const row of resolved) {
+        if (row.displayName.trim() !== '') {
+          map.set(row.id, row.displayName);
+        }
+      }
+    } catch {
+      // Presentation metadata only — list/detail still succeed.
+    }
+    return map;
+  }
+
+  private async presentActivities(
+    activities: readonly ActivityRecord[],
+    actor: ActorSubject,
+  ): Promise<MemberActivityListItem[]> {
+    if (activities.length === 0) {
+      return [];
+    }
+    const byGuild = new Map<string, ActivityRecord[]>();
+    for (const activity of activities) {
+      const group = byGuild.get(activity.guildId) ?? [];
+      group.push(activity);
+      byGuild.set(activity.guildId, group);
+    }
+    const presented = new Map<string, MemberActivityListItem>();
+    for (const [guildId, group] of byGuild) {
+      const ids = group.map((activity) => activity.id);
+      const [participations, statuses, types] = await this.deps.repository.withTransaction(
+        async (tx) =>
+          Promise.all([
+            tx.listParticipationsForActivities(ids),
+            tx.listStatusDefs(guildId),
+            tx.listActivityTypes(guildId),
+          ]),
+      );
+      const statusById = new Map(statuses.map((status) => [status.id, status] as const));
+      const typeById = new Map(types.map((type) => [type.id, type] as const));
+      const partsByActivity = new Map<string, ParticipationRecord[]>();
+      for (const row of participations) {
+        const list = partsByActivity.get(row.activityId) ?? [];
+        list.push(row);
+        partsByActivity.set(row.activityId, list);
+      }
+      const displayByDiscordId = await this.resolveDisplayNames(
+        guildId,
+        collectOrganizerDiscordIds(group),
+      );
+      for (const activity of group) {
+        presented.set(
+          activity.id,
+          toMemberActivityListItem({
+            activity,
+            participations: partsByActivity.get(activity.id) ?? [],
+            actor,
+            statusById,
+            typeById,
+            displayByDiscordId,
+          }),
+        );
+      }
+    }
+    return activities.map((activity) => {
+      const item = presented.get(activity.id);
+      return (
+        item ??
+        toMemberActivityListItem({
+          activity,
+          participations: [],
+          actor,
+          statusById: new Map(),
+          typeById: new Map(),
+          displayByDiscordId: new Map(),
+        })
+      );
+    });
+  }
 
   private async requirePermission(
     actor: ActorSubject,
@@ -516,19 +612,24 @@ export class ActivityUseCases {
   }
 
   public async getActivity(id: string, actor: ActorSubject) {
-    return this.deps.repository.withTransaction(async (tx) => {
-      const activity = await tx.getActivity(id);
-      if (activity === null || activity.status === 'deleted') {
+    const activity = await this.deps.repository.withTransaction(async (tx) => {
+      const found = await tx.getActivity(id);
+      if (found === null || found.status === 'deleted') {
         throw new ActivityError('NOT_FOUND', 'Activity not found');
       }
-      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, activity.guildId);
-      return activity;
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, found.guildId);
+      return found;
     });
+    const [presented] = await this.presentActivities([activity], actor);
+    return presented ?? activity;
   }
 
   public async listActivities(guildId: string, actor: ActorSubject) {
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
-    return this.deps.repository.withTransaction((tx) => tx.listActivities(guildId));
+    const activities = await this.deps.repository.withTransaction((tx) =>
+      tx.listActivities(guildId),
+    );
+    return this.presentActivities(activities, actor);
   }
 
   public async listMyActivities(actor: ActorSubject, guildId?: string) {
@@ -536,13 +637,14 @@ export class ActivityUseCases {
     if (guildId !== undefined) {
       await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
     }
-    return this.deps.repository.withTransaction((tx) =>
+    const activities = await this.deps.repository.withTransaction((tx) =>
       tx.listMyActivities({
         ...(guildId !== undefined ? { guildId } : {}),
         discordUserId,
         ...(actor.v2UserId !== undefined ? { v2UserId: actor.v2UserId } : {}),
       }),
     );
+    return this.presentActivities(activities, actor);
   }
 
   public async editActivity(
@@ -870,13 +972,28 @@ export class ActivityUseCases {
   }
 
   public async listParticipants(id: string, actor: ActorSubject) {
-    return this.deps.repository.withTransaction(async (tx) => {
+    const { guildId, rows } = await this.deps.repository.withTransaction(async (tx) => {
       const activity = await tx.getActivity(id);
       if (activity === null) {
         throw new ActivityError('NOT_FOUND', 'Activity not found');
       }
       await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, activity.guildId);
-      return tx.listParticipations(id);
+      return { guildId: activity.guildId, rows: await tx.listParticipations(id) };
+    });
+    const displayByDiscordId = await this.resolveDisplayNames(
+      guildId,
+      collectParticipantDiscordIds(rows),
+    );
+    return rows.map((row) => {
+      const { removeReason: _ignoredRemoveReason, ...publicRow } = row;
+      void _ignoredRemoveReason;
+      return {
+        ...publicRow,
+        displayName:
+          row.discordUserId !== null
+            ? (displayByDiscordId.get(row.discordUserId) ?? UNKNOWN_MEMBER_DISPLAY)
+            : UNKNOWN_MEMBER_DISPLAY,
+      };
     });
   }
 

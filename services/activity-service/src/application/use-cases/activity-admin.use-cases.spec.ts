@@ -240,6 +240,9 @@ function createAdminMemoryRepo(): {
     async listParticipations() {
       return [];
     },
+    async listParticipationsForActivities() {
+      return [];
+    },
     async getParticipation() {
       return null;
     },

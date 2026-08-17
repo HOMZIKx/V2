@@ -1,6 +1,8 @@
 export type SessionActor = {
   readonly discordUserId: string;
   readonly v2UserId: string;
+  readonly displayName: string | null;
+  readonly avatarUrl: string | null;
 };
 
 /**
@@ -38,7 +40,14 @@ export async function resolveSessionActor(
   if (!meResponse.ok) {
     return null;
   }
-  const me = (await meResponse.json()) as { id?: unknown };
+  const me = (await meResponse.json()) as {
+    id?: unknown;
+    name?: unknown;
+    image?: unknown;
+    displayName?: unknown;
+    globalName?: unknown;
+    username?: unknown;
+  };
   if (typeof me.id !== 'string' || me.id.trim() === '') {
     return null;
   }
@@ -58,8 +67,22 @@ export async function resolveSessionActor(
     return null;
   }
 
+  const displayName = firstNonEmptyString([me.displayName, me.globalName, me.name, me.username]);
+  const avatarUrl = firstNonEmptyString([me.image]);
+
   return {
     v2UserId: me.id,
     discordUserId: discord.accountId,
+    displayName,
+    avatarUrl,
   };
+}
+
+function firstNonEmptyString(values: readonly unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim() !== '') {
+      return value.trim();
+    }
+  }
+  return null;
 }

@@ -309,6 +309,10 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async listParticipations(activityId) {
       return [...participations.values()].filter((p) => p.activityId === activityId);
     },
+    async listParticipationsForActivities(activityIds) {
+      const ids = new Set(activityIds);
+      return [...participations.values()].filter((p) => ids.has(p.activityId));
+    },
     async getParticipation(activityId, discordUserId) {
       return (
         [...participations.values()].find(
@@ -717,6 +721,62 @@ describe('ActivityUseCases (in-memory)', () => {
         (e) => (e as { eventType: string }).eventType === 'activity.activity.waitlist_promoted.v1',
       ),
     ).toBe(true);
+  });
+
+  it('member list includes occupancy, my status and organizer display without N+1 contract', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [{ id: 'creator-1', displayName: 'KuzynPasek' }],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const activity = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Azrael',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+        participantLimit: 8,
+      },
+      { actor, idempotencyKey: 'list-1' },
+    );
+    const listed = await useCases.listActivities('guild-1', actor);
+    expect(listed).toHaveLength(1);
+    expect(listed[0]?.occupiedSlots).toBe(1);
+    expect(listed[0]?.participantLimit).toBe(8);
+    expect(listed[0]?.organizerDisplay).toBe('KuzynPasek');
+    expect(listed[0]?.myParticipationStatus?.statusLabel).toBe('Będę');
+    expect(listed[0]?.myParticipationStatus?.confirmationState).toBe('confirmed');
+    expect(listed[0]).not.toHaveProperty('version');
+    const other = await useCases.listActivities('guild-1', { discordUserId: 'member-2' });
+    expect(other[0]?.myParticipationStatus).toBeNull();
+    expect(other[0]?.occupiedSlots).toBe(1);
+    const unlimitedDraft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    await useCases.publishDraft(
+      unlimitedDraft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Open',
+        startAt: new Date('2026-08-21T18:00:00.000Z'),
+        participantLimit: null,
+      },
+      { actor, idempotencyKey: 'list-2' },
+    );
+    const all = await useCases.listActivities('guild-1', actor);
+    const open = all.find((item) => item.name === 'Open');
+    expect(open?.participantLimit).toBeNull();
+    expect(open?.occupiedSlots).toBe(1);
+    expect(activity.id).toBe(listed[0]?.id);
   });
 
   it('keeps seats reserved on reschedule until reconfirm deadline expiry', async () => {

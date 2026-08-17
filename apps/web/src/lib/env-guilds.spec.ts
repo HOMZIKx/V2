@@ -47,6 +47,13 @@ describe('guilds', () => {
     expect(readConfiguredGuilds()).toEqual([{ id: '1534228693017432124', name: 'Serwer testowy' }]);
   });
 
+  it('does not use a raw id as the visible guild name', () => {
+    process.env.NEXT_PUBLIC_WEB_GUILDS = JSON.stringify([
+      { id: '1534228693017432124', name: '  ' },
+    ]);
+    expect(readConfiguredGuilds()).toEqual([{ id: '1534228693017432124', name: 'Serwer' }]);
+  });
+
   it('uses first guild when storage is empty', () => {
     const guilds = [
       { id: 'a', name: 'A' },
@@ -63,5 +70,11 @@ describe('mapApiError', () => {
       kind: 'unauthorized',
     });
     expect(mapApiError(new ApiClientError('no', { status: 403 }))).toEqual({ kind: 'forbidden' });
+  });
+
+  it('maps not found, conflict and unavailable', () => {
+    expect(mapApiError(new ApiClientError('gone', { status: 404 }))).toEqual({ kind: 'not_found' });
+    expect(mapApiError(new ApiClientError('stale', { status: 409 })).kind).toBe('conflict');
+    expect(mapApiError(new ApiClientError('down', { status: 503 })).kind).toBe('unavailable');
   });
 });

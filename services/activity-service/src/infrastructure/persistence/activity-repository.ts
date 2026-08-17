@@ -748,6 +748,21 @@ function createTx(client: PoolClient): ActivityTx {
       return result.rows.map((row) => mapParticipation(row as Record<string, unknown>));
     },
 
+    async listParticipationsForActivities(activityIds) {
+      if (activityIds.length === 0) {
+        return [];
+      }
+      const result = await client.query(
+        `SELECT p.*, s.occupies_slot, s.behavior AS status_behavior
+         FROM participations p
+         JOIN participation_status_defs s ON s.id = p.status_def_id
+         WHERE p.activity_id = ANY($1::uuid[])
+         ORDER BY p.created_at`,
+        [activityIds],
+      );
+      return result.rows.map((row) => mapParticipation(row as Record<string, unknown>));
+    },
+
     async getParticipation(activityId, discordUserId) {
       const result = await client.query(
         `SELECT p.*, s.occupies_slot, s.behavior AS status_behavior

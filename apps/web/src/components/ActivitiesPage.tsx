@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { Badge, Button, Select } from '@v2/design-system';
 
 import { useGuild } from '../components/GuildProvider';
-import { useSession } from '../components/SessionProvider';
 import {
+  ConflictState,
   EmptyState,
   ErrorState,
   ForbiddenState,
@@ -13,91 +15,67 @@ import {
   UnauthorizedState,
   UnavailableState,
 } from '../components/StateViews';
-import { listActivities, listMyActivities, listParticipants } from '../lib/api';
-import { formatPolishDateTime } from '../lib/datetime';
+import { listActivities } from '../lib/api';
+import { formatEventCapacity, organizerDisplayName } from '../lib/capacity';
+import { formatActivityWhen } from '../lib/datetime';
 import { lifecycleLabel } from '../lib/labels';
 import { mapApiError, type LoadState } from '../lib/load-state';
-import type { ActivityDto, ParticipationDto } from '../lib/types';
+import { GUILD_UNAVAILABLE_COPY, isAbortError } from '../lib/member-copy';
+import { createRequestIdentity } from '../lib/request-identity';
+import type { ActivityDto } from '../lib/types';
 
-function countOccupied(participants: readonly ParticipationDto[]): number {
-  return participants.filter(
-    (p) =>
-      p.occupiesSlot &&
-      p.resignedAt === null &&
-      p.removedAt === null &&
-      p.waitlistPosition === null,
-  ).length;
+function myStatusLabel(activity: ActivityDto): string | null {
+  const mine = activity.myParticipationStatus;
+  if (mine === undefined || mine === null) {
+    return null;
+  }
+  if (mine.confirmationState === 'requires_reconfirmation') {
+    return 'Wymaga potwierdzenia';
+  }
+  if (mine.waitlistPosition !== null) {
+    return `Lista rezerwowa #${mine.waitlistPosition}`;
+  }
+  return mine.statusLabel;
 }
 
 export function ActivitiesPage() {
   const { guildId, unavailable } = useGuild();
-  const { session } = useSession();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [items, setItems] = useState<ActivityDto[]>([]);
-  const [myStatusById, setMyStatusById] = useState<Record<string, string>>({});
-  const [slotsById, setSlotsById] = useState<
-    Record<string, { occupied: number; limit: number | null }>
-  >({});
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const requests = useRef(createRequestIdentity());
 
   const load = useCallback(async () => {
+    const request = requests.current.next();
     if (unavailable || guildId === null) {
-      setState({ kind: 'unavailable', message: 'Brak skonfigurowanego serwera.' });
+      setState({ kind: 'unavailable', message: GUILD_UNAVAILABLE_COPY });
       return;
     }
     setState({ kind: 'loading' });
     try {
-      const [activities, mine] = await Promise.all([
-        listActivities(guildId),
-        listMyActivities(guildId).catch(() => [] as ActivityDto[]),
-      ]);
+      const activities = await listActivities(guildId, request.signal);
+      if (!request.isCurrent()) {
+        return;
+      }
       const sorted = [...activities].sort(
         (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
       );
       setItems(sorted);
-
-      const mineIds = new Set(mine.map((a) => a.id));
-      const statusMap: Record<string, string> = {};
-      const slotsMap: Record<string, { occupied: number; limit: number | null }> = {};
-
-      await Promise.all(
-        sorted.slice(0, 40).map(async (activity) => {
-          try {
-            const participants = await listParticipants(activity.id);
-            slotsMap[activity.id] = {
-              occupied: countOccupied(participants),
-              limit: activity.participantLimit,
-            };
-            if (mineIds.has(activity.id) && session !== null) {
-              const mineP = participants.find(
-                (p) =>
-                  (p.discordUserId !== null && p.discordUserId === session.discordUserId) ||
-                  (p.v2UserId !== null && p.v2UserId === session.v2UserId),
-              );
-              if (mineP !== undefined && mineP.resignedAt === null && mineP.removedAt === null) {
-                statusMap[activity.id] =
-                  mineP.confirmationState === 'requires_reconfirmation'
-                    ? 'Wymaga potwierdzenia'
-                    : mineP.waitlistPosition !== null
-                      ? `Lista rezerwowa #${mineP.waitlistPosition}`
-                      : 'Zapisany';
-              }
-            }
-          } catch {
-            // slots/status optional on list
-          }
-        }),
-      );
-      setMyStatusById(statusMap);
-      setSlotsById(slotsMap);
       setState(sorted.length === 0 ? { kind: 'empty' } : { kind: 'ready' });
     } catch (err) {
+      if (isAbortError(err) || !request.isCurrent()) {
+        return;
+      }
       setState(mapApiError(err));
     }
-  }, [guildId, unavailable, session]);
+  }, [guildId, unavailable]);
 
   useEffect(() => {
     void load();
+    const identity = requests.current;
+    return () => {
+      identity.invalidate();
+    };
   }, [load]);
 
   const filtered = useMemo(() => {
@@ -117,11 +95,9 @@ export function ActivitiesPage() {
       <>
         <header className="page-hero">
           <h1>Aktywności</h1>
-          <p>Najbliższe wydarzenia na Twoim serwerze.</p>
         </header>
-        <UnavailableState title="Brak serwera">
-          Ustaw <code>NEXT_PUBLIC_WEB_GUILDS</code> lub{' '}
-          <code>NEXT_PUBLIC_DISCORD_TEST_GUILD_ID</code>.
+        <UnavailableState title="Nie udało się ustalić serwera">
+          {GUILD_UNAVAILABLE_COPY}
         </UnavailableState>
       </>
     );
@@ -131,30 +107,28 @@ export function ActivitiesPage() {
     <>
       <header className="page-hero">
         <h1>Aktywności</h1>
-        <p>Najbliższe wydarzenia — zapis i statusy przez ten sam backend co Discord.</p>
+        <p>Najbliższe wydarzenia na Twoim serwerze.</p>
       </header>
 
       <div className="toolbar">
-        <div className="field">
-          <label htmlFor="status-filter">Status</label>
-          <select
-            id="status-filter"
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value);
-            }}
-          >
-            <option value="all">Wszystkie</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {lifecycleLabel(status)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="button" className="btn btn-secondary" onClick={() => void load()}>
+        <Select
+          id="status-filter"
+          aria-label="Status aktywności"
+          value={statusFilter}
+          options={[
+            { value: 'all', label: 'Wszystkie' },
+            ...statusOptions.map((status) => ({
+              value: status,
+              label: lifecycleLabel(status),
+            })),
+          ]}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+          }}
+        />
+        <Button variant="secondary" onClick={() => void load()}>
           Odśwież
-        </button>
+        </Button>
       </div>
 
       {state.kind === 'loading' ? <LoadingState /> : null}
@@ -163,61 +137,67 @@ export function ActivitiesPage() {
       {state.kind === 'unavailable' ? (
         <UnavailableState>{'message' in state ? state.message : undefined}</UnavailableState>
       ) : null}
+      {state.kind === 'conflict' ? <ConflictState /> : null}
       {state.kind === 'error' ? <ErrorState>{state.message}</ErrorState> : null}
       {state.kind === 'empty' ? (
-        <EmptyState title="Brak aktywności">
-          Na tym serwerze nie ma jeszcze opublikowanych aktywności.
-        </EmptyState>
+        <EmptyState title="Brak aktywności">Na razie nie ma nic zaplanowanego.</EmptyState>
       ) : null}
 
-      {state.kind === 'ready' || (state.kind === 'empty' && filtered.length > 0) ? (
+      {state.kind === 'ready' ? (
         filtered.length === 0 ? (
-          <EmptyState title="Brak wyników filtra">Zmień filtr statusu.</EmptyState>
+          <EmptyState title="Brak wyników">Zmień filtr statusu.</EmptyState>
         ) : (
           <div className="activity-list">
             {filtered.map((activity) => {
-              const slots = slotsById[activity.id];
-              const myStatus = myStatusById[activity.id];
+              const mine = myStatusLabel(activity);
               return (
-                <article key={activity.id} className="activity-row">
+                <article key={activity.id} className="activity-card">
                   <div>
-                    <Link className="title" href={`/aktywnosci/${activity.id}`}>
-                      {activity.name}
-                    </Link>
-                    <div className="meta">
-                      {formatPolishDateTime(activity.startAt, activity.timezone || undefined)}
-                      {activity.organizerDiscordUserId !== null
-                        ? ` · Organizator ${activity.organizerDiscordUserId}`
-                        : null}
-                    </div>
-                    <div className="chip-row" style={{ marginTop: '0.45rem' }}>
-                      <span className="chip" data-tone="accent">
-                        {lifecycleLabel(activity.status)}
-                      </span>
-                      {slots !== undefined ? (
-                        <span className="chip">
-                          Miejsca{' '}
-                          {slots.limit === null
-                            ? String(slots.occupied)
-                            : `${slots.occupied}/${slots.limit}`}
-                        </span>
+                    <h2 className="activity-title">
+                      <Link href={`/aktywnosci/${activity.id}`}>{activity.name}</Link>
+                    </h2>
+                    <p className="meta">
+                      {formatActivityWhen(activity.startAt, activity.timezone)}
+                    </p>
+                    <dl className="activity-facts">
+                      {activity.typeLabel !== undefined &&
+                      activity.typeLabel !== null &&
+                      activity.typeLabel !== '' ? (
+                        <>
+                          <dt>Typ</dt>
+                          <dd>{activity.typeLabel}</dd>
+                        </>
                       ) : null}
-                      {myStatus !== undefined ? (
-                        <span className="chip" data-tone="ok">
-                          {myStatus}
-                        </span>
-                      ) : null}
-                    </div>
+                      <dt>Prowadzi</dt>
+                      <dd>{organizerDisplayName(activity)}</dd>
+                      <dt>Miejsca</dt>
+                      <dd>
+                        {formatEventCapacity(activity.occupiedSlots, activity.participantLimit)}
+                      </dd>
+                      <dt>Twój status</dt>
+                      <dd>{mine ?? 'Brak zapisu'}</dd>
+                      <dt>Status</dt>
+                      <dd>
+                        <Badge
+                          tone={
+                            activity.status === 'cancelled'
+                              ? 'error'
+                              : activity.status === 'completed'
+                                ? 'ok'
+                                : 'info'
+                          }
+                        >
+                          {lifecycleLabel(activity.status)}
+                        </Badge>
+                      </dd>
+                    </dl>
                   </div>
-                  <Link className="btn btn-secondary" href={`/aktywnosci/${activity.id}`}>
+                  <Link className="v2-btn" href={`/aktywnosci/${activity.id}`}>
                     Szczegóły
                   </Link>
                 </article>
               );
             })}
-            <p className="muted" style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-              Brak dalszych
-            </p>
           </div>
         )
       ) : null}

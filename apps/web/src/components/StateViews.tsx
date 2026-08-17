@@ -1,36 +1,24 @@
 'use client';
 
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-type Tone = 'neutral' | 'danger' | 'warn';
+import { Alert, EmptyState as DsEmpty, LoadingState as DsLoading, Panel } from '@v2/design-system';
 
-export function StatePanel({
-  title,
-  children,
-  tone = 'neutral',
-}: {
-  title: string;
-  children?: ReactNode;
-  tone?: Tone;
-}) {
+export function LoadingState({ label = 'Ładowanie…' }: { label?: string }) {
   return (
-    <div
-      className="panel state-panel"
-      data-tone={tone === 'neutral' ? undefined : tone}
-      role="status"
-    >
-      <strong>{title}</strong>
-      {children !== undefined ? <div>{children}</div> : null}
-    </div>
+    <Panel>
+      <DsLoading label={label} />
+    </Panel>
   );
 }
 
-export function LoadingState({ label = 'Ładowanie…' }: { label?: string }) {
-  return <StatePanel title={label} />;
-}
-
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
-  return <StatePanel title={title}>{children}</StatePanel>;
+  return (
+    <Panel title={title}>
+      <DsEmpty>{children}</DsEmpty>
+    </Panel>
+  );
 }
 
 export function ErrorState({
@@ -41,38 +29,63 @@ export function ErrorState({
   children?: ReactNode;
 }) {
   return (
-    <StatePanel title={title} tone="danger">
-      {children}
-    </StatePanel>
+    <Alert tone="error">
+      <strong>{title}</strong>
+      {children !== undefined ? <div>{children}</div> : null}
+    </Alert>
   );
 }
 
 export function ForbiddenState() {
   return (
-    <StatePanel title="Brak dostępu" tone="danger">
-      Nie masz uprawnień do tej treści.
-    </StatePanel>
+    <Alert tone="error">
+      <strong>Brak dostępu</strong>
+      <div>Nie masz dostępu do tego serwera.</div>
+    </Alert>
   );
 }
 
 export function UnauthorizedState() {
   return (
-    <StatePanel title="Wymagane logowanie" tone="warn">
-      Zaloguj się, aby zobaczyć tę treść.
-    </StatePanel>
+    <Alert tone="info">
+      <strong>Sesja wygasła.</strong>
+      <div>
+        <Link className="v2-btn v2-btn-primary" href="/logowanie">
+          Zaloguj ponownie
+        </Link>
+      </div>
+    </Alert>
   );
 }
 
 export function UnavailableState({
-  title = 'Niedostępne',
+  title = 'Chwilowo niedostępne',
   children,
 }: {
   title?: string;
   children?: ReactNode;
 }) {
   return (
-    <StatePanel title={title} tone="warn">
-      {children ?? 'Serwis jest chwilowo niedostępny. Spróbuj ponownie później.'}
-    </StatePanel>
+    <Alert tone="info">
+      <strong>{title}</strong>
+      <div>{children ?? 'Ta funkcja jest chwilowo niedostępna.'}</div>
+    </Alert>
+  );
+}
+
+export function NotFoundState() {
+  return (
+    <Alert tone="info">
+      <strong>Ta aktywność już nie istnieje.</strong>
+    </Alert>
+  );
+}
+
+export function ConflictState({ children }: { children?: ReactNode }) {
+  return (
+    <Alert tone="info">
+      <strong>Dane zmieniły się w międzyczasie.</strong>
+      <div>{children ?? 'Odśwież i spróbuj ponownie.'}</div>
+    </Alert>
   );
 }

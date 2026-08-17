@@ -15,3 +15,8 @@ export function buildDiscordLoginUrl(callbackPath = '/aktywnosci'): string {
   const base = getIdentityPublicUrl().replace(/\/$/, '');
   return `${base}/identity/oauth/discord?callbackURL=${encodeURIComponent(callbackURL)}`;
 }
+
+export function isLoginConfigured(): boolean {
+  const identity = getIdentityPublicUrl().trim();
+  return identity.length > 0 && identity !== 'unavailable';
+}

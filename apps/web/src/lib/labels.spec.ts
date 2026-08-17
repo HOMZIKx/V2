@@ -19,7 +19,11 @@ describe('lifecycleLabel', () => {
 describe('inboxKindLabel', () => {
   it('maps waitlist and reconfirm kinds', () => {
     expect(inboxKindLabel('waitlist')).toBe('Lista rezerwowa');
-    expect(inboxKindLabel('waitlist_promoted')).toBe('Lista rezerwowa');
+    expect(inboxKindLabel('waitlist_promoted')).toBe('Awans z rezerwy');
+    expect(inboxKindLabel('activity.waitlist_promoted')).toBe('Awans z rezerwy');
+    expect(inboxKindLabel('activity.reconfirm_required')).toBe('Ponowne potwierdzenie');
+    expect(inboxKindLabel('activity.cancelled')).toBe('Anulowanie');
+    expect(inboxKindLabel('activity.participant_removed')).toBe('Usunięto z aktywności');
     expect(inboxKindLabel('reconfirm')).toBe('Ponowne potwierdzenie');
     expect(inboxKindLabel('unknown_kind')).toBe('Powiadomienie');
   });

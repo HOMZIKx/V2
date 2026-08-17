@@ -19,6 +19,8 @@ export class SessionController {
     authenticated: true;
     v2UserId: string;
     discordUserId: string;
+    displayName: string | null;
+    avatarUrl: string | null;
   }> {
     const actor = await resolveSessionActor(cookie, this.identityBaseUrl);
     if (actor === null) {
@@ -28,6 +30,8 @@ export class SessionController {
       authenticated: true,
       v2UserId: actor.v2UserId,
       discordUserId: actor.discordUserId,
+      displayName: actor.displayName,
+      avatarUrl: actor.avatarUrl,
     };
   }
 }

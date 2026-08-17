@@ -3,7 +3,8 @@
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
-import { buildDiscordLoginUrl } from '../lib/env';
+import { buildDiscordLoginUrl, isLoginConfigured } from '../lib/env';
+import { UnavailableState } from './StateViews';
 
 export function LoginPage() {
   const searchParams = useSearchParams();
@@ -16,24 +17,27 @@ export function LoginPage() {
     return buildDiscordLoginUrl(callback);
   }, [nextPath]);
 
+  if (!isLoginConfigured()) {
+    return (
+      <div className="login-page">
+        <div className="login-card">
+          <p className="web-brand">V2</p>
+          <UnavailableState title="Logowanie niedostępne">
+            Spróbuj ponownie później.
+          </UnavailableState>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="login-page">
       <div className="login-card">
-        <p className="muted" style={{ marginBottom: '0.35rem', letterSpacing: '0.08em' }}>
-          V2
-        </p>
-        <h1>Logowanie</h1>
-        <p>
-          Zaloguj się przez Discord, aby przeglądać aktywności, zmieniać status zapisu i czytać
-          powiadomienia.
-        </p>
-        <a className="btn" href={loginUrl}>
+        <h1>V2</h1>
+        <p>Aktywności, zapisy i powiadomienia Twojego serwera.</p>
+        <a className="v2-btn v2-btn-primary" href={loginUrl}>
           Zaloguj przez Discord
         </a>
-        <div className="login-hint" role="note">
-          Wymagane uprawnienie platformy <code>OWNER_LOGIN_REQUIRED</code> /{' '}
-          <code>permission.platform.login.www</code>. Bez niego Identity nie utworzy sesji WWW.
-        </div>
       </div>
     </div>
   );

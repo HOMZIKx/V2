@@ -41,6 +41,14 @@ export class ApiClientError extends Error {
       this.status === 503 || this.code === 'SERVICE_UNAVAILABLE' || this.code === 'UNAVAILABLE'
     );
   }
+
+  public get isNotFound(): boolean {
+    return this.status === 404 || this.code === 'NOT_FOUND';
+  }
+
+  public get isConflict(): boolean {
+    return this.status === 409 || this.code === 'CONFLICT' || this.code === 'CAPACITY_EXCEEDED';
+  }
 }
 
 export function parseErrorBody(body: unknown): {
@@ -111,6 +119,7 @@ async function apiRequest<T>(
     body?: unknown;
     idempotent?: boolean;
     query?: Record<string, string | number | boolean | undefined | null>;
+    signal?: AbortSignal;
   } = {},
 ): Promise<T> {
   const method = options.method ?? 'GET';
@@ -130,6 +139,7 @@ async function apiRequest<T>(
     method,
     headers,
     credentials: 'include',
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
   });
 
@@ -211,26 +221,41 @@ export async function logoutIdentity(): Promise<void> {
   }
 }
 
-export async function listActivities(guildId: string): Promise<ActivityDto[]> {
+export async function listActivities(
+  guildId: string,
+  signal?: AbortSignal,
+): Promise<ActivityDto[]> {
   const raw = await apiRequest<unknown>('/activity/v1/activities', {
     query: { guildId },
+    ...(signal !== undefined ? { signal } : {}),
   });
   return asActivityArray(raw);
 }
 
-export async function getActivity(id: string): Promise<ActivityDto> {
-  return apiRequest<ActivityDto>(`/activity/v1/activities/${encodeURIComponent(id)}`);
+export async function getActivity(id: string, signal?: AbortSignal): Promise<ActivityDto> {
+  return apiRequest<ActivityDto>(`/activity/v1/activities/${encodeURIComponent(id)}`, {
+    ...(signal !== undefined ? { signal } : {}),
+  });
 }
 
-export async function listParticipants(id: string): Promise<ParticipationDto[]> {
+export async function listParticipants(
+  id: string,
+  signal?: AbortSignal,
+): Promise<ParticipationDto[]> {
   const raw = await apiRequest<unknown>(
     `/activity/v1/activities/${encodeURIComponent(id)}/participants`,
+    signal !== undefined ? { signal } : {},
   );
   return asParticipantArray(raw);
 }
 
-export async function getGuildConfig(guildId: string): Promise<GuildConfigDto> {
-  return apiRequest<GuildConfigDto>(`/activity/v1/guilds/${encodeURIComponent(guildId)}/config`);
+export async function getGuildConfig(
+  guildId: string,
+  signal?: AbortSignal,
+): Promise<GuildConfigDto> {
+  return apiRequest<GuildConfigDto>(`/activity/v1/guilds/${encodeURIComponent(guildId)}/config`, {
+    ...(signal !== undefined ? { signal } : {}),
+  });
 }
 
 export async function rsvp(id: string, statusDefId: string): Promise<unknown> {
@@ -254,15 +279,21 @@ export async function reconfirm(id: string): Promise<unknown> {
   });
 }
 
-export async function listMyActivities(guildId?: string): Promise<ActivityDto[]> {
+export async function listMyActivities(
+  guildId?: string,
+  signal?: AbortSignal,
+): Promise<ActivityDto[]> {
   const raw = await apiRequest<unknown>('/activity/v1/me/activities', {
     query: { guildId },
+    ...(signal !== undefined ? { signal } : {}),
   });
   return asActivityArray(raw);
 }
 
-export async function listInbox(): Promise<InboxListDto> {
-  const raw = await apiRequest<InboxListDto | { items?: InboxItemDto[] }>('/activity/v1/inbox');
+export async function listInbox(signal?: AbortSignal): Promise<InboxListDto> {
+  const raw = await apiRequest<InboxListDto | { items?: InboxItemDto[] }>('/activity/v1/inbox', {
+    ...(signal !== undefined ? { signal } : {}),
+  });
   const items = Array.isArray(raw.items) ? raw.items : [];
   return {
     items,

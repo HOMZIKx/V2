@@ -44,7 +44,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return;
       }
       setStatus('error');
-      setError(err instanceof Error ? err.message : 'Session probe failed');
+      setError('Nie udało się sprawdzić sesji.');
     }
   }, []);
 

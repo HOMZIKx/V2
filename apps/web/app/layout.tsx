@@ -1,6 +1,8 @@
 import { Manrope, Sora } from 'next/font/google';
 import type { ReactNode } from 'react';
 
+import '@v2/design-system/primitives.css';
+import '@v2/design-system/tokens.css';
 import { SessionProvider } from '../src/components/SessionProvider';
 import './web.css';
 

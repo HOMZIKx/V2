@@ -1,4 +1,4 @@
-import { ApiClientError } from '../lib/api';
+import { ApiClientError } from './api';
 
 export type LoadState =
   | { kind: 'loading' }
@@ -7,7 +7,9 @@ export type LoadState =
   | { kind: 'error'; message: string }
   | { kind: 'forbidden' }
   | { kind: 'unavailable'; message: string }
-  | { kind: 'unauthorized' };
+  | { kind: 'unauthorized' }
+  | { kind: 'not_found' }
+  | { kind: 'conflict'; message: string };
 
 export function mapApiError(err: unknown): LoadState {
   if (err instanceof ApiClientError) {
@@ -17,13 +19,22 @@ export function mapApiError(err: unknown): LoadState {
     if (err.isForbidden) {
       return { kind: 'forbidden' };
     }
-    if (err.isUnavailable || err.status >= 500) {
-      return { kind: 'unavailable', message: err.message };
+    if (err.isNotFound) {
+      return { kind: 'not_found' };
     }
-    return { kind: 'error', message: err.message };
+    if (err.isConflict) {
+      return {
+        kind: 'conflict',
+        message: 'Dane zmieniły się w międzyczasie. Odśwież i spróbuj ponownie.',
+      };
+    }
+    if (err.isUnavailable || err.status >= 500) {
+      return { kind: 'unavailable', message: 'Ta funkcja jest chwilowo niedostępna.' };
+    }
+    return { kind: 'error', message: 'Nie udało się wczytać danych.' };
   }
   return {
     kind: 'error',
-    message: err instanceof Error ? err.message : 'Nieznany błąd',
+    message: 'Nie udało się wczytać danych.',
   };
 }

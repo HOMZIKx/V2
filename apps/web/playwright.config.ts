@@ -20,7 +20,10 @@ export default defineConfig({
       NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:4000',
       NEXT_PUBLIC_IDENTITY_URL: 'http://127.0.0.1:4200',
       NEXT_PUBLIC_WEB_ORIGIN: 'http://127.0.0.1:3000',
-      NEXT_PUBLIC_DISCORD_TEST_GUILD_ID: '1534228693017432124',
+      NEXT_PUBLIC_WEB_GUILDS: JSON.stringify([
+        { id: '1534228693017432124', name: 'Serwer A' },
+        { id: '999000999000999000', name: 'Serwer B' },
+      ]),
     },
   },
 });

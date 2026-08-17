@@ -66,6 +66,12 @@ text `#F1E9DD` · Centrum `#D48632` / hover `#E29A4B`.
 
 Ikony / custom art: `OWNER_DECISION_REQUIRED`.
 
-### WWW
+### WWW (P4-WWW-PRODUCTIZATION-001)
 
-Productization `apps/web` **nie** jest częścią tego rekordu.
+Status: `OWNER_VISUAL_REVIEW_REQUIRED` — to nie jest `APPROVED`.
+
+Member WWW P4.4: logowanie, lista, szczegóły, RSVP, Moje, powiadomienia.
+Tworzenie aktywności pozostaje na Discordzie.
+
+Paleta: ta sama foundation co Control Center (Issue #12, nie APPROVED).
+Screenshots (nie w gicie): `tmp/ui-review/web/`.

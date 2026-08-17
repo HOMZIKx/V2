@@ -1,14 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { Badge, Button } from '@v2/design-system';
 
 import { listInbox, markInboxRead } from '../lib/api';
 import { formatPolishDateTime } from '../lib/datetime';
 import { inboxKindLabel } from '../lib/labels';
 import { mapApiError, type LoadState } from '../lib/load-state';
+import { isAbortError } from '../lib/member-copy';
+import { createRequestIdentity } from '../lib/request-identity';
 import type { InboxItemDto } from '../lib/types';
 import {
+  ConflictState,
   EmptyState,
   ErrorState,
   ForbiddenState,
@@ -44,23 +49,35 @@ export function InboxPage() {
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [items, setItems] = useState<InboxItemDto[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const requests = useRef(createRequestIdentity());
 
   const load = useCallback(async () => {
+    const request = requests.current.next();
     setState({ kind: 'loading' });
     try {
-      const result = await listInbox();
+      const result = await listInbox(request.signal);
+      if (!request.isCurrent()) {
+        return;
+      }
       const sorted = [...result.items].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
       setItems(sorted);
       setState(sorted.length === 0 ? { kind: 'empty' } : { kind: 'ready' });
     } catch (err) {
+      if (isAbortError(err) || !request.isCurrent()) {
+        return;
+      }
       setState(mapApiError(err));
     }
   }, []);
 
   useEffect(() => {
     void load();
+    const identity = requests.current;
+    return () => {
+      identity.invalidate();
+    };
   }, [load]);
 
   async function onMarkRead(id: string): Promise<void> {
@@ -79,13 +96,14 @@ export function InboxPage() {
     <>
       <header className="page-hero">
         <h1>Powiadomienia</h1>
-        <p>Wspólna skrzynka z Discordem — lista rezerwowa, potwierdzenia, anulowania.</p>
+        <p>Zmiany terminu, lista rezerwowa, awanse i anulowania.</p>
       </header>
 
       {state.kind === 'loading' ? <LoadingState /> : null}
       {state.kind === 'unauthorized' ? <UnauthorizedState /> : null}
       {state.kind === 'forbidden' ? <ForbiddenState /> : null}
       {state.kind === 'unavailable' ? <UnavailableState>{state.message}</UnavailableState> : null}
+      {state.kind === 'conflict' ? <ConflictState /> : null}
       {state.kind === 'error' ? <ErrorState>{state.message}</ErrorState> : null}
       {state.kind === 'empty' ? (
         <EmptyState title="Brak powiadomień">
@@ -94,41 +112,39 @@ export function InboxPage() {
       ) : null}
 
       {state.kind === 'ready' ? (
-        <div className="activity-list">
+        <ul className="inbox-list">
           {items.map((item) => {
             const unread = item.readAt === null;
             const activityId = activityIdFromPayload(item.payload);
             return (
-              <article key={item.id} className="inbox-item" data-unread={unread ? 'true' : 'false'}>
+              <li key={item.id} className="inbox-item" data-unread={unread ? 'true' : 'false'}>
                 <div className="chip-row">
-                  <span className="chip" data-tone={unread ? 'accent' : undefined}>
-                    {inboxKindLabel(item.kind)}
-                  </span>
-                  <span className="chip">{unread ? 'Nieprzeczytane' : 'Przeczytane'}</span>
+                  <Badge tone={unread ? 'warn' : 'info'}>{inboxKindLabel(item.kind)}</Badge>
+                  <span className="meta">{unread ? 'Nieprzeczytane' : 'Przeczytane'}</span>
                 </div>
-                <div>{summaryFromPayload(item.payload)}</div>
-                <div className="meta">{formatPolishDateTime(item.createdAt)}</div>
+                <p>{summaryFromPayload(item.payload)}</p>
+                <p className="meta">{formatPolishDateTime(item.createdAt)}</p>
                 <div className="btn-row">
                   {activityId !== null ? (
-                    <Link className="btn btn-secondary" href={`/aktywnosci/${activityId}`}>
-                      Otwórz aktywność
+                    <Link className="v2-btn" href={`/aktywnosci/${activityId}`}>
+                      Otwórz
                     </Link>
                   ) : null}
                   {unread ? (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
+                    <Button
+                      variant="secondary"
                       disabled={busyId === item.id}
+                      aria-busy={busyId === item.id}
                       onClick={() => void onMarkRead(item.id)}
                     >
                       Oznacz jako przeczytane
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
-              </article>
+              </li>
             );
           })}
-        </div>
+        </ul>
       ) : null}
     </>
   );

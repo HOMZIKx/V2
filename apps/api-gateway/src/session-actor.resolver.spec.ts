@@ -28,6 +28,8 @@ describe('resolveSessionActor', () => {
     ).resolves.toEqual({
       v2UserId: 'user-v2',
       discordUserId: 'discord-42',
+      displayName: 'Owner',
+      avatarUrl: null,
     });
 
     expect(fetchImpl).toHaveBeenCalledTimes(2);

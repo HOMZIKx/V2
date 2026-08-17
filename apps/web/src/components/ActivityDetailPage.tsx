@@ -1,18 +1,26 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { Badge, Button } from '@v2/design-system';
 
 import { getActivity, getGuildConfig, listParticipants, reconfirm, resign, rsvp } from '../lib/api';
-import { formatPolishDateTime } from '../lib/datetime';
+import { formatEventCapacity, organizerDisplayName, participantDisplayName } from '../lib/capacity';
+import { formatActivityWhen, formatPolishDateTime } from '../lib/datetime';
 import { lifecycleLabel } from '../lib/labels';
 import { mapApiError, type LoadState } from '../lib/load-state';
+import { isAbortError, rsvpFeedbackCopy } from '../lib/member-copy';
+import { createRequestIdentity } from '../lib/request-identity';
 import type { ActivityDto, ParticipationDto, StatusDefDto } from '../lib/types';
 import { useSession } from './SessionProvider';
 import {
+  ConflictState,
+  EmptyState,
   ErrorState,
   ForbiddenState,
   LoadingState,
+  NotFoundState,
   UnauthorizedState,
   UnavailableState,
 } from './StateViews';
@@ -29,16 +37,6 @@ function findMine(
   );
 }
 
-function occupiedCount(participants: readonly ParticipationDto[]): number {
-  return participants.filter(
-    (p) =>
-      p.occupiesSlot &&
-      p.resignedAt === null &&
-      p.removedAt === null &&
-      p.waitlistPosition === null,
-  ).length;
-}
-
 export function ActivityDetailPage({ activityId }: { activityId: string }) {
   const { session } = useSession();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
@@ -46,28 +44,47 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
   const [participants, setParticipants] = useState<ParticipationDto[]>([]);
   const [statuses, setStatuses] = useState<StatusDefDto[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionOk, setActionOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const requests = useRef(createRequestIdentity());
 
   const load = useCallback(async () => {
+    const request = requests.current.next();
     setState({ kind: 'loading' });
     setActionError(null);
     try {
-      const act = await getActivity(activityId);
+      const act = await getActivity(activityId, request.signal);
+      if (!request.isCurrent()) {
+        return;
+      }
       const [parts, config] = await Promise.all([
-        listParticipants(activityId),
-        getGuildConfig(act.guildId).catch(() => ({ settings: {}, statuses: [] as StatusDefDto[] })),
+        listParticipants(activityId, request.signal),
+        getGuildConfig(act.guildId, request.signal).catch(() => ({
+          settings: {},
+          statuses: [] as StatusDefDto[],
+        })),
       ]);
+      if (!request.isCurrent()) {
+        return;
+      }
       setActivity(act);
       setParticipants(parts);
       setStatuses([...config.statuses].sort((a, b) => a.sortOrder - b.sortOrder));
       setState({ kind: 'ready' });
     } catch (err) {
+      if (isAbortError(err) || !request.isCurrent()) {
+        return;
+      }
       setState(mapApiError(err));
     }
   }, [activityId]);
 
   useEffect(() => {
     void load();
+    const identity = requests.current;
+    return () => {
+      identity.invalidate();
+    };
   }, [load]);
 
   const mine = useMemo(() => {
@@ -89,21 +106,16 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
     activity.status !== 'deleted' &&
     activity.enrollmentOpen;
 
-  async function runAction(fn: () => Promise<unknown>): Promise<void> {
+  async function runAction(fn: () => Promise<unknown>, success: string): Promise<void> {
     setBusy(true);
     setActionError(null);
+    setActionOk(null);
     try {
       await fn();
+      setActionOk(success);
       await load();
     } catch (err) {
-      const mapped = mapApiError(err);
-      setActionError(
-        mapped.kind === 'error' || mapped.kind === 'unavailable'
-          ? mapped.message
-          : mapped.kind === 'forbidden'
-            ? 'Brak uprawnień do tej akcji.'
-            : 'Akcja nie powiodła się.',
-      );
+      setActionError(rsvpFeedbackCopy(err));
     } finally {
       setBusy(false);
     }
@@ -118,20 +130,35 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
   if (state.kind === 'forbidden') {
     return <ForbiddenState />;
   }
+  if (state.kind === 'not_found') {
+    return <NotFoundState />;
+  }
+  if (state.kind === 'conflict') {
+    return <ConflictState />;
+  }
   if (state.kind === 'unavailable') {
     return <UnavailableState>{state.message}</UnavailableState>;
   }
   if (state.kind === 'error' || activity === null) {
     return (
       <ErrorState>
-        {state.kind === 'error' ? state.message : 'Nie znaleziono aktywności.'}
+        {state.kind === 'error' ? state.message : 'Ta aktywność już nie istnieje.'}
       </ErrorState>
     );
   }
 
-  const occupied = occupiedCount(participants);
-  const statusTone =
-    activity.status === 'cancelled' ? 'danger' : activity.status === 'completed' ? 'ok' : 'accent';
+  const occupied = activity.occupiedSlots;
+  const openParticipants = participants.filter(
+    (p) => p.resignedAt === null && p.removedAt === null,
+  );
+  const mineLabel =
+    mine !== undefined && mine.resignedAt === null && mine.removedAt === null
+      ? mine.confirmationState === 'requires_reconfirmation'
+        ? 'Wymaga ponownego potwierdzenia'
+        : (statuses.find((s) => s.id === mine.statusDefId)?.label ??
+          activity.myParticipationStatus?.statusLabel ??
+          'Zapisany')
+      : null;
 
   return (
     <>
@@ -140,173 +167,150 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
       </p>
       <header className="page-hero">
         <h1>{activity.name}</h1>
-        <p>{activity.description || 'Brak opisu.'}</p>
+        <p className="meta">{formatActivityWhen(activity.startAt, activity.timezone)}</p>
       </header>
 
-      <div className="chip-row" style={{ marginBottom: '1rem' }}>
-        <span className="chip" data-tone={statusTone}>
-          {lifecycleLabel(activity.status)}
-        </span>
-        {activity.status === 'cancelled' && activity.cancelReason ? (
-          <span className="chip" data-tone="danger">
-            Powód: {activity.cancelReason}
-          </span>
+      <div className="chip-row">
+        {activity.typeLabel !== undefined &&
+        activity.typeLabel !== null &&
+        activity.typeLabel !== '' ? (
+          <Badge tone="info">{activity.typeLabel}</Badge>
         ) : null}
+        <Badge
+          tone={
+            activity.status === 'cancelled'
+              ? 'error'
+              : activity.status === 'completed'
+                ? 'ok'
+                : 'info'
+          }
+        >
+          {lifecycleLabel(activity.status)}
+        </Badge>
       </div>
 
-      <section className="panel detail-grid">
-        <div>
-          <dt>Start</dt>
-          <dd>{formatPolishDateTime(activity.startAt, activity.timezone || undefined)}</dd>
-        </div>
-        {activity.endAt !== null ? (
-          <div>
-            <dt>Koniec</dt>
-            <dd>{formatPolishDateTime(activity.endAt, activity.timezone || undefined)}</dd>
-          </div>
-        ) : null}
-        <div>
-          <dt>Organizator</dt>
-          <dd>{activity.organizerDiscordUserId ?? '—'}</dd>
-        </div>
-        {activity.coOrganizerDiscordUserId !== null ? (
-          <div>
-            <dt>Współorganizator</dt>
-            <dd>{activity.coOrganizerDiscordUserId}</dd>
-          </div>
-        ) : null}
+      <dl className="detail-facts">
         <div>
           <dt>Miejsca</dt>
-          <dd>
-            {activity.participantLimit === null
-              ? occupied
-              : `${occupied} / ${activity.participantLimit}`}
-          </dd>
+          <dd>{formatEventCapacity(occupied, activity.participantLimit)}</dd>
         </div>
-        {activity.locationText !== null && activity.locationText !== '' ? (
+        <div>
+          <dt>Prowadzi</dt>
+          <dd>{organizerDisplayName(activity)}</dd>
+        </div>
+        {activity.coOrganizerDisplay !== undefined && activity.coOrganizerDisplay !== null ? (
           <div>
-            <dt>Miejsce</dt>
-            <dd>{activity.locationText}</dd>
+            <dt>Razem z</dt>
+            <dd>{activity.coOrganizerDisplay}</dd>
           </div>
         ) : null}
-        <div>
-          <dt>Zapisy</dt>
-          <dd>{activity.enrollmentOpen ? 'Otwarte' : 'Zamknięte'}</dd>
-        </div>
-        {mine !== undefined && mine.resignedAt === null && mine.removedAt === null ? (
-          <>
-            <div>
-              <dt>Twój status</dt>
-              <dd>
-                {mine.confirmationState === 'requires_reconfirmation'
-                  ? 'Wymaga ponownego potwierdzenia'
-                  : (statuses.find((s) => s.id === mine.statusDefId)?.label ?? 'Zapisany')}
-              </dd>
-            </div>
-            {mine.waitlistPosition !== null ? (
-              <div>
-                <dt>Lista rezerwowa</dt>
-                <dd>Pozycja {mine.waitlistPosition}</dd>
-              </div>
-            ) : null}
-            {mine.reconfirmDeadline !== null ? (
-              <div>
-                <dt>Termin potwierdzenia</dt>
-                <dd>
-                  {formatPolishDateTime(mine.reconfirmDeadline, activity.timezone || undefined)}
-                </dd>
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </section>
+      </dl>
+
+      {activity.description.trim() !== '' ? (
+        <section className="v2-panel">
+          <h2 className="v2-panel-title">Opis</h2>
+          <p>{activity.description}</p>
+        </section>
+      ) : null}
 
       {actionError !== null ? (
-        <p className="chip" data-tone="danger" style={{ marginTop: '0.85rem' }}>
+        <p className="v2-alert v2-alert-error" role="alert">
           {actionError}
         </p>
       ) : null}
-
-      <h2 className="section-title">Akcje</h2>
-      {mine?.confirmationState === 'requires_reconfirmation' ? (
-        <div className="btn-row" style={{ marginBottom: '0.75rem' }}>
-          <button
-            type="button"
-            className="btn"
-            disabled={busy}
-            onClick={() => void runAction(() => reconfirm(activity.id))}
-          >
-            Potwierdź udział
-          </button>
-        </div>
+      {actionOk !== null ? (
+        <p className="v2-alert v2-alert-success" role="status">
+          {actionOk}
+        </p>
       ) : null}
 
-      {canAct ? (
-        <div className="btn-row">
-          {selectable.map((status) => (
-            <button
-              key={status.id}
-              type="button"
-              className="btn btn-secondary"
+      <section className="rsvp-block">
+        <h2>Twój status</h2>
+        {mineLabel !== null ? <p>{mineLabel}</p> : <p className="muted">Nie jesteś zapisany.</p>}
+        {mine?.waitlistPosition !== null && mine !== undefined ? (
+          <p>Lista rezerwowa, pozycja {mine.waitlistPosition}.</p>
+        ) : null}
+        {mine?.confirmationState === 'requires_reconfirmation' ? (
+          <div className="reconfirm-banner" role="status">
+            <p>
+              Wymagane ponowne potwierdzenie
+              {mine.reconfirmDeadline !== null
+                ? ` do ${formatPolishDateTime(mine.reconfirmDeadline, activity.timezone)}`
+                : ''}
+              .
+            </p>
+            <Button
+              variant="primary"
               disabled={busy}
-              onClick={() => void runAction(() => rsvp(activity.id, status.id))}
+              aria-busy={busy}
+              onClick={() => void runAction(() => reconfirm(activity.id), 'Udział potwierdzony.')}
             >
-              {status.label}
-            </button>
-          ))}
-          {mine !== undefined && mine.resignedAt === null && mine.removedAt === null ? (
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={busy}
-              onClick={() => {
-                if (window.confirm('Na pewno chcesz zrezygnować z tej aktywności?')) {
-                  void runAction(() => resign(activity.id));
-                }
-              }}
-            >
-              Zrezygnuj
-            </button>
-          ) : null}
-        </div>
-      ) : (
-        <p className="muted">
-          {activity.status === 'cancelled'
-            ? 'Aktywność została anulowana — zapis niedostępny.'
-            : activity.status === 'completed'
-              ? 'Aktywność zakończona.'
-              : 'Zapisy są obecnie zamknięte.'}
-        </p>
-      )}
+              Potwierdź udział
+            </Button>
+          </div>
+        ) : null}
 
-      <h2 className="section-title">
-        Uczestnicy (
-        {participants.filter((p) => p.resignedAt === null && p.removedAt === null).length})
-      </h2>
-      <div className="activity-list">
-        {participants.filter((p) => p.resignedAt === null && p.removedAt === null).length === 0 ? (
-          <EmptyParticipants />
+        {canAct ? (
+          <div className="btn-row">
+            {selectable.map((status) => (
+              <Button
+                key={status.id}
+                variant={mine?.statusDefId === status.id ? 'primary' : 'secondary'}
+                disabled={busy}
+                aria-busy={busy}
+                onClick={() =>
+                  void runAction(() => rsvp(activity.id, status.id), 'Status zapisany.')
+                }
+              >
+                {status.label}
+              </Button>
+            ))}
+            {mine !== undefined && mine.resignedAt === null && mine.removedAt === null ? (
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm('Na pewno chcesz zrezygnować z tej aktywności?')) {
+                    void runAction(() => resign(activity.id), 'Zrezygnowano.');
+                  }
+                }}
+              >
+                Zrezygnuj
+              </Button>
+            ) : null}
+          </div>
         ) : (
-          participants
-            .filter((p) => p.resignedAt === null && p.removedAt === null)
-            .map((p) => (
-              <div key={p.id} className="panel" style={{ padding: '0.7rem 0.9rem' }}>
-                <strong>{p.discordUserId ?? p.v2UserId ?? '—'}</strong>
-                <div className="meta">
-                  {statuses.find((s) => s.id === p.statusDefId)?.label ?? p.statusDefId}
-                  {p.waitlistPosition !== null ? ` · lista rezerwowa #${p.waitlistPosition}` : ''}
+          <p className="muted">
+            {activity.status === 'cancelled'
+              ? 'Aktywność została anulowana — zapis niedostępny.'
+              : activity.status === 'completed'
+                ? 'Aktywność zakończona.'
+                : 'Zapisy są obecnie zamknięte.'}
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="section-title">Uczestnicy ({openParticipants.length})</h2>
+        {openParticipants.length === 0 ? (
+          <EmptyState title="Brak uczestników">Nikt jeszcze się nie zapisał.</EmptyState>
+        ) : (
+          <ul className="participant-list">
+            {openParticipants.map((p) => (
+              <li key={p.id}>
+                <strong>{participantDisplayName(p)}</strong>
+                <span className="meta">
+                  {statuses.find((s) => s.id === p.statusDefId)?.label ?? 'Status'}
+                  {p.waitlistPosition !== null ? ` · rezerwa #${p.waitlistPosition}` : ''}
                   {p.confirmationState === 'requires_reconfirmation'
                     ? ' · wymaga potwierdzenia'
                     : ''}
-                </div>
-              </div>
-            ))
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+      </section>
     </>
   );
-}
-
-function EmptyParticipants() {
-  return <p className="muted">Nikt jeszcze się nie zapisał.</p>;
 }

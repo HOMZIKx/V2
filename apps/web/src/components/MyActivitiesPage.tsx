@@ -1,16 +1,28 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { listMyActivities, listParticipants } from '../lib/api';
-import { formatPolishDateTime } from '../lib/datetime';
-import { isHistoricalLifecycle, lifecycleLabel } from '../lib/labels';
+import { Badge } from '@v2/design-system';
+
+import { listMyActivities } from '../lib/api';
+import { formatEventCapacity, organizerDisplayName } from '../lib/capacity';
+import { formatActivityWhen } from '../lib/datetime';
+import { lifecycleLabel } from '../lib/labels';
 import { mapApiError, type LoadState } from '../lib/load-state';
-import type { ActivityDto, ParticipationDto } from '../lib/types';
+import {
+  bucketMyActivity,
+  GUILD_UNAVAILABLE_COPY,
+  isAbortError,
+  MY_ACTIVITY_BUCKET_LABELS,
+  type MyActivityBucket,
+} from '../lib/member-copy';
+import { createRequestIdentity } from '../lib/request-identity';
+import type { ActivityDto } from '../lib/types';
 import { useGuild } from './GuildProvider';
 import { useSession } from './SessionProvider';
 import {
+  ConflictState,
   EmptyState,
   ErrorState,
   ForbiddenState,
@@ -19,50 +31,21 @@ import {
   UnavailableState,
 } from './StateViews';
 
-type BucketKey = 'organizing' | 'joined' | 'needs_action' | 'historical';
-
-const BUCKET_LABELS: Record<BucketKey, string> = {
-  organizing: 'Organizuję',
-  joined: 'Jestem zapisany',
-  needs_action: 'Wymagają reakcji',
-  historical: 'Historyczne',
-};
-
-function isOrganizer(activity: ActivityDto, discordUserId: string, v2UserId: string): boolean {
-  return (
-    activity.organizerDiscordUserId === discordUserId ||
-    activity.coOrganizerDiscordUserId === discordUserId ||
-    activity.organizerV2UserId === v2UserId ||
-    activity.coOrganizerV2UserId === v2UserId
-  );
-}
-
-function findMine(
-  participants: readonly ParticipationDto[],
-  discordUserId: string,
-  v2UserId: string,
-): ParticipationDto | undefined {
-  return participants.find(
-    (p) =>
-      ((p.discordUserId !== null && p.discordUserId === discordUserId) ||
-        (p.v2UserId !== null && p.v2UserId === v2UserId)) &&
-      p.resignedAt === null &&
-      p.removedAt === null,
-  );
-}
+const BUCKET_ORDER: readonly MyActivityBucket[] = ['needs_attention', 'upcoming', 'completed'];
 
 export function MyActivitiesPage() {
   const { guildId, unavailable } = useGuild();
   const { session, status } = useSession();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
-  const [buckets, setBuckets] = useState<Record<BucketKey, ActivityDto[]>>({
-    organizing: [],
-    joined: [],
-    needs_action: [],
-    historical: [],
+  const [buckets, setBuckets] = useState<Record<MyActivityBucket, ActivityDto[]>>({
+    upcoming: [],
+    needs_attention: [],
+    completed: [],
   });
+  const requests = useRef(createRequestIdentity());
 
   const load = useCallback(async () => {
+    const request = requests.current.next();
     if (status === 'loading') {
       setState({ kind: 'loading' });
       return;
@@ -72,64 +55,43 @@ export function MyActivitiesPage() {
       return;
     }
     if (unavailable) {
-      setState({ kind: 'unavailable', message: 'Brak skonfigurowanego serwera.' });
+      setState({ kind: 'unavailable', message: GUILD_UNAVAILABLE_COPY });
       return;
     }
     setState({ kind: 'loading' });
     try {
-      const activities = await listMyActivities(guildId ?? undefined);
-      const next: Record<BucketKey, ActivityDto[]> = {
-        organizing: [],
-        joined: [],
-        needs_action: [],
-        historical: [],
+      const activities = await listMyActivities(guildId ?? undefined, request.signal);
+      if (!request.isCurrent()) {
+        return;
+      }
+      const next: Record<MyActivityBucket, ActivityDto[]> = {
+        upcoming: [],
+        needs_attention: [],
+        completed: [],
       };
-
-      await Promise.all(
-        activities.map(async (activity) => {
-          if (isHistoricalLifecycle(activity.status)) {
-            next.historical.push(activity);
-            return;
-          }
-          let participation: ParticipationDto | undefined;
-          try {
-            const parts = await listParticipants(activity.id);
-            participation = findMine(parts, session.discordUserId, session.v2UserId);
-          } catch {
-            participation = undefined;
-          }
-
-          if (participation?.confirmationState === 'requires_reconfirmation') {
-            next.needs_action.push(activity);
-            return;
-          }
-          if (isOrganizer(activity, session.discordUserId, session.v2UserId)) {
-            next.organizing.push(activity);
-            return;
-          }
-          if (participation !== undefined) {
-            next.joined.push(activity);
-          }
-        }),
-      );
-
-      for (const key of Object.keys(next) as BucketKey[]) {
+      for (const activity of activities) {
+        next[bucketMyActivity(activity)].push(activity);
+      }
+      for (const key of BUCKET_ORDER) {
         next[key].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
       }
       setBuckets(next);
-      const total =
-        next.organizing.length +
-        next.joined.length +
-        next.needs_action.length +
-        next.historical.length;
+      const total = next.upcoming.length + next.needs_attention.length + next.completed.length;
       setState(total === 0 ? { kind: 'empty' } : { kind: 'ready' });
     } catch (err) {
+      if (isAbortError(err) || !request.isCurrent()) {
+        return;
+      }
       setState(mapApiError(err));
     }
   }, [guildId, unavailable, session, status]);
 
   useEffect(() => {
     void load();
+    const identity = requests.current;
+    return () => {
+      identity.invalidate();
+    };
   }, [load]);
 
   if (unavailable) {
@@ -138,9 +100,8 @@ export function MyActivitiesPage() {
         <header className="page-hero">
           <h1>Moje aktywności</h1>
         </header>
-        <UnavailableState title="Brak serwera">
-          Ustaw <code>NEXT_PUBLIC_WEB_GUILDS</code> lub{' '}
-          <code>NEXT_PUBLIC_DISCORD_TEST_GUILD_ID</code>.
+        <UnavailableState title="Nie udało się ustalić serwera">
+          {GUILD_UNAVAILABLE_COPY}
         </UnavailableState>
       </>
     );
@@ -150,43 +111,56 @@ export function MyActivitiesPage() {
     <>
       <header className="page-hero">
         <h1>Moje aktywności</h1>
-        <p>Organizuję, zapisane, wymagające reakcji oraz historyczne.</p>
+        <p>Nadchodzące wydarzenia, rzeczy wymagające reakcji i historia.</p>
       </header>
 
       {state.kind === 'loading' ? <LoadingState /> : null}
       {state.kind === 'unauthorized' ? <UnauthorizedState /> : null}
       {state.kind === 'forbidden' ? <ForbiddenState /> : null}
       {state.kind === 'unavailable' ? <UnavailableState>{state.message}</UnavailableState> : null}
+      {state.kind === 'conflict' ? <ConflictState /> : null}
       {state.kind === 'error' ? <ErrorState>{state.message}</ErrorState> : null}
       {state.kind === 'empty' ? (
         <EmptyState title="Brak Twoich aktywności">
-          Zapisz się na aktywność z listy albo utwórz ją na Discordzie.
+          Na razie nie masz nic na liście. Zapisy są na liście aktywności.
         </EmptyState>
       ) : null}
 
       {state.kind === 'ready'
-        ? (Object.keys(BUCKET_LABELS) as BucketKey[]).map((key) => {
+        ? BUCKET_ORDER.map((key) => {
             const list = buckets[key];
             if (list.length === 0) {
               return null;
             }
             return (
-              <section key={key}>
-                <h2 className="section-title">{BUCKET_LABELS[key]}</h2>
+              <section
+                key={key}
+                className={key === 'needs_attention' ? 'needs-attention' : undefined}
+              >
+                <h2 className="section-title">{MY_ACTIVITY_BUCKET_LABELS[key]}</h2>
                 <div className="activity-list">
                   {list.map((activity) => (
-                    <article key={activity.id} className="activity-row">
+                    <article key={activity.id} className="activity-card">
                       <div>
-                        <Link className="title" href={`/aktywnosci/${activity.id}`}>
-                          {activity.name}
-                        </Link>
-                        <div className="meta">
-                          {formatPolishDateTime(activity.startAt, activity.timezone || undefined)} ·{' '}
-                          {lifecycleLabel(activity.status)}
-                        </div>
+                        <h3 className="activity-title">
+                          <Link href={`/aktywnosci/${activity.id}`}>{activity.name}</Link>
+                        </h3>
+                        <p className="meta">
+                          {formatActivityWhen(activity.startAt, activity.timezone)}
+                        </p>
+                        <p className="meta">Prowadzi: {organizerDisplayName(activity)}</p>
+                        <p className="meta">
+                          {formatEventCapacity(activity.occupiedSlots, activity.participantLimit)}
+                        </p>
+                        {activity.myParticipationStatus?.confirmationState ===
+                        'requires_reconfirmation' ? (
+                          <Badge tone="warn">Wymaga potwierdzenia</Badge>
+                        ) : (
+                          <Badge tone="info">{lifecycleLabel(activity.status)}</Badge>
+                        )}
                       </div>
-                      <Link className="btn btn-secondary" href={`/aktywnosci/${activity.id}`}>
-                        Otwórz
+                      <Link className="v2-btn" href={`/aktywnosci/${activity.id}`}>
+                        Szczegóły
                       </Link>
                     </article>
                   ))}
