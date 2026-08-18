@@ -9,6 +9,9 @@ export const SERVICE_REGISTRY_RELATIVE_PATH = 'tools/runtime/service-registry.js
 const HEALTH_PATH = /^\/$|^\/[A-Za-z0-9/_-]+$/;
 const EMPTY_ARG_DEFAULT = /^\s*ARG\s+([A-Z0-9_]+)=\s*$/m;
 const LOCALHOST_ORIGIN = /https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i;
+const FRONTEND_SECRET_NAME =
+  /^(?:VITE|NEXT_PUBLIC)_.*(?:SECRET|TOKEN|PASSWORD|PRIVATE|CONNECTION_STRING)(?:_|$)/i;
+const TSX_RUNTIME_CMD = /^\s*CMD\b.*\btsx\b/m;
 
 /**
  * @typedef {'PASS' | 'WARN' | 'FAIL'} CheckStatus
@@ -177,6 +180,53 @@ export function validateServiceRegistry(registry, repositoryRoot = defaultRoot) 
       }
     }
 
+    if (service.revisionCapability !== true) {
+      checks.push(
+        fail(
+          'REVISION_CAPABILITY',
+          'revisionCapability=true (GIT_COMMIT_SHA on live/version)',
+          `${String(service.name)} revisionCapability=${String(service.revisionCapability)}`,
+          'operators cannot tell if Discord/Admin/API is stale',
+          'set revisionCapability true and expose gitCommitSha from /health/live or /version',
+        ),
+      );
+    }
+
+    for (const varName of service.buildTimeVarNames ?? []) {
+      if (FRONTEND_SECRET_NAME.test(String(varName))) {
+        checks.push(
+          fail(
+            'FRONTEND_SECRET_VAR',
+            'no VITE_*/NEXT_PUBLIC_* secret names',
+            `${String(service.name)} declares ${String(varName)}`,
+            'browser builds would embed a secret',
+            'keep secrets in server runtime env; never bake them as VITE_* / NEXT_PUBLIC_*',
+          ),
+        );
+      }
+    }
+
+    if (
+      typeof service.dockerfile === 'string' &&
+      existsSync(path.join(repositoryRoot, service.dockerfile))
+    ) {
+      const dockerfileContents = readFileSync(
+        path.join(repositoryRoot, service.dockerfile),
+        'utf8',
+      );
+      if (TSX_RUNTIME_CMD.test(dockerfileContents)) {
+        checks.push(
+          fail(
+            'PRODUCTION_ENTRYPOINT',
+            'production CMD uses node dist/*.js',
+            `${service.dockerfile} CMD uses tsx`,
+            'image can run a dev-only TypeScript runtime',
+            `change ${service.dockerfile} CMD to node dist/.../main.js`,
+          ),
+        );
+      }
+    }
+
     for (const dependency of service.dependencies ?? []) {
       if (!knownNames.has(dependency)) {
         checks.push(
@@ -189,6 +239,20 @@ export function validateServiceRegistry(registry, repositoryRoot = defaultRoot) 
           ),
         );
       }
+    }
+  }
+
+  for (const addon of addons) {
+    if (addon.public === true) {
+      checks.push(
+        fail(
+          'ADDON_PUBLIC',
+          'postgres and redis remain private',
+          `${String(addon.name)} public=true`,
+          'data stores must not be reachable from the internet',
+          'set public=false on ADDON entries',
+        ),
+      );
     }
   }
 

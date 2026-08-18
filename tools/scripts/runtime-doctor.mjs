@@ -96,6 +96,69 @@ async function probeRevision(expectedSha, apiLiveUrl) {
   }
 }
 
+async function probeVersion(url) {
+  try {
+    const response = await fetch(url, { redirect: 'manual' });
+    if (response.status === 404) {
+      return {
+        code: 'API_VERSION',
+        status: 'WARN',
+        expected: 'HTTP 200 from /version after this operability SHA is deployed',
+        observed: `404 ${url}`,
+        impact: 'running image predates the /version alias; use /health/live gitCommitSha',
+        action: 'redeploy api-gateway from the current branch tip',
+      };
+    }
+    const ok = response.status >= 200 && response.status < 400;
+    return {
+      code: 'API_VERSION',
+      status: ok ? 'PASS' : 'FAIL',
+      expected: 'HTTP 200 from /version',
+      observed: `${response.status} ${url}`,
+      impact: ok ? 'none' : 'version identity endpoint is not usable',
+      action: ok ? 'none' : 'inspect api-gateway logs and routes',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      code: 'API_VERSION',
+      status: BLOCKED_EXTERNAL,
+      expected: 'HTTP 200 from /version',
+      observed: message,
+      impact: 'cannot probe /version',
+      action: 'retry from a network that can reach the public API',
+    };
+  }
+}
+
+async function probeActivityRead(apiOrigin) {
+  const url = `${apiOrigin}/activity/v1/admin/guilds`;
+  try {
+    const response = await fetch(url, { redirect: 'manual' });
+    const ok = response.status === 401 || response.status === 403 || response.status === 200;
+    return {
+      code: 'ACTIVITY_READ',
+      status: ok ? 'PASS' : 'FAIL',
+      expected: 'non-destructive GET /activity/v1/admin/guilds returns 401/403/200',
+      observed: `${response.status} ${url}`,
+      impact: ok ? 'none' : 'activity read path is not reachable through api-gateway',
+      action: ok
+        ? 'none'
+        : 'inspect api-gateway ACTIVITY_SERVICE_BASE_URL and activity-service logs',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      code: 'ACTIVITY_READ',
+      status: BLOCKED_EXTERNAL,
+      expected: 'non-destructive GET /activity/v1/admin/guilds',
+      observed: message,
+      impact: 'cannot probe the activity read path',
+      action: 'retry from a network that can reach the public API',
+    };
+  }
+}
+
 export async function runRuntimeDoctor(env = process.env, repositoryRoot) {
   const registry = loadServiceRegistry(repositoryRoot);
   const checks = [
@@ -128,6 +191,8 @@ export async function runRuntimeDoctor(env = process.env, repositoryRoot) {
       checks.push(
         await probe('API_GATEWAY', `${origin}/health/live`, 'HTTP 200 from public api-gateway'),
       );
+      checks.push(await probeVersion(`${origin}/version`));
+      checks.push(await probeActivityRead(origin));
       const revision = await probeRevision(expectedSha, `${origin}/health/live`);
       if (revision !== null) {
         checks.push(revision);

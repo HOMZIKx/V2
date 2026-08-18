@@ -47,7 +47,8 @@
         "health",
         "public",
         "dependencies",
-        "buildTimeVarNames"
+        "buildTimeVarNames",
+        "revisionCapability"
       ],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
@@ -79,7 +80,8 @@
         "buildTimeVarNames": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
-        }
+        },
+        "revisionCapability": { "type": "boolean" }
       }
     },
     "healthPath": {

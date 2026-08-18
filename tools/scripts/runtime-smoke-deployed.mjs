@@ -36,10 +36,12 @@ let failed = false;
 for (const check of summary.checks) {
   if (
     check.code === 'API_GATEWAY' ||
+    check.code === 'API_VERSION' ||
     check.code === 'ADMIN' ||
     check.code === 'WWW' ||
     check.code === 'DISCORD_HEALTH' ||
     check.code === 'VERSION_DRIFT' ||
+    check.code === 'ACTIVITY_READ' ||
     check.code === 'ADMIN_API_BASE' ||
     check.code === 'WEB_API_BASE'
   ) {

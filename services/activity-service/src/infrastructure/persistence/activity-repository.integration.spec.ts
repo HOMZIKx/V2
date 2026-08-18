@@ -601,4 +601,33 @@ describe.skipIf(!wantInfra)('ActivityRepository (infra)', () => {
       expect(hit.leaseOwner).toBe('retry-worker');
     }
   });
+
+  it('reclaims outbox rows whose lease has expired', async ({ skip }) => {
+    if (!infraReady || pool === undefined || repository === undefined) {
+      skip();
+      return;
+    }
+    const expiredId = randomUUID();
+    await pool.query(
+      `INSERT INTO outbox_messages (
+         id, event_type, aggregate_type, aggregate_id, aggregate_version,
+         payload, occurred_at, available_at, claimed_at, claim_owner, claim_expires_at,
+         attempt_count, status
+       ) VALUES (
+         $1, 'activity.activity.projection_requested.v1', 'activity', $1, 1,
+         '{}'::jsonb, $2, $2, $2, 'dead-worker', $3,
+         1, 'claimed'
+       )`,
+      [expiredId, '2026-08-16T12:00:00.000Z', '2026-08-16T12:00:30.000Z'],
+    );
+    const reclaimed = await repository.withTransaction((tx) =>
+      tx.claimOutbox({
+        owner: 'lease-reclaim-test',
+        limit: 10,
+        leaseSeconds: 30,
+        now: new Date('2026-08-16T12:01:00.000Z'),
+      }),
+    );
+    expect(reclaimed.some((row) => row.id === expiredId)).toBe(true);
+  });
 });

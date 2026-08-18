@@ -23,6 +23,15 @@ export class HealthController {
     return { status: 'ok', ...readRuntimeRevision() };
   }
 
+  @Get('version')
+  public version(): {
+    readonly status: 'ok';
+    readonly gitCommitSha: string;
+    readonly appVersion: string;
+  } {
+    return this.live();
+  }
+
   @Get('health/ready')
   public ready(): {
     readonly status: 'ok';

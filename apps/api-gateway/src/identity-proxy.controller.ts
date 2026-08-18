@@ -58,7 +58,8 @@ export class IdentityProxyController {
         lower === 'accept-language' ||
         lower === 'origin' ||
         lower === 'referer' ||
-        lower === 'x-request-id'
+        lower === 'x-request-id' ||
+        lower === 'x-correlation-id'
       ) {
         headers[lower] = Array.isArray(value) ? value.join('; ') : value;
       }
@@ -70,6 +71,7 @@ export class IdentityProxyController {
       method,
       headers,
       redirect: 'manual',
+      signal: AbortSignal.timeout(15_000),
     };
     if (hasBody && request.body !== undefined && request.body !== null) {
       init.body =
@@ -81,7 +83,15 @@ export class IdentityProxyController {
       }
     }
 
-    const upstream = await fetch(target, init);
+    let upstream: Response;
+    try {
+      upstream = await fetch(target, init);
+    } catch (error) {
+      const timeout = error instanceof Error && error.name === 'TimeoutError';
+      throw new ServiceUnavailableException(
+        timeout ? 'identity-service request timed out' : 'identity-service is unavailable',
+      );
+    }
     const responseHeaders: Record<string, string> = {};
     const hopByHop = new Set([
       'connection',

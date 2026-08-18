@@ -1,9 +1,14 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
 import { Badge, Button, EmptyState, LoadingState, Panel } from '@v2/design-system';
 
 import { getHub, getReadiness, type ReadinessIssue } from '../api/activity-admin.js';
+import {
+  getOperatorRuntimeStatus,
+  type OperatorFlag,
+  type OperatorRuntimeStatus,
+} from '../api/runtime-status.js';
 import { PageHeader } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 import { useGuildContext } from '../layout/GuildContext.js';
@@ -32,6 +37,16 @@ function issueTo(issue: ReadinessIssue): string {
   return ISSUE_LABELS[issue.code]?.to ?? '/activity';
 }
 
+function flagBadge(flag: OperatorFlag): { tone: 'ok' | 'warn' | 'error'; label: string } {
+  if (flag === 'yes') {
+    return { tone: 'ok', label: 'Tak' };
+  }
+  if (flag === 'no') {
+    return { tone: 'error', label: 'Nie' };
+  }
+  return { tone: 'warn', label: 'Nie wiadomo' };
+}
+
 export function DashboardPage() {
   const { guilds, guildId, loadingGuilds } = useGuildContext();
   const guildName = guilds.find((guild) => guild.id === guildId)?.name ?? 'Serwer';
@@ -40,6 +55,19 @@ export function DashboardPage() {
     return { readiness, hub };
   }, []);
   const { state } = useGuildResource(loader);
+  const [runtime, setRuntime] = useState<OperatorRuntimeStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getOperatorRuntimeStatus().then((value) => {
+      if (!cancelled) {
+        setRuntime(value);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const missing = useMemo(() => {
     if (state.kind !== 'ready') {
@@ -54,6 +82,53 @@ export function DashboardPage() {
         title="V2 Control Center"
         description="Konfiguracja serwera i modułu Centrum Aktywności."
       />
+
+      {runtime !== null ? (
+        <Panel title="Diagnostyka">
+          <div className="stack">
+            <div className="row">
+              <span>Czy API działa?</span>
+              <Badge tone={flagBadge(runtime.api).tone}>{flagBadge(runtime.api).label}</Badge>
+            </div>
+            <div className="row">
+              <span>Czy Activity działa?</span>
+              <Badge tone={flagBadge(runtime.activity).tone}>
+                {flagBadge(runtime.activity).label}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Czy Discord działa?</span>
+              <Badge tone={loadingGuilds ? 'info' : guilds.length > 0 ? 'ok' : 'warn'}>
+                {loadingGuilds ? 'Sprawdzanie…' : guilds.length > 0 ? 'Tak' : 'Brak serwerów'}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Czy bot jest połączony?</span>
+              <Badge tone={loadingGuilds ? 'info' : guilds.length > 0 ? 'ok' : 'warn'}>
+                {loadingGuilds ? 'Sprawdzanie…' : guilds.length > 0 ? 'Tak' : 'Nie widać guild'}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Czy wersje usług wyglądają spójnie?</span>
+              <Badge
+                tone={
+                  runtime.revision === 'MATCH'
+                    ? 'ok'
+                    : runtime.revision === 'MISMATCH'
+                      ? 'error'
+                      : 'warn'
+                }
+              >
+                {runtime.revision === 'MATCH'
+                  ? 'Tak'
+                  : runtime.revision === 'MISMATCH'
+                    ? 'Różne rewizje'
+                    : 'Niepotwierdzone'}
+              </Badge>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
 
       {guildId === null ? (
         <EmptyState>Wybierz serwer, aby zobaczyć stan systemu.</EmptyState>
@@ -89,7 +164,13 @@ export function DashboardPage() {
                 </Badge>
               </div>
               <div className="row">
-                <span>Panel Discord</span>
+                <span>Czy konfiguracja guild jest kompletna?</span>
+                <Badge tone={state.data.readiness.state === 'READY' ? 'ok' : 'warn'}>
+                  {state.data.readiness.state === 'READY' ? 'Tak' : 'Wymaga konfiguracji'}
+                </Badge>
+              </div>
+              <div className="row">
+                <span>Czy Hub jest opublikowany?</span>
                 <Badge
                   tone={
                     state.data.hub.status === 'active'

@@ -492,6 +492,7 @@ export class ActivityHttpClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       accept: 'application/json',
+      'x-correlation-id': randomUUID(),
     };
     if (options.body !== undefined) {
       headers['content-type'] = 'application/json';
@@ -514,6 +515,7 @@ export class ActivityHttpClient {
     const init: RequestInit = {
       method,
       headers,
+      signal: AbortSignal.timeout(10_000),
     };
     if (options.body !== undefined) {
       init.body = JSON.stringify(options.body);

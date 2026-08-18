@@ -119,6 +119,7 @@ export class ActivityProxyController {
       method,
       headers,
       redirect: 'manual',
+      signal: AbortSignal.timeout(15_000),
     };
     if (hasBody && request.body !== undefined && request.body !== null) {
       init.body =
@@ -130,7 +131,15 @@ export class ActivityProxyController {
       }
     }
 
-    const upstream = await fetch(target, init);
+    let upstream: Response;
+    try {
+      upstream = await fetch(target, init);
+    } catch (error) {
+      const timeout = error instanceof Error && error.name === 'TimeoutError';
+      throw new ServiceUnavailableException(
+        timeout ? 'activity-service request timed out' : 'activity-service is unavailable',
+      );
+    }
     const responseHeaders: Record<string, string> = {};
     const hopByHop = new Set([
       'connection',

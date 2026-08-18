@@ -93,6 +93,7 @@ export async function apiRequest<T>(
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    'x-correlation-id': crypto.randomUUID(),
   };
 
   if (session.actorDiscordUserId !== null) {

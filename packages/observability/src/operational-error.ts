@@ -1,0 +1,44 @@
+export const OPERATIONAL_ERROR_CATEGORIES = [
+  'CONFIG_ERROR',
+  'DEPENDENCY_UNAVAILABLE',
+  'AUTH_FAILURE',
+  'AUTHZ_DENIED',
+  'TIMEOUT',
+  'CONFLICT',
+  'RETRY_EXHAUSTED',
+  'INTERNAL_ERROR',
+] as const;
+
+export type OperationalErrorCategory = (typeof OPERATIONAL_ERROR_CATEGORIES)[number];
+
+const ACTIVITY_CODE_CATEGORY: Readonly<Record<string, OperationalErrorCategory>> = {
+  UNAUTHENTICATED: 'AUTH_FAILURE',
+  CLIENT_ASSERTION_INVALID: 'AUTH_FAILURE',
+  CLIENT_ASSERTION_REPLAY: 'AUTH_FAILURE',
+  FORBIDDEN: 'AUTHZ_DENIED',
+  CONFLICT: 'CONFLICT',
+  IDEMPOTENCY_CONFLICT: 'CONFLICT',
+  CAPACITY_EXCEEDED: 'CONFLICT',
+  CREATE_LIMIT_EXCEEDED: 'CONFLICT',
+  CONFIG_INVALID: 'DEPENDENCY_UNAVAILABLE',
+  AUTH_DISABLED: 'DEPENDENCY_UNAVAILABLE',
+  PRECONDITION_FAILED: 'CONFLICT',
+  VALIDATION_FAILED: 'CONFIG_ERROR',
+  HORIZON_EXCEEDED: 'CONFIG_ERROR',
+};
+
+export function operationalCategoryFromCode(
+  code: string | undefined,
+  options: { readonly timeout?: boolean; readonly retryExhausted?: boolean } = {},
+): OperationalErrorCategory {
+  if (options.timeout === true) {
+    return 'TIMEOUT';
+  }
+  if (options.retryExhausted === true) {
+    return 'RETRY_EXHAUSTED';
+  }
+  if (code === undefined || code.length === 0) {
+    return 'INTERNAL_ERROR';
+  }
+  return ACTIVITY_CODE_CATEGORY[code] ?? 'INTERNAL_ERROR';
+}

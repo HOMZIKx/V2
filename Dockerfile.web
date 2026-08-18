@@ -17,8 +17,13 @@ COPY packages/design-system ./packages/design-system
 COPY apps/web ./apps/web
 # Zeabur injects service variables into the build environment. Do not declare
 # `ARG VAR=` defaults — they overwrite those values with empty strings.
+ARG NEXT_PUBLIC_API_BASE_URL
+ARG NEXT_PUBLIC_IDENTITY_URL
+ARG NEXT_PUBLIC_WEB_ORIGIN
+ARG GIT_COMMIT_SHA
+ARG NEXT_PUBLIC_GIT_COMMIT_SHA
 RUN node -e "const url=(process.env.NEXT_PUBLIC_API_BASE_URL||'').trim(); if(!url.startsWith('http')){ console.error('NEXT_PUBLIC_API_BASE_URL must be a public http(s) origin at image build'); process.exit(1); }"
-RUN pnpm --filter @v2/web build
+RUN sh -c 'if [ -n "$GIT_COMMIT_SHA" ]; then export NEXT_PUBLIC_GIT_COMMIT_SHA="$GIT_COMMIT_SHA"; fi; pnpm --filter @v2/web build'
 
 FROM base AS runtime
 ENV NODE_ENV=production

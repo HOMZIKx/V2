@@ -316,7 +316,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     });
     console.log(`Created service scaffold at services/${name}.`);
     console.log(
-      'If this service is deployable, add it to tools/runtime/service-registry.json and Dockerfile.<name> before merge.',
+      'If this service is deployable, add it in the SAME stage to tools/runtime/service-registry.json plus Dockerfile.<name>, health/ready, GIT_COMMIT_SHA revision, logs, dependencies, smoke, and restart behavior before merge.',
     );
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);

@@ -211,6 +211,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
           payload: message.payload,
           attemptCount: message.attemptCount,
         }),
+        signal: AbortSignal.timeout(10_000),
       });
     } catch (error) {
       await this.failRetry(

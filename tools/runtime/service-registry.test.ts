@@ -50,6 +50,32 @@ describe('deployable service registry', () => {
     expect(summary.checks.some((check) => check.code === 'HEALTH_PATH')).toBe(true);
   });
 
+  it('fails when a frontend secret is declared as a public build var', () => {
+    const leaked = {
+      ...registry,
+      services: registry.services.map((service: { name: string; buildTimeVarNames: string[] }) =>
+        service.name === 'admin'
+          ? { ...service, buildTimeVarNames: [...service.buildTimeVarNames, 'VITE_DISCORD_TOKEN'] }
+          : service,
+      ),
+    };
+    const summary = summarizeChecks(validateServiceRegistry(leaked));
+    expect(summary.ok).toBe(false);
+    expect(summary.checks.some((check) => check.code === 'FRONTEND_SECRET_VAR')).toBe(true);
+  });
+
+  it('fails when revisionCapability is missing', () => {
+    const broken = {
+      ...registry,
+      services: registry.services.map((service: { name: string; revisionCapability?: boolean }) =>
+        service.name === 'api-gateway' ? { ...service, revisionCapability: false } : service,
+      ),
+    };
+    const summary = summarizeChecks(validateServiceRegistry(broken));
+    expect(summary.ok).toBe(false);
+    expect(summary.checks.some((check) => check.code === 'REVISION_CAPABILITY')).toBe(true);
+  });
+
   it('keeps frontend production API origin fail-closed', () => {
     const summary = summarizeChecks(validateFrontendProductionContract());
     expect(summary.ok).toBe(true);

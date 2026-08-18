@@ -19,6 +19,11 @@ export class HealthController {
     return { status: 'ok', ...readRuntimeRevision() };
   }
 
+  @Get('version')
+  public version(): { status: 'ok'; gitCommitSha: string; appVersion: string } {
+    return this.live();
+  }
+
   @Get('ready')
   public async ready(): Promise<{ status: 'ok'; authDisabled?: true }> {
     if (!this.config.IDENTITY_AUTH_ENABLED || this.runtime === null) {

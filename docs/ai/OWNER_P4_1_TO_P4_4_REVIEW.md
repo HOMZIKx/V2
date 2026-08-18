@@ -2,6 +2,23 @@
 
 Branch: `cursor/p4-1-activity-domain` · PR #19
 
+## Combined audit gate (2026-08-18)
+
+Status: **READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT** — do not merge, do not
+start P4.5.
+
+START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`  
+SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
+
+Live public URLs still run `9a3e922` until you redeploy. After redeploy,
+Admin dashboard **Diagnostyka** should answer: API, Activity, Discord, bot,
+guild config, Hub, revision consistency.
+
+Operator docs (no secret values): `docs/deploy/HEALTH.md`,
+`docs/deploy/ROLLBACK.md`, `docs/ops/INCIDENT_RUNBOOK.md`.
+
+---
+
 ## LOCAL ADMIN
 
 - [ ] local guild visible

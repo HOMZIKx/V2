@@ -33,6 +33,17 @@ describe('ownerFacingMessage', () => {
     expect(mapped.forbidden).toBe(true);
   });
 
+  it('maps 503 dependency failures to a retryable Polish message', () => {
+    const mapped = ownerFacingMessage(
+      new ApiClientError('Authorization is unavailable', {
+        status: 503,
+        code: 'CONFIG_INVALID',
+      }),
+    );
+    expect(mapped.message).toContain('chwilowo niedostępna');
+    expect(mapped.message).not.toContain('ECONNREFUSED');
+  });
+
   it('never exposes raw Failed to fetch as primary UI copy', () => {
     const mapped = ownerFacingMessage(new TypeError('Failed to fetch'));
     expect(mapped.message).toBe(ACTIVITY_SERVICE_UNAVAILABLE);

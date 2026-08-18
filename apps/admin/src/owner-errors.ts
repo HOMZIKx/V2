@@ -54,6 +54,15 @@ export function ownerFacingMessage(error: unknown): {
         fields: error.fields,
       };
     }
+    if (error.status === 503 || error.code === 'AUTH_DISABLED' || error.code === 'CONFIG_INVALID') {
+      return {
+        message: 'Usługa Centrum jest chwilowo niedostępna. Spróbuj ponownie za chwilę.',
+        detail: `${error.code} · HTTP ${String(error.status)}`,
+        forbidden: false,
+        conflict: false,
+        fields: error.fields,
+      };
+    }
     if (error.status === 401 || error.code === 'UNAUTHENTICATED') {
       return {
         message: 'Zaloguj się przez Discord, aby zarządzać serwerem.',

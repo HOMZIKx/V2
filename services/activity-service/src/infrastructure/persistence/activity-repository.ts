@@ -14,6 +14,7 @@ import type {
   HubPanelRecord,
   IdempotencyHit,
   InboxItemRecord,
+  OutboxHealthSnapshot,
   OutboxInsert,
   OutboxMessageRecord,
   ParticipantFieldDefRecord,
@@ -709,7 +710,7 @@ function createTx(client: PoolClient): ActivityTx {
 
     async listActivities(guildId) {
       const result = await client.query(
-        `SELECT * FROM activities WHERE guild_id = $1 AND status <> 'deleted' ORDER BY start_at`,
+        `SELECT * FROM activities WHERE guild_id = $1 AND status <> 'deleted' ORDER BY start_at LIMIT 200`,
         [guildId],
       );
       return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
@@ -730,7 +731,8 @@ function createTx(client: PoolClient): ActivityTx {
                a.organizer_v2_user_id = $3 OR a.co_organizer_v2_user_id = $3 OR p.v2_user_id = $3
              ))
            )
-         ORDER BY a.start_at`,
+         ORDER BY a.start_at
+         LIMIT 200`,
         [input.guildId ?? null, input.discordUserId ?? null, input.v2UserId ?? null],
       );
       return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
@@ -1023,7 +1025,14 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `WITH picked AS (
            SELECT id FROM outbox_messages
-           WHERE status = 'pending' AND available_at <= $1
+           WHERE (
+             (status = 'pending' AND available_at <= $1)
+             OR (
+               status = 'claimed'
+               AND claim_expires_at IS NOT NULL
+               AND claim_expires_at <= $1
+             )
+           )
            ORDER BY available_at
            FOR UPDATE SKIP LOCKED
            LIMIT $2
@@ -1920,4 +1929,51 @@ export class ActivityRepository implements ActivityRepositoryPort {
   public async ping(): Promise<void> {
     await this.pool.query('SELECT 1');
   }
+
+  public async countOutboxByStatus(): Promise<OutboxHealthSnapshot> {
+    const result = await this.pool.query<{ status: string; n: string; retrying: string }>(
+      `SELECT
+         status,
+         COUNT(*)::text AS n,
+         COUNT(*) FILTER (WHERE status = 'pending' AND attempt_count > 0)::text AS retrying
+       FROM outbox_messages
+       GROUP BY status`,
+    );
+    const counts = { pending: 0, claimed: 0, failed: 0, delivered: 0, retrying: 0 };
+    for (const row of result.rows) {
+      const n = Number(row.n);
+      if (row.status === 'pending') {
+        counts.pending = n;
+        counts.retrying = Number(row.retrying);
+      } else if (row.status === 'claimed') {
+        counts.claimed = n;
+      } else if (row.status === 'failed') {
+        counts.failed = n;
+      } else if (row.status === 'delivered') {
+        counts.delivered = n;
+      }
+    }
+    return { ...counts, state: classifyOutbox(counts) };
+  }
+}
+
+function classifyOutbox(counts: {
+  pending: number;
+  claimed: number;
+  failed: number;
+  retrying: number;
+}): OutboxHealthSnapshot['state'] {
+  if (counts.failed > 0) {
+    return 'stuck';
+  }
+  if (counts.retrying > 0) {
+    return 'retrying';
+  }
+  if (counts.pending > 10) {
+    return 'backlogged';
+  }
+  if (counts.pending > 0 || counts.claimed > 0) {
+    return 'working';
+  }
+  return 'idle';
 }

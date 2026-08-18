@@ -4,11 +4,12 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { createConfig, resolveHttpListen } from '@v2/configuration';
-import { createLogger } from '@v2/observability';
+import { createLogger, runBoundedShutdown } from '@v2/observability';
 import { z } from 'zod';
 
 import { AppModule } from './app.module.js';
 import { applyCorsOnRequest, parseCorsOrigins } from './cors.js';
+import { applyRequestCorrelation } from './request-correlation.js';
 
 const config = createConfig(
   z.object({
@@ -26,10 +27,13 @@ const config = createConfig(
 );
 const logger = createLogger('api-gateway');
 
-type CorsRequest = { headers: { origin?: string | string[] | undefined }; method: string };
-type CorsReply = {
+type GatewayRequest = {
+  headers: Record<string, string | string[] | undefined>;
+  method: string;
+};
+type GatewayReply = {
   header: (key: string, value: string) => unknown;
-  code: (status: number) => CorsReply;
+  code: (status: number) => GatewayReply;
   status: (code: number) => { send: (body?: unknown) => unknown };
   send: (body?: unknown) => unknown;
 };
@@ -43,14 +47,14 @@ const bootstrap = async (): Promise<void> => {
   const instance = app.getHttpAdapter().getInstance() as unknown as {
     addHook: (
       name: 'onRequest',
-      hook: (request: CorsRequest, reply: CorsReply, done: (err?: Error) => void) => void,
+      hook: (request: GatewayRequest, reply: GatewayReply, done: (err?: Error) => void) => void,
     ) => void;
   };
 
   instance.addHook('onRequest', (request, reply, done) => {
+    applyRequestCorrelation(request, reply);
     const ended = applyCorsOnRequest(request, reply, corsOrigins);
     if (ended) {
-      // Response already sent for OPTIONS — do not call done().
       return;
     }
     done();
@@ -67,11 +71,22 @@ const bootstrap = async (): Promise<void> => {
     );
   }
 
+  const shutdown = async (signal: string): Promise<void> => {
+    await runBoundedShutdown(logger, signal, async () => {
+      await app.close();
+    });
+  };
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => {
+      void shutdown(signal);
+    });
+  }
+
   const listen = resolveHttpListen({
     defaultPort: config.API_GATEWAY_PORT,
     defaultHost: config.API_GATEWAY_HOST,
   });
-  logger.info('API Gateway started.', { host: listen.host, port: listen.port });
+  logger.info('API Gateway started.', { host: listen.host, port: listen.port, event: 'listen' });
   await app.listen(listen.port, listen.host);
 };
 

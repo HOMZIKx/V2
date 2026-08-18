@@ -17,6 +17,11 @@ export class HealthController {
     return { status: 'ok', ...readRuntimeRevision() };
   }
 
+  @Get('version')
+  public version(): { status: 'ok'; gitCommitSha: string; appVersion: string } {
+    return this.live();
+  }
+
   @Get('ready')
   public async ready(): Promise<{ status: 'ok'; authorizationDisabled?: true }> {
     if (!this.config.AUTHORIZATION_ENABLED) {

@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_ADMIN_DEV_ACTOR_DISCORD_ID?: string;
   readonly VITE_ADMIN_DEV_GUILDS?: string;
   readonly VITE_ADMIN_DEV_ORG_ID?: string;
+  readonly VITE_GIT_COMMIT_SHA?: string;
 }
 
 interface ImportMeta {

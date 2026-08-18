@@ -2,144 +2,152 @@
 
 ## 1. Status
 
-`SECURITY_HARDENING_COMPLETE_FOR_CURRENT_P4` — task
-`P4-ADVERSARIAL-SECURITY-AND-RESILIENCE-001`
+`READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT` — task
+`P4-PRODUCTION-RECOVERY-OBSERVABILITY-AND-DEPLOY-SAFETY-001`
 
 ROLLING AUDIT MODE: **ACTIVE**
 
 NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ  
 ISSUE #20 / #21 / #22 / #23 / #24 **NOT IMPLEMENTED**
 
-SECURITY_START_SHA: `467cd5cf13ae39d26d6d17d1421c6f96d5ddb6e1`  
-SECURITY_CHECKPOINT_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
+START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`  
+SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`  
+OPERABILITY_CHECKPOINT_SHA: filled in the docs commit immediately after the
+implementation commit.
 
-KNOWN_HEAD at task creation (`9a3e922`) was stale. Actual start tip was
-`467cd5c`.
+Previous HIGH findings from
+`P4-ADVERSARIAL-SECURITY-AND-RESILIENCE-001` are **fixed in code** at
+`bbef5f6`. Remaining HIGH is live Zeabur still on `9a3e922` until owner
+redeploy — not an unfixed code path. Work continued.
 
-## 2. Threat matrix (current exploitable paths only)
+## 2. Combined P4 matrix
 
-| Asset                           | Entry                                       | Authz decision                      | Trust boundary              | Failure if broken          | Control                                                                                    | Evidence                                                                                                |
-| ------------------------------- | ------------------------------------------- | ----------------------------------- | --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Actor identity                  | `X-Actor-*` / assertion                     | Guard → `verifiedActor`             | Browser ↛ activity-service  | Spoof any user             | Production never trusts headers; assertion actor claims only; gateway strips/forward-false | `inbound-assertion.guard.spec.ts`, `forward-actor-headers.spec.ts`, `activity-proxy.controller.spec.ts` |
-| Guild config / Discord metadata | Admin `/activity/v1/admin/...`              | `CONFIG_MANAGE` via AuthorizePort   | Member of guild A ↛ guild B | Cross-guild read/edit      | Fail-closed authorize; list filtered; get/channels/roles/audit 403                         | `activity-admin.use-cases.spec.ts`                                                                      |
-| Activities / RSVP               | Member API                                  | `READ` / `JOIN` on activity.guildId | Cross-guild ID              | RSVP/read leak             | Permission before present; RSVP after lock                                                 | `activity.use-cases.spec.ts`                                                                            |
-| Privileged ops                  | Any mutation                                | AuthorizePort                       | Authz down                  | Implicit allow             | `authorizeOrFailClosed`; production DenyAll if activity disabled                           | `authorize-fail-closed.spec.ts`, `authorization-client.spec.ts`                                         |
-| S2S assertion                   | `Activity-Client-Assertion`                 | jose EdDSA + JTI                    | Stolen/replayed JWT         | Replay as gateway          | aud/iss/sub/jti UUID; prod Redis JTI; duplicate headers rejected                           | `verify-inbound-assertion.spec.ts`, guard spec                                                          |
-| Discord components              | `custom_id`                                 | HMAC + Discord user                 | Forged button               | Act as other guild/user    | Signed custom_id; actor from Discord user                                                  | `activity-signed-custom-id.spec.ts`                                                                     |
-| Projection                      | `/internal/activity/v1/projections/deliver` | shared secret                       | Public Discord write proxy  | Spam/wrong guild           | Secret required, timing-safe; typed hub/event only                                         | `activity-projection.controller.spec.ts`                                                                |
-| Admin DEV session               | `VITE_ADMIN_DEV_*`                          | frontend mode                       | Accidental prod bake        | Browser sends actor header | `import.meta.env.DEV` required                                                             | `apps/admin/src/auth/session.spec.ts`                                                                   |
+START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
 
-## 3. Findings
+SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 
-### CRITICAL
+OPERABILITY_CHECKPOINT_SHA: (see follow-up docs commit)
 
-None remaining in current code after this checkpoint.
+CI: pending push of this checkpoint (local `pnpm validate` PASS)
 
-### HIGH
+PRODUCTION BUILDS:
 
-1. **Production AllowAll when `ACTIVITY_ENABLED=false`**
-   - Attack: authenticated ordinary user hits Admin/API guilds/config.
-   - Expected: 403 until real authorization allows `CONFIG_MANAGE`.
-   - Actual (before): AllowAll; any logged-in actor passed.
-   - Fix: `DenyAllAuthorizationClient` in production when activity is disabled.
-   - Tests: `authorization-client.spec.ts`, `tools/security/p4-current-controls.test.ts`.
-   - Remaining: live Zeabur still on previous image until redeploy; then Admin
-     mutations 403 until owner sets `ACTIVITY_ENABLED=true` with real authz.
+authorization: PASS
 
-2. **Assertion replay if inbound clients configured without Redis**
-   - Attack: replay `Activity-Client-Assertion` against activity-service.
-   - Expected: JTI one-use.
-   - Actual (before): `ASSERTION_JTI_STORE` null when Redis URL missing.
-   - Fix: production + inbound clients requires `ACTIVITY_REDIS_URL`; guard
-     fails closed if JTI store missing in production.
-   - Tests: `activity-env.spec.ts`, `inbound-assertion.guard.spec.ts`.
+identity: PASS
 
-### MEDIUM
+activity: PASS
 
-3. **`API_GATEWAY_FORWARD_ACTOR_HEADERS=true` baked unsigned browser actor into JWT**
-   - Fix: `resolveForwardActorHeaders` forces false in production; duplicate
-     actor header arrays are dropped; unsigned actor is not put in assertion
-     when forward is false.
-   - Tests: `forward-actor-headers.spec.ts`, `activity-proxy.controller.spec.ts`.
+api-gateway: PASS
 
-4. **Inbound JWT did not require `sub === iss`, UUID `jti`, or reject `aud` arrays**
-   - Fix: `verifyInboundAssertion` now matches those fail-closed rules; actor
-     claims from verified payload only.
-   - Tests: `verify-inbound-assertion.spec.ts`.
+discord: PASS
 
-5. **Duplicate assertion headers accepted first value**
-   - Fix: reject arrays.
-   - Tests: `inbound-assertion.guard.spec.ts`.
+admin: PASS
 
-6. **Projection secret compared with `!==`**
-   - Fix: SHA-256 + `timingSafeEqual`.
-   - Tests: `timing-safe-equal.spec.ts`, projection controller spec.
+web: PASS
 
-7. **Admin `VITE_ADMIN_DEV_*` could enable `dev-actor` if present at build**
-   - Fix: production builds (`import.meta.env.DEV === false`) always
-     identity-cookie mode.
-   - Tests: `apps/admin/src/auth/session.spec.ts`.
+RUNTIME:
 
-8. **Malformed projection payload leaked Zod issue JSON**
-   - Fix: generic `Invalid projection payload.`
-   - Tests: projection controller spec.
+authorization: BLOCKED_EXTERNAL (internal)
 
-### LOW
+identity: BLOCKED_EXTERNAL (internal)
 
-9. **Identity session lookup could hang** — timeout 3s, fail to null.
-10. **Fastify default 1MiB bodies** — explicit 256KiB on api-gateway,
-    activity-service, discord-gateway.
-11. **`getActivity` UUID** — missing → 404, other-guild existing → 403
-    (existence leak of unguessable UUIDs). Accepted.
-12. **CORS still allowlists `X-Actor-Discord-User-Id`** for local Admin DEV.
-    Production gateway does not honor the header as identity.
+activity: BLOCKED_EXTERNAL (internal)
 
-### INFO
+api: PASS (live `/health/live` 200; `/version` 404 until redeploy)
 
-13. Health `gitCommitSha` is an env value, not image digest. Operability.
-14. `pnpm audit --audit-level=high`: 1 moderate, 0 high/critical. No broad upgrade.
-15. Leftover unused Zeabur service names / stale `GIT_COMMIT_SHA` on live apps.
+discord: BLOCKED_EXTERNAL (no public health URL supplied)
 
-## 4. NOT TESTABLE LIVE
+admin: PASS
 
-- Hitting internal activity/authorization/identity/discord-gateway HTTP
-  without a public domain (registry marks them `public: false`).
-- Real Discord component replay / copied-button as unauthorized user (needs
-  signed interaction from Discord).
-- Parallel outbox workers on production Postgres after process crash.
-- OAuth-authenticated Admin/WWW as two guilds (owner session required).
-- Confirming Zeabur has no accidental public domain on internal apps from
-  this environment after the previous bring-up (no Zeabur token in this turn).
+web: PASS
 
-## 5. OWNER_ACTION_REQUIRED
+REVISION CONSISTENCY: FAIL (live `gitCommitSha=9a3e922` vs branch tip)
 
-1. Redeploy this checkpoint to Zeabur.
-2. Keep `ACTIVITY_TRUST_ACTOR_HEADERS=false`,
+DISCORD RECOVERY: NOT_TESTED (live bot restart). Code: startup Hub reconcile
+
+- discord.js `stop()` on SIGTERM. Duplicate Hub not re-tested live.
+
+DB RECOVERY: NOT_TESTED live. Unit: ready 503 when ping fails. Pool reconnect
+defaults unchanged.
+
+REDIS RECOVERY: NOT_TESTED live. Activity ready pings Redis when URL is set.
+JTI store `enableOfflineQueue: false`, `maxRetriesPerRequest: 3`.
+
+OUTBOX RECOVERY: PASS (code). Expired lease reclaim in `claimOutbox`. Ready
+exposes `idle|working|backlogged|retrying|stuck`. Infra integration test
+added (runs in CI `RUN_INFRA_TESTS`).
+
+BACKUP: KNOWN (Zeabur addon snapshots / owner `pg_dump`; names only)
+
+RESTORE PROOF: PASS (isolated local `activity` dump → `activity_restore_proof`
+→ marker row → drop). Not production Zeabur.
+
+ROLLBACK PROCEDURE: READY (`docs/deploy/ROLLBACK.md`; migrations forward-only)
+
+RUNTIME DOCTOR: PASS (static; fail=0 warn=0)
+
+RUNTIME SMOKE: FAIL live (`VERSION_DRIFT` vs `9a3e922`). Local
+`pnpm test:runtime-smoke` PASS via `pnpm validate`. Live read path
+`GET /activity/v1/admin/guilds` → 401 PASS. Admin/WWW HTTP 200 PASS.
+
+SECURITY REGRESSIONS: PASS (`tools/security/p4-current-controls.test.ts` +
+service specs)
+
+KNOWN WARNINGS:
+
+- Live Zeabur image SHA `9a3e922` until owner redeploy of this checkpoint.
+- Current Zeabur project may still use one Postgres addon (ADR-0004 wants
+  separate DBs).
+- Production Dockerfiles run as image default user (no `USER` directive).
+- Guild activity lists capped at 200 rows (safety, not a product pager).
+- Identity Redis still uses `maxRetriesPerRequest: null` (Better Auth).
+- `pnpm audit --audit-level=high`: 1 moderate, 0 high/critical.
+- Discord restart, live DB/Redis failover: not exercised on Zeabur.
+
+OWNER_ACTION_REQUIRED:
+
+1. Redeploy this checkpoint SHA to all seven APPs; set `GIT_COMMIT_SHA` to
+   that SHA on each APP (and rebuild Admin/WWW so `VITE_*` / `NEXT_PUBLIC_*`
+   match).
+2. Discord Developer Portal redirect URI exact:
+   `https://v2-api.zeabur.app/api/auth/callback/discord`
+3. Keep `ACTIVITY_TRUST_ACTOR_HEADERS=false`,
    `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`,
    `ACTIVITY_ALLOW_TEST_SEED=false`.
-3. To restore Admin/WWW privileged writes: `ACTIVITY_ENABLED=true` with
-   authorization-service, inbound clients, and Redis JTI.
-4. Do not bake `VITE_ADMIN_DEV_*` into the Admin production image.
-5. Set `GIT_COMMIT_SHA` to the deployed image SHA (doctor VERSION_DRIFT).
-6. Walk logged-in Admin + Discord Hub after redeploy.
+4. Enable `ACTIVITY_ENABLED=true` only with authorization-service + inbound
+   clients + Redis JTI (else Admin writes stay 403 after DenyAll).
 
-## 6. KNOWN SECURITY DEBT
+OWNER_VISUAL_REVIEW_REQUIRED:
 
-- Projection duplicate map is in-memory (lost on discord-gateway restart;
-  bounded duplicate Discord writes). RabbitMQ still out of scope (P4.5).
-- Idempotency first-wins on same actor/scope/key; different body is not hashed
-  (Postgres unique on actor+key). Cross-actor keys are isolated.
-- No product-level anti-bot / elaborate rate limiter; 256KiB body limit only.
-- Shared Zeabur Postgres addon vs ADR-0004 per-service DB (pre-existing).
-- Issue #25 IP/security baseline is not a new product module; remaining
-  items are deploy/secrets hygiene, not P4.5 scope.
+- Admin dashboard **Diagnostyka** (Czy API/Activity/Discord/bot/wersje).
+- Admin guild config complete + Hub published badges.
+- Discord Hub: amber `#D48632`, DZIAŁAJ/TWOJE, no purple, no duplicate panel
+  after restart/reconcile.
+- WWW + Admin: unavailable / 401 / 403 / 409 / 503 copy — no raw
+  `Failed to fetch`, `ECONNREFUSED`, or stack.
 
-## 7. Validation
+FINAL STATUS:
 
-```
-pnpm format:check          # pass
-pnpm validate              # pass (CI-equivalent; V2_SMOKE_* unset)
-pnpm audit --audit-level=high   # pass (0 high/critical)
-```
+READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT
 
-STOP. Do not merge. Do not start P4.5 / #20–#24.
+## 3. Operability evidence (this task)
+
+Registry: `tools/runtime/service-registry.json` (7 APPs + postgres aliases +
+redis). CI: `pnpm architecture:check`.
+
+Health: `docs/deploy/HEALTH.md`. Live cheap; ready fails closed.
+
+Logs: `@v2/observability` JSON + redaction + correlation headers.
+
+Docs: `docs/deploy/{HEALTH,PUBLIC_EXPOSURE,ROLLBACK,BACKUP_RESTORE,MIGRATION_SAFETY}.md`,
+`docs/ops/INCIDENT_RUNBOOK.md`.
+
+## 4. Security checkpoint (unchanged code at bbef5f6)
+
+See previous handoff on `6b57d2d` / `6f52cfc`. CRITICAL none. HIGH 1–2 fixed
+in repo; live lag until redeploy.
+
+## 5. Out of scope (respected)
+
+NO MERGE. NO P4.5. NO P4.6. NO RabbitMQ. NO #20–#24. No new microservice.

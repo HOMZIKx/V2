@@ -2,8 +2,8 @@
 
 ## Status
 
-`SECURITY_HARDENING_COMPLETE_FOR_CURRENT_P4` —
-`P4-ADVERSARIAL-SECURITY-AND-RESILIENCE-001`
+`READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT` —
+`P4-PRODUCTION-RECOVERY-OBSERVABILITY-AND-DEPLOY-SAFETY-001`
 
 Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 
@@ -17,61 +17,56 @@ Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- SECURITY_START_SHA: `467cd5cf13ae39d26d6d17d1421c6f96d5ddb6e1`
-- SECURITY_CHECKPOINT_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
+- START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
+- SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
+- OPERABILITY_CHECKPOINT_SHA: recorded in the follow-up docs commit after this
+  implementation lands.
 
-## What this task changed (repo, current P4 only)
+## What this task changed (current P4 only)
 
-Production fail-closed:
+- One deployable topology registry (`tools/runtime/service-registry.json`)
+  with drift CI (`revisionCapability`, no `VITE_*` secrets, no tsx CMD).
+- Safe revision contract: `/health/live` plus api-gateway `/version`;
+  doctor `MATCH` / `MISMATCH` / `UNKNOWN`.
+- Ready probes fail closed on critical deps (DB/Redis/upstreams). Live stays
+  cheap. Activity ready exposes outbox `idle|working|backlogged|retrying|stuck`.
+- Correlation IDs (`x-correlation-id` / `x-request-id`) generated at
+  api-gateway and Admin; structured logs redact secrets.
+- Operational error categories in activity logs/JSON; no stack to browsers.
+- Bounded SIGTERM (15s) on Nest APPs; Redis JTI `enableOfflineQueue: false`;
+  outbox reclaim of expired leases; list queries `LIMIT 200`; proxy timeouts.
+- Admin Diagnostyka answers API/Activity/Discord/bot/config/Hub/revision
+  questions in Polish.
+- Operator docs: health, public exposure, rollback, backup/restore, migration
+  safety, incident runbook.
 
-- `ACTIVITY_ENABLED=false` uses **DenyAll** authorization in production
-  (AllowAll remains local/test only).
-- `ACTIVITY_ALLOW_TEST_SEED` cannot be true in production.
-- Inbound client assertions in production require Redis JTI storage.
-- Duplicate `Activity-Client-Assertion` / actor headers are rejected.
-- Assertion `sub` must equal `iss`; `jti` must be a UUID; `aud` cannot be an
-  array; actor claims must be strings.
-- API gateway never forwards browser `X-Actor-*` in production, even if
-  `API_GATEWAY_FORWARD_ACTOR_HEADERS=true`.
-- Admin `VITE_ADMIN_DEV_*` cannot enable `dev-actor` in production builds.
-- Projection shared-secret compare is constant-time; malformed payloads no
-  longer leak Zod internals.
+## Validation (local)
 
-Regression suite: package unit tests plus `tools/security/p4-current-controls.test.ts`
-(included in `pnpm architecture:check`).
+- `pnpm format:check` — pass
+- `pnpm validate` — pass (`V2_SMOKE_*` unset)
+- `pnpm audit --audit-level=high` — pass (1 moderate, 0 high/critical)
+- Production Dockerfiles (7/7) — pass (`v2-*:operability`)
+- `pnpm runtime:doctor` static — pass
+- Local activity `pg_dump` → isolated `pg_restore` — `RESTORE_PROOF: PASS`
 
 ## Live Zeabur until this SHA is redeployed
 
-Public stack still runs the previous image. Logged-in Admin can still pass
-`CONFIG_MANAGE` while `ACTIVITY_ENABLED=false` **until redeploy**. That is
-deployment lag, not an unfixed code path.
-
-Production flags that must stay false after redeploy:
-
-- `ACTIVITY_TRUST_ACTOR_HEADERS=false`
-- `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`
-- `ACTIVITY_ALLOW_TEST_SEED=false`
-
-`ACTIVITY_ENABLED=true` with a real authorization-service hop is
-**OWNER_ACTION_REQUIRED** before privileged Admin/WWW mutations should work
-in production.
-
-## Validation (local, CI-equivalent)
-
-- `pnpm format:check` — pass
-- `pnpm validate` — pass (live `V2_SMOKE_*` unset so doctor stays static,
-  matching CI)
-- `pnpm audit --audit-level=high` — pass (1 moderate, 0 high/critical)
+Public stack still reports `gitCommitSha=9a3e922`. `/version` 404 until
+api-gateway is redeployed. That is deployment lag.
 
 ## Owner next
 
-1. Redeploy this checkpoint SHA to Zeabur.
-2. Set `GIT_COMMIT_SHA` per APP to the image SHA.
-3. Keep unsafe DEV flags false. Enable `ACTIVITY_ENABLED=true` only with
-   authorization-service + inbound clients + Redis JTI.
-4. Confirm logged-in Admin is 403 until real authz allows `CONFIG_MANAGE`.
-5. Walk Discord Hub create/preview/publish/RSVP as a real user.
+1. Redeploy this checkpoint SHA to all seven APPs. Set `GIT_COMMIT_SHA` per APP.
+2. Discord Portal redirect URI:
+   `https://v2-api.zeabur.app/api/auth/callback/discord`
+3. Keep `ACTIVITY_TRUST_ACTOR_HEADERS=false`,
+   `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`,
+   `ACTIVITY_ALLOW_TEST_SEED=false`.
+4. `ACTIVITY_ENABLED=true` only with authorization-service + inbound clients +
+   Redis JTI.
+5. Combined visual review: Admin Diagnostyka, Hub amber `#D48632`, WWW/Admin
+   failure copy (no raw `Failed to fetch`).
 
 ## Last updated
 
-2026-08-18 — P4 adversarial security hardening (current P4.1–P4.4 only)
+2026-08-18 — P4 production recovery / observability / deploy safety

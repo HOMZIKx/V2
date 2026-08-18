@@ -145,6 +145,15 @@ Aktualna macierz P4:
 
 Lokalny `pnpm validate` **nie** zastępuje tego checklistu.
 
+Operability docs (no secret values):
+
+- [HEALTH.md](./HEALTH.md)
+- [PUBLIC_EXPOSURE.md](./PUBLIC_EXPOSURE.md)
+- [ROLLBACK.md](./ROLLBACK.md)
+- [BACKUP_RESTORE.md](./BACKUP_RESTORE.md)
+- [MIGRATION_SAFETY.md](./MIGRATION_SAFETY.md)
+- [INCIDENT_RUNBOOK.md](../ops/INCIDENT_RUNBOOK.md)
+
 Obecny project testowy może mieć **jeden** add-on Postgres z osobnymi migracjami per usługa. Docelowo ADR-0004 nadal wymaga osobnych baz/kont; wspólny connection string do cudzej bazy jest błędem.
 
 ## 9. Rejestr serwisów i operability

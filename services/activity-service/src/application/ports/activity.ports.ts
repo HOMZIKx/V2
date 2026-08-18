@@ -601,7 +601,17 @@ export interface ActivityTx {
 export interface ActivityRepositoryPort {
   withTransaction<T>(fn: (tx: ActivityTx) => Promise<T>): Promise<T>;
   ping(): Promise<void>;
+  countOutboxByStatus?(): Promise<OutboxHealthSnapshot>;
 }
+
+export type OutboxHealthSnapshot = {
+  readonly pending: number;
+  readonly claimed: number;
+  readonly failed: number;
+  readonly delivered: number;
+  readonly retrying: number;
+  readonly state: 'idle' | 'working' | 'backlogged' | 'retrying' | 'stuck';
+};
 
 export interface ActivityUseCaseDeps {
   readonly repository: ActivityRepositoryPort;
