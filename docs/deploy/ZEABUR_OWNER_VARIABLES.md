@@ -85,24 +85,24 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 
 ## `discord-gateway`
 
-| Klucz                                  | Tag                                                                |
-| -------------------------------------- | ------------------------------------------------------------------ |
-| `ZBPACK_DOCKERFILE_NAME`               | PUBLIC VALUE = `discord-gateway`                                   |
-| `DISCORD_GATEWAY_HOST`                 | PUBLIC VALUE = `0.0.0.0`                                           |
-| `DISCORD_ENABLED`                      | PUBLIC VALUE = `true`                                              |
-| `DISCORD_APPLICATION_ID`               | PUBLIC VALUE                                                       |
-| `DISCORD_TOKEN`                        | SECRET                                                             |
-| `DISCORD_TEST_GUILD_ID`                | PUBLIC VALUE = `1534228693017432124`                               |
-| `DISCORD_TEST_OPERATOR_IDS`            | PUBLIC VALUE (Twoje Discord snowflake)                             |
-| `DISCORD_COMPONENT_SIGNING_SECRET`     | SECRET (≥32)                                                       |
-| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS` | PUBLIC VALUE = `true`                                              |
+| Klucz                                   | Tag                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`                | PUBLIC VALUE = `discord-gateway`                                                |
+| `DISCORD_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                                        |
+| `DISCORD_ENABLED`                       | PUBLIC VALUE = `true`                                                           |
+| `DISCORD_APPLICATION_ID`                | PUBLIC VALUE                                                                    |
+| `DISCORD_TOKEN`                         | SECRET                                                                          |
+| `DISCORD_TEST_GUILD_ID`                 | PUBLIC VALUE = `1534228693017432124`                                            |
+| `DISCORD_TEST_OPERATOR_IDS`             | PUBLIC VALUE (Twoje Discord snowflake)                                          |
+| `DISCORD_COMPONENT_SIGNING_SECRET`      | SECRET (≥32)                                                                    |
+| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS`  | PUBLIC VALUE = `true`                                                           |
 | `DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP` | PUBLIC VALUE = `true` (domyślnie — hub odświeża się po każdym redeploy gateway) |
-| `DISCORD_STRICT_GUILD_ISOLATION`       | PUBLIC VALUE = `true`                                              |
-| `DISCORD_ACTIVITY_ENABLED`             | PUBLIC VALUE = `true`                                              |
-| `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)        |
-| `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co activity)                                       |
-| `ACTIVITY_SERVICE_BASE_URL`            | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur) |
-| `DISCORD_TEST_CHANNEL_ID`              | PUBLIC VALUE (opcjonalnie)                                         |
+| `DISCORD_STRICT_GUILD_ISOLATION`        | PUBLIC VALUE = `true`                                                           |
+| `DISCORD_ACTIVITY_ENABLED`              | PUBLIC VALUE = `true`                                                           |
+| `ACTIVITY_ORGANIZATION_ID`              | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)                     |
+| `ACTIVITY_PROJECTION_SHARED_SECRET`     | SECRET (ten sam co activity)                                                    |
+| `ACTIVITY_SERVICE_BASE_URL`             | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur)              |
+| `DISCORD_TEST_CHANNEL_ID`               | PUBLIC VALUE (opcjonalnie)                                                      |
 
 ---
 
@@ -148,10 +148,10 @@ Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 
 Te serwisy budują się przez Dockerfile (`Dockerfile.web`, `Dockerfile.admin`). Build **musi** przejść przed startem kontenera.
 
-| Klucz | Tag | Kiedy |
-| ----- | --- | ----- |
-| `ZBPACK_DOCKERFILE_NAME` | PUBLIC VALUE = `web` lub `admin` | zawsze |
-| `VITE_API_BASE_URL` | PUBLIC VALUE — publiczny URL `api-gateway` (np. `https://api-gateway-xxx.zeabur.app`) | **build-time** (Zeabur Variables → dostępne przy buildzie) |
+| Klucz                    | Tag                                                                                   | Kiedy                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME` | PUBLIC VALUE = `web` lub `admin`                                                      | zawsze                                                     |
+| `VITE_API_BASE_URL`      | PUBLIC VALUE — publiczny URL `api-gateway` (np. `https://api-gateway-xxx.zeabur.app`) | **build-time** (Zeabur Variables → dostępne przy buildzie) |
 
 Bez `VITE_API_BASE_URL` frontend zbuduje się, ale Admin/WWW będą wołać zły host → „Failed to fetch” mimo że backend stoi.
 

@@ -3,8 +3,8 @@ import { createLogger } from '@v2/observability';
 
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
-import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import { runStartupHubReconcile } from '../../application/interactions/hub-startup-reconcile.js';
+import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import { InteractionRouter } from './interaction-router.js';
 
 import {

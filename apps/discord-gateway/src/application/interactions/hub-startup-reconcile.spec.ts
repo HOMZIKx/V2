@@ -90,7 +90,7 @@ describe('runStartupHubReconcile', () => {
     expect(gateway.editComponentsV2Message).toHaveBeenCalledWith(
       'chan-hub',
       'msg-old',
-      expect.objectContaining({ flags: expect.any(Number) }),
+      expect.objectContaining({ flags: expect.any(Number) as number }),
     );
     expect(logger.info).toHaveBeenCalledWith(
       'Startup hub reconcile completed',

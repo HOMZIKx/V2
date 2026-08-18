@@ -1,13 +1,21 @@
 import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
-import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
-import {
-  executeHubPanelOperation,
-  type HubPanelActivityPort,
-} from '../../interface/discord/hub-panel-operation.js';
+import { executeHubPanelOperation } from '../../interface/discord/hub-panel-operation.js';
+
+export type HubStartupReconcileConfig = {
+  readonly DISCORD_ACTIVITY_ENABLED: boolean;
+  readonly DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP: boolean;
+  readonly DISCORD_TEST_GUILD_ID: string;
+  readonly DISCORD_TEST_CHANNEL_ID: string;
+  readonly ACTIVITY_ORGANIZATION_ID: string;
+  readonly DISCORD_COMPONENT_SIGNING_SECRET: string;
+  readonly APP_VERSION: string;
+  readonly GIT_COMMIT_SHA: string;
+  readonly operatorIds: readonly string[];
+};
 
 export type HubStartupReconcileDeps = {
-  readonly config: DiscordGatewayConfig;
+  readonly config: HubStartupReconcileConfig;
   readonly gateway: DiscordJsGatewayAdapter;
   readonly activityClient: ActivityHttpClient;
   readonly logger: {
@@ -46,7 +54,7 @@ export async function runStartupHubReconcile(deps: HubStartupReconcileDeps): Pro
       {
         gateway,
         logger,
-        activityClient: activityClient as unknown as HubPanelActivityPort,
+        activityClient,
       },
       {
         guildId,
