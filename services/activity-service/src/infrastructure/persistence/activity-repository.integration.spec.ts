@@ -614,11 +614,11 @@ describe.skipIf(!wantInfra)('ActivityRepository (infra)', () => {
          payload, occurred_at, available_at, claimed_at, claim_owner, claim_expires_at,
          attempt_count, status
        ) VALUES (
-         $1, 'activity.activity.projection_requested.v1', 'activity', $1, 1,
-         '{}'::jsonb, $2, $2, $2, 'dead-worker', $3,
+         $1::uuid, 'activity.activity.projection_requested.v1', 'activity', $2, 1,
+         '{}'::jsonb, $3::timestamptz, $3::timestamptz, $3::timestamptz, 'dead-worker', $4::timestamptz,
          1, 'claimed'
        )`,
-      [expiredId, '2026-08-16T12:00:00.000Z', '2026-08-16T12:00:30.000Z'],
+      [expiredId, expiredId, '2026-08-16T12:00:00.000Z', '2026-08-16T12:00:30.000Z'],
     );
     const reclaimed = await repository.withTransaction((tx) =>
       tx.claimOutbox({
