@@ -11,7 +11,7 @@ NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ
 ISSUE #20 / #21 / #22 / #23 / #24 **NOT IMPLEMENTED**
 
 SECURITY_START_SHA: `467cd5cf13ae39d26d6d17d1421c6f96d5ddb6e1`  
-SECURITY_CHECKPOINT_SHA: *filled in the follow-up docs commit after git SHA is known*
+SECURITY_CHECKPOINT_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 
 KNOWN_HEAD at task creation (`9a3e922`) was stale. Actual start tip was
 `467cd5c`.

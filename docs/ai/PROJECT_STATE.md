@@ -18,8 +18,7 @@ Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
 - SECURITY_START_SHA: `467cd5cf13ae39d26d6d17d1421c6f96d5ddb6e1`
-- SECURITY_CHECKPOINT_SHA: recorded in `docs/ai/CURSOR_TO_CHATGPT.md` after the
-  additive security commit on this branch.
+- SECURITY_CHECKPOINT_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 
 ## What this task changed (repo, current P4 only)
 
