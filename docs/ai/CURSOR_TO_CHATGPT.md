@@ -12,8 +12,7 @@ ISSUE #20 / #21 / #22 / #23 / #24 **NOT IMPLEMENTED**
 
 START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`  
 SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`  
-OPERABILITY_CHECKPOINT_SHA: filled in the docs commit immediately after the
-implementation commit.
+OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
 
 Previous HIGH findings from
 `P4-ADVERSARIAL-SECURITY-AND-RESILIENCE-001` are **fixed in code** at
@@ -26,7 +25,7 @@ START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
 
 SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 
-OPERABILITY_CHECKPOINT_SHA: (see follow-up docs commit)
+OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
 
 CI: pending push of this checkpoint (local `pnpm validate` PASS)
 

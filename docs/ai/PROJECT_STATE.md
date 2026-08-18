@@ -19,8 +19,7 @@ Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 - PR: #19
 - START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
 - SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
-- OPERABILITY_CHECKPOINT_SHA: recorded in the follow-up docs commit after this
-  implementation lands.
+- OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
 
 ## What this task changed (current P4 only)
 
