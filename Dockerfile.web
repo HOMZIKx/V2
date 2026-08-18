@@ -15,8 +15,12 @@ COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system ./packages/design-system
 COPY apps/web ./apps/web
-ARG VITE_API_BASE_URL=
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ARG NEXT_PUBLIC_API_BASE_URL=
+ARG NEXT_PUBLIC_IDENTITY_URL=
+ARG NEXT_PUBLIC_WEB_ORIGIN=
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+ENV NEXT_PUBLIC_IDENTITY_URL=${NEXT_PUBLIC_IDENTITY_URL}
+ENV NEXT_PUBLIC_WEB_ORIGIN=${NEXT_PUBLIC_WEB_ORIGIN}
 RUN pnpm --filter @v2/web build
 
 FROM base AS runtime
