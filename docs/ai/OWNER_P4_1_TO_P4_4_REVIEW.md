@@ -59,9 +59,13 @@ Zeabur service `discord-gateway` → branch `cursor/p4-1-activity-domain` → re
 
 ## Live Zeabur checkpoint (2026-08-18, Cursor)
 
-Intended revision: `bc7c1ca`. Admin bundle contains `https://v2-api.zeabur.app`.
-Production does not forward browser `X-Actor-*`. Unauthenticated guilds API → 401.
+Intended revision: latest `cursor/p4-1-activity-domain` after `c635bb9` (Admin
+login CTA + runtime doctor). Redeploy before treating Admin login as live.
 
-Still **owner**: Hub visual (amber / DZIAŁAJ / no purple), Discord OAuth redirect
-`https://v2-api.zeabur.app/api/auth/callback/discord`, logged-in Admin/WWW
-checklists above. Local DEV actor remains local-only.
+Admin currently (pre-redeploy) loads and shows 401 session copy; WWW login
+page loads. OAuth start 302 includes
+`https://v2-api.zeabur.app/api/auth/callback/discord`.
+
+Still **owner**: Hub visual (amber / DZIAŁAJ / no purple), complete OAuth in
+Discord if authorize rejects, logged-in Admin/WWW checklists above. Local DEV
+actor remains local-only.

@@ -146,3 +146,42 @@ Aktualna macierz P4:
 Lokalny `pnpm validate` **nie** zastępuje tego checklistu.
 
 Obecny project testowy może mieć **jeden** add-on Postgres z osobnymi migracjami per usługa. Docelowo ADR-0004 nadal wymaga osobnych baz/kont; wspólny connection string do cudzej bazy jest błędem.
+
+## 9. Rejestr serwisów i operability
+
+Źródło prawdy: [`tools/runtime/service-registry.json`](../../tools/runtime/service-registry.json).
+
+Każdy nowy `Dockerfile.<service>` w root repo musi mieć wpis APP w rejestrze (CI: `pnpm architecture:check` + `pnpm runtime:doctor`). Nie dodawaj RabbitMQ ani serwisów produktowych spoza zatwierdzonego etapu.
+
+### Runtime doctor
+
+```text
+pnpm runtime:doctor
+```
+
+Sprawdza rejestr, mapowanie Dockerfile, kontrakt bake frontend (brak pustego `ARG VAR=`). Zwraca `PASS` / `WARN` / `FAIL`. Opcjonalne publiczne URL-e (nie wymagane w PR CI):
+
+```text
+$env:V2_SMOKE_API_BASE='https://v2-api.zeabur.app'
+$env:V2_SMOKE_ADMIN_BASE='https://v2-admin.zeabur.app'
+$env:V2_SMOKE_WEB_BASE='https://v2-web.zeabur.app'
+$env:V2_EXPECTED_SHA='<sha z gałęzi>'
+pnpm runtime:doctor
+```
+
+Niedostępność sieci to `BLOCKED_EXTERNAL`, nie czerwone PR CI.
+
+### Smoke wdrożenia (tylko odczyt)
+
+```text
+$env:V2_SMOKE_API_BASE='https://v2-api.zeabur.app'
+$env:V2_SMOKE_ADMIN_BASE='https://v2-admin.zeabur.app'
+$env:V2_SMOKE_WEB_BASE='https://v2-web.zeabur.app'
+pnpm smoke:runtime
+```
+
+Bez mutacji danych produkcyjnych. `pnpm test:runtime-smoke` nadal dotyczy lokalnych artefaktów `dist`, nie Zeabur.
+
+### Wersja działającego procesu
+
+`GET /health/live` (Nest) oraz `GET /health` (WWW) zwracają `gitCommitSha` i `appVersion` z `GIT_COMMIT_SHA` / `APP_VERSION`. Ustaw te zmienne na **SHA obrazu**, nie na stary ręczny skrót. Porównanie: `V2_EXPECTED_SHA` vs running → `MATCH` / `MISMATCH` / `UNKNOWN`.

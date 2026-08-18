@@ -50,7 +50,7 @@ describe.skipIf(!wantInfra)('Activity HTTP (ACTIVITY_ENABLED=false)', () => {
     }
     const response = await app.inject({ method: 'GET', url: '/health/live' });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: 'ok' });
+    expect(response.json()).toMatchObject({ status: 'ok' });
   });
 
   it('creates a draft with actor header', async ({ skip }) => {

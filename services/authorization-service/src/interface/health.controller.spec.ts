@@ -14,7 +14,7 @@ describe('HealthController', () => {
     const store = { ping } as unknown as AuthorizationStorePort;
     const controller = new HealthController(config, store);
 
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
     expect(ping).not.toHaveBeenCalled();
   });
 

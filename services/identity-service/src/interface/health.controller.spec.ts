@@ -30,7 +30,7 @@ function fakeRuntime(options: { dbOk: boolean; redisOk: boolean; migrated: boole
 describe('HealthController', () => {
   it('is always live', () => {
     const controller = new HealthController(disabledConfig, null);
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
   });
 
   it('reports authDisabled readiness when auth is off', async () => {

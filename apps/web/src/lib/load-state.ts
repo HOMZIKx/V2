@@ -33,6 +33,10 @@ export function mapApiError(err: unknown): LoadState {
     }
     return { kind: 'error', message: 'Nie udało się wczytać danych.' };
   }
+  const raw = err instanceof Error ? err.message : String(err);
+  if (/failed to fetch|networkerror|econnrefused/i.test(raw)) {
+    return { kind: 'unavailable', message: 'Ta funkcja jest chwilowo niedostępna.' };
+  }
   return {
     kind: 'error',
     message: 'Nie udało się wczytać danych.',

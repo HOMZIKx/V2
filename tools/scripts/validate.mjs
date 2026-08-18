@@ -14,6 +14,7 @@ const quickChecks = [
   [packageManager, ['pnpm', 'typecheck']],
   [packageManager, ['pnpm', 'test']],
   [packageManager, ['pnpm', 'architecture:check']],
+  [packageManager, ['pnpm', 'runtime:doctor']],
   [packageManager, ['pnpm', 'build']],
   ['docker', ['compose', '-f', 'infrastructure/docker/docker-compose.yml', 'config']],
 ];
@@ -24,6 +25,7 @@ const fullChecks = [
   [packageManager, ['pnpm', 'typecheck']],
   [packageManager, ['pnpm', 'test:coverage']],
   [packageManager, ['pnpm', 'architecture:check']],
+  [packageManager, ['pnpm', 'runtime:doctor']],
   [packageManager, ['pnpm', 'build']],
   [packageManager, ['pnpm', 'test:e2e']],
   [packageManager, ['pnpm', '--dir', 'apps/web', 'build']],

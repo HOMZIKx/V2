@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { Button } from '@v2/design-system';
 
+import { buildAdminDiscordLoginUrl, shouldOfferIdentityLogin } from '../auth/login.js';
 import { isDevActorMode, readAdminSession } from '../auth/session.js';
 import { Flash } from '../components/ui.js';
 import { GuildProvider, useGuildContext } from './GuildContext.js';
@@ -29,8 +30,21 @@ const ADVANCED_NAV: readonly { readonly to: string; readonly label: string }[] =
   { to: '/activity/hub', label: 'Diagnostyka' },
 ];
 
+function IdentityLoginActions() {
+  const loginUrl = buildAdminDiscordLoginUrl(window.location.origin);
+  return (
+    <div className="guild-selector-actions">
+      <a className="v2-btn v2-btn-primary" href={loginUrl}>
+        Zaloguj przez Discord
+      </a>
+    </div>
+  );
+}
+
 function GuildSelector() {
+  const session = readAdminSession();
   const { guildId, guilds, setGuildId, guildLoadState, reloadGuilds } = useGuildContext();
+  const offerLogin = shouldOfferIdentityLogin(session.mode);
 
   if (guildLoadState.kind === 'loading' && guilds.length === 0) {
     return <div className="guild-selector muted">Wczytywanie serwerów…</div>;
@@ -42,13 +56,25 @@ function GuildSelector() {
         <Flash tone="error" detail={guildLoadState.detail}>
           {guildLoadState.message}
         </Flash>
+        {offerLogin ? <IdentityLoginActions /> : null}
         <Button onClick={() => reloadGuilds()}>Spróbuj ponownie</Button>
       </div>
     );
   }
 
   if (guildLoadState.kind === 'empty') {
-    return <div className="guild-selector muted">Brak serwerów, którymi możesz zarządzać.</div>;
+    return (
+      <div className="guild-selector muted">
+        {offerLogin ? (
+          <>
+            <p>Zaloguj się, aby zobaczyć serwery, którymi możesz zarządzać.</p>
+            <IdentityLoginActions />
+          </>
+        ) : (
+          'Brak serwerów, którymi możesz zarządzać.'
+        )}
+      </div>
+    );
   }
 
   return (
@@ -58,6 +84,7 @@ function GuildSelector() {
           <Flash tone="error" detail={guildLoadState.detail}>
             {guildLoadState.message}
           </Flash>
+          {offerLogin ? <IdentityLoginActions /> : null}
           <Button onClick={() => reloadGuilds()}>Spróbuj ponownie</Button>
         </>
       ) : null}

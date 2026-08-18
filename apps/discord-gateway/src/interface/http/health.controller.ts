@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { readRuntimeRevision } from '@v2/configuration';
 
 import type { GatewayHealthSnapshot } from '../../application/ports/gateway.ports.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
@@ -14,8 +15,12 @@ export class HealthController {
   ) {}
 
   @Get('health/live')
-  public live(): { readonly status: 'ok' } {
-    return { status: 'ok' };
+  public live(): {
+    readonly status: 'ok';
+    readonly gitCommitSha: string;
+    readonly appVersion: string;
+  } {
+    return { status: 'ok', ...readRuntimeRevision() };
   }
 
   @Get('health/ready')

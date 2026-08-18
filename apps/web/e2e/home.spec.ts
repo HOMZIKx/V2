@@ -16,5 +16,5 @@ test('home redirects unauthenticated users toward login', async ({ page }) => {
 test('health route stays available', async ({ request }) => {
   const response = await request.get('/health');
   expect(response.ok()).toBeTruthy();
-  await expect(response.json()).resolves.toEqual({ status: 'ok' });
+  await expect(response.json()).resolves.toMatchObject({ status: 'ok' });
 });

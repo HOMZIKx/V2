@@ -315,6 +315,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       dataOwnership: options['data-ownership'],
     });
     console.log(`Created service scaffold at services/${name}.`);
+    console.log(
+      'If this service is deployable, add it to tools/runtime/service-registry.json and Dockerfile.<name> before merge.',
+    );
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

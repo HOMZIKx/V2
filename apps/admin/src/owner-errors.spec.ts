@@ -17,6 +17,14 @@ describe('ownerFacingMessage', () => {
     expect(mapped.conflict).toBe(true);
   });
 
+  it('maps unauthenticated to a Discord login prompt', () => {
+    const mapped = ownerFacingMessage(
+      new ApiClientError('no session', { status: 401, code: 'UNAUTHENTICATED' }),
+    );
+    expect(mapped.message).toBe('Zaloguj się przez Discord, aby zarządzać serwerem.');
+    expect(mapped.message).not.toContain('Failed to fetch');
+  });
+
   it('maps forbidden to a Polish owner message', () => {
     const mapped = ownerFacingMessage(
       new ApiClientError('Nope', { status: 403, code: 'FORBIDDEN' }),

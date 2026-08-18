@@ -26,6 +26,8 @@
     "test:coverage": "nx run-many -t test --parallel=1 -- --coverage",
     "build": "nx run-many -t build --parallel=4",
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
+    "runtime:doctor": "node ./tools/scripts/runtime-doctor.mjs",
+    "smoke:runtime": "node ./tools/scripts/runtime-smoke-deployed.mjs",
     "validate": "node ./tools/scripts/validate.mjs",
     "validate:quick": "node ./tools/scripts/validate.mjs --quick",
     "generate:service": "node ./tools/scripts/generate-service.mjs",

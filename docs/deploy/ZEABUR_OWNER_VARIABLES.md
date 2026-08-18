@@ -233,6 +233,12 @@ Owner potwierdza w logach startu / health metadata:
 
 „Deployment successful” bez SHA **nie wystarczy**.
 
+Na każdym serwisie APP ustaw `GIT_COMMIT_SHA` (PUBLIC) na SHA **tego** redeployu oraz opcjonalnie `APP_VERSION`. Health `GET /health/live` zwraca te pola. Nie zostawiaj starego skrótu po nowym obrazie.
+
+`identity-service` `IDENTITY_TRUSTED_ORIGINS` musi zawierać publiczne originy WWW i Admin, np. `https://v2-web.zeabur.app,https://v2-admin.zeabur.app` (oraz origin `IDENTITY_AUTH_BASE_URL`). Discord Developer Portal redirect:
+
+`https://v2-api.zeabur.app/api/auth/callback/discord`
+
 ---
 
 ## Po wklejeniu Variables

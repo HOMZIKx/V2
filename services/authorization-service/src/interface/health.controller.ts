@@ -1,4 +1,5 @@
 import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { readRuntimeRevision } from '@v2/configuration';
 
 import type { AuthorizationStorePort } from '../application/ports/authorization.ports.js';
 import type { AuthorizationEnv } from '../infrastructure/config/authorization-env.js';
@@ -12,8 +13,8 @@ export class HealthController {
   ) {}
 
   @Get('live')
-  public live(): { status: 'ok' } {
-    return { status: 'ok' };
+  public live(): { status: 'ok'; gitCommitSha: string; appVersion: string } {
+    return { status: 'ok', ...readRuntimeRevision() };
   }
 
   @Get('ready')

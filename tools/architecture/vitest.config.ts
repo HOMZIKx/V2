@@ -5,6 +5,6 @@ import { sharedTestConfig } from '../vitest.shared.js';
 export default defineConfig({
   test: {
     ...sharedTestConfig,
-    include: ['tools/architecture/**/*.test.ts'],
+    include: ['tools/architecture/**/*.test.ts', 'tools/runtime/**/*.test.ts'],
   },
 });

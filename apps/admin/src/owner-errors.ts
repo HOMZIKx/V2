@@ -56,7 +56,7 @@ export function ownerFacingMessage(error: unknown): {
     }
     if (error.status === 401 || error.code === 'UNAUTHENTICATED') {
       return {
-        message: 'Nie udało się potwierdzić sesji.',
+        message: 'Zaloguj się przez Discord, aby zarządzać serwerem.',
         detail: `${error.code} · HTTP ${String(error.status)}`,
         forbidden: false,
         conflict: false,

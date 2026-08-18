@@ -77,4 +77,12 @@ describe('mapApiError', () => {
     expect(mapApiError(new ApiClientError('stale', { status: 409 })).kind).toBe('conflict');
     expect(mapApiError(new ApiClientError('down', { status: 503 })).kind).toBe('unavailable');
   });
+
+  it('never uses Failed to fetch as primary copy', () => {
+    const mapped = mapApiError(new TypeError('Failed to fetch'));
+    expect(mapped).toEqual({
+      kind: 'unavailable',
+      message: 'Ta funkcja jest chwilowo niedostępna.',
+    });
+  });
 });

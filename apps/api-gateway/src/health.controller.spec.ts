@@ -6,10 +6,11 @@ describe('HealthController', () => {
   const controller = new HealthController();
 
   it('reports liveness', () => {
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
+    expect(controller.live().gitCommitSha).toBeDefined();
   });
 
   it('reports readiness', () => {
-    expect(controller.ready()).toEqual({ status: 'ok' });
+    expect(controller.ready()).toMatchObject({ status: 'ok' });
   });
 });

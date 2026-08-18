@@ -4,6 +4,7 @@ import { createHealthPayload } from './health';
 
 describe('createHealthPayload', () => {
   it('returns the deployment health contract', () => {
-    expect(createHealthPayload()).toEqual({ status: 'ok' });
+    expect(createHealthPayload()).toMatchObject({ status: 'ok' });
+    expect(createHealthPayload().gitCommitSha).toBeDefined();
   });
 });
