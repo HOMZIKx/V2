@@ -25,7 +25,9 @@ Task: `P4-COMBINED-AUDIT-FIXUP-001`
 
 FIXUP_START_SHA: `1290df92681ee1e98fde3e0efaf231f7d110f6db`
 
-FIXUP_CHECKPOINT_SHA: _(set after green CI + Zeabur deploy of this fixup)_
+FIXUP_CHECKPOINT_SHA: `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8`
+
+CI: PASS (Quality gates, Secret scan, Infrastructure integration)
 
 ## Deferred Owner UX checklist
 

@@ -4,106 +4,107 @@
 
 Task: `P4-COMBINED-AUDIT-FIXUP-001`
 
-`READY_FOR_CHATGPT_P4_0_DELTA_AUDIT` requires green GitHub Actions and
-Zeabur of the same SHA. This commit is the code checkpoint.
+FINAL STATUS:
+
+READY_FOR_CHATGPT_P4_0_DELTA_AUDIT
 
 NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ  
 ISSUE #20 / #21 / #22 / #23 / #24 **NOT IMPLEMENTED**
 
 FIXUP_START_SHA: `1290df92681ee1e98fde3e0efaf231f7d110f6db`
 
-FIXUP_CHECKPOINT_SHA: _(git rev-parse of this commit)_
+FIXUP_CHECKPOINT_SHA: `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8`
 
-Owner roadmap **#26**: full manual Owner UX/product acceptance of the
-transitional Activity Centrum is **deferred** to Core Foundation Integrated
-Review. Technical CI / security / runtime / Zeabur / ChatGPT audit remain
-mandatory.
+Owner roadmap **#26**: full manual Owner UX of the transitional Centrum is
+deferred to Core Foundation Integrated Review. Technical CI / security /
+runtime / Zeabur / ChatGPT audit remain mandatory.
 
 ## AUDIT FINDINGS
 
 ### 1. WEB_DISCORD_OAUTH_PRODUCTION_LOCALHOST_REDIRECT
 
-STATUS: FIXED (code + tests; live proof after WWW rebuild)
+STATUS: FIXED
 
-CODE EVIDENCE:
-
-- `apps/web/src/lib/public-origin.ts` + `env.ts`: production requires https
-  public origins; no localhost / 127.0.0.1 / ::1 fallback.
-- `Dockerfile.web` validates `NEXT_PUBLIC_API_BASE_URL`,
-  `NEXT_PUBLIC_IDENTITY_URL`, `NEXT_PUBLIC_WEB_ORIGIN` at image build.
-- `isLoginConfiguredFromOrigins()` rejects loopback in production.
-- Doctor: `WEB_IDENTITY_BASE`, `WEB_PUBLIC_ORIGIN`, `OAUTH_START`,
-  `OAUTH_LOOPBACK`, `WEB_LOGIN_ORIGIN`.
+CODE EVIDENCE: `apps/web/src/lib/public-origin.ts`, `env.ts`,
+`Dockerfile.web` fail-closed https public origins; doctor OAUTH_* /
+WEB_* checks.
 
 TEST EVIDENCE: `public-origin.spec.ts`, `login.spec.ts`,
 `callback-url.spec.ts`, `runtime-doctor.test.ts`.
 
-LIVE EVIDENCE: pending Zeabur rebuild of this SHA.
+LIVE EVIDENCE: OAuth start Location
+`https://discord.com/api/oauth2/authorize?...&redirect_uri=https%3A%2F%2Fv2-api.zeabur.app%2Fapi%2Fauth%2Fcallback%2Fdiscord`.
+WWW login JS: `readPublicOrigin("https://v2-api.zeabur.app", "http://127.0.0.1:4200")` —
+production uses the public origin, loopback is only the unused local fallback
+string. Login HTML contains no loopback href.
 
 ### 2. API_GATEWAY_REAL_READINESS
 
 STATUS: FIXED
 
-CODE EVIDENCE: `apps/api-gateway/src/health-probes.ts` probes
-`/health/ready` (not `/health/live`). 503 / timeout / malformed →
-unhealthy → gateway ready 503. Live stays cheap. Disabled vs
-not_configured vs ok are machine-readable.
+CODE EVIDENCE: probes `/health/ready`; 503/timeout/malformed → 503.
+Live remains cheap.
 
-TEST EVIDENCE: `health-probes.spec.ts`, `health.controller.spec.ts`.
+TEST EVIDENCE: `health-probes.spec.ts`.
+
+LIVE EVIDENCE: `GET https://v2-api.zeabur.app/health/ready` → 200
+`checks.activity=disabled`, `checks.identity=ok`, `discord.state=ready`.
 
 ### 3. ADMIN_REAL_DISCORD_DIAGNOSTICS
 
 STATUS: FIXED
 
-CODE EVIDENCE: Admin reads `ready.discord.state` from public api-gateway.
-Gateway probes internal discord-gateway `/health/ready`. Guild list is not
-used for “Czy Discord działa?” / “Czy bot jest połączony?”. Unknown →
-“Nie wiadomo”, not “Tak”.
+CODE EVIDENCE: Admin maps `ready.discord.state`; guild list is not used
+for Discord/bot flags.
 
 TEST EVIDENCE: `runtime-status.spec.ts`, `audit-closure.spec.ts`.
+
+LIVE EVIDENCE: api-gateway `discord.state=ready` after internal
+`DISCORD_GATEWAY_BASE_URL`. Unknown would render „Nie wiadomo”, not „Tak”.
 
 ### 4. ADMIN_PRODUCTION_STATIC_RUNTIME
 
 STATUS: FIXED
 
-CODE EVIDENCE: `apps/admin/scripts/serve-static.mjs`; Dockerfile.admin CMD
-`node ./scripts/serve-static.mjs`. Validator fails `vite preview` CMD.
-Local smoke uses the static server.
+CODE EVIDENCE: `serve-static.mjs`; Dockerfile CMD is not vite preview.
 
-TEST EVIDENCE: `serve-static.spec.ts`; Admin image `/`, `/login`, `/health`,
-stop PASS.
+LIVE EVIDENCE: `GET https://v2-admin.zeabur.app/health` 200 with
+`gitCommitSha=7f9e15e…`; SPA `/activity/types` returns the shell.
 
 ### 5. DISCORD_PROJECTION_GUILD_CHANNEL_SCOPE
 
 STATUS: FIXED
 
-CODE EVIDENCE: `projection-channel-scope.ts` calls
-`validateActivityPublishChannel` against `DISCORD_TEST_GUILD_ID` before
-publish/edit/hub. Wrong guild / DM / unsupported / missing permissions
-return controlled errors.
+CODE EVIDENCE: `projection-channel-scope.ts` before publish/edit/hub.
 
-TEST EVIDENCE: `projection-channel-scope.spec.ts`,
-`activity-projection.controller.spec.ts` (including idempotent duplicate).
+TEST EVIDENCE: wrong guild / DM / unsupported / missing permissions /
+valid / idempotent duplicate.
 
 ### 6. SOT_OWNER_REVIEW_POLICY
 
 STATUS: FIXED
 
-CODE EVIDENCE: `OWNER_P4_1_TO_P4_4_REVIEW.md`, `PROJECT_STATE.md`, this
-file. Manual UX checklists labeled **DEFERRED OWNER UX REVIEW / CORE
-FOUNDATION INTEGRATED REVIEW**.
+Issue #26 deferred UX checklists remain in
+`OWNER_P4_1_TO_P4_4_REVIEW.md`. CI is recorded as PASS, not pending.
 
-## Local validation
+## CI
 
-- format:check PASS
-- unit/architecture/static doctor PASS
-- web e2e 14 passed
-- runtime-smoke PASS
-- audit --audit-level=high PASS (1 moderate)
-- production images 7/7 PASS
+PASS — https://github.com/HOMZIKx/V2/actions/runs/32180546956
 
-CI: pending push of this SHA
+Quality gates PASS · Secret scan PASS · Infrastructure integration PASS
+
+## ZEABUR REVISION (image commitSHA + live gitCommitSha)
+
+authorization: `7f9e15e` RUNNING
+identity: `7f9e15e` RUNNING
+activity: `7f9e15e` RUNNING
+api: `7f9e15e` RUNNING (live MATCH)
+discord: `7f9e15e` RUNNING
+admin: `7f9e15e` RUNNING (live MATCH)
+web: `7f9e15e` RUNNING (live MATCH)
+
+REVISION CONSISTENCY: PASS
 
 ## Out of scope (respected)
 
-NO MERGE. NO P4.5. NO P4.6. NO RabbitMQ. NO #20–#24. No new microservice.
+NO MERGE. NO P4.5. NO P4.6. NO RabbitMQ. NO #20–#24.
