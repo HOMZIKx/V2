@@ -6,6 +6,7 @@ import {
   ACTIVITY_ASSERTION_CONFIG,
   ACTIVITY_SERVICE_BASE_URL,
   API_GATEWAY_FORWARD_ACTOR_HEADERS,
+  DISCORD_GATEWAY_BASE_URL,
   IDENTITY_SERVICE_BASE_URL,
   type ActivityAssertionConfig,
 } from './activity-proxy.tokens.js';
@@ -28,6 +29,13 @@ const providers: Provider[] = [
       const value =
         process.env.IDENTITY_SERVICE_BASE_URL?.trim() ??
         process.env.INTERNAL_JWT_IDENTITY_BASE_URL?.trim();
+      return value !== undefined && value.length > 0 ? value : null;
+    },
+  },
+  {
+    provide: DISCORD_GATEWAY_BASE_URL,
+    useFactory: (): string | null => {
+      const value = process.env.DISCORD_GATEWAY_BASE_URL?.trim();
       return value !== undefined && value.length > 0 ? value : null;
     },
   },

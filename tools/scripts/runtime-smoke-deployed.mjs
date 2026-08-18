@@ -42,6 +42,10 @@ for (const check of summary.checks) {
     check.code === 'DISCORD_HEALTH' ||
     check.code === 'VERSION_DRIFT' ||
     check.code === 'ACTIVITY_READ' ||
+    check.code === 'OAUTH_START' ||
+    check.code === 'OAUTH_LOOPBACK' ||
+    check.code === 'WEB_IDENTITY_BASE' ||
+    check.code === 'WEB_PUBLIC_ORIGIN' ||
     check.code === 'ADMIN_API_BASE' ||
     check.code === 'WEB_API_BASE'
   ) {

@@ -7,7 +7,7 @@ import { createProjectTestConfig } from '../../tools/vitest.shared.js';
 
 const packageRoot = path.dirname(fileURLToPath(import.meta.url));
 const base = createProjectTestConfig({
-  testInclude: ['src/**/*.{spec,test}.{ts,tsx}'],
+  testInclude: ['src/**/*.{spec,test}.{ts,tsx}', 'scripts/**/*.spec.ts'],
   coverageInclude: ['src/**/*.{ts,tsx}'],
 });
 

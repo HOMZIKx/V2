@@ -12,6 +12,7 @@ const LOCALHOST_ORIGIN = /https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i;
 const FRONTEND_SECRET_NAME =
   /^(?:VITE|NEXT_PUBLIC)_.*(?:SECRET|TOKEN|PASSWORD|PRIVATE|CONNECTION_STRING)(?:_|$)/i;
 const TSX_RUNTIME_CMD = /^\s*CMD\b.*\btsx\b/m;
+const VITE_PREVIEW_CMD = /^\s*CMD\b.*\bvite\s+preview\b/m;
 
 /**
  * @typedef {'PASS' | 'WARN' | 'FAIL'} CheckStatus
@@ -225,6 +226,17 @@ export function validateServiceRegistry(registry, repositoryRoot = defaultRoot) 
           ),
         );
       }
+      if (service.name === 'admin' && VITE_PREVIEW_CMD.test(dockerfileContents)) {
+        checks.push(
+          fail(
+            'ADMIN_PRODUCTION_RUNTIME',
+            'production Admin CMD serves built static files',
+            `${service.dockerfile} CMD uses vite preview`,
+            'vite preview is a development preview server, not production static serving',
+            `change ${service.dockerfile} CMD to a static SPA server`,
+          ),
+        );
+      }
     }
 
     for (const dependency of service.dependencies ?? []) {
@@ -304,6 +316,16 @@ export function validateFrontendProductionContract(repositoryRoot = defaultRoot)
       file: 'Dockerfile.web',
       varName: 'NEXT_PUBLIC_API_BASE_URL',
     },
+    {
+      code: 'WEB_IDENTITY_BASE',
+      file: 'Dockerfile.web',
+      varName: 'NEXT_PUBLIC_IDENTITY_URL',
+    },
+    {
+      code: 'WEB_PUBLIC_ORIGIN',
+      file: 'Dockerfile.web',
+      varName: 'NEXT_PUBLIC_WEB_ORIGIN',
+    },
   ];
 
   for (const item of files) {
@@ -335,7 +357,10 @@ export function validateFrontendProductionContract(repositoryRoot = defaultRoot)
       continue;
     }
 
-    if (!contents.includes(`${item.varName} must be a public http`)) {
+    const failClosed =
+      contents.includes(`${item.varName} must be a public http`) ||
+      (contents.includes(item.varName) && contents.includes('must be a public https origin'));
+    if (!failClosed) {
       checks.push(
         warn(
           item.code,

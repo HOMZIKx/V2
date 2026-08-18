@@ -80,7 +80,12 @@ describe('deployable service registry', () => {
     const summary = summarizeChecks(validateFrontendProductionContract());
     expect(summary.ok).toBe(true);
     expect(summary.checks.map((check) => check.code)).toEqual(
-      expect.arrayContaining(['ADMIN_API_BASE', 'WEB_API_BASE']),
+      expect.arrayContaining([
+        'ADMIN_API_BASE',
+        'WEB_API_BASE',
+        'WEB_IDENTITY_BASE',
+        'WEB_PUBLIC_ORIGIN',
+      ]),
     );
   });
 });

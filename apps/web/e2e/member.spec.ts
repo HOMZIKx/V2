@@ -50,6 +50,29 @@ function reviewDir(): string {
   return path.join(repoRoot, 'tmp', 'ui-review', 'web');
 }
 
+async function grantLocalSessionCookie(page: Page): Promise<void> {
+  await page.context().addCookies([
+    {
+      name: 'v2.identity.session_token',
+      value: 'e2e-local-session',
+      domain: '127.0.0.1',
+      path: '/',
+      httpOnly: true,
+    },
+    {
+      name: 'v2.identity.session_token',
+      value: 'e2e-local-session',
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+    },
+  ]);
+}
+
+test.beforeEach(async ({ page }) => {
+  await grantLocalSessionCookie(page);
+});
+
 async function mockMemberApi(page: Page): Promise<void> {
   await page.route('http://127.0.0.1:4000/**', async (route) => {
     const url = new URL(route.request().url());

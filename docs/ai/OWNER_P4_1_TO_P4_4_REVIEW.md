@@ -1,35 +1,46 @@
-# Owner review — P4.1 → P4.4 (local + live gate)
+# Owner review — P4.1 → P4.4
 
 Branch: `cursor/p4-1-activity-domain` · PR #19
 
-## Combined audit gate (2026-08-18)
+## Technical gate (Issue #26)
 
-Status: **READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT** — do not merge, do not
-start P4.5.
+Owner roadmap **#26 Core Foundation** is authoritative:
 
-START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`  
-SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`  
-OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
+Before **Core Foundation Integrated Review**, P4.1–P4.4 technical closure
+requires CI, security, ChatGPT audit, Zeabur verification, runtime smoke,
+health, revision proof, and recovery tests.
 
-Live public URLs still run `9a3e922` until you redeploy. After redeploy,
-Admin dashboard **Diagnostyka** should answer: API, Activity, Discord, bot,
-guild config, Hub, revision consistency.
+It does **not** require a full manual Owner UX/product walkthrough of the
+current transitional Discord / Admin / WWW surfaces.
 
-Operator docs (no secret values): `docs/deploy/HEALTH.md`,
-`docs/deploy/ROLLBACK.md`, `docs/ops/INCIDENT_RUNBOOK.md`.
+Full manual product/UX acceptance is deferred to:
 
----
+**DEFERRED OWNER UX REVIEW / CORE FOUNDATION INTEGRATED REVIEW**
 
-## LOCAL ADMIN
+Do not merge. Do not start P4.5 / P4.6 / #20–#24.
+
+## Combined audit fixup
+
+Task: `P4-COMBINED-AUDIT-FIXUP-001`
+
+FIXUP_START_SHA: `1290df92681ee1e98fde3e0efaf231f7d110f6db`
+
+FIXUP_CHECKPOINT_SHA: _(set after green CI + Zeabur deploy of this fixup)_
+
+## Deferred Owner UX checklist
+
+Keep these for Core Foundation Integrated Review. They are **not** a current
+merge/P4.5 gate.
+
+### LOCAL ADMIN
 
 - [ ] local guild visible
 - [ ] human-readable guild
 - [ ] real backend connected
 - [ ] channels/roles metadata works
 
-## DISCORD
+### DISCORD
 
-- [ ] deployed SHA == branch HEAD
 - [ ] current Activity Hub live
 - [ ] no purple old renderer
 - [ ] DZIAŁAJ/TWOJE
@@ -37,7 +48,7 @@ Operator docs (no secret values): `docs/deploy/HEALTH.md`,
 - [ ] RSVP
 - [ ] reconcile
 
-## ADMIN
+### ADMIN
 
 - [ ] dashboard
 - [ ] channels
@@ -46,7 +57,7 @@ Operator docs (no secret values): `docs/deploy/HEALTH.md`,
 - [ ] Admin → Discord
 - [ ] mobile
 
-## WWW
+### WWW
 
 - [ ] login
 - [ ] activities
@@ -62,28 +73,3 @@ Operator docs (no secret values): `docs/deploy/HEALTH.md`,
 2. `pnpm infra:up` then `pnpm dev` (or activity + discord-gateway + admin).
 3. Activity: `ACTIVITY_DISCORD_PROJECTION_BASE_URL`, projection secret, `ACTIVITY_TRUST_ACTOR_HEADERS=true` (local only).
 4. Discord Gateway: `DISCORD_ENABLED=true`, bot in target guild.
-
-## Live Discord redeploy (if hub still purple)
-
-**Root cause seen on Zeabur:** service stuck on deploy **before** `e53b1a4` (wrong
-`dist/main.js` CMD) → crash loop → old hub message stays in Discord channel.
-
-1. Zeabur → `discord-gateway` → **Redeploy** branch `cursor/p4-1-activity-domain` @ HEAD.
-2. Confirm Variables: `ACTIVITY_ORGANIZATION_ID`, projection secret, Discord token.
-3. `GET /health/discord` → `state: ready`.
-4. Admin → hub channel → **Reconcile** (in-place update, no duplicate panel).
-
-Zeabur service `discord-gateway` → branch `cursor/p4-1-activity-domain` → redeploy → reconcile hub from Admin.
-
-## Live Zeabur checkpoint (2026-08-18, Cursor)
-
-Intended revision: latest `cursor/p4-1-activity-domain` after `c635bb9` (Admin
-login CTA + runtime doctor). Redeploy before treating Admin login as live.
-
-Admin currently (pre-redeploy) loads and shows 401 session copy; WWW login
-page loads. OAuth start 302 includes
-`https://v2-api.zeabur.app/api/auth/callback/discord`.
-
-Still **owner**: Hub visual (amber / DZIAŁAJ / no purple), complete OAuth in
-Discord if authorize rejects, logged-in Admin/WWW checklists above. Local DEV
-actor remains local-only.

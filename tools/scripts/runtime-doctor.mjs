@@ -1,3 +1,4 @@
+import { evaluatePublicOrigin } from '../runtime/public-origin.mjs';
 import {
   loadServiceRegistry,
   summarizeChecks,
@@ -159,6 +160,144 @@ async function probeActivityRead(apiOrigin) {
   }
 }
 
+async function probeWebLoginContract(webOrigin) {
+  const url = `${webOrigin.replace(/\/$/, '')}/logowanie`;
+  try {
+    const response = await fetch(url, { method: 'GET', redirect: 'manual' });
+    const body = typeof response.text === 'function' ? await response.text() : '';
+    const loopback = /localhost|127\.0\.0\.1|\[::1\]/i.test(body);
+    const identityMatch = body.match(
+      /https?:\/\/[^"'\\\s>]+\/identity\/oauth\/discord[^"'\\\s>]*/i,
+    );
+    const identityUrl = identityMatch?.[0] ?? '';
+    if (loopback) {
+      return {
+        code: 'WEB_LOGIN_ORIGIN',
+        status: 'FAIL',
+        expected: 'deployed /logowanie must not embed localhost/127.0.0.1/::1',
+        observed: identityUrl || 'loopback origin present in login HTML',
+        impact: 'Owner Discord login would open a local Identity process',
+        action: 'rebuild WWW with public NEXT_PUBLIC_IDENTITY_URL / NEXT_PUBLIC_WEB_ORIGIN',
+      };
+    }
+    if (identityUrl.length > 0) {
+      let origin = '';
+      try {
+        origin = new URL(identityUrl).origin;
+      } catch {
+        origin = '';
+      }
+      const evaluated = evaluatePublicOrigin(origin, { requireHttps: true });
+      return {
+        code: 'WEB_LOGIN_ORIGIN',
+        status: evaluated.ok ? 'PASS' : 'FAIL',
+        expected: 'deployed /logowanie href uses public https Identity origin',
+        observed: identityUrl,
+        impact: evaluated.ok ? 'none' : 'WWW Discord start is not a public Identity origin',
+        action: evaluated.ok
+          ? 'none'
+          : 'rebuild WWW with public NEXT_PUBLIC_IDENTITY_URL and NEXT_PUBLIC_WEB_ORIGIN',
+      };
+    }
+    return {
+      code: 'WEB_LOGIN_ORIGIN',
+      status: 'WARN',
+      expected: 'deployed /logowanie href uses public Identity origin',
+      observed: `${response.status} no identity oauth href in HTML`,
+      impact: 'cannot prove the baked WWW login URL from HTML alone',
+      action: 'confirm NEXT_PUBLIC_IDENTITY_URL in the WWW image and retry after rebuild',
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      code: 'WEB_LOGIN_ORIGIN',
+      status: BLOCKED_EXTERNAL,
+      expected: 'deployed /logowanie href uses public Identity origin',
+      observed: message,
+      impact: 'cannot prove the WWW Discord start URL',
+      action: 'retry from a network that can reach the public WWW',
+    };
+  }
+}
+
+async function probeOAuthStart(apiOrigin, webOrigin) {
+  const callbackURL = `${webOrigin.replace(/\/$/, '')}/aktywnosci`;
+  const startUrl = `${apiOrigin.replace(/\/$/, '')}/identity/oauth/discord?callbackURL=${encodeURIComponent(callbackURL)}`;
+  const expectedCallback = `${apiOrigin.replace(/\/$/, '')}/api/auth/callback/discord`;
+  try {
+    const response = await fetch(startUrl, { method: 'GET', redirect: 'manual' });
+    const location = response.headers.get('location') ?? '';
+    const haystack = `${startUrl}\n${location}`;
+    const loopback = /localhost|127\.0\.0\.1|\[::1\]/i.test(haystack);
+    const loopbackCheck = {
+      code: 'OAUTH_LOOPBACK',
+      status: loopback ? 'FAIL' : 'PASS',
+      expected: 'OAuth start Location must not contain localhost/127.0.0.1/::1',
+      observed: location === '' ? `${response.status} empty Location` : location,
+      impact: loopback ? 'deployed WWW login would open a local Identity process' : 'none',
+      action: loopback
+        ? 'rebuild WWW with public NEXT_PUBLIC_IDENTITY_URL and redeploy identity/api-gateway'
+        : 'none',
+    };
+    let redirectUri = '';
+    try {
+      redirectUri = new URL(location).searchParams.get('redirect_uri') ?? '';
+    } catch {
+      redirectUri = '';
+    }
+    const reachedDiscord = /discord\.com\/(?:api\/)?oauth2\/authorize/i.test(location);
+    const callbackOk = redirectUri === expectedCallback;
+    const ok = reachedDiscord && callbackOk && !loopback;
+    return [
+      loopbackCheck,
+      {
+        code: 'OAUTH_START',
+        status: ok ? 'PASS' : 'FAIL',
+        expected: `302 to Discord authorize with redirect_uri=${expectedCallback}`,
+        observed: `${response.status} redirect_uri=${redirectUri || 'missing'} discord=${String(reachedDiscord)}`,
+        impact: ok ? 'none' : 'deployed Discord login start is not the public V2 callback',
+        action: ok
+          ? 'none'
+          : 'confirm IDENTITY_AUTH_BASE_URL and Discord Developer Portal redirect URI',
+      },
+    ];
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return [
+      {
+        code: 'OAUTH_LOOPBACK',
+        status: 'BLOCKED_EXTERNAL',
+        expected: 'OAuth start Location must not contain loopback',
+        observed: message,
+        impact: 'cannot prove the production OAuth start chain',
+        action: 'retry from a network that can reach the public API',
+      },
+      {
+        code: 'OAUTH_START',
+        status: 'BLOCKED_EXTERNAL',
+        expected: '302 to Discord authorize',
+        observed: message,
+        impact: 'cannot prove the production OAuth start chain',
+        action: 'retry from a network that can reach the public API',
+      },
+    ];
+  }
+}
+
+function checkDeployedPublicOrigin(code, value, expectedName) {
+  const result = evaluatePublicOrigin(value, { requireHttps: true });
+  return {
+    code,
+    status: result.ok ? 'PASS' : 'FAIL',
+    expected: `public https ${expectedName}`,
+    observed: result.ok ? result.origin : `${value} (${result.reason})`,
+    impact: result.ok ? 'none' : `${expectedName} is missing, loopback, or not https`,
+    action: result.ok
+      ? 'none'
+      : `set ${expectedName} to the public Zeabur https origin and rebuild`,
+  };
+}
+
 export async function runRuntimeDoctor(env = process.env, repositoryRoot) {
   const registry = loadServiceRegistry(repositoryRoot);
   const checks = [
@@ -199,11 +338,33 @@ export async function runRuntimeDoctor(env = process.env, repositoryRoot) {
       }
     }
     if (adminBase !== undefined && adminBase.length > 0) {
-      checks.push(await probe('ADMIN', adminBase.replace(/\/$/, ''), 'HTTP 200 from public Admin'));
+      checks.push(
+        await probe(
+          'ADMIN',
+          `${adminBase.replace(/\/$/, '')}/health`,
+          'HTTP 200 from public Admin /health',
+        ),
+      );
     }
     if (webBase !== undefined && webBase.length > 0) {
       const origin = webBase.replace(/\/$/, '');
+      checks.push(checkDeployedPublicOrigin('WEB_PUBLIC_ORIGIN_REMOTE', origin, 'WWW origin'));
       checks.push(await probe('WWW', `${origin}/health`, 'HTTP 200 from public member WWW'));
+      checks.push(await probeWebLoginContract(origin));
+    }
+    if (apiBase !== undefined && apiBase.length > 0) {
+      checks.push(checkDeployedPublicOrigin('WEB_API_BASE_REMOTE', apiBase, 'WWW API origin'));
+      checks.push(
+        checkDeployedPublicOrigin('WEB_IDENTITY_BASE_REMOTE', apiBase, 'WWW Identity origin'),
+      );
+    }
+    if (
+      apiBase !== undefined &&
+      apiBase.length > 0 &&
+      webBase !== undefined &&
+      webBase.length > 0
+    ) {
+      checks.push(...(await probeOAuthStart(apiBase, webBase)));
     }
     if (discordHealth !== undefined && discordHealth.length > 0) {
       checks.push(

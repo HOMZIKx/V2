@@ -44,11 +44,14 @@ function flagBadge(flag: OperatorFlag): { tone: 'ok' | 'warn' | 'error'; label: 
   if (flag === 'no') {
     return { tone: 'error', label: 'Nie' };
   }
+  if (flag === 'disabled') {
+    return { tone: 'warn', label: 'Wyłączone' };
+  }
   return { tone: 'warn', label: 'Nie wiadomo' };
 }
 
 export function DashboardPage() {
-  const { guilds, guildId, loadingGuilds } = useGuildContext();
+  const { guilds, guildId } = useGuildContext();
   const guildName = guilds.find((guild) => guild.id === guildId)?.name ?? 'Serwer';
   const loader = useCallback(async (id: string) => {
     const [readiness, hub] = await Promise.all([getReadiness(id), getHub(id)]);
@@ -98,15 +101,13 @@ export function DashboardPage() {
             </div>
             <div className="row">
               <span>Czy Discord działa?</span>
-              <Badge tone={loadingGuilds ? 'info' : guilds.length > 0 ? 'ok' : 'warn'}>
-                {loadingGuilds ? 'Sprawdzanie…' : guilds.length > 0 ? 'Tak' : 'Brak serwerów'}
+              <Badge tone={flagBadge(runtime.discord).tone}>
+                {flagBadge(runtime.discord).label}
               </Badge>
             </div>
             <div className="row">
               <span>Czy bot jest połączony?</span>
-              <Badge tone={loadingGuilds ? 'info' : guilds.length > 0 ? 'ok' : 'warn'}>
-                {loadingGuilds ? 'Sprawdzanie…' : guilds.length > 0 ? 'Tak' : 'Nie widać guild'}
-              </Badge>
+              <Badge tone={flagBadge(runtime.bot).tone}>{flagBadge(runtime.bot).label}</Badge>
             </div>
             <div className="row">
               <span>Czy wersje usług wyglądają spójnie?</span>
@@ -149,12 +150,8 @@ export function DashboardPage() {
             <div className="stack">
               <div className="row">
                 <span>Discord</span>
-                <Badge tone={loadingGuilds ? 'info' : guilds.length > 0 ? 'ok' : 'warn'}>
-                  {loadingGuilds
-                    ? 'Sprawdzanie…'
-                    : guilds.length > 0
-                      ? 'Połączony'
-                      : 'Brak połączenia'}
+                <Badge tone={flagBadge(runtime?.discord ?? 'unknown').tone}>
+                  {flagBadge(runtime?.discord ?? 'unknown').label}
                 </Badge>
               </div>
               <div className="row">

@@ -41,6 +41,66 @@ describe('runtime doctor', () => {
     expect(revision?.observed).toContain('MATCH');
   });
 
+  it('fails OAuth loopback when the start Location points at localhost', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        if (String(input).includes('/identity/oauth/discord')) {
+          return {
+            status: 302,
+            headers: {
+              get: (name: string) =>
+                name.toLowerCase() === 'location'
+                  ? 'http://127.0.0.1:4200/identity/oauth/discord'
+                  : null,
+            },
+            json: async () => ({}),
+          };
+        }
+        return {
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ status: 'ok', gitCommitSha: 'abc1234' }),
+          text: async () =>
+            '<a href="https://v2-api.zeabur.app/identity/oauth/discord">Zaloguj</a>',
+        };
+      }),
+    );
+    const summary = await runRuntimeDoctor({
+      V2_SMOKE_API_BASE: 'https://v2-api.zeabur.app',
+      V2_SMOKE_WEB_BASE: 'https://v2-web.zeabur.app',
+    });
+    const loopback = summary.checks.find((check) => check.code === 'OAUTH_LOOPBACK');
+    expect(loopback?.status).toBe('FAIL');
+  });
+
+  it('fails when deployed WWW login HTML embeds a loopback Identity origin', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        if (String(input).includes('/logowanie')) {
+          return {
+            status: 200,
+            headers: { get: () => null },
+            json: async () => ({}),
+            text: async () => '<a href="http://127.0.0.1:4200/identity/oauth/discord">Zaloguj</a>',
+          };
+        }
+        return {
+          status: 200,
+          headers: { get: () => null },
+          json: async () => ({ status: 'ok', gitCommitSha: 'abc1234' }),
+          text: async () => '',
+        };
+      }),
+    );
+    const summary = await runRuntimeDoctor({
+      V2_SMOKE_WEB_BASE: 'https://v2-web.zeabur.app',
+    });
+    const login = summary.checks.find((check) => check.code === 'WEB_LOGIN_ORIGIN');
+    expect(login?.status).toBe('FAIL');
+  });
+
   it('uses BLOCKED_EXTERNAL when a public URL cannot be reached', async () => {
     vi.stubGlobal(
       'fetch',

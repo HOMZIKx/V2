@@ -5,6 +5,8 @@ import { shouldUseServerSessionGate } from './session-cookie-host';
 describe('shouldUseServerSessionGate', () => {
   it('keeps the local same-host cookie gate', () => {
     expect(shouldUseServerSessionGate('127.0.0.1', 'http://127.0.0.1:4000')).toBe(true);
+    expect(shouldUseServerSessionGate('localhost', 'http://127.0.0.1:4000')).toBe(true);
+    expect(shouldUseServerSessionGate('127.0.0.1', 'http://localhost:4000')).toBe(true);
   });
 
   it('defers to the client when WWW and API are different hosts', () => {

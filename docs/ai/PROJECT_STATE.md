@@ -2,13 +2,10 @@
 
 ## Status
 
-`READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT` —
-`P4-PRODUCTION-RECOVERY-OBSERVABILITY-AND-DEPLOY-SAFETY-001`
+`READY_FOR_CHATGPT_P4_0_DELTA_AUDIT` pending green CI + Zeabur of this
+fixup SHA — task `P4-COMBINED-AUDIT-FIXUP-001`.
 
-Follow-up on the same branch (not a new product stage):
-`P4-OAUTH-SPLIT-ORIGIN` WWW Discord bounce → login.
-
-Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
+Not APPROVED. Not merged. Do not start P4.5.
 
 ## Explicit gates
 
@@ -20,67 +17,41 @@ Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
+- FIXUP_START_SHA: `1290df92681ee1e98fde3e0efaf231f7d110f6db`
+- FIXUP_CHECKPOINT_SHA: _(this commit after push)_
 - SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 - OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
 
-## WWW Discord login bounce (this follow-up)
+## Owner roadmap (#26)
 
-Live `GET https://v2-web.zeabur.app/aktywnosci` returned `307` to
-`/logowanie?next=/aktywnosci` with no WWW cookie. Session cookie is host-only
-on `v2-api.zeabur.app`. Middleware now skips that gate on split hosts.
-Identity sets `SameSite=None; Secure` when trusted origins use a different
-host than `IDENTITY_AUTH_BASE_URL`. Needs redeploy of **web** + **identity-service**
-(+ api-gateway Set-Cookie forwarding). Discord consent flash is auto-approve,
-not a clickable hang.
+Before **Core Foundation Integrated Review**, P4.1–P4.4 technical closure
+requires CI, security, ChatGPT audit, Zeabur, runtime smoke, health, and
+revision proof.
 
-## What this task changed (current P4 only)
+It does **not** require a full manual Owner UX walkthrough of the current
+transitional Discord / Admin / WWW surfaces. That review is deferred.
 
-- One deployable topology registry (`tools/runtime/service-registry.json`)
-  with drift CI (`revisionCapability`, no `VITE_*` secrets, no tsx CMD).
-- Safe revision contract: `/health/live` plus api-gateway `/version`;
-  doctor `MATCH` / `MISMATCH` / `UNKNOWN`.
-- Ready probes fail closed on critical deps (DB/Redis/upstreams). Live stays
-  cheap. Activity ready exposes outbox `idle|working|backlogged|retrying|stuck`.
-- Correlation IDs (`x-correlation-id` / `x-request-id`) generated at
-  api-gateway and Admin; structured logs redact secrets.
-- Operational error categories in activity logs/JSON; no stack to browsers.
-- Bounded SIGTERM (15s) on Nest APPs; Redis JTI `enableOfflineQueue: false`;
-  outbox reclaim of expired leases; list queries `LIMIT 200`; proxy timeouts.
-- Admin Diagnostyka answers API/Activity/Discord/bot/config/Hub/revision
-  questions in Polish.
-- Operator docs: health, public exposure, rollback, backup/restore, migration
-  safety, incident runbook.
+## Combined-audit findings (code)
+
+1. WWW production origins fail-closed (no localhost OAuth bake).
+2. api-gateway `/health/ready` probes upstream `/health/ready`.
+3. Admin Discord/bot flags use gateway Discord runtime state, not guild list.
+4. Admin production image serves `serve-static.mjs` (not vite preview).
+5. Discord projections validate guild/channel before write.
+6. SoT aligned with Issue #26 deferred UX policy.
 
 ## Validation (local)
 
 - `pnpm format:check` — pass
-- `pnpm validate` — pass (`V2_SMOKE_*` unset)
+- lint / typecheck / unit tests / architecture / static `runtime:doctor` — pass
+- `apps/web` e2e — 14 passed (loopback session gate + member cookies)
+- production Dockerfiles 7/7 — pass (`v2-*:operability`)
+- Admin image proof: `/`, `/login`, `/health`, stop — pass
+- `pnpm test:runtime-smoke` — pass
 - `pnpm audit --audit-level=high` — pass (1 moderate, 0 high/critical)
-- Production Dockerfiles (7/7) — pass (`v2-*:operability`)
-- `pnpm runtime:doctor` static — pass
-- Local activity `pg_dump` → isolated `pg_restore` — `RESTORE_PROOF: PASS`
 
-## Live Zeabur until this SHA is redeployed
-
-Public stack still reports `gitCommitSha=9a3e922`. `/version` 404 until
-api-gateway is redeployed. That is deployment lag.
-
-## Owner next
-
-1. Redeploy this checkpoint SHA to all seven APPs. Set `GIT_COMMIT_SHA` per APP.
-2. Discord Portal redirect URI:
-   `https://v2-api.zeabur.app/api/auth/callback/discord`
-3. Keep `ACTIVITY_TRUST_ACTOR_HEADERS=false`,
-   `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`,
-   `ACTIVITY_ALLOW_TEST_SEED=false`.
-4. `ACTIVITY_ENABLED=true` only with authorization-service + inbound clients +
-   Redis JTI.
-5. Combined visual review: Admin Diagnostyka, Hub amber `#D48632`, WWW/Admin
-   failure copy (no raw `Failed to fetch`).
-6. After the OAuth bounce fix is on this branch: redeploy **web**,
-   **identity-service**, **api-gateway**, then retry WWW Discord login.
+CI and live Zeabur of this SHA are recorded after push.
 
 ## Last updated
 
-2026-08-18 — WWW OAuth split-origin bounce fix (same branch, no merge)
+2026-08-18 — P4-COMBINED-AUDIT-FIXUP-001 code checkpoint

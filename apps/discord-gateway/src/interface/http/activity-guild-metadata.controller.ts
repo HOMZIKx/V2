@@ -23,6 +23,10 @@ import {
   DISCORD_GATEWAY_TOKEN,
 } from '../discord/discord.tokens.js';
 import { executeHubPanelOperation } from '../discord/hub-panel-operation.js';
+import {
+  assertProjectionChannelAllowed,
+  resolveAllowedProjectionGuild,
+} from './projection-channel-scope.js';
 
 const membersBodySchema = z.object({
   userIds: z.array(z.string().min(1)).max(50),
@@ -147,6 +151,15 @@ export class ActivityGuildMetadataController {
       );
     }
     const gateway = this.requireGateway();
+    const allowedGuildId = resolveAllowedProjectionGuild({
+      configuredGuildId: this.config.DISCORD_TEST_GUILD_ID,
+      payloadGuildId: guildId,
+    });
+    await assertProjectionChannelAllowed({
+      gateway,
+      allowedGuildId,
+      channelId: parsed.data.channelId,
+    });
     if (this.activityClient === null) {
       throw new ServiceUnavailableException({
         status: 'unavailable',

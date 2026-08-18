@@ -9,9 +9,16 @@ function getApiBaseUrl(): string {
 }
 
 function isProtectedPath(pathname: string): boolean {
+  if (pathname === '/') {
+    return true;
+  }
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+function loginNextPath(pathname: string): string {
+  return pathname === '/' ? '/aktywnosci' : pathname;
 }
 
 export async function middleware(request: NextRequest) {
@@ -20,22 +27,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const apiBase = getApiBaseUrl();
   // Session cookie is host-only on the API origin. On split public hosts the
   // browser never sends it to WWW, so the client SessionProvider probes
   // /session/me with credentials: include instead.
-  if (!shouldUseServerSessionGate(request.nextUrl.hostname, getApiBaseUrl())) {
+  if (!shouldUseServerSessionGate(request.nextUrl.hostname, apiBase)) {
     return NextResponse.next();
   }
 
   const cookie = request.headers.get('cookie') ?? '';
-  if (cookie.trim() === '') {
+  if (!cookie.includes('v2.identity.session_token')) {
     const login = new URL('/logowanie', request.url);
-    login.searchParams.set('next', pathname);
+    login.searchParams.set('next', loginNextPath(pathname));
     return NextResponse.redirect(login);
   }
 
   try {
-    const probe = await fetch(`${getApiBaseUrl().replace(/\/$/, '')}/session/me`, {
+    const probe = await fetch(`${apiBase.replace(/\/$/, '')}/session/me`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -46,7 +54,7 @@ export async function middleware(request: NextRequest) {
     });
     if (probe.status === 401 || probe.status === 403) {
       const login = new URL('/logowanie', request.url);
-      login.searchParams.set('next', pathname);
+      login.searchParams.set('next', loginNextPath(pathname));
       return NextResponse.redirect(login);
     }
   } catch {
@@ -57,5 +65,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/aktywnosci', '/aktywnosci/:path*', '/moje', '/powiadomienia'],
+  matcher: ['/', '/aktywnosci', '/aktywnosci/:path*', '/moje', '/powiadomienia'],
 };

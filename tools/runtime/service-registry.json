@@ -64,7 +64,7 @@
       "rootDirectory": "/",
       "health": { "live": "/health/live", "ready": "/health/ready" },
       "public": true,
-      "dependencies": ["identity-service", "activity-service"],
+      "dependencies": ["identity-service", "activity-service", "discord-gateway"],
       "buildTimeVarNames": [],
       "revisionCapability": true
     },
@@ -90,7 +90,7 @@
       "dockerfile": "Dockerfile.admin",
       "zbpackDockerfileName": "admin",
       "rootDirectory": "/",
-      "health": { "live": "/" },
+      "health": { "live": "/health" },
       "public": true,
       "dependencies": ["api-gateway"],
       "buildTimeVarNames": ["VITE_API_BASE_URL", "VITE_GIT_COMMIT_SHA"],

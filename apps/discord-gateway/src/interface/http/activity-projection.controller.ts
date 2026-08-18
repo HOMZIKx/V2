@@ -19,6 +19,10 @@ import { renderActivityEventMessage } from '../../presentation/discord/activity-
 import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
 import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
 import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
+import {
+  assertProjectionChannelAllowed,
+  resolveAllowedProjectionGuild,
+} from './projection-channel-scope.js';
 
 const deliverySchema = z.object({
   outboxId: z.string().min(1),
@@ -30,6 +34,7 @@ const deliverySchema = z.object({
 
 const hubPayloadSchema = z.object({
   kind: z.literal('hub').optional(),
+  guildId: z.string().min(1).optional(),
   channelId: z.string().min(1),
   messageId: z.string().nullable().optional(),
   opaquePanelId: z.string().regex(/^[a-f0-9]{12}$/),
@@ -38,6 +43,7 @@ const hubPayloadSchema = z.object({
 
 const eventPayloadSchema = z.object({
   kind: z.literal('event').optional(),
+  guildId: z.string().min(1).optional(),
   channelId: z.string().min(1),
   messageId: z.string().nullable().optional(),
   opaqueEventId: z.string().regex(/^[a-f0-9]{12}$/),
@@ -127,6 +133,9 @@ export class ActivityProjectionController {
       this.delivered.set(parsed.data.outboxId, result);
       return result;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       const classified = classifyDiscordError(parsed.data.outboxId, error);
       if (classified.status === 'rate_limited') {
         throw new HttpException(classified, HttpStatus.TOO_MANY_REQUESTS);
@@ -175,6 +184,15 @@ export class ActivityProjectionController {
         throw new Error('Invalid projection payload.');
       }
       const hub = hubParsed.data;
+      const allowedGuildId = resolveAllowedProjectionGuild({
+        configuredGuildId: this.config.DISCORD_TEST_GUILD_ID,
+        ...(hub.guildId !== undefined ? { payloadGuildId: hub.guildId } : {}),
+      });
+      await assertProjectionChannelAllowed({
+        gateway,
+        allowedGuildId,
+        channelId: hub.channelId,
+      });
       const message = toComponentsV2Payload(
         renderActivityHubMessage({
           opaquePanelId: hub.opaquePanelId,
@@ -208,6 +226,15 @@ export class ActivityProjectionController {
       throw new Error('Invalid projection payload.');
     }
     const event = eventParsed.data;
+    const allowedGuildId = resolveAllowedProjectionGuild({
+      configuredGuildId: this.config.DISCORD_TEST_GUILD_ID,
+      ...(event.guildId !== undefined ? { payloadGuildId: event.guildId } : {}),
+    });
+    await assertProjectionChannelAllowed({
+      gateway,
+      allowedGuildId,
+      channelId: event.channelId,
+    });
     const message = toComponentsV2Payload(
       renderActivityEventMessage({
         opaqueEventId: event.opaqueEventId,

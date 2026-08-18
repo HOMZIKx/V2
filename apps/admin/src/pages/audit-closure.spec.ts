@@ -11,6 +11,15 @@ function read(name: string): string {
 }
 
 describe('Admin audit-closure product contracts', () => {
+  it('uses real Discord runtime flags instead of guild inventory', () => {
+    const source = read('DashboardPage.tsx');
+    expect(source).toContain('Czy Discord działa?');
+    expect(source).toContain('Czy bot jest połączony?');
+    expect(source).toContain('flagBadge(runtime.discord)');
+    expect(source).toContain('flagBadge(runtime.bot)');
+    expect(source).not.toContain("guilds.length > 0 ? 'Tak'");
+  });
+
   it('shows Discord channel metadata failure instead of an empty picker', () => {
     const source = read('ChannelsPage.tsx');
     expect(source).toContain('Nie udało się pobrać kanałów z Discorda.');

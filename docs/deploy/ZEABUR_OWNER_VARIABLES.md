@@ -168,14 +168,15 @@ Bez publicznego API origin Admin/WWW wołają zły host.
 
 ## `api-gateway`
 
-| Klucz                               | Tag                                                      |
-| ----------------------------------- | -------------------------------------------------------- |
-| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                             |
-| `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                 |
-| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL                                                 |
-| `IDENTITY_SERVICE_BASE_URL`         | INTERNAL (WWW session)                                   |
-| `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                    |
-| `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor) |
+| Klucz                               | Tag                                                                |
+| ----------------------------------- | ------------------------------------------------------------------ |
+| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                                       |
+| `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                           |
+| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL                                                           |
+| `IDENTITY_SERVICE_BASE_URL`         | INTERNAL (WWW session)                                             |
+| `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                              |
+| `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor)           |
+| `DISCORD_GATEWAY_BASE_URL`          | INTERNAL (discord-gateway origin for operator Discord diagnostics) |
 
 ---
 

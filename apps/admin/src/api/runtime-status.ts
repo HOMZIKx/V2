@@ -1,11 +1,13 @@
 import { getApiBaseUrl } from './http.js';
 
-export type OperatorFlag = 'yes' | 'no' | 'unknown';
+export type OperatorFlag = 'yes' | 'no' | 'unknown' | 'disabled';
 
 export type OperatorRuntimeStatus = {
   readonly api: OperatorFlag;
   readonly activity: OperatorFlag;
   readonly identity: OperatorFlag;
+  readonly discord: OperatorFlag;
+  readonly bot: OperatorFlag;
   readonly apiRevision: string;
   readonly adminRevision: string;
   readonly revision: 'MATCH' | 'MISMATCH' | 'UNKNOWN';
@@ -14,6 +16,35 @@ export type OperatorRuntimeStatus = {
 
 function flagFromOk(ok: boolean): OperatorFlag {
   return ok ? 'yes' : 'no';
+}
+
+function flagFromReadyState(value: unknown, readyOk: boolean): OperatorFlag {
+  if (value === 'ok') {
+    return readyOk ? 'yes' : 'no';
+  }
+  if (value === 'unhealthy') {
+    return 'no';
+  }
+  if (value === true) {
+    return readyOk ? 'yes' : 'no';
+  }
+  if (value === false) {
+    return 'no';
+  }
+  return 'unknown';
+}
+
+function flagFromDiscordState(value: unknown): OperatorFlag {
+  if (value === 'ready') {
+    return 'yes';
+  }
+  if (value === 'disconnected') {
+    return 'no';
+  }
+  if (value === 'disabled') {
+    return 'disabled';
+  }
+  return 'unknown';
 }
 
 function compareRevisions(
@@ -38,6 +69,14 @@ export function readAdminRevision(): string {
   return value !== undefined && value.length > 0 ? value : 'unknown';
 }
 
+export function mapDiscordOperatorFlags(discordState: unknown): {
+  readonly discord: OperatorFlag;
+  readonly bot: OperatorFlag;
+} {
+  const flag = flagFromDiscordState(discordState);
+  return { discord: flag, bot: flag };
+}
+
 export async function getOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus> {
   const origin = getApiBaseUrl().replace(/\/$/, '');
   const adminRevision = readAdminRevision();
@@ -50,25 +89,21 @@ export async function getOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus>
       gitCommitSha?: string;
     };
     const ready = (await readyResponse.json().catch(() => ({}))) as {
-      checks?: { activity?: boolean; identity?: boolean };
+      checks?: { activity?: unknown; identity?: unknown };
+      discord?: { state?: unknown };
       outbox?: { state?: string };
     };
     const apiRevision =
       typeof live.gitCommitSha === 'string' && live.gitCommitSha.length > 0
         ? live.gitCommitSha
         : 'unknown';
+    const discordFlags = mapDiscordOperatorFlags(ready.discord?.state);
     return {
       api: flagFromOk(liveResponse.ok),
-      activity:
-        ready.checks?.activity === undefined
-          ? liveResponse.ok
-            ? 'unknown'
-            : 'no'
-          : flagFromOk(ready.checks.activity && readyResponse.ok),
-      identity:
-        ready.checks?.identity === undefined
-          ? 'unknown'
-          : flagFromOk(ready.checks.identity && readyResponse.ok),
+      activity: flagFromReadyState(ready.checks?.activity, readyResponse.ok),
+      identity: flagFromReadyState(ready.checks?.identity, readyResponse.ok),
+      discord: discordFlags.discord,
+      bot: discordFlags.bot,
       apiRevision,
       adminRevision,
       revision: compareRevisions(adminRevision, apiRevision),
@@ -79,6 +114,8 @@ export async function getOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus>
       api: 'no',
       activity: 'no',
       identity: 'unknown',
+      discord: 'unknown',
+      bot: 'unknown',
       apiRevision: 'unknown',
       adminRevision,
       revision: 'UNKNOWN',
