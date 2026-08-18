@@ -38,6 +38,8 @@ COPY --from=build /app/packages/observability/package.json ./packages/observabil
 COPY --from=build /app/packages/observability/dist ./packages/observability/dist
 COPY --from=build /app/services/identity-service/package.json ./services/identity-service/package.json
 COPY --from=build /app/services/identity-service/dist ./services/identity-service/dist
+COPY --from=build /app/services/identity-service/migrations ./services/identity-service/migrations
+COPY --from=build /app/services/identity-service/scripts/migrate-prod.mjs ./services/identity-service/scripts/migrate-prod.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/identity-service...
 WORKDIR /app/services/identity-service
 EXPOSE 4200
