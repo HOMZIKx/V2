@@ -10,6 +10,7 @@ import {
 } from '../authorization/authorization-client.js';
 import { enforceLoginEntitlement } from '../authorization/login-entitlement-gate.js';
 import type { IdentityEnv } from '../config/identity-env.js';
+import { resolveSessionCookieAttributes } from './session-cookie-attributes.js';
 
 const REDIS_KEY_PREFIX = 'v2:identity:auth:';
 
@@ -105,6 +106,11 @@ export function createBetterAuth(config: IdentityEnv, deps: CreateBetterAuthDepe
         ? createAuthorizationClient(config)
         : null;
 
+  const cookieAttributes = resolveSessionCookieAttributes({
+    authBaseUrl: config.IDENTITY_AUTH_BASE_URL,
+    trustedOrigins: [...trustedOrigins],
+  });
+
   const auth = betterAuth({
     appName: 'v2-identity',
     database: pool,
@@ -117,8 +123,14 @@ export function createBetterAuth(config: IdentityEnv, deps: CreateBetterAuthDepe
       // Always mint UUIDs in JS. The string option `"uuid"` skips JS generation when
       // the driver reports native UUID support, but our TEXT PKs have no DB default.
       database: { generateId: () => crypto.randomUUID() },
-      useSecureCookies: isProduction,
+      useSecureCookies: isProduction || cookieAttributes.secure,
       cookiePrefix: config.IDENTITY_COOKIE_PREFIX,
+      defaultCookieAttributes: {
+        sameSite: cookieAttributes.sameSite,
+        secure: cookieAttributes.secure,
+        httpOnly: true,
+        path: '/',
+      },
     },
     session: {
       storeSessionInDatabase: false,

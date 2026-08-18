@@ -2,6 +2,20 @@
 
 ## Aktywne
 
+### P4-OAUTH-SPLIT-ORIGIN — bounce WWW po Discord
+
+- **Status:** `CODE_FIX` (ta gałąź) — nie blokuje właściciela, nie zastępuje
+  ADR-0011.
+- **Objaw:** ekran zgody Discord miga (`...`), brak kliknięcia, powrót do
+  „Zaloguj przez Discord”. Live: `GET /aktywnosci` → 307 `/logowanie`.
+- **Przyczyna:** cookie sesji jest host-only na API; WWW middleware brało brak
+  cookie na `v2-web.zeabur.app` za wylogowanie. Drugi warunek: `SameSite=Lax`
+  nie jedzie w credentialed fetch WWW→API (inne hosty na PSL `zeabur.app`).
+- **Fix:** middleware odpuszcza gate gdy hostname WWW ≠ hostname API;
+  Identity `SameSite=None; Secure` gdy trusted origin ma inny host.
+  Lax zostaje lokalnie (ten sam hostname). Host-only bez `Domain=` — bez zmiany
+  ADR-0011.
+
 ### DEC-001 — Deploy V2 na Zeabur (zakres i moment)
 
 - **Status:** `OWNER_RESUME_REQUESTED` (2026-08-16) — właściciel jawnie prosi o

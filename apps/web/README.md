@@ -43,6 +43,11 @@ Logout: `POST ${IDENTITY}/identity/logout` with credentials, then `/logowanie`.
 
 Identity must allow `NEXT_PUBLIC_WEB_ORIGIN` in trusted origins / callback policy. WWW login requires Authz `permission.platform.login.www` (Identity gate).
 
+On production split hosts (`v2-web` vs `v2-api`) the session cookie is **not**
+on the WWW origin. Middleware must not bounce `/aktywnosci` to `/logowanie`
+just because the WWW request has no cookie — `ProtectedApp` probes the API
+instead. Local `127.0.0.1` keeps the server cookie gate (same hostname).
+
 ## Scope notes
 
 - No activity creator in P4.4 (Discord-only create).

@@ -1,5 +1,26 @@
 ﻿# Cursor → ChatGPT handoff
 
+## 0. Follow-up: WWW Discord bounce (same branch)
+
+Owner symptom: Discord OAuth flashes (`...`, no click) then returns to WWW
+„Zaloguj przez Discord”.
+
+Live proof: `GET https://v2-web.zeabur.app/aktywnosci` → `307 Location:
+/logowanie?next=%2Faktywnosci`. Session cookie is host-only on
+`v2-api.zeabur.app`; WWW middleware treated a missing WWW cookie as logged-out.
+
+Fix (not merged, not P4.5):
+
+- WWW middleware skips the cookie gate when request hostname ≠ API hostname.
+- Identity `SameSite=None; Secure` when a trusted origin host ≠ auth base host.
+- Gateway uses `Headers.getSetCookie()` so multiple Set-Cookie values survive.
+
+ADR-0011 unchanged (still host-only; Lax remains same-hostname / local).
+
+Owner: redeploy **web**, **identity-service**, **api-gateway**. Then retry WWW
+login. If still bounced after that, next suspect is Authz
+`permission.platform.login.www` fail-closed — not this cookie gate.
+
 ## 1. Status
 
 `READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT` — task

@@ -5,6 +5,9 @@
 `READY_FOR_COMBINED_OWNER_CHATGPT_AUDIT` —
 `P4-PRODUCTION-RECOVERY-OBSERVABILITY-AND-DEPLOY-SAFETY-001`
 
+Follow-up on the same branch (not a new product stage):
+`P4-OAUTH-SPLIT-ORIGIN` WWW Discord bounce → login.
+
 Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 
 ## Explicit gates
@@ -20,6 +23,16 @@ Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 - START_SHA: `6b57d2d78050c44db0e84df6a0028f3bc25700f7`
 - SECURITY_BASE_SHA: `bbef5f6d4997743a1d4d9788d76b46a9d4fe31fe`
 - OPERABILITY_CHECKPOINT_SHA: `fea6a020599a50d4727e28f2e4d6e2b225351b02`
+
+## WWW Discord login bounce (this follow-up)
+
+Live `GET https://v2-web.zeabur.app/aktywnosci` returned `307` to
+`/logowanie?next=/aktywnosci` with no WWW cookie. Session cookie is host-only
+on `v2-api.zeabur.app`. Middleware now skips that gate on split hosts.
+Identity sets `SameSite=None; Secure` when trusted origins use a different
+host than `IDENTITY_AUTH_BASE_URL`. Needs redeploy of **web** + **identity-service**
+(+ api-gateway Set-Cookie forwarding). Discord consent flash is auto-approve,
+not a clickable hang.
 
 ## What this task changed (current P4 only)
 
@@ -65,7 +78,9 @@ api-gateway is redeployed. That is deployment lag.
    Redis JTI.
 5. Combined visual review: Admin Diagnostyka, Hub amber `#D48632`, WWW/Admin
    failure copy (no raw `Failed to fetch`).
+6. After the OAuth bounce fix is on this branch: redeploy **web**,
+   **identity-service**, **api-gateway**, then retry WWW Discord login.
 
 ## Last updated
 
-2026-08-18 — P4 production recovery / observability / deploy safety
+2026-08-18 — WWW OAuth split-origin bounce fix (same branch, no merge)

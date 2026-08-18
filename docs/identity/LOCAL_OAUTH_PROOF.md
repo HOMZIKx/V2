@@ -171,8 +171,9 @@ redis-cli -n 1 --scan --pattern 'v2:identity:auth:*'
 ## 8. Cookie summary (no secret values)
 
 - Name prefix: `v2.identity` (configurable via `IDENTITY_COOKIE_PREFIX`).
-- `HttpOnly`, `SameSite=Lax`, host-only, `Secure` outside localhost
-  (`useSecureCookies` follows `NODE_ENV=production`).
+- `HttpOnly`, host-only, `Secure` on HTTPS. `SameSite=Lax` when WWW/Admin share
+  the auth hostname (local). `SameSite=None; Secure` when trusted origins use a
+  different host than `IDENTITY_AUTH_BASE_URL` (Zeabur WWW/Admin vs API).
 - Opaque session id only — no JWT in the cookie, no tokens in
   `localStorage`/`sessionStorage`.
 - Cookie cache and stateless session are disabled, so revoke is immediate.

@@ -11,10 +11,11 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { IDENTITY_SERVICE_BASE_URL } from './activity-proxy.tokens.js';
+import { collectUpstreamSetCookies } from './upstream-set-cookie.js';
 
 /**
- * Browser → api-gateway → identity-service. Cookies stay on the public API host
- * so WWW login and /session/me share the same site.
+ * Browser → api-gateway → identity-service. Cookies stay host-only on the
+ * public API host so WWW/Admin `/session/me` and OAuth share one cookie jar.
  */
 @Controller()
 export class IdentityProxyController {
@@ -105,14 +106,10 @@ export class IdentityProxyController {
       'host',
       'content-length',
     ]);
-    const setCookies: string[] = [];
+    const setCookies = collectUpstreamSetCookies(upstream.headers);
     upstream.headers.forEach((value, key) => {
       const lower = key.toLowerCase();
-      if (hopByHop.has(lower)) {
-        return;
-      }
-      if (lower === 'set-cookie') {
-        setCookies.push(value);
+      if (hopByHop.has(lower) || lower === 'set-cookie') {
         return;
       }
       responseHeaders[key] = value;

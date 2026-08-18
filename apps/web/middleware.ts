@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { shouldUseServerSessionGate } from './src/lib/session-cookie-host';
+
 const PROTECTED_PREFIXES = ['/aktywnosci', '/moje', '/powiadomienia'] as const;
 
 function getApiBaseUrl(): string {
@@ -15,6 +17,13 @@ function isProtectedPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Session cookie is host-only on the API origin. On split public hosts the
+  // browser never sends it to WWW, so the client SessionProvider probes
+  // /session/me with credentials: include instead.
+  if (!shouldUseServerSessionGate(request.nextUrl.hostname, getApiBaseUrl())) {
     return NextResponse.next();
   }
 

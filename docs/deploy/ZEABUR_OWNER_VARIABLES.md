@@ -239,6 +239,11 @@ Na każdym serwisie APP ustaw `GIT_COMMIT_SHA` (PUBLIC) na SHA **tego** redeploy
 
 `https://v2-api.zeabur.app/api/auth/callback/discord`
 
+Cookie sesji jest host-only na `v2-api.zeabur.app`. WWW/Admin na innych hostach
+Zeabur są cross-site: Identity ustawia `SameSite=None; Secure`. `API_GATEWAY_CORS_ORIGINS`
+musi zawierać te same originy WWW i Admin. Po OAuth nie oczekuj cookie na
+`v2-web.zeabur.app` — sesję sprawdza `GET /session/me` z `credentials: include`.
+
 ---
 
 ## Po wklejeniu Variables
