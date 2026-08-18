@@ -148,12 +148,19 @@ Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 
 Te serwisy budują się przez Dockerfile (`Dockerfile.web`, `Dockerfile.admin`). Build **musi** przejść przed startem kontenera.
 
-| Klucz                    | Tag                                                                                   | Kiedy                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `ZBPACK_DOCKERFILE_NAME` | PUBLIC VALUE = `web` lub `admin`                                                      | zawsze                                                     |
-| `VITE_API_BASE_URL`      | PUBLIC VALUE — publiczny URL `api-gateway` (np. `https://api-gateway-xxx.zeabur.app`) | **build-time** (Zeabur Variables → dostępne przy buildzie) |
+| Klucz                      | Tag          | Kiedy                                     |
+| -------------------------- | ------------ | ----------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`   | PUBLIC VALUE | `web` lub `admin`                         |
+| `VITE_API_BASE_URL`        | PUBLIC VALUE | **admin**, build-time, public api-gateway |
+| `NEXT_PUBLIC_API_BASE_URL` | PUBLIC VALUE | **web**, build-time, public api-gateway   |
+| `NEXT_PUBLIC_IDENTITY_URL` | PUBLIC VALUE | **web**, ten sam publiczny api-gateway    |
+| `NEXT_PUBLIC_WEB_ORIGIN`   | PUBLIC VALUE | **web**, publiczny origin WWW             |
 
-Bez `VITE_API_BASE_URL` frontend zbuduje się, ale Admin/WWW będą wołać zły host → „Failed to fetch” mimo że backend stoi.
+Nie używaj `VITE_ADMIN_DEV_ACTOR_*` na production. Local/dev only.
+
+Puste `ARG VAR=` w Dockerfile **nadpisuje** zmienne Zeabur i piecze pusty origin (relative `/activity/...` albo localhost). Obrazy `admin`/`web` muszą widzieć te zmienne w środowisku **buildu**.
+
+Bez publicznego API origin Admin/WWW wołają zły host.
 
 **Typowy błąd buildu (naprawiony w repo):** `Cannot find module '../../tools/vitest.shared.js'` — wynikał z typechecku `vitest.config.ts` w obrazie Docker bez folderu `tools/`. Po redeploy z najnowszego SHA build powinien przejść.
 

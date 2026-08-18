@@ -65,6 +65,14 @@ Pełna lista wartości do ręcznego wklejenia: [ZEABUR_OWNER_VARIABLES.md](./ZEA
 
 **Nigdy** nie commituj sekretów ani nie wklejaj tokenów do czatu / PR.
 
+`admin` (`VITE_*`) i `web` (`NEXT_PUBLIC_*`) wymagają **publicznego origin api-gateway w czasie buildu obrazu**. Nie ustawiaj w Dockerfile `ARG VAR=` z pustym defaultem — nadpisuje to zmienne Zeabur pustym stringiem i w przeglądarce zostaje relative URL albo localhost.
+
+Produkcja:
+
+- `ACTIVITY_TRUST_ACTOR_HEADERS=false`
+- `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`
+- bez `VITE_ADMIN_DEV_ACTOR_*` na serwisie `admin`
+
 ## 6. Redeploy i weryfikacja
 
 **Jeśli `discord-gateway` ma status Crashed:** najpierw upewnij się, że deploy idzie z
@@ -87,6 +95,54 @@ docker build -f Dockerfile.activity-service -t v2-activity-service .
 docker build -f Dockerfile.api-gateway -t v2-api-gateway .
 docker build -f Dockerfile.identity-service -t v2-identity-service .
 docker build -f Dockerfile.authorization-service -t v2-authorization-service .
+```
+
+`web` i `admin` muszą dostać publiczny API origin w środowisku buildera (nie przez puste `ARG`):
+
+```text
+# PowerShell
+$env:NEXT_PUBLIC_API_BASE_URL='https://v2-api.zeabur.app'
+$env:NEXT_PUBLIC_IDENTITY_URL='https://v2-api.zeabur.app'
+$env:NEXT_PUBLIC_WEB_ORIGIN='https://v2-web.zeabur.app'
 docker build -f Dockerfile.web -t v2-web .
+
+$env:VITE_API_BASE_URL='https://v2-api.zeabur.app'
 docker build -f Dockerfile.admin -t v2-admin .
 ```
+
+## 8. Macierz serwisów i Definition of Runtime Complete
+
+Każdy **nowy serwis aplikacyjny** utworzony w **zatwierdzonym** etapie musi od razu trafić do tej macierzy (i do [ZEABUR_OWNER_VARIABLES.md](./ZEABUR_OWNER_VARIABLES.md)). Nie twórz serwisów produktowych na zapas (watch/room/search/marketplace/reservation/music).
+
+Aktualna macierz P4:
+
+| Serwis                  | Dockerfile                         | Public |
+| ----------------------- | ---------------------------------- | ------ |
+| `authorization-service` | `Dockerfile.authorization-service` | NO     |
+| `identity-service`      | `Dockerfile.identity-service`      | NO     |
+| `activity-service`      | `Dockerfile.activity-service`      | NO     |
+| `api-gateway`           | `Dockerfile.api-gateway`           | YES    |
+| `discord-gateway`       | `Dockerfile.discord-gateway`       | NO\*   |
+| `admin`                 | `Dockerfile.admin`                 | YES    |
+| `web`                   | `Dockerfile.web`                   | YES    |
+| `postgres-*` / `redis`  | add-on                             | NO     |
+
+\* Opcjonalny publiczny health `discord-gateway`.
+
+**Definition of Runtime Complete** (każdy serwis z macierzy):
+
+1. branch (`cursor/p4-1-activity-domain` do APPROVED)
+2. Dockerfile / `ZBPACK_DOCKERFILE_NAME`
+3. zmienne (nazwy + typ PUBLIC / SECRET / REFERENCE)
+4. zależności (add-on / internal URL)
+5. build
+6. deploy
+7. health / ready
+8. running revision (SHA)
+9. logi (bez wycieku sekretów)
+10. integration smoke
+11. restart / reconcile gdzie dotyczy
+
+Lokalny `pnpm validate` **nie** zastępuje tego checklistu.
+
+Obecny project testowy może mieć **jeden** add-on Postgres z osobnymi migracjami per usługa. Docelowo ADR-0004 nadal wymaga osobnych baz/kont; wspólny connection string do cudzej bazy jest błędem.

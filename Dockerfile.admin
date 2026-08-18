@@ -15,15 +15,10 @@ COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system ./packages/design-system
 COPY apps/admin ./apps/admin
-ARG VITE_API_BASE_URL=
-ARG VITE_ADMIN_DEV_ACTOR_DISCORD_ID=
-ARG VITE_ADMIN_DEV_GUILDS=
-ARG VITE_ADMIN_DEV_ORG_ID=
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-ENV VITE_ADMIN_DEV_ACTOR_DISCORD_ID=${VITE_ADMIN_DEV_ACTOR_DISCORD_ID}
-ENV VITE_ADMIN_DEV_GUILDS=${VITE_ADMIN_DEV_GUILDS}
-ENV VITE_ADMIN_DEV_ORG_ID=${VITE_ADMIN_DEV_ORG_ID}
-RUN node -e "const fs=require('fs'); const e=process.env; fs.writeFileSync('/app/.env', ['VITE_API_BASE_URL='+(e.VITE_API_BASE_URL||''),'VITE_ADMIN_DEV_ACTOR_DISCORD_ID='+(e.VITE_ADMIN_DEV_ACTOR_DISCORD_ID||''),'VITE_ADMIN_DEV_GUILDS='+(e.VITE_ADMIN_DEV_GUILDS||''),'VITE_ADMIN_DEV_ORG_ID='+(e.VITE_ADMIN_DEV_ORG_ID||'')].join('\\n')+'\\n')"
+# Zeabur injects service variables into the build environment. Do not declare
+# `ARG VAR=` defaults — they overwrite those values with empty strings and bake
+# a blank Vite origin. Local image builds must export VITE_API_BASE_URL first.
+RUN node -e "const fs=require('fs'); const e=process.env; const url=(e.VITE_API_BASE_URL||'').trim(); if(!url.startsWith('http')){ console.error('VITE_API_BASE_URL must be a public http(s) origin at image build'); process.exit(1);} fs.writeFileSync('/app/.env', ['VITE_API_BASE_URL='+url,'VITE_ADMIN_DEV_ACTOR_DISCORD_ID='+(e.VITE_ADMIN_DEV_ACTOR_DISCORD_ID||''),'VITE_ADMIN_DEV_GUILDS='+(e.VITE_ADMIN_DEV_GUILDS||''),'VITE_ADMIN_DEV_ORG_ID='+(e.VITE_ADMIN_DEV_ORG_ID||'')].join('\\n')+'\\n')"
 RUN pnpm --filter @v2/admin build
 
 FROM base AS runtime

@@ -15,12 +15,9 @@ COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system ./packages/design-system
 COPY apps/web ./apps/web
-ARG NEXT_PUBLIC_API_BASE_URL=
-ARG NEXT_PUBLIC_IDENTITY_URL=
-ARG NEXT_PUBLIC_WEB_ORIGIN=
-ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
-ENV NEXT_PUBLIC_IDENTITY_URL=${NEXT_PUBLIC_IDENTITY_URL}
-ENV NEXT_PUBLIC_WEB_ORIGIN=${NEXT_PUBLIC_WEB_ORIGIN}
+# Zeabur injects service variables into the build environment. Do not declare
+# `ARG VAR=` defaults — they overwrite those values with empty strings.
+RUN node -e "const url=(process.env.NEXT_PUBLIC_API_BASE_URL||'').trim(); if(!url.startsWith('http')){ console.error('NEXT_PUBLIC_API_BASE_URL must be a public http(s) origin at image build'); process.exit(1); }"
 RUN pnpm --filter @v2/web build
 
 FROM base AS runtime
