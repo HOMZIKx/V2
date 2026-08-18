@@ -71,6 +71,7 @@ export class HttpAuthorizationClient implements AuthorizePort {
           scope: request.scope,
           operationClass: request.operationClass ?? 'ordinary',
         }),
+        signal: AbortSignal.timeout(5_000),
       });
     } catch {
       throw new ActivityError('CONFIG_INVALID', 'Failed to reach Authorization authorize endpoint');
@@ -83,10 +84,12 @@ export class HttpAuthorizationClient implements AuthorizePort {
       );
     }
 
-    const body = (await response.json()) as {
-      decision?: string;
-      permissionId?: string;
-    };
+    let body: { decision?: unknown };
+    try {
+      body = (await response.json()) as { decision?: unknown };
+    } catch {
+      throw new ActivityError('CONFIG_INVALID', 'Authorization returned invalid JSON');
+    }
 
     const allowed = body.decision === 'allow';
     return {
@@ -110,7 +113,7 @@ export class HttpAuthorizationClient implements AuthorizePort {
   }
 }
 
-/** Allow-all stub used when ACTIVITY_ENABLED=false (local / tests). */
+/** Allow-all stub used when ACTIVITY_ENABLED=false in local / test environments. */
 export class AllowAllAuthorizationClient implements AuthorizePort {
   public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
     return Promise.resolve({
@@ -119,4 +122,32 @@ export class AllowAllAuthorizationClient implements AuthorizePort {
       decision: 'allow',
     });
   }
+}
+
+/** Production fail-closed stub when ACTIVITY_ENABLED=false. Never implicit allow. */
+export class DenyAllAuthorizationClient implements AuthorizePort {
+  public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+    return Promise.resolve({
+      allowed: false,
+      permissionId: request.permissionId,
+      decision: 'deny',
+    });
+  }
+}
+
+export function createAuthorizePort(
+  config: ActivityEnv,
+  fetchImpl?: typeof globalThis.fetch,
+): AuthorizePort {
+  if (!config.ACTIVITY_ENABLED) {
+    if (config.NODE_ENV === 'production') {
+      return new DenyAllAuthorizationClient();
+    }
+    return new AllowAllAuthorizationClient();
+  }
+  const client = HttpAuthorizationClient.fromEnv(config, fetchImpl);
+  if (client === null) {
+    throw new Error('Authorization client could not be constructed while ACTIVITY_ENABLED=true');
+  }
+  return client;
 }

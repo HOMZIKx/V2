@@ -203,7 +203,28 @@ export function parseActivityEnv(env: NodeJS.ProcessEnv): ActivityEnv {
     throw new ActivityConfigError('ACTIVITY_TRUST_ACTOR_HEADERS cannot be enabled in production');
   }
 
+  if (config.NODE_ENV === 'production' && config.ACTIVITY_ALLOW_TEST_SEED) {
+    throw new ActivityConfigError('ACTIVITY_ALLOW_TEST_SEED cannot be enabled in production');
+  }
+
+  if (
+    config.NODE_ENV === 'production' &&
+    hasInboundClientConfig(config) &&
+    config.ACTIVITY_REDIS_URL === undefined
+  ) {
+    throw new ActivityConfigError(
+      'ACTIVITY_REDIS_URL is required in production when inbound client assertions are configured',
+    );
+  }
+
   return config;
+}
+
+function hasInboundClientConfig(config: ActivityEnv): boolean {
+  return (
+    config.ACTIVITY_INBOUND_CLIENTS_JSON !== undefined ||
+    config.ACTIVITY_INBOUND_CLIENTS_B64 !== undefined
+  );
 }
 
 const URL_CREDENTIALS = /(\/\/[^:/@\s]+:)([^@/\s]+)(@)/g;

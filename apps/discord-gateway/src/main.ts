@@ -47,7 +47,10 @@ const config = loadDiscordConfig();
 const logger = createLogger('discord-gateway');
 
 const bootstrap = async (): Promise<void> => {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 262_144 }),
+  );
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info(`Received ${signal}; shutting down Discord gateway.`);

@@ -15,6 +15,7 @@ import { ActivityError } from '../../domain/errors.js';
 import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
+import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -62,15 +63,12 @@ export class ActivityAdminUseCases {
     guildId: string,
     operationClass: 'ordinary' | 'sensitive' = 'sensitive',
   ): Promise<void> {
-    const result = await this.deps.authorize.authorize({
+    await requireAllowed(this.deps.authorize, {
       subject: actor,
       permissionId,
       scope: { type: 'guild', guildId },
       operationClass,
     });
-    if (!result.allowed) {
-      throw new ActivityError('FORBIDDEN', `Missing permission ${permissionId}`);
-    }
   }
 
   private async requireConfigManage(actor: ActorSubject, guildId: string): Promise<void> {
@@ -86,7 +84,7 @@ export class ActivityAdminUseCases {
   }
 
   private async requireReportManage(actor: ActorSubject, guildId: string): Promise<void> {
-    const manageGuild = await this.deps.authorize.authorize({
+    const manageGuild = await authorizeOrFailClosed(this.deps.authorize, {
       subject: actor,
       permissionId: ACTIVITY_PERMISSIONS.MANAGE_GUILD,
       scope: { type: 'guild', guildId },
@@ -963,7 +961,7 @@ export class ActivityAdminUseCases {
     try {
       decisions = await Promise.all(
         candidates.map(async (guild) => {
-          const result = await this.deps.authorize.authorize({
+          const result = await authorizeOrFailClosed(this.deps.authorize, {
             subject: actor,
             permissionId: ACTIVITY_PERMISSIONS.CONFIG_MANAGE,
             scope: { type: 'guild', guildId: guild.id },

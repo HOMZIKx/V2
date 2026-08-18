@@ -133,4 +133,25 @@ describe('ActivityProjectionController', () => {
     expect(result.status).toBe('delivered');
     expect(publish).toHaveBeenCalledOnce();
   });
+
+  it('rejects a malformed projection payload', async () => {
+    const controller = new ActivityProjectionController(makeConfig(), {
+      publishComponentsV2Message: vi.fn(),
+    } as never);
+    await expect(
+      controller.deliver(
+        {
+          outboxId: 'bad',
+          eventType: 'activity.activity.created.v1',
+          aggregateId: 'a',
+          aggregateVersion: 1,
+          payload: { kind: 'hub', channelId: 'c1' },
+        },
+        'proj-secret',
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      response: { status: 'rejected', detail: 'Invalid projection payload.' },
+    });
+  });
 });

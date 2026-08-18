@@ -81,7 +81,10 @@ export class ActivityProxyController {
         if (!this.forwardActorHeaders) {
           continue;
         }
-        headers[lower] = Array.isArray(value) ? value.join(', ') : value;
+        if (Array.isArray(value)) {
+          continue;
+        }
+        headers[lower] = value;
         continue;
       }
       if (!FORWARDED_HEADER_ALLOWLIST.has(lower)) {

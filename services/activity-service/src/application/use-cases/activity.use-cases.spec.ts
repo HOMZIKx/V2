@@ -685,6 +685,82 @@ describe('ActivityUseCases (in-memory)', () => {
     expect(second).toEqual(first);
   });
 
+  it('does not reuse an idempotency key across actors', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const other = { discordUserId: 'creator-2' };
+    const draftA = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const draftB = await useCases.createDraft({ guildId: 'guild-1' }, { actor: other });
+    const first = await useCases.publishDraft(
+      draftA.id,
+      {
+        organizationId: 'org-1',
+        name: 'Raid A',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+      },
+      { actor, idempotencyKey: 'shared-key' },
+    );
+    const second = await useCases.publishDraft(
+      draftB.id,
+      {
+        organizationId: 'org-1',
+        name: 'Raid B',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+      },
+      { actor: other, idempotencyKey: 'shared-key' },
+    );
+    expect(second.id).not.toBe(first.id);
+    expect(second.name).toBe('Raid B');
+  });
+
+  it('forbids reading and RSVP for a guild the actor cannot access', async () => {
+    const repo = createMemoryRepo();
+    class GuildScopedAuthz implements AuthorizePort {
+      public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+        const allowed = request.scope.guildId === 'guild-1';
+        return Promise.resolve({
+          allowed,
+          permissionId: request.permissionId,
+          decision: allowed ? 'allow' : 'deny',
+        });
+      }
+    }
+    const seeder = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const attacker = new ActivityUseCases({
+      repository: repo,
+      authorize: new GuildScopedAuthz(),
+      clock,
+    });
+    const organizer = { discordUserId: 'organizer-b' };
+    const awayDraft = await seeder.createDraft({ guildId: 'guild-2' }, { actor: organizer });
+    const away = await seeder.publishDraft(
+      awayDraft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Away',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+      },
+      { actor: organizer, idempotencyKey: 'away-pub' },
+    );
+    await expect(attacker.listActivities('guild-2', actor)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(attacker.getActivity(away.id, actor)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(
+      attacker.rsvp(away.id, { statusDefId: 'status-confirmed' }, { actor }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
   it('waitlists when capacity is full and promotes on resign', async () => {
     const repo = createMemoryRepo();
     const useCases = new ActivityUseCases({

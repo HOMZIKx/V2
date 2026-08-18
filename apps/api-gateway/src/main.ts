@@ -35,7 +35,10 @@ type CorsReply = {
 };
 
 const bootstrap = async (): Promise<void> => {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 262_144 }),
+  );
   const corsOrigins = parseCorsOrigins(config.API_GATEWAY_CORS_ORIGINS);
   const instance = app.getHttpAdapter().getInstance() as unknown as {
     addHook: (

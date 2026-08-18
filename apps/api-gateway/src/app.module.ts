@@ -9,23 +9,10 @@ import {
   IDENTITY_SERVICE_BASE_URL,
   type ActivityAssertionConfig,
 } from './activity-proxy.tokens.js';
+import { resolveForwardActorHeaders } from './forward-actor-headers.js';
 import { HealthController } from './health.controller.js';
 import { IdentityProxyController } from './identity-proxy.controller.js';
 import { SessionController } from './session.controller.js';
-
-function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
-  if (value === undefined || value.trim() === '') {
-    return fallback;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on') {
-    return true;
-  }
-  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') {
-    return false;
-  }
-  return fallback;
-}
 
 const providers: Provider[] = [
   {
@@ -46,8 +33,7 @@ const providers: Provider[] = [
   },
   {
     provide: API_GATEWAY_FORWARD_ACTOR_HEADERS,
-    useFactory: (): boolean =>
-      parseBooleanEnv(process.env.API_GATEWAY_FORWARD_ACTOR_HEADERS, false),
+    useFactory: (): boolean => resolveForwardActorHeaders(process.env),
   },
   {
     provide: ACTIVITY_ASSERTION_CONFIG,

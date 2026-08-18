@@ -43,6 +43,13 @@ describe('activity-signed-custom-id', () => {
     });
   });
 
+  it('rejects custom ids signed with the wrong secret', () => {
+    const raw = createPanelCustomId(panelOpaque, 'create', secret);
+    expect(() => parseActivityCustomId(raw, 'other-secret-at-least-32-bytes-long!!')).toThrow(
+      /signature/i,
+    );
+  });
+
   it('rejects forged signatures', () => {
     const raw = createPanelCustomId(panelOpaque, 'create', secret);
     const tampered = `${raw.slice(0, -4)}aaaa`;

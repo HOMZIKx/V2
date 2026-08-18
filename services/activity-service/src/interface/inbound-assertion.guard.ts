@@ -72,7 +72,14 @@ export class InboundAssertionGuard implements CanActivate {
       throw new ActivityError('CONFIG_INVALID', 'Inbound client registry is not configured');
     }
 
-    const assertion = headerValue(request, ASSERTION_HEADER);
+    if (this.config.NODE_ENV === 'production' && this.jtiStore === null) {
+      throw new ActivityError(
+        'CONFIG_INVALID',
+        'Client assertion replay store is required in production',
+      );
+    }
+
+    const assertion = requireSingleHeader(request, ASSERTION_HEADER);
     if (assertion === undefined || assertion.length === 0) {
       throw new ActivityError(
         'CLIENT_ASSERTION_INVALID',
@@ -124,12 +131,23 @@ export class InboundAssertionGuard implements CanActivate {
 }
 
 function readTrustedActorHeaders(request: FastifyRequest): ActorSubject {
-  const discordHeader = headerValue(request, 'x-actor-discord-user-id');
-  const v2Header = headerValue(request, 'x-actor-v2-user-id');
+  const discordHeader = requireSingleHeader(request, 'x-actor-discord-user-id');
+  const v2Header = requireSingleHeader(request, 'x-actor-v2-user-id');
   return {
     ...(discordHeader !== undefined ? { discordUserId: discordHeader } : {}),
     ...(v2Header !== undefined ? { v2UserId: v2Header } : {}),
   };
+}
+
+function requireSingleHeader(request: FastifyRequest, name: string): string | undefined {
+  const raw = request.headers[name];
+  if (Array.isArray(raw)) {
+    throw new ActivityError('CLIENT_ASSERTION_INVALID', `Duplicate ${name} header is not allowed`);
+  }
+  if (typeof raw === 'string') {
+    return raw;
+  }
+  return undefined;
 }
 
 function headerValue(request: FastifyRequest, name: string): string | undefined {

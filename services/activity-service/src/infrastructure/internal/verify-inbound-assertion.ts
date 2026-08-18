@@ -1,6 +1,5 @@
 import {
   createLocalJWKSet,
-  decodeJwt,
   decodeProtectedHeader,
   exportJWK,
   importSPKI,
@@ -126,25 +125,39 @@ export async function verifyInboundAssertion(
   try {
     const verified = await jwtVerify(assertion, jwks, {
       algorithms: [ALLOWED_ALGORITHM],
+      issuer: keyEntry.clientId,
       audience: options.expectedAudience,
       maxTokenAge: `${options.maxTtlSeconds}s`,
+      clockTolerance: 60,
     });
     payload = verified.payload;
   } catch {
     throw new ActivityError('CLIENT_ASSERTION_INVALID', 'Assertion verification failed');
   }
 
-  const decoded = decodeJwt(assertion);
+  if ('kid' in payload) {
+    throw new ActivityError('CLIENT_ASSERTION_INVALID', 'kid must not appear in assertion payload');
+  }
+
+  if (Array.isArray(payload.aud)) {
+    throw new ActivityError('CLIENT_ASSERTION_INVALID', 'Assertion aud must be a single string');
+  }
+
   const clientId = typeof payload.iss === 'string' ? payload.iss : undefined;
+  const subject = typeof payload.sub === 'string' ? payload.sub : undefined;
   const jti = typeof payload.jti === 'string' ? payload.jti : undefined;
   if (clientId === undefined || jti === undefined || clientId !== keyEntry.clientId) {
     throw new ActivityError('CLIENT_ASSERTION_INVALID', 'Assertion iss/jti invalid');
   }
+  if (subject !== clientId) {
+    throw new ActivityError('CLIENT_ASSERTION_INVALID', 'Assertion sub must equal iss');
+  }
+  if (!z.string().uuid().safeParse(jti).success) {
+    throw new ActivityError('CLIENT_ASSERTION_INVALID', 'Assertion jti must be a UUID');
+  }
 
-  const actorDiscord =
-    typeof decoded.actor_discord_user_id === 'string' ? decoded.actor_discord_user_id : undefined;
-  const actorV2 =
-    typeof decoded.actor_v2_user_id === 'string' ? decoded.actor_v2_user_id : undefined;
+  const actorDiscord = optionalActorClaim(payload.actor_discord_user_id, 'actor_discord_user_id');
+  const actorV2 = optionalActorClaim(payload.actor_v2_user_id, 'actor_v2_user_id');
 
   return {
     clientId,
@@ -153,4 +166,17 @@ export async function verifyInboundAssertion(
     ...(actorDiscord !== undefined ? { actorDiscordUserId: actorDiscord } : {}),
     ...(actorV2 !== undefined ? { actorV2UserId: actorV2 } : {}),
   };
+}
+
+function optionalActorClaim(value: unknown, claim: string): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new ActivityError(
+      'CLIENT_ASSERTION_INVALID',
+      `Assertion ${claim} must be a non-empty string when present`,
+    );
+  }
+  return value;
 }

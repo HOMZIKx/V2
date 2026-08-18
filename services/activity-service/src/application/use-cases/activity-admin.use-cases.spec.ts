@@ -689,6 +689,48 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     expect(JSON.stringify(guilds)).not.toContain('Bravo');
   });
 
+  it('forbids admin config, channels, and audit for a guild without CONFIG_MANAGE', async () => {
+    const mem = createAdminMemoryRepo();
+    class SelectiveAuthz implements AuthorizePort {
+      public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+        const allowed = request.scope.guildId === 'guild-a';
+        return Promise.resolve({
+          allowed,
+          permissionId: request.permissionId,
+          decision: allowed ? 'allow' : 'deny',
+        });
+      }
+    }
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new SelectiveAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [],
+        getGuild: async () => null,
+        listChannels: async () => [{ id: 'leaked', name: 'secret', type: 0, usable: true }],
+        listRoles: async () => [
+          { id: 'role-leak', name: 'admin', managed: false, everyone: false },
+        ],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.getAdminConfig('guild-b', actor)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(useCases.listDiscordChannels('guild-b', actor)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(useCases.listDiscordRoles('guild-b', actor)).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+    await expect(useCases.listAudit('guild-b', actor, {})).rejects.toMatchObject({
+      code: 'FORBIDDEN',
+    });
+  });
+
   it('rejects unauthenticated admin guild listing', async () => {
     const mem = createAdminMemoryRepo();
     const useCases = new ActivityAdminUseCases({

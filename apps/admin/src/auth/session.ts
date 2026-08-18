@@ -41,21 +41,37 @@ function parseDevGuilds(raw: string | undefined): AdminGuildOption[] {
   }
 }
 
+type AdminViteEnv = {
+  readonly DEV: boolean;
+  readonly VITE_ADMIN_DEV_ACTOR_DISCORD_ID?: string;
+  readonly VITE_ADMIN_DEV_GUILDS?: string;
+  readonly VITE_ADMIN_DEV_ORG_ID?: string;
+};
+
 /**
  * Local/dev session for P4.3 Admin.
  *
- * Production: Identity session cookie via API gateway — browser sends
- * `credentials: 'include'` on fetch; do not invent password login here.
+ * Production builds (import.meta.env.DEV === false) always use Identity
+ * cookie mode, even if VITE_ADMIN_DEV_* were accidentally present at build.
  */
-export function readAdminSession(): AdminSession {
-  const actorDiscordUserId = import.meta.env.VITE_ADMIN_DEV_ACTOR_DISCORD_ID?.trim() || null;
-  const orgId = import.meta.env.VITE_ADMIN_DEV_ORG_ID?.trim() || null;
+export function readAdminSession(env: AdminViteEnv = import.meta.env): AdminSession {
+  if (!env.DEV) {
+    return {
+      mode: 'identity-cookie',
+      actorDiscordUserId: null,
+      guilds: [],
+      orgId: null,
+    };
+  }
+
+  const actorDiscordUserId = env.VITE_ADMIN_DEV_ACTOR_DISCORD_ID?.trim() || null;
+  const orgId = env.VITE_ADMIN_DEV_ORG_ID?.trim() || null;
 
   if (actorDiscordUserId !== null) {
     return {
       mode: 'dev-actor',
       actorDiscordUserId,
-      guilds: parseDevGuilds(import.meta.env.VITE_ADMIN_DEV_GUILDS),
+      guilds: parseDevGuilds(env.VITE_ADMIN_DEV_GUILDS),
       orgId,
     };
   }

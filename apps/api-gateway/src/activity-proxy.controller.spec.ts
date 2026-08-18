@@ -214,4 +214,58 @@ describe('ActivityProxyController', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('does not bake unsigned browser actor into the assertion when forwarding is disabled', async () => {
+    const { exportPKCS8, generateKeyPair, decodeJwt } = await import('jose');
+    const { privateKey } = await generateKeyPair('EdDSA', { crv: 'Ed25519', extractable: true });
+    const privatePem = await exportPKCS8(privateKey);
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', false, null, {
+      clientId: 'v2.api-gateway',
+      privateKeyPem: privatePem,
+      activeKid: 'api-active',
+      audience: 'http://127.0.0.1:4400/activity/v1',
+    });
+    await controller.proxy(
+      { url: '/activity/v1/admin/guilds', method: 'GET', body: undefined } as never,
+      reply as never,
+      { 'x-actor-discord-user-id': '808066932753563668' },
+    );
+
+    const headers = (fetchMock.mock.calls[0] as [URL, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers['x-actor-discord-user-id']).toBeUndefined();
+    const payload = decodeJwt(headers['activity-client-assertion'] ?? '');
+    expect(payload.actor_discord_user_id).toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('drops duplicate actor headers instead of joining them', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { reply } = mockReply();
+    const controller = new ActivityProxyController('http://127.0.0.1:4400', true);
+    await controller.proxy(
+      { url: '/activity/v1/admin/guilds/g1/config', method: 'GET', body: undefined } as never,
+      reply as never,
+      {
+        'x-actor-discord-user-id': ['victim', 'attacker'],
+      },
+    );
+
+    const headers = (fetchMock.mock.calls[0] as [URL, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers['x-actor-discord-user-id']).toBeUndefined();
+
+    vi.unstubAllGlobals();
+  });
 });

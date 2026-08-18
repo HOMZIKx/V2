@@ -37,6 +37,20 @@ describe('resolveSessionActor', () => {
     expect(String(fetchImpl.mock.calls[1]?.[0])).toBe('http://127.0.0.1:4200/identity/accounts');
   });
 
+  it('returns null when Identity lookup times out', async () => {
+    const fetchImpl: typeof fetch = (_input, init) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('The operation was aborted.', 'AbortError'));
+        });
+      });
+    };
+
+    await expect(
+      resolveSessionActor('cookie=1', 'http://127.0.0.1:4200', fetchImpl, 20),
+    ).resolves.toBeNull();
+  });
+
   it('returns null when session is unauthorized', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('{}', { status: 401 }));
     await expect(

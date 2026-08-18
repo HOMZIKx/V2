@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { timingSafeEqualUtf8 } from '../../infrastructure/security/timing-safe-equal.js';
 import { renderActivityEventMessage } from '../../presentation/discord/activity-event-renderer.js';
 import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
 import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
@@ -148,7 +149,7 @@ export class ActivityProjectionController {
         'ACTIVITY_PROJECTION_SHARED_SECRET is not configured (fail closed).',
       );
     }
-    if (projectionSecret === undefined || projectionSecret !== expected) {
+    if (projectionSecret === undefined || !timingSafeEqualUtf8(projectionSecret, expected)) {
       throw new UnauthorizedException('Invalid projection secret.');
     }
   }
@@ -169,7 +170,11 @@ export class ActivityProjectionController {
           : 'event';
 
     if (kind === 'hub') {
-      const hub = hubPayloadSchema.parse(input.payload);
+      const hubParsed = hubPayloadSchema.safeParse(input.payload);
+      if (!hubParsed.success) {
+        throw new Error('Invalid projection payload.');
+      }
+      const hub = hubParsed.data;
       const message = toComponentsV2Payload(
         renderActivityHubMessage({
           opaquePanelId: hub.opaquePanelId,
@@ -198,7 +203,11 @@ export class ActivityProjectionController {
       };
     }
 
-    const event = eventPayloadSchema.parse(input.payload);
+    const eventParsed = eventPayloadSchema.safeParse(input.payload);
+    if (!eventParsed.success) {
+      throw new Error('Invalid projection payload.');
+    }
+    const event = eventParsed.data;
     const message = toComponentsV2Payload(
       renderActivityEventMessage({
         opaqueEventId: event.opaqueEventId,

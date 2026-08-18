@@ -48,14 +48,24 @@ describe('parseActivityEnv', () => {
     ).toThrow(/ACTIVITY_AUTHORIZATION_BASE_URL/);
   });
 
-  it('rejects ACTIVITY_TRUST_ACTOR_HEADERS in production', () => {
+  it('rejects ACTIVITY_ALLOW_TEST_SEED in production', () => {
     expect(() =>
       parseActivityEnv({
         ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
-        ACTIVITY_TRUST_ACTOR_HEADERS: 'true',
+        ACTIVITY_ALLOW_TEST_SEED: 'true',
         NODE_ENV: 'production',
       }),
-    ).toThrow(/ACTIVITY_TRUST_ACTOR_HEADERS cannot be enabled in production/);
+    ).toThrow(/ACTIVITY_ALLOW_TEST_SEED cannot be enabled in production/);
+  });
+
+  it('requires ACTIVITY_REDIS_URL in production when inbound clients are configured', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        NODE_ENV: 'production',
+        ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
+      }),
+    ).toThrow(/ACTIVITY_REDIS_URL is required in production/);
   });
 
   it('requires ACTIVITY_REDIS_URL when ACTIVITY_ENABLED=true', () => {

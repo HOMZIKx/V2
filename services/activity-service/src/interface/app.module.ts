@@ -7,10 +7,7 @@ import type { DiscordGuildMetadataPort } from '../application/ports/discord-guil
 import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
 import { ActivityUseCases } from '../application/use-cases/activity.use-cases.js';
 import { type Clock, SystemClock } from '../domain/clock.js';
-import {
-  AllowAllAuthorizationClient,
-  HttpAuthorizationClient,
-} from '../infrastructure/authorization/authorization-client.js';
+import { createAuthorizePort } from '../infrastructure/authorization/authorization-client.js';
 import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/activity-env.js';
 import { createActivityPool } from '../infrastructure/db/pg-pool.js';
 import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
@@ -60,18 +57,7 @@ const providers: Provider[] = [
   },
   {
     provide: AUTHORIZE_PORT,
-    useFactory: (config: ActivityEnv): AuthorizePort => {
-      if (!config.ACTIVITY_ENABLED) {
-        return new AllowAllAuthorizationClient();
-      }
-      const client = HttpAuthorizationClient.fromEnv(config);
-      if (client === null) {
-        throw new Error(
-          'Authorization client could not be constructed while ACTIVITY_ENABLED=true',
-        );
-      }
-      return client;
-    },
+    useFactory: (config: ActivityEnv): AuthorizePort => createAuthorizePort(config),
     inject: [ACTIVITY_CONFIG],
   },
   {

@@ -2,73 +2,77 @@
 
 ## Status
 
-`READY_FOR_OWNER_AND_CHATGPT_RUNTIME_REVIEW` —
-`P4-CONTINUOUS-RUNTIME-BRINGUP-AND-OPERABILITY-001`
+`SECURITY_HARDENING_COMPLETE_FOR_CURRENT_P4` —
+`P4-ADVERSARIAL-SECURITY-AND-RESILIENCE-001`
 
-Not APPROVED. Not merged. P4 not complete.
+Not APPROVED. Not merged. P4 not complete. Do not start P4.5.
 
 ## Explicit gates
 
 - **NO MERGE**
 - **NO P4.5 / P4.6 / RabbitMQ**
-- Issues #20 #21 #22 #23 **NOT IMPLEMENTED**
+- Issues #20 #21 #22 #23 #24 **NOT IMPLEMENTED**
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- TASK_STARTING_SHA: `c635bb9b909b316ef4241071370fa3d7f98ce618`
-- Operability + Admin login CTA: see latest commit on this branch after that SHA.
+- SECURITY_START_SHA: `467cd5cf13ae39d26d6d17d1421c6f96d5ddb6e1`
+- SECURITY_CHECKPOINT_SHA: recorded in `docs/ai/CURSOR_TO_CHATGPT.md` after the
+  additive security commit on this branch.
 
-## Zeabur (verified 2026-08-18)
+## What this task changed (repo, current P4 only)
 
-Apps previously RUNNING: authorization, identity, activity, api-gateway,
-discord-gateway, admin, web. Infra: one Postgres addon + Redis. No RabbitMQ.
+Production fail-closed:
 
-Public:
+- `ACTIVITY_ENABLED=false` uses **DenyAll** authorization in production
+  (AllowAll remains local/test only).
+- `ACTIVITY_ALLOW_TEST_SEED` cannot be true in production.
+- Inbound client assertions in production require Redis JTI storage.
+- Duplicate `Activity-Client-Assertion` / actor headers are rejected.
+- Assertion `sub` must equal `iss`; `jti` must be a UUID; `aud` cannot be an
+  array; actor claims must be strings.
+- API gateway never forwards browser `X-Actor-*` in production, even if
+  `API_GATEWAY_FORWARD_ACTOR_HEADERS=true`.
+- Admin `VITE_ADMIN_DEV_*` cannot enable `dev-actor` in production builds.
+- Projection shared-secret compare is constant-time; malformed payloads no
+  longer leak Zod internals.
 
-- API `https://v2-api.zeabur.app` `/health/live` 200 `{status:ok}` (revision
-  fields appear after this SHA is deployed)
-- Admin `https://v2-admin.zeabur.app` 200; calls `https://v2-api.zeabur.app`;
-  unauthenticated guilds → 401 with Polish copy (login CTA ships in this SHA)
-- WWW `https://v2-web.zeabur.app` 200 + `/health` 200; login page has
-  `Zaloguj przez Discord`
-- OAuth start `GET /identity/oauth/discord?callbackURL=https://v2-admin.zeabur.app/`
-  → 302 to Discord authorize (`redirect_uri` already
-  `https://v2-api.zeabur.app/api/auth/callback/discord`)
+Regression suite: package unit tests plus `tools/security/p4-current-controls.test.ts`
+(included in `pnpm architecture:check`).
 
-Production flags remain:
+## Live Zeabur until this SHA is redeployed
+
+Public stack still runs the previous image. Logged-in Admin can still pass
+`CONFIG_MANAGE` while `ACTIVITY_ENABLED=false` **until redeploy**. That is
+deployment lag, not an unfixed code path.
+
+Production flags that must stay false after redeploy:
 
 - `ACTIVITY_TRUST_ACTOR_HEADERS=false`
 - `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`
+- `ACTIVITY_ALLOW_TEST_SEED=false`
 
-`ACTIVITY_ENABLED=false`: Authorization is not the live allow/deny hop.
+`ACTIVITY_ENABLED=true` with a real authorization-service hop is
+**OWNER_ACTION_REQUIRED** before privileged Admin/WWW mutations should work
+in production.
 
-## Operability (this SHA)
+## Validation (local, CI-equivalent)
 
-- Registry: `tools/runtime/service-registry.json`
-- Drift: `pnpm architecture:check`
-- Doctor: `pnpm runtime:doctor` (CI, no Zeabur)
-- Smoke: `pnpm smoke:runtime` with `V2_SMOKE_*` (not in PR CI)
-- Health live payloads include `gitCommitSha` / `appVersion` from env
-
-## Discord
-
-Prior Zeabur restart: Hub reconcile `updated` in place
-(`messageId` `1539060848352436286`). Owner must still confirm amber Hub
-(no purple) and walk create/preview/publish/RSVP in Discord.
-
-Logged `GIT_COMMIT_SHA` on Zeabur may still be a stale variable until
-owner/ops set it to the deployed image SHA.
+- `pnpm format:check` — pass
+- `pnpm validate` — pass (live `V2_SMOKE_*` unset so doctor stays static,
+  matching CI)
+- `pnpm audit --audit-level=high` — pass (1 moderate, 0 high/critical)
 
 ## Owner next
 
-1. Redeploy apps on this SHA (Admin login CTA + health revision fields).
-2. Set `GIT_COMMIT_SHA` on each APP to that deploy SHA.
-3. Confirm Hub look (amber `#D48632`, DZIAŁAJ/TWOJE, no purple).
-4. Complete Discord OAuth in Developer Portal if authorize rejects the
-   redirect; then walk Admin + WWW logged-in flows.
+1. Redeploy this checkpoint SHA to Zeabur.
+2. Set `GIT_COMMIT_SHA` per APP to the image SHA.
+3. Keep unsafe DEV flags false. Enable `ACTIVITY_ENABLED=true` only with
+   authorization-service + inbound clients + Redis JTI.
+4. Confirm logged-in Admin is 403 until real authz allows `CONFIG_MANAGE`.
+5. Walk Discord Hub create/preview/publish/RSVP as a real user.
 
 ## Last updated
 
-2026-08-18 — P4 continuous runtime bringup / operability foundation
+2026-08-18 — P4 adversarial security hardening (current P4.1–P4.4 only)

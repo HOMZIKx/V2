@@ -19,7 +19,10 @@ const logger = createLogger(serviceName);
 const bootstrap = async (): Promise<void> => {
   const config = parseActivityEnv(process.env);
 
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 262_144 }),
+  );
 
   const pool = app.get<Pool>(ACTIVITY_POOL);
 

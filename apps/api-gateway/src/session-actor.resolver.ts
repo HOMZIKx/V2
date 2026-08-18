@@ -5,6 +5,8 @@ export type SessionActor = {
   readonly avatarUrl: string | null;
 };
 
+export const SESSION_ACTOR_TIMEOUT_MS = 3_000;
+
 /**
  * Resolve the WWW actor from an Identity session cookie.
  * Used by the activity BFF so browsers never mint Activity actor headers.
@@ -13,6 +15,7 @@ export async function resolveSessionActor(
   cookieHeader: string | undefined,
   identityBaseUrl: string | null,
   fetchImpl: typeof fetch = fetch,
+  timeoutMs: number = SESSION_ACTOR_TIMEOUT_MS,
 ): Promise<SessionActor | null> {
   if (
     cookieHeader === undefined ||
@@ -31,9 +34,15 @@ export async function resolveSessionActor(
       cookie: cookieHeader,
     },
     redirect: 'manual',
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
-  const meResponse = await fetchImpl(`${base}/identity/me`, common);
+  let meResponse: Response;
+  try {
+    meResponse = await fetchImpl(`${base}/identity/me`, common);
+  } catch {
+    return null;
+  }
   if (meResponse.status === 401 || meResponse.status === 403) {
     return null;
   }
@@ -52,8 +61,14 @@ export async function resolveSessionActor(
     return null;
   }
 
-  const accountsResponse = await fetchImpl(`${base}/identity/accounts`, common);
-  if (!accountsResponse.ok) {
+  const accountsResponse = await (async (): Promise<Response | null> => {
+    try {
+      return await fetchImpl(`${base}/identity/accounts`, common);
+    } catch {
+      return null;
+    }
+  })();
+  if (accountsResponse === null || !accountsResponse.ok) {
     return null;
   }
   const accountsBody = (await accountsResponse.json()) as {

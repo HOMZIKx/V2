@@ -138,6 +138,55 @@ describe('InboundAssertionGuard', () => {
     expect(req.verifiedActor).toEqual({ discordUserId: 'dev-user' });
   });
 
+  it('ignores forged actor headers after a verified assertion', async () => {
+    const guard = new InboundAssertionGuard(
+      baseConfig({ ACTIVITY_ENABLED: false }),
+      registry,
+      new MemoryAssertionJtiStore(),
+      makeReflector(),
+    );
+    const token = await sign({ actor_discord_user_id: 'from-jwt' });
+    const req = request({
+      'activity-client-assertion': token,
+      'x-actor-discord-user-id': 'from-header',
+    });
+
+    await expect(guard.canActivate(makeContext(req))).resolves.toBe(true);
+    expect(req.verifiedActor).toEqual({ discordUserId: 'from-jwt' });
+  });
+
+  it('rejects duplicate assertion headers', async () => {
+    const token = await sign({ actor_discord_user_id: '111' });
+    const guard = new InboundAssertionGuard(
+      baseConfig({ ACTIVITY_ENABLED: false }),
+      registry,
+      new MemoryAssertionJtiStore(),
+      makeReflector(),
+    );
+    const req = {
+      headers: { 'activity-client-assertion': [token, token] },
+      url: '/activity/v1/drafts',
+      protocol: 'http',
+    } as unknown as AuthenticatedRequest;
+
+    await expect(guard.canActivate(makeContext(req))).rejects.toMatchObject({
+      code: 'CLIENT_ASSERTION_INVALID',
+    });
+  });
+
+  it('requires a JTI store in production when inbound registry is configured', async () => {
+    const guard = new InboundAssertionGuard(
+      baseConfig({ NODE_ENV: 'production', ACTIVITY_ENABLED: false }),
+      registry,
+      null,
+      makeReflector(),
+    );
+    const token = await sign({ actor_discord_user_id: '111' });
+    await expect(
+      guard.canActivate(makeContext(request({ 'activity-client-assertion': token }))),
+    ).rejects.toMatchObject({ code: 'CONFIG_INVALID' });
+  });
+
   it('accepts assertion when ACTIVITY_ENABLED=false but inbound registry is configured', async () => {
     const guard = new InboundAssertionGuard(
       baseConfig({ ACTIVITY_ENABLED: false }),

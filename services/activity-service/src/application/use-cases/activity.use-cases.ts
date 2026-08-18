@@ -22,6 +22,7 @@ import {
 } from '../../domain/schedule.js';
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
+import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import {
   collectOrganizerDiscordIds,
   collectParticipantDiscordIds,
@@ -183,20 +184,17 @@ export class ActivityUseCases {
     guildId: string,
     operationClass: 'ordinary' | 'sensitive' = 'ordinary',
   ): Promise<void> {
-    const result = await this.deps.authorize.authorize({
+    await requireAllowed(this.deps.authorize, {
       subject: actor,
       permissionId,
       scope: { type: 'guild', guildId },
       operationClass,
     });
-    if (!result.allowed) {
-      throw new ActivityError('FORBIDDEN', `Missing permission ${permissionId}`);
-    }
   }
 
   private async resolveExtendedHorizon(actor: ActorSubject, guildId: string): Promise<boolean> {
     for (const permissionId of EXTENDED_HORIZON_PERMISSIONS) {
-      const result = await this.deps.authorize.authorize({
+      const result = await authorizeOrFailClosed(this.deps.authorize, {
         subject: actor,
         permissionId,
         scope: { type: 'guild', guildId },
