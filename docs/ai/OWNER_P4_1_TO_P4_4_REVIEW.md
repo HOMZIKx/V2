@@ -56,3 +56,12 @@ Branch: `cursor/p4-1-activity-domain` · PR #19
 4. Admin → hub channel → **Reconcile** (in-place update, no duplicate panel).
 
 Zeabur service `discord-gateway` → branch `cursor/p4-1-activity-domain` → redeploy → reconcile hub from Admin.
+
+## Live Zeabur checkpoint (2026-08-18, Cursor)
+
+Intended revision: `bc7c1ca`. Admin bundle contains `https://v2-api.zeabur.app`.
+Production does not forward browser `X-Actor-*`. Unauthenticated guilds API → 401.
+
+Still **owner**: Hub visual (amber / DZIAŁAJ / no purple), Discord OAuth redirect
+`https://v2-api.zeabur.app/api/auth/callback/discord`, logged-in Admin/WWW
+checklists above. Local DEV actor remains local-only.
