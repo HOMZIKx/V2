@@ -120,16 +120,6 @@
   Publikuj. Zakaz sekcyjnych przycisków edycji. Docs product/architecture/UX
   zaktualizowane (§12 / §O). P4.4 WWW bez kreatora; P4.5 poza zakresem.
 
-### OD-P4.5-001 — Multi-Discord participant list mode
-
-- **Status:** **OWNER_DECISION_REQUIRED**
-- **Pytanie:** Wspólna lista uczestników/limit dla wielu Discordów vs osobne listy
-  per guild?
-- **Evidence:** `P4_TEST_TRACEABILITY.md` (shared/split); brak Accepted wyboru
-- **Rekomendacja agenta:** wspólna lista (central SoT)
-- **Impact:** RSVP/waitlist schema, multi-guild publish UX, testy concurrent
-- **Szczegóły:** `docs/ai/P4_5_SCOPE_LOCK.md`
-
 ## Rozstrzygnięte (P3 Authorization — 2026-08-05 / merge 2026-08-06)
 
 Issue #15 **P3-D1–P3-D20** = `OWNER_ACCEPTED`.

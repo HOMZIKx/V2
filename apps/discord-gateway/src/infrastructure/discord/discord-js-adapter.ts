@@ -468,10 +468,12 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     if (!channel || !channel.isTextBased() || channel.isDMBased()) {
       throw new Error('Channel unavailable for Components V2 edit.');
     }
-    await channel.messages.edit(messageId, {
+    const editPayload = {
       ...payload,
       allowedMentions: buildSafeAllowedMentions(),
-    } as MessageEditOptions);
+      ...(payload.files !== undefined && payload.files.length > 0 ? { attachments: [] } : {}),
+    } as MessageEditOptions;
+    await channel.messages.edit(messageId, editPayload);
   }
 
   public async fetchChannelMessage(

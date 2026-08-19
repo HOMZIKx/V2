@@ -32,7 +32,10 @@ CI: PASS (Quality gates, Secret scan, Infrastructure integration)
 Hub assets: `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` (Owner icons, thumbnails,
 attachment://, Docker copy).
 
-P4.0 audit checkpoint: pending push (see `PROJECT_STATE.md`).
+P4.0 audit checkpoint: `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` (see `PROJECT_STATE.md`).
+
+Corrective task `P4-0-CLOSURE-CORRECTIVE-002`: removes false OD-P4.5-001 blocker;
+Issue #26 manual Owner UX remains deferred to Core Foundation Integrated Review.
 
 ## Deferred Owner UX checklist
 

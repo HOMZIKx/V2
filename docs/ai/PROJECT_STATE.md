@@ -2,77 +2,85 @@
 
 ## Status
 
-`READY_FOR_CHATGPT_P4_0_DELTA_AUDIT` — rolling checkpoint after P4 fixup + Hub assets.
+`BLOCKED_OWNER_ACTION` — corrective task `P4-0-CLOSURE-CORRECTIVE-002` prepared locally;
+**not pushed** (Issue #25: repo still **PUBLIC**).
 
-**P4.5 planning started** (`P4_5_SCOPE_LOCK.md`); implementation blocked on
-`OD-P4.5-001` (shared vs split participant lists) for product-visible multi-guild UX.
-RabbitMQ scaffolding may proceed independently.
+Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 
-Not APPROVED. Not merged.
+## Blockers (owner action required)
+
+| Blocker                     | Reason                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **REPOSITORY_STILL_PUBLIC** | `HOMZIKx/V2` visibility = `public` (GitHub API 2026-08-19). Issue #25 requires **PRIVATE**.              |
+| **PUSH_DEFERRED**           | Security precondition forbids pushing corrective commits to a public repo.                               |
+| **ZEABUR_STALE**            | Live `v2-api.zeabur.app` reports `gitCommitSha: 7f9e15e` (not corrective HEAD).                          |
+| **ACTIVITY_DISABLED_LIVE**  | `/health/ready` → `"activity":"disabled"` — technical Activity smoke blocked until Owner enables config. |
 
 ## Immutable checkpoints
 
-| Marker | SHA | Notes |
-| --- | --- | --- |
-| FIXUP_START_SHA | `1290df92681ee1e98fde3e0efaf231f7d110f6db` | P4-COMBINED-AUDIT-FIXUP-001 start |
-| FIXUP_CHECKPOINT_SHA | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` | Six audit findings code fix (deployed) |
-| HUB_ASSETS_SHA | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` | Owner Activity Hub icons |
-| **P4_0_AUDIT_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
-| **P4_5_PLAN_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
-| P4_5_IMPLEMENTATION_CHECKPOINT_SHA | — | Not started |
+| Marker                    | SHA                                        | Notes                             |
+| ------------------------- | ------------------------------------------ | --------------------------------- |
+| FIXUP_START_SHA           | `1290df92681ee1e98fde3e0efaf231f7d110f6db` | P4-COMBINED-AUDIT-FIXUP-001 start |
+| FIXUP_CHECKPOINT_SHA      | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` | Six audit findings (live Zeabur)  |
+| HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` | Owner Activity Hub icons          |
+| P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
+| P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
+| P4_0_CORRECTIVE_FIXUP_SHA | pending local commit (not pushed)          |
 
 ## Current task
 
-`P4-0-SELF-AUDIT-AND-CONTINUOUS-HANDOFF-001`
+`P4-0-CLOSURE-CORRECTIVE-002`
 
 ## Active branch / PR
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- HEAD: `0bdb254b4d6c0a84463a6331f2d830f642cbeeea`
+- Remote HEAD: `46744013a133f537c90c24d24b58f2abc83f8292`
+- Local corrective changes: uncommitted / pending commit
 
-## Six combined-audit findings — verified CLOSED (current code)
+## CI (remote HEAD 4674401)
 
-| # | Finding | Status |
-| --- | --- | --- |
-| A | WWW OAuth production loopback | CLOSED — `public-origin.ts`, Dockerfile.web, runtime-doctor |
-| B | API real readiness | CLOSED — `health-probes.ts` probes identity + activity |
-| C | Admin real Discord diagnostics | CLOSED — `runtime-status.ts` uses gateway `discord.state` |
-| D | Admin production runtime | CLOSED — `serve-static.mjs`, not vite preview |
-| E | Projection guild/channel boundary | CLOSED — `projection-channel-scope.ts` |
-| F | SoT Issue #26 | CLOSED — technical CI/validate; Owner UX deferred |
+- Run `32283423808` — **FAIL** (Quality Gates / `format:check` on 3 docs files)
+- Corrective fix: Prettier applied locally; green CI pending push after repo → PRIVATE
 
-## Activity Hub assets — verified
+## Six combined-audit findings — verified CLOSED (code)
 
-- Registry: `activity-hub-assets.ts`
-- 5 Owner icons under `apps/discord-gateway/assets/*.webp`
-- Thumbnails + `attachment://` + `files` on publish/edit/reconcile
-- Docker copy in `Dockerfile.discord-gateway`
-- Signed Secondary buttons unchanged
+| #   | Finding                           | Status                                                          |
+| --- | --------------------------------- | --------------------------------------------------------------- |
+| A   | WWW OAuth production loopback     | CLOSED                                                          |
+| B   | API real readiness                | CLOSED                                                          |
+| C   | Admin real Discord diagnostics    | CLOSED                                                          |
+| D   | Admin production runtime          | CLOSED                                                          |
+| E   | Projection guild/channel boundary | CLOSED                                                          |
+| F   | SoT Issue #26                     | CLOSED — Owner UX deferred to Core Foundation Integrated Review |
 
-## Local validation (HEAD 63ed51e)
+## OD-P4.5-001 — REMOVED (false blocker)
 
-- `pnpm validate:quick` — PASS (prior run)
-- `pnpm test:e2e` — PASS (after `playwright install`)
-- `pnpm test:runtime-smoke` — PASS (after `pnpm --dir apps/web build`)
-- `pnpm audit --audit-level=high` — PASS (0 high; 1 moderate)
-- Docker image verify — BLOCKED_EXTERNAL (local Docker daemon unavailable)
+Accepted product §10 Multi-Discord: **BOTH MODES ARE ACCEPTED** (SHARED + SEPARATE per activity).
+See `docs/ai/P4_5_SCOPE_LOCK.md`. Not an Owner decision gate.
+
+## Hub attachments — corrective additions
+
+- `editComponentsV2Message`: `attachments: []` when replacing files (discord.js semantics)
+- Regression: `activity-hub-attachment-lifecycle.spec.ts` (3× reconcile/edit, 5 files invariant)
+
+## Local validation (corrective workspace, NODE_ENV=test)
+
+- `pnpm format:check` — PASS
+- `pnpm validate` — PASS (full suite)
+- Docker image verify — BLOCKED_EXTERNAL (no local daemon)
+
+## Live Zeabur (2026-08-19)
+
+- api `/health/live` + `/health/ready` — OK on `7f9e15e`
+- activity ready check — **disabled**
+- Hub icons + 3× reconcile live — **NOT VERIFIED** (stale discord-gateway deploy)
 
 ## Explicit gates
 
-- **NO MERGE** (until existing project merge gates)
-- Issues #20 #21 #22 #23 #24 **NOT IMPLEMENTED**
+- **NO MERGE**
+- Issues #20–#24 **NOT IMPLEMENTED**
 - P4.6 **NOT STARTED**
-
-## Owner roadmap (#26)
-
-Full manual Owner UX deferred to Core Foundation Integrated Review.
-Technical CI / security / Zeabur / runtime remain required.
-
-## Live Zeabur (prior FIXUP checkpoint)
-
-Still on `7f9e15e` until redeploy after `63ed51e` push.
-Redeploy pending after CI green on new SHA.
 
 ## OPEN_CRITICAL / OPEN_HIGH
 
@@ -81,9 +89,10 @@ Redeploy pending after CI green on new SHA.
 
 ## OWNER_DECISIONS_REQUIRED
 
-- **OD-P4.5-001** — shared vs separate participant lists for multi-guild publish
-  (see `docs/ai/P4_5_SCOPE_LOCK.md`)
+- **Issue #25** — set repository visibility to **PRIVATE** before push/deploy
+- **Activity config** — enable Activity technical smoke on Zeabur (ACTIVITY_ENABLED path)
+- Zeabur redeploy same SHA 7/7 after repo private + CI green
 
 ## Last updated
 
-2026-08-19 — P4.0 rolling audit checkpoint + P4.5 scope lock
+2026-08-19 — P4-0-CLOSURE-CORRECTIVE-002 (local; push blocked)

@@ -95,6 +95,34 @@ describe('DiscordJsGatewayAdapter', () => {
       edit.mock.calls as unknown as Array<[string, Record<string, unknown>]>
     )[0]?.[1];
     expect(editPayload?.files).toEqual(files);
+    expect(editPayload?.attachments).toEqual([]);
+  });
+
+  it('does not clear attachments on edit when payload has no replacement files', async () => {
+    const edit = vi.fn(() => Promise.resolve({ id: 'msg-1' }));
+    const channel = {
+      isTextBased: () => true,
+      isDMBased: () => false,
+      messages: { edit },
+    };
+    const fetch = vi.fn(() => Promise.resolve(channel));
+    const adapter = new DiscordJsGatewayAdapter({
+      config: makeConfig(),
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      onInteraction: () => Promise.resolve(),
+    });
+    Object.defineProperty(adapter, 'client', {
+      value: { channels: { fetch } },
+    });
+
+    await adapter.editComponentsV2Message('100000000000000099', 'msg-1', {
+      components: [],
+      flags: 1 << 15,
+    });
+    const editPayload = (
+      edit.mock.calls as unknown as Array<[string, Record<string, unknown>]>
+    )[0]?.[1];
+    expect(editPayload?.attachments).toBeUndefined();
   });
 
   it('permits Guilds-only when sync is off and Guilds+GuildMembers when sync is on', () => {
