@@ -67,4 +67,4 @@ export function rsvpFeedbackCopy(err: unknown): string {
 }
 
 export const GUILD_UNAVAILABLE_COPY =
-  'Nie udało się ustalić serwera. Spróbuj ponownie lub skontaktuj się z administracją.';
+  'Brak przypisanego serwera Discord dla tego portalu. Skontaktuj się z administracją — serwer musi być skonfigurowany przy wdrożeniu WWW (nie da się dodać go samodzielnie w tej wersji).';

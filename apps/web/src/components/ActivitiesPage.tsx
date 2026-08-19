@@ -96,7 +96,7 @@ export function ActivitiesPage() {
         <header className="page-hero">
           <h1>Aktywności</h1>
         </header>
-        <UnavailableState title="Nie udało się ustalić serwera">
+        <UnavailableState title="Brak przypisanego serwera">
           {GUILD_UNAVAILABLE_COPY}
         </UnavailableState>
       </>
