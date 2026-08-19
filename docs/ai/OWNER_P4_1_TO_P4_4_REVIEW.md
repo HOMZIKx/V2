@@ -29,6 +29,11 @@ FIXUP_CHECKPOINT_SHA: `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8`
 
 CI: PASS (Quality gates, Secret scan, Infrastructure integration)
 
+Hub assets: `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` (Owner icons, thumbnails,
+attachment://, Docker copy).
+
+P4.0 audit checkpoint: pending push (see `PROJECT_STATE.md`).
+
 ## Deferred Owner UX checklist
 
 Keep these for Core Foundation Integrated Review. They are **not** a current

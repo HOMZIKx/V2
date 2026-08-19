@@ -1,110 +1,128 @@
 ﻿# Cursor → ChatGPT handoff
 
-## Status
+## Continuous handoff snapshot
 
-Task: `P4-COMBINED-AUDIT-FIXUP-001`
+| Field | Value |
+| --- | --- |
+| **CURRENT_TASK** | `P4-0-SELF-AUDIT-AND-CONTINUOUS-HANDOFF-001` |
+| **CURRENT_HEAD** | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` (+ pending docs commit) |
+| **LAST_IMMUTABLE_CHECKPOINT** | `63ed51e` (Hub assets) |
+| **P4_0_AUDIT_CHECKPOINT_SHA** | pending push (this docs commit) |
+| **P4_5_PLAN_CHECKPOINT_SHA** | same docs commit |
+| **P4_5_IMPLEMENTATION_CHECKPOINT_SHA** | — |
+| **CURRENT_CI** | pending after push |
+| **OPEN_CRITICAL** | 0 |
+| **OPEN_HIGH** | 0 |
+| **OWNER_DECISIONS_REQUIRED** | OD-P4.5-001 (multi-guild participant list mode) |
+| **ZEABUR_STATE** | prior deploy `7f9e15e`; redeploy pending |
+| **NEXT_WORK** | Push → CI → Zeabur redeploy → P4.5 RabbitMQ adapter scaffolding |
 
-FINAL STATUS:
+---
 
-READY_FOR_CHATGPT_P4_0_DELTA_AUDIT
+## FINAL STATUS (P4.0)
 
-NO MERGE · NO P4.5 · NO P4.6 · NO RABBITMQ  
-ISSUE #20 / #21 / #22 / #23 / #24 **NOT IMPLEMENTED**
+**READY_FOR_CHATGPT_P4_0_DELTA_AUDIT**
 
-FIXUP_START_SHA: `1290df92681ee1e98fde3e0efaf231f7d110f6db`
+NO MERGE · NO P4.6 · Issues #20–#24 NOT IMPLEMENTED
 
-FIXUP_CHECKPOINT_SHA: `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8`
+---
 
-Owner roadmap **#26**: full manual Owner UX of the transitional Centrum is
-deferred to Core Foundation Integrated Review. Technical CI / security /
-runtime / Zeabur / ChatGPT audit remain mandatory.
+## Checkpoint SHAs
 
-## AUDIT FINDINGS
+| Label | SHA |
+| --- | --- |
+| FIXUP_START_SHA | `1290df92681ee1e98fde3e0efaf231f7d110f6db` |
+| FIXUP_CHECKPOINT_SHA | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` |
+| HUB_ASSETS_SHA | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` |
 
-### 1. WEB_DISCORD_OAUTH_PRODUCTION_LOCALHOST_REDIRECT
+---
 
-STATUS: FIXED
+## Six audit findings — CLOSED
 
-CODE EVIDENCE: `apps/web/src/lib/public-origin.ts`, `env.ts`,
-`Dockerfile.web` fail-closed https public origins; doctor OAUTH_* /
-WEB_* checks.
+### A. WWW OAuth production loopback — CLOSED
 
-TEST EVIDENCE: `public-origin.spec.ts`, `login.spec.ts`,
-`callback-url.spec.ts`, `runtime-doctor.test.ts`.
+Code: `apps/web/src/lib/public-origin.ts`, `env.ts`, `Dockerfile.web`  
+Tests: `public-origin.spec.ts`, `login.spec.ts`, `runtime-doctor.test.ts`
 
-LIVE EVIDENCE: OAuth start Location
-`https://discord.com/api/oauth2/authorize?...&redirect_uri=https%3A%2F%2Fv2-api.zeabur.app%2Fapi%2Fauth%2Fcallback%2Fdiscord`.
-WWW login JS: `readPublicOrigin("https://v2-api.zeabur.app", "http://127.0.0.1:4200")` —
-production uses the public origin, loopback is only the unused local fallback
-string. Login HTML contains no loopback href.
+### B. API real readiness — CLOSED
 
-### 2. API_GATEWAY_REAL_READINESS
+Code: `apps/api-gateway/src/health-probes.ts`, `health.controller.ts`  
+Tests: `health-probes.spec.ts`
 
-STATUS: FIXED
+### C. Admin real Discord diagnostics — CLOSED
 
-CODE EVIDENCE: probes `/health/ready`; 503/timeout/malformed → 503.
-Live remains cheap.
+Code: `apps/admin/src/api/runtime-status.ts`  
+Tests: `runtime-status.spec.ts`, `audit-closure.spec.ts`
 
-TEST EVIDENCE: `health-probes.spec.ts`.
+### D. Admin production runtime — CLOSED
 
-LIVE EVIDENCE: `GET https://v2-api.zeabur.app/health/ready` → 200
-`checks.activity=disabled`, `checks.identity=ok`, `discord.state=ready`.
+Code: `Dockerfile.admin`, `apps/admin/scripts/serve-static.mjs`  
+Tests: `serve-static.spec.ts`, `validate-registry.mjs`
 
-### 3. ADMIN_REAL_DISCORD_DIAGNOSTICS
+### E. Projection guild/channel boundary — CLOSED
 
-STATUS: FIXED
+Code: `projection-channel-scope.ts`, `activity-projection.controller.ts`  
+Tests: `projection-channel-scope.spec.ts`, `activity-projection.controller.spec.ts`
 
-CODE EVIDENCE: Admin maps `ready.discord.state`; guild list is not used
-for Discord/bot flags.
+### F. SoT Issue #26 — CLOSED
 
-TEST EVIDENCE: `runtime-status.spec.ts`, `audit-closure.spec.ts`.
+Technical gates in CI/`pnpm validate`; Owner UX checklist deferred per #26.
 
-LIVE EVIDENCE: api-gateway `discord.state=ready` after internal
-`DISCORD_GATEWAY_BASE_URL`. Unknown would render „Nie wiadomo”, not „Tak”.
+---
 
-### 4. ADMIN_PRODUCTION_STATIC_RUNTIME
+## Activity Hub assets — CLOSED (63ed51e)
 
-STATUS: FIXED
+| Check | Result |
+| --- | --- |
+| ASSETS_FOUND | 5/5 |
+| HUB_HEADER_ICON | PASS |
+| CREATE / LFG / MINE / NOTIFICATIONS icons | PASS |
+| attachment:// thumbnails + alt | PASS |
+| BUTTON_SECURITY_UNCHANGED | PASS |
+| publish / edit / reconcile files payload | PASS |
+| NO_DUPLICATE_ATTACHMENTS (builder) | PASS |
+| ASSETS_IN_DOCKER (Dockerfile) | PASS (file copy); image build BLOCKED_EXTERNAL locally |
 
-CODE EVIDENCE: `serve-static.mjs`; Dockerfile CMD is not vite preview.
+---
 
-LIVE EVIDENCE: `GET https://v2-admin.zeabur.app/health` 200 with
-`gitCommitSha=7f9e15e…`; SPA `/activity/types` returns the shell.
+## Validation (local, 63ed51e)
 
-### 5. DISCORD_PROJECTION_GUILD_CHANNEL_SCOPE
+```text
+pnpm format:check          PASS
+pnpm lint                  PASS
+pnpm typecheck             PASS
+pnpm test                  PASS (178 discord-gateway; full monorepo green)
+pnpm test:coverage         PASS (via validate run before e2e fix)
+pnpm architecture:check    PASS
+pnpm runtime:doctor        PASS
+pnpm build                 PASS
+pnpm test:e2e              PASS (after playwright install)
+pnpm test:runtime-smoke    PASS (after apps/web build)
+pnpm audit --audit-level=high  PASS (0 high)
+```
 
-STATUS: FIXED
+Docker daemon unavailable locally — compose config validated in `validate:quick`.
 
-CODE EVIDENCE: `projection-channel-scope.ts` before publish/edit/hub.
+---
 
-TEST EVIDENCE: wrong guild / DM / unsupported / missing permissions /
-valid / idempotent duplicate.
+## P4.5 scope lock
 
-### 6. SOT_OWNER_REVIEW_POLICY
+See `docs/ai/P4_5_SCOPE_LOCK.md`.
 
-STATUS: FIXED
+**Accepted:** RabbitMQ from P4.5, PG outbox retained, multi-guild publish permission,
+broker-agnostic domain, extend existing services.
 
-Issue #26 deferred UX checklists remain in
-`OWNER_P4_1_TO_P4_4_REVIEW.md`. CI is recorded as PASS, not pending.
+**UNRESOLVED:** OD-P4.5-001 shared vs split participant lists — blocks
+product-visible multi-guild RSVP semantics; does not block RMQ adapter design.
 
-## CI
+---
 
-PASS — https://github.com/HOMZIKx/V2/actions/runs/32180546956
+## Zeabur
 
-Quality gates PASS · Secret scan PASS · Infrastructure integration PASS
+Prior live proof on `7f9e15e`. Redeploy after CI on new SHA required for Hub icons live.
 
-## ZEABUR REVISION (image commitSHA + live gitCommitSha)
-
-authorization: `7f9e15e` RUNNING
-identity: `7f9e15e` RUNNING
-activity: `7f9e15e` RUNNING
-api: `7f9e15e` RUNNING (live MATCH)
-discord: `7f9e15e` RUNNING
-admin: `7f9e15e` RUNNING (live MATCH)
-web: `7f9e15e` RUNNING (live MATCH)
-
-REVISION CONSISTENCY: PASS
+---
 
 ## Out of scope (respected)
 
-NO MERGE. NO P4.5. NO P4.6. NO RabbitMQ. NO #20–#24.
+No merge. No P4.6. No #20–#24 product features. No history rewrite.
