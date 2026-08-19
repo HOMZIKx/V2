@@ -7,8 +7,8 @@
 | **CURRENT_TASK** | `P4-0-SELF-AUDIT-AND-CONTINUOUS-HANDOFF-001` |
 | **CURRENT_HEAD** | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` (+ pending docs commit) |
 | **LAST_IMMUTABLE_CHECKPOINT** | `63ed51e` (Hub assets) |
-| **P4_0_AUDIT_CHECKPOINT_SHA** | pending push (this docs commit) |
-| **P4_5_PLAN_CHECKPOINT_SHA** | same docs commit |
+| **P4_0_AUDIT_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
+| **P4_5_PLAN_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
 | **P4_5_IMPLEMENTATION_CHECKPOINT_SHA** | — |
 | **CURRENT_CI** | pending after push |
 | **OPEN_CRITICAL** | 0 |

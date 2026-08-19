@@ -17,9 +17,8 @@ Not APPROVED. Not merged.
 | FIXUP_START_SHA | `1290df92681ee1e98fde3e0efaf231f7d110f6db` | P4-COMBINED-AUDIT-FIXUP-001 start |
 | FIXUP_CHECKPOINT_SHA | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` | Six audit findings code fix (deployed) |
 | HUB_ASSETS_SHA | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` | Owner Activity Hub icons |
-| **P4_0_AUDIT_CHECKPOINT_SHA** | *(set on push — docs commit after 63ed51e)* | Technical P4.0 closure + handoff |
-
-| P4_5_PLAN_CHECKPOINT_SHA | pending | Scope lock doc committed with P4.0 |
+| **P4_0_AUDIT_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
+| **P4_5_PLAN_CHECKPOINT_SHA** | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
 | P4_5_IMPLEMENTATION_CHECKPOINT_SHA | — | Not started |
 
 ## Current task
@@ -30,7 +29,7 @@ Not APPROVED. Not merged.
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- HEAD: see git (`63ed51e` + pending docs commit)
+- HEAD: `0bdb254b4d6c0a84463a6331f2d830f642cbeeea`
 
 ## Six combined-audit findings — verified CLOSED (current code)
 
