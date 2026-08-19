@@ -87,10 +87,13 @@ describe('runStartupHubReconcile', () => {
       logger,
     });
 
-    expect(gateway.editComponentsV2Message).toHaveBeenCalledWith(
-      'chan-hub',
-      'msg-old',
-      expect.objectContaining({ flags: expect.any(Number) as number }),
+    expect(gateway.editComponentsV2Message).toHaveBeenCalledOnce();
+    const editCall = gateway.editComponentsV2Message.mock.calls[0] as
+      [string, string, { flags?: number; files?: Array<{ name?: string | null }> }] | undefined;
+    const editPayload = editCall?.[2];
+    expect(editPayload?.flags).toBe(1 << 15);
+    expect(editPayload?.files?.some((file) => file.name === 'centrum-aktywnosci-icon.webp')).toBe(
+      true,
     );
     expect(logger.info).toHaveBeenCalledWith(
       'Startup hub reconcile completed',

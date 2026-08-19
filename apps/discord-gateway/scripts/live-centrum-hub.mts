@@ -163,6 +163,11 @@ async function cmdPublish(channelId: string) {
         : component,
     ),
     flags: rendered.flags,
+    attachments: rendered.files?.map((file, index) => ({
+      id: String(index),
+      filename: file.name,
+      description: file.description ?? undefined,
+    })),
   };
 
   let messageId = typeof panel.messageId === 'string' ? panel.messageId : knownMessageId;

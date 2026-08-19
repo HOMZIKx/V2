@@ -39,6 +39,7 @@ COPY --from=build /app/packages/observability/package.json ./packages/observabil
 COPY --from=build /app/packages/observability/dist ./packages/observability/dist
 COPY --from=build /app/apps/discord-gateway/package.json ./apps/discord-gateway/package.json
 COPY --from=build /app/apps/discord-gateway/dist ./apps/discord-gateway/dist
+COPY --from=build /app/apps/discord-gateway/assets ./apps/discord-gateway/assets
 RUN pnpm install --frozen-lockfile --prod --filter @v2/discord-gateway...
 WORKDIR /app/apps/discord-gateway
 EXPOSE 4100

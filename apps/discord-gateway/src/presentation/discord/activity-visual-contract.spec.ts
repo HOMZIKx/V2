@@ -9,6 +9,7 @@ import { isDraftPreviewMessage, renderDraftFormSummary } from './activity-epheme
 import { renderActivityEventMessage } from './activity-event-renderer.js';
 import { renderActivityHubMessage } from './activity-hub-renderer.js';
 import { ACTIVITY_MODULE_ACCENT } from './activity-theme.js';
+import { toComponentsV2Payload } from './components-v2-payload.js';
 
 const secret = 's'.repeat(32);
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -18,12 +19,13 @@ function toJson(component: unknown): Record<string, unknown> {
 }
 
 describe('Activity Discord visual contract', () => {
-  it('keeps hub as one Container with module accent and no Primary buttons', () => {
+  it('keeps hub as one Container with module accent, thumbnails and no Primary buttons', () => {
     const payload = renderActivityHubMessage({
       opaquePanelId: 'aabbccddeeff',
       signingSecret: secret,
     });
     expect(payload.components).toHaveLength(1);
+    expect(payload.files).toHaveLength(5);
     const container = toJson(payload.components![0]);
     expect(container.type).toBe(ComponentType.Container);
     expect(container.accent_color).toBe(ACTIVITY_MODULE_ACCENT);
@@ -36,10 +38,34 @@ describe('Activity Discord visual contract', () => {
     expect(json).toContain(':panel:aabbccddeeff:lfg');
     expect(json).toContain(':panel:aabbccddeeff:mine');
     expect(json).toContain(':panel:aabbccddeeff:inbox');
+    expect(json).toContain('attachment://centrum-aktywnosci-icon.webp');
+    expect(json).toContain('attachment://utworz-wydarzenie-icon.webp');
+    expect(json).toContain('attachment://szukam-ekipy-icon.webp');
+    expect(json).toContain('attachment://moje-aktywnosci-icon.webp');
+    expect(json).toContain('attachment://powiadomienia-icon.webp');
     expect(json).not.toMatch(
       /components v2|projection|backend|activity-service|opaque id|guild config/i,
     );
     expect(json).not.toMatch(/[\u{1F525}\u{2694}\u{1F409}\u{1F48E}]/u);
+  });
+
+  it('preserves hub files through Components V2 payload normalization for publish/edit/reconcile', () => {
+    const payload = toComponentsV2Payload(
+      renderActivityHubMessage({
+        opaquePanelId: 'aabbccddeeff',
+        signingSecret: secret,
+      }),
+    );
+    expect(payload.files).toHaveLength(5);
+    const names = payload.files?.map((file) => (file as { name?: string }).name).sort();
+    expect(names).toEqual([
+      'centrum-aktywnosci-icon.webp',
+      'moje-aktywnosci-icon.webp',
+      'powiadomienia-icon.webp',
+      'szukam-ekipy-icon.webp',
+      'utworz-wydarzenie-icon.webp',
+    ]);
+    expect(new Set(names).size).toBe(5);
   });
 
   it('does not import V2 LAB from activity renderers', () => {
