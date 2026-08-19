@@ -5,7 +5,7 @@
 | Field                               | Value                                                                               |
 | ----------------------------------- | ----------------------------------------------------------------------------------- |
 | **CURRENT_TASK**                    | `P4-0-CLOSURE-CORRECTIVE-002`                                                       |
-| **FINAL_HEAD_SHA**                  | local corrective commit pending (remote `46744013a133f537c90c24d24b58f2abc83f8292`) |
+| **FINAL_HEAD_SHA**                  | `59172be2f10fce4e891480dc25a61810fe4ee3f5` (local only; remote `4674401`)           |
 | **CI_RUN_ID**                       | `32283423808` (remote HEAD 4674401)                                                 |
 | **CI_RESULT**                       | **FAIL** — `format:check` on docs; fixed locally, not pushed                        |
 | **REPOSITORY_VISIBILITY**           | **PUBLIC** — Issue #25 blocker                                                      |

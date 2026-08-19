@@ -25,7 +25,7 @@ Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 | HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` | Owner Activity Hub icons          |
 | P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
 | P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |
-| P4_0_CORRECTIVE_FIXUP_SHA | pending local commit (not pushed)          |
+| P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` | not pushed (repo PUBLIC) |
 
 ## Current task
 
@@ -36,7 +36,7 @@ Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
 - Remote HEAD: `46744013a133f537c90c24d24b58f2abc83f8292`
-- Local corrective changes: uncommitted / pending commit
+- Local corrective HEAD: `59172be2f10fce4e891480dc25a61810fe4ee3f5` (1 commit ahead of origin; not pushed)
 
 ## CI (remote HEAD 4674401)
 
