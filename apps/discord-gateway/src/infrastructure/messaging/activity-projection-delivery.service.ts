@@ -8,12 +8,6 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 
-import type { DiscordGatewayConfig } from '../discord/discord-config.js';
-import type { DiscordJsGatewayAdapter } from '../discord/discord-js-adapter.js';
-import { timingSafeEqualUtf8 } from '../security/timing-safe-equal.js';
-import { renderActivityEventMessage } from '../../presentation/discord/activity-event-renderer.js';
-import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
-import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
 import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
@@ -22,6 +16,12 @@ import {
   assertProjectionChannelAllowed,
   resolveAllowedProjectionGuild,
 } from '../../interface/http/projection-channel-scope.js';
+import { renderActivityEventMessage } from '../../presentation/discord/activity-event-renderer.js';
+import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
+import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
+import type { DiscordGatewayConfig } from '../discord/discord-config.js';
+import type { DiscordJsGatewayAdapter } from '../discord/discord-js-adapter.js';
+import { timingSafeEqualUtf8 } from '../security/timing-safe-equal.js';
 
 const deliverySchema = z.object({
   outboxId: z.string().min(1),

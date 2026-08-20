@@ -500,9 +500,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       return next;
     },
     async getActivityProjection(activityId) {
-      return (
-        [...projections.values()].find((p) => p.activityId === activityId) ?? null
-      );
+      return [...projections.values()].find((p) => p.activityId === activityId) ?? null;
     },
     async getActivityProjectionForGuild(activityId, guildId) {
       return projections.get(`${activityId}:${guildId}`) ?? null;
@@ -1143,8 +1141,7 @@ describe('ActivityUseCases (in-memory)', () => {
     );
     expect(activity.participantMode).toBe('separate');
     const projectionEvents = repo.outbox.filter(
-      (e) =>
-        (e as { eventType: string }).eventType === 'activity.activity.projection_requested.v1',
+      (e) => (e as { eventType: string }).eventType === 'activity.activity.projection_requested.v1',
     );
     expect(projectionEvents).toHaveLength(2);
 

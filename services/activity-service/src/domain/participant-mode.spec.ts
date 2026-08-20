@@ -14,20 +14,14 @@ describe('participant-mode', () => {
   });
 
   it('scopes SEPARATE RSVP to request guild and SHARED to null', () => {
-    expect(
-      resolveParticipationScopeGuildId({ mode: 'separate', requestGuildId: 'g-a' }),
-    ).toBe('g-a');
-    expect(
-      resolveParticipationScopeGuildId({ mode: 'shared', requestGuildId: 'g-a' }),
-    ).toBeNull();
+    expect(resolveParticipationScopeGuildId({ mode: 'separate', requestGuildId: 'g-a' })).toBe(
+      'g-a',
+    );
+    expect(resolveParticipationScopeGuildId({ mode: 'shared', requestGuildId: 'g-a' })).toBeNull();
   });
 
   it('filters participation pools by mode', () => {
-    const rows = [
-      { scopeGuildId: null },
-      { scopeGuildId: 'g-a' },
-      { scopeGuildId: 'g-b' },
-    ];
+    const rows = [{ scopeGuildId: null }, { scopeGuildId: 'g-a' }, { scopeGuildId: 'g-b' }];
     expect(filterParticipationsForMode(rows, 'shared', 'g-a')).toEqual([{ scopeGuildId: null }]);
     expect(filterParticipationsForMode(rows, 'separate', 'g-a')).toEqual([{ scopeGuildId: 'g-a' }]);
   });

@@ -1,3 +1,4 @@
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   ACTIVITY_EVENTS_BINDING_KEY,
   ACTIVITY_EVENTS_RETRY_EXCHANGE,
@@ -9,10 +10,9 @@ import {
   parseActivityProjectionEnvelope,
   type AmqpConnection,
 } from '@v2/messaging';
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
-import type { DiscordGatewayConfig } from '../discord/discord-config.js';
 import { DISCORD_CONFIG_TOKEN } from '../../interface/discord/discord.tokens.js';
+import type { DiscordGatewayConfig } from '../discord/discord-config.js';
 import {
   ActivityProjectionDeliveryService,
   type ProjectionDeliveryResult,
@@ -118,9 +118,7 @@ export class ActivityProjectionRabbitConsumer implements OnModuleInit, OnModuleD
         payload: {
           ...envelope.payload,
           kind: typeof envelope.payload.kind === 'string' ? envelope.payload.kind : 'event',
-          ...(target !== undefined
-            ? { guildId: target.guildId, channelId: target.channelId }
-            : {}),
+          ...(target !== undefined ? { guildId: target.guildId, channelId: target.channelId } : {}),
         },
       };
 

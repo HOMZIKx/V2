@@ -229,8 +229,7 @@ function mapActivity(row: Record<string, unknown>): ActivityRecord {
       row.participant_limit === null || row.participant_limit === undefined
         ? null
         : Number(row.participant_limit),
-    participantMode:
-      asNullableString(row.participant_mode) === 'separate' ? 'separate' : 'shared',
+    participantMode: asNullableString(row.participant_mode) === 'separate' ? 'separate' : 'shared',
     organizerDiscordUserId: asNullableString(row.organizer_discord_user_id),
     organizerV2UserId: asNullableString(row.organizer_v2_user_id),
     coOrganizerDiscordUserId: asNullableString(row.co_organizer_discord_user_id),

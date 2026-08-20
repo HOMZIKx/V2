@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Headers,
-  HttpCode,
-  Inject,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Inject, Post } from '@nestjs/common';
 
 import {
   ActivityProjectionDeliveryService,

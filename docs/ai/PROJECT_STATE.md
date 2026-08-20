@@ -17,10 +17,10 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 1 — P4.5                                   |
 | CURRENT_TASK            | `P4.5-MULTI-GUILD-RABBITMQ-001`            |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`              |
-| CURRENT_HEAD / PR_HEAD  | _(see tip after next push)_                |
+| CURRENT_HEAD / PR_HEAD  | `3efc400b7bf01e4b2db8e18f9e796fb552c7e6ed` |
 | PR                      | #19                                        |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| CURRENT_CI              | pending on next tip                        |
+| CURRENT_CI              | pending (format fix in flight)             |
 | CURRENT_ZEABUR_REVISION | discord `2fd4635…`; API stack `22ba38b…`   |
 
 ## Checkpoint ledger (immutable)
@@ -54,23 +54,26 @@ Done:
 - SHARED/SEPARATE RSVP scope + capacity isolation
 - discord-gateway RMQ consumer + shared delivery service
 - multi-guild allowlist (`DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`)
+- Admin event detail: participantMode + publicationTargets
+- Discord RSVP passes interaction `guildId`
+- envelope/publisher resilience contract tests
 
 Still required for `P4_5_FINAL_CHECKPOINT_SHA`:
 
-- failure-matrix / resilience tests (broker down, crash, dedupe, Discord 429/5xx, …)
-- minimal Admin mode/targets UX
+- fuller failure-matrix (Testcontainers/compose RMQ where applicable)
+- Discord multi-guild publish UX (API ready; create still single-channel default)
 - green CI on final tip
 - Zeabur RabbitMQ service + dual/rabbitmq transport runtime proof
 
 ## Owner external (non-blocking)
 
-| Field                    | Value                        |
-| ------------------------ | ---------------------------- |
-| BANNER_STATUS            | OWNER_ASSET_REQUIRED         |
-| ACTION_EMOJI_STATUS      | OWNER_ASSET_UPLOAD_REQUIRED  |
-| OPEN_CRITICAL            | 0                            |
-| OPEN_HIGH                | 0                            |
-| OWNER_DECISIONS_REQUIRED | none for P4.5 Accepted scope |
+| Field                    | Value                       |
+| ------------------------ | --------------------------- |
+| BANNER_STATUS            | OWNER_ASSET_REQUIRED        |
+| ACTION_EMOJI_STATUS      | OWNER_ASSET_UPLOAD_REQUIRED |
+| OPEN_CRITICAL            | 0                           |
+| OPEN_HIGH                | 0                           |
+| OWNER_DECISIONS_REQUIRED | none for P4.5 Accepted scope|
 
 ## Explicit gates
 
@@ -80,4 +83,4 @@ Still required for `P4_5_FINAL_CHECKPOINT_SHA`:
 
 ## Last updated
 
-2026-08-20 — P4.5 targets+fan-out+RMQ consumer vertical in progress
+2026-08-20 — P4.5 vertical advanced; awaiting green CI + Zeabur RMQ

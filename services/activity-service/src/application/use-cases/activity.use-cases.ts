@@ -12,13 +12,13 @@ import {
 } from '../../domain/lifecycle.js';
 import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
-import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
-import { normalizePublicationTargets } from '../../domain/publication-targets.js';
 import {
   filterParticipationsForMode,
   isGuildPublicationTarget,
   resolveParticipationScopeGuildId,
 } from '../../domain/participant-mode.js';
+import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
+import { normalizePublicationTargets } from '../../domain/publication-targets.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
 import {
   assertScheduleValid,
@@ -316,9 +316,7 @@ export class ActivityUseCases {
       const existing = await tx.getActivityProjectionForGuild(activity.id, target.guildId);
       const opaqueId =
         existing?.opaqueId ??
-        (target.guildId === activity.guildId
-          ? activity.opaqueId
-          : opaqueIdFromUuid(randomUUID()));
+        (target.guildId === activity.guildId ? activity.opaqueId : opaqueIdFromUuid(randomUUID()));
       await tx.upsertActivityProjection({
         activityId: activity.id,
         guildId: target.guildId,
@@ -943,13 +941,14 @@ export class ActivityUseCases {
           : activity.participantLimit;
 
       const participants = await tx.listParticipations(id);
-      const pool = filterParticipationsForMode(participants, activity.participantMode, requestGuildId);
+      const pool = filterParticipationsForMode(
+        participants,
+        activity.participantMode,
+        requestGuildId,
+      );
       const occupied = countOccupiedSlots(pool);
       let waitlistPosition: number | null = null;
-      if (
-        statusDef.occupiesSlot &&
-        !hasOpenSeat({ participantLimit, currentOccupied: occupied })
-      ) {
+      if (statusDef.occupiesSlot && !hasOpenSeat({ participantLimit, currentOccupied: occupied })) {
         const positions = pool
           .filter(
             (p) => p.waitlistPosition !== null && p.resignedAt === null && p.removedAt === null,

@@ -100,17 +100,14 @@ function buildEnvelopeFromOutbox(message: OutboxMessageRecord): ActivityProjecti
       ? payload.organizationId
       : 'unknown';
   const guildId =
-    typeof payload.guildId === 'string' && payload.guildId.length > 0
-      ? payload.guildId
-      : 'unknown';
+    typeof payload.guildId === 'string' && payload.guildId.length > 0 ? payload.guildId : 'unknown';
   const channelId =
     typeof payload.channelId === 'string' && payload.channelId.length > 0
       ? payload.channelId
       : typeof payload.publicationChannelId === 'string'
         ? payload.publicationChannelId
         : 'unknown';
-  const opaqueProjectionId =
-    typeof payload.opaqueId === 'string' ? payload.opaqueId : undefined;
+  const opaqueProjectionId = typeof payload.opaqueId === 'string' ? payload.opaqueId : undefined;
   const modeRaw = payload.participantMode;
   const mode =
     modeRaw === 'separate' || modeRaw === 'shared' || modeRaw === 'single' ? modeRaw : 'single';

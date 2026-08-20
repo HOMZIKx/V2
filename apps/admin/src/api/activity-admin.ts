@@ -555,8 +555,7 @@ export async function getEvent(guildId: string, eventId: string): Promise<Activi
     activity.participantCount ??
     (Array.isArray(payload.participations) ? payload.participations.length : undefined);
   const modeRaw = activity.participantMode;
-  const participantMode =
-    modeRaw === 'separate' || modeRaw === 'shared' ? modeRaw : undefined;
+  const participantMode = modeRaw === 'separate' || modeRaw === 'shared' ? modeRaw : undefined;
   const publicationTargets = Array.isArray(payload.publicationTargets)
     ? payload.publicationTargets.map((t) => ({
         guildId: t.guildId,
