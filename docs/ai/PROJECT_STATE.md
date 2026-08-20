@@ -20,7 +20,7 @@ Not APPROVED. Not merged. Issues #20–#24 not implemented.
 | CURRENT_BRANCH            | `cursor/p4-1-activity-domain`              |
 | PR                        | #19                                        |
 | P4_0_FINAL_CHECKPOINT_SHA | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f` |
-| P4_5_PLAN_CHECKPOINT_SHA  | _(set after commit)_                       |
+| P4_5_PLAN_CHECKPOINT_SHA  | _8834559e38f5d55160eb5de8510420651b26b829_ |
 | Plan doc                  | `docs/ai/P4_5_IMPLEMENTATION_PLAN.md`      |
 | OPEN_CRITICAL             | 0                                          |
 | OPEN_HIGH                 | 0                                          |

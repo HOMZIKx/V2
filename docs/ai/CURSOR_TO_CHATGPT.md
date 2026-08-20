@@ -6,10 +6,10 @@
 | ----------------------------- | ------------------------------------------ |
 | **CURRENT_TASK**              | `P4.5-IMPLEMENTATION-PLAN-002`             |
 | **FINAL_STATUS**              | `READY_FOR_CHATGPT_P4_5_PLAN_AUDIT`        |
-| **P4_5_PLAN_CHECKPOINT_SHA**  | _(set after commit)_                       |
+| **P4_5_PLAN_CHECKPOINT_SHA**  | _8834559e38f5d55160eb5de8510420651b26b829_ |
 | **P4_0_FINAL_CHECKPOINT_SHA** | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f` |
 | **PLAN_DOC**                  | `docs/ai/P4_5_IMPLEMENTATION_PLAN.md`      |
-| **BRANCH / PR**               | `cursor/p4-1-activity-domain` · #19        |
+| **BRANCH / PR**               | `cursor/p4-1-activity-domain` ï¿½ #19        |
 | **PRODUCTION_P4_5**           | **not started**                            |
 | **OPEN_CRITICAL**             | 0                                          |
 | **OPEN_HIGH**                 | 0                                          |
@@ -41,4 +41,4 @@ Executable P4.5 plan covering:
 Do **not** implement P4.5 production slices until this plan is audited/approved
 and P4.0 final delta audit is accepted.
 
-NO MERGE · NO P4.5 CODE · NO P4.6
+NO MERGE ï¿½ NO P4.5 CODE ï¿½ NO P4.6
