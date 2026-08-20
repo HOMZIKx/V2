@@ -67,13 +67,13 @@ Still required for `P4_5_FINAL_CHECKPOINT_SHA`:
 
 ## Owner external (non-blocking)
 
-| Field                    | Value                       |
-| ------------------------ | --------------------------- |
-| BANNER_STATUS            | OWNER_ASSET_REQUIRED        |
-| ACTION_EMOJI_STATUS      | OWNER_ASSET_UPLOAD_REQUIRED |
-| OPEN_CRITICAL            | 0                           |
-| OPEN_HIGH                | 0                           |
-| OWNER_DECISIONS_REQUIRED | none for P4.5 Accepted scope|
+| Field                    | Value                        |
+| ------------------------ | ---------------------------- |
+| BANNER_STATUS            | OWNER_ASSET_REQUIRED         |
+| ACTION_EMOJI_STATUS      | OWNER_ASSET_UPLOAD_REQUIRED  |
+| OPEN_CRITICAL            | 0                            |
+| OPEN_HIGH                | 0                            |
+| OWNER_DECISIONS_REQUIRED | none for P4.5 Accepted scope |
 
 ## Explicit gates
 
