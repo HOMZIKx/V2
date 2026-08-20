@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import type {
   ActivityDraftRecord,
   ActivityProjectionRecord,
+  ActivityPublicationTargetRecord,
   ActivityRecord,
   ActivityReportRecord,
   ActivityRepositoryPort,
@@ -334,6 +335,21 @@ function mapProjection(row: Record<string, unknown>): ActivityProjectionRecord {
     leaseExpiresAt: asNullableDate(row.lease_expires_at),
     desiredPayloadVersion: Number(row.desired_payload_version ?? 1),
     updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
+  };
+}
+
+function mapPublicationTarget(row: Record<string, unknown>): ActivityPublicationTargetRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    activityId: asRequiredString(row.activity_id, 'activity_id'),
+    organizationId: asRequiredString(row.organization_id, 'organization_id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    channelId: asRequiredString(row.channel_id, 'channel_id'),
+    participantLimit:
+      row.participant_limit === null || row.participant_limit === undefined
+        ? null
+        : Number(row.participant_limit),
+    sortOrder: Number(row.sort_order ?? 0),
   };
 }
 
@@ -1221,6 +1237,44 @@ function createTx(client: PoolClient): ActivityTx {
       return result.rows.map((row) => mapReport(row as Record<string, unknown>));
     },
 
+    async replacePublicationTargets(activityId, targets) {
+      await client.query(`DELETE FROM activity_publication_targets WHERE activity_id = $1`, [
+        activityId,
+      ]);
+      const records: ActivityPublicationTargetRecord[] = [];
+      for (const [index, target] of targets.entries()) {
+        const id = randomUUID();
+        const result = await client.query(
+          `INSERT INTO activity_publication_targets (
+             id, activity_id, organization_id, guild_id, channel_id,
+             participant_limit, sort_order
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+           RETURNING *`,
+          [
+            id,
+            activityId,
+            target.organizationId,
+            target.guildId,
+            target.channelId,
+            target.participantLimit ?? null,
+            target.sortOrder ?? index,
+          ],
+        );
+        records.push(mapPublicationTarget(result.rows[0] as Record<string, unknown>));
+      }
+      return records;
+    },
+
+    async listPublicationTargets(activityId) {
+      const result = await client.query(
+        `SELECT * FROM activity_publication_targets
+         WHERE activity_id = $1
+         ORDER BY sort_order ASC, created_at ASC`,
+        [activityId],
+      );
+      return result.rows.map((row) => mapPublicationTarget(row as Record<string, unknown>));
+    },
+
     async upsertActivityProjection(input) {
       const result = await client.query(
         `INSERT INTO activity_projections (
@@ -1266,8 +1320,17 @@ function createTx(client: PoolClient): ActivityTx {
 
     async getActivityProjection(activityId) {
       const result = await client.query(
-        `SELECT * FROM activity_projections WHERE activity_id = $1`,
+        `SELECT * FROM activity_projections WHERE activity_id = $1 ORDER BY updated_at DESC`,
         [activityId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapProjection(row);
+    },
+
+    async getActivityProjectionForGuild(activityId, guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_projections WHERE activity_id = $1 AND guild_id = $2 LIMIT 1`,
+        [activityId, guildId],
       );
       const row = result.rows[0] as Record<string, unknown> | undefined;
       return row === undefined ? null : mapProjection(row);

@@ -28,18 +28,25 @@ const SAFE_DETAILS: Record<ProjectionChannelValidation['code'], string> = {
 
 export function resolveAllowedProjectionGuild(options: {
   readonly configuredGuildId: string;
+  readonly allowedGuildIds?: readonly string[];
   readonly payloadGuildId?: string;
 }): string {
-  if (
-    options.payloadGuildId !== undefined &&
-    options.payloadGuildId !== options.configuredGuildId
-  ) {
+  const allowList =
+    options.allowedGuildIds !== undefined && options.allowedGuildIds.length > 0
+      ? options.allowedGuildIds
+      : [options.configuredGuildId];
+
+  if (options.payloadGuildId === undefined) {
+    return options.configuredGuildId;
+  }
+
+  if (!allowList.includes(options.payloadGuildId)) {
     throw new HttpException(
       { status: 'rejected', detail: 'Guild is outside the allowed P4 scope.' },
       HttpStatus.FORBIDDEN,
     );
   }
-  return options.configuredGuildId;
+  return options.payloadGuildId;
 }
 
 export async function assertProjectionChannelAllowed(options: {

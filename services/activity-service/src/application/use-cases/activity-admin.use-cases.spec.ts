@@ -292,10 +292,19 @@ function createAdminMemoryRepo(): {
     async listReports() {
       return [];
     },
+    async replacePublicationTargets() {
+      return [];
+    },
+    async listPublicationTargets() {
+      return [];
+    },
     async upsertActivityProjection() {
       return notImpl();
     },
     async getActivityProjection() {
+      return null;
+    },
+    async getActivityProjectionForGuild() {
       return null;
     },
     async claimProjectionRepair() {

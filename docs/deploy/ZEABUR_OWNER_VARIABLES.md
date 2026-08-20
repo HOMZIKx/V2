@@ -103,6 +103,8 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `ACTIVITY_PROJECTION_SHARED_SECRET`     | SECRET (ten sam co activity)                                                    |
 | `ACTIVITY_SERVICE_BASE_URL`             | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur)              |
 | `DISCORD_TEST_CHANNEL_ID`               | PUBLIC VALUE (opcjonalnie)                                                      |
+| `DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`    | PUBLIC VALUE (P4.5; comma-separated extra guilds; home = `DISCORD_TEST_GUILD_ID`) |
+| `DISCORD_ACTIVITY_RABBITMQ_URL`         | SECRET/INTERNAL (P4.5; empty = HTTP-only consumer idle)                         |
 
 ---
 
@@ -118,6 +120,9 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `ACTIVITY_OUTBOX_WORKER_ENABLED`       | PUBLIC VALUE = `true`                                                  |
 | `ACTIVITY_DISCORD_PROJECTION_BASE_URL` | INTERNAL → `http://discord-gateway:4100`                               |
 | `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co discord-gateway)                                    |
+| `ACTIVITY_OUTBOX_TRANSPORT`            | PUBLIC VALUE = `http` \| `rabbitmq` \| `dual` (P4.5; default `http`)   |
+| `ACTIVITY_RABBITMQ_URL`                | SECRET/INTERNAL (wymagane gdy transport ≠ `http`)                      |
+| `ACTIVITY_MULTI_GUILD_ENABLED`         | PUBLIC VALUE = `true` gdy multi-guild publish włączony                 |
 | `ACTIVITY_TRUST_ACTOR_HEADERS`         | PUBLIC VALUE = `false` (**zawsze** na production)                      |
 | `ACTIVITY_ALLOW_TEST_SEED`             | PUBLIC VALUE = `false`                                                 |
 | `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE                                                           |

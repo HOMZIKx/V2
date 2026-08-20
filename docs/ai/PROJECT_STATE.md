@@ -17,10 +17,10 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 1 — P4.5                                   |
 | CURRENT_TASK            | `P4.5-MULTI-GUILD-RABBITMQ-001`            |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`              |
-| CURRENT_HEAD / PR_HEAD  | `274402d814c194ad0922e57da5ec4fe59f19d8d1` |
+| CURRENT_HEAD / PR_HEAD  | _(see tip after next push)_                |
 | PR                      | #19                                        |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| CURRENT_CI              | PASS on tip (`32419502772`)                |
+| CURRENT_CI              | pending on next tip                        |
 | CURRENT_ZEABUR_REVISION | discord `2fd4635…`; API stack `22ba38b…`   |
 
 ## Checkpoint ledger (immutable)
@@ -45,6 +45,23 @@ Not APPROVED. Not merged.
 - P4.5 plan @ `8834559e38f5d55160eb5de8510420651b26b829`
 - (P4.5 final pending)
 
+## Stage 1 progress (additive)
+
+Done:
+
+- schema 005-009, `@v2/messaging`, RMQ publisher, multi-guild auth gate
+- publication targets persistence + projection fan-out
+- SHARED/SEPARATE RSVP scope + capacity isolation
+- discord-gateway RMQ consumer + shared delivery service
+- multi-guild allowlist (`DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`)
+
+Still required for `P4_5_FINAL_CHECKPOINT_SHA`:
+
+- failure-matrix / resilience tests (broker down, crash, dedupe, Discord 429/5xx, …)
+- minimal Admin mode/targets UX
+- green CI on final tip
+- Zeabur RabbitMQ service + dual/rabbitmq transport runtime proof
+
 ## Owner external (non-blocking)
 
 | Field                    | Value                        |
@@ -63,4 +80,4 @@ Not APPROVED. Not merged.
 
 ## Last updated
 
-2026-08-20 — continuous execution entry; Stage 1 P4.5 start
+2026-08-20 — P4.5 targets+fan-out+RMQ consumer vertical in progress

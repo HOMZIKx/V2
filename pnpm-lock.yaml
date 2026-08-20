@@ -207,6 +207,9 @@ importers:
       '@v2/configuration':
         specifier: workspace:*
         version: link:../../packages/configuration
+      '@v2/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability

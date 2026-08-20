@@ -137,6 +137,18 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       updatedAt: Date;
     }
   >();
+  const publicationTargets = new Map<
+    string,
+    {
+      id: string;
+      activityId: string;
+      organizationId: string;
+      guildId: string;
+      channelId: string;
+      participantLimit: number | null;
+      sortOrder: number;
+    }[]
+  >();
   const idempotency = new Map<string, { responseStatus: number; responseBody: unknown }>();
   let confirmedId = '';
   let inboxSeq = 0;
@@ -449,10 +461,27 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async listReports(guildId) {
       return reports.filter((r) => r.guildId === guildId);
     },
+    async replacePublicationTargets(activityId, targets) {
+      const records = targets.map((target, index) => ({
+        id: `pt-${activityId}-${target.guildId}`,
+        activityId,
+        organizationId: target.organizationId,
+        guildId: target.guildId,
+        channelId: target.channelId,
+        participantLimit: target.participantLimit ?? null,
+        sortOrder: target.sortOrder ?? index,
+      }));
+      publicationTargets.set(activityId, records);
+      return records;
+    },
+    async listPublicationTargets(activityId) {
+      return publicationTargets.get(activityId) ?? [];
+    },
     async upsertActivityProjection(input) {
-      const existing = projections.get(input.activityId);
+      const key = `${input.activityId}:${input.guildId}`;
+      const existing = projections.get(key);
       const next = {
-        id: existing?.id ?? `proj-${input.activityId}`,
+        id: existing?.id ?? `proj-${key}`,
         activityId: input.activityId,
         guildId: input.guildId,
         channelId: input.channelId,
@@ -467,11 +496,16 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         desiredPayloadVersion: input.desiredPayloadVersion ?? 1,
         updatedAt: new Date(),
       };
-      projections.set(input.activityId, next);
+      projections.set(key, next);
       return next;
     },
     async getActivityProjection(activityId) {
-      return projections.get(activityId) ?? null;
+      return (
+        [...projections.values()].find((p) => p.activityId === activityId) ?? null
+      );
+    },
+    async getActivityProjectionForGuild(activityId, guildId) {
+      return projections.get(`${activityId}:${guildId}`) ?? null;
     },
     async claimProjectionRepair() {
       return [];
@@ -1079,6 +1113,62 @@ describe('ActivityUseCases (in-memory)', () => {
       useCases.seedTestGuild(
         { guildId: 'guild-1', orgId: 'org-1', channelId: 'chan-1' },
         { actor },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('P4.5 multi-guild publish fans out projections and SEPARATE pools isolate capacity', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const activity = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Multi',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+        publicationChannelId: 'ch-home',
+        participantMode: 'separate',
+        participantLimit: 1,
+        targets: [
+          { guildId: 'guild-1', channelId: 'ch-home', participantLimit: 1 },
+          { guildId: 'guild-2', channelId: 'ch-away', participantLimit: 1 },
+        ],
+      },
+      { actor, idempotencyKey: 'multi-pub' },
+    );
+    expect(activity.participantMode).toBe('separate');
+    const projectionEvents = repo.outbox.filter(
+      (e) =>
+        (e as { eventType: string }).eventType === 'activity.activity.projection_requested.v1',
+    );
+    expect(projectionEvents).toHaveLength(2);
+
+    const homeFull = await useCases.rsvp(
+      activity.id,
+      { statusDefId: 'status-confirmed', guildId: 'guild-1' },
+      { actor: { discordUserId: 'member-home' } },
+    );
+    expect(homeFull.waitlistPosition).toBe(1);
+    expect(homeFull.scopeGuildId).toBe('guild-1');
+
+    const awaySeat = await useCases.rsvp(
+      activity.id,
+      { statusDefId: 'status-confirmed', guildId: 'guild-2' },
+      { actor: { discordUserId: 'member-away' } },
+    );
+    expect(awaySeat.waitlistPosition).toBeNull();
+    expect(awaySeat.scopeGuildId).toBe('guild-2');
+
+    await expect(
+      useCases.rsvp(
+        activity.id,
+        { statusDefId: 'status-confirmed', guildId: 'guild-unknown' },
+        { actor: { discordUserId: 'intruder' } },
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });

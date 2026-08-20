@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  filterParticipationsForMode,
   normalizeParticipantMode,
   resolveParticipationScopeGuildId,
 } from './participant-mode.js';
@@ -19,5 +20,15 @@ describe('participant-mode', () => {
     expect(
       resolveParticipationScopeGuildId({ mode: 'shared', requestGuildId: 'g-a' }),
     ).toBeNull();
+  });
+
+  it('filters participation pools by mode', () => {
+    const rows = [
+      { scopeGuildId: null },
+      { scopeGuildId: 'g-a' },
+      { scopeGuildId: 'g-b' },
+    ];
+    expect(filterParticipationsForMode(rows, 'shared', 'g-a')).toEqual([{ scopeGuildId: null }]);
+    expect(filterParticipationsForMode(rows, 'separate', 'g-a')).toEqual([{ scopeGuildId: 'g-a' }]);
   });
 });

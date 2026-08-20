@@ -153,6 +153,7 @@ export class ActivityGuildMetadataController {
     const gateway = this.requireGateway();
     const allowedGuildId = resolveAllowedProjectionGuild({
       configuredGuildId: this.config.DISCORD_TEST_GUILD_ID,
+      allowedGuildIds: this.config.activityAllowedGuildIds,
       payloadGuildId: guildId,
     });
     await assertProjectionChannelAllowed({

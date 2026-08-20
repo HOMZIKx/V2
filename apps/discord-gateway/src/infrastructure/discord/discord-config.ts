@@ -75,6 +75,10 @@ export const DiscordGatewayConfigSchema = z
       (value) => parseBoolean(value, true),
       z.boolean(),
     ),
+    /** Extra guild IDs allowed for multi-guild projections (comma-separated). Home = DISCORD_TEST_GUILD_ID. */
+    DISCORD_ACTIVITY_ALLOWED_GUILD_IDS: z.string().optional().default(''),
+    /** When set, discord-gateway consumes Activity projection envelopes from RabbitMQ. */
+    DISCORD_ACTIVITY_RABBITMQ_URL: z.string().optional().default(''),
     ACTIVITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4400'),
     ACTIVITY_CLIENT_MODE: z.enum(['headers', 'assertion']).optional().default('headers'),
     ACTIVITY_ORGANIZATION_ID: z.string().optional().default(''),
@@ -255,6 +259,7 @@ export const DiscordGatewayConfigSchema = z
 export type DiscordGatewayConfigInput = z.input<typeof DiscordGatewayConfigSchema>;
 export type DiscordGatewayConfig = z.output<typeof DiscordGatewayConfigSchema> & {
   operatorIds: string[];
+  activityAllowedGuildIds: string[];
 };
 
 export function normalizeDiscordConfig(
@@ -264,9 +269,28 @@ export function normalizeDiscordConfig(
     parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM !== undefined
       ? parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM.replace(/\\n/g, '\n')
       : undefined;
+  const activityAllowedGuildIds = parseAllowedGuildIds(
+    parsed.DISCORD_TEST_GUILD_ID,
+    parsed.DISCORD_ACTIVITY_ALLOWED_GUILD_IDS,
+  );
   return {
     ...parsed,
     ...(privateKeyPem !== undefined ? { DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: privateKeyPem } : {}),
     operatorIds: parseOperatorIds(parsed.DISCORD_TEST_OPERATOR_IDS),
+    activityAllowedGuildIds,
   };
+}
+
+function parseAllowedGuildIds(homeGuildId: string, extraCsv: string): string[] {
+  const ids = new Set<string>();
+  if (homeGuildId.trim().length > 0) {
+    ids.add(homeGuildId.trim());
+  }
+  for (const part of extraCsv.split(',')) {
+    const id = part.trim();
+    if (id.length > 0) {
+      ids.add(id);
+    }
+  }
+  return [...ids];
 }

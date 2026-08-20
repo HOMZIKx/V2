@@ -11,13 +11,20 @@ export function resolveParticipationScopeGuildId(input: {
   return input.mode === 'separate' ? input.requestGuildId : null;
 }
 
-export function assertGuildIsPublicationTarget(
+export function isGuildPublicationTarget(
   requestGuildId: string,
   targetGuildIds: readonly string[],
-): void {
-  if (!targetGuildIds.includes(requestGuildId)) {
-    throw Object.assign(new Error('Guild is not a publication target for this activity'), {
-      code: 'FORBIDDEN_GUILD',
-    });
+): boolean {
+  return targetGuildIds.includes(requestGuildId);
+}
+
+export function filterParticipationsForMode<T extends { readonly scopeGuildId: string | null }>(
+  participants: readonly T[],
+  mode: ParticipantMode,
+  requestGuildId: string,
+): T[] {
+  if (mode === 'separate') {
+    return participants.filter((p) => p.scopeGuildId === requestGuildId);
   }
+  return participants.filter((p) => p.scopeGuildId === null);
 }

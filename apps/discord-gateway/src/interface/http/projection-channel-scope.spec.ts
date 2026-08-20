@@ -21,6 +21,16 @@ describe('resolveAllowedProjectionGuild', () => {
       }),
     ).toThrow(HttpException);
   });
+
+  it('allows a payload guild listed in multi-guild allowlist', () => {
+    expect(
+      resolveAllowedProjectionGuild({
+        configuredGuildId: allowedGuild,
+        allowedGuildIds: [allowedGuild, 'guild-b'],
+        payloadGuildId: 'guild-b',
+      }),
+    ).toBe('guild-b');
+  });
 });
 
 describe('assertProjectionChannelAllowed', () => {

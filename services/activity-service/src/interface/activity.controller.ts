@@ -77,6 +77,17 @@ const publishSchema = z.object({
   timezone: z.string().optional(),
   locationText: z.string().nullable().optional(),
   typeId: z.string().uuid().nullable().optional(),
+  participantMode: z.enum(['shared', 'separate']).optional(),
+  targets: z
+    .array(
+      z.object({
+        guildId: z.string().min(1),
+        channelId: z.string().min(1),
+        participantLimit: z.number().int().positive().nullable().optional(),
+      }),
+    )
+    .max(25)
+    .optional(),
 });
 
 const editSchema = z.object({
@@ -93,6 +104,7 @@ const cancelSchema = z.object({
 
 const rsvpSchema = z.object({
   statusDefId: z.string().uuid(),
+  guildId: z.string().min(1).optional(),
 });
 
 const removeParticipantSchema = z.object({
@@ -271,6 +283,20 @@ export class ActivityController {
         ...(parsed.timezone !== undefined ? { timezone: parsed.timezone } : {}),
         ...(parsed.locationText !== undefined ? { locationText: parsed.locationText } : {}),
         ...(parsed.typeId !== undefined ? { typeId: parsed.typeId } : {}),
+        ...(parsed.participantMode !== undefined
+          ? { participantMode: parsed.participantMode }
+          : {}),
+        ...(parsed.targets !== undefined
+          ? {
+              targets: parsed.targets.map((t) => ({
+                guildId: t.guildId,
+                channelId: t.channelId,
+                ...(t.participantLimit !== undefined
+                  ? { participantLimit: t.participantLimit }
+                  : {}),
+              })),
+            }
+          : {}),
       },
       mutationCtx(request, idempotencyKey),
     );
@@ -384,7 +410,14 @@ export class ActivityController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseOrThrow(rsvpSchema, body);
-    return this.useCases.rsvp(id, parsed, mutationCtx(request, idempotencyKey));
+    return this.useCases.rsvp(
+      id,
+      {
+        statusDefId: parsed.statusDefId,
+        ...(parsed.guildId !== undefined ? { guildId: parsed.guildId } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('activities/:id/resign')

@@ -462,8 +462,23 @@ export interface ActivityTx {
     details?: string | null;
   }): Promise<ActivityReportRecord>;
   listReports(guildId: string): Promise<ActivityReportRecord[]>;
+  replacePublicationTargets(
+    activityId: string,
+    targets: readonly {
+      organizationId: string;
+      guildId: string;
+      channelId: string;
+      participantLimit?: number | null;
+      sortOrder?: number;
+    }[],
+  ): Promise<ActivityPublicationTargetRecord[]>;
+  listPublicationTargets(activityId: string): Promise<ActivityPublicationTargetRecord[]>;
   upsertActivityProjection(input: UpsertActivityProjectionInput): Promise<ActivityProjectionRecord>;
   getActivityProjection(activityId: string): Promise<ActivityProjectionRecord | null>;
+  getActivityProjectionForGuild(
+    activityId: string,
+    guildId: string,
+  ): Promise<ActivityProjectionRecord | null>;
   claimProjectionRepair(input: {
     owner: string;
     limit: number;

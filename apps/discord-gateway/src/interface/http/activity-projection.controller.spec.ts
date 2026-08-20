@@ -4,6 +4,7 @@ import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
 } from '../../infrastructure/discord/discord-config.js';
+import { ActivityProjectionDeliveryService } from '../../infrastructure/messaging/activity-projection-delivery.service.js';
 import { ActivityProjectionController } from './activity-projection.controller.js';
 
 const secret = 's'.repeat(32);
@@ -42,6 +43,20 @@ function gatewayForDeliver(
   };
 }
 
+function makeController(
+  gatewayOverrides: {
+    publish?: ReturnType<typeof vi.fn>;
+    validate?: ReturnType<typeof vi.fn>;
+  } = {},
+  configOverrides: Record<string, string> = {},
+) {
+  const delivery = new ActivityProjectionDeliveryService(
+    makeConfig(configOverrides),
+    gatewayForDeliver(gatewayOverrides) as never,
+  );
+  return new ActivityProjectionController(delivery);
+}
+
 const hubBody = {
   outboxId: 'outbox-1',
   eventType: 'activity.panel.projection_repaired.v1',
@@ -57,10 +72,7 @@ const hubBody = {
 describe('ActivityProjectionController', () => {
   it('delivers hub projection idempotently', async () => {
     const publish = vi.fn(() => Promise.resolve({ messageId: 'm1', channelId: 'c1' }));
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({ publish }) as never,
-    );
+    const controller = makeController({ publish });
 
     const first = await controller.deliver(hubBody, 'proj-secret');
     expect(first.status).toBe('delivered');
@@ -73,7 +85,7 @@ describe('ActivityProjectionController', () => {
   });
 
   it('rejects missing projection secret when configured', async () => {
-    const controller = new ActivityProjectionController(makeConfig(), gatewayForDeliver() as never);
+    const controller = makeController();
     await expect(
       controller.deliver(
         {
@@ -89,7 +101,7 @@ describe('ActivityProjectionController', () => {
   });
 
   it('rejects deliver without projection secret', async () => {
-    const controller = new ActivityProjectionController(makeConfig(), gatewayForDeliver() as never);
+    const controller = makeController();
     await expect(
       controller.deliver(
         {
@@ -112,17 +124,14 @@ describe('ActivityProjectionController', () => {
 
   it('accepts deliver with correct projection secret', async () => {
     const publish = vi.fn(() => Promise.resolve({ messageId: 'm-ok', channelId: 'c1' }));
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({ publish }) as never,
-    );
+    const controller = makeController({ publish });
     const result = await controller.deliver({ ...hubBody, outboxId: 'ok-1' }, 'proj-secret');
     expect(result.status).toBe('delivered');
     expect(publish).toHaveBeenCalledOnce();
   });
 
   it('rejects a malformed projection payload', async () => {
-    const controller = new ActivityProjectionController(makeConfig(), gatewayForDeliver() as never);
+    const controller = makeController();
     await expect(
       controller.deliver(
         {
@@ -142,13 +151,10 @@ describe('ActivityProjectionController', () => {
 
   it('does not publish when the channel is outside the allowed guild', async () => {
     const publish = vi.fn(() => Promise.resolve({ messageId: 'm1', channelId: 'c-other' }));
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({
-        publish,
-        validate: vi.fn(() => Promise.resolve({ ok: false, code: 'CHANNEL_WRONG_GUILD' as const })),
-      }) as never,
-    );
+    const controller = makeController({
+      publish,
+      validate: vi.fn(() => Promise.resolve({ ok: false, code: 'CHANNEL_WRONG_GUILD' as const })),
+    });
     await expect(
       controller.deliver({ ...hubBody, outboxId: 'wrong-guild' }, 'proj-secret'),
     ).rejects.toMatchObject({
@@ -160,13 +166,10 @@ describe('ActivityProjectionController', () => {
 
   it('does not publish a DM or unsupported channel', async () => {
     const publish = vi.fn();
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({
-        publish,
-        validate: vi.fn(() => Promise.resolve({ ok: false, code: 'CHANNEL_UNSUPPORTED' as const })),
-      }) as never,
-    );
+    const controller = makeController({
+      publish,
+      validate: vi.fn(() => Promise.resolve({ ok: false, code: 'CHANNEL_UNSUPPORTED' as const })),
+    });
     await expect(
       controller.deliver({ ...hubBody, outboxId: 'dm-1' }, 'proj-secret'),
     ).rejects.toMatchObject({
@@ -178,15 +181,12 @@ describe('ActivityProjectionController', () => {
 
   it('does not publish when bot permissions are missing', async () => {
     const publish = vi.fn();
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({
-        publish,
-        validate: vi.fn(() =>
-          Promise.resolve({ ok: false, code: 'BOT_PERMISSION_MISSING' as const }),
-        ),
-      }) as never,
-    );
+    const controller = makeController({
+      publish,
+      validate: vi.fn(() =>
+        Promise.resolve({ ok: false, code: 'BOT_PERMISSION_MISSING' as const }),
+      ),
+    });
     await expect(
       controller.deliver({ ...hubBody, outboxId: 'no-perms' }, 'proj-secret'),
     ).rejects.toMatchObject({
@@ -198,10 +198,7 @@ describe('ActivityProjectionController', () => {
 
   it('rejects a payload guild outside the configured P4 guild', async () => {
     const publish = vi.fn();
-    const controller = new ActivityProjectionController(
-      makeConfig(),
-      gatewayForDeliver({ publish }) as never,
-    );
+    const controller = makeController({ publish });
     await expect(
       controller.deliver(
         {

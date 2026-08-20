@@ -14,6 +14,11 @@ import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
 import { normalizePublicationTargets } from '../../domain/publication-targets.js';
+import {
+  filterParticipationsForMode,
+  isGuildPublicationTarget,
+  resolveParticipationScopeGuildId,
+} from '../../domain/participant-mode.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
 import {
   assertScheduleValid,
@@ -269,8 +274,8 @@ export class ActivityUseCases {
     tx: ActivityTx,
     activity: ActivityRecord,
     now: Date,
+    options?: { readonly onlyGuildIds?: readonly string[] },
   ): Promise<void> {
-    const channelId = activity.publicationChannelId ?? '';
     const scheduleFields = buildSchedulePayloadFields({
       scheduleKind: activity.scheduleKind,
       periodKey: activity.periodKey,
@@ -279,28 +284,66 @@ export class ActivityUseCases {
       timeZone: activity.timezone,
       scheduleHasExplicitTime: activity.scheduleHasExplicitTime,
     });
-    await tx.upsertActivityProjection({
-      activityId: activity.id,
-      guildId: activity.guildId,
-      channelId,
-      opaqueId: activity.opaqueId,
-      status: 'pending',
-    });
-    await tx.insertOutbox({
-      eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
-      aggregateType: 'activity',
-      aggregateId: activity.id,
-      aggregateVersion: activity.version,
-      payload: {
+
+    let targets = await tx.listPublicationTargets(activity.id);
+    if (targets.length === 0) {
+      const channelId = activity.publicationChannelId ?? '';
+      if (channelId.length === 0) {
+        return;
+      }
+      targets = [
+        {
+          id: 'legacy-home',
+          activityId: activity.id,
+          organizationId: activity.organizationId,
+          guildId: activity.guildId,
+          channelId,
+          participantLimit: activity.participantLimit,
+          sortOrder: 0,
+        },
+      ];
+    }
+
+    if (options?.onlyGuildIds !== undefined) {
+      const allowed = new Set(options.onlyGuildIds);
+      targets = targets.filter((t) => allowed.has(t.guildId));
+    }
+
+    for (const target of targets) {
+      if (target.channelId.trim().length === 0) {
+        continue;
+      }
+      const existing = await tx.getActivityProjectionForGuild(activity.id, target.guildId);
+      const opaqueId =
+        existing?.opaqueId ??
+        (target.guildId === activity.guildId
+          ? activity.opaqueId
+          : opaqueIdFromUuid(randomUUID()));
+      await tx.upsertActivityProjection({
         activityId: activity.id,
-        opaqueId: activity.opaqueId,
-        guildId: activity.guildId,
-        channelId,
-        ...scheduleFields,
-        ...(activity.endAt !== null ? { endAtIso: activity.endAt.toISOString() } : {}),
-      },
-      occurredAt: now,
-    });
+        guildId: target.guildId,
+        channelId: target.channelId,
+        opaqueId,
+        status: 'pending',
+      });
+      await tx.insertOutbox({
+        eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
+        aggregateType: 'activity',
+        aggregateId: activity.id,
+        aggregateVersion: activity.version,
+        payload: {
+          activityId: activity.id,
+          opaqueId,
+          organizationId: activity.organizationId,
+          guildId: target.guildId,
+          channelId: target.channelId,
+          participantMode: activity.participantMode,
+          ...scheduleFields,
+          ...(activity.endAt !== null ? { endAtIso: activity.endAt.toISOString() } : {}),
+        },
+        occurredAt: now,
+      });
+    }
   }
 
   private async mutate<T>(
@@ -623,9 +666,23 @@ export class ActivityUseCases {
           confirmationState: 'confirmed',
           reconfirmDeadline: null,
           waitlistPosition: null,
-          scopeGuildId: null,
+          scopeGuildId: participantMode === 'separate' ? draft.guildId : null,
         });
       }
+
+      await tx.replacePublicationTargets(
+        activity.id,
+        publicationTargets.map((target, index) => ({
+          organizationId: input.organizationId,
+          guildId: target.guildId,
+          channelId: target.channelId,
+          participantLimit:
+            participantMode === 'separate'
+              ? (target.participantLimit ?? input.participantLimit ?? null)
+              : null,
+          sortOrder: index,
+        })),
+      );
 
       await tx.insertOutbox({
         eventType: OUTBOX_EVENT_TYPES.CREATED,
@@ -636,6 +693,8 @@ export class ActivityUseCases {
           activityId: activity.id,
           guildId: activity.guildId,
           opaqueId: activity.opaqueId,
+          organizationId: activity.organizationId,
+          participantMode: activity.participantMode,
         },
         occurredAt: now,
       });
@@ -848,12 +907,23 @@ export class ActivityUseCases {
     );
   }
 
-  public async rsvp(id: string, input: { statusDefId: string }, ctx: MutationContext) {
+  public async rsvp(
+    id: string,
+    input: { statusDefId: string; guildId?: string },
+    ctx: MutationContext,
+  ) {
     const discordUserId = requireDiscord(ctx.actor);
     const now = this.deps.clock.now();
     return this.mutate(ctx, 'rsvp', `activity:${id}:${discordUserId}`, async (tx) => {
       const activity = await tx.lockActivity(id);
-      await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.JOIN, activity.guildId);
+      const requestGuildId = input.guildId ?? activity.guildId;
+      const targets = await tx.listPublicationTargets(id);
+      const targetGuildIds =
+        targets.length > 0 ? targets.map((t) => t.guildId) : [activity.guildId];
+      if (!isGuildPublicationTarget(requestGuildId, targetGuildIds)) {
+        throw new ActivityError('FORBIDDEN', 'Guild is not a publication target for this activity');
+      }
+      await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.JOIN, requestGuildId);
       if (!activity.enrollmentOpen) {
         throw new ActivityError('PRECONDITION_FAILED', 'Enrollment is closed');
       }
@@ -862,14 +932,25 @@ export class ActivityUseCases {
         throw new ActivityError('VALIDATION_FAILED', 'Invalid status definition');
       }
 
+      const scopeGuildId = resolveParticipationScopeGuildId({
+        mode: activity.participantMode,
+        requestGuildId,
+      });
+      const targetMeta = targets.find((t) => t.guildId === requestGuildId);
+      const participantLimit =
+        activity.participantMode === 'separate'
+          ? (targetMeta?.participantLimit ?? activity.participantLimit)
+          : activity.participantLimit;
+
       const participants = await tx.listParticipations(id);
-      const occupied = countOccupiedSlots(participants);
+      const pool = filterParticipationsForMode(participants, activity.participantMode, requestGuildId);
+      const occupied = countOccupiedSlots(pool);
       let waitlistPosition: number | null = null;
       if (
         statusDef.occupiesSlot &&
-        !hasOpenSeat({ participantLimit: activity.participantLimit, currentOccupied: occupied })
+        !hasOpenSeat({ participantLimit, currentOccupied: occupied })
       ) {
-        const positions = participants
+        const positions = pool
           .filter(
             (p) => p.waitlistPosition !== null && p.resignedAt === null && p.removedAt === null,
           )
@@ -886,6 +967,7 @@ export class ActivityUseCases {
         confirmationState: 'confirmed',
         reconfirmDeadline: null,
         waitlistPosition,
+        scopeGuildId,
       });
 
       await tx.insertOutbox({
@@ -899,10 +981,17 @@ export class ActivityUseCases {
           participationId: participation.id,
           discordUserId,
           waitlisted: waitlistPosition !== null,
+          scopeGuildId,
+          requestGuildId,
         },
         occurredAt: now,
       });
-      await this.requestProjection(tx, activity, now);
+      await this.requestProjection(
+        tx,
+        activity,
+        now,
+        activity.participantMode === 'separate' ? { onlyGuildIds: [requestGuildId] } : undefined,
+      );
       return participation;
     });
   }
@@ -922,7 +1011,9 @@ export class ActivityUseCases {
         participation.waitlistPosition === null &&
         participation.resignedAt === null;
       await tx.markParticipationResigned(participation.id, now);
-      const promoted = freedSlot ? await this.promoteWaitlist(tx, activity, now) : null;
+      const promoted = freedSlot
+        ? await this.promoteWaitlist(tx, activity, now, participation.scopeGuildId)
+        : null;
       await tx.insertOutbox({
         eventType: OUTBOX_EVENT_TYPES.RSVP_CHANGED,
         aggregateType: 'activity',
@@ -945,6 +1036,7 @@ export class ActivityUseCases {
     tx: import('../ports/activity.ports.js').ActivityTx,
     activity: ActivityRecord,
     now: Date,
+    scopeGuildId: string | null = null,
   ) {
     const settings = await tx.getSettings(activity.guildId);
     if (settings === null || settings.waitlistPromotionStatusId === null) {
@@ -956,7 +1048,11 @@ export class ActivityUseCases {
       return null;
     }
     const participants = await tx.listParticipations(activity.id);
-    const waitlisted = participants
+    const pool =
+      activity.participantMode === 'separate'
+        ? participants.filter((p) => p.scopeGuildId === scopeGuildId)
+        : participants.filter((p) => p.scopeGuildId === null);
+    const waitlisted = pool
       .filter(
         (p): p is typeof p & { waitlistPosition: number } =>
           p.waitlistPosition !== null && p.resignedAt === null && p.removedAt === null,
@@ -969,7 +1065,7 @@ export class ActivityUseCases {
     if (next === undefined) {
       return null;
     }
-    const target = participants.find((p) => p.id === next.id);
+    const target = pool.find((p) => p.id === next.id);
     if (target === undefined) {
       return null;
     }
@@ -982,6 +1078,7 @@ export class ActivityUseCases {
       confirmationState: 'confirmed',
       reconfirmDeadline: null,
       waitlistPosition: null,
+      scopeGuildId: target.scopeGuildId,
     });
     await tx.insertOutbox({
       eventType: OUTBOX_EVENT_TYPES.WAITLIST_PROMOTED,
@@ -992,12 +1089,13 @@ export class ActivityUseCases {
         activityId: activity.id,
         opaqueId: activity.opaqueId,
         participationId: target.id,
+        scopeGuildId: target.scopeGuildId,
       },
       occurredAt: now,
     });
     if (target.discordUserId !== null) {
       await tx.enqueueInbox({
-        guildId: activity.guildId,
+        guildId: target.scopeGuildId ?? activity.guildId,
         recipientDiscordUserId: target.discordUserId,
         kind: 'activity.waitlist_promoted',
         payload: {
@@ -1008,7 +1106,14 @@ export class ActivityUseCases {
         dedupeKey: `waitlist-promote:${activity.id}:${target.id}:${activity.version}`,
       });
     }
-    await this.requestProjection(tx, activity, now);
+    await this.requestProjection(
+      tx,
+      activity,
+      now,
+      activity.participantMode === 'separate' && target.scopeGuildId !== null
+        ? { onlyGuildIds: [target.scopeGuildId] }
+        : undefined,
+    );
     return target.id;
   }
 
