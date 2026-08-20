@@ -13,6 +13,7 @@ import {
 import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
+import { normalizePublicationTargets } from '../../domain/publication-targets.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
 import {
   assertScheduleValid,
@@ -188,6 +189,19 @@ export class ActivityUseCases {
       subject: actor,
       permissionId,
       scope: { type: 'guild', guildId },
+      operationClass,
+    });
+  }
+
+  private async requireOrganizationPermission(
+    actor: ActorSubject,
+    permissionId: string,
+    operationClass: 'ordinary' | 'sensitive' = 'sensitive',
+  ): Promise<void> {
+    await requireAllowed(this.deps.authorize, {
+      subject: actor,
+      permissionId,
+      scope: { type: 'organization' },
       operationClass,
     });
   }
@@ -498,6 +512,14 @@ export class ActivityUseCases {
       timezone?: string;
       locationText?: string | null;
       typeId?: string | null;
+      /** P4.5: shared (default) | separate */
+      participantMode?: 'shared' | 'separate';
+      /** P4.5: additional Discord guild+channel targets (home guild may be omitted). */
+      targets?: readonly {
+        guildId: string;
+        channelId: string;
+        participantLimit?: number | null;
+      }[];
     },
     ctx: MutationContext,
   ) {
@@ -512,6 +534,25 @@ export class ActivityUseCases {
         throw new ActivityError('GONE', 'Draft expired');
       }
       await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.CREATE, draft.guildId);
+
+      const participantMode = input.participantMode === 'separate' ? 'separate' : 'shared';
+      const publicationTargets = normalizePublicationTargets({
+        homeGuildId: draft.guildId,
+        homeChannelId: input.publicationChannelId ?? null,
+        ...(input.targets !== undefined ? { targets: input.targets } : {}),
+      });
+      if (publicationTargets.length > 1) {
+        await this.requireOrganizationPermission(
+          ctx.actor,
+          ACTIVITY_PERMISSIONS.PUBLISH_MULTI_GUILD,
+          'sensitive',
+        );
+      }
+      for (const target of publicationTargets) {
+        if (target.guildId !== draft.guildId) {
+          await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.CREATE, target.guildId);
+        }
+      }
 
       const scheduleKind: ScheduleKind = input.scheduleKind ?? 'exact';
       const periodKey: PeriodKey | null =
@@ -558,7 +599,7 @@ export class ActivityUseCases {
         status: 'registrations_open',
         enrollmentOpen: true,
         participantLimit: input.participantLimit ?? null,
-        participantMode: 'shared',
+        participantMode,
         organizerDiscordUserId: discordUserId,
         organizerV2UserId: ctx.actor.v2UserId ?? null,
         coOrganizerDiscordUserId: null,
