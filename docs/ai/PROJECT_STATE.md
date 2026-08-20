@@ -17,7 +17,7 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 1 — P4.5                                   |
 | CURRENT_TASK            | `P4.5-MULTI-GUILD-RABBITMQ-001`            |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`              |
-| CURRENT_HEAD / PR_HEAD  | `955fa8cc2327f30b06238b20432fb4cce5026e94` |
+| CURRENT_HEAD / PR_HEAD  | `274402d814c194ad0922e57da5ec4fe59f19d8d1` |
 | PR                      | #19                                        |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
 | CURRENT_CI              | PASS on tip (`32419502772`)                |
