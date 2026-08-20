@@ -42,7 +42,7 @@ describe('P4 current production fail-closed controls', () => {
 
   it('compares Discord projection secrets in constant time', () => {
     const source = readSource(
-      'apps/discord-gateway/src/interface/http/activity-projection.controller.ts',
+      'apps/discord-gateway/src/infrastructure/messaging/activity-projection-delivery.service.ts',
     );
     expect(source).toContain('timingSafeEqualUtf8(projectionSecret, expected)');
   });
