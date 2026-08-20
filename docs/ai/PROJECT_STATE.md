@@ -30,7 +30,7 @@ Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 | P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |                                   |
 | P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` | plan only                         |
 | P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` |                                   |
-| HUB_COMPACT_UX_SHA        | _(set after commit)_                       | compact Hub layout                |
+| HUB_COMPACT_UX_SHA        | _7947c1dae7c448b4a920bbe299d48ca8ad89fa65_                       | compact Hub layout                |
 
 ## Branch
 
