@@ -30,12 +30,12 @@ Not APPROVED. Not merged. No P4.5 production code.
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                                                                         |
 | PR                     | #19                                                                                                                   |
 | BASE_SHA (origin/main) | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                                                                            |
-| SOT_TIP_AT_RECORD      | `9a045cd7ad706b7fbae8140873613fb7494f331d`                                                                            |
+| SOT_TIP_AT_RECORD      | `b7ad54b4381c9323995605c8d2840b1c86c62cfe`                                                                            |
 | LOCAL_VALIDATE         | PASS (`pnpm validate` full)                                                                                           |
 | AUDIT_HIGH             | PASS (`pnpm audit --audit-level=high`; only moderate remaining)                                                       |
-| EFFECTIVE_CI_RUN_ID    | `32415392501` (exact SHA `2fd4635…`)                                                                                  |
+| EFFECTIVE_CI_RUN_ID    | `32415392501` (exact SHA `2fd4635`)                                                                                   |
 | EFFECTIVE_CI_RESULT    | PASS (Quality Gates + Secret Scan + Infra Integration)                                                                |
-| SOT_TIP_CI_RUN_ID      | `32418146963` (exact SHA `9a045cd…`)                                                                                  |
+| SOT_TIP_CI_RUN_ID      | `32418997107` (exact SHA `b7ad54b`)                                                                                   |
 | **CI**                 | PASS on effective visual tip + SoT tip                                                                                |
 | **ZEABUR**             | discord-gateway RUNNING `2fd4635…` (`v22` live/ready); 3× restart reconcile PASS; prior 7/7 at `22ba38b…` preserved   |
 | HUB_CONTRACT           | PASS (1 Container `#D48632`, header icon, optional banner, 4 Secondary Section buttons, signed create/lfg/mine/inbox) |
