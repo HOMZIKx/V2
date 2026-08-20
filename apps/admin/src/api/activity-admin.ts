@@ -557,11 +557,13 @@ export async function getEvent(guildId: string, eventId: string): Promise<Activi
   const modeRaw = activity.participantMode;
   const participantMode = modeRaw === 'separate' || modeRaw === 'shared' ? modeRaw : undefined;
   const publicationTargets = Array.isArray(payload.publicationTargets)
-    ? payload.publicationTargets.map((t) => ({
-        guildId: t.guildId,
-        channelId: t.channelId,
-        ...(t.participantLimit !== undefined ? { participantLimit: t.participantLimit } : {}),
-      }))
+    ? payload.publicationTargets.map(
+        (t: { guildId: string; channelId: string; participantLimit?: number | null }) => ({
+          guildId: t.guildId,
+          channelId: t.channelId,
+          ...(t.participantLimit !== undefined ? { participantLimit: t.participantLimit } : {}),
+        }),
+      )
     : undefined;
   return {
     id: activity.id,

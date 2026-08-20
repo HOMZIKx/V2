@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { messageIdFromOutboxId, parseActivityProjectionEnvelope } from '@v2/messaging';
+import { messageIdFromOutboxId, parseActivityProjectionEnvelope } from './index.js';
 
 /**
  * P4.5 failure / resilience contract tests (unit-level).

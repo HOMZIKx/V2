@@ -131,32 +131,29 @@ export class ActivityProjectionRabbitConsumer implements OnModuleInit, OnModuleD
       }
 
       if (result.status === 'rate_limited' || result.status === 'upstream_error') {
-        await this.retryOrDlq(msg);
+        this.retryOrDlq(msg);
         return;
       }
 
       channel.nack(msg as never, false, false);
     } catch (error) {
-      const status =
-        typeof error === 'object' && error !== null && 'status' in error
-          ? Number((error as { status: unknown }).status)
-          : undefined;
+      const status = readErrorStatus(error);
       if (status === 429 || status === 502 || status === 503) {
-        await this.retryOrDlq(msg);
+        this.retryOrDlq(msg);
         return;
       }
       if (status === 400 || status === 401 || status === 403) {
         channel.nack(msg as never, false, false);
         return;
       }
-      await this.retryOrDlq(msg);
+      this.retryOrDlq(msg);
     }
   }
 
-  private async retryOrDlq(msg: {
+  private retryOrDlq(msg: {
     content: Buffer;
     properties: { headers?: Record<string, unknown> | undefined };
-  }): Promise<void> {
+  }): void {
     const channel = this.channel;
     if (channel === null) {
       return;
@@ -174,4 +171,12 @@ export class ActivityProjectionRabbitConsumer implements OnModuleInit, OnModuleD
     });
     channel.ack(msg as never);
   }
+}
+
+function readErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null || !('status' in error)) {
+    return undefined;
+  }
+  const raw: unknown = Reflect.get(error, 'status');
+  return typeof raw === 'number' ? raw : undefined;
 }
