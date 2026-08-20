@@ -148,14 +148,14 @@ Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 
 Te serwisy budują się przez Dockerfile (`Dockerfile.web`, `Dockerfile.admin`). Build **musi** przejść przed startem kontenera.
 
-| Klucz                      | Tag          | Kiedy                                     |
-| -------------------------- | ------------ | ----------------------------------------- |
-| `ZBPACK_DOCKERFILE_NAME`   | PUBLIC VALUE | `web` lub `admin`                         |
-| `VITE_API_BASE_URL`        | PUBLIC VALUE | **admin**, build-time, public api-gateway |
-| `NEXT_PUBLIC_API_BASE_URL` | PUBLIC VALUE | **web**, build-time, public api-gateway   |
-| `NEXT_PUBLIC_IDENTITY_URL` | PUBLIC VALUE | **web**, ten sam publiczny api-gateway    |
-| `NEXT_PUBLIC_WEB_ORIGIN`           | PUBLIC VALUE | **web**, publiczny origin WWW             |
-| `NEXT_PUBLIC_WEB_GUILDS`           | PUBLIC VALUE | **web**, build-time — JSON `[{"id":"…","name":"…"}]` |
+| Klucz                               | Tag          | Kiedy                                                                  |
+| ----------------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE | `web` lub `admin`                                                      |
+| `VITE_API_BASE_URL`                 | PUBLIC VALUE | **admin**, build-time, public api-gateway                              |
+| `NEXT_PUBLIC_API_BASE_URL`          | PUBLIC VALUE | **web**, build-time, public api-gateway                                |
+| `NEXT_PUBLIC_IDENTITY_URL`          | PUBLIC VALUE | **web**, ten sam publiczny api-gateway                                 |
+| `NEXT_PUBLIC_WEB_ORIGIN`            | PUBLIC VALUE | **web**, publiczny origin WWW                                          |
+| `NEXT_PUBLIC_WEB_GUILDS`            | PUBLIC VALUE | **web**, build-time — JSON `[{"id":"…","name":"…"}]`                   |
 | `NEXT_PUBLIC_DISCORD_TEST_GUILD_ID` | PUBLIC VALUE | **web**, build-time fallback gdy brak JSON (np. `1534228693017432124`) |
 
 Bez `NEXT_PUBLIC_WEB_GUILDS` ani `NEXT_PUBLIC_DISCORD_TEST_GUILD_ID` w **buildu** WWW
