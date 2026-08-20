@@ -438,8 +438,6 @@ export class ActivityInteractionHandler {
         error instanceof LocalizedDateParseError ? error.message : toUserFacingError(error);
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ content });
-      } else if (isDraftPreviewMessage(interaction.message) && interaction.isFromMessage()) {
-        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
       } else {
         await interaction.reply({ content, flags: MessageFlags.Ephemeral });
       }

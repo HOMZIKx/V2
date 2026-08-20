@@ -22,15 +22,15 @@ Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 
 ## Immutable checkpoints
 
-| Marker                    | SHA                                        | Notes                             |
-| ------------------------- | ------------------------------------------ | --------------------------------- |
-| FIXUP_START_SHA           | `1290df92681ee1e98fde3e0efaf231f7d110f6db` |                                   |
-| FIXUP_CHECKPOINT_SHA      | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` |                                   |
-| HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` |                                   |
-| P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |                                   |
-| P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` | plan only                         |
-| P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` |                                   |
-| HUB_COMPACT_UX_SHA        | _7947c1dae7c448b4a920bbe299d48ca8ad89fa65_                       | compact Hub layout                |
+| Marker                    | SHA                                        | Notes              |
+| ------------------------- | ------------------------------------------ | ------------------ |
+| FIXUP_START_SHA           | `1290df92681ee1e98fde3e0efaf231f7d110f6db` |                    |
+| FIXUP_CHECKPOINT_SHA      | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` |                    |
+| HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` |                    |
+| P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |                    |
+| P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` | plan only          |
+| P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` |                    |
+| HUB_COMPACT_UX_SHA        | _7947c1dae7c448b4a920bbe299d48ca8ad89fa65_ | compact Hub layout |
 
 ## Branch
 

@@ -11,6 +11,7 @@ import {
   createPanelCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
 import { DraftUiStateCache } from '../../presentation/discord/draft-ui-state-cache.js';
+import { formatPolishLocalDateTime } from '../../presentation/discord/localized-datetime.js';
 import { ActivityInteractionHandler } from './activity-interaction-handler.js';
 
 const secret = 's'.repeat(32);
@@ -19,6 +20,11 @@ const channelId = '222222222222222222';
 const operatorId = '111111111111111111';
 const opaquePanel = 'a1b2c3d4e5f6';
 const panelId = '33333333-4444-5555-6666-777777777777';
+
+/** Stable future wall-clock within the 14-day schedule horizon (Europe/Warsaw). */
+function futureScheduleFromDisplay(): string {
+  return formatPolishLocalDateTime(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+}
 
 function makeConfig() {
   return normalizeDiscordConfig(
@@ -488,7 +494,7 @@ function makeFormFields(values: {
     getTextInputValue: vi.fn((id: string) => {
       if (id === 'name') return values.name;
       if (id === 'description') return values.description;
-      if (id === 'schedule_from') return values.from ?? '20.08.2026 18:00';
+      if (id === 'schedule_from') return values.from ?? futureScheduleFromDisplay();
       if (id === 'schedule_to') return values.to ?? '';
       return '';
     }),
@@ -553,6 +559,9 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     });
     expect(order[0]).toBe('ack');
     expect(editReply).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(createDraft).toHaveBeenCalledOnce();
+    });
     releaseCreate();
     await vi.waitFor(() => {
       expect(updateDraft).toHaveBeenCalled();
@@ -574,7 +583,7 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     const existingPayload = {
       name: 'A',
       description: 'B',
-      scheduleFromDisplay: '20.08.2026 18:00',
+      scheduleFromDisplay: futureScheduleFromDisplay(),
       scheduleKind: 'exact',
       source: 'create',
       extraKeep: 'stay',
@@ -634,6 +643,9 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     });
     expect(order[0]).toBe('ack');
     expect(editReply).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(lookupDraftByOpaque).toHaveBeenCalledOnce();
+    });
     releaseLookup();
     await vi.waitFor(() => {
       expect(updateDraft).toHaveBeenCalled();
