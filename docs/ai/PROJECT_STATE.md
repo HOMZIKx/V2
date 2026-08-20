@@ -30,7 +30,7 @@ Not APPROVED. Not merged. No P4.5 production code.
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                                                                         |
 | PR                     | #19                                                                                                                   |
 | BASE_SHA (origin/main) | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                                                                            |
-| SOT_TIP_AT_RECORD      | _(filled after commit)_                                                                                               |
+| SOT_TIP_AT_RECORD      | `aa41cf074ae51bcff6e27aaf5158ecd4e029fff1`                                                                            |
 | LOCAL_VALIDATE         | PASS (`pnpm validate` full)                                                                                           |
 | AUDIT_HIGH             | PASS (`pnpm audit --audit-level=high`; only moderate remaining)                                                       |
 | EFFECTIVE_CI_RUN_ID    | `32415392501` (exact SHA `2fd4635…`)                                                                                  |
