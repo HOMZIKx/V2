@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { declareActivityProjectionTopology } from './declare-activity-topology.js';
 import {
   ACTIVITY_EVENTS_BINDING_KEY,
   ACTIVITY_EVENTS_DLX,
@@ -10,6 +9,7 @@ import {
   DISCORD_ACTIVITY_PROJECTIONS_QUEUE,
   DISCORD_ACTIVITY_PROJECTIONS_RETRY_QUEUE,
 } from './activity-topology.js';
+import { declareActivityProjectionTopology } from './declare-activity-topology.js';
 
 describe('declareActivityProjectionTopology', () => {
   it('asserts exchanges, queues, and bindings', async () => {
