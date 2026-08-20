@@ -13,8 +13,8 @@
 | **BANNER_STATUS**                   | `OWNER_ASSET_REQUIRED`                                                     |
 | **ACTION_EMOJI_STATUS**             | `OWNER_ASSET_UPLOAD_REQUIRED`                                              |
 | **CI**                              | PASS (`32415392501` effective; `32418146963` SoT tip)                      |
-| **ZEABUR**                          | discord RUNNING `2fd4635?`; 3� restart reconcile PASS; prior 7/7 preserved |
-| **SOT_TIP**                         | `9a045cd7ad706b7fbae8140873613fb7494f331d`                                 |
+| **ZEABUR**                          | discord RUNNING `2fd4635`; 3x restart reconcile PASS; prior 7/7 preserved  |
+| **SOT_TIP**                         | `272265b107db286809ac10b1110f8378e5d02e99` (updated after evidence commit) |
 | **CRITICAL**                        | 0                                                                          |
 | **HIGH**                            | 0                                                                          |
 | **P4_5_PLAN_CHECKPOINT_SHA**        | `8834559e38f5d55160eb5de8510420651b26b829` (still valid)                   |
@@ -50,12 +50,13 @@ Audits of current Hub visuals / P4.0 effective tip use
 - signed `create` / `lfg` / `mine` / `inbox`
 - no large action Thumbnails; no LAB Hub visual
 - publish / edit / startup reconcile / 3x reconcile cycles: PASS (unit)
+- live: 3x discord-gateway redeploy, each cycle `discordState=ready` on effective SHA
 - attachments do not accumulate; header icon retained; banner appears only when file exists
 
 ### Security regression
 
 Rechecked fail-closed / assertion / JTI / projection secret / signed custom_id /
-OAuth production origin (no loopback) suites ? PASS. **CRITICAL=0**, **HIGH=0**.
+OAuth production origin (no loopback) suites -- PASS. **CRITICAL=0**, **HIGH=0**.
 
 ### Validation
 
@@ -66,9 +67,11 @@ OAuth production origin (no loopback) suites ? PASS. **CRITICAL=0**, **HIGH=0**.
 ### Zeabur
 
 discord-gateway live SHA matches effective tip (`https://v22.zeabur.app/health/live`).
-API/readiness still on historical final SHA for non-Discord services ? intentional;
-visual delta does not require 7/7 same-SHA redeploy. Prior P4.0 7/7 evidence at
-`22ba38b?` preserved.
+Live restart reconcile: 3x `service redeploy` -> each cycle returned `discordState=ready`
+on SHA `2fd4635c3b0aca118a3554e3439acc089558f3d9`. Non-Discord services remain on
+historical final SHA -- intentional; visual delta does not require 7/7 same-SHA
+redeploy. Prior P4.0 7/7 evidence at `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`
+preserved.
 
 ### Gates
 
