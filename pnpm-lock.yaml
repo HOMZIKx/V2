@@ -404,6 +404,9 @@ importers:
       '@v2/internal-jwt':
         specifier: workspace:*
         version: link:../../packages/internal-jwt
+      '@v2/messaging':
+        specifier: workspace:*
+        version: link:../../packages/messaging
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability

@@ -19,6 +19,7 @@
     "@nestjs/platform-fastify": "^11.1.28",
     "@v2/configuration": "workspace:*",
     "@v2/internal-jwt": "workspace:*",
+    "@v2/messaging": "workspace:*",
     "@v2/observability": "workspace:*",
     "fastify": "^5.5.0",
     "ioredis": "5.11.1",

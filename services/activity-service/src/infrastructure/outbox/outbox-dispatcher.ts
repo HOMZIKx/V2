@@ -19,6 +19,7 @@ import {
   ACTIVITY_REPOSITORY,
 } from '../../interface/activity.tokens.js';
 import type { ActivityEnv } from '../config/activity-env.js';
+import { ActivityOutboxRabbitPublisher } from './outbox-rabbit-publisher.js';
 
 const DELIVER_PATH = '/internal/activity/v1/projections/deliver';
 const POLL_INTERVAL_MS = 2_000;
@@ -48,6 +49,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   private stopped = false;
   private tickInFlight: Promise<void> | null = null;
   private fetchImpl: typeof globalThis.fetch;
+  private rabbitPublisher: ActivityOutboxRabbitPublisher | null = null;
 
   public constructor(
     @Inject(ACTIVITY_CONFIG) private readonly config: ActivityEnv,
@@ -67,18 +69,32 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Activity outbox dispatcher disabled (ACTIVITY_OUTBOX_WORKER_ENABLED=false)');
       return;
     }
-    if (this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
+
+    const transport = this.config.ACTIVITY_OUTBOX_TRANSPORT;
+    const needsHttp = transport === 'http' || transport === 'dual';
+    const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
+
+    if (needsHttp && this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
       throw new Error(
         'Outbox worker enabled but ACTIVITY_DISCORD_PROJECTION_BASE_URL is missing (fail fast)',
       );
     }
     if (
-      this.config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined ||
-      this.config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0
+      needsHttp &&
+      (this.config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined ||
+        this.config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0)
     ) {
       throw new Error(
         'Outbox worker enabled but ACTIVITY_PROJECTION_SHARED_SECRET is missing (fail fast)',
       );
+    }
+    if (needsRabbit) {
+      const rabbitUrl = this.config.ACTIVITY_RABBITMQ_URL;
+      if (rabbitUrl === undefined || rabbitUrl.trim().length === 0) {
+        throw new Error('Outbox worker enabled but ACTIVITY_RABBITMQ_URL is missing (fail fast)');
+      }
+      this.rabbitPublisher = new ActivityOutboxRabbitPublisher(rabbitUrl);
+      await this.rabbitPublisher.ensureReady();
     }
 
     await this.safeTick('startup');
@@ -88,6 +104,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     this.timer.unref?.();
     this.logger.log('Activity outbox dispatcher started', {
       leaseOwner: this.leaseOwner,
+      transport,
       baseUrl: this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL,
     });
   }
@@ -100,6 +117,10 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
     if (this.tickInFlight !== null) {
       await this.tickInFlight.catch(() => undefined);
+    }
+    if (this.rabbitPublisher !== null) {
+      await this.rabbitPublisher.close();
+      this.rabbitPublisher = null;
     }
   }
 
@@ -165,6 +186,38 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   }
 
   private async deliver(
+    message: OutboxMessageRecord,
+  ): Promise<'delivered' | 'retry' | 'permanent'> {
+    const transport = this.config.ACTIVITY_OUTBOX_TRANSPORT;
+    const needsHttp = transport === 'http' || transport === 'dual';
+    const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
+
+    if (needsRabbit) {
+      const publisher = this.rabbitPublisher;
+      if (publisher === null) {
+        await this.failRetry(message, 'RabbitMQ publisher not initialized');
+        return 'retry';
+      }
+      const rabbitResult = await publisher.publish(message);
+      if (rabbitResult !== 'confirmed') {
+        await this.failRetry(message, `RabbitMQ publish ${rabbitResult}`);
+        return 'retry';
+      }
+      if (!needsHttp) {
+        await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
+        return 'delivered';
+      }
+    }
+
+    if (!needsHttp) {
+      await this.failRetry(message, 'No outbox transport configured');
+      return 'retry';
+    }
+
+    return this.deliverHttp(message);
+  }
+
+  private async deliverHttp(
     message: OutboxMessageRecord,
   ): Promise<'delivered' | 'retry' | 'permanent'> {
     const baseUrl = this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL;

@@ -52,6 +52,13 @@ const baseSchema = z.object({
   ACTIVITY_SERVICE_HOST: z.string().min(1).default('127.0.0.1'),
   ACTIVITY_ENABLED: booleanFromEnv(false),
   ACTIVITY_OUTBOX_WORKER_ENABLED: booleanFromEnv(false),
+  /**
+   * P4.5 transport: http (legacy), rabbitmq, or dual (RMQ + HTTP until consumer lag=0).
+   * Default remains http for backward-compatible single-guild deploys.
+   */
+  ACTIVITY_OUTBOX_TRANSPORT: z.enum(['http', 'rabbitmq', 'dual']).default('http'),
+  ACTIVITY_RABBITMQ_URL: optionalTrimmed,
+  ACTIVITY_MULTI_GUILD_ENABLED: booleanFromEnv(false),
   ACTIVITY_AUTHORIZATION_BASE_URL: optionalTrimmed,
   ACTIVITY_AUTHORIZATION_ASSERTION_AUD: optionalTrimmed,
   ACTIVITY_TO_AUTHZ_CLIENT_ID: z
@@ -136,19 +143,29 @@ function assertOutboxWorkerRequirements(
   config: ActivityEnv,
   addIssue: (path: string, message: string) => void,
 ): void {
-  if (config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
+  const transport = config.ACTIVITY_OUTBOX_TRANSPORT;
+  const needsHttp = transport === 'http' || transport === 'dual';
+  const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
+
+  if (needsHttp && config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
     addIssue(
       'ACTIVITY_DISCORD_PROJECTION_BASE_URL',
-      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and transport includes http',
     );
   }
-  if (config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined) {
+  if (needsHttp && config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined) {
     addIssue(
       'ACTIVITY_PROJECTION_SHARED_SECRET',
-      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true (x-activity-projection-secret contract)',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and transport includes http',
     );
   }
-  if (config.ACTIVITY_ENABLED) {
+  if (needsRabbit && config.ACTIVITY_RABBITMQ_URL === undefined) {
+    addIssue(
+      'ACTIVITY_RABBITMQ_URL',
+      'is required when ACTIVITY_OUTBOX_WORKER_ENABLED=true and transport includes rabbitmq',
+    );
+  }
+  if (config.ACTIVITY_ENABLED && needsHttp) {
     if (config.ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM === undefined) {
       addIssue(
         'ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM',

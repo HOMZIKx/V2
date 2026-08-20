@@ -6,6 +6,7 @@ import { ActivityOutboxDispatcher, PROJECTION_SECRET_HEADER } from './outbox-dis
 function makeConfig(overrides: Record<string, unknown> = {}): ActivityEnv {
   return {
     ACTIVITY_OUTBOX_WORKER_ENABLED: true,
+    ACTIVITY_OUTBOX_TRANSPORT: 'http',
     ACTIVITY_DISCORD_PROJECTION_BASE_URL: 'http://127.0.0.1:4100',
     ACTIVITY_PROJECTION_SHARED_SECRET: 'proj-secret',
     ACTIVITY_ENABLED: false,
