@@ -756,7 +756,8 @@ export class ActivityAdminUseCases {
       }
       const participations = await tx.listParticipations(activityId);
       const projection = await tx.getActivityProjection(activityId);
-      return { activity, participations, projection };
+      const publicationTargets = await tx.listPublicationTargets(activityId);
+      return { activity, participations, projection, publicationTargets };
     });
   }
 

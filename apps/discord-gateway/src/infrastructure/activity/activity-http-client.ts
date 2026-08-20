@@ -248,7 +248,11 @@ export class ActivityHttpClient {
     );
   }
 
-  public async rsvp(id: string, body: { statusDefId: string }, actor: ActivityActorContext) {
+  public async rsvp(
+    id: string,
+    body: { statusDefId: string; guildId?: string },
+    actor: ActivityActorContext,
+  ) {
     return this.request(
       'POST',
       `/activity/v1/activities/${encodeURIComponent(id)}/rsvp`,

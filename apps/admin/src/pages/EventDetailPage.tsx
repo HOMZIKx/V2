@@ -88,6 +88,33 @@ export function EventDetailPage() {
               {detail.description !== undefined && detail.description !== '' ? (
                 <p>{detail.description}</p>
               ) : null}
+              <p>
+                Tryb uczestników:{' '}
+                {detail.participantMode === 'separate'
+                  ? 'SEPARATE (pula per Discord)'
+                  : 'SHARED (jedna pula)'}
+              </p>
+              {detail.participantLimit !== undefined ? (
+                <p className="muted">Limit: {detail.participantLimit ?? 'bez limitu'}</p>
+              ) : null}
+              {detail.publicationTargets !== undefined && detail.publicationTargets.length > 0 ? (
+                <div>
+                  <p>Cele publikacji (Discord):</p>
+                  <ul>
+                    {detail.publicationTargets.map((target) => (
+                      <li key={`${target.guildId}:${target.channelId}`}>
+                        guild {target.guildId} → channel {target.channelId}
+                        {target.participantLimit != null
+                          ? ` (limit ${target.participantLimit})`
+                          : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : detail.publicationChannelId !== undefined &&
+                detail.publicationChannelId !== null ? (
+                <p className="muted">Kanał publikacji: {detail.publicationChannelId}</p>
+              ) : null}
             </Panel>
             <details className="details-toggle">
               <summary>Szczegóły techniczne</summary>

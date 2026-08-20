@@ -784,7 +784,10 @@ export class ActivityInteractionHandler {
       );
       const participation = await this.deps.activityClient.rsvp(
         activityId,
-        { statusDefId },
+        {
+          statusDefId,
+          ...(interaction.guildId !== null ? { guildId: interaction.guildId } : {}),
+        },
         {
           ...actorOf(interaction.user.id),
           idempotencyKey: idem(

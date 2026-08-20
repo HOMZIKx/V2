@@ -109,6 +109,12 @@ export interface ActivityEventDetailDto {
   readonly typeId?: string | null;
   readonly enrollmentOpen?: boolean;
   readonly participantLimit?: number | null;
+  readonly participantMode?: 'shared' | 'separate';
+  readonly publicationTargets?: readonly {
+    readonly guildId: string;
+    readonly channelId: string;
+    readonly participantLimit?: number | null;
+  }[];
   readonly cancelReason?: string | null;
   readonly timezone?: string;
   readonly locationText?: string | null;
@@ -535,14 +541,29 @@ export async function listEvents(
 export async function getEvent(guildId: string, eventId: string): Promise<ActivityEventDetailDto> {
   const payload = asObject<
     {
-      activity?: ActivityEventDetailDto & { participantCount?: number };
+      activity?: ActivityEventDetailDto & { participantCount?: number; participantMode?: string };
       participations?: readonly unknown[];
+      publicationTargets?: readonly {
+        guildId: string;
+        channelId: string;
+        participantLimit?: number | null;
+      }[];
     } & ActivityEventDetailDto
   >(await apiRequest(adminGuild(guildId, `/events/${encodeURIComponent(eventId)}`)));
   const activity = payload.activity ?? payload;
   const participantCount =
     activity.participantCount ??
     (Array.isArray(payload.participations) ? payload.participations.length : undefined);
+  const modeRaw = activity.participantMode;
+  const participantMode =
+    modeRaw === 'separate' || modeRaw === 'shared' ? modeRaw : undefined;
+  const publicationTargets = Array.isArray(payload.publicationTargets)
+    ? payload.publicationTargets.map((t) => ({
+        guildId: t.guildId,
+        channelId: t.channelId,
+        ...(t.participantLimit !== undefined ? { participantLimit: t.participantLimit } : {}),
+      }))
+    : undefined;
   return {
     id: activity.id,
     name: activity.name,
@@ -563,6 +584,8 @@ export async function getEvent(guildId: string, eventId: string): Promise<Activi
     ...(activity.participantLimit !== undefined
       ? { participantLimit: activity.participantLimit }
       : {}),
+    ...(participantMode !== undefined ? { participantMode } : {}),
+    ...(publicationTargets !== undefined ? { publicationTargets } : {}),
     ...(activity.cancelReason !== undefined ? { cancelReason: activity.cancelReason } : {}),
     ...(activity.timezone !== undefined ? { timezone: activity.timezone } : {}),
     ...(activity.locationText !== undefined ? { locationText: activity.locationText } : {}),

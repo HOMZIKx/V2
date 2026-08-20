@@ -325,7 +325,7 @@ describe('ActivityInteractionHandler', () => {
     await handler.handleComponent(interaction as never);
     expect(activityClient.rsvp).toHaveBeenCalledWith(
       'act-1',
-      { statusDefId: statusId },
+      { statusDefId: statusId, guildId },
       expect.objectContaining({ discordUserId: operatorId }),
     );
     expect(editReply).toHaveBeenCalledWith(
