@@ -2,25 +2,24 @@
 
 ## Continuous handoff snapshot
 
-| Field                               | Value                                                                  |
-| ----------------------------------- | ---------------------------------------------------------------------- |
-| **CURRENT_TASK**                    | `P4-0-VISUAL-DELTA-CHECKPOINT-CONSEQUENCE`                             |
-| **FINAL_STATUS**                    | `READY_FOR_CHATGPT_P4_0_VISUAL_DELTA_AUDIT`                            |
-| **P4_0_FINAL_CHECKPOINT_SHA**       | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`                             |
-| **P4_0_FINAL_STATUS**               | `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_FIX` (immutable; do not rewrite) |
-| **P4_0_EFFECTIVE_CHECKPOINT_SHA**   | `2fd4635c3b0aca118a3554e3439acc089558f3d9`                             |
-| **HUB_VISUAL_COMPOSITION_CODE_SHA** | `72fee72bf800c051410c4bacfbfdd79bc34820e1`                             |
-| **P4_5_PLAN_CHECKPOINT_SHA**        | `8834559e38f5d55160eb5de8510420651b26b829` (still valid)               |
-| **CURRENT_BRANCH**                  | `cursor/p4-1-activity-domain`                                          |
-| **PR**                              | #19                                                                    |
-| **BASE_SHA**                        | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
-| **CI_RUN_ID**                       | `32415392501`                                                          |
-| **CI_RESULT**                       | PASS                                                                   |
-| **ZEABUR_DISCORD**                  | RUNNING at effective SHA (`v22` live/ready)                            |
-| **HUB_REGRESSION**                  | PASS                                                                   |
-| **OPEN_CRITICAL**                   | 0                                                                      |
-| **OPEN_HIGH**                       | 0                                                                      |
-| **P4.5 CODE**                       | not started                                                            |
+| Field                               | Value                                                                          |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| **CURRENT_TASK**                    | `P4-0-VISUAL-EFFECTIVE-CHECKPOINT-005`                                         |
+| **FINAL_STATUS**                    | `READY_FOR_CHATGPT_P4_0_VISUAL_DELTA_AUDIT`                                    |
+| **P4_0_FINAL_CHECKPOINT_SHA**       | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`                                     |
+| **P4_0_FINAL_STATUS**               | `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_DELTA` (immutable; do not rewrite)       |
+| **P4_0_EFFECTIVE_CHECKPOINT_SHA**   | `2fd4635c3b0aca118a3554e3439acc089558f3d9`                                     |
+| **HUB_VISUAL_COMPOSITION_CODE_SHA** | `72fee72bf800c051410c4bacfbfdd79bc34820e1`                                     |
+| **BANNER_STATUS**                   | `OWNER_ASSET_REQUIRED`                                                         |
+| **ACTION_EMOJI_STATUS**             | `OWNER_ASSET_UPLOAD_REQUIRED`                                                  |
+| **CI**                              | PASS (`32415392501` on effective tip)                                          |
+| **ZEABUR**                          | discord-gateway RUNNING effective visual SHA; prior 7/7 at final SHA preserved |
+| **CRITICAL**                        | 0                                                                              |
+| **HIGH**                            | 0                                                                              |
+| **P4_5_PLAN_CHECKPOINT_SHA**        | `8834559e38f5d55160eb5de8510420651b26b829` (still valid)                       |
+| **CURRENT_BRANCH**                  | `cursor/p4-1-activity-domain`                                                  |
+| **PR**                              | #19                                                                            |
+| **P4.5 CODE**                       | not started                                                                    |
 
 ---
 
@@ -30,32 +29,45 @@
 
 ### Checkpoint consequence
 
-This intentionally changes Discord Hub presentation **after** historical
-`P4_0_FINAL_CHECKPOINT_SHA` = `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`. That marker is **not** rewritten; it is
-marked `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_FIX`.
+Historical `P4_0_FINAL_CHECKPOINT_SHA` = `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`
+is marked `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_DELTA` and is **not** rewritten.
 
-Audits of current Hub visuals / P4.0 tip should use
+Audits of current Hub visuals / P4.0 effective tip use
 **P4_0_EFFECTIVE_CHECKPOINT_SHA** = `2fd4635c3b0aca118a3554e3439acc089558f3d9`.
 
-### What changed vs `22ba38b`
+### Visual assets (Owner pending; non-blocking)
 
-- Optional MediaGallery banner (`v2-activity-banner.webp`, soft-required)
-- Action icons via custom emoji env registry (soft-required)
-- Header thumbnail retained; four Section Secondary actions retained
-- Contracts `create` / `lfg` / `mine` / `inbox` unchanged
+- Banner file `v2-activity-banner.webp`: **OWNER_ASSET_REQUIRED** (absent; Hub omits MediaGallery safely)
+- Action icons: source webps present; Discord custom emoji upload +
+  `DISCORD_ACTIVITY_HUB_ACTION_EMOJIS_JSON`: **OWNER_ASSET_UPLOAD_REQUIRED**
+  (text-only fallback remains functional)
+- Do not use `v2-lab-banner.png` for Activity Hub
 
-### Validation (effective tip)
+### Hub contract + lifecycle
 
-- Targeted Discord hub regression: PASS
-- format / lint / typecheck (`discord-gateway`): PASS
-- GitHub Actions CI `32415392501`: Quality Gates + Secret Scan + Infra Integration: PASS
-- Zeabur `discord-gateway` live SHA matches effective tip; Discord state `ready`
-- Hub publish/edit/reconcile: unit lifecycle PASS; live gateway already on effective tip (no extra production code since `2fd4635`)
+- 1x Container `#D48632`, header icon, optional banner, four Secondary Section buttons
+- signed `create` / `lfg` / `mine` / `inbox`
+- no large action Thumbnails; no LAB Hub visual
+- publish / edit / startup reconcile / 3x reconcile cycles: PASS (unit)
+- attachments do not accumulate; header icon retained; banner appears only when file exists
 
-### P4.5 plan
+### Security regression
 
-`docs/ai/P4_5_IMPLEMENTATION_PLAN.md` is **not** invalidated by this visual delta
-(no architecture/product conflict found). No P4.5 production code.
+Rechecked fail-closed / assertion / JTI / projection secret / signed custom_id /
+OAuth production origin (no loopback) suites ? PASS. **CRITICAL=0**, **HIGH=0**.
+
+### Validation
+
+- `pnpm validate` (full): PASS
+- `pnpm audit --audit-level=high`: PASS
+- Targeted discord-gateway Hub + security suites: PASS
+
+### Zeabur
+
+discord-gateway live SHA matches effective tip (`https://v22.zeabur.app/health/live`).
+API/readiness still on historical final SHA for non-Discord services ? intentional;
+visual delta does not require 7/7 same-SHA redeploy. Prior P4.0 7/7 evidence at
+`22ba38b?` preserved.
 
 ### Gates
 
