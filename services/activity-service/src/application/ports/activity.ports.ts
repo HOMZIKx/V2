@@ -167,6 +167,17 @@ export interface ActivityDraftRecord {
 
 export type ActivityScheduleKind = 'exact' | 'range' | 'flexible_period';
 export type ActivityPeriodKey = 'today' | 'tomorrow' | 'this_week' | 'weekend' | 'flexible';
+export type ParticipantMode = 'shared' | 'separate';
+
+export interface ActivityPublicationTargetRecord {
+  readonly id: string;
+  readonly activityId: string;
+  readonly organizationId: string;
+  readonly guildId: string;
+  readonly channelId: string;
+  readonly participantLimit: number | null;
+  readonly sortOrder: number;
+}
 
 export interface ActivityRecord {
   readonly id: string;
@@ -185,6 +196,8 @@ export interface ActivityRecord {
   readonly status: ActivityStatus;
   readonly enrollmentOpen: boolean;
   readonly participantLimit: number | null;
+  /** P4.5: shared (default) | separate — per-activity participant pool mode. */
+  readonly participantMode: ParticipantMode;
   readonly organizerDiscordUserId: string | null;
   readonly organizerV2UserId: string | null;
   readonly coOrganizerDiscordUserId: string | null;
@@ -210,6 +223,8 @@ export interface ParticipationRecord {
   readonly confirmationState: 'confirmed' | 'requires_reconfirmation';
   readonly reconfirmDeadline: Date | null;
   readonly waitlistPosition: number | null;
+  /** NULL = SHARED pool; set = SEPARATE pool for that guild. */
+  readonly scopeGuildId: string | null;
   readonly resignedAt: Date | null;
   readonly removedAt: Date | null;
   readonly removeReason: string | null;
@@ -252,6 +267,7 @@ export interface ActivityReportRecord {
 }
 
 export interface ActivityProjectionRecord {
+  readonly id: string;
   readonly activityId: string;
   readonly guildId: string;
   readonly channelId: string;
@@ -341,9 +357,13 @@ export interface ActivityTx {
   ): Promise<ActivityDraftRecord>;
   deleteDraft(id: string): Promise<void>;
   insertActivity(
-    input: Omit<ActivityRecord, 'createdAt' | 'updatedAt' | 'version' | 'opaqueId'> & {
+    input: Omit<
+      ActivityRecord,
+      'createdAt' | 'updatedAt' | 'version' | 'opaqueId' | 'participantMode'
+    > & {
       version?: number;
       opaqueId?: string;
+      participantMode?: ParticipantMode;
     },
   ): Promise<ActivityRecord>;
   updateActivity(activity: ActivityRecord): Promise<ActivityRecord>;
@@ -361,8 +381,14 @@ export interface ActivityTx {
   upsertParticipation(
     input: Omit<
       ParticipationRecord,
-      'occupiesSlot' | 'statusBehavior' | 'resignedAt' | 'removedAt' | 'removeReason'
+      | 'occupiesSlot'
+      | 'statusBehavior'
+      | 'resignedAt'
+      | 'removedAt'
+      | 'removeReason'
+      | 'scopeGuildId'
     > & {
+      scopeGuildId?: string | null;
       resignedAt?: Date | null;
       removedAt?: Date | null;
       removeReason?: string | null;

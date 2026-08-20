@@ -488,6 +488,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
       status: 'published',
       enrollmentOpen: true,
       participantLimit: null,
+      participantMode: 'shared',
       organizerDiscordUserId: 'u1',
       organizerV2UserId: null,
       coOrganizerDiscordUserId: null,

@@ -1,0 +1,13 @@
+{
+  "name": "messaging",
+  "projectType": "library",
+  "root": "packages/messaging",
+  "sourceRoot": "packages/messaging/src",
+  "tags": ["type:util", "scope:shared"],
+  "targets": {
+    "lint": { "command": "eslint packages/messaging/src" },
+    "typecheck": { "command": "tsc -p packages/messaging/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/messaging/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/messaging/tsconfig.json --noEmit" }
+  }
+}

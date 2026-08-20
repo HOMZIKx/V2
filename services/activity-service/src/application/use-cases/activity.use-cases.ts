@@ -558,6 +558,7 @@ export class ActivityUseCases {
         status: 'registrations_open',
         enrollmentOpen: true,
         participantLimit: input.participantLimit ?? null,
+        participantMode: 'shared',
         organizerDiscordUserId: discordUserId,
         organizerV2UserId: ctx.actor.v2UserId ?? null,
         coOrganizerDiscordUserId: null,
@@ -581,6 +582,7 @@ export class ActivityUseCases {
           confirmationState: 'confirmed',
           reconfirmDeadline: null,
           waitlistPosition: null,
+          scopeGuildId: null,
         });
       }
 

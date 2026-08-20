@@ -228,6 +228,8 @@ function mapActivity(row: Record<string, unknown>): ActivityRecord {
       row.participant_limit === null || row.participant_limit === undefined
         ? null
         : Number(row.participant_limit),
+    participantMode:
+      asNullableString(row.participant_mode) === 'separate' ? 'separate' : 'shared',
     organizerDiscordUserId: asNullableString(row.organizer_discord_user_id),
     organizerV2UserId: asNullableString(row.organizer_v2_user_id),
     coOrganizerDiscordUserId: asNullableString(row.co_organizer_discord_user_id),
@@ -259,6 +261,7 @@ function mapParticipation(row: Record<string, unknown>): ParticipationRecord {
       row.waitlist_position === null || row.waitlist_position === undefined
         ? null
         : Number(row.waitlist_position),
+    scopeGuildId: asNullableString(row.scope_guild_id),
     resignedAt: asNullableDate(row.resigned_at),
     removedAt: asNullableDate(row.removed_at),
     removeReason: asNullableString(row.remove_reason),
@@ -317,6 +320,7 @@ function mapReport(row: Record<string, unknown>): ActivityReportRecord {
 function mapProjection(row: Record<string, unknown>): ActivityProjectionRecord {
   const activityId = asRequiredString(row.activity_id, 'activity_id');
   return {
+    id: asNullableString(row.id) ?? activityId,
     activityId,
     guildId: asRequiredString(row.guild_id, 'guild_id'),
     channelId: asRequiredString(row.channel_id, 'channel_id'),
@@ -608,12 +612,13 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `INSERT INTO activities (
            id, guild_id, organization_id, type_id, name, description, start_at, end_at, status,
-           enrollment_open, participant_limit, organizer_discord_user_id, organizer_v2_user_id,
+           enrollment_open, participant_limit, participant_mode,
+           organizer_discord_user_id, organizer_v2_user_id,
            co_organizer_discord_user_id, co_organizer_v2_user_id, publication_channel_id,
            timezone, location_text, cancel_reason, cancelled_at, version, scheduled_finish_at,
            opaque_id, schedule_kind, period_key, schedule_has_explicit_time
          ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
          ) RETURNING *`,
         [
           input.id,
@@ -627,6 +632,7 @@ function createTx(client: PoolClient): ActivityTx {
           input.status,
           input.enrollmentOpen,
           input.participantLimit,
+          input.participantMode ?? 'shared',
           input.organizerDiscordUserId,
           input.organizerV2UserId,
           input.coOrganizerDiscordUserId,
@@ -780,13 +786,16 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async upsertParticipation(input) {
+      const scopeGuildId = input.scopeGuildId ?? null;
       const existing = input.discordUserId
         ? await client.query(
             `SELECT id FROM participations
              WHERE activity_id = $1 AND discord_user_id = $2
+               AND ((scope_guild_id IS NULL AND $3::text IS NULL)
+                    OR scope_guild_id = $3)
                AND resigned_at IS NULL AND removed_at IS NULL
              LIMIT 1`,
-            [input.activityId, input.discordUserId],
+            [input.activityId, input.discordUserId, scopeGuildId],
           )
         : { rows: [] as { id: string }[] };
 
@@ -795,7 +804,7 @@ function createTx(client: PoolClient): ActivityTx {
         const result = await client.query(
           `UPDATE participations SET
              status_def_id = $2, confirmation_state = $3, reconfirm_deadline = $4,
-             waitlist_position = $5, updated_at = now()
+             waitlist_position = $5, scope_guild_id = $6, updated_at = now()
            WHERE id = $1
            RETURNING id`,
           [
@@ -804,6 +813,7 @@ function createTx(client: PoolClient): ActivityTx {
             input.confirmationState,
             input.reconfirmDeadline?.toISOString() ?? null,
             input.waitlistPosition,
+            scopeGuildId,
           ],
         );
         const id = String((result.rows[0] as { id: string }).id);
@@ -821,8 +831,8 @@ function createTx(client: PoolClient): ActivityTx {
       await client.query(
         `INSERT INTO participations (
            id, activity_id, discord_user_id, v2_user_id, status_def_id,
-           confirmation_state, reconfirm_deadline, waitlist_position
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+           confirmation_state, reconfirm_deadline, waitlist_position, scope_guild_id
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
         [
           id,
           input.activityId,
@@ -832,6 +842,7 @@ function createTx(client: PoolClient): ActivityTx {
           input.confirmationState,
           input.reconfirmDeadline?.toISOString() ?? null,
           input.waitlistPosition,
+          scopeGuildId,
         ],
       );
       const full = await client.query(
@@ -1219,8 +1230,7 @@ function createTx(client: PoolClient): ActivityTx {
          ) VALUES (
            $1,$2,$3,$4,COALESCE($5, 'pending'),$6,COALESCE($7, 1),$8,COALESCE($9, 0),$10,$11,COALESCE($12, 1), now()
          )
-         ON CONFLICT (activity_id) DO UPDATE SET
-           guild_id = EXCLUDED.guild_id,
+         ON CONFLICT (activity_id, guild_id) DO UPDATE SET
            channel_id = EXCLUDED.channel_id,
            message_id = COALESCE($4, activity_projections.message_id),
            status = COALESCE($5, activity_projections.status),

@@ -86,6 +86,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       confirmationState: 'confirmed' | 'requires_reconfirmation';
       reconfirmDeadline: Date | null;
       waitlistPosition: number | null;
+      scopeGuildId: string | null;
       resignedAt: Date | null;
       removedAt: Date | null;
       removeReason: string | null;
@@ -120,6 +121,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
   const projections = new Map<
     string,
     {
+      id: string;
       activityId: string;
       guildId: string;
       channelId: string;
@@ -280,6 +282,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       const now = new Date();
       const activity: ActivityRecord = {
         ...input,
+        participantMode: input.participantMode ?? 'shared',
         opaqueId: input.opaqueId ?? input.id.replace(/-/g, '').slice(0, 12),
         version: input.version ?? 1,
         createdAt: now,
@@ -328,6 +331,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       const status = statuses.get(input.statusDefId);
       const record = {
         ...input,
+        scopeGuildId: input.scopeGuildId ?? null,
         resignedAt: input.resignedAt ?? null,
         removedAt: input.removedAt ?? null,
         removeReason: input.removeReason ?? null,
@@ -448,6 +452,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async upsertActivityProjection(input) {
       const existing = projections.get(input.activityId);
       const next = {
+        id: existing?.id ?? `proj-${input.activityId}`,
         activityId: input.activityId,
         guildId: input.guildId,
         channelId: input.channelId,

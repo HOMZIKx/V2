@@ -2,77 +2,46 @@
 
 ## Continuous handoff snapshot
 
-| Field                               | Value                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------- |
-| **CURRENT_TASK**                    | `P4-0-VISUAL-EFFECTIVE-CHECKPOINT-005`                                    |
-| **FINAL_STATUS**                    | `READY_FOR_CHATGPT_P4_0_VISUAL_DELTA_AUDIT`                               |
-| **P4_0_FINAL_CHECKPOINT_SHA**       | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`                                |
-| **P4_0_FINAL_STATUS**               | `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_DELTA` (immutable; do not rewrite)  |
-| **P4_0_EFFECTIVE_CHECKPOINT_SHA**   | `2fd4635c3b0aca118a3554e3439acc089558f3d9`                                |
-| **HUB_VISUAL_COMPOSITION_CODE_SHA** | `72fee72bf800c051410c4bacfbfdd79bc34820e1`                                |
-| **BANNER_STATUS**                   | `OWNER_ASSET_REQUIRED`                                                    |
-| **ACTION_EMOJI_STATUS**             | `OWNER_ASSET_UPLOAD_REQUIRED`                                             |
-| **CI**                              | PASS (`32415392501` effective; `32418997107` SoT tip)                     |
-| **ZEABUR**                          | discord RUNNING `2fd4635`; 3x restart reconcile PASS; prior 7/7 preserved |
-| **SOT_TIP**                         | `b7ad54b4381c9323995605c8d2840b1c86c62cfe`                                |
-| **CRITICAL**                        | 0                                                                         |
-| **HIGH**                            | 0                                                                         |
-| **P4_5_PLAN_CHECKPOINT_SHA**        | `8834559e38f5d55160eb5de8510420651b26b829` (still valid)                  |
-| **CURRENT_BRANCH**                  | `cursor/p4-1-activity-domain`                                             |
-| **PR**                              | #19                                                                       |
-| **P4.5 CODE**                       | not started                                                               |
+| Field                             | Value                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------- |
+| **CURRENT_STAGE**                 | 1 ? P4.5 (IN PROGRESS)                                                          |
+| **CURRENT_TASK**                  | `V2-CONTINUOUS-CORE-FOUNDATION-EXECUTION-001` / `P4.5-MULTI-GUILD-RABBITMQ-001` |
+| **FINAL_STATUS**                  | `IN_PROGRESS_P4_5_IMPLEMENTATION`                                               |
+| **CURRENT_BRANCH**                | `cursor/p4-1-activity-domain`                                                   |
+| **PR**                            | #19                                                                             |
+| **P4_0_EFFECTIVE_CHECKPOINT_SHA** | `2fd4635c3b0aca118a3554e3439acc089558f3d9`                                      |
+| **P4_5_PLAN_CHECKPOINT_SHA**      | `8834559e38f5d55160eb5de8510420651b26b829`                                      |
+| **P4_5_FINAL_CHECKPOINT_SHA**     | pending                                                                         |
+| **OPEN_CRITICAL**                 | 0                                                                               |
+| **OPEN_HIGH**                     | 0                                                                               |
+| **BANNER_STATUS**                 | OWNER_ASSET_REQUIRED                                                            |
+| **ACTION_EMOJI_STATUS**           | OWNER_ASSET_UPLOAD_REQUIRED                                                     |
 
----
+## AUDIT_QUEUE
 
-## FINAL STATUS
+- P4.0 visual delta @ `2fd4635c3b0aca118a3554e3439acc089558f3d9`
+- P4.5 plan @ `8834559e38f5d55160eb5de8510420651b26b829`
+- P4.5 final (pending)
 
-**READY_FOR_CHATGPT_P4_0_VISUAL_DELTA_AUDIT**
+## Stage 1 progress (this push)
 
-### Checkpoint consequence
+Delivered so far (additive WIP, not final checkpoint):
 
-Historical `P4_0_FINAL_CHECKPOINT_SHA` = `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`
-is marked `SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_DELTA` and is **not** rewritten.
+- Migrations `005`?`009` (participant_mode, publication_targets, multi projections, participation scope, outbox transport meta)
+- Package `@v2/messaging` (topology constants, envelope zod, AMQP helpers, declare topology)
+- Domain `participant-mode` + ActivityRecord `participantMode` / ParticipationRecord `scopeGuildId` / projection `id`
+- Repository mapping + insert/upsert updates for P4.5 columns
+- Issue #26 continuous-execution amendment acknowledged (async ChatGPT audits)
 
-Audits of current Hub visuals / P4.0 effective tip use
-**P4_0_EFFECTIVE_CHECKPOINT_SHA** = `2fd4635c3b0aca118a3554e3439acc089558f3d9`.
+Still required before `P4_5_FINAL_CHECKPOINT_SHA`:
 
-### Visual assets (Owner pending; non-blocking)
+- Multi-guild publish API + `publish.multi_guild` org sensitive AuthZ
+- SHARED/SEPARATE occupancy + RSVP routing
+- RabbitMQ outbox publisher (confirms) + discord-gateway consumer
+- Failure-matrix + multi-guild security tests
+- Admin mode/targets UX (minimal)
+- Full validate, green CI, Zeabur RabbitMQ + runtime proof
 
-- Banner file `v2-activity-banner.webp`: **OWNER_ASSET_REQUIRED** (absent; Hub omits MediaGallery safely)
-- Action icons: source webps present; Discord custom emoji upload +
-  `DISCORD_ACTIVITY_HUB_ACTION_EMOJIS_JSON`: **OWNER_ASSET_UPLOAD_REQUIRED**
-  (text-only fallback remains functional)
-- Do not use `v2-lab-banner.png` for Activity Hub
+## Gates
 
-### Hub contract + lifecycle
-
-- 1x Container `#D48632`, header icon, optional banner, four Secondary Section buttons
-- signed `create` / `lfg` / `mine` / `inbox`
-- no large action Thumbnails; no LAB Hub visual
-- publish / edit / startup reconcile / 3x reconcile cycles: PASS (unit)
-- live: 3x discord-gateway redeploy, each cycle `discordState=ready` on effective SHA
-- attachments do not accumulate; header icon retained; banner appears only when file exists
-
-### Security regression
-
-Rechecked fail-closed / assertion / JTI / projection secret / signed custom_id /
-OAuth production origin (no loopback) suites -- PASS. **CRITICAL=0**, **HIGH=0**.
-
-### Validation
-
-- `pnpm validate` (full): PASS
-- `pnpm audit --audit-level=high`: PASS
-- Targeted discord-gateway Hub + security suites: PASS
-
-### Zeabur
-
-discord-gateway live SHA matches effective tip (`https://v22.zeabur.app/health/live`).
-Live restart reconcile: 3x `service redeploy` -> each cycle returned `discordState=ready`
-on SHA `2fd4635c3b0aca118a3554e3439acc089558f3d9`. Non-Discord services remain on
-historical final SHA -- intentional; visual delta does not require 7/7 same-SHA
-redeploy. Prior P4.0 7/7 evidence at `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f`
-preserved.
-
-### Gates
-
-NO MERGE / NO P4.5 IMPLEMENTATION / do not rewrite historical final SHA
+NO MERGE / NO Stage 8+ / additive commits only / do not wait for ChatGPT between stages
