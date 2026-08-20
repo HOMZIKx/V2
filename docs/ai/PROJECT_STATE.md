@@ -2,62 +2,40 @@
 
 ## Status
 
-`BLOCKED_OWNER_ACTION` — task `P4-0-CLOSURE-CORRECTIVE-002` **stopped at point 0**
-(security precondition).
+`READY_FOR_OWNER_VISUAL_CHECK` — task `P4-DISCORD-ACTIVITY-HUB-COMPACT-UX-002`
+
+P4-0 closure (`P4-0-CLOSURE-CORRECTIVE-002`) remains **separately** blocked on
+Issue #25 (repo visibility still reported PUBLIC on last probe). This UX task
+does not resume P4.0 / P4.5.
 
 Not APPROVED. Not merged. No P4.5 / P4.6 implementation.
 
-## Blockers (owner action required)
+## Latest completed task
 
-| Blocker                     | Reason                                                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **REPOSITORY_STILL_PUBLIC** | `HOMZIKx/V2` visibility = **public** (GitHub API unauthenticated probe 2026-08-20). Issue #25 requires **PRIVATE**.                         |
-| **GH_CLI_UNAUTHENTICATED**  | `gh auth status` → not logged in; visibility confirmed via `api.github.com/repos/HOMZIKx/V2` → `private=false`, `visibility=public`, HTML 200 |
-| **PUSH_DEFERRED**           | Security precondition forbids pushing further corrective work until repo is PRIVATE.                                                        |
+`P4-DISCORD-ACTIVITY-HUB-COMPACT-UX-002` — compact public Hub layout only:
 
-## Point 0 verification (2026-08-20)
-
-```text
-UNAUTH_API private=False visibility=public
-HTML https://github.com/HOMZIKx/V2 → 200
-gh auth status → not logged into any GitHub hosts
-```
-
-Owner message claimed PRIVATE; live GitHub still reports PUBLIC. Re-check after visibility change.
+- one Components V2 Container, amber `#D48632`
+- header Thumbnail only (`centrum-aktywnosci-icon.webp`)
+- four Section + Secondary button accessories (create / lfg / mine / inbox)
+- no ActionRows, no per-action thumbnails in the message
+- action icons remain in repo, unused by the public hub renderer
 
 ## Immutable checkpoints
 
-| Marker                    | SHA                                        | Notes                                      |
-| ------------------------- | ------------------------------------------ | ------------------------------------------ |
-| FIXUP_START_SHA           | `1290df92681ee1e98fde3e0efaf231f7d110f6db` | P4-COMBINED-AUDIT-FIXUP-001 start          |
-| FIXUP_CHECKPOINT_SHA      | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` | Six audit findings                         |
-| HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` | Owner Activity Hub icons                   |
-| P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |                                            |
-| P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` | plan only; no P4.5 implementation          |
-| P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` | now on branch (ancestor of current HEAD)   |
+| Marker                    | SHA                                        | Notes                             |
+| ------------------------- | ------------------------------------------ | --------------------------------- |
+| FIXUP_START_SHA           | `1290df92681ee1e98fde3e0efaf231f7d110f6db` |                                   |
+| FIXUP_CHECKPOINT_SHA      | `7f9e15e8020305db5e1b5bd3fb8f00532412a2c8` |                                   |
+| HUB_ASSETS_SHA            | `63ed51e303c2b42e6e17e6ca9dce3ff903f6873d` |                                   |
+| P4_0_AUDIT_CHECKPOINT_SHA | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` |                                   |
+| P4_5_PLAN_CHECKPOINT_SHA  | `0bdb254b4d6c0a84463a6331f2d830f642cbeeea` | plan only                         |
+| P4_0_CORRECTIVE_FIXUP_SHA | `59172be2f10fce4e891480dc25a61810fe4ee3f5` |                                   |
+| HUB_COMPACT_UX_SHA        | _(set after commit)_                       | compact Hub layout                |
 
-## Current tip (branch synced)
+## Branch
 
 - Branch: `cursor/p4-1-activity-domain`
 - PR: #19
-- LOCAL = ORIGIN = `7649a98e371940a9710443bd1cc697d6c5a7239c`
-- Corrective `59172be` **is** ancestor of current tip (already on remote)
-
-## Current task
-
-`P4-0-CLOSURE-CORRECTIVE-002` — **paused at §0** until PRIVATE.
-
-Remaining work (do not start until PRIVATE):
-
-- green CI / remaining format if any
-- confirm OD-P4.5-001 removed + SHARED+SEPARATE Accepted
-- SoT drift
-- Hub edit/reconcile attachment tests + live 3× reconcile + icons
-- full validate
-- Zeabur 7/7 same SHA
-- Activity technical smoke
-- OAuth/health regression
-- final handoff `READY_FOR_CHATGPT_P4_0_FINAL_DELTA_AUDIT`
 
 ## Explicit gates
 
@@ -67,16 +45,14 @@ Remaining work (do not start until PRIVATE):
 
 ## OPEN_CRITICAL / OPEN_HIGH
 
-- OPEN_CRITICAL: **0** (product)
+- OPEN_CRITICAL: **0**
 - OPEN_HIGH: **0**
-- Process blocker: **REPOSITORY_STILL_PUBLIC**
 
 ## OWNER_DECISIONS_REQUIRED
 
-1. Set `HOMZIKx/V2` → **PRIVATE** (Settings → Danger Zone / Change visibility)
-2. Confirm with `gh repo view HOMZIKx/V2 --json visibility,isPrivate` (after `gh auth login`)
-3. Re-run / resume `P4-0-CLOSURE-CORRECTIVE-002` from point 0
+1. Visual check of live Discord Hub after redeploy of discord-gateway
+2. Issue #25: set `HOMZIKx/V2` PRIVATE before resuming P4-0 closure push policy
 
 ## Last updated
 
-2026-08-20 — P4-0-CLOSURE-CORRECTIVE-002 point-0 re-check; still PUBLIC
+2026-08-20 — P4-DISCORD-ACTIVITY-HUB-COMPACT-UX-002

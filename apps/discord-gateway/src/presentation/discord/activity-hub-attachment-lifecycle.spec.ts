@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { deliverHubPanel } from '../../application/interactions/hub-panel-delivery.js';
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 
-import { ACTIVITY_HUB_ASSET_KEYS } from './activity-hub-assets.js';
 import { renderActivityHubMessage } from './activity-hub-renderer.js';
 import { toComponentsV2Payload } from './components-v2-payload.js';
 
@@ -14,13 +13,7 @@ const signingSecret = 'test-signing-secret-at-least-32-bytes-long!!';
 const nonce = 'abc123nonce456789012345';
 const messageId = '9999999999999999999';
 
-const EXPECTED_ATTACHMENT_NAMES = [
-  'centrum-aktywnosci-icon.webp',
-  'moje-aktywnosci-icon.webp',
-  'powiadomienia-icon.webp',
-  'szukam-ekipy-icon.webp',
-  'utworz-wydarzenie-icon.webp',
-];
+const EXPECTED_ATTACHMENT_NAMES = ['centrum-aktywnosci-icon.webp'];
 
 function buildHubPayload() {
   return toComponentsV2Payload(renderActivityHubMessage({ opaquePanelId, signingSecret }));
@@ -40,7 +33,7 @@ function extractSignedCustomIds(payload: { components?: readonly unknown[] }): s
 }
 
 describe('activity hub attachment lifecycle', () => {
-  it('keeps exactly five hub attachments across publish and three reconcile/edit cycles', async () => {
+  it('keeps header attachment and signed Section buttons across publish and three reconcile/edit cycles', async () => {
     const hubPayload = buildHubPayload();
     const signedCustomIds = extractSignedCustomIds(hubPayload);
     expect(signedCustomIds).toHaveLength(4);
@@ -108,8 +101,8 @@ describe('activity hub attachment lifecycle', () => {
 
     for (const payload of editPayloads) {
       expect(extractAttachmentNames(payload)).toEqual(EXPECTED_ATTACHMENT_NAMES);
-      expect(payload.files).toHaveLength(ACTIVITY_HUB_ASSET_KEYS.length);
-      expect(new Set(extractAttachmentNames(payload)).size).toBe(5);
+      expect(payload.files).toHaveLength(1);
+      expect(new Set(extractAttachmentNames(payload)).size).toBe(1);
     }
 
     const lastPayload = buildHubPayload();
@@ -117,25 +110,32 @@ describe('activity hub attachment lifecycle', () => {
 
     const serialized = JSON.stringify(lastPayload.components ?? []);
     expect(serialized).toContain('attachment://centrum-aktywnosci-icon.webp');
-    expect(serialized).toContain('attachment://utworz-wydarzenie-icon.webp');
-    expect(serialized).toContain('attachment://szukam-ekipy-icon.webp');
-    expect(serialized).toContain('attachment://moje-aktywnosci-icon.webp');
-    expect(serialized).toContain('attachment://powiadomienia-icon.webp');
+    expect(serialized).not.toContain('attachment://utworz-wydarzenie-icon.webp');
+    expect(serialized).not.toContain('attachment://szukam-ekipy-icon.webp');
+    expect(serialized).not.toContain('attachment://moje-aktywnosci-icon.webp');
+    expect(serialized).not.toContain('attachment://powiadomienia-icon.webp');
 
-    const actionRows = JSON.stringify(lastPayload.components ?? []);
-    expect(actionRows).toContain(`"style":${ButtonStyle.Secondary}`);
-    expect(actionRows).not.toContain(`"style":${ButtonStyle.Primary}`);
-    expect(actionRows).toContain(createPanelCustomId(opaquePanelId, 'create', signingSecret));
-    expect(actionRows).toContain(createPanelCustomId(opaquePanelId, 'lfg', signingSecret));
-    expect(actionRows).toContain(createPanelCustomId(opaquePanelId, 'mine', signingSecret));
-    expect(actionRows).toContain(createPanelCustomId(opaquePanelId, 'inbox', signingSecret));
+    expect(serialized).toContain(`"style":${ButtonStyle.Secondary}`);
+    expect(serialized).not.toContain(`"style":${ButtonStyle.Primary}`);
+    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'create', signingSecret));
+    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'lfg', signingSecret));
+    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'mine', signingSecret));
+    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'inbox', signingSecret));
 
     const container = (
       lastPayload.components?.[0] as { toJSON: () => Record<string, unknown> }
     ).toJSON();
-    const sections = ((container.components as Array<Record<string, unknown>>) ?? []).filter(
-      (component) => component.type === ComponentType.Section,
-    );
+    const components = (container.components as Array<Record<string, unknown>>) ?? [];
+    const sections = components.filter((component) => component.type === ComponentType.Section);
     expect(sections).toHaveLength(5);
+
+    const buttonAccessories = sections.filter((section) => {
+      const accessory = section.accessory as Record<string, unknown>;
+      return accessory.type === ComponentType.Button;
+    });
+    expect(buttonAccessories).toHaveLength(4);
+
+    const actionRows = components.filter((component) => component.type === ComponentType.ActionRow);
+    expect(actionRows).toHaveLength(0);
   });
 });

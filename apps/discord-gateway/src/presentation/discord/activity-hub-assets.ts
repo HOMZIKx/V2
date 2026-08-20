@@ -98,6 +98,12 @@ export function buildActivityHubAttachment(key: ActivityHubAssetKey): Attachment
   return new AttachmentBuilder(readFileSync(resolveActivityHubAssetPath(key)), { name: filename });
 }
 
+/** All hub icon assets (kept in repo; not all attached to the public hub message). */
 export function buildActivityHubAttachmentFiles(): AttachmentBuilder[] {
   return ACTIVITY_HUB_ASSET_KEYS.map((key) => buildActivityHubAttachment(key));
+}
+
+/** Attachments for the public hub message — header icon only. */
+export function buildActivityHubMessageAttachmentFiles(): AttachmentBuilder[] {
+  return [buildActivityHubAttachment('activityHub')];
 }

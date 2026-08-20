@@ -1,5 +1,4 @@
 import {
-  ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ContainerBuilder,
@@ -15,7 +14,7 @@ import {
 
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
-  buildActivityHubAttachmentFiles,
+  buildActivityHubMessageAttachmentFiles,
   getActivityHubAssetDefinition,
 } from './activity-hub-assets.js';
 import { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
@@ -32,7 +31,8 @@ export type ActivityHubMessagePayload = MessageCreateOptions & MessageEditOption
 const HUB_INTRO = 'Organizuj wieczory, zbieraj ekipę i pilnuj swoich zapisów.';
 
 /**
- * Public Centrum Aktywności hub — one Container, thumbnails + action rows.
+ * Public Centrum Aktywności hub — one compact Container.
+ * Header thumbnail only; each action is a Section with a Secondary button accessory.
  * No legacy embeds. No lab harness theme. No decorative emoji.
  */
 export function renderActivityHubMessage(input: ActivityHubRenderInput): ActivityHubMessagePayload {
@@ -51,49 +51,42 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
       ),
   );
 
-  container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
-  );
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**DZIAŁAJ**'));
 
-  addHubThumbnailSection(container, 'create', {
+  addHubActionSection(container, opaquePanelId, signingSecret, {
     title: 'Utwórz aktywność',
-    description: 'Organizujesz wydarzenie dla innych.',
+    description: 'Zaplanuj wydarzenie dla innych.',
+    label: 'Utwórz',
+    action: 'create',
   });
-  addHubThumbnailSection(container, 'lfg', {
+  addHubActionSection(container, opaquePanelId, signingSecret, {
     title: 'Szukam ekipy',
-    description: 'Znajdź ludzi do wspólnej aktywności.',
+    description: 'Znajdź aktywną ekipę.',
+    label: 'Szukaj',
+    action: 'lfg',
   });
-  container.addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      hubButton(opaquePanelId, signingSecret, 'Utwórz', 'create'),
-      hubButton(opaquePanelId, signingSecret, 'Szukaj', 'lfg'),
-    ),
-  );
 
   container.addSeparatorComponents(
-    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Large),
+    new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );
   container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**TWOJE**'));
 
-  addHubThumbnailSection(container, 'mine', {
+  addHubActionSection(container, opaquePanelId, signingSecret, {
     title: 'Moje aktywności',
-    description: 'Organizowane, zapisane i najbliższe wydarzenia.',
+    description: 'Twoje wydarzenia i zapisy.',
+    label: 'Otwórz',
+    action: 'mine',
   });
-  addHubThumbnailSection(container, 'notifications', {
+  addHubActionSection(container, opaquePanelId, signingSecret, {
     title: 'Powiadomienia',
-    description: 'Zmiany terminów, lista rezerwowa i ważne informacje.',
+    description: 'Zmiany, przypomnienia i lista rezerwowa.',
+    label: 'Otwórz',
+    action: 'inbox',
   });
-  container.addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      hubButton(opaquePanelId, signingSecret, 'Otwórz', 'mine'),
-      hubButton(opaquePanelId, signingSecret, 'Sprawdź', 'inbox'),
-    ),
-  );
 
   return {
     components: [container],
-    files: buildActivityHubAttachmentFiles(),
+    files: buildActivityHubMessageAttachmentFiles(),
     flags: MessageFlags.IsComponentsV2,
   };
 }
@@ -110,19 +103,22 @@ function hubButton(
     .setStyle(ButtonStyle.Secondary);
 }
 
-function addHubThumbnailSection(
+function addHubActionSection(
   container: ContainerBuilder,
-  assetKey: 'create' | 'lfg' | 'mine' | 'notifications',
-  copy: { title: string; description: string },
+  opaquePanelId: string,
+  signingSecret: string,
+  copy: {
+    title: string;
+    description: string;
+    label: string;
+    action: 'create' | 'lfg' | 'mine' | 'inbox';
+  },
 ): void {
-  const asset = getActivityHubAssetDefinition(assetKey);
   container.addSectionComponents(
     new SectionBuilder()
       .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(`**${copy.title}**\n${copy.description}`),
       )
-      .setThumbnailAccessory(
-        new ThumbnailBuilder().setURL(asset.attachmentUrl).setDescription(asset.alt),
-      ),
+      .setButtonAccessory(hubButton(opaquePanelId, signingSecret, copy.label, copy.action)),
   );
 }

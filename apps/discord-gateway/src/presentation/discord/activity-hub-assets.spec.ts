@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTIVITY_HUB_ASSET_KEYS,
   buildActivityHubAttachmentFiles,
+  buildActivityHubMessageAttachmentFiles,
   getActivityHubAssetDefinition,
   listActivityHubAssetDefinitions,
   resolveActivityHubAssetPath,
@@ -55,7 +56,7 @@ describe('activity-hub-assets', () => {
     }
   });
 
-  it('builds one attachment per icon for publish/edit payloads', () => {
+  it('builds the full asset catalog without removing unused hub icons from repo', () => {
     const files = buildActivityHubAttachmentFiles();
     expect(files).toHaveLength(5);
     const names = files.map((file) => file.name).sort();
@@ -66,6 +67,11 @@ describe('activity-hub-assets', () => {
       'szukam-ekipy-icon.webp',
       'utworz-wydarzenie-icon.webp',
     ]);
+  });
+
+  it('attaches only the header icon on the public hub message', () => {
+    const files = buildActivityHubMessageAttachmentFiles();
+    expect(files.map((file) => file.name)).toEqual(['centrum-aktywnosci-icon.webp']);
   });
 
   it('resolves assets directory from repo layout', () => {
