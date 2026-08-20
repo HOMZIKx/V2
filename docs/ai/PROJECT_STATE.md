@@ -24,7 +24,7 @@ No P4.5 production implementation from this task.
 | PR                         | #19                                        |
 | P4_0_FINAL_CHECKPOINT_SHA  | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f` |
 | P4_5_PLAN_CHECKPOINT_SHA   | `8834559e38f5d55160eb5de8510420651b26b829` |
-| HUB_VISUAL_COMPOSITION_SHA | _(set after commit)_                       |
+| HUB_VISUAL_COMPOSITION_SHA | _72fee72bf800c051410c4bacfbfdd79bc34820e1_ |
 | OPEN_CRITICAL              | 0                                          |
 | OPEN_HIGH                  | 0                                          |
 

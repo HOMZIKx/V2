@@ -6,7 +6,7 @@
 | ------------------------------ | ------------------------------------------------ |
 | **CURRENT_TASK**               | `P4-DISCORD-ACTIVITY-HUB-VISUAL-COMPOSITION-003` |
 | **FINAL_STATUS**               | `READY_FOR_OWNER_VISUAL_CHECK`                   |
-| **HUB_VISUAL_COMPOSITION_SHA** | _(set after commit)_                             |
+| **HUB_VISUAL_COMPOSITION_SHA** | _72fee72bf800c051410c4bacfbfdd79bc34820e1_       |
 | **BRANCH / PR**                | `cursor/p4-1-activity-domain` � #19              |
 | **CONTRACTS**                  | unchanged (`create` / `lfg` / `mine` / `inbox`)  |
 | **P4.5 CODE**                  | not started                                      |
