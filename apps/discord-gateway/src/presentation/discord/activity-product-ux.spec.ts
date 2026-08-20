@@ -89,8 +89,10 @@ describe('hub visual identity', () => {
     expect(json).toContain('lista rezerwowa');
     expect(json).toContain('**DZIAŁAJ**');
     expect(json).toContain('**TWOJE**');
+    expect(json).toContain('Organizuj wydarzenia i zbieraj ekipę.');
     expect(json).not.toContain('edytujesz sekcje w dowolnej kolejności');
     expect(json).not.toContain('Szybsza publikacja tej samej aktywności');
+    expect(json).not.toContain('v2-lab-banner');
     expect(json).not.toMatch(/ButtonStyle\.Primary|"style":1/);
   });
 });

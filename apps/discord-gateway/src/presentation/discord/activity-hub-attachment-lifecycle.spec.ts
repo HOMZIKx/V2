@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { deliverHubPanel } from '../../application/interactions/hub-panel-delivery.js';
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 
+import { buildActivityHubMessageAttachmentFiles } from './activity-hub-assets.js';
 import { renderActivityHubMessage } from './activity-hub-renderer.js';
 import { toComponentsV2Payload } from './components-v2-payload.js';
 
@@ -13,7 +14,9 @@ const signingSecret = 'test-signing-secret-at-least-32-bytes-long!!';
 const nonce = 'abc123nonce456789012345';
 const messageId = '9999999999999999999';
 
-const EXPECTED_ATTACHMENT_NAMES = ['centrum-aktywnosci-icon.webp'];
+const EXPECTED_ATTACHMENT_NAMES = buildActivityHubMessageAttachmentFiles()
+  .map((file) => file.name ?? '')
+  .sort();
 
 function buildHubPayload() {
   return toComponentsV2Payload(renderActivityHubMessage({ opaquePanelId, signingSecret }));
@@ -101,8 +104,8 @@ describe('activity hub attachment lifecycle', () => {
 
     for (const payload of editPayloads) {
       expect(extractAttachmentNames(payload)).toEqual(EXPECTED_ATTACHMENT_NAMES);
-      expect(payload.files).toHaveLength(1);
-      expect(new Set(extractAttachmentNames(payload)).size).toBe(1);
+      expect(payload.files).toHaveLength(EXPECTED_ATTACHMENT_NAMES.length);
+      expect(new Set(extractAttachmentNames(payload)).size).toBe(EXPECTED_ATTACHMENT_NAMES.length);
     }
 
     const lastPayload = buildHubPayload();

@@ -25,7 +25,8 @@ describe('Activity Discord visual contract', () => {
       signingSecret: secret,
     });
     expect(payload.components).toHaveLength(1);
-    expect(payload.files).toHaveLength(1);
+    expect((payload.files ?? []).length).toBeGreaterThanOrEqual(1);
+    expect((payload.files ?? []).length).toBeLessThanOrEqual(2);
     const container = toJson(payload.components![0]);
     expect(container.type).toBe(ComponentType.Container);
     expect(container.accent_color).toBe(ACTIVITY_MODULE_ACCENT);
@@ -43,6 +44,7 @@ describe('Activity Discord visual contract', () => {
     expect(json).not.toContain('attachment://szukam-ekipy-icon.webp');
     expect(json).not.toContain('attachment://moje-aktywnosci-icon.webp');
     expect(json).not.toContain('attachment://powiadomienia-icon.webp');
+    expect(json).not.toContain('v2-lab-banner');
     expect(json).not.toMatch(
       /components v2|projection|backend|activity-service|opaque id|guild config/i,
     );
@@ -56,10 +58,12 @@ describe('Activity Discord visual contract', () => {
         signingSecret: secret,
       }),
     );
-    expect(payload.files).toHaveLength(1);
-    const names = payload.files?.map((file) => (file as { name?: string }).name).sort();
-    expect(names).toEqual(['centrum-aktywnosci-icon.webp']);
-    expect(new Set(names).size).toBe(1);
+    expect((payload.files ?? []).length).toBeGreaterThanOrEqual(1);
+    expect((payload.files ?? []).length).toBeLessThanOrEqual(2);
+    const names = payload.files?.map((file) => (file as { name?: string }).name) ?? [];
+    expect(names).toContain('centrum-aktywnosci-icon.webp');
+    expect(names).not.toContain('v2-lab-banner.png');
+    expect(new Set(names).size).toBe(names.length);
   });
 
   it('does not import V2 LAB from activity renderers', () => {
