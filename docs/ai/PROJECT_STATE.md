@@ -9,12 +9,12 @@ Not APPROVED. Not merged. No P4.5 production code.
 
 ## P4.0 checkpoints (immutable history)
 
-| Marker | SHA | Status |
-| ------ | --- | ------ |
-| **P4_0_FINAL_CHECKPOINT_SHA** | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f` | **SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_FIX** (kept; do not rewrite/delete) |
+| Marker                            | SHA                                        | Status                                                                                     |
+| --------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| **P4_0_FINAL_CHECKPOINT_SHA**     | `22ba38b6f8a195ef3dcac2ffe8d0d356a92ebd8f` | **SUPERSEDED_FOR_FINAL_AUDIT_BY_VISUAL_FIX** (kept; do not rewrite/delete)                 |
 | **P4_0_EFFECTIVE_CHECKPOINT_SHA** | `2fd4635c3b0aca118a3554e3439acc089558f3d9` | Tip for ChatGPT **visual delta** audit (Hub composition + green CI + live discord-gateway) |
-| HUB_VISUAL_COMPOSITION_CODE_SHA | `72fee72bf800c051410c4bacfbfdd79bc34820e1` | Visual composition implementation |
-| P4_5_PLAN_CHECKPOINT_SHA | `8834559e38f5d55160eb5de8510420651b26b829` | Plan still valid; **not** invalidated by Hub visual fix |
+| HUB_VISUAL_COMPOSITION_CODE_SHA   | `72fee72bf800c051410c4bacfbfdd79bc34820e1` | Visual composition implementation                                                          |
+| P4_5_PLAN_CHECKPOINT_SHA          | `8834559e38f5d55160eb5de8510420651b26b829` | Plan still valid; **not** invalidated by Hub visual fix                                    |
 
 ## Why effective supersedes final (audit only)
 
@@ -28,19 +28,19 @@ architecture/product conflict is found (none found).
 
 ## Snapshot
 
-| Field | Value |
-| ----- | ----- |
-| CURRENT_BRANCH | `cursor/p4-1-activity-domain` |
-| PR | #19 |
-| BASE_SHA (origin/main) | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| EFFECTIVE_CI_RUN_ID | `32415392501` |
-| EFFECTIVE_CI_RESULT | PASS (Quality Gates, Secret Scan, Infra Integration) |
+| Field                  | Value                                                     |
+| ---------------------- | --------------------------------------------------------- |
+| CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                             |
+| PR                     | #19                                                       |
+| BASE_SHA (origin/main) | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                |
+| EFFECTIVE_CI_RUN_ID    | `32415392501`                                             |
+| EFFECTIVE_CI_RESULT    | PASS (Quality Gates, Secret Scan, Infra Integration)      |
 | ZEABUR_DISCORD_GATEWAY | RUNNING `2fd4635…` (`https://v22.zeabur.app/health/live`) |
-| DISCORD_READY | PASS (`health/ready` → discordEnabled + ready) |
-| HUB_REGRESSION | PASS (targeted discord-gateway hub suite) |
-| FORMAT_LINT_TYPECHECK | PASS (`apps/discord-gateway`) |
-| OPEN_CRITICAL | 0 |
-| OPEN_HIGH | 0 |
+| DISCORD_READY          | PASS (`health/ready` → discordEnabled + ready)            |
+| HUB_REGRESSION         | PASS (targeted discord-gateway hub suite)                 |
+| FORMAT_LINT_TYPECHECK  | PASS (`apps/discord-gateway`)                             |
+| OPEN_CRITICAL          | 0                                                         |
+| OPEN_HIGH              | 0                                                         |
 
 ## Hub composition (effective)
 
