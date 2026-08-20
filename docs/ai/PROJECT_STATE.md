@@ -13,10 +13,10 @@ Not APPROVED. Not merged.
 
 | Field                   | Value                                                  |
 | ----------------------- | ------------------------------------------------------ |
-| CURRENT_STAGE           | 1 complete → starting 2 (P4.6)                         |
+| CURRENT_STAGE           | 2 — P4.6 (IN PROGRESS)                                 |
 | CURRENT_TASK            | `V2-CONTINUOUS-CORE-FOUNDATION-EXECUTION-001`          |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                          |
-| CURRENT_HEAD / PR_HEAD  | `e3c694fcc3980cd309843cac2c42c346083c8cb1`             |
+| CURRENT_HEAD / PR_HEAD  | `b4c182b` (after P4.6 domain foundation)               |
 | PR                      | #19                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`             |
 | CURRENT_CI              | PASS on `e3c694f` (Quality gates)                      |
