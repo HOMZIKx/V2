@@ -1,43 +1,53 @@
-# Cursor to ChatGPT handoff
+# CURSOR → ChatGPT
 
-## Continuous handoff snapshot
+## Status
 
-| Field                                        | Value                                                     |
-| -------------------------------------------- | --------------------------------------------------------- |
-| **CURRENT_STAGE**                            | 3 — V2 Hub Core                                           |
-| **CURRENT_TASK**                             | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                        |
-| **FINAL_STATUS**                             | `V2_HUB_CORE` — scope locked + implemented; validate PASS |
-| **CURRENT_HEAD**                             | `e49c3d4ff7b2cb2bc383fd59107267ec0bec69bd`                |
-| **PR**                                       | #19                                                       |
-| **HUB-CORE-001**                             | **OWNER_ACCEPTED**                                        |
-| **V2_HUB_CORE_CHECKPOINT_SHA**               | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                |
-| **P4_6_FINAL_CHECKPOINT_SHA**                | `6d80ea7716b439ec6827141707a6bf7ec5974147`                |
-| **DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA** | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146`                |
-| **CI_SECURITY_CLOSURE_SHA**                  | `f4577fb0e5860c34e269fa3183eef17d4d6106a7`                |
-| **CI_STATUS**                                | pending push of Hub Core tip                              |
-| **REPOSITORY_VISIBILITY**                    | **PUBLIC** — OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE     |
-| **OPEN_CRITICAL**                            | 0                                                         |
-| **OPEN_HIGH**                                | 1 — public repository (Issue #25)                         |
+`READY_FOR_OWNER_AND_CHATGPT_CORE_FOUNDATION_REVIEW`
 
-## What landed (Hub Core)
+Task: `V2-CORE-FOUNDATION-CONTINUOUS-RESUME-004`  
+Branch: `cursor/p4-1-activity-domain`  
+PR: #19  
+HEAD: `30ac1d87576fe8ae75d75bc05490e9edd72a3ba9`
 
-1. Owner decisions written to SoT (`HUB_CORE_SCOPE_LOCK.md`, ADR-0015, PENDING_DECISIONS).
-2. `@v2/hub-core` — module registry (GRA/RYNEK/GILDIA/TY), deep links `v2://…`, class/spec + party-role + interest catalogs, channel retirement statuses, sync rules.
-3. Discord canonical Hub → **V2 Centrum** StringSelect shell; Activity/profile/for_me/mine/notifications ephemeral flows; roadmap stubs for other modules.
-4. Identity migration `002_player_profile_foundation` + `/identity/v1/profile` API.
-5. Activity migration `011_hub_core_foundation` — legacy channels + module overrides; Admin **Moduły Hub**.
-6. WWW `/profil`, `/dla-mnie` foundations + nav.
+## Immutable checkpoints
 
-## Out of this stage (unchanged)
+| Marker | SHA |
+| --- | --- |
+| CI_SECURITY_CLOSURE_SHA | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` |
+| V2_HUB_CORE_CHECKPOINT_SHA | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA | `ea3e7b97719726aceb5226907a90ad270ca9783e` |
+| ACTIVITY_2_LFG_CHECKPOINT_SHA | `24828b7ddee17212775e36be37d2d9edd24ca2d4` |
+| RESERVATIONS_CHECKPOINT_SHA | `24828b7ddee17212775e36be37d2d9edd24ca2d4` |
+| MARKETPLACE_CHECKPOINT_SHA | `24828b7ddee17212775e36be37d2d9edd24ca2d4` |
+| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | `24828b7ddee17212775e36be37d2d9edd24ca2d4` |
 
-Full Reservations / Marketplace / Support / Community / Notifications Core / full LFG / Overlay / auto channel delete.
+Stages 5–7 landed in one additive feature commit (`24828b7`) then docs tip (`30ac1d8`).
 
-## Owner action required (HIGH)
+## Delivered
 
-Repository `HOMZIKx/V2` is **public**. Privatize per Issue #25.
+1. Hub Core finish: interest→role projection safety compute + tests.
+2. Notifications Core: `@v2/notification-core`, prefs/mute, DISCOVERY≠TRANSACTIONAL policy, DM deliver + Inbox fallback, Activity cancel → transactional notify.
+3. LFG matching domain + intents/watches APIs + discovery-first Hub copy.
+4. Reservations schema + conflict detection + create API + transactional notify.
+5. Marketplace schema + watch matching + create offer API + discovery notify.
+6. Integrated review prep: `docs/ai/CORE_FOUNDATION_INTEGRATED_REVIEW_PREP.md`.
 
-## Next (Issue #26 continuous)
+## Validation (local)
 
-1. Push Hub Core tip; wait CI green.
-2. Stage 4 — Notifications Core (`NOTIFICATIONS_CORE_CHECKPOINT_SHA`).
-3. Do not reopen Hub discovery.
+- `@v2/notification-core` tests PASS
+- `hub-core` LFG matching tests PASS
+- `activity-service` vitest 171 passed / 15 skipped
+- `discord-gateway` typecheck + related UX tests PASS
+- Full `pnpm validate` not re-run on final tip in this turn (targeted suites green)
+
+## Constraints / gaps
+
+- GitHub Issues #20/#24/#27 not re-fetched (repo private; no `gh` auth) — scope locks mirror Owner continuous task text.
+- Discord LFG wizard UX still thinner than matching API.
+- Reservation/Marketplace Admin+WWW surfaces are foundation, not full product UI.
+- Interest role projection apply-to-Discord still pending.
+- Live Zeabur outage soak deferred (DEC-001).
+
+## STOP
+
+Before Stage 8. No merge without APPROVED.
