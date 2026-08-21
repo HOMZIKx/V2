@@ -212,10 +212,7 @@ export class ActivityGuildMetadataController {
     }
     const expected = this.config.ACTIVITY_PROJECTION_SHARED_SECRET;
     if (expected.length > 0) {
-      if (
-        projectionSecret === undefined ||
-        !timingSafeEqualUtf8(projectionSecret, expected)
-      ) {
+      if (projectionSecret === undefined || !timingSafeEqualUtf8(projectionSecret, expected)) {
         throw new UnauthorizedException('Invalid projection secret.');
       }
       return;

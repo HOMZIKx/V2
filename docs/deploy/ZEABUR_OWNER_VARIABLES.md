@@ -110,23 +110,23 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 
 ## `activity-service`
 
-| Klucz                                  | Tag                                                                    |
-| -------------------------------------- | ---------------------------------------------------------------------- |
-| `ZBPACK_DOCKERFILE_NAME`               | PUBLIC VALUE = `activity-service`                                      |
-| `ACTIVITY_SERVICE_HOST`                | PUBLIC VALUE = `0.0.0.0`                                               |
-| `ACTIVITY_SERVICE_PORT`                | PUBLIC VALUE = `4400`                                                  |
-| `ACTIVITY_DATABASE_URL`                | REFERENCE (`postgres-activity`)                                        |
-| `ACTIVITY_REDIS_URL`                   | REFERENCE (`redis`) — **wymagane gdy `ACTIVITY_ENABLED=true`**         |
-| `ACTIVITY_OUTBOX_WORKER_ENABLED`       | PUBLIC VALUE = `true`                                                  |
+| Klucz                                  | Tag                                                                                 |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`               | PUBLIC VALUE = `activity-service`                                                   |
+| `ACTIVITY_SERVICE_HOST`                | PUBLIC VALUE = `0.0.0.0`                                                            |
+| `ACTIVITY_SERVICE_PORT`                | PUBLIC VALUE = `4400`                                                               |
+| `ACTIVITY_DATABASE_URL`                | REFERENCE (`postgres-activity`)                                                     |
+| `ACTIVITY_REDIS_URL`                   | REFERENCE (`redis`) — **wymagane gdy `ACTIVITY_ENABLED=true`**                      |
+| `ACTIVITY_OUTBOX_WORKER_ENABLED`       | PUBLIC VALUE = `true`                                                               |
 | `ACTIVITY_DISCORD_PROJECTION_BASE_URL` | INTERNAL → `http://discord-gateway.zeabur.internal:8080` (dostosuj DNS/port Zeabur) |
-| `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co discord-gateway)                                    |
-| `ACTIVITY_OUTBOX_TRANSPORT`            | PUBLIC VALUE = `http` \| `rabbitmq` \| `dual` (P4.5; default `http`)   |
-| `ACTIVITY_RABBITMQ_URL`                | SECRET/INTERNAL (wymagane gdy transport ≠ `http`)                      |
-| `ACTIVITY_MULTI_GUILD_ENABLED`         | PUBLIC VALUE = `true` gdy multi-guild publish włączony                 |
-| `ACTIVITY_TRUST_ACTOR_HEADERS`         | PUBLIC VALUE = `false` (**zawsze** na production)                      |
-| `ACTIVITY_ALLOW_TEST_SEED`             | PUBLIC VALUE = `false`                                                 |
-| `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE                                                           |
-| `ACTIVITY_ENABLED`                     | PUBLIC VALUE = `false` **albo** `true` tylko z pełnym zestawem poniżej |
+| `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co discord-gateway)                                                 |
+| `ACTIVITY_OUTBOX_TRANSPORT`            | PUBLIC VALUE = `http` \| `rabbitmq` \| `dual` (P4.5; default `http`)                |
+| `ACTIVITY_RABBITMQ_URL`                | SECRET/INTERNAL (wymagane gdy transport ≠ `http`)                                   |
+| `ACTIVITY_MULTI_GUILD_ENABLED`         | PUBLIC VALUE = `true` gdy multi-guild publish włączony                              |
+| `ACTIVITY_TRUST_ACTOR_HEADERS`         | PUBLIC VALUE = `false` (**zawsze** na production)                                   |
+| `ACTIVITY_ALLOW_TEST_SEED`             | PUBLIC VALUE = `false`                                                              |
+| `ACTIVITY_ORGANIZATION_ID`             | PUBLIC VALUE                                                                        |
+| `ACTIVITY_ENABLED`                     | PUBLIC VALUE = `false` **albo** `true` tylko z pełnym zestawem poniżej              |
 
 ### Gdy `ACTIVITY_ENABLED=true` (wymagane nazwy)
 

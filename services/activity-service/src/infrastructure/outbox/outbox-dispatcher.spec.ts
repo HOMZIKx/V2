@@ -30,14 +30,11 @@ function makeMessage() {
 
 describe('ActivityOutboxDispatcher projection secret contract', () => {
   it('sends x-activity-projection-secret on deliver', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ status: 'delivered', messageId: 'm1', channelId: 'c1' }),
-          { status: 200 },
-        ),
-      );
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: 'delivered', messageId: 'm1', channelId: 'c1' }), {
+        status: 200,
+      }),
+    );
     const completeOutbox = vi.fn().mockResolvedValue(undefined);
     const upsertActivityProjection = vi.fn().mockResolvedValue({});
     const repository = {

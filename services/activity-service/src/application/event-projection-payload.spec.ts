@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { opaqueIdFromUuid } from '../domain/opaque-id.js';
+import { buildEventProjectionPayload } from './event-projection-payload.js';
 import type {
   ActivityRecord,
   ActivityTypeRecord,
   ParticipationRecord,
   ParticipationStatusDefRecord,
 } from './ports/activity.ports.js';
-import { buildEventProjectionPayload } from './event-projection-payload.js';
 
 function activity(overrides: Partial<ActivityRecord> = {}): ActivityRecord {
   return {

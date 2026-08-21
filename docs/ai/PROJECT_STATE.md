@@ -2,26 +2,23 @@
 
 ## Status
 
-`DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT` ? automatic Discord projection hardening landed.
-Hub Core discovery still gated (`HUB-CORE-001`). Owner Discord login still needed for
-`LIVE_GUILD_INVENTORY=PASS`.
-
-Issue #26 continuous execution. ChatGPT audits async.
+`CI_SECURITY_CLOSURE` ? formatting/lint CI closure + repository visibility check.
+Hub Core discovery still gated (`HUB-CORE-001`).
 
 Not APPROVED. Not merged.
 
 ## Current execution
 
-| Field                   | Value                                                                  |
-| ----------------------- | ---------------------------------------------------------------------- |
-| CURRENT_STAGE           | 3 ? V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
-| CURRENT_TASK            | `V2-DEEP-RETROSPECTIVE-POLISH-AND-AUTO-DISCORD-SYNC-001`                |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | `90fc38442285def9f497cd14076769db78b6af14`                             |
-| PR                      | #19                                                                    |
-| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
-| CURRENT_CI              | pending on tip                                                         |
-| CURRENT_ZEABUR_REVISION | redeploy activity+discord+admin after checkpoint                       |
+| Field                   | Value                                                                |
+| ----------------------- | -------------------------------------------------------------------- |
+| CURRENT_STAGE           | 3 ? V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                      |
+| CURRENT_TASK            | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                              |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                        |
+| CURRENT_HEAD / PR_HEAD  | _(set on CI_SECURITY_CLOSURE_SHA commit)_                            |
+| PR                      | #19                                                                  |
+| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                           |
+| CURRENT_CI              | Quality Gates was FAIL on `8280cc2` (prettier); fix in progress      |
+| CURRENT_ZEABUR_REVISION | discord tip ~`90fc384?` ready; activity/admin tip may lag GIT_COMMIT |
 
 ## Checkpoint ledger (immutable)
 
@@ -34,6 +31,7 @@ Not APPROVED. Not merged.
 | P4_6_FINAL_CHECKPOINT_SHA                 | `6d80ea7716b439ec6827141707a6bf7ec5974147` | READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT         |
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
+| CI_SECURITY_CLOSURE_SHA                   | _(pending push)_                           | format+lint CI closure                     |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | ?                                          |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | ?                                          |
@@ -41,31 +39,32 @@ Not APPROVED. Not merged.
 | MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | ?                                          |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | ?                                          |
 
-## AUDIT_QUEUE
+## Repository visibility (Issue #25)
 
-- P4.0 visual delta @ `2fd4635c3b0aca118a3554e3439acc089558f3d9`
-- P4.5 plan @ `8834559e38f5d55160eb5de8510420651b26b829`
-- P4.5 final @ `e3c694fcc3980cd309843cac2c42c346083c8cb1`
-- P4.6 final @ `6d80ea7716b439ec6827141707a6bf7ec5974147`
-- Deep retrospective @ `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md`
+| Field                                    | Value                                                                                                 |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| REPOSITORY_VISIBILITY                    | **PUBLIC** (authoritative GitHub API `private=false`)                                                 |
+| SEVERITY                                 | **HIGH** ? source/IP exposure vs Issue #25                                                            |
+| OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE | Yes ? agent has no `GH_TOKEN` / admin auth to PATCH visibility                                        |
+| Owner action                             | GitHub ? `HOMZIKx/V2` ? Settings ? General ? Danger Zone ? **Change repository visibility** ? Private |
 
 ## Deep polish / auto Discord sync
 
-| Field | Value |
-| ----- | ----- |
-| AUTO_DISCORD_SYNC_STATUS | PASS |
-| NORMAL_PRODUCT_MANUAL_SYNC_STEPS | 0 |
-| CRITICAL | 0 |
-| HIGH | 0 |
-| CODE_FIX_SHA | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` |
-| Evidence doc | `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md` |
+| Field                            | Value                                      |
+| -------------------------------- | ------------------------------------------ |
+| AUTO_DISCORD_SYNC_STATUS         | PASS                                       |
+| NORMAL_PRODUCT_MANUAL_SYNC_STEPS | 0                                          |
+| CRITICAL                         | 0                                          |
+| HIGH                             | 1 open: repository PUBLIC (Owner action)   |
+| CODE_FIX_SHA                     | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` |
+| Evidence doc                     | `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md`      |
 
 ## Explicit gates
 
 - NO MERGE / NO Stage 8+ / additive only
 - Stage 3 Hub Core: see `docs/ai/PENDING_DECISIONS.md` item `HUB-CORE-001`
+- CI required green before Hub product work
 
 ## Last updated
 
-2026-08-21 ? Deep retrospective: fixed broken auto event projection (enrich + messageId write-back),
-closed mutation enqueue gaps, Admin hub auto-reconcile, client idempotency, secret timing.
+2026-08-21 ? CI security closure: prettier+eslint fixes; repo visibility PUBLIC confirmed (Owner must make private).

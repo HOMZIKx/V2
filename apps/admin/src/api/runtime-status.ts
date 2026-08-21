@@ -1,4 +1,7 @@
-import { getAdminDependencyDiagnostics, type AdminDependencyDiagnostics } from './activity-admin.js';
+import {
+  getAdminDependencyDiagnostics,
+  type AdminDependencyDiagnostics,
+} from './activity-admin.js';
 import { getApiBaseUrl } from './http.js';
 
 export type OperatorFlag = 'yes' | 'no' | 'unknown' | 'disabled';
@@ -145,8 +148,7 @@ export async function getOperatorRuntimeStatus(): Promise<OperatorRuntimeStatus>
       dependency !== null
         ? flagFromDependencyProbe(dependency.discordGateway)
         : gatewayFlags.discord;
-    const bot =
-      dependency !== null ? flagFromDependencyProbe(dependency.bot) : gatewayFlags.bot;
+    const bot = dependency !== null ? flagFromDependencyProbe(dependency.bot) : gatewayFlags.bot;
     const activityToDiscord =
       dependency !== null ? flagFromDependencyProbe(dependency.activityToDiscord) : 'unknown';
     const authorization =

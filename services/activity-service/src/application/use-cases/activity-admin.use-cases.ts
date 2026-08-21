@@ -16,6 +16,7 @@ import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
+import { isDiscordMetadataClientError } from '../discord-metadata-errors.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -24,7 +25,6 @@ import type {
   PutGuildAdminConfigInput,
 } from '../ports/activity.ports.js';
 import type { ChannelValidationResult } from '../ports/discord-channel-validation.port.js';
-import { isDiscordMetadataClientError } from '../discord-metadata-errors.js';
 import type { MutationContext } from './activity.use-cases.js';
 
 function mapDiscordMetadataFailure(error: unknown): ActivityError {
@@ -991,10 +991,7 @@ export class ActivityAdminUseCases {
     }
     const port = this.deps.discordGuildMetadata;
     if (port === undefined || port === null) {
-      throw new ActivityError(
-        'CONFIGURATION_INVALID',
-        'Discord guild metadata is not configured',
-      );
+      throw new ActivityError('CONFIGURATION_INVALID', 'Discord guild metadata is not configured');
     }
     let candidates: readonly { readonly id: string; readonly name: string }[];
     try {

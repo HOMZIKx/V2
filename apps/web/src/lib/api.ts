@@ -99,11 +99,7 @@ function newIdempotencyKey(): string {
 
 const inFlightIdempotencyKeys = new Map<string, string>();
 
-function idempotencyKeyForRequest(
-  method: string,
-  path: string,
-  body: unknown | undefined,
-): string {
+function idempotencyKeyForRequest(method: string, path: string, body?: unknown): string {
   const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
   const existing = inFlightIdempotencyKeys.get(fingerprint);
   if (existing !== undefined) {
@@ -114,7 +110,7 @@ function idempotencyKeyForRequest(
   return key;
 }
 
-function releaseIdempotencyKey(method: string, path: string, body: unknown | undefined): void {
+function releaseIdempotencyKey(method: string, path: string, body?: unknown): void {
   const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
   inFlightIdempotencyKeys.delete(fingerprint);
 }

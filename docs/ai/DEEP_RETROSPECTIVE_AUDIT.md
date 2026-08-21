@@ -15,35 +15,35 @@ Checkpoint: `DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA` (see PROJECT_STATE)
 
 ## Automatic Discord sync matrix
 
-| Source object / event | Discord target | Expected auto result | Status after fix |
-| --- | --- | --- | --- |
-| Activity published | Event post | Create once, store `messageId` | **FIXED** (enriched `PROJECTION_REQUESTED` + write-back) |
-| Activity edited / reschedule | Same message | Edit in place | **FIXED** |
-| RSVP / leave / waitlist promote / remove | Same message | Counts/buttons update | **FIXED** |
-| Cancel / finish / start / enrollment open-close | Same message | Status + disabled actions | **FIXED** (enqueue gaps closed) |
-| Co-organizer / takeover | Same message | Labels update | **FIXED** |
-| Permanent delete | Message | Delete Discord message | **FIXED** (`remove: true`) |
-| Deleted without prior post | — | No-op | **FIXED** |
-| Domain CREATED/RSVP outbox rows | — | Complete without Discord HTTP | **FIXED** (filter) |
-| Hub channel Admin save | Hub panel | Reconcile/publish automatically | **FIXED** (Admin `updateHub` → reconcile) |
-| Hub startup | Hub panel | Auto reconcile | Already present (`DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP`) |
-| Manual `/centrum-reconcile` | Hub | Emergency only | Remains emergency/recovery |
-| RabbitMQ-only transport | Event post | Receipt before complete | **HARDENED** (pure `rabbitmq` no longer marks delivered on publish alone) |
+| Source object / event                           | Discord target | Expected auto result            | Status after fix                                                          |
+| ----------------------------------------------- | -------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| Activity published                              | Event post     | Create once, store `messageId`  | **FIXED** (enriched `PROJECTION_REQUESTED` + write-back)                  |
+| Activity edited / reschedule                    | Same message   | Edit in place                   | **FIXED**                                                                 |
+| RSVP / leave / waitlist promote / remove        | Same message   | Counts/buttons update           | **FIXED**                                                                 |
+| Cancel / finish / start / enrollment open-close | Same message   | Status + disabled actions       | **FIXED** (enqueue gaps closed)                                           |
+| Co-organizer / takeover                         | Same message   | Labels update                   | **FIXED**                                                                 |
+| Permanent delete                                | Message        | Delete Discord message          | **FIXED** (`remove: true`)                                                |
+| Deleted without prior post                      | —              | No-op                           | **FIXED**                                                                 |
+| Domain CREATED/RSVP outbox rows                 | —              | Complete without Discord HTTP   | **FIXED** (filter)                                                        |
+| Hub channel Admin save                          | Hub panel      | Reconcile/publish automatically | **FIXED** (Admin `updateHub` → reconcile)                                 |
+| Hub startup                                     | Hub panel      | Auto reconcile                  | Already present (`DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP`)                 |
+| Manual `/centrum-reconcile`                     | Hub            | Emergency only                  | Remains emergency/recovery                                                |
+| RabbitMQ-only transport                         | Event post     | Receipt before complete         | **HARDENED** (pure `rabbitmq` no longer marks delivered on publish alone) |
 
 ## Bugs found → fix
 
-| Sev | Finding | Fix |
-| --- | --- | --- |
-| CRITICAL | Thin outbox payload ≠ gateway `eventPayloadSchema` → permanent fail; auto event sync dead | `buildEventProjectionPayload` + enriched `requestProjection` |
-| CRITICAL | No `messageId` write-back → would spam create | Dispatcher writes projection `messageId`/`delivered` from deliver response |
-| CRITICAL | Worker delivered all domain event types to Discord | Only `PROJECTION_REQUESTED` (+ panel repair) hit Discord |
-| HIGH | Enrollment/start/takeover/co-org/delete skipped projection | Enqueue via `requestProjection` |
-| HIGH | Admin hub channel save required manual publish | `updateHub` auto-reconciles |
-| HIGH | Fresh Idempotency-Key every click | Stable in-flight key (Admin + WWW) |
-| HIGH | Hardcoded default guild snowflake | Empty default; snowflake required when Discord enabled |
-| MEDIUM | Projection secret `!==` on metadata/validation routes | `timingSafeEqualUtf8` |
-| MEDIUM | In-memory deliver dedupe unbounded | Bounded LRU map |
-| MEDIUM | `rabbitmq` transport completed outbox before Discord apply | Fail-retry until http/dual receipt path |
+| Sev      | Finding                                                                                   | Fix                                                                        |
+| -------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| CRITICAL | Thin outbox payload ≠ gateway `eventPayloadSchema` → permanent fail; auto event sync dead | `buildEventProjectionPayload` + enriched `requestProjection`               |
+| CRITICAL | No `messageId` write-back → would spam create                                             | Dispatcher writes projection `messageId`/`delivered` from deliver response |
+| CRITICAL | Worker delivered all domain event types to Discord                                        | Only `PROJECTION_REQUESTED` (+ panel repair) hit Discord                   |
+| HIGH     | Enrollment/start/takeover/co-org/delete skipped projection                                | Enqueue via `requestProjection`                                            |
+| HIGH     | Admin hub channel save required manual publish                                            | `updateHub` auto-reconciles                                                |
+| HIGH     | Fresh Idempotency-Key every click                                                         | Stable in-flight key (Admin + WWW)                                         |
+| HIGH     | Hardcoded default guild snowflake                                                         | Empty default; snowflake required when Discord enabled                     |
+| MEDIUM   | Projection secret `!==` on metadata/validation routes                                     | `timingSafeEqualUtf8`                                                      |
+| MEDIUM   | In-memory deliver dedupe unbounded                                                        | Bounded LRU map                                                            |
+| MEDIUM   | `rabbitmq` transport completed outbox before Discord apply                                | Fail-retry until http/dual receipt path                                    |
 
 ## Manual flows removed from normal ops
 
@@ -60,13 +60,13 @@ Emergency-only remaining: `/centrum-reconcile`, Admin reconcile/repair scan, sla
 
 ## Remaining debt (not CRITICAL/HIGH)
 
-| Sev | Item |
-| --- | --- |
+| Sev    | Item                                                                     |
+| ------ | ------------------------------------------------------------------------ |
 | MEDIUM | Hub message scan still last-100 (under-scan risk for ancient duplicates) |
-| MEDIUM | Cross-process Discord interaction dedupe still in-memory |
-| MEDIUM | Admin guild list N authorize calls |
-| LOW | Hub Core product shell still gated (`HUB-CORE-001` / #22) |
-| LOW | Owner Discord login still needed for Admin LIVE_GUILD_INVENTORY proof |
+| MEDIUM | Cross-process Discord interaction dedupe still in-memory                 |
+| MEDIUM | Admin guild list N authorize calls                                       |
+| LOW    | Hub Core product shell still gated (`HUB-CORE-001` / #22)                |
+| LOW    | Owner Discord login still needed for Admin LIVE_GUILD_INVENTORY proof    |
 
 ## External blockers
 

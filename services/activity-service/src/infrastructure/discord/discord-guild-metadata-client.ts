@@ -1,6 +1,10 @@
 import { importPKCS8, SignJWT } from 'jose';
 import { randomUUID } from 'node:crypto';
 
+import {
+  classifyDiscordMetadataHttpStatus,
+  DiscordMetadataClientError,
+} from '../../application/discord-metadata-errors.js';
 import type {
   DiscordChannelMetadata,
   DiscordGatewayRuntimeProbe,
@@ -10,10 +14,6 @@ import type {
   DiscordRoleMetadata,
   HubPanelCommandResult,
 } from '../../application/ports/discord-guild-metadata.port.js';
-import {
-  classifyDiscordMetadataHttpStatus,
-  DiscordMetadataClientError,
-} from '../../application/discord-metadata-errors.js';
 import type { ActivityEnv } from '../config/activity-env.js';
 import { resolveDiscordGatewayBaseUrl } from './discord-channel-validation-client.js';
 
@@ -223,7 +223,7 @@ export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort 
       );
     }
     try {
-      return (await response.json()) as unknown;
+      return await response.json();
     } catch {
       throw new DiscordMetadataClientError(
         'malformed',

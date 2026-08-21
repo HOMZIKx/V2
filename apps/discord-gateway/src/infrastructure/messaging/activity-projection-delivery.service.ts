@@ -64,9 +64,7 @@ const eventPayloadSchema = z.object({
   description: z.string().nullable().optional(),
   occupiedSlots: z.number().int().nonnegative().optional(),
   participantLimit: z.number().int().positive().nullable().optional(),
-  statusSummaries: z
-    .array(z.object({ label: z.string(), count: z.number().int() }))
-    .optional(),
+  statusSummaries: z.array(z.object({ label: z.string(), count: z.number().int() })).optional(),
   participantPreview: z.array(z.string()).optional(),
   statusDefs: z
     .array(

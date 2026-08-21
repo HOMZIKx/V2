@@ -39,10 +39,7 @@ export function resolveGuildListUserMessage(error: {
   ) {
     return 'Discord Gateway jest niedostępny.';
   }
-  if (
-    code === 'AUTHORIZATION_UNAVAILABLE' ||
-    combined.includes('authorization is unavailable')
-  ) {
+  if (code === 'AUTHORIZATION_UNAVAILABLE' || combined.includes('authorization is unavailable')) {
     return 'Autoryzacja jest niedostępna — nie można zweryfikować uprawnień do serwerów.';
   }
   if (
