@@ -137,6 +137,20 @@ function assertEnabledRequirements(
   if (config.ACTIVITY_REDIS_URL === undefined) {
     addIssue('ACTIVITY_REDIS_URL', 'is required when ACTIVITY_ENABLED=true');
   }
+  const discordGatewayBase =
+    config.ACTIVITY_DISCORD_GATEWAY_BASE_URL ?? config.ACTIVITY_DISCORD_PROJECTION_BASE_URL;
+  if (discordGatewayBase === undefined) {
+    addIssue(
+      'ACTIVITY_DISCORD_GATEWAY_BASE_URL',
+      'or ACTIVITY_DISCORD_PROJECTION_BASE_URL is required when ACTIVITY_ENABLED=true (Admin guild inventory)',
+    );
+  }
+  if (config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined) {
+    addIssue(
+      'ACTIVITY_PROJECTION_SHARED_SECRET',
+      'is required when ACTIVITY_ENABLED=true (Admin guild inventory)',
+    );
+  }
 }
 
 function assertOutboxWorkerRequirements(

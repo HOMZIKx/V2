@@ -2,8 +2,8 @@
 
 ## Status
 
-`READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT` — Stage 2 P4.6 final code checkpoint
-(continuous Core Foundation; Stage 3 Hub Core gated on Owner↔ChatGPT discovery)
+`IN_PROGRESS` — `V2-ADMIN-DISCORD-GUILD-INVENTORY-503-ROOT-CAUSE-FIX-001` (product blocker)
+then resume Core Foundation Stage 3 Hub (still gated on discovery).
 
 Issue #26 OWNER AMENDMENT continuous execution. ChatGPT audits async.
 
@@ -11,16 +11,16 @@ Not APPROVED. Not merged.
 
 ## Current execution
 
-| Field                   | Value                                                  |
-| ----------------------- | ------------------------------------------------------ |
-| CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)        |
-| CURRENT_TASK            | `V2-CONTINUOUS-CORE-FOUNDATION-EXECUTION-001`          |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                          |
-| CURRENT_HEAD / PR_HEAD  | `6d80ea7716b439ec6827141707a6bf7ec5974147`             |
-| PR                      | #19                                                    |
-| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`             |
-| CURRENT_CI              | PASS on `6d80ea7` (Quality gates + infra)              |
-| CURRENT_ZEABUR_REVISION | discord `2fd4635…` (pre-P4.5 tip); RMQ not provisioned |
+| Field                   | Value                                                                  |
+| ----------------------- | ---------------------------------------------------------------------- |
+| CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
+| CURRENT_TASK            | `V2-ADMIN-DISCORD-GUILD-INVENTORY-503-ROOT-CAUSE-FIX-001`              |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
+| CURRENT_HEAD / PR_HEAD  | _(pending commit)_                                                     |
+| PR                      | #19                                                                    |
+| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
+| CURRENT_CI              | pending after hotfix push                                              |
+| CURRENT_ZEABUR_REVISION | activity stuck on `955fa8…` until Dockerfile messaging fix deploys     |
 
 ## Checkpoint ledger (immutable)
 
@@ -57,11 +57,20 @@ Not APPROVED. Not merged.
 | Discord attendance component UX     | deferred (HTTP client ready)                                             |
 | Zeabur RabbitMQ                     | still BLOCKED_EXTERNAL; HTTP projection default                          |
 
+## Admin guild inventory hotfix (in flight)
+
+| Field | Value |
+| ----- | ----- |
+| ROOT_CAUSE (verified) | Activity→Discord used `service-<id>:8080` vs API probe `discord-gateway.zeabur.internal:8080`; Admin flattened failures to `CONFIG_INVALID`; diagnostics conflated Gateway/bot/metadata; tip Docker build missing `@v2/messaging` |
+| LIVE_PROOF | Discord internal guilds + secret → HTTP 200 (1 guild) while bot `degraded`; secret/hash match; Authz key fingerprints match |
+| CODE | Distinct error codes + `/activity/v1/admin/diagnostics/dependencies`; Admin diagnostics split |
+| ZEABUR | `ACTIVITY_DISCORD_*` URLs set to `discord-gateway.zeabur.internal:8080` |
+
 ## Explicit gates
 
 - NO MERGE / NO Stage 8+ / additive only
-- Stage 3 Hub Core: see `docs/ai/PENDING_DECISIONS.md` item `HUB-CORE-001` — Issue #22/#26 require Owner↔ChatGPT discovery before product shell invent
+- Stage 3 Hub Core: see `docs/ai/PENDING_DECISIONS.md` item `HUB-CORE-001`
 
 ## Last updated
 
-2026-08-21 — P4_6_FINAL_CHECKPOINT_SHA recorded; Hub Core discovery gate opened
+2026-08-21 — Admin Discord guild inventory 503 root-cause fix in progress; resume Hub after live PASS

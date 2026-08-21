@@ -205,6 +205,12 @@ export class ActivityAdminController {
     return { guilds: await this.admin.listAdminGuilds(actorFromRequest(request)) };
   }
 
+  @Get('diagnostics/dependencies')
+  @RequireOperation('activity_read')
+  public async dependencyDiagnostics(@Req() request: AuthenticatedRequest) {
+    return this.admin.diagnoseAdminDependencies(actorFromRequest(request));
+  }
+
   @Get('guilds/:guildId/config')
   @RequireOperation('activity_read')
   public async getConfig(@Param('guildId') guildId: string, @Req() request: AuthenticatedRequest) {

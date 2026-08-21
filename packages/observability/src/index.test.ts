@@ -73,6 +73,11 @@ describe('operationalCategoryFromCode', () => {
     expect(operationalCategoryFromCode('FORBIDDEN')).toBe('AUTHZ_DENIED');
     expect(operationalCategoryFromCode('UNAUTHENTICATED')).toBe('AUTH_FAILURE');
     expect(operationalCategoryFromCode('CONFIG_INVALID')).toBe('DEPENDENCY_UNAVAILABLE');
+    expect(operationalCategoryFromCode('CONFIGURATION_INVALID')).toBe('CONFIG_ERROR');
+    expect(operationalCategoryFromCode('AUTHORIZATION_UNAVAILABLE')).toBe('DEPENDENCY_UNAVAILABLE');
+    expect(operationalCategoryFromCode('DISCORD_GATEWAY_UNAVAILABLE')).toBe(
+      'DEPENDENCY_UNAVAILABLE',
+    );
     expect(operationalCategoryFromCode('CONFLICT')).toBe('CONFLICT');
     expect(operationalCategoryFromCode('VALIDATION_FAILED')).toBe('CONFIG_ERROR');
     expect(operationalCategoryFromCode(undefined)).toBe('INTERNAL_ERROR');

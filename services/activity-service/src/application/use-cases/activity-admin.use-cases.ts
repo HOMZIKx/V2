@@ -24,7 +24,48 @@ import type {
   PutGuildAdminConfigInput,
 } from '../ports/activity.ports.js';
 import type { ChannelValidationResult } from '../ports/discord-channel-validation.port.js';
+import { isDiscordMetadataClientError } from '../discord-metadata-errors.js';
 import type { MutationContext } from './activity.use-cases.js';
+
+function mapDiscordMetadataFailure(error: unknown): ActivityError {
+  if (isDiscordMetadataClientError(error)) {
+    switch (error.kind) {
+      case 'not_configured':
+      case 'assertion_not_configured':
+        return new ActivityError(
+          'CONFIGURATION_INVALID',
+          'Discord guild metadata connection is not configured',
+        );
+      case 'unauthorized':
+        return new ActivityError(
+          'CONFIGURATION_INVALID',
+          'Discord guild metadata credentials were rejected',
+        );
+      case 'unreachable':
+        return new ActivityError(
+          'DISCORD_GATEWAY_UNAVAILABLE',
+          'Discord gateway is unreachable for guild metadata',
+        );
+      case 'disabled':
+        return new ActivityError(
+          'DISCORD_GATEWAY_UNAVAILABLE',
+          'Discord gateway is disabled or not ready for guild metadata',
+        );
+      case 'malformed':
+        return new ActivityError(
+          'DISCORD_METADATA_UNAVAILABLE',
+          'Discord guild metadata response was invalid',
+        );
+      case 'unavailable':
+      default:
+        return new ActivityError(
+          'DISCORD_METADATA_UNAVAILABLE',
+          'Discord guild metadata is unavailable',
+        );
+    }
+  }
+  return new ActivityError('DISCORD_METADATA_UNAVAILABLE', 'Discord guild metadata is unavailable');
+}
 
 function actorKey(actor: ActorSubject): string {
   return actor.discordUserId ?? actor.v2UserId ?? 'anonymous';
@@ -950,13 +991,16 @@ export class ActivityAdminUseCases {
     }
     const port = this.deps.discordGuildMetadata;
     if (port === undefined || port === null) {
-      throw new ActivityError('CONFIG_INVALID', 'Discord guild metadata is unavailable');
+      throw new ActivityError(
+        'CONFIGURATION_INVALID',
+        'Discord guild metadata is not configured',
+      );
     }
     let candidates: readonly { readonly id: string; readonly name: string }[];
     try {
       candidates = await port.listGuilds();
-    } catch {
-      throw new ActivityError('CONFIG_INVALID', 'Discord guild metadata is unavailable');
+    } catch (error) {
+      throw mapDiscordMetadataFailure(error);
     }
     let decisions: readonly { guild: (typeof candidates)[number]; allowed: boolean }[];
     try {
@@ -973,11 +1017,133 @@ export class ActivityAdminUseCases {
       );
     } catch (error) {
       if (error instanceof ActivityError) {
+        if (
+          error.code === 'AUTHORIZATION_UNAVAILABLE' ||
+          error.message.toLowerCase().includes('authorization')
+        ) {
+          throw new ActivityError('AUTHORIZATION_UNAVAILABLE', 'Authorization is unavailable');
+        }
         throw error;
       }
-      throw new ActivityError('CONFIG_INVALID', 'Authorization is unavailable');
+      throw new ActivityError('AUTHORIZATION_UNAVAILABLE', 'Authorization is unavailable');
     }
     return decisions.filter((row) => row.allowed).map((row) => row.guild);
+  }
+
+  /**
+   * Owner-facing dependency probes for Admin diagnostics.
+   * Does not expose secrets, hostnames, or upstream payloads.
+   */
+  public async diagnoseAdminDependencies(actor: ActorSubject): Promise<{
+    readonly discordGateway: 'ok' | 'unavailable' | 'unknown';
+    readonly bot: 'connected' | 'disconnected' | 'unknown' | 'disabled';
+    readonly activityToDiscord: 'ok' | 'configuration_invalid' | 'unavailable' | 'unauthorized';
+    readonly authorization: 'ok' | 'unavailable';
+    readonly guildInventory: 'ok' | 'empty' | 'unavailable' | 'configuration_invalid';
+  }> {
+    if (actor.discordUserId === undefined && actor.v2UserId === undefined) {
+      throw new ActivityError('UNAUTHENTICATED', 'Actor identity required');
+    }
+
+    let discordGateway: 'ok' | 'unavailable' | 'unknown' = 'unknown';
+    let bot: 'connected' | 'disconnected' | 'unknown' | 'disabled' = 'unknown';
+    let activityToDiscord: 'ok' | 'configuration_invalid' | 'unavailable' | 'unauthorized' =
+      'unavailable';
+    let authorization: 'ok' | 'unavailable' = 'unavailable';
+    let guildInventory: 'ok' | 'empty' | 'unavailable' | 'configuration_invalid' = 'unavailable';
+
+    const port = this.deps.discordGuildMetadata;
+    if (port?.probeGatewayRuntime !== undefined) {
+      try {
+        const runtime = await port.probeGatewayRuntime();
+        discordGateway = runtime.processOk ? 'ok' : 'unavailable';
+        if (runtime.botState === 'ready') {
+          bot = 'connected';
+        } else if (runtime.botState === 'disabled') {
+          bot = 'disabled';
+        } else if (runtime.botState === 'disconnected') {
+          bot = 'disconnected';
+        } else {
+          bot = 'unknown';
+        }
+      } catch {
+        discordGateway = 'unavailable';
+        bot = 'unknown';
+      }
+    }
+
+    if (port === undefined || port === null) {
+      activityToDiscord = 'configuration_invalid';
+      guildInventory = 'configuration_invalid';
+      return { discordGateway, bot, activityToDiscord, authorization, guildInventory };
+    }
+
+    try {
+      const guilds = await port.listGuilds();
+      activityToDiscord = 'ok';
+      if (discordGateway === 'unknown') {
+        discordGateway = 'ok';
+      }
+      try {
+        const decisions = await Promise.all(
+          guilds.map(async (guild) => {
+            const result = await authorizeOrFailClosed(this.deps.authorize, {
+              subject: actor,
+              permissionId: ACTIVITY_PERMISSIONS.CONFIG_MANAGE,
+              scope: { type: 'guild', guildId: guild.id },
+              operationClass: 'sensitive',
+            });
+            return result.allowed;
+          }),
+        );
+        authorization = 'ok';
+        const allowedCount = decisions.filter(Boolean).length;
+        guildInventory = allowedCount > 0 ? 'ok' : 'empty';
+      } catch {
+        authorization = 'unavailable';
+        guildInventory = 'unavailable';
+      }
+    } catch (error) {
+      if (isDiscordMetadataClientError(error)) {
+        if (
+          error.kind === 'not_configured' ||
+          error.kind === 'assertion_not_configured' ||
+          error.kind === 'unauthorized'
+        ) {
+          activityToDiscord =
+            error.kind === 'unauthorized' ? 'unauthorized' : 'configuration_invalid';
+          guildInventory = 'configuration_invalid';
+        } else if (error.kind === 'unreachable' || error.kind === 'disabled') {
+          activityToDiscord = 'unavailable';
+          if (discordGateway === 'unknown') {
+            discordGateway = 'unavailable';
+          }
+          guildInventory = 'unavailable';
+        } else {
+          activityToDiscord = 'unavailable';
+          guildInventory = 'unavailable';
+        }
+      } else {
+        activityToDiscord = 'unavailable';
+        guildInventory = 'unavailable';
+      }
+    }
+
+    if (authorization === 'unavailable' && activityToDiscord !== 'ok') {
+      try {
+        await authorizeOrFailClosed(this.deps.authorize, {
+          subject: actor,
+          permissionId: ACTIVITY_PERMISSIONS.CONFIG_MANAGE,
+          scope: { type: 'organization' },
+          operationClass: 'sensitive',
+        });
+        authorization = 'ok';
+      } catch {
+        authorization = 'unavailable';
+      }
+    }
+
+    return { discordGateway, bot, activityToDiscord, authorization, guildInventory };
   }
 
   public async listDiscordChannels(guildId: string, actor: ActorSubject) {

@@ -24,8 +24,36 @@ export function resolveGuildListUserMessage(error: {
   const code = error.code ?? '';
   const detail = error.detail ?? '';
   const combined = `${code} ${detail} ${error.message}`.toLowerCase();
-  if (code === 'CONFIG_INVALID' || combined.includes('discord guild metadata')) {
+  if (
+    code === 'CONFIGURATION_INVALID' ||
+    combined.includes('discord guild metadata connection') ||
+    combined.includes('credentials were rejected') ||
+    combined.includes('is not configured')
+  ) {
+    return 'Błąd konfiguracji połączenia wewnętrznego z Discordem.';
+  }
+  if (
+    code === 'DISCORD_GATEWAY_UNAVAILABLE' ||
+    combined.includes('discord gateway is unreachable') ||
+    combined.includes('discord gateway is disabled')
+  ) {
+    return 'Discord Gateway jest niedostępny.';
+  }
+  if (
+    code === 'AUTHORIZATION_UNAVAILABLE' ||
+    combined.includes('authorization is unavailable')
+  ) {
+    return 'Autoryzacja jest niedostępna — nie można zweryfikować uprawnień do serwerów.';
+  }
+  if (
+    code === 'DISCORD_METADATA_UNAVAILABLE' ||
+    code === 'CONFIG_INVALID' ||
+    combined.includes('discord guild metadata')
+  ) {
     return 'Nie udało się pobrać serwerów z Discorda.';
+  }
+  if (code === 'DEPENDENCY_UNAVAILABLE') {
+    return 'Wymagana zależność Centrum jest chwilowo niedostępna.';
   }
   if (code === 'UNAUTHENTICATED' || combined.includes('http 401')) {
     return 'Nie udało się potwierdzić sesji.';

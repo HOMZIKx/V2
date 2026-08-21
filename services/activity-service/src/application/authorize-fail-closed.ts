@@ -12,7 +12,7 @@ export async function authorizeOrFailClosed(
     if (error instanceof ActivityError) {
       throw error;
     }
-    throw new ActivityError('CONFIG_INVALID', 'Authorization is unavailable');
+    throw new ActivityError('AUTHORIZATION_UNAVAILABLE', 'Authorization is unavailable');
   }
 }
 

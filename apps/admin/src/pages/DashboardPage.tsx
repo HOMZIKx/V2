@@ -100,14 +100,49 @@ export function DashboardPage() {
               </Badge>
             </div>
             <div className="row">
-              <span>Czy Discord działa?</span>
-              <Badge tone={flagBadge(runtime.discord).tone}>
-                {flagBadge(runtime.discord).label}
+              <span>Discord Gateway</span>
+              <Badge tone={flagBadge(runtime.discordGateway).tone}>
+                {flagBadge(runtime.discordGateway).label === 'Tak'
+                  ? 'OK'
+                  : flagBadge(runtime.discordGateway).label}
               </Badge>
             </div>
             <div className="row">
-              <span>Czy bot jest połączony?</span>
-              <Badge tone={flagBadge(runtime.bot).tone}>{flagBadge(runtime.bot).label}</Badge>
+              <span>Bot</span>
+              <Badge tone={flagBadge(runtime.bot).tone}>
+                {runtime.bot === 'yes'
+                  ? 'Połączony'
+                  : runtime.bot === 'disabled'
+                    ? 'Wyłączony'
+                    : flagBadge(runtime.bot).label === 'Nie'
+                      ? 'Rozłączony'
+                      : flagBadge(runtime.bot).label}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Activity → Discord</span>
+              <Badge tone={flagBadge(runtime.activityToDiscord).tone}>
+                {runtime.activityToDiscordDetail ??
+                  (flagBadge(runtime.activityToDiscord).label === 'Tak'
+                    ? 'OK'
+                    : flagBadge(runtime.activityToDiscord).label)}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Authorization</span>
+              <Badge tone={flagBadge(runtime.authorization).tone}>
+                {flagBadge(runtime.authorization).label === 'Tak'
+                  ? 'OK'
+                  : flagBadge(runtime.authorization).label}
+              </Badge>
+            </div>
+            <div className="row">
+              <span>Lista serwerów</span>
+              <Badge tone={flagBadge(runtime.guildInventory).tone}>
+                {flagBadge(runtime.guildInventory).label === 'Tak'
+                  ? 'OK'
+                  : flagBadge(runtime.guildInventory).label}
+              </Badge>
             </div>
             <div className="row">
               <span>Czy wersje usług wyglądają spójnie?</span>
@@ -149,9 +184,11 @@ export function DashboardPage() {
           <Panel title="Stan systemu">
             <div className="stack">
               <div className="row">
-                <span>Discord</span>
-                <Badge tone={flagBadge(runtime?.discord ?? 'unknown').tone}>
-                  {flagBadge(runtime?.discord ?? 'unknown').label}
+                <span>Discord Gateway</span>
+                <Badge tone={flagBadge(runtime?.discordGateway ?? 'unknown').tone}>
+                  {flagBadge(runtime?.discordGateway ?? 'unknown').label === 'Tak'
+                    ? 'OK'
+                    : flagBadge(runtime?.discordGateway ?? 'unknown').label}
                 </Badge>
               </div>
               <div className="row">

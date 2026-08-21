@@ -63,6 +63,30 @@ describe('decideGuildInventory', () => {
     expect(JSON.stringify(decision.guilds)).not.toContain('Alpha');
   });
 
+  it('maps configuration and authorization failures to distinct owner-facing copy', () => {
+    expect(
+      resolveGuildListUserMessage({
+        message: 'Discord guild metadata connection is not configured',
+        detail: 'CONFIGURATION_INVALID · HTTP 503',
+        code: 'CONFIGURATION_INVALID',
+      }),
+    ).toBe('Błąd konfiguracji połączenia wewnętrznego z Discordem.');
+    expect(
+      resolveGuildListUserMessage({
+        message: 'Authorization is unavailable',
+        detail: 'AUTHORIZATION_UNAVAILABLE · HTTP 503',
+        code: 'AUTHORIZATION_UNAVAILABLE',
+      }),
+    ).toBe('Autoryzacja jest niedostępna — nie można zweryfikować uprawnień do serwerów.');
+    expect(
+      resolveGuildListUserMessage({
+        message: 'Discord gateway is unreachable for guild metadata',
+        detail: 'DISCORD_GATEWAY_UNAVAILABLE · HTTP 503',
+        code: 'DISCORD_GATEWAY_UNAVAILABLE',
+      }),
+    ).toBe('Discord Gateway jest niedostępny.');
+  });
+
   it('maps Discord metadata dependency failures to owner-facing copy', () => {
     expect(
       resolveGuildListUserMessage({

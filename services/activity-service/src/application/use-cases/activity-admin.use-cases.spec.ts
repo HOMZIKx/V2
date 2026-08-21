@@ -813,7 +813,131 @@ describe('ActivityAdminUseCases (in-memory)', () => {
         reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
       },
     });
-    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({ code: 'CONFIG_INVALID' });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'AUTHORIZATION_UNAVAILABLE',
+    });
+  });
+
+  it('classifies Discord gateway unreachable separately from configuration', async () => {
+    const mem = createAdminMemoryRepo();
+    const { DiscordMetadataClientError } = await import('../discord-metadata-errors.js');
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => {
+          throw new DiscordMetadataClientError('unreachable', 'down');
+        },
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'DISCORD_GATEWAY_UNAVAILABLE',
+    });
+  });
+
+  it('classifies wrong shared-secret style unauthorized as configuration', async () => {
+    const mem = createAdminMemoryRepo();
+    const { DiscordMetadataClientError } = await import('../discord-metadata-errors.js');
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => {
+          throw new DiscordMetadataClientError('unauthorized', 'bad secret', 401);
+        },
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'CONFIGURATION_INVALID',
+    });
+  });
+
+  it('returns multiple authorized guilds and omits unauthorized ones', async () => {
+    const mem = createAdminMemoryRepo();
+    class SelectiveAuthz implements AuthorizePort {
+      public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
+        const allowed = request.scope.guildId === 'guild-a' || request.scope.guildId === 'guild-c';
+        return Promise.resolve({
+          allowed,
+          permissionId: request.permissionId,
+          decision: allowed ? 'allow' : 'deny',
+        });
+      }
+    }
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new SelectiveAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => [
+          { id: 'guild-a', name: 'Alpha' },
+          { id: 'guild-b', name: 'Bravo' },
+          { id: 'guild-c', name: 'Charlie' },
+        ],
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).resolves.toEqual([
+      { id: 'guild-a', name: 'Alpha' },
+      { id: 'guild-c', name: 'Charlie' },
+    ]);
+  });
+
+  it('fails closed when Discord guild metadata port is not configured', async () => {
+    const mem = createAdminMemoryRepo();
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: null,
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'CONFIGURATION_INVALID',
+      message: 'Discord guild metadata is not configured',
+    });
+  });
+
+  it('maps malformed Discord metadata responses to DISCORD_METADATA_UNAVAILABLE', async () => {
+    const mem = createAdminMemoryRepo();
+    const { DiscordMetadataClientError } = await import('../discord-metadata-errors.js');
+    const useCases = new ActivityAdminUseCases({
+      repository: mem.repo,
+      authorize: new AllowAuthz(),
+      clock,
+      discordGuildMetadata: {
+        listGuilds: async () => {
+          throw new DiscordMetadataClientError('malformed', 'bad json');
+        },
+        getGuild: async () => null,
+        listChannels: async () => [],
+        listRoles: async () => [],
+        resolveMembers: async () => [],
+        publishHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+        reconcileHub: async () => ({ mode: 'adopt', messageId: 'm' }),
+      },
+    });
+    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
+      code: 'DISCORD_METADATA_UNAVAILABLE',
+    });
   });
 
   it('returns an empty guild list when the actor cannot manage any candidate', async () => {
@@ -842,20 +966,6 @@ describe('ActivityAdminUseCases (in-memory)', () => {
       },
     });
     await expect(useCases.listAdminGuilds(actor)).resolves.toEqual([]);
-  });
-
-  it('fails closed when Discord guild metadata port is not configured', async () => {
-    const mem = createAdminMemoryRepo();
-    const useCases = new ActivityAdminUseCases({
-      repository: mem.repo,
-      authorize: new AllowAuthz(),
-      clock,
-      discordGuildMetadata: null,
-    });
-    await expect(useCases.listAdminGuilds(actor)).rejects.toMatchObject({
-      code: 'CONFIG_INVALID',
-      message: 'Discord guild metadata is unavailable',
-    });
   });
 
   it('fails closed when Discord channel metadata is unavailable', async () => {

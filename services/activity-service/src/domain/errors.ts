@@ -12,8 +12,14 @@ export const ACTIVITY_ERROR_CODES = [
   'IDEMPOTENCY_CONFLICT',
   'CLIENT_ASSERTION_INVALID',
   'CLIENT_ASSERTION_REPLAY',
+  /** Missing/invalid local configuration (not a live dependency failure). */
   'CONFIG_INVALID',
+  'CONFIGURATION_INVALID',
   'AUTH_DISABLED',
+  'DEPENDENCY_UNAVAILABLE',
+  'AUTHORIZATION_UNAVAILABLE',
+  'DISCORD_GATEWAY_UNAVAILABLE',
+  'DISCORD_METADATA_UNAVAILABLE',
 ] as const;
 
 export type ActivityErrorCode = (typeof ACTIVITY_ERROR_CODES)[number];

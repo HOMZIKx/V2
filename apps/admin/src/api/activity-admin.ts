@@ -1,4 +1,4 @@
-import { apiRequest } from './http.js';
+import { ApiClientError, apiRequest } from './http.js';
 
 /** Admin paths under `/activity/v1/admin/guilds/:guildId/...` (gateway-compatible). */
 function adminGuild(guildId: string, suffix = ''): string {
@@ -226,6 +226,36 @@ function asObject<T extends object>(payload: unknown): T {
 export async function listAdminGuilds(): Promise<AdminGuildListItem[]> {
   const payload = await apiRequest<unknown>('/activity/v1/admin/guilds');
   return asList<AdminGuildListItem>(payload, ['guilds', 'items', 'data']);
+}
+
+export type AdminDependencyDiagnostics = {
+  readonly discordGateway: 'ok' | 'unavailable' | 'unknown';
+  readonly bot: 'connected' | 'disconnected' | 'unknown' | 'disabled';
+  readonly activityToDiscord: 'ok' | 'configuration_invalid' | 'unavailable' | 'unauthorized';
+  readonly authorization: 'ok' | 'unavailable';
+  readonly guildInventory: 'ok' | 'empty' | 'unavailable' | 'configuration_invalid';
+};
+
+export async function getAdminDependencyDiagnostics(): Promise<AdminDependencyDiagnostics> {
+  const payload = await apiRequest<unknown>('/activity/v1/admin/diagnostics/dependencies');
+  const obj = asObject<Partial<AdminDependencyDiagnostics>>(payload);
+  if (
+    obj.discordGateway === undefined &&
+    obj.activityToDiscord === undefined &&
+    obj.guildInventory === undefined
+  ) {
+    throw new ApiClientError('Dependency diagnostics payload is incomplete', {
+      status: 502,
+      code: 'DEPENDENCY_UNAVAILABLE',
+    });
+  }
+  return {
+    discordGateway: obj.discordGateway ?? 'unknown',
+    bot: obj.bot ?? 'unknown',
+    activityToDiscord: obj.activityToDiscord ?? 'unavailable',
+    authorization: obj.authorization ?? 'unavailable',
+    guildInventory: obj.guildInventory ?? 'unavailable',
+  };
 }
 
 export async function getReadiness(guildId: string): Promise<ReadinessResponse> {

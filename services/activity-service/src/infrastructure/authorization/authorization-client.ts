@@ -74,12 +74,15 @@ export class HttpAuthorizationClient implements AuthorizePort {
         signal: AbortSignal.timeout(5_000),
       });
     } catch {
-      throw new ActivityError('CONFIG_INVALID', 'Failed to reach Authorization authorize endpoint');
+      throw new ActivityError(
+        'AUTHORIZATION_UNAVAILABLE',
+        'Failed to reach Authorization authorize endpoint',
+      );
     }
 
     if (!response.ok) {
       throw new ActivityError(
-        'CONFIG_INVALID',
+        'AUTHORIZATION_UNAVAILABLE',
         `Authorization authorize failed with status ${response.status}`,
       );
     }
@@ -88,7 +91,7 @@ export class HttpAuthorizationClient implements AuthorizePort {
     try {
       body = (await response.json()) as { decision?: unknown };
     } catch {
-      throw new ActivityError('CONFIG_INVALID', 'Authorization returned invalid JSON');
+      throw new ActivityError('AUTHORIZATION_UNAVAILABLE', 'Authorization returned invalid JSON');
     }
 
     const allowed = body.decision === 'allow';

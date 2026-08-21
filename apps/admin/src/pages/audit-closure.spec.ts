@@ -11,12 +11,15 @@ function read(name: string): string {
 }
 
 describe('Admin audit-closure product contracts', () => {
-  it('uses real Discord runtime flags instead of guild inventory', () => {
+  it('uses separated Discord dependency diagnostics instead of a single Discord flag', () => {
     const source = read('DashboardPage.tsx');
-    expect(source).toContain('Czy Discord działa?');
-    expect(source).toContain('Czy bot jest połączony?');
-    expect(source).toContain('flagBadge(runtime.discord)');
+    expect(source).toContain('Discord Gateway');
+    expect(source).toContain('Activity → Discord');
+    expect(source).toContain('Authorization');
+    expect(source).toContain('Lista serwerów');
+    expect(source).toContain('flagBadge(runtime.discordGateway)');
     expect(source).toContain('flagBadge(runtime.bot)');
+    expect(source).toContain('flagBadge(runtime.activityToDiscord)');
     expect(source).not.toContain("guilds.length > 0 ? 'Tak'");
   });
 

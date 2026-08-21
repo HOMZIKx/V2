@@ -118,7 +118,7 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `ACTIVITY_DATABASE_URL`                | REFERENCE (`postgres-activity`)                                        |
 | `ACTIVITY_REDIS_URL`                   | REFERENCE (`redis`) — **wymagane gdy `ACTIVITY_ENABLED=true`**         |
 | `ACTIVITY_OUTBOX_WORKER_ENABLED`       | PUBLIC VALUE = `true`                                                  |
-| `ACTIVITY_DISCORD_PROJECTION_BASE_URL` | INTERNAL → `http://discord-gateway:4100`                               |
+| `ACTIVITY_DISCORD_PROJECTION_BASE_URL` | INTERNAL → `http://discord-gateway.zeabur.internal:8080` (dostosuj DNS/port Zeabur) |
 | `ACTIVITY_PROJECTION_SHARED_SECRET`    | SECRET (ten sam co discord-gateway)                                    |
 | `ACTIVITY_OUTBOX_TRANSPORT`            | PUBLIC VALUE = `http` \| `rabbitmq` \| `dual` (P4.5; default `http`)   |
 | `ACTIVITY_RABBITMQ_URL`                | SECRET/INTERNAL (wymagane gdy transport ≠ `http`)                      |

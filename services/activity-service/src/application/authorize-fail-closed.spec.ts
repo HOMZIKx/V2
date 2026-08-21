@@ -27,12 +27,12 @@ describe('authorizeOrFailClosed', () => {
     });
   });
 
-  it('maps unexpected authorization failures to CONFIG_INVALID', async () => {
+  it('maps unexpected authorization failures to AUTHORIZATION_UNAVAILABLE', async () => {
     const authorize: AuthorizePort = {
       authorize: (): Promise<AuthorizeResult> => Promise.reject(new Error('ECONNRESET')),
     };
     await expect(authorizeOrFailClosed(authorize, request)).rejects.toMatchObject({
-      code: 'CONFIG_INVALID',
+      code: 'AUTHORIZATION_UNAVAILABLE',
     });
   });
 

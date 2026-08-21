@@ -3,17 +3,23 @@ import { randomUUID } from 'node:crypto';
 
 import type {
   DiscordChannelMetadata,
+  DiscordGatewayRuntimeProbe,
   DiscordGuildMetadataPort,
   DiscordGuildPresentation,
   DiscordMemberDisplay,
   DiscordRoleMetadata,
   HubPanelCommandResult,
 } from '../../application/ports/discord-guild-metadata.port.js';
+import {
+  classifyDiscordMetadataHttpStatus,
+  DiscordMetadataClientError,
+} from '../../application/discord-metadata-errors.js';
 import type { ActivityEnv } from '../config/activity-env.js';
 import { resolveDiscordGatewayBaseUrl } from './discord-channel-validation-client.js';
 
 const PROJECTION_SECRET_HEADER = 'x-activity-projection-secret';
 const ASSERTION_HEADER = 'discord-client-assertion';
+const METADATA_FETCH_TIMEOUT_MS = 8_000;
 
 export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort {
   private fetchImpl: typeof globalThis.fetch;
@@ -29,6 +35,41 @@ export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort 
   public async listGuilds(): Promise<readonly DiscordGuildPresentation[]> {
     const body = await this.requestJson('GET', '/internal/activity/v1/guilds');
     return asNamedList(body, 'guilds');
+  }
+
+  public async probeGatewayRuntime(): Promise<DiscordGatewayRuntimeProbe> {
+    const baseUrl = resolveDiscordGatewayBaseUrl(this.config);
+    if (baseUrl === undefined) {
+      return { processOk: false, botState: 'unknown' };
+    }
+    try {
+      const response = await this.fetchImpl(`${baseUrl.replace(/\/$/, '')}/health/ready`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(METADATA_FETCH_TIMEOUT_MS),
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (typeof body !== 'object' || body === null) {
+        return { processOk: response.ok, botState: 'unknown' };
+      }
+      const record = body as { discordEnabled?: unknown; discordState?: unknown };
+      if (record.discordEnabled === false || record.discordState === 'disabled') {
+        return { processOk: true, botState: 'disabled' };
+      }
+      if (record.discordState === 'ready') {
+        return { processOk: true, botState: 'ready' };
+      }
+      if (
+        record.discordState === 'disconnected' ||
+        record.discordState === 'degraded' ||
+        record.discordState === 'failed' ||
+        record.discordState === 'connecting'
+      ) {
+        return { processOk: true, botState: 'disconnected' };
+      }
+      return { processOk: response.ok || response.status === 503, botState: 'unknown' };
+    } catch {
+      return { processOk: false, botState: 'unknown' };
+    }
   }
 
   public async getGuild(guildId: string): Promise<DiscordGuildPresentation | null> {
@@ -127,7 +168,10 @@ export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort 
   ): Promise<unknown> {
     const baseUrl = resolveDiscordGatewayBaseUrl(this.config);
     if (baseUrl === undefined) {
-      throw new Error('Discord gateway base URL is not configured');
+      throw new DiscordMetadataClientError(
+        'not_configured',
+        'Discord gateway base URL is not configured',
+      );
     }
     const headers: Record<string, string> = { accept: 'application/json' };
     if (this.config.ACTIVITY_PROJECTION_SHARED_SECRET !== undefined) {
@@ -139,17 +183,54 @@ export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort 
     if (payload !== undefined) {
       headers['content-type'] = 'application/json';
     }
-    const response = await this.fetchImpl(`${baseUrl.replace(/\/$/, '')}${path}`, {
-      method,
-      headers,
-      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`Discord metadata HTTP ${response.status}: ${text.slice(0, 300)}`);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${baseUrl.replace(/\/$/, '')}${path}`, {
+        method,
+        headers,
+        ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+        signal: AbortSignal.timeout(METADATA_FETCH_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const timeout = error instanceof Error && error.name === 'TimeoutError';
+      throw new DiscordMetadataClientError(
+        'unreachable',
+        timeout
+          ? 'Discord gateway metadata request timed out'
+          : 'Discord gateway metadata endpoint is unreachable',
+      );
     }
-    const body: unknown = await response.json();
-    return body;
+    if (!response.ok) {
+      const kind = classifyDiscordMetadataHttpStatus(response.status);
+      if (kind === 'unauthorized') {
+        throw new DiscordMetadataClientError(
+          'unauthorized',
+          'Discord gateway rejected the internal metadata credentials',
+          response.status,
+        );
+      }
+      if (response.status === 503) {
+        throw new DiscordMetadataClientError(
+          'disabled',
+          'Discord gateway reports metadata unavailable',
+          response.status,
+        );
+      }
+      throw new DiscordMetadataClientError(
+        kind,
+        'Discord gateway metadata request failed',
+        response.status,
+      );
+    }
+    try {
+      return (await response.json()) as unknown;
+    } catch {
+      throw new DiscordMetadataClientError(
+        'malformed',
+        'Discord gateway returned invalid metadata JSON',
+        response.status,
+      );
+    }
   }
 
   private async signAssertion(): Promise<string> {
@@ -157,7 +238,10 @@ export class HttpDiscordGuildMetadataClient implements DiscordGuildMetadataPort 
     const kid = this.config.ACTIVITY_TO_DISCORD_ACTIVE_KID;
     const audience = this.config.ACTIVITY_DISCORD_ASSERTION_AUD;
     if (privateKeyPem === undefined || kid === undefined || audience === undefined) {
-      throw new Error('Discord assertion signing is not configured');
+      throw new DiscordMetadataClientError(
+        'assertion_not_configured',
+        'Discord assertion signing is not configured',
+      );
     }
     const key = await importPKCS8(privateKeyPem, 'EdDSA');
     const now = Math.floor(Date.now() / 1000);

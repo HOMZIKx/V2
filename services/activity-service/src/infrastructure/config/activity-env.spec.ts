@@ -39,6 +39,22 @@ describe('parseActivityEnv', () => {
     ).toThrow(/ACTIVITY_PROJECTION_SHARED_SECRET/);
   });
 
+  it('requires Discord gateway URL and projection secret when ACTIVITY_ENABLED=true', () => {
+    expect(() =>
+      parseActivityEnv({
+        ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+        ACTIVITY_ENABLED: 'true',
+        ACTIVITY_AUTHORIZATION_BASE_URL: 'http://127.0.0.1:4300',
+        ACTIVITY_AUTHORIZATION_ASSERTION_AUD: 'http://127.0.0.1:4300/authorization/v1',
+        ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM:
+          '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----',
+        ACTIVITY_TO_AUTHZ_ACTIVE_KID: 'kid-1',
+        ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
+        ACTIVITY_REDIS_URL: 'redis://127.0.0.1:6379',
+      }),
+    ).toThrow(/ACTIVITY_DISCORD_GATEWAY_BASE_URL/);
+  });
+
   it('requires authz signing when ACTIVITY_ENABLED=true', () => {
     expect(() =>
       parseActivityEnv({
