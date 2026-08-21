@@ -14,7 +14,7 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 3 — V2 Hub Core (implemented; checkpoint on tip)                       |
 | CURRENT_TASK            | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                                     |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | _(set to tip after Hub Core commit)_                                   |
+| CURRENT_HEAD / PR_HEAD  | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                             |
 | PR                      | #19                                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
 | CURRENT_CI              | pending on Hub Core tip push                                           |
@@ -32,7 +32,7 @@ Not APPROVED. Not merged.
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
 | CI_SECURITY_CLOSURE_SHA                   | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | format+lint CI closure                     |
-| V2_HUB_CORE_CHECKPOINT_SHA                | _(tip after Hub Core commit)_              | READY_FOR_CHATGPT_HUB_CORE_AUDIT           |
+| V2_HUB_CORE_CHECKPOINT_SHA                | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | READY_FOR_CHATGPT_HUB_CORE_AUDIT           |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | Stage 4 next per Issue #26                 |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
 | RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | —                                          |
