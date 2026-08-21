@@ -2,34 +2,34 @@
 
 ## Continuous handoff snapshot
 
-| Field                                        | Value                                                        |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| **CURRENT_STAGE**                            | 3 — V2 Hub Core (discovery gate)                             |
-| **CURRENT_TASK**                             | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                      |
-| **FINAL_STATUS**                             | `CI_SECURITY_CLOSURE` (in progress → push + green CI)        |
-| **CURRENT_HEAD**                             | tip after `CI_SECURITY_CLOSURE_SHA`                          |
-| **PR**                                       | #19                                                          |
-| **P4_6_FINAL_CHECKPOINT_SHA**                | `6d80ea7716b439ec6827141707a6bf7ec5974147`                   |
-| **DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA** | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146`                   |
-| **CI_STATUS**                                | Quality Gates FAIL on `8280cc2` (prettier); fix pending push |
-| **REPOSITORY_VISIBILITY**                    | **PUBLIC** — OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE        |
-| **OPEN_CRITICAL**                            | 0                                                            |
-| **OPEN_HIGH**                                | 1 — public repository (Issue #25)                            |
+| Field                                        | Value                                                       |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| **CURRENT_STAGE**                            | 3 — V2 Hub Core (discovery gate)                            |
+| **CURRENT_TASK**                             | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                     |
+| **FINAL_STATUS**                             | `CI_SECURITY_CLOSURE` — CI green; Owner must privatize repo |
+| **CURRENT_HEAD**                             | `0a89f7164d8717ac9bddce4f07b718157ad031f0`                  |
+| **PR**                                       | #19                                                         |
+| **P4_6_FINAL_CHECKPOINT_SHA**                | `6d80ea7716b439ec6827141707a6bf7ec5974147`                  |
+| **DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA** | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146`                  |
+| **CI_SECURITY_CLOSURE_SHA**                  | `f4577fb0e5860c34e269fa3183eef17d4d6106a7`                  |
+| **CI_STATUS**                                | Quality Gates / Secret Scan / Infra Integration = **PASS**  |
+| **REPOSITORY_VISIBILITY**                    | **PUBLIC** — OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE       |
+| **OPEN_CRITICAL**                            | 0                                                           |
+| **OPEN_HIGH**                                | 1 — public repository (Issue #25)                           |
 
 ## Owner action required (HIGH)
 
-Repository `HOMZIKx/V2` is **public** (`private: false` via GitHub API).
+Repository `HOMZIKx/V2` is **public**.
 
-Issue #25 requires source/IP protection. Agent cannot change visibility (no GitHub admin token in environment).
+Issue #25 requires source/IP protection. Agent cannot change visibility (no GitHub admin token).
 
 **Do this now:** GitHub → Settings → General → Danger Zone → Change repository visibility → **Private**.
 
-## CI failure class (8280cc2)
+## CI closure
 
-`pnpm validate` → `prettier --check` failed on multiple files after deep polish commits. Local `pnpm format` + eslint fixes for redundant `unknown \| undefined` and unnecessary assertion.
+Failed on `8280cc2` Quality Gates (`prettier --check`). Fixed via `pnpm format` + eslint (`unknown | undefined`, unnecessary assertion). Local `pnpm validate` PASS. Required checks PASS on tip.
 
 ## Next
 
-1. **Owner:** make `HOMZIKx/V2` **Private** (Issue #25) — Settings → Danger Zone → Change visibility.
-2. Resume Hub Core only after discovery (`HUB-CORE-001`) — do not invent Hub IA.
-3. Local `pnpm validate` PASS on tip; required GitHub checks PASS.
+1. **Owner:** privatize `HOMZIKx/V2`.
+2. Hub Core only after `HUB-CORE-001` discovery — do not invent Hub IA.
