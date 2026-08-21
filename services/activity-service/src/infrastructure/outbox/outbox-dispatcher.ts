@@ -13,6 +13,7 @@ import type {
   OutboxMessageRecord,
 } from '../../application/ports/activity.ports.js';
 import type { Clock } from '../../domain/clock.js';
+import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import {
   ACTIVITY_CLOCK,
   ACTIVITY_CONFIG,
@@ -28,6 +29,12 @@ const LEASE_SECONDS = 30;
 const ASSERTION_HEADER = 'discord-client-assertion';
 /** Shared contract with discord-gateway ActivityProjectionController. */
 export const PROJECTION_SECRET_HEADER = 'x-activity-projection-secret';
+
+/** Outbox rows that must be applied to Discord (HTTP/Rabbit deliver). */
+const DISCORD_DELIVER_EVENT_TYPES = new Set<string>([
+  OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
+  OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
+]);
 
 function isRetryableHttpStatus(status: number): boolean {
   if (status === 408 || status === 429) {
@@ -188,6 +195,13 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   private async deliver(
     message: OutboxMessageRecord,
   ): Promise<'delivered' | 'retry' | 'permanent'> {
+    // Domain events (CREATED/RSVP/…) are durable audit/signal rows.
+    // Discord apply goes only through PROJECTION_REQUESTED (full enriched payload).
+    if (!DISCORD_DELIVER_EVENT_TYPES.has(message.eventType)) {
+      await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
+      return 'delivered';
+    }
+
     const transport = this.config.ACTIVITY_OUTBOX_TRANSPORT;
     const needsHttp = transport === 'http' || transport === 'dual';
     const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
@@ -203,9 +217,14 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         await this.failRetry(message, `RabbitMQ publish ${rabbitResult}`);
         return 'retry';
       }
+      // Pure rabbitmq: do NOT complete until Discord consumer ACKs.
+      // Until delivery receipts exist, keep dual/http as SoT for Discord apply.
       if (!needsHttp) {
-        await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
-        return 'delivered';
+        await this.failRetry(
+          message,
+          'ACTIVITY_OUTBOX_TRANSPORT=rabbitmq requires Discord delivery receipt (use http or dual)',
+        );
+        return 'retry';
       }
     }
 
@@ -275,7 +294,8 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
 
     if (response.ok) {
-      await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
+      const bodyText = await response.text().catch(() => '');
+      await this.completeWithMessageWriteBack(message, bodyText);
       return 'delivered';
     }
 
@@ -288,6 +308,63 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
 
     await this.repository.withTransaction((tx) => tx.permanentFailOutbox(message.id, errorText));
     return 'permanent';
+  }
+
+  private async completeWithMessageWriteBack(
+    message: OutboxMessageRecord,
+    bodyText: string,
+  ): Promise<void> {
+    let messageId: string | undefined;
+    let channelId: string | undefined;
+    try {
+      const parsed = JSON.parse(bodyText) as {
+        messageId?: unknown;
+        channelId?: unknown;
+      };
+      if (typeof parsed.messageId === 'string' && parsed.messageId.length > 0) {
+        messageId = parsed.messageId;
+      }
+      if (typeof parsed.channelId === 'string' && parsed.channelId.length > 0) {
+        channelId = parsed.channelId;
+      }
+    } catch {
+      // Response may be empty; still complete outbox.
+    }
+    const payloadGuild =
+      typeof message.payload.guildId === 'string' ? message.payload.guildId : undefined;
+    const payloadChannel =
+      typeof message.payload.channelId === 'string' ? message.payload.channelId : undefined;
+    const payloadOpaque =
+      typeof message.payload.opaqueEventId === 'string'
+        ? message.payload.opaqueEventId
+        : typeof message.payload.opaqueId === 'string'
+          ? message.payload.opaqueId
+          : undefined;
+    const guildId = payloadGuild;
+    channelId = channelId ?? payloadChannel;
+
+    await this.repository.withTransaction(async (tx) => {
+      await tx.completeOutbox(message.id);
+      if (
+        message.eventType === OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED &&
+        messageId !== undefined &&
+        channelId !== undefined &&
+        guildId !== undefined &&
+        payloadOpaque !== undefined
+      ) {
+        const removed = message.payload.remove === true;
+        await tx.upsertActivityProjection({
+          activityId: message.aggregateId,
+          guildId,
+          channelId,
+          opaqueId: payloadOpaque,
+          messageId: removed ? null : messageId,
+          status: removed ? 'removed' : 'delivered',
+          lastError: null,
+          retryCount: 0,
+        });
+      }
+    });
   }
 
   private async failRetry(message: OutboxMessageRecord, error: string): Promise<void> {

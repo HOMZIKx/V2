@@ -748,14 +748,17 @@ export async function getHub(guildId: string): Promise<HubConfigDto> {
 export async function updateHub(
   guildId: string,
   body: { channelId: string },
-): Promise<HubConfigDto> {
+): Promise<HubConfigDto & { sync?: { mode: string; messageId: string } }> {
   const current = await getAdminConfig(guildId);
   await apiRequest(adminGuild(guildId, '/hub/publish-intent'), {
     method: 'POST',
     body: { channelId: body.channelId, expectedRevision: current.configRevision },
     idempotent: true,
   });
-  return getHub(guildId);
+  // Ordinary config change must update Discord automatically (no manual publish).
+  const sync = await reconcileHubPanel(guildId);
+  const hub = await getHub(guildId);
+  return { ...hub, sync };
 }
 
 export async function listDiscordChannels(guildId: string): Promise<DiscordChannelOption[]> {

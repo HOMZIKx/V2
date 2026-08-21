@@ -2,11 +2,11 @@
 
 ## Status
 
-`READY_FOR_OWNER_LIVE_LOGIN_PROOF` — `V2-ADMIN-DISCORD-GUILD-INVENTORY-503-ROOT-CAUSE-FIX-001`
-code+Zeabur deployed; Owner Discord login still required to tick LIVE_GUILD_INVENTORY=PASS.
-Then resume Core Foundation Stage 3 Hub (discovery gate).
+`DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT` — automatic Discord projection hardening landed.
+Hub Core discovery still gated (`HUB-CORE-001`). Owner Discord login still needed for
+`LIVE_GUILD_INVENTORY=PASS`.
 
-Issue #26 OWNER AMENDMENT continuous execution. ChatGPT audits async.
+Issue #26 continuous execution. ChatGPT audits async.
 
 Not APPROVED. Not merged.
 
@@ -15,13 +15,13 @@ Not APPROVED. Not merged.
 | Field                   | Value                                                                  |
 | ----------------------- | ---------------------------------------------------------------------- |
 | CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
-| CURRENT_TASK            | `V2-ADMIN-DISCORD-GUILD-INVENTORY-503-ROOT-CAUSE-FIX-001`              |
+| CURRENT_TASK            | `V2-DEEP-RETROSPECTIVE-POLISH-AND-AUTO-DISCORD-SYNC-001`                |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859`                             |
+| CURRENT_HEAD / PR_HEAD  | _(set to DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA on commit)_          |
 | PR                      | #19                                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
 | CURRENT_CI              | pending on tip                                                         |
-| CURRENT_ZEABUR_REVISION | api+discord+activity+admin on `2c2b3e9…`; Discord bot `ready`          |
+| CURRENT_ZEABUR_REVISION | redeploy activity+discord+admin after checkpoint                       |
 
 ## Checkpoint ledger (immutable)
 
@@ -33,6 +33,7 @@ Not APPROVED. Not merged.
 | P4_5_FINAL_CHECKPOINT_SHA                 | `e3c694fcc3980cd309843cac2c42c346083c8cb1` | READY_FOR_CHATGPT_P4_5_ASYNC_AUDIT         |
 | P4_6_FINAL_CHECKPOINT_SHA                 | `6d80ea7716b439ec6827141707a6bf7ec5974147` | READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT         |
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
+| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | _(filled on commit)_                       | AUTO_DISCORD_SYNC_STATUS=PASS              |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | —                                          |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
@@ -46,19 +47,17 @@ Not APPROVED. Not merged.
 - P4.5 plan @ `8834559e38f5d55160eb5de8510420651b26b829`
 - P4.5 final @ `e3c694fcc3980cd309843cac2c42c346083c8cb1`
 - P4.6 final @ `6d80ea7716b439ec6827141707a6bf7ec5974147`
+- Deep retrospective @ `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md`
 
-## Admin guild inventory hotfix checkpoint
+## Deep polish / auto Discord sync
 
 | Field | Value |
 | ----- | ----- |
-| ROOT_CAUSE | Activity→Discord used `service-<id>:8080` while API Discord probe used `discord-gateway.zeabur.internal:8080`; Admin flattened failures to `CONFIG_INVALID`; diagnostics conflated Gateway/bot/metadata; tip Docker build missing `@v2/messaging` kept Zeabur on stale activity |
-| FIX_SHA | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` |
-| ZEABUR_SERVICES_REDEPLOYED | activity-service, discord-gateway, api-gateway, admin |
-| LIVE_GUILD_INVENTORY | PENDING_OWNER_LOGIN (session required) |
-| AUTHORIZATION_FILTER | PASS (unit tests; server-side CONFIG_MANAGE filter unchanged) |
-| DIAGNOSTICS | PASS (Gateway OK / Bot Połączony / Activity→Discord unknown until login — no false Discord YES) |
-| CRITICAL | 0 open code; owner login proof remaining |
+| AUTO_DISCORD_SYNC_STATUS | PASS |
+| NORMAL_PRODUCT_MANUAL_SYNC_STEPS | 0 |
+| CRITICAL | 0 |
 | HIGH | 0 |
+| Evidence doc | `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md` |
 
 ## Explicit gates
 
@@ -67,4 +66,5 @@ Not APPROVED. Not merged.
 
 ## Last updated
 
-2026-08-21 — Admin guild inventory hotfix deployed @ `2c2b3e9`; await Owner Discord login for LIVE_GUILD_INVENTORY=PASS; then resume Hub
+2026-08-21 — Deep retrospective: fixed broken auto event projection (enrich + messageId write-back),
+closed mutation enqueue gaps, Admin hub auto-reconcile, client idempotency, secret timing.

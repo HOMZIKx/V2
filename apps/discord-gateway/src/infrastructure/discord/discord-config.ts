@@ -45,7 +45,7 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
     DISCORD_APPLICATION_ID: z.string().optional().default(''),
     DISCORD_TOKEN: z.string().optional().default(''),
-    DISCORD_TEST_GUILD_ID: z.string().optional().default('1534228693017432124'),
+    DISCORD_TEST_GUILD_ID: z.string().optional().default(''),
     DISCORD_TEST_OPERATOR_IDS: z.string().optional().default(''),
     DISCORD_COMPONENT_SIGNING_SECRET: z.string().optional().default(''),
     DISCORD_AUTO_REGISTER_GUILD_COMMANDS: z.preprocess(

@@ -109,7 +109,7 @@ export function ChannelsPage() {
     setFlash(null);
     try {
       await updateHub(guildId, { channelId: hubChannelId });
-      setFlash('Kanał panelu zapisany.');
+      setFlash('Kanał panelu zapisany i zsynchronizowany z Discordem.');
       setDirty(false);
       reload();
     } catch (err) {

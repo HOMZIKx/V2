@@ -97,6 +97,28 @@ function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
+const inFlightIdempotencyKeys = new Map<string, string>();
+
+function idempotencyKeyForRequest(
+  method: string,
+  path: string,
+  body: unknown | undefined,
+): string {
+  const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
+  const existing = inFlightIdempotencyKeys.get(fingerprint);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const key = newIdempotencyKey();
+  inFlightIdempotencyKeys.set(fingerprint, key);
+  return key;
+}
+
+function releaseIdempotencyKey(method: string, path: string, body: unknown | undefined): void {
+  const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
+  inFlightIdempotencyKeys.delete(fingerprint);
+}
+
 export function buildApiUrl(
   path: string,
   query?: Record<string, string | number | boolean | undefined | null>,
@@ -132,16 +154,22 @@ async function apiRequest<T>(
   }
 
   if (options.idempotent === true || method !== 'GET') {
-    headers['Idempotency-Key'] = newIdempotencyKey();
+    headers['Idempotency-Key'] = idempotencyKeyForRequest(method, path, options.body);
   }
 
-  const response = await fetch(buildApiUrl(path, options.query), {
-    method,
-    headers,
-    credentials: 'include',
-    ...(options.signal !== undefined ? { signal: options.signal } : {}),
-    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path, options.query), {
+      method,
+      headers,
+      credentials: 'include',
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+    });
+  } catch (error) {
+    releaseIdempotencyKey(method, path, options.body);
+    throw error;
+  }
 
   const text = await response.text();
   let parsed: unknown = null;
@@ -154,6 +182,7 @@ async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    releaseIdempotencyKey(method, path, options.body);
     const err = parseErrorBody(parsed);
     throw new ApiClientError(err.message, {
       status: response.status,
@@ -162,6 +191,7 @@ async function apiRequest<T>(
     });
   }
 
+  releaseIdempotencyKey(method, path, options.body);
   return parsed as T;
 }
 

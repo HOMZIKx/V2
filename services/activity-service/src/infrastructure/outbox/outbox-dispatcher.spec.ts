@@ -32,13 +32,32 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
   it('sends x-activity-projection-secret on deliver', async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValue(new Response('{"status":"delivered"}', { status: 200 }));
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ status: 'delivered', messageId: 'm1', channelId: 'c1' }),
+          { status: 200 },
+        ),
+      );
     const completeOutbox = vi.fn().mockResolvedValue(undefined);
+    const upsertActivityProjection = vi.fn().mockResolvedValue({});
     const repository = {
       withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
         fn({
-          claimOutbox: () => Promise.resolve([makeMessage()]),
+          claimOutbox: () =>
+            Promise.resolve([
+              {
+                ...makeMessage(),
+                payload: {
+                  kind: 'event',
+                  guildId: 'g1',
+                  channelId: 'c1',
+                  opaqueEventId: 'a1b2c3d4e5f6',
+                  name: 'Raid',
+                },
+              },
+            ]),
           completeOutbox,
+          upsertActivityProjection,
           failOutbox: vi.fn(),
           permanentFailOutbox: vi.fn(),
         }),
@@ -54,6 +73,47 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
     expect(headers[PROJECTION_SECRET_HEADER]).toBe('proj-secret');
+    expect(completeOutbox).toHaveBeenCalledOnce();
+    expect(upsertActivityProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageId: 'm1',
+        status: 'delivered',
+        channelId: 'c1',
+        guildId: 'g1',
+      }),
+    );
+  });
+
+  it('completes domain events without calling Discord deliver', async () => {
+    const fetchImpl = vi.fn();
+    const completeOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () =>
+            Promise.resolve([
+              {
+                id: 'outbox-domain',
+                eventType: 'activity.activity.created.v1',
+                aggregateType: 'activity',
+                aggregateId: 'act-1',
+                aggregateVersion: 1,
+                payload: { activityId: 'act-1' },
+                attemptCount: 1,
+              },
+            ]),
+          completeOutbox,
+          failOutbox: vi.fn(),
+          permanentFailOutbox: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
     expect(completeOutbox).toHaveBeenCalledOnce();
   });
 

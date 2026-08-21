@@ -46,10 +46,11 @@ const eventPayloadSchema = z.object({
   channelId: z.string().min(1),
   messageId: z.string().nullable().optional(),
   opaqueEventId: z.string().regex(/^[a-f0-9]{12}$/),
-  name: z.string().min(1),
-  typeLabel: z.string().min(1),
-  statusLabel: z.string().min(1),
-  startAtIso: z.string().min(1),
+  remove: z.boolean().optional(),
+  name: z.string().min(1).optional(),
+  typeLabel: z.string().min(1).optional(),
+  statusLabel: z.string().min(1).optional(),
+  startAtIso: z.string().min(1).optional(),
   endAtIso: z.string().nullable().optional(),
   scheduleLabel: z.string().min(1).nullable().optional(),
   scheduleKind: z.enum(['exact', 'range', 'flexible_period']).optional(),
@@ -58,20 +59,24 @@ const eventPayloadSchema = z.object({
     .nullable()
     .optional(),
   locationText: z.string().nullable().optional(),
-  organizerLabel: z.string().min(1),
+  organizerLabel: z.string().min(1).optional(),
   coOrganizerLabel: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  occupiedSlots: z.number().int().nonnegative(),
-  participantLimit: z.number().int().positive().nullable(),
-  statusSummaries: z.array(z.object({ label: z.string(), count: z.number().int() })),
+  occupiedSlots: z.number().int().nonnegative().optional(),
+  participantLimit: z.number().int().positive().nullable().optional(),
+  statusSummaries: z
+    .array(z.object({ label: z.string(), count: z.number().int() }))
+    .optional(),
   participantPreview: z.array(z.string()).optional(),
-  statusDefs: z.array(
-    z.object({
-      opaqueId: z.string().regex(/^[a-f0-9]{12}$/),
-      label: z.string().min(1),
-      occupiesSlot: z.boolean(),
-    }),
-  ),
+  statusDefs: z
+    .array(
+      z.object({
+        opaqueId: z.string().regex(/^[a-f0-9]{12}$/),
+        label: z.string().min(1),
+        occupiesSlot: z.boolean(),
+      }),
+    )
+    .optional(),
   rsvpDisabled: z.boolean().optional(),
   secondaryDisabled: z.boolean().optional(),
   visibility: z.enum(['public', 'private']).optional(),
@@ -92,7 +97,9 @@ export type ProjectionDeliveryResult = {
  */
 @Injectable()
 export class ActivityProjectionDeliveryService {
+  /** Bounded in-process dedupe for rapid retries within one process. */
   private readonly delivered = new Map<string, ProjectionDeliveryResult>();
+  private static readonly DEDUPE_LIMIT = 2_000;
 
   public constructor(
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
@@ -128,7 +135,7 @@ export class ActivityProjectionDeliveryService {
 
     try {
       const result = await this.applyProjection(parsed.data);
-      this.delivered.set(parsed.data.outboxId, result);
+      this.rememberDelivered(parsed.data.outboxId, result);
       return result;
     } catch (error) {
       if (error instanceof HttpException) {
@@ -142,6 +149,17 @@ export class ActivityProjectionDeliveryService {
         throw new HttpException(classified, HttpStatus.BAD_GATEWAY);
       }
       throw new HttpException(classified, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  private rememberDelivered(outboxId: string, result: ProjectionDeliveryResult): void {
+    this.delivered.set(outboxId, result);
+    if (this.delivered.size <= ActivityProjectionDeliveryService.DEDUPE_LIMIT) {
+      return;
+    }
+    const oldest = this.delivered.keys().next().value;
+    if (oldest !== undefined) {
+      this.delivered.delete(oldest);
     }
   }
 
@@ -235,6 +253,46 @@ export class ActivityProjectionDeliveryService {
       allowedGuildId,
       channelId: event.channelId,
     });
+
+    if (event.remove === true) {
+      if (!event.messageId) {
+        return {
+          status: 'delivered',
+          outboxId: input.outboxId,
+          channelId: event.channelId,
+        };
+      }
+      try {
+        await gateway.deleteChannelMessage(event.channelId, event.messageId);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // Already gone — treat as success (idempotent remove).
+        if (!/10008|Unknown Message|404/i.test(message)) {
+          throw error;
+        }
+      }
+      return {
+        status: 'delivered',
+        outboxId: input.outboxId,
+        messageId: event.messageId,
+        channelId: event.channelId,
+      };
+    }
+
+    if (
+      event.name === undefined ||
+      event.typeLabel === undefined ||
+      event.statusLabel === undefined ||
+      event.startAtIso === undefined ||
+      event.organizerLabel === undefined ||
+      event.occupiedSlots === undefined ||
+      event.participantLimit === undefined ||
+      event.statusSummaries === undefined ||
+      event.statusDefs === undefined
+    ) {
+      throw new Error('Invalid projection payload.');
+    }
+
     const message = toComponentsV2Payload(
       renderActivityEventMessage({
         opaqueEventId: event.opaqueEventId,
@@ -272,13 +330,21 @@ export class ActivityProjectionDeliveryService {
     );
 
     if (event.messageId) {
-      await gateway.editComponentsV2Message(event.channelId, event.messageId, message);
-      return {
-        status: 'delivered',
-        outboxId: input.outboxId,
-        messageId: event.messageId,
-        channelId: event.channelId,
-      };
+      try {
+        await gateway.editComponentsV2Message(event.channelId, event.messageId, message);
+        return {
+          status: 'delivered',
+          outboxId: input.outboxId,
+          messageId: event.messageId,
+          channelId: event.channelId,
+        };
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        // Missing message → recreate (edit-in-place recovery).
+        if (!/10008|Unknown Message|404/i.test(detail)) {
+          throw error;
+        }
+      }
     }
 
     const published = await gateway.publishComponentsV2Message(

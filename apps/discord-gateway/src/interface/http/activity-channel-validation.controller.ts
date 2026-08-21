@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { timingSafeEqualUtf8 } from '../../infrastructure/security/timing-safe-equal.js';
 import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
 
 const validateBodySchema = z.object({
@@ -93,7 +94,10 @@ export class ActivityChannelValidationController {
 
     const expected = this.config.ACTIVITY_PROJECTION_SHARED_SECRET;
     if (expected.length > 0) {
-      if (projectionSecret !== expected) {
+      if (
+        projectionSecret === undefined ||
+        !timingSafeEqualUtf8(projectionSecret, expected)
+      ) {
         throw new UnauthorizedException('Invalid projection secret.');
       }
       return;

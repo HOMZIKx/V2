@@ -38,6 +38,29 @@ function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
+/** Stable key for an in-flight mutation fingerprint — protects double-click / retry. */
+const inFlightIdempotencyKeys = new Map<string, string>();
+
+function idempotencyKeyForRequest(
+  method: string,
+  path: string,
+  body: unknown | undefined,
+): string {
+  const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
+  const existing = inFlightIdempotencyKeys.get(fingerprint);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const key = newIdempotencyKey();
+  inFlightIdempotencyKeys.set(fingerprint, key);
+  return key;
+}
+
+function releaseIdempotencyKey(method: string, path: string, body: unknown | undefined): void {
+  const fingerprint = `${method}:${path}:${body === undefined ? '' : JSON.stringify(body)}`;
+  inFlightIdempotencyKeys.delete(fingerprint);
+}
+
 function parseErrorBody(body: unknown): {
   message: string;
   code: string;
@@ -105,7 +128,7 @@ export async function apiRequest<T>(
   }
 
   if (options.idempotent === true || method !== 'GET') {
-    headers['Idempotency-Key'] = newIdempotencyKey();
+    headers['Idempotency-Key'] = idempotencyKeyForRequest(method, path, options.body);
   }
 
   const url = new URL(path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`);
@@ -126,6 +149,7 @@ export async function apiRequest<T>(
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     });
   } catch (error) {
+    releaseIdempotencyKey(method, path, options.body);
     throw classifyNetworkFailure(error, url, method);
   }
 
@@ -140,6 +164,7 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    releaseIdempotencyKey(method, path, options.body);
     const err = parseErrorBody(parsed);
     throw new ApiClientError(err.message, {
       status: response.status,
@@ -148,5 +173,6 @@ export async function apiRequest<T>(
     });
   }
 
+  releaseIdempotencyKey(method, path, options.body);
   return parsed as T;
 }

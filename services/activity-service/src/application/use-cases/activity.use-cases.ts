@@ -32,6 +32,7 @@ import {
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
+import { buildEventProjectionPayload } from '../event-projection-payload.js';
 import {
   collectOrganizerDiscordIds,
   collectParticipantDiscordIds,
@@ -294,15 +295,6 @@ export class ActivityUseCases {
     now: Date,
     options?: { readonly onlyGuildIds?: readonly string[] },
   ): Promise<void> {
-    const scheduleFields = buildSchedulePayloadFields({
-      scheduleKind: activity.scheduleKind,
-      periodKey: activity.periodKey,
-      startAt: activity.startAt,
-      endAt: activity.endAt,
-      timeZone: activity.timezone,
-      scheduleHasExplicitTime: activity.scheduleHasExplicitTime,
-    });
-
     let targets = await tx.listPublicationTargets(activity.id);
     if (targets.length === 0) {
       const channelId = activity.publicationChannelId ?? '';
@@ -327,6 +319,12 @@ export class ActivityUseCases {
       targets = targets.filter((t) => allowed.has(t.guildId));
     }
 
+    const [types, statusDefs, participations] = await Promise.all([
+      tx.listActivityTypes(activity.guildId),
+      tx.listStatusDefs(activity.guildId),
+      tx.listParticipations(activity.id),
+    ]);
+
     for (const target of targets) {
       if (target.channelId.trim().length === 0) {
         continue;
@@ -335,33 +333,36 @@ export class ActivityUseCases {
       const opaqueId =
         existing?.opaqueId ??
         (target.guildId === activity.guildId ? activity.opaqueId : opaqueIdFromUuid(randomUUID()));
+      const payload = buildEventProjectionPayload({
+        activity,
+        channelId: target.channelId,
+        opaqueEventId: opaqueId,
+        messageId: existing?.messageId ?? null,
+        types,
+        statusDefs,
+        participations,
+        participantLimit: target.participantLimit ?? activity.participantLimit,
+      });
+      if (payload === null) {
+        continue;
+      }
+
       await tx.upsertActivityProjection({
         activityId: activity.id,
         guildId: target.guildId,
         channelId: target.channelId,
         opaqueId,
         status: 'pending',
+        ...(existing?.messageId !== undefined && existing.messageId !== null
+          ? { messageId: existing.messageId }
+          : {}),
       });
       await tx.insertOutbox({
         eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
         aggregateType: 'activity',
         aggregateId: activity.id,
         aggregateVersion: activity.version,
-        payload: {
-          activityId: activity.id,
-          opaqueId,
-          organizationId: activity.organizationId,
-          guildId: target.guildId,
-          channelId: target.channelId,
-          participantMode: activity.participantMode,
-          visibility: activity.visibility,
-          ...(activity.seriesId !== null ? { seriesId: activity.seriesId } : {}),
-          ...(activity.seriesOccurrenceIndex !== null
-            ? { seriesOccurrenceIndex: activity.seriesOccurrenceIndex }
-            : {}),
-          ...scheduleFields,
-          ...(activity.endAt !== null ? { endAtIso: activity.endAt.toISOString() } : {}),
-        },
+        payload: { ...payload },
         occurredAt: now,
       });
     }
@@ -1233,6 +1234,7 @@ export class ActivityUseCases {
         enrollmentOpen: false,
         version: activity.version + 1,
       });
+      await this.requestProjection(tx, updated, now);
       return updated;
     });
   }
@@ -1246,6 +1248,7 @@ export class ActivityUseCases {
   }
 
   private async setEnrollment(id: string, open: boolean, ctx: MutationContext) {
+    const now = this.deps.clock.now();
     return this.mutate(
       ctx,
       open ? 'enrollment-open' : 'enrollment-close',
@@ -1264,12 +1267,14 @@ export class ActivityUseCases {
           assertTransition(activity.status, 'registrations_closed');
           status = 'registrations_closed';
         }
-        return tx.updateActivity({
+        const updated = await tx.updateActivity({
           ...activity,
           status,
           enrollmentOpen: open,
           version: activity.version + 1,
         });
+        await this.requestProjection(tx, updated, now);
+        return updated;
       },
     );
   }
@@ -1561,6 +1566,7 @@ export class ActivityUseCases {
     input: { discordUserId: string; v2UserId?: string },
     ctx: MutationContext,
   ) {
+    const now = this.deps.clock.now();
     return this.mutate(ctx, 'co-organizer', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requireManageSelfOrGuild(ctx.actor, activity);
@@ -1570,17 +1576,20 @@ export class ActivityUseCases {
       ) {
         throw new ActivityError('CONFLICT', 'Activity already has a co-organizer (max 1)');
       }
-      return tx.updateActivity({
+      const updated = await tx.updateActivity({
         ...activity,
         coOrganizerDiscordUserId: input.discordUserId,
         coOrganizerV2UserId: input.v2UserId ?? null,
         version: activity.version + 1,
       });
+      await this.requestProjection(tx, updated, now);
+      return updated;
     });
   }
 
   public async takeover(id: string, ctx: MutationContext) {
     const discordUserId = requireDiscord(ctx.actor);
+    const now = this.deps.clock.now();
     return this.mutate(ctx, 'takeover', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requirePermission(
@@ -1589,16 +1598,19 @@ export class ActivityUseCases {
         activity.guildId,
         'sensitive',
       );
-      return tx.updateActivity({
+      const updated = await tx.updateActivity({
         ...activity,
         organizerDiscordUserId: discordUserId,
         organizerV2UserId: ctx.actor.v2UserId ?? null,
         version: activity.version + 1,
       });
+      await this.requestProjection(tx, updated, now);
+      return updated;
     });
   }
 
   public async startActivity(id: string, ctx: MutationContext) {
+    const now = this.deps.clock.now();
     return this.mutate(ctx, 'start', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requireManageSelfOrGuild(ctx.actor, activity);
@@ -1606,12 +1618,14 @@ export class ActivityUseCases {
         throw new ActivityError('PRECONDITION_FAILED', 'Cannot start activity in this status');
       }
       assertTransition(activity.status, 'in_progress');
-      return tx.updateActivity({
+      const updated = await tx.updateActivity({
         ...activity,
         status: 'in_progress',
         enrollmentOpen: false,
         version: activity.version + 1,
       });
+      await this.requestProjection(tx, updated, now);
+      return updated;
     });
   }
 
