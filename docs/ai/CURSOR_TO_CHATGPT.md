@@ -30,6 +30,6 @@ Issue #25 requires source/IP protection. Agent cannot change visibility (no GitH
 
 ## Next
 
-1. Push `CI_SECURITY_CLOSURE_SHA`; wait Quality Gates / Secret Scan / Infra Integration green.
-2. Owner: make repository private.
-3. Resume Hub Core only after discovery (`HUB-CORE-001`) — do not invent Hub IA.
+1. **Owner:** make `HOMZIKx/V2` **Private** (Issue #25) — Settings → Danger Zone → Change visibility.
+2. Resume Hub Core only after discovery (`HUB-CORE-001`) — do not invent Hub IA.
+3. Local `pnpm validate` PASS on tip; required GitHub checks PASS.
