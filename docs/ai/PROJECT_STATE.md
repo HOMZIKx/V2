@@ -1,4 +1,4 @@
-# PROJECT_STATE
+﻿# PROJECT_STATE
 
 ## Status
 
@@ -14,7 +14,7 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 3 ? V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                      |
 | CURRENT_TASK            | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                              |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                        |
-| CURRENT_HEAD / PR_HEAD  | _(set on CI_SECURITY_CLOSURE_SHA commit)_                            |
+| CURRENT_HEAD / PR_HEAD  | $sha                            |
 | PR                      | #19                                                                  |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                           |
 | CURRENT_CI              | Quality Gates was FAIL on `8280cc2` (prettier); fix in progress      |
@@ -31,7 +31,7 @@ Not APPROVED. Not merged.
 | P4_6_FINAL_CHECKPOINT_SHA                 | `6d80ea7716b439ec6827141707a6bf7ec5974147` | READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT         |
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
-| CI_SECURITY_CLOSURE_SHA                   | _(pending push)_                           | format+lint CI closure                     |
+| CI_SECURITY_CLOSURE_SHA                   | f4577fb0e5860c34e269fa3183eef17d4d6106a7                           | format+lint CI closure                     |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | ?                                          |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | ?                                          |
@@ -68,3 +68,4 @@ Not APPROVED. Not merged.
 ## Last updated
 
 2026-08-21 ? CI security closure: prettier+eslint fixes; repo visibility PUBLIC confirmed (Owner must make private).
+
