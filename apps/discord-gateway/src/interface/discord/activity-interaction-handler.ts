@@ -976,6 +976,56 @@ export class ActivityInteractionHandler {
         await interaction.editReply(asEditPayload(summary));
         return;
       }
+      const visibility = payload.visibility === 'private' ? 'private' : 'public';
+      const recurrenceKind =
+        payload.recurrenceKind === 'daily' ||
+        payload.recurrenceKind === 'weekly' ||
+        payload.recurrenceKind === 'weekdays'
+          ? payload.recurrenceKind
+          : null;
+      const horizonEndAt = typeof payload.horizonEndAt === 'string' ? payload.horizonEndAt : null;
+      const privateRoleIds = Array.isArray(payload.privateRoleIds)
+        ? payload.privateRoleIds.filter((v): v is string => typeof v === 'string')
+        : undefined;
+
+      if (recurrenceKind !== null && horizonEndAt !== null) {
+        const seriesPublished = await this.deps.activityClient.publishSeriesDraft(
+          draft.id,
+          {
+            organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
+            name,
+            firstStartAt: startRaw,
+            recurrenceKind,
+            horizonEndAt,
+            timezone: 'Europe/Warsaw',
+            visibility,
+            ...(privateRoleIds !== undefined ? { privateRoleIds } : {}),
+            ...(typeof payload.description === 'string'
+              ? { description: payload.description }
+              : {}),
+            ...(interaction.channelId !== null
+              ? { publicationChannelId: interaction.channelId }
+              : {}),
+            ...(Array.isArray(payload.weekdays)
+              ? {
+                  weekdays: payload.weekdays.filter(
+                    (v): v is number => typeof v === 'number' && Number.isInteger(v),
+                  ),
+                }
+              : {}),
+          },
+          {
+            ...actorOf(interaction.user.id),
+            idempotencyKey: idem(interaction.user.id, 'series-publish', draft.id),
+          },
+        );
+        this.forgetDraftFormUiState(interaction.guildId, interaction.user.id, parsed.opaqueId);
+        await interaction.editReply({
+          content: `Opublikowano serię **${name}** (${String(seriesPublished.activities.length)} wystąpień).`,
+        });
+        return;
+      }
+
       const published = await this.deps.activityClient.publishDraft(
         draft.id,
         {
@@ -984,6 +1034,8 @@ export class ActivityInteractionHandler {
           startAt: startRaw,
           scheduleKind,
           timezone: 'Europe/Warsaw',
+          visibility,
+          ...(privateRoleIds !== undefined ? { privateRoleIds } : {}),
           ...(typeof payload.description === 'string' ? { description: payload.description } : {}),
           ...(typeof payload.endAt === 'string' || payload.endAt === null
             ? { endAt: payload.endAt }
@@ -1004,8 +1056,13 @@ export class ActivityInteractionHandler {
         },
       );
       this.forgetDraftFormUiState(interaction.guildId, interaction.user.id, parsed.opaqueId);
+      const privateTokenRaw = (published as { privateInviteToken?: unknown }).privateInviteToken;
+      const privateNote =
+        visibility === 'private' && typeof privateTokenRaw === 'string'
+          ? `\nLink/invite token (pokaż tylko zaufanym): \`${privateTokenRaw}\``
+          : '';
       await interaction.editReply({
-        content: `Opublikowano **${String(published.name ?? name)}**. Publiczny post pojawi się na kanale aktywności.`,
+        content: `Opublikowano **${String(published.name ?? name)}**. Publiczny post pojawi się na kanale aktywności.${privateNote}`,
       });
       return;
     }

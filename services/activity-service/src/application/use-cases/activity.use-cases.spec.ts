@@ -47,6 +47,11 @@ function createMemoryRepo(): ActivityRepositoryPort & {
   projections: Map<string, unknown>;
 } {
   const activities = new Map<string, ActivityRecord>();
+  const seriesMap = new Map<string, import('../ports/activity.ports.js').ActivitySeriesRecord>();
+  const attendanceMap = new Map<
+    string,
+    import('../ports/activity.ports.js').AttendanceRecord
+  >();
   const drafts = new Map<
     string,
     {
@@ -295,6 +300,11 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       const activity: ActivityRecord = {
         ...input,
         participantMode: input.participantMode ?? 'shared',
+        seriesId: input.seriesId ?? null,
+        seriesOccurrenceIndex: input.seriesOccurrenceIndex ?? null,
+        visibility: input.visibility ?? 'public',
+        privateInviteTokenHash: input.privateInviteTokenHash ?? null,
+        privateRoleIds: input.privateRoleIds ?? [],
         opaqueId: input.opaqueId ?? input.id.replace(/-/g, '').slice(0, 12),
         version: input.version ?? 1,
         createdAt: now,
@@ -302,6 +312,54 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       };
       activities.set(activity.id, activity);
       return activity;
+    },
+    async listActivitiesBySeries(seriesId) {
+      return [...activities.values()]
+        .filter((a) => a.seriesId === seriesId && a.status !== 'deleted')
+        .sort(
+          (a, b) => (a.seriesOccurrenceIndex ?? 0) - (b.seriesOccurrenceIndex ?? 0),
+        );
+    },
+    async insertSeries(input) {
+      const now = new Date();
+      const series = {
+        ...input,
+        opaqueId: input.opaqueId ?? input.id.replace(/-/g, '').slice(0, 12),
+        version: input.version ?? 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      seriesMap.set(series.id, series);
+      return series;
+    },
+    async getSeries(id) {
+      return seriesMap.get(id) ?? null;
+    },
+    async updateSeries(series) {
+      const next = { ...series, updatedAt: new Date() };
+      seriesMap.set(series.id, next);
+      return next;
+    },
+    async upsertAttendance(input) {
+      const key = `${input.activityId}:${input.subjectDiscordUserId}`;
+      const record = {
+        ...input,
+        markedAt: input.markedAt ?? new Date(),
+      };
+      attendanceMap.set(key, record);
+      return record;
+    },
+    async listAttendance(activityId) {
+      return [...attendanceMap.values()].filter((r) => r.activityId === activityId);
+    },
+    async listAttendanceForSubject(input) {
+      return [...attendanceMap.values()].filter(
+        (r) =>
+          r.guildId === input.guildId && r.subjectDiscordUserId === input.subjectDiscordUserId,
+      );
+    },
+    async listAttendanceForGuild(guildId) {
+      return [...attendanceMap.values()].filter((r) => r.guildId === guildId);
     },
     async getActivityByOpaqueId(opaqueId) {
       return [...activities.values()].find((a) => a.opaqueId === opaqueId) ?? null;
@@ -1168,5 +1226,93 @@ describe('ActivityUseCases (in-memory)', () => {
         { actor: { discordUserId: 'intruder' } },
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('P4.6: publishes weekly series occurrences', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const result = await useCases.publishSeriesDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Weekly raid',
+        firstStartAt: new Date('2026-08-21T18:00:00.000Z'),
+        recurrenceKind: 'weekly',
+        horizonEndAt: new Date('2026-09-11T18:00:00.000Z'),
+      },
+      { actor, idempotencyKey: 'series-1' },
+    );
+    expect(result.activities.length).toBe(4);
+    expect(result.activities.every((row) => row.seriesId === result.series.id)).toBe(true);
+  });
+
+  it('P4.6: private activity requires role or invite for non-organizer', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const published = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Private',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+        visibility: 'private',
+        privateRoleIds: ['role-vip'],
+      },
+      { actor, idempotencyKey: 'priv-1' },
+    );
+    const activityId = published.id;
+    await expect(
+      useCases.getActivity(activityId, { discordUserId: 'outsider-1' }),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(
+      useCases.getActivity(activityId, { discordUserId: 'outsider-1' }, {
+        memberRoleIds: ['role-vip'],
+      }),
+    ).resolves.toMatchObject({ id: activityId });
+  });
+
+  it('P4.6: organizer marks attendance within 24h and self stats aggregate', async () => {
+    const repo = createMemoryRepo();
+    const useCases = new ActivityUseCases({
+      repository: repo,
+      authorize: new AllowAuthz(),
+      clock,
+    });
+    const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
+    const activity = await useCases.publishDraft(
+      draft.id,
+      {
+        organizationId: 'org-1',
+        name: 'Finished',
+        startAt: new Date('2026-08-20T18:00:00.000Z'),
+        endAt: new Date('2026-08-20T20:00:00.000Z'),
+      },
+      { actor, idempotencyKey: 'att-1' },
+    );
+    const stored = repo.activities.get(activity.id);
+    expect(stored).toBeDefined();
+    repo.activities.set(activity.id, {
+      ...stored!,
+      scheduledFinishAt: new Date('2026-08-16T10:00:00.000Z'),
+      status: 'completed',
+    });
+    const record = await useCases.markAttendance(
+      activity.id,
+      { subjectDiscordUserId: 'member-9', status: 'present' },
+      { actor },
+    );
+    expect(record.status).toBe('present');
+    const stats = await useCases.getSelfStats('guild-1', { discordUserId: 'member-9' });
+    expect(stats).toMatchObject({ present: 1, absent: 0, total: 1 });
   });
 });

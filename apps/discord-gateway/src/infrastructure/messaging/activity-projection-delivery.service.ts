@@ -74,6 +74,8 @@ const eventPayloadSchema = z.object({
   ),
   rsvpDisabled: z.boolean().optional(),
   secondaryDisabled: z.boolean().optional(),
+  visibility: z.enum(['public', 'private']).optional(),
+  seriesOccurrenceIndex: z.number().int().nonnegative().nullable().optional(),
   nonce: z.string().max(25).optional(),
 });
 
@@ -261,6 +263,10 @@ export class ActivityProjectionDeliveryService {
         ...(event.rsvpDisabled !== undefined ? { rsvpDisabled: event.rsvpDisabled } : {}),
         ...(event.secondaryDisabled !== undefined
           ? { secondaryDisabled: event.secondaryDisabled }
+          : {}),
+        ...(event.visibility !== undefined ? { visibility: event.visibility } : {}),
+        ...(event.seriesOccurrenceIndex !== undefined
+          ? { seriesOccurrenceIndex: event.seriesOccurrenceIndex }
           : {}),
       }),
     );

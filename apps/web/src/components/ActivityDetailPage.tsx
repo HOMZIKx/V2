@@ -192,6 +192,19 @@ export function ActivityDetailPage({ activityId }: { activityId: string }) {
       <dl className="detail-facts">
         <dt>Miejsca</dt>
         <dd>{formatEventCapacity(occupied, activity.participantLimit)}</dd>
+        <dt>Widoczność</dt>
+        <dd>{activity.visibility === 'private' ? 'Prywatna' : 'Publiczna'}</dd>
+        {activity.seriesId !== undefined && activity.seriesId !== null ? (
+          <>
+            <dt>Seria</dt>
+            <dd>
+              wystąpienie{' '}
+              {activity.seriesOccurrenceIndex != null
+                ? `#${activity.seriesOccurrenceIndex + 1}`
+                : '—'}
+            </dd>
+          </>
+        ) : null}
         <dt>Prowadzi</dt>
         <dd>{organizerDisplayName(activity)}</dd>
         {activity.coOrganizerDisplay !== undefined && activity.coOrganizerDisplay !== null ? (

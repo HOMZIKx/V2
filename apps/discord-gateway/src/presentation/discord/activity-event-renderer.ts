@@ -56,6 +56,8 @@ export type ActivityEventRenderInput = {
   statusDefs: EventStatusDefView[];
   rsvpDisabled?: boolean;
   secondaryDisabled?: boolean;
+  visibility?: 'public' | 'private';
+  seriesOccurrenceIndex?: number | null;
 };
 
 export type ActivityEventMessagePayload = MessageCreateOptions & MessageEditOptions;
@@ -114,14 +116,19 @@ export function renderActivityEventMessage(
         (input.participantPreview.length > 8 ? '…' : '')
       : null;
 
+  const visibilityTag = input.visibility === 'private' ? 'prywatna' : null;
+  const seriesTag =
+    input.seriesOccurrenceIndex !== undefined && input.seriesOccurrenceIndex !== null
+      ? `seria #${input.seriesOccurrenceIndex + 1}`
+      : null;
+  const metaBits = [input.typeLabel, seats, input.statusLabel, visibilityTag, seriesTag].filter(
+    (v): v is string => typeof v === 'string' && v.length > 0,
+  );
+
   const container = new ContainerBuilder().setAccentColor(ACTIVITY_EVENT_ACCENT);
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      [
-        `## ${input.name}`,
-        `**${schedule}**`,
-        `${input.typeLabel} · ${seats} · ${input.statusLabel}`,
-      ].join('\n'),
+      [`## ${input.name}`, `**${schedule}**`, metaBits.join(' · ')].join('\n'),
     ),
   );
 

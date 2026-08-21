@@ -88,6 +88,26 @@ const publishSchema = z.object({
     )
     .max(25)
     .optional(),
+  visibility: z.enum(['public', 'private']).optional(),
+  privateRoleIds: z.array(z.string().min(1)).max(25).optional(),
+});
+
+const publishSeriesSchema = z.object({
+  organizationId: z.string().min(1),
+  name: z.string().min(1).max(200),
+  description: z.string().max(4000).optional(),
+  firstStartAt: z.string().datetime(),
+  endAtOffsetMs: z.number().int().nonnegative().nullable().optional(),
+  recurrenceKind: z.enum(['daily', 'weekly', 'weekdays']),
+  weekdays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
+  horizonEndAt: z.string().datetime(),
+  participantLimit: z.number().int().positive().nullable().optional(),
+  publicationChannelId: z.string().optional(),
+  timezone: z.string().optional(),
+  locationText: z.string().nullable().optional(),
+  typeId: z.string().uuid().nullable().optional(),
+  visibility: z.enum(['public', 'private']).optional(),
+  privateRoleIds: z.array(z.string().min(1)).max(25).optional(),
 });
 
 const editSchema = z.object({
@@ -96,10 +116,17 @@ const editSchema = z.object({
   participantLimit: z.number().int().positive().nullable().optional(),
   locationText: z.string().nullable().optional(),
   publicationChannelId: z.string().nullable().optional(),
+  seriesScope: z.enum(['this', 'this_and_following']).optional(),
 });
 
 const cancelSchema = z.object({
   reason: z.string().min(1).max(1000),
+  seriesScope: z.enum(['this', 'this_and_following', 'entire_series']).optional(),
+});
+
+const attendanceSchema = z.object({
+  subjectDiscordUserId: z.string().min(1),
+  status: z.enum(['present', 'absent']),
 });
 
 const rsvpSchema = z.object({
@@ -297,6 +324,45 @@ export class ActivityController {
               })),
             }
           : {}),
+        ...(parsed.visibility !== undefined ? { visibility: parsed.visibility } : {}),
+        ...(parsed.privateRoleIds !== undefined ? { privateRoleIds: parsed.privateRoleIds } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Post('drafts/:id/publish-series')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async publishSeriesDraft(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(publishSeriesSchema, body);
+    return this.useCases.publishSeriesDraft(
+      id,
+      {
+        organizationId: parsed.organizationId,
+        name: parsed.name,
+        firstStartAt: new Date(parsed.firstStartAt),
+        recurrenceKind: parsed.recurrenceKind,
+        horizonEndAt: new Date(parsed.horizonEndAt),
+        ...(parsed.description !== undefined ? { description: parsed.description } : {}),
+        ...(parsed.endAtOffsetMs !== undefined ? { endAtOffsetMs: parsed.endAtOffsetMs } : {}),
+        ...(parsed.weekdays !== undefined ? { weekdays: parsed.weekdays } : {}),
+        ...(parsed.participantLimit !== undefined
+          ? { participantLimit: parsed.participantLimit }
+          : {}),
+        ...(parsed.publicationChannelId !== undefined
+          ? { publicationChannelId: parsed.publicationChannelId }
+          : {}),
+        ...(parsed.timezone !== undefined ? { timezone: parsed.timezone } : {}),
+        ...(parsed.locationText !== undefined ? { locationText: parsed.locationText } : {}),
+        ...(parsed.typeId !== undefined ? { typeId: parsed.typeId } : {}),
+        ...(parsed.visibility !== undefined ? { visibility: parsed.visibility } : {}),
+        ...(parsed.privateRoleIds !== undefined ? { privateRoleIds: parsed.privateRoleIds } : {}),
       },
       mutationCtx(request, idempotencyKey),
     );
@@ -306,12 +372,24 @@ export class ActivityController {
   @RequireOperation('activity_read')
   public async listActivities(
     @Query('guildId') guildId: string,
+    @Query('memberRoleIds') memberRoleIdsRaw: string | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
     if (guildId === undefined || guildId.trim() === '') {
       throw new ActivityError('VALIDATION_FAILED', 'guildId query is required');
     }
-    return this.useCases.listActivities(guildId, actorFromRequest(request));
+    const memberRoleIds =
+      memberRoleIdsRaw === undefined || memberRoleIdsRaw.trim() === ''
+        ? undefined
+        : memberRoleIdsRaw
+            .split(',')
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0);
+    return this.useCases.listActivities(
+      guildId,
+      actorFromRequest(request),
+      memberRoleIds === undefined ? undefined : { memberRoleIds },
+    );
   }
 
   @Get('activities/by-opaque/:opaqueId')
@@ -325,8 +403,29 @@ export class ActivityController {
 
   @Get('activities/:id')
   @RequireOperation('activity_read')
-  public async getActivity(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-    return this.useCases.getActivity(id, actorFromRequest(request));
+  public async getActivity(
+    @Param('id') id: string,
+    @Query('inviteToken') inviteToken: string | undefined,
+    @Query('memberRoleIds') memberRoleIdsRaw: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const memberRoleIds =
+      memberRoleIdsRaw === undefined || memberRoleIdsRaw.trim() === ''
+        ? undefined
+        : memberRoleIdsRaw
+            .split(',')
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0);
+    return this.useCases.getActivity(id, actorFromRequest(request), {
+      ...(inviteToken !== undefined ? { inviteToken } : {}),
+      ...(memberRoleIds !== undefined ? { memberRoleIds } : {}),
+    });
+  }
+
+  @Get('series/:id')
+  @RequireOperation('activity_read')
+  public async getSeries(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.useCases.getSeries(id, actorFromRequest(request));
   }
 
   @Patch('activities/:id')
@@ -352,6 +451,7 @@ export class ActivityController {
           : {}),
       },
       mutationCtx(request, idempotencyKey),
+      parsed.seriesScope ?? 'this',
     );
   }
 
@@ -365,7 +465,56 @@ export class ActivityController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseOrThrow(cancelSchema, body);
-    return this.useCases.cancelActivity(id, parsed.reason, mutationCtx(request, idempotencyKey));
+    return this.useCases.cancelActivity(
+      id,
+      parsed.reason,
+      mutationCtx(request, idempotencyKey),
+      parsed.seriesScope ?? 'this',
+    );
+  }
+
+  @Post('activities/:id/attendance')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async markAttendance(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(attendanceSchema, body);
+    return this.useCases.markAttendance(
+      id,
+      {
+        subjectDiscordUserId: parsed.subjectDiscordUserId,
+        status: parsed.status,
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Get('activities/:id/attendance')
+  @RequireOperation('activity_read')
+  public async listAttendance(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.useCases.listAttendance(id, actorFromRequest(request));
+  }
+
+  @Get('guilds/:guildId/stats/self')
+  @RequireOperation('activity_read')
+  public async getSelfStats(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getSelfStats(guildId, actorFromRequest(request));
+  }
+
+  @Get('guilds/:guildId/stats')
+  @RequireOperation('activity_read')
+  public async getGuildStats(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.useCases.getGuildStats(guildId, actorFromRequest(request));
   }
 
   @Delete('activities/:id')

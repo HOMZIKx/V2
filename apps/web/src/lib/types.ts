@@ -30,6 +30,9 @@ export interface ActivityDto {
   readonly typeLabel?: string | null;
   readonly organizerDisplay?: string | null;
   readonly coOrganizerDisplay?: string | null;
+  readonly visibility?: 'public' | 'private';
+  readonly seriesId?: string | null;
+  readonly seriesOccurrenceIndex?: number | null;
   readonly myParticipationStatus?: {
     readonly statusDefId: string;
     readonly statusLabel: string;

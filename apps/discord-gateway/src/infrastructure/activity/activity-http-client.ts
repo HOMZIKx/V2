@@ -208,6 +208,58 @@ export class ActivityHttpClient {
     );
   }
 
+  public async publishSeriesDraft(
+    id: string,
+    body: Record<string, unknown>,
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'POST',
+      `/activity/v1/drafts/${encodeURIComponent(id)}/publish-series`,
+      z
+        .object({
+          series: z.object({ id: z.string() }).passthrough(),
+          activities: z.array(activitySchema),
+        })
+        .passthrough(),
+      { body, actor },
+    );
+  }
+
+  public async markAttendance(
+    activityId: string,
+    body: { subjectDiscordUserId: string; status: 'present' | 'absent' },
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'POST',
+      `/activity/v1/activities/${encodeURIComponent(activityId)}/attendance`,
+      z
+        .object({
+          id: z.string(),
+          status: z.enum(['present', 'absent']),
+        })
+        .passthrough(),
+      { body, actor },
+    );
+  }
+
+  public async getSelfStats(guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/guilds/${encodeURIComponent(guildId)}/stats/self`,
+      z
+        .object({
+          guildId: z.string(),
+          present: z.number(),
+          absent: z.number(),
+          total: z.number(),
+        })
+        .passthrough(),
+      { actor },
+    );
+  }
+
   public async listActivities(guildId: string, actor: ActivityActorContext) {
     return this.request(
       'GET',

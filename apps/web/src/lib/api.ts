@@ -290,6 +290,24 @@ export async function listMyActivities(
   return asActivityArray(raw);
 }
 
+export async function getSelfStats(
+  guildId: string,
+  signal?: AbortSignal,
+): Promise<{ present: number; absent: number; total: number }> {
+  const raw = await apiRequest<{
+    present?: number;
+    absent?: number;
+    total?: number;
+  }>(`/activity/v1/guilds/${encodeURIComponent(guildId)}/stats/self`, {
+    ...(signal !== undefined ? { signal } : {}),
+  });
+  return {
+    present: typeof raw.present === 'number' ? raw.present : 0,
+    absent: typeof raw.absent === 'number' ? raw.absent : 0,
+    total: typeof raw.total === 'number' ? raw.total : 0,
+  };
+}
+
 export async function listInbox(signal?: AbortSignal): Promise<InboxListDto> {
   const raw = await apiRequest<InboxListDto | { items?: InboxItemDto[] }>('/activity/v1/inbox', {
     ...(signal !== undefined ? { signal } : {}),

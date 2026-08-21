@@ -168,6 +168,38 @@ export interface ActivityDraftRecord {
 export type ActivityScheduleKind = 'exact' | 'range' | 'flexible_period';
 export type ActivityPeriodKey = 'today' | 'tomorrow' | 'this_week' | 'weekend' | 'flexible';
 export type ParticipantMode = 'shared' | 'separate';
+export type ActivityVisibility = 'public' | 'private';
+export type SeriesRecurrenceKind = 'daily' | 'weekly' | 'weekdays';
+export type AttendanceMarkStatus = 'present' | 'absent';
+
+export interface ActivitySeriesRecord {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly homeGuildId: string;
+  readonly creatorDiscordUserId: string | null;
+  readonly creatorV2UserId: string | null;
+  readonly recurrenceKind: SeriesRecurrenceKind;
+  readonly weekdays: readonly number[];
+  readonly timezone: string;
+  readonly timeOfDay: string;
+  readonly horizonEndAt: Date;
+  readonly templatePayload: Record<string, unknown>;
+  readonly status: 'active' | 'cancelled' | 'completed';
+  readonly opaqueId: string;
+  readonly version: number;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface AttendanceRecord {
+  readonly id: string;
+  readonly activityId: string;
+  readonly guildId: string;
+  readonly subjectDiscordUserId: string;
+  readonly markedByDiscordUserId: string;
+  readonly status: AttendanceMarkStatus;
+  readonly markedAt: Date;
+}
 
 export interface ActivityPublicationTargetRecord {
   readonly id: string;
@@ -198,6 +230,13 @@ export interface ActivityRecord {
   readonly participantLimit: number | null;
   /** P4.5: shared (default) | separate — per-activity participant pool mode. */
   readonly participantMode: ParticipantMode;
+  /** P4.6: series linkage (null = one-shot). */
+  readonly seriesId: string | null;
+  readonly seriesOccurrenceIndex: number | null;
+  /** P4.6: public | private. */
+  readonly visibility: ActivityVisibility;
+  readonly privateInviteTokenHash: string | null;
+  readonly privateRoleIds: readonly string[];
   readonly organizerDiscordUserId: string | null;
   readonly organizerV2UserId: string | null;
   readonly coOrganizerDiscordUserId: string | null;
@@ -359,22 +398,54 @@ export interface ActivityTx {
   insertActivity(
     input: Omit<
       ActivityRecord,
-      'createdAt' | 'updatedAt' | 'version' | 'opaqueId' | 'participantMode'
+      | 'createdAt'
+      | 'updatedAt'
+      | 'version'
+      | 'opaqueId'
+      | 'participantMode'
+      | 'seriesId'
+      | 'seriesOccurrenceIndex'
+      | 'visibility'
+      | 'privateInviteTokenHash'
+      | 'privateRoleIds'
     > & {
       version?: number;
       opaqueId?: string;
       participantMode?: ParticipantMode;
+      seriesId?: string | null;
+      seriesOccurrenceIndex?: number | null;
+      visibility?: ActivityVisibility;
+      privateInviteTokenHash?: string | null;
+      privateRoleIds?: readonly string[];
     },
   ): Promise<ActivityRecord>;
   updateActivity(activity: ActivityRecord): Promise<ActivityRecord>;
   getActivity(id: string): Promise<ActivityRecord | null>;
   getActivityByOpaqueId(opaqueId: string): Promise<ActivityRecord | null>;
   listActivities(guildId: string): Promise<ActivityRecord[]>;
+  listActivitiesBySeries(seriesId: string): Promise<ActivityRecord[]>;
   listMyActivities(input: {
     guildId?: string;
     discordUserId?: string;
     v2UserId?: string;
   }): Promise<ActivityRecord[]>;
+  insertSeries(
+    input: Omit<ActivitySeriesRecord, 'createdAt' | 'updatedAt' | 'version' | 'opaqueId'> & {
+      version?: number;
+      opaqueId?: string;
+    },
+  ): Promise<ActivitySeriesRecord>;
+  getSeries(id: string): Promise<ActivitySeriesRecord | null>;
+  updateSeries(series: ActivitySeriesRecord): Promise<ActivitySeriesRecord>;
+  upsertAttendance(
+    input: Omit<AttendanceRecord, 'markedAt'> & { markedAt?: Date },
+  ): Promise<AttendanceRecord>;
+  listAttendance(activityId: string): Promise<AttendanceRecord[]>;
+  listAttendanceForSubject(input: {
+    guildId: string;
+    subjectDiscordUserId: string;
+  }): Promise<AttendanceRecord[]>;
+  listAttendanceForGuild(guildId: string): Promise<AttendanceRecord[]>;
   listParticipations(activityId: string): Promise<ParticipationRecord[]>;
   listParticipationsForActivities(activityIds: readonly string[]): Promise<ParticipationRecord[]>;
   getParticipation(activityId: string, discordUserId: string): Promise<ParticipationRecord | null>;

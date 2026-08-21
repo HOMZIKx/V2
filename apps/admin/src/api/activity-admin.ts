@@ -110,6 +110,9 @@ export interface ActivityEventDetailDto {
   readonly enrollmentOpen?: boolean;
   readonly participantLimit?: number | null;
   readonly participantMode?: 'shared' | 'separate';
+  readonly visibility?: 'public' | 'private';
+  readonly seriesId?: string | null;
+  readonly seriesOccurrenceIndex?: number | null;
   readonly publicationTargets?: readonly {
     readonly guildId: string;
     readonly channelId: string;
@@ -556,6 +559,9 @@ export async function getEvent(guildId: string, eventId: string): Promise<Activi
     (Array.isArray(payload.participations) ? payload.participations.length : undefined);
   const modeRaw = activity.participantMode;
   const participantMode = modeRaw === 'separate' || modeRaw === 'shared' ? modeRaw : undefined;
+  const visibilityRaw = activity.visibility;
+  const visibility =
+    visibilityRaw === 'private' || visibilityRaw === 'public' ? visibilityRaw : undefined;
   const publicationTargets = Array.isArray(payload.publicationTargets)
     ? payload.publicationTargets.map(
         (t: { guildId: string; channelId: string; participantLimit?: number | null }) => ({
@@ -586,6 +592,11 @@ export async function getEvent(guildId: string, eventId: string): Promise<Activi
       ? { participantLimit: activity.participantLimit }
       : {}),
     ...(participantMode !== undefined ? { participantMode } : {}),
+    ...(visibility !== undefined ? { visibility } : {}),
+    ...(activity.seriesId !== undefined ? { seriesId: activity.seriesId } : {}),
+    ...(activity.seriesOccurrenceIndex !== undefined
+      ? { seriesOccurrenceIndex: activity.seriesOccurrenceIndex }
+      : {}),
     ...(publicationTargets !== undefined ? { publicationTargets } : {}),
     ...(activity.cancelReason !== undefined ? { cancelReason: activity.cancelReason } : {}),
     ...(activity.timezone !== undefined ? { timezone: activity.timezone } : {}),

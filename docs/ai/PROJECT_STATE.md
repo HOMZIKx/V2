@@ -2,8 +2,8 @@
 
 ## Status
 
-`READY_FOR_CHATGPT_P4_5_ASYNC_AUDIT` — Stage 1 P4.5 code checkpoint
-(continuous Core Foundation; HTTP transport remains production default)
+`IN_PROGRESS_P4_6_IMPLEMENTATION` — Stage 2 P4.6 vertical wired
+(series / private / attendance / stats); CI final tip pending
 
 Issue #26 OWNER AMENDMENT continuous execution. ChatGPT audits async.
 
@@ -16,10 +16,10 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 2 — P4.6 (IN PROGRESS)                                 |
 | CURRENT_TASK            | `V2-CONTINUOUS-CORE-FOUNDATION-EXECUTION-001`          |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                          |
-| CURRENT_HEAD / PR_HEAD  | `b4c182b` (after P4.6 domain foundation)               |
+| CURRENT_HEAD / PR_HEAD  | _(local tip after P4.6 vertical; commit pending push)_ |
 | PR                      | #19                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`             |
-| CURRENT_CI              | PASS on `e3c694f` (Quality gates)                      |
+| CURRENT_CI              | PASS on `e3c694f` (Quality gates); tip CI pending      |
 | CURRENT_ZEABUR_REVISION | discord `2fd4635…` (pre-P4.5 tip); RMQ not provisioned |
 
 ## Checkpoint ledger (immutable)
@@ -30,7 +30,7 @@ Not APPROVED. Not merged.
 | P4_0_EFFECTIVE_CHECKPOINT_SHA             | `2fd4635c3b0aca118a3554e3439acc089558f3d9` | historical visual+security tip             |
 | P4_5_PLAN_CHECKPOINT_SHA                  | `8834559e38f5d55160eb5de8510420651b26b829` | plan locked                                |
 | P4_5_FINAL_CHECKPOINT_SHA                 | `e3c694fcc3980cd309843cac2c42c346083c8cb1` | READY_FOR_CHATGPT_P4_5_ASYNC_AUDIT         |
-| P4_6_FINAL_CHECKPOINT_SHA                 | _(pending)_                                | —                                          |
+| P4_6_FINAL_CHECKPOINT_SHA                 | _(pending — await green CI on tip)_        | —                                          |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | —                                          |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | —                                          |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
@@ -44,21 +44,23 @@ Not APPROVED. Not merged.
 - P4.5 plan @ `8834559e38f5d55160eb5de8510420651b26b829`
 - P4.5 final @ `e3c694fcc3980cd309843cac2c42c346083c8cb1`
 
-## P4.5 evidence
+## P4.6 evidence (partial)
 
 | Gate                                      | Result                                                                           |
 | ----------------------------------------- | -------------------------------------------------------------------------------- |
-| Green CI tip                              | PASS `e3c694f`                                                                   |
-| Multi-guild + SHARED/SEPARATE             | implemented + unit tests                                                         |
-| Outbox → RMQ publisher + gateway consumer | implemented; default transport `http`                                            |
-| Zeabur RabbitMQ dual/runtime              | BLOCKED_EXTERNAL (no private RMQ service/vars yet); HTTP projection path remains |
-| Owner Hub assets                          | non-blocking OWNER_ASSET_*                                                       |
+| Migration 010 series/privacy/attendance   | present                                                                          |
+| Domain series/privacy/attendance          | unit tests PASS                                                                  |
+| Use-cases + API (publish-series, private, attendance, stats) | implemented + unit tests PASS                                   |
+| Admin event detail visibility/series      | wired                                                                            |
+| Discord publish series/private from draft | wired (payload-driven); attendance UI buttons not yet                            |
+| WWW visibility + self stats               | wired                                                                            |
+| Green CI tip                              | pending push                                                                     |
 
 ## Explicit gates
 
 - NO MERGE / NO Stage 8+ / additive only
-- Continue Stage 2 P4.6 immediately
+- After green CI: set `P4_6_FINAL_CHECKPOINT_SHA` + `READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT`, then Stage 3 Hub Core immediately
 
 ## Last updated
 
-2026-08-20 — P4_5_FINAL_CHECKPOINT_SHA recorded; starting P4.6
+2026-08-21 — P4.6 vertical implementation progress (pre-final CI tip)

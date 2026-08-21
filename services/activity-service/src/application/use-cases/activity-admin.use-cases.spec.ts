@@ -235,6 +235,30 @@ function createAdminMemoryRepo(): {
     async listActivities() {
       return [...activities.values()];
     },
+    async listActivitiesBySeries() {
+      return [];
+    },
+    async insertSeries() {
+      return notImpl();
+    },
+    async getSeries() {
+      return null;
+    },
+    async updateSeries() {
+      return notImpl();
+    },
+    async upsertAttendance() {
+      return notImpl();
+    },
+    async listAttendance() {
+      return [];
+    },
+    async listAttendanceForSubject() {
+      return [];
+    },
+    async listAttendanceForGuild() {
+      return [];
+    },
     async listMyActivities() {
       return [];
     },
@@ -498,6 +522,11 @@ describe('ActivityAdminUseCases (in-memory)', () => {
       enrollmentOpen: true,
       participantLimit: null,
       participantMode: 'shared',
+      seriesId: null,
+      seriesOccurrenceIndex: null,
+      visibility: 'public',
+      privateInviteTokenHash: null,
+      privateRoleIds: [],
       organizerDiscordUserId: 'u1',
       organizerV2UserId: null,
       coOrganizerDiscordUserId: null,

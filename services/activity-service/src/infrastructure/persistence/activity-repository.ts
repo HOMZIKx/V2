@@ -8,8 +8,10 @@ import type {
   ActivityRecord,
   ActivityReportRecord,
   ActivityRepositoryPort,
+  ActivitySeriesRecord,
   ActivityTx,
   ActivityTypeRecord,
+  AttendanceRecord,
   AuditEntryRecord,
   GuildActivitySettingsRecord,
   HubPanelRecord,
@@ -230,6 +232,16 @@ function mapActivity(row: Record<string, unknown>): ActivityRecord {
         ? null
         : Number(row.participant_limit),
     participantMode: asNullableString(row.participant_mode) === 'separate' ? 'separate' : 'shared',
+    seriesId: asNullableString(row.series_id),
+    seriesOccurrenceIndex:
+      row.series_occurrence_index === null || row.series_occurrence_index === undefined
+        ? null
+        : Number(row.series_occurrence_index),
+    visibility: asNullableString(row.visibility) === 'private' ? 'private' : 'public',
+    privateInviteTokenHash: asNullableString(row.private_invite_token_hash),
+    privateRoleIds: Array.isArray(row.private_role_ids)
+      ? (row.private_role_ids as unknown[]).map((v) => String(v))
+      : [],
     organizerDiscordUserId: asNullableString(row.organizer_discord_user_id),
     organizerV2UserId: asNullableString(row.organizer_v2_user_id),
     coOrganizerDiscordUserId: asNullableString(row.co_organizer_discord_user_id),
@@ -314,6 +326,50 @@ function mapReport(row: Record<string, unknown>): ActivityReportRecord {
     details: asNullableString(row.details),
     status: asRequiredString(row.status, 'status'),
     createdAt: asRequiredDate(row.created_at, 'created_at'),
+  };
+}
+
+function mapSeries(row: Record<string, unknown>): ActivitySeriesRecord {
+  const weekdaysRaw = row.weekdays;
+  const weekdays = Array.isArray(weekdaysRaw)
+    ? weekdaysRaw.map((v) => Number(v)).filter((n) => Number.isInteger(n))
+    : [];
+  const recurrence = asNullableString(row.recurrence_kind) ?? 'weekly';
+  return {
+    id: asRequiredString(row.id, 'id'),
+    organizationId: asRequiredString(row.organization_id, 'organization_id'),
+    homeGuildId: asRequiredString(row.home_guild_id, 'home_guild_id'),
+    creatorDiscordUserId: asNullableString(row.creator_discord_user_id),
+    creatorV2UserId: asNullableString(row.creator_v2_user_id),
+    recurrenceKind:
+      recurrence === 'daily' || recurrence === 'weekdays' || recurrence === 'weekly'
+        ? recurrence
+        : 'weekly',
+    weekdays,
+    timezone: asRequiredString(row.timezone, 'timezone'),
+    timeOfDay: asRequiredString(row.time_of_day, 'time_of_day'),
+    horizonEndAt: asRequiredDate(row.horizon_end_at, 'horizon_end_at'),
+    templatePayload: (row.template_payload ?? {}) as Record<string, unknown>,
+    status: (asNullableString(row.status) ?? 'active') as ActivitySeriesRecord['status'],
+    opaqueId: asRequiredString(row.opaque_id, 'opaque_id'),
+    version: Number(row.version ?? 1),
+    createdAt: asRequiredDate(row.created_at, 'created_at'),
+    updatedAt: asRequiredDate(row.updated_at, 'updated_at'),
+  };
+}
+
+function mapAttendance(row: Record<string, unknown>): AttendanceRecord {
+  return {
+    id: asRequiredString(row.id, 'id'),
+    activityId: asRequiredString(row.activity_id, 'activity_id'),
+    guildId: asRequiredString(row.guild_id, 'guild_id'),
+    subjectDiscordUserId: asRequiredString(row.subject_discord_user_id, 'subject_discord_user_id'),
+    markedByDiscordUserId: asRequiredString(
+      row.marked_by_discord_user_id,
+      'marked_by_discord_user_id',
+    ),
+    status: asRequiredString(row.status, 'status') as AttendanceRecord['status'],
+    markedAt: asRequiredDate(row.marked_at, 'marked_at'),
   };
 }
 
@@ -631,9 +687,11 @@ function createTx(client: PoolClient): ActivityTx {
            organizer_discord_user_id, organizer_v2_user_id,
            co_organizer_discord_user_id, co_organizer_v2_user_id, publication_channel_id,
            timezone, location_text, cancel_reason, cancelled_at, version, scheduled_finish_at,
-           opaque_id, schedule_kind, period_key, schedule_has_explicit_time
+           opaque_id, schedule_kind, period_key, schedule_has_explicit_time,
+           series_id, series_occurrence_index, visibility, private_invite_token_hash, private_role_ids
          ) VALUES (
-           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,
+           $28,$29,$30,$31,$32
          ) RETURNING *`,
         [
           input.id,
@@ -663,6 +721,11 @@ function createTx(client: PoolClient): ActivityTx {
           input.scheduleKind,
           input.periodKey,
           input.scheduleHasExplicitTime,
+          input.seriesId ?? null,
+          input.seriesOccurrenceIndex ?? null,
+          input.visibility ?? 'public',
+          input.privateInviteTokenHash ?? null,
+          input.privateRoleIds ?? [],
         ],
       );
       return mapActivity(result.rows[0] as Record<string, unknown>);
@@ -679,6 +742,8 @@ function createTx(client: PoolClient): ActivityTx {
            scheduled_finish_at = $17, organizer_discord_user_id = $18,
            organizer_v2_user_id = $19, type_id = $20,
            schedule_kind = $21, period_key = $22, schedule_has_explicit_time = $23,
+           series_id = $24, series_occurrence_index = $25, visibility = $26,
+           private_invite_token_hash = $27, private_role_ids = $28,
            updated_at = now()
          WHERE id = $1
          RETURNING *`,
@@ -706,6 +771,11 @@ function createTx(client: PoolClient): ActivityTx {
           activity.scheduleKind,
           activity.periodKey,
           activity.scheduleHasExplicitTime,
+          activity.seriesId,
+          activity.seriesOccurrenceIndex,
+          activity.visibility,
+          activity.privateInviteTokenHash,
+          [...activity.privateRoleIds],
         ],
       );
       const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -735,6 +805,134 @@ function createTx(client: PoolClient): ActivityTx {
         [guildId],
       );
       return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
+    },
+
+    async listActivitiesBySeries(seriesId) {
+      const result = await client.query(
+        `SELECT * FROM activities
+         WHERE series_id = $1 AND status <> 'deleted'
+         ORDER BY series_occurrence_index NULLS LAST, start_at`,
+        [seriesId],
+      );
+      return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
+    },
+
+    async insertSeries(input) {
+      const opaqueId = input.opaqueId ?? opaqueIdFromUuid(input.id);
+      const result = await client.query(
+        `INSERT INTO activity_series (
+           id, organization_id, home_guild_id, creator_discord_user_id, creator_v2_user_id,
+           recurrence_kind, weekdays, timezone, time_of_day, horizon_end_at,
+           template_payload, status, opaque_id, version
+         ) VALUES (
+           $1,$2,$3,$4,$5,$6,$7::smallint[],$8,$9,$10,$11::jsonb,$12,$13,$14
+         ) RETURNING *`,
+        [
+          input.id,
+          input.organizationId,
+          input.homeGuildId,
+          input.creatorDiscordUserId,
+          input.creatorV2UserId,
+          input.recurrenceKind,
+          input.weekdays,
+          input.timezone,
+          input.timeOfDay,
+          input.horizonEndAt.toISOString(),
+          JSON.stringify(input.templatePayload),
+          input.status,
+          opaqueId,
+          input.version ?? 1,
+        ],
+      );
+      return mapSeries(result.rows[0] as Record<string, unknown>);
+    },
+
+    async getSeries(id) {
+      const result = await client.query(`SELECT * FROM activity_series WHERE id = $1`, [id]);
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row === undefined ? null : mapSeries(row);
+    },
+
+    async updateSeries(series) {
+      const result = await client.query(
+        `UPDATE activity_series SET
+           recurrence_kind = $2, weekdays = $3::smallint[], timezone = $4, time_of_day = $5,
+           horizon_end_at = $6, template_payload = $7::jsonb, status = $8, version = $9,
+           updated_at = now()
+         WHERE id = $1
+         RETURNING *`,
+        [
+          series.id,
+          series.recurrenceKind,
+          series.weekdays,
+          series.timezone,
+          series.timeOfDay,
+          series.horizonEndAt.toISOString(),
+          JSON.stringify(series.templatePayload),
+          series.status,
+          series.version,
+        ],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Series not found');
+      }
+      return mapSeries(row);
+    },
+
+    async upsertAttendance(input) {
+      const markedAt = input.markedAt ?? new Date();
+      const result = await client.query(
+        `INSERT INTO activity_attendance_records (
+           id, activity_id, guild_id, subject_discord_user_id, marked_by_discord_user_id,
+           status, marked_at
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT (activity_id, subject_discord_user_id) DO UPDATE SET
+           status = EXCLUDED.status,
+           marked_by_discord_user_id = EXCLUDED.marked_by_discord_user_id,
+           marked_at = EXCLUDED.marked_at
+         RETURNING *`,
+        [
+          input.id,
+          input.activityId,
+          input.guildId,
+          input.subjectDiscordUserId,
+          input.markedByDiscordUserId,
+          input.status,
+          markedAt.toISOString(),
+        ],
+      );
+      return mapAttendance(result.rows[0] as Record<string, unknown>);
+    },
+
+    async listAttendance(activityId) {
+      const result = await client.query(
+        `SELECT * FROM activity_attendance_records WHERE activity_id = $1 ORDER BY marked_at`,
+        [activityId],
+      );
+      return result.rows.map((row) => mapAttendance(row as Record<string, unknown>));
+    },
+
+    async listAttendanceForSubject(input) {
+      const result = await client.query(
+        `SELECT * FROM activity_attendance_records
+         WHERE guild_id = $1 AND subject_discord_user_id = $2
+         ORDER BY marked_at DESC
+         LIMIT 500`,
+        [input.guildId, input.subjectDiscordUserId],
+      );
+      return result.rows.map((row) => mapAttendance(row as Record<string, unknown>));
+    },
+
+    async listAttendanceForGuild(guildId) {
+      const result = await client.query(
+        `SELECT * FROM activity_attendance_records
+         WHERE guild_id = $1
+         ORDER BY marked_at DESC
+         LIMIT 2000`,
+        [guildId],
+      );
+      return result.rows.map((row) => mapAttendance(row as Record<string, unknown>));
     },
 
     async listMyActivities(input) {

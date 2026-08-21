@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@v2/design-system';
 
-import { listMyActivities } from '../lib/api';
+import { getSelfStats, listMyActivities } from '../lib/api';
 import { formatEventCapacity, organizerDisplayName } from '../lib/capacity';
 import { formatActivityWhen } from '../lib/datetime';
 import { lifecycleLabel } from '../lib/labels';
@@ -42,6 +42,9 @@ export function MyActivitiesPage() {
     needs_attention: [],
     completed: [],
   });
+  const [stats, setStats] = useState<{ present: number; absent: number; total: number } | null>(
+    null,
+  );
   const requests = useRef(createRequestIdentity());
 
   const load = useCallback(async () => {
@@ -76,6 +79,20 @@ export function MyActivitiesPage() {
         next[key].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
       }
       setBuckets(next);
+      if (guildId !== null && guildId !== undefined && guildId.trim() !== '') {
+        try {
+          const selfStats = await getSelfStats(guildId, request.signal);
+          if (request.isCurrent()) {
+            setStats(selfStats);
+          }
+        } catch {
+          if (request.isCurrent()) {
+            setStats(null);
+          }
+        }
+      } else if (request.isCurrent()) {
+        setStats(null);
+      }
       const total = next.upcoming.length + next.needs_attention.length + next.completed.length;
       setState(total === 0 ? { kind: 'empty' } : { kind: 'ready' });
     } catch (err) {
@@ -113,6 +130,13 @@ export function MyActivitiesPage() {
         <h1>Moje aktywności</h1>
         <p>Nadchodzące wydarzenia, rzeczy wymagające reakcji i historia.</p>
       </header>
+
+      {stats !== null ? (
+        <p className="muted">
+          Frekwencja (oznaczona): obecny {stats.present} · nieobecny {stats.absent} · łącznie{' '}
+          {stats.total}
+        </p>
+      ) : null}
 
       {state.kind === 'loading' ? <LoadingState /> : null}
       {state.kind === 'unauthorized' ? <UnauthorizedState /> : null}

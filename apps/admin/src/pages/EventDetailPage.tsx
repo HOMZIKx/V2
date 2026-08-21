@@ -94,6 +94,15 @@ export function EventDetailPage() {
                   ? 'SEPARATE (pula per Discord)'
                   : 'SHARED (jedna pula)'}
               </p>
+              <p>Widoczność: {detail.visibility === 'private' ? 'prywatna' : 'publiczna'}</p>
+              {detail.seriesId !== undefined && detail.seriesId !== null ? (
+                <p className="muted">
+                  Seria: {detail.seriesId}
+                  {detail.seriesOccurrenceIndex != null
+                    ? ` (wystąpienie #${detail.seriesOccurrenceIndex + 1})`
+                    : ''}
+                </p>
+              ) : null}
               {detail.participantLimit !== undefined ? (
                 <p className="muted">Limit: {detail.participantLimit ?? 'bez limitu'}</p>
               ) : null}

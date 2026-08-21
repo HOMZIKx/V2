@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type { AttendanceMark } from '../../domain/attendance.js';
+import { assertAttendanceWindowOpen } from '../../domain/attendance.js';
 import { countOccupiedSlots, hasOpenSeat } from '../../domain/capacity.js';
 import { assertCreateLimit, draftExpiresAt, isDraftExpired } from '../../domain/create-limits.js';
 import { ActivityError } from '../../domain/errors.js';
@@ -18,6 +20,7 @@ import {
   resolveParticipationScopeGuildId,
 } from '../../domain/participant-mode.js';
 import { ACTIVITY_PERMISSIONS, EXTENDED_HORIZON_PERMISSIONS } from '../../domain/permissions.js';
+import { mintPrivateInviteToken, type ActivityVisibility } from '../../domain/privacy.js';
 import { normalizePublicationTargets } from '../../domain/publication-targets.js';
 import { isReconfirmExpired, resolveReconfirmDeadline } from '../../domain/reconfirmation.js';
 import {
@@ -46,6 +49,15 @@ import type {
   ParticipationStatusDefRecord,
   UpsertActivityProjectionInput,
 } from '../ports/activity.ports.js';
+import {
+  buildSeriesOccurrences,
+  canViewPrivateActivity,
+  insertSeriesWithOccurrences,
+  summarizeAttendance,
+  type SeriesCancelScope,
+  type SeriesEditScope,
+  type SeriesPublishInput,
+} from './activity-p46.helpers.js';
 
 export interface MutationContext {
   readonly actor: ActorSubject;
@@ -91,6 +103,12 @@ function requireDiscord(actor: ActorSubject): string {
     throw new ActivityError('UNAUTHENTICATED', 'Discord user id is required');
   }
   return actor.discordUserId;
+}
+
+function redactPrivateSecrets<T extends ActivityRecord>(
+  activity: T,
+): Omit<T, 'privateInviteTokenHash'> & { privateInviteTokenHash: null } {
+  return { ...activity, privateInviteTokenHash: null };
 }
 
 export class ActivityUseCases {
@@ -336,6 +354,11 @@ export class ActivityUseCases {
           guildId: target.guildId,
           channelId: target.channelId,
           participantMode: activity.participantMode,
+          visibility: activity.visibility,
+          ...(activity.seriesId !== null ? { seriesId: activity.seriesId } : {}),
+          ...(activity.seriesOccurrenceIndex !== null
+            ? { seriesOccurrenceIndex: activity.seriesOccurrenceIndex }
+            : {}),
           ...scheduleFields,
           ...(activity.endAt !== null ? { endAtIso: activity.endAt.toISOString() } : {}),
         },
@@ -561,6 +584,9 @@ export class ActivityUseCases {
         channelId: string;
         participantLimit?: number | null;
       }[];
+      /** P4.6: public (default) | private */
+      visibility?: ActivityVisibility;
+      privateRoleIds?: readonly string[];
     },
     ctx: MutationContext,
   ) {
@@ -575,6 +601,22 @@ export class ActivityUseCases {
         throw new ActivityError('GONE', 'Draft expired');
       }
       await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.CREATE, draft.guildId);
+
+      const visibility: ActivityVisibility = input.visibility === 'private' ? 'private' : 'public';
+      let privateInviteTokenHash: string | null = null;
+      let mintedInviteToken: string | undefined;
+      const privateRoleIds = input.privateRoleIds ?? [];
+      if (visibility === 'private') {
+        await this.requirePermission(
+          ctx.actor,
+          ACTIVITY_PERMISSIONS.CREATE_PRIVATE,
+          draft.guildId,
+          'sensitive',
+        );
+        const minted = mintPrivateInviteToken();
+        privateInviteTokenHash = minted.tokenHash;
+        mintedInviteToken = minted.token;
+      }
 
       const participantMode = input.participantMode === 'separate' ? 'separate' : 'shared';
       const publicationTargets = normalizePublicationTargets({
@@ -641,6 +683,11 @@ export class ActivityUseCases {
         enrollmentOpen: true,
         participantLimit: input.participantLimit ?? null,
         participantMode,
+        seriesId: null,
+        seriesOccurrenceIndex: null,
+        visibility,
+        privateInviteTokenHash,
+        privateRoleIds,
         organizerDiscordUserId: discordUserId,
         organizerV2UserId: ctx.actor.v2UserId ?? null,
         coOrganizerDiscordUserId: null,
@@ -693,6 +740,7 @@ export class ActivityUseCases {
           opaqueId: activity.opaqueId,
           organizationId: activity.organizationId,
           participantMode: activity.participantMode,
+          visibility: activity.visibility,
         },
         occurredAt: now,
       });
@@ -705,29 +753,181 @@ export class ActivityUseCases {
         action: 'activity.published',
         ...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
       });
-      return activity;
+      return mintedInviteToken === undefined
+        ? activity
+        : { ...activity, privateInviteToken: mintedInviteToken };
     });
   }
 
-  public async getActivity(id: string, actor: ActorSubject) {
+  public async publishSeriesDraft(
+    draftId: string,
+    input: SeriesPublishInput,
+    ctx: MutationContext,
+  ) {
+    const discordUserId = requireDiscord(ctx.actor);
+    const now = this.deps.clock.now();
+    return this.mutate(ctx, 'series-publish', `draft:${draftId}`, async (tx) => {
+      const draft = await tx.getDraft(draftId);
+      if (draft === null) {
+        throw new ActivityError('NOT_FOUND', 'Draft not found');
+      }
+      if (isDraftExpired(draft.expiresAt, now)) {
+        throw new ActivityError('GONE', 'Draft expired');
+      }
+      await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.CREATE, draft.guildId);
+      await this.requirePermission(
+        ctx.actor,
+        ACTIVITY_PERMISSIONS.CREATE_RECURRING,
+        draft.guildId,
+        'sensitive',
+      );
+
+      const visibility: ActivityVisibility = input.visibility === 'private' ? 'private' : 'public';
+      let privateInviteTokenHash: string | null = null;
+      let mintedInviteToken: string | undefined;
+      const privateRoleIds = input.privateRoleIds ?? [];
+      if (visibility === 'private') {
+        await this.requirePermission(
+          ctx.actor,
+          ACTIVITY_PERMISSIONS.CREATE_PRIVATE,
+          draft.guildId,
+          'sensitive',
+        );
+        const minted = mintPrivateInviteToken();
+        privateInviteTokenHash = minted.tokenHash;
+        mintedInviteToken = minted.token;
+      }
+
+      let starts: Date[];
+      let endAts: (Date | null)[];
+      try {
+        const expanded = buildSeriesOccurrences({
+          recurrenceKind: input.recurrenceKind,
+          firstStartAt: input.firstStartAt,
+          horizonEndAt: input.horizonEndAt,
+          ...(input.weekdays !== undefined ? { weekdays: input.weekdays } : {}),
+          ...(input.endAtOffsetMs !== undefined ? { endAtOffsetMs: input.endAtOffsetMs } : {}),
+          now,
+        });
+        starts = expanded.starts;
+        endAts = expanded.endAts;
+      } catch (error) {
+        const code =
+          error instanceof Error && 'code' in error
+            ? String((error as { code: unknown }).code)
+            : 'VALIDATION_FAILED';
+        throw new ActivityError(
+          code === 'HORIZON_EXCEEDED' ? 'HORIZON_EXCEEDED' : 'VALIDATION_FAILED',
+          error instanceof Error ? error.message : 'Invalid series',
+        );
+      }
+
+      await tx.lockCreatorAdvisory(draft.guildId, discordUserId);
+      const defaults = await tx.ensureGuildDefaults({
+        guildId: draft.guildId,
+        orgId: input.organizationId,
+      });
+      const activeCount = await tx.countActiveOwn(draft.guildId, discordUserId);
+      assertCreateLimit({
+        activeOwnCount: activeCount + starts.length - 1,
+        maxActivePerCreator: defaults.settings.maxActivePerCreator,
+      });
+
+      const { series, activities } = await insertSeriesWithOccurrences(tx, {
+        seriesId: randomUUID(),
+        draftGuildId: draft.guildId,
+        organizationId: input.organizationId,
+        discordUserId,
+        v2UserId: ctx.actor.v2UserId ?? null,
+        publish: input,
+        starts,
+        endAts,
+        privateInviteTokenHash,
+        visibility,
+        privateRoleIds,
+        organizerDefaultStatusId: defaults.settings.organizerDefaultStatusId,
+      });
+
+      for (const activity of activities) {
+        await tx.insertOutbox({
+          eventType: OUTBOX_EVENT_TYPES.CREATED,
+          aggregateType: 'activity',
+          aggregateId: activity.id,
+          aggregateVersion: activity.version,
+          payload: {
+            activityId: activity.id,
+            guildId: activity.guildId,
+            opaqueId: activity.opaqueId,
+            organizationId: activity.organizationId,
+            seriesId: series.id,
+            visibility: activity.visibility,
+          },
+          occurredAt: now,
+        });
+        await this.requestProjection(tx, activity, now);
+      }
+
+      await tx.deleteDraft(draftId);
+      await tx.insertAudit({
+        guildId: draft.guildId,
+        ...(activities[0] !== undefined ? { activityId: activities[0].id } : {}),
+        actorDiscordUserId: discordUserId,
+        action: 'activity.series.published',
+        ...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+      });
+
+      return {
+        series,
+        activities,
+        ...(mintedInviteToken !== undefined ? { privateInviteToken: mintedInviteToken } : {}),
+      };
+    });
+  }
+
+  public async getActivity(
+    id: string,
+    actor: ActorSubject,
+    access?: { memberRoleIds?: readonly string[]; inviteToken?: string },
+  ) {
     const activity = await this.deps.repository.withTransaction(async (tx) => {
       const found = await tx.getActivity(id);
       if (found === null || found.status === 'deleted') {
         throw new ActivityError('NOT_FOUND', 'Activity not found');
       }
       await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, found.guildId);
+      if (
+        !canViewPrivateActivity({
+          activity: found,
+          actor,
+          ...(access?.memberRoleIds !== undefined ? { memberRoleIds: access.memberRoleIds } : {}),
+          ...(access?.inviteToken !== undefined ? { inviteToken: access.inviteToken } : {}),
+        })
+      ) {
+        throw new ActivityError('FORBIDDEN', 'Private activity access denied');
+      }
       return found;
     });
     const [presented] = await this.presentActivities([activity], actor);
-    return presented ?? activity;
+    return presented ?? redactPrivateSecrets(activity);
   }
 
-  public async listActivities(guildId: string, actor: ActorSubject) {
+  public async listActivities(
+    guildId: string,
+    actor: ActorSubject,
+    access?: { memberRoleIds?: readonly string[] },
+  ) {
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
     const activities = await this.deps.repository.withTransaction((tx) =>
       tx.listActivities(guildId),
     );
-    return this.presentActivities(activities, actor);
+    const visible = activities.filter((activity) =>
+      canViewPrivateActivity({
+        activity,
+        actor,
+        ...(access?.memberRoleIds !== undefined ? { memberRoleIds: access.memberRoleIds } : {}),
+      }),
+    );
+    return this.presentActivities(visible, actor);
   }
 
   public async listMyActivities(actor: ActorSubject, guildId?: string) {
@@ -755,30 +955,49 @@ export class ActivityUseCases {
       publicationChannelId: string | null;
     }>,
     ctx: MutationContext,
+    seriesScope: SeriesEditScope = 'this',
   ) {
     return this.mutate(ctx, 'activity-edit', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requireManageSelfOrGuild(ctx.actor, activity);
       const now = this.deps.clock.now();
-      const updated = await tx.updateActivity({
-        ...activity,
-        name: patch.name ?? activity.name,
-        description: patch.description ?? activity.description,
-        participantLimit:
-          patch.participantLimit === undefined ? activity.participantLimit : patch.participantLimit,
-        locationText: patch.locationText === undefined ? activity.locationText : patch.locationText,
-        publicationChannelId:
-          patch.publicationChannelId === undefined
-            ? activity.publicationChannelId
-            : patch.publicationChannelId,
-        version: activity.version + 1,
-      });
-      await this.requestProjection(tx, updated, now);
-      return updated;
+      const targets =
+        seriesScope === 'this' || activity.seriesId === null
+          ? [activity]
+          : (await tx.listActivitiesBySeries(activity.seriesId)).filter(
+              (row) =>
+                row.status !== 'cancelled' &&
+                row.status !== 'deleted' &&
+                (row.seriesOccurrenceIndex ?? 0) >= (activity.seriesOccurrenceIndex ?? 0),
+            );
+      let last = activity;
+      for (const target of targets) {
+        const locked = target.id === activity.id ? activity : await tx.lockActivity(target.id);
+        last = await tx.updateActivity({
+          ...locked,
+          name: patch.name ?? locked.name,
+          description: patch.description ?? locked.description,
+          participantLimit:
+            patch.participantLimit === undefined ? locked.participantLimit : patch.participantLimit,
+          locationText: patch.locationText === undefined ? locked.locationText : patch.locationText,
+          publicationChannelId:
+            patch.publicationChannelId === undefined
+              ? locked.publicationChannelId
+              : patch.publicationChannelId,
+          version: locked.version + 1,
+        });
+        await this.requestProjection(tx, last, now);
+      }
+      return last;
     });
   }
 
-  public async cancelActivity(id: string, reason: string, ctx: MutationContext) {
+  public async cancelActivity(
+    id: string,
+    reason: string,
+    ctx: MutationContext,
+    seriesScope: SeriesCancelScope = 'this',
+  ) {
     if (reason.trim().length === 0) {
       throw new ActivityError('VALIDATION_FAILED', 'Cancel reason is required');
     }
@@ -786,46 +1005,196 @@ export class ActivityUseCases {
     return this.mutate(ctx, 'activity-cancel', `activity:${id}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       await this.requireManageSelfOrGuild(ctx.actor, activity);
-      assertTransition(activity.status, 'cancelled');
-      const updated = await tx.updateActivity({
-        ...activity,
-        status: 'cancelled',
-        enrollmentOpen: false,
-        cancelReason: reason,
-        cancelledAt: now,
-        version: activity.version + 1,
-      });
-      await tx.insertOutbox({
-        eventType: OUTBOX_EVENT_TYPES.CANCELLED,
-        aggregateType: 'activity',
-        aggregateId: id,
-        aggregateVersion: updated.version,
-        payload: { activityId: id, reason, opaqueId: updated.opaqueId },
-        occurredAt: now,
-      });
-      const participants = await tx.listParticipations(id);
-      for (const participant of participants) {
-        if (
-          participant.discordUserId === null ||
-          participant.resignedAt !== null ||
-          participant.removedAt !== null
-        ) {
+
+      const targets = await this.resolveCancelTargets(tx, activity, seriesScope);
+      let last = activity;
+      for (const target of targets) {
+        const locked = target.id === activity.id ? activity : await tx.lockActivity(target.id);
+        if (locked.status === 'cancelled' || locked.status === 'deleted') {
           continue;
         }
-        await tx.enqueueInbox({
-          guildId: activity.guildId,
-          recipientDiscordUserId: participant.discordUserId,
-          kind: 'activity.cancelled',
-          payload: {
-            activityId: id,
-            opaqueId: updated.opaqueId,
-            reason,
-          },
-          dedupeKey: `cancel:${id}:${participant.discordUserId}:${updated.version}`,
+        assertTransition(locked.status, 'cancelled');
+        const updated = await tx.updateActivity({
+          ...locked,
+          status: 'cancelled',
+          enrollmentOpen: false,
+          cancelReason: reason,
+          cancelledAt: now,
+          version: locked.version + 1,
         });
+        await tx.insertOutbox({
+          eventType: OUTBOX_EVENT_TYPES.CANCELLED,
+          aggregateType: 'activity',
+          aggregateId: updated.id,
+          aggregateVersion: updated.version,
+          payload: {
+            activityId: updated.id,
+            reason,
+            opaqueId: updated.opaqueId,
+            seriesScope,
+          },
+          occurredAt: now,
+        });
+        const participants = await tx.listParticipations(updated.id);
+        for (const participant of participants) {
+          if (
+            participant.discordUserId === null ||
+            participant.resignedAt !== null ||
+            participant.removedAt !== null
+          ) {
+            continue;
+          }
+          await tx.enqueueInbox({
+            guildId: locked.guildId,
+            recipientDiscordUserId: participant.discordUserId,
+            kind: 'activity.cancelled',
+            payload: {
+              activityId: updated.id,
+              opaqueId: updated.opaqueId,
+              reason,
+            },
+            dedupeKey: `cancel:${updated.id}:${participant.discordUserId}:${updated.version}`,
+          });
+        }
+        await this.requestProjection(tx, updated, now);
+        last = updated;
       }
-      await this.requestProjection(tx, updated, now);
-      return updated;
+
+      if (seriesScope === 'entire_series' && activity.seriesId !== null) {
+        const series = await tx.getSeries(activity.seriesId);
+        if (series !== null && series.status === 'active') {
+          await tx.updateSeries({
+            ...series,
+            status: 'cancelled',
+            version: series.version + 1,
+          });
+        }
+      }
+      return last;
+    });
+  }
+
+  private async resolveCancelTargets(
+    tx: ActivityTx,
+    activity: ActivityRecord,
+    seriesScope: SeriesCancelScope,
+  ): Promise<ActivityRecord[]> {
+    if (seriesScope === 'this' || activity.seriesId === null) {
+      return [activity];
+    }
+    const all = await tx.listActivitiesBySeries(activity.seriesId);
+    if (seriesScope === 'entire_series') {
+      return all.filter((row) => row.status !== 'deleted');
+    }
+    return all.filter(
+      (row) =>
+        row.status !== 'deleted' &&
+        (row.seriesOccurrenceIndex ?? 0) >= (activity.seriesOccurrenceIndex ?? 0),
+    );
+  }
+
+  public async markAttendance(
+    activityId: string,
+    input: { subjectDiscordUserId: string; status: AttendanceMark },
+    ctx: MutationContext,
+  ) {
+    const actorDiscord = requireDiscord(ctx.actor);
+    const now = this.deps.clock.now();
+    return this.mutate(ctx, 'attendance-mark', `activity:${activityId}`, async (tx) => {
+      const activity = await tx.lockActivity(activityId);
+      await this.requirePermission(
+        ctx.actor,
+        ACTIVITY_PERMISSIONS.ATTENDANCE_RECORD,
+        activity.guildId,
+      );
+      const isOrganizer =
+        activity.organizerDiscordUserId === actorDiscord ||
+        activity.coOrganizerDiscordUserId === actorDiscord;
+      if (!isOrganizer) {
+        await this.requirePermission(
+          ctx.actor,
+          ACTIVITY_PERMISSIONS.MANAGE_GUILD,
+          activity.guildId,
+          'sensitive',
+        );
+      }
+      try {
+        assertAttendanceWindowOpen({
+          activityFinishedAt: activity.scheduledFinishAt,
+          now,
+        });
+      } catch (error) {
+        const code =
+          error instanceof Error && 'code' in error
+            ? String((error as { code: unknown }).code)
+            : 'PRECONDITION_FAILED';
+        throw new ActivityError(
+          code === 'GONE' ? 'GONE' : 'PRECONDITION_FAILED',
+          error instanceof Error ? error.message : 'Attendance window closed',
+        );
+      }
+      const record = await tx.upsertAttendance({
+        id: randomUUID(),
+        activityId: activity.id,
+        guildId: activity.guildId,
+        subjectDiscordUserId: input.subjectDiscordUserId,
+        markedByDiscordUserId: actorDiscord,
+        status: input.status,
+        markedAt: now,
+      });
+      await tx.insertAudit({
+        guildId: activity.guildId,
+        activityId: activity.id,
+        actorDiscordUserId: actorDiscord,
+        action: 'activity.attendance.marked',
+        ...(ctx.correlationId !== undefined ? { correlationId: ctx.correlationId } : {}),
+      });
+      return record;
+    });
+  }
+
+  public async listAttendance(activityId: string, actor: ActorSubject) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const activity = await tx.getActivity(activityId);
+      if (activity === null || activity.status === 'deleted') {
+        throw new ActivityError('NOT_FOUND', 'Activity not found');
+      }
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.ATTENDANCE_RECORD, activity.guildId);
+      return tx.listAttendance(activityId);
+    });
+  }
+
+  public async getSelfStats(guildId: string, actor: ActorSubject) {
+    const discordUserId = requireDiscord(actor);
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.STATS_READ_SELF, guildId);
+    const records = await this.deps.repository.withTransaction((tx) =>
+      tx.listAttendanceForSubject({ guildId, subjectDiscordUserId: discordUserId }),
+    );
+    return { guildId, subjectDiscordUserId: discordUserId, ...summarizeAttendance(records) };
+  }
+
+  public async getGuildStats(guildId: string, actor: ActorSubject) {
+    await this.requirePermission(
+      actor,
+      ACTIVITY_PERMISSIONS.STATS_READ_GUILD,
+      guildId,
+      'sensitive',
+    );
+    const records = await this.deps.repository.withTransaction((tx) =>
+      tx.listAttendanceForGuild(guildId),
+    );
+    return { guildId, ...summarizeAttendance(records) };
+  }
+
+  public async getSeries(seriesId: string, actor: ActorSubject) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const series = await tx.getSeries(seriesId);
+      if (series === null) {
+        throw new ActivityError('NOT_FOUND', 'Series not found');
+      }
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, series.homeGuildId);
+      const occurrences = await tx.listActivitiesBySeries(seriesId);
+      return { series, occurrences };
     });
   }
 
@@ -922,6 +1291,14 @@ export class ActivityUseCases {
         throw new ActivityError('FORBIDDEN', 'Guild is not a publication target for this activity');
       }
       await this.requirePermission(ctx.actor, ACTIVITY_PERMISSIONS.JOIN, requestGuildId);
+      if (
+        !canViewPrivateActivity({
+          activity,
+          actor: ctx.actor,
+        })
+      ) {
+        throw new ActivityError('FORBIDDEN', 'Private activity access denied');
+      }
       if (!activity.enrollmentOpen) {
         throw new ActivityError('PRECONDITION_FAILED', 'Enrollment is closed');
       }
@@ -1734,14 +2111,28 @@ export class ActivityUseCases {
     return this.deps.repository.withTransaction((tx) => tx.listReports(guildId));
   }
 
-  public async getActivityByOpaqueId(opaqueId: string, actor: ActorSubject) {
+  public async getActivityByOpaqueId(
+    opaqueId: string,
+    actor: ActorSubject,
+    access?: { memberRoleIds?: readonly string[]; inviteToken?: string },
+  ) {
     return this.deps.repository.withTransaction(async (tx) => {
       const activity = await tx.getActivityByOpaqueId(opaqueId);
       if (activity === null || activity.status === 'deleted') {
         throw new ActivityError('NOT_FOUND', 'Activity not found');
       }
       await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, activity.guildId);
-      return activity;
+      if (
+        !canViewPrivateActivity({
+          activity,
+          actor,
+          ...(access?.memberRoleIds !== undefined ? { memberRoleIds: access.memberRoleIds } : {}),
+          ...(access?.inviteToken !== undefined ? { inviteToken: access.inviteToken } : {}),
+        })
+      ) {
+        throw new ActivityError('FORBIDDEN', 'Private activity access denied');
+      }
+      return redactPrivateSecrets(activity);
     });
   }
 
