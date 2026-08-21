@@ -7,7 +7,7 @@
 | **CURRENT_STAGE**                            | 3 — V2 Hub Core                                            |
 | **CURRENT_TASK**                             | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                         |
 | **FINAL_STATUS**                             | `V2_HUB_CORE` — scope locked + implemented; validate PASS  |
-| **CURRENT_HEAD**                             | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                  |
+| **CURRENT_HEAD**                             | `e49c3d4ff7b2cb2bc383fd59107267ec0bec69bd`                  |
 | **PR**                                       | #19                                                        |
 | **HUB-CORE-001**                             | **OWNER_ACCEPTED**                                         |
 | **V2_HUB_CORE_CHECKPOINT_SHA**               | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                  |

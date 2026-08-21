@@ -14,7 +14,7 @@ Not APPROVED. Not merged.
 | CURRENT_STAGE           | 3 — V2 Hub Core (implemented; checkpoint on tip)                       |
 | CURRENT_TASK            | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                                     |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                             |
+| CURRENT_HEAD / PR_HEAD  | `e49c3d4ff7b2cb2bc383fd59107267ec0bec69bd`                             |
 | PR                      | #19                                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
 | CURRENT_CI              | pending on Hub Core tip push                                           |
