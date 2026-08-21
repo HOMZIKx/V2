@@ -2,23 +2,23 @@
 
 ## Status
 
-`CI_SECURITY_CLOSURE` ? formatting/lint CI closure + repository visibility check.
+`CI_SECURITY_CLOSURE` — formatting/lint CI closure + repository visibility check.
 Hub Core discovery still gated (`HUB-CORE-001`).
 
 Not APPROVED. Not merged.
 
 ## Current execution
 
-| Field                   | Value                                                                |
-| ----------------------- | -------------------------------------------------------------------- |
-| CURRENT_STAGE           | 3 ? V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                      |
-| CURRENT_TASK            | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                              |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                        |
-| CURRENT_HEAD / PR_HEAD  | $sha                            |
-| PR                      | #19                                                                  |
-| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                           |
-| CURRENT_CI              | Quality Gates was FAIL on `8280cc2` (prettier); fix in progress      |
-| CURRENT_ZEABUR_REVISION | discord tip ~`90fc384?` ready; activity/admin tip may lag GIT_COMMIT |
+| Field                   | Value                                                        |
+| ----------------------- | ------------------------------------------------------------ |
+| CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)              |
+| CURRENT_TASK            | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                      |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                |
+| CURRENT_HEAD / PR_HEAD  | `05ce72e59246e507212d3cd1afe38b4d5dcac404`                   |
+| PR                      | #19                                                          |
+| BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                   |
+| CURRENT_CI              | waiting green on tip after prettier/eslint closure           |
+| CURRENT_ZEABUR_REVISION | discord tip ~`90fc384…` ready; tip SHA may lag until rebuild |
 
 ## Checkpoint ledger (immutable)
 
@@ -31,22 +31,22 @@ Not APPROVED. Not merged.
 | P4_6_FINAL_CHECKPOINT_SHA                 | `6d80ea7716b439ec6827141707a6bf7ec5974147` | READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT         |
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
-| CI_SECURITY_CLOSURE_SHA                   | f4577fb0e5860c34e269fa3183eef17d4d6106a7                           | format+lint CI closure                     |
+| CI_SECURITY_CLOSURE_SHA                   | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | format+lint CI closure                     |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | ?                                          |
-| ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | ?                                          |
-| RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | ?                                          |
-| MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | ?                                          |
-| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | ?                                          |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | —                                          |
+| ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
+| RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | —                                          |
+| MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | —                                          |
+| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | —                                          |
 
 ## Repository visibility (Issue #25)
 
 | Field                                    | Value                                                                                                 |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | REPOSITORY_VISIBILITY                    | **PUBLIC** (authoritative GitHub API `private=false`)                                                 |
-| SEVERITY                                 | **HIGH** ? source/IP exposure vs Issue #25                                                            |
-| OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE | Yes ? agent has no `GH_TOKEN` / admin auth to PATCH visibility                                        |
-| Owner action                             | GitHub ? `HOMZIKx/V2` ? Settings ? General ? Danger Zone ? **Change repository visibility** ? Private |
+| SEVERITY                                 | **HIGH** — source/IP exposure vs Issue #25                                                            |
+| OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE | Yes — agent has no `GH_TOKEN` / admin auth to PATCH visibility                                        |
+| Owner action                             | GitHub → `HOMZIKx/V2` → Settings → General → Danger Zone → **Change repository visibility** → Private |
 
 ## Deep polish / auto Discord sync
 
@@ -67,5 +67,5 @@ Not APPROVED. Not merged.
 
 ## Last updated
 
-2026-08-21 ? CI security closure: prettier+eslint fixes; repo visibility PUBLIC confirmed (Owner must make private).
-
+2026-08-21 — CI security closure: prettier+eslint fixes pushed (`f4577fb` / tip `05ce72e`);
+repo visibility PUBLIC confirmed (Owner must make private).
