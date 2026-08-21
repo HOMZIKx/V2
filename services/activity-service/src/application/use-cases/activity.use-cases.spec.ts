@@ -48,10 +48,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
 } {
   const activities = new Map<string, ActivityRecord>();
   const seriesMap = new Map<string, import('../ports/activity.ports.js').ActivitySeriesRecord>();
-  const attendanceMap = new Map<
-    string,
-    import('../ports/activity.ports.js').AttendanceRecord
-  >();
+  const attendanceMap = new Map<string, import('../ports/activity.ports.js').AttendanceRecord>();
   const drafts = new Map<
     string,
     {
@@ -316,9 +313,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async listActivitiesBySeries(seriesId) {
       return [...activities.values()]
         .filter((a) => a.seriesId === seriesId && a.status !== 'deleted')
-        .sort(
-          (a, b) => (a.seriesOccurrenceIndex ?? 0) - (b.seriesOccurrenceIndex ?? 0),
-        );
+        .sort((a, b) => (a.seriesOccurrenceIndex ?? 0) - (b.seriesOccurrenceIndex ?? 0));
     },
     async insertSeries(input) {
       const now = new Date();
@@ -354,8 +349,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     },
     async listAttendanceForSubject(input) {
       return [...attendanceMap.values()].filter(
-        (r) =>
-          r.guildId === input.guildId && r.subjectDiscordUserId === input.subjectDiscordUserId,
+        (r) => r.guildId === input.guildId && r.subjectDiscordUserId === input.subjectDiscordUserId,
       );
     },
     async listAttendanceForGuild(guildId) {
@@ -1275,9 +1269,13 @@ describe('ActivityUseCases (in-memory)', () => {
       useCases.getActivity(activityId, { discordUserId: 'outsider-1' }),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(
-      useCases.getActivity(activityId, { discordUserId: 'outsider-1' }, {
-        memberRoleIds: ['role-vip'],
-      }),
+      useCases.getActivity(
+        activityId,
+        { discordUserId: 'outsider-1' },
+        {
+          memberRoleIds: ['role-vip'],
+        },
+      ),
     ).resolves.toMatchObject({ id: activityId });
   });
 
