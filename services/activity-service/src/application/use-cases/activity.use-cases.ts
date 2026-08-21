@@ -59,6 +59,7 @@ import {
   type SeriesEditScope,
   type SeriesPublishInput,
 } from './activity-p46.helpers.js';
+import { enqueueUserNotification } from './notification.use-cases.js';
 
 export interface MutationContext {
   readonly actor: ActorSubject;
@@ -1045,17 +1046,22 @@ export class ActivityUseCases {
           ) {
             continue;
           }
-          await tx.enqueueInbox({
-            guildId: locked.guildId,
-            recipientDiscordUserId: participant.discordUserId,
-            kind: 'activity.cancelled',
-            payload: {
+          await enqueueUserNotification(
+            tx,
+            {
+              guildId: locked.guildId,
+              recipientDiscordUserId: participant.discordUserId,
+              notificationClass: 'TRANSACTIONAL',
+              kind: 'activity.cancelled',
+              title: 'Aktywność anulowana',
+              body: reason.trim().length > 0 ? reason : 'Organizator anulował aktywność.',
+              dedupeKey: `cancel:${updated.id}:${participant.discordUserId}:${updated.version}`,
               activityId: updated.id,
-              opaqueId: updated.opaqueId,
-              reason,
+              deepLink: `v2://activities/${updated.id}`,
+              fingerprint: `cancel|${updated.id}|${updated.version}|${reason}`,
             },
-            dedupeKey: `cancel:${updated.id}:${participant.discordUserId}:${updated.version}`,
-          });
+            now,
+          );
         }
         await this.requestProjection(tx, updated, now);
         last = updated;
@@ -2071,6 +2077,35 @@ export class ActivityUseCases {
   public async markInboxRead(id: string, actor: ActorSubject) {
     const discordUserId = requireDiscord(actor);
     return this.deps.repository.withTransaction((tx) => tx.markInboxRead(id, discordUserId));
+  }
+
+  public async getNotificationPreferences(actor: ActorSubject, guildId: string) {
+    const discordUserId = requireDiscord(actor);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { getOrCreateNotificationPreference } = await import('./notification.use-cases.js');
+      return getOrCreateNotificationPreference(tx, guildId, discordUserId);
+    });
+  }
+
+  public async updateNotificationPreferences(
+    actor: ActorSubject,
+    guildId: string,
+    input: {
+      dmEnabled?: boolean;
+      mutedInterestKeys?: readonly string[];
+      mutedActivityTypeKeys?: readonly string[];
+      mutedActivityIds?: readonly string[];
+    },
+  ) {
+    const discordUserId = requireDiscord(actor);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { updateNotificationPreference } = await import('./notification.use-cases.js');
+      return updateNotificationPreference(tx, {
+        guildId,
+        recipientDiscordUserId: discordUserId,
+        ...input,
+      });
+    });
   }
 
   public async enqueueInbox(

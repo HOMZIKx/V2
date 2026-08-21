@@ -1,0 +1,13 @@
+{
+  "name": "notification-core",
+  "projectType": "library",
+  "root": "packages/notification-core",
+  "sourceRoot": "packages/notification-core/src",
+  "tags": ["type:util", "scope:shared"],
+  "targets": {
+    "lint": { "command": "eslint packages/notification-core/src" },
+    "typecheck": { "command": "tsc -p packages/notification-core/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/notification-core/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/notification-core/tsconfig.json --noEmit" }
+  }
+}

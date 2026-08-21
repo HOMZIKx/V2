@@ -925,6 +925,49 @@ export class ActivityController {
     return this.useCases.markInboxRead(id, actorFromRequest(request));
   }
 
+  @Get('notifications/preferences')
+  @RequireOperation('activity_read')
+  public async getNotificationPreferences(
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.getNotificationPreferences(actorFromRequest(request), guildId.trim());
+  }
+
+  @Put('notifications/preferences')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async updateNotificationPreferences(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        dmEnabled: z.boolean().optional(),
+        mutedInterestKeys: z.array(z.string().min(1)).optional(),
+        mutedActivityTypeKeys: z.array(z.string().min(1)).optional(),
+        mutedActivityIds: z.array(z.string().uuid()).optional(),
+      }),
+      body,
+    );
+    return this.useCases.updateNotificationPreferences(actorFromRequest(request), parsed.guildId, {
+      ...(parsed.dmEnabled !== undefined ? { dmEnabled: parsed.dmEnabled } : {}),
+      ...(parsed.mutedInterestKeys !== undefined
+        ? { mutedInterestKeys: parsed.mutedInterestKeys }
+        : {}),
+      ...(parsed.mutedActivityTypeKeys !== undefined
+        ? { mutedActivityTypeKeys: parsed.mutedActivityTypeKeys }
+        : {}),
+      ...(parsed.mutedActivityIds !== undefined
+        ? { mutedActivityIds: parsed.mutedActivityIds }
+        : {}),
+    });
+  }
+
   @Post('activities/:id/reports')
   @HttpCode(200)
   @RequireOperation('activity_mutate')

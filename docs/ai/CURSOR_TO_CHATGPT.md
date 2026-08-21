@@ -2,22 +2,22 @@
 
 ## Continuous handoff snapshot
 
-| Field                                        | Value                                                      |
-| -------------------------------------------- | ---------------------------------------------------------- |
-| **CURRENT_STAGE**                            | 3 — V2 Hub Core                                            |
-| **CURRENT_TASK**                             | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                         |
-| **FINAL_STATUS**                             | `V2_HUB_CORE` — scope locked + implemented; validate PASS  |
-| **CURRENT_HEAD**                             | `e49c3d4ff7b2cb2bc383fd59107267ec0bec69bd`                  |
-| **PR**                                       | #19                                                        |
-| **HUB-CORE-001**                             | **OWNER_ACCEPTED**                                         |
-| **V2_HUB_CORE_CHECKPOINT_SHA**               | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                  |
-| **P4_6_FINAL_CHECKPOINT_SHA**                | `6d80ea7716b439ec6827141707a6bf7ec5974147`                 |
-| **DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA** | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146`                 |
-| **CI_SECURITY_CLOSURE_SHA**                  | `f4577fb0e5860c34e269fa3183eef17d4d6106a7`                 |
-| **CI_STATUS**                                | pending push of Hub Core tip                               |
-| **REPOSITORY_VISIBILITY**                    | **PUBLIC** — OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE      |
-| **OPEN_CRITICAL**                            | 0                                                          |
-| **OPEN_HIGH**                                | 1 — public repository (Issue #25)                          |
+| Field                                        | Value                                                     |
+| -------------------------------------------- | --------------------------------------------------------- |
+| **CURRENT_STAGE**                            | 3 — V2 Hub Core                                           |
+| **CURRENT_TASK**                             | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                        |
+| **FINAL_STATUS**                             | `V2_HUB_CORE` — scope locked + implemented; validate PASS |
+| **CURRENT_HEAD**                             | `e49c3d4ff7b2cb2bc383fd59107267ec0bec69bd`                |
+| **PR**                                       | #19                                                       |
+| **HUB-CORE-001**                             | **OWNER_ACCEPTED**                                        |
+| **V2_HUB_CORE_CHECKPOINT_SHA**               | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5`                |
+| **P4_6_FINAL_CHECKPOINT_SHA**                | `6d80ea7716b439ec6827141707a6bf7ec5974147`                |
+| **DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA** | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146`                |
+| **CI_SECURITY_CLOSURE_SHA**                  | `f4577fb0e5860c34e269fa3183eef17d4d6106a7`                |
+| **CI_STATUS**                                | pending push of Hub Core tip                              |
+| **REPOSITORY_VISIBILITY**                    | **PUBLIC** — OWNER_ACTION_REQUIRED_REPOSITORY_PRIVATE     |
+| **OPEN_CRITICAL**                            | 0                                                         |
+| **OPEN_HIGH**                                | 1 — public repository (Issue #25)                         |
 
 ## What landed (Hub Core)
 

@@ -310,6 +310,13 @@ function mapInbox(row: Record<string, unknown>): InboxItemRecord {
     payload: (row.payload ?? {}) as Record<string, unknown>,
     readAt: asNullableDate(row.read_at),
     createdAt: asRequiredDate(row.created_at, 'created_at'),
+    notificationClass: asNullableString(row.notification_class) ?? 'TRANSACTIONAL',
+    title: asNullableString(row.title),
+    body: asNullableString(row.body),
+    deepLink: asNullableString(row.deep_link),
+    fingerprint: asNullableString(row.fingerprint),
+    interestKey: asNullableString(row.interest_key),
+    activityId: asNullableString(row.activity_id),
   };
 }
 
@@ -1379,10 +1386,24 @@ function createTx(client: PoolClient): ActivityTx {
       try {
         const result = await client.query(
           `INSERT INTO notification_inbox_items (
-             id, guild_id, recipient_discord_user_id, kind, payload
-           ) VALUES ($1,$2,$3,$4,$5::jsonb)
+             id, guild_id, recipient_discord_user_id, kind, payload,
+             notification_class, title, body, deep_link, fingerprint, interest_key, activity_id
+           ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10,$11,$12)
            RETURNING *`,
-          [id, input.guildId, input.recipientDiscordUserId, input.kind, JSON.stringify(payload)],
+          [
+            id,
+            input.guildId,
+            input.recipientDiscordUserId,
+            input.kind,
+            JSON.stringify(payload),
+            input.notificationClass ?? 'TRANSACTIONAL',
+            input.title ?? null,
+            input.body ?? null,
+            input.deepLink ?? null,
+            input.fingerprint ?? null,
+            input.interestKey ?? null,
+            input.activityId ?? null,
+          ],
         );
         return {
           item: mapInbox(result.rows[0] as Record<string, unknown>),
@@ -1406,6 +1427,121 @@ function createTx(client: PoolClient): ActivityTx {
         }
         return { item: mapInbox(row), created: false };
       }
+    },
+
+    async getNotificationPreference(guildId, recipientDiscordUserId) {
+      const result = await client.query(
+        `SELECT * FROM notification_preferences
+         WHERE guild_id = $1 AND recipient_discord_user_id = $2`,
+        [guildId, recipientDiscordUserId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        userDiscordId: asRequiredString(row.recipient_discord_user_id, 'recipient'),
+        guildId: asRequiredString(row.guild_id, 'guild_id'),
+        dmEnabled: row.dm_enabled === undefined ? true : Boolean(row.dm_enabled),
+        mutedInterestKeys: Array.isArray(row.muted_interest_keys)
+          ? row.muted_interest_keys.map(String)
+          : [],
+        mutedActivityTypeKeys: Array.isArray(row.muted_activity_type_keys)
+          ? row.muted_activity_type_keys.map(String)
+          : [],
+        mutedActivityIds: Array.isArray(row.muted_activity_ids)
+          ? row.muted_activity_ids.map(String)
+          : [],
+      };
+    },
+
+    async upsertNotificationPreference(input) {
+      const current = await this.getNotificationPreference(
+        input.guildId,
+        input.recipientDiscordUserId,
+      );
+      const dmEnabled = input.dmEnabled ?? current?.dmEnabled ?? true;
+      const mutedInterestKeys = input.mutedInterestKeys ?? current?.mutedInterestKeys ?? [];
+      const mutedActivityTypeKeys =
+        input.mutedActivityTypeKeys ?? current?.mutedActivityTypeKeys ?? [];
+      const mutedActivityIds = input.mutedActivityIds ?? current?.mutedActivityIds ?? [];
+      await client.query(
+        `INSERT INTO notification_preferences (
+           guild_id, recipient_discord_user_id, dm_enabled,
+           muted_interest_keys, muted_activity_type_keys, muted_activity_ids, updated_at
+         ) VALUES ($1,$2,$3,$4::text[],$5::text[],$6::uuid[], now())
+         ON CONFLICT (guild_id, recipient_discord_user_id) DO UPDATE SET
+           dm_enabled = EXCLUDED.dm_enabled,
+           muted_interest_keys = EXCLUDED.muted_interest_keys,
+           muted_activity_type_keys = EXCLUDED.muted_activity_type_keys,
+           muted_activity_ids = EXCLUDED.muted_activity_ids,
+           updated_at = now()`,
+        [
+          input.guildId,
+          input.recipientDiscordUserId,
+          dmEnabled,
+          mutedInterestKeys,
+          mutedActivityTypeKeys,
+          mutedActivityIds,
+        ],
+      );
+      return {
+        userDiscordId: input.recipientDiscordUserId,
+        guildId: input.guildId,
+        dmEnabled,
+        mutedInterestKeys,
+        mutedActivityTypeKeys,
+        mutedActivityIds,
+      };
+    },
+
+    async getNotificationDedupeMemory(recipientDiscordUserId, dedupeKey) {
+      const result = await client.query(
+        `SELECT fingerprint, last_notified_at
+         FROM notification_dedupe_memory
+         WHERE recipient_discord_user_id = $1 AND dedupe_key = $2`,
+        [recipientDiscordUserId, dedupeKey],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        fingerprint: asRequiredString(row.fingerprint, 'fingerprint'),
+        lastNotifiedAt: asRequiredDate(row.last_notified_at, 'last_notified_at'),
+      };
+    },
+
+    async upsertNotificationDedupeMemory(input) {
+      await client.query(
+        `INSERT INTO notification_dedupe_memory (
+           recipient_discord_user_id, dedupe_key, fingerprint, last_notified_at
+         ) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (recipient_discord_user_id, dedupe_key) DO UPDATE SET
+           fingerprint = EXCLUDED.fingerprint,
+           last_notified_at = EXCLUDED.last_notified_at`,
+        [
+          input.recipientDiscordUserId,
+          input.dedupeKey,
+          input.fingerprint,
+          input.lastNotifiedAt.toISOString(),
+        ],
+      );
+    },
+
+    async recordNotificationDeliveryAttempt(input) {
+      await client.query(
+        `INSERT INTO notification_delivery_attempts (
+           inbox_item_id, channel, status, attempt_number, error_detail
+         ) VALUES ($1::uuid,$2,$3,$4,$5)`,
+        [
+          input.inboxItemId,
+          input.channel,
+          input.status,
+          input.attemptNumber,
+          input.errorDetail ?? null,
+        ],
+      );
     },
 
     async createReport(input) {

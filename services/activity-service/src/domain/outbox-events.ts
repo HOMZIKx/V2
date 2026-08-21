@@ -13,6 +13,7 @@ export const OUTBOX_EVENT_TYPES = {
   FINISHED: 'activity.activity.finished.v1',
   PROJECTION_REQUESTED: 'activity.activity.projection_requested.v1',
   PANEL_PROJECTION_REPAIRED: 'activity.panel.projection_repaired.v1',
+  NOTIFICATION_DELIVER: 'activity.notification.deliver.v1',
 } as const;
 
 export const ACCEPTED_OUTBOX_EVENT_TYPES = [
@@ -25,6 +26,7 @@ export const ACCEPTED_OUTBOX_EVENT_TYPES = [
   OUTBOX_EVENT_TYPES.FINISHED,
   OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
   OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
+  OUTBOX_EVENT_TYPES.NOTIFICATION_DELIVER,
 ] as const;
 
 export type AcceptedOutboxEventType = (typeof ACCEPTED_OUTBOX_EVENT_TYPES)[number];

@@ -6,6 +6,7 @@ import {
 } from '../infrastructure/activity/activity-http-client.js';
 import { ActivityProjectionDeliveryService } from '../infrastructure/messaging/activity-projection-delivery.service.js';
 import { ActivityProjectionRabbitConsumer } from '../infrastructure/messaging/activity-projection-rabbit-consumer.js';
+import { NotificationDmDeliveryService } from '../infrastructure/messaging/notification-dm-delivery.service.js';
 import {
   createDiscordGatewayOrNull,
   DiscordBootstrapService,
@@ -20,11 +21,13 @@ import { ActivityChannelValidationController } from './http/activity-channel-val
 import { ActivityGuildMetadataController } from './http/activity-guild-metadata.controller.js';
 import { ActivityProjectionController } from './http/activity-projection.controller.js';
 import { HealthController } from './http/health.controller.js';
+import { NotificationDeliveryController } from './http/notification-delivery.controller.js';
 
 @Module({
   controllers: [
     HealthController,
     ActivityProjectionController,
+    NotificationDeliveryController,
     ActivityChannelValidationController,
     ActivityGuildMetadataController,
   ],
@@ -46,6 +49,7 @@ import { HealthController } from './http/health.controller.js';
     },
     DiscordBootstrapService,
     ActivityProjectionDeliveryService,
+    NotificationDmDeliveryService,
     ActivityProjectionRabbitConsumer,
   ],
 })

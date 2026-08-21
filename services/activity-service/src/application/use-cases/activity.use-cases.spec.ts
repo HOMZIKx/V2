@@ -496,6 +496,24 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       inbox.set(dedupe ?? item.id, item);
       return { item, created: true };
     },
+    async getNotificationPreference() {
+      return null;
+    },
+    async upsertNotificationPreference(input) {
+      return {
+        userDiscordId: input.recipientDiscordUserId,
+        guildId: input.guildId,
+        dmEnabled: input.dmEnabled ?? true,
+        mutedInterestKeys: input.mutedInterestKeys ?? [],
+        mutedActivityTypeKeys: input.mutedActivityTypeKeys ?? [],
+        mutedActivityIds: input.mutedActivityIds ?? [],
+      };
+    },
+    async getNotificationDedupeMemory() {
+      return null;
+    },
+    async upsertNotificationDedupeMemory() {},
+    async recordNotificationDeliveryAttempt() {},
     async createReport(input) {
       const report = {
         id: input.id,

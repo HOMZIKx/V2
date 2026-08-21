@@ -392,6 +392,19 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(lightningcss@1.33.0)(tsx@4.23.5)(yaml@2.9.0)
 
+  packages/notification-core:
+    dependencies:
+      zod:
+        specifier: ^4.0.14
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(lightningcss@1.33.0)(tsx@4.23.5)(yaml@2.9.0)
+
   packages/observability:
     devDependencies:
       typescript:
@@ -432,6 +445,9 @@ importers:
       '@v2/messaging':
         specifier: workspace:*
         version: link:../../packages/messaging
+      '@v2/notification-core':
+        specifier: workspace:*
+        version: link:../../packages/notification-core
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability

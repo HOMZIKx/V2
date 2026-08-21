@@ -307,9 +307,20 @@ function createAdminMemoryRepo(): {
     async markInboxRead() {
       return notImpl();
     },
-    async enqueueInbox() {
+    async enqueueInbox(input) {
       return notImpl();
     },
+    async getNotificationPreference() {
+      return null;
+    },
+    async upsertNotificationPreference() {
+      return notImpl();
+    },
+    async getNotificationDedupeMemory() {
+      return null;
+    },
+    async upsertNotificationDedupeMemory() {},
+    async recordNotificationDeliveryAttempt() {},
     async createReport() {
       return notImpl();
     },

@@ -425,6 +425,62 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return out;
   }
 
+  /**
+   * DM-first notification delivery. Public Hub channel must never receive these.
+   * DM closed/blocked → caller falls back to persistent Inbox.
+   */
+  public async sendDirectMessage(
+    discordUserId: string,
+    payload: { content: string },
+  ): Promise<{
+    ok: boolean;
+    code?: 'DM_BLOCKED' | 'DM_CLOSED' | 'RATE_LIMITED' | 'UPSTREAM_ERROR';
+    detail?: string;
+    messageId?: string;
+  }> {
+    try {
+      const user = await this.client.users.fetch(discordUserId);
+      const dm = await user.createDM();
+      const message = await dm.send({ content: payload.content.slice(0, 2000) });
+      return { ok: true, messageId: message.id };
+    } catch (error) {
+      const status =
+        typeof error === 'object' &&
+        error !== null &&
+        'status' in error &&
+        typeof (error as { status: unknown }).status === 'number'
+          ? (error as { status: number }).status
+          : undefined;
+      const code =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof (error as { code: unknown }).code === 'number'
+          ? (error as { code: number }).code
+          : undefined;
+      if (status === 429 || code === 429) {
+        return {
+          ok: false,
+          code: 'RATE_LIMITED',
+          detail: safeErrorMessage(error, this.secrets),
+        };
+      }
+      // Discord: 50007 cannot send messages to this user
+      if (code === 50007 || status === 403) {
+        return {
+          ok: false,
+          code: 'DM_BLOCKED',
+          detail: safeErrorMessage(error, this.secrets),
+        };
+      }
+      return {
+        ok: false,
+        code: 'UPSTREAM_ERROR',
+        detail: safeErrorMessage(error, this.secrets),
+      };
+    }
+  }
+
   private async fetchGuildOrNull(guildId: string): Promise<Guild | null> {
     const cached = this.client.guilds.cache.get(guildId);
     if (cached) {

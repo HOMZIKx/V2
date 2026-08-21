@@ -292,6 +292,13 @@ export interface InboxItemRecord {
   readonly payload: Record<string, unknown>;
   readonly readAt: Date | null;
   readonly createdAt: Date;
+  readonly notificationClass?: string;
+  readonly title?: string | null;
+  readonly body?: string | null;
+  readonly deepLink?: string | null;
+  readonly fingerprint?: string | null;
+  readonly interestKey?: string | null;
+  readonly activityId?: string | null;
 }
 
 export interface ActivityReportRecord {
@@ -523,7 +530,57 @@ export interface ActivityTx {
     kind: string;
     payload: Record<string, unknown>;
     dedupeKey?: string;
+    notificationClass?: string;
+    title?: string | null;
+    body?: string | null;
+    deepLink?: string | null;
+    fingerprint?: string | null;
+    interestKey?: string | null;
+    activityId?: string | null;
   }): Promise<{ item: InboxItemRecord; created: boolean }>;
+  getNotificationPreference(
+    guildId: string,
+    recipientDiscordUserId: string,
+  ): Promise<{
+    readonly userDiscordId: string;
+    readonly guildId: string;
+    readonly dmEnabled: boolean;
+    readonly mutedInterestKeys: readonly string[];
+    readonly mutedActivityTypeKeys: readonly string[];
+    readonly mutedActivityIds: readonly string[];
+  } | null>;
+  upsertNotificationPreference(input: {
+    guildId: string;
+    recipientDiscordUserId: string;
+    dmEnabled?: boolean | undefined;
+    mutedInterestKeys?: readonly string[] | undefined;
+    mutedActivityTypeKeys?: readonly string[] | undefined;
+    mutedActivityIds?: readonly string[] | undefined;
+  }): Promise<{
+    readonly userDiscordId: string;
+    readonly guildId: string;
+    readonly dmEnabled: boolean;
+    readonly mutedInterestKeys: readonly string[];
+    readonly mutedActivityTypeKeys: readonly string[];
+    readonly mutedActivityIds: readonly string[];
+  }>;
+  getNotificationDedupeMemory(
+    recipientDiscordUserId: string,
+    dedupeKey: string,
+  ): Promise<{ fingerprint: string; lastNotifiedAt: Date } | null>;
+  upsertNotificationDedupeMemory(input: {
+    recipientDiscordUserId: string;
+    dedupeKey: string;
+    fingerprint: string;
+    lastNotifiedAt: Date;
+  }): Promise<void>;
+  recordNotificationDeliveryAttempt(input: {
+    inboxItemId: string;
+    channel: 'DM' | 'INBOX';
+    status: 'pending' | 'delivered' | 'failed' | 'skipped' | 'fallback_inbox';
+    attemptNumber: number;
+    errorDetail?: string | null;
+  }): Promise<void>;
   createReport(input: {
     id: string;
     guildId: string;
