@@ -213,8 +213,8 @@ test('login → member shell → activities → detail → RSVP → my → inbox
 
   await detailCta.click();
   await expect(page.getByRole('heading', { name: 'Azrael' })).toBeVisible();
-  await expect(page.locator('.detail-facts > dt')).toHaveCount(2);
-  await expect(page.locator('.detail-facts > dd')).toHaveCount(2);
+  await expect(page.locator('.detail-facts > dt')).toHaveCount(3);
+  await expect(page.locator('.detail-facts > dd')).toHaveCount(3);
   await expect(page.locator('.detail-facts > div')).toHaveCount(0);
   await page.getByRole('button', { name: 'Może będę' }).click();
   await expect(page.getByText('Status zapisany.')).toBeVisible();
@@ -267,7 +267,7 @@ test('mobile smoke for list and detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Azrael' })).toBeVisible();
   await page.getByRole('link', { name: 'Szczegóły' }).click();
   await expect(page.getByRole('button', { name: 'Będę', exact: true })).toBeVisible();
-  await expect(page.locator('.detail-facts > dt')).toHaveCount(2);
+  await expect(page.locator('.detail-facts > dt')).toHaveCount(3);
   const columns = await page
     .locator('.detail-facts')
     .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
