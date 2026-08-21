@@ -46,15 +46,15 @@ Not APPROVED. Not merged.
 
 ## P4.6 evidence (partial)
 
-| Gate                                      | Result                                                                           |
-| ----------------------------------------- | -------------------------------------------------------------------------------- |
-| Migration 010 series/privacy/attendance   | present                                                                          |
-| Domain series/privacy/attendance          | unit tests PASS                                                                  |
-| Use-cases + API (publish-series, private, attendance, stats) | implemented + unit tests PASS                                   |
-| Admin event detail visibility/series      | wired                                                                            |
-| Discord publish series/private from draft | wired (payload-driven); attendance UI buttons not yet                            |
-| WWW visibility + self stats               | wired                                                                            |
-| Green CI tip                              | pending push                                                                     |
+| Gate                                                         | Result                                                |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| Migration 010 series/privacy/attendance                      | present                                               |
+| Domain series/privacy/attendance                             | unit tests PASS                                       |
+| Use-cases + API (publish-series, private, attendance, stats) | implemented + unit tests PASS                         |
+| Admin event detail visibility/series                         | wired                                                 |
+| Discord publish series/private from draft                    | wired (payload-driven); attendance UI buttons not yet |
+| WWW visibility + self stats                                  | wired                                                 |
+| Green CI tip                                                 | pending push                                          |
 
 ## Explicit gates
 
