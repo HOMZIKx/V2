@@ -968,6 +968,125 @@ export class ActivityController {
     });
   }
 
+  @Post('lfg/search')
+  @HttpCode(200)
+  @RequireOperation('activity_read')
+  public async searchLfg(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        organizationId: z.string().min(1),
+        activityTypeKey: z.string().min(1),
+        characterClassSpecKey: z.string().min(1),
+        characterSupportedRoles: z.array(z.string().min(1)).min(1),
+        sessionRoles: z.array(z.string().min(1)).min(1),
+        windowStartAt: z.string().datetime(),
+        windowEndAt: z.string().datetime(),
+      }),
+      body,
+    );
+    return this.useCases.searchLfg(actorFromRequest(request), parsed);
+  }
+
+  @Post('lfg/watches')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async createLfgWatch(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        organizationId: z.string().min(1),
+        characterId: z.string().min(1),
+        activityTypeKey: z.string().min(1),
+        sessionRoles: z.array(z.string().min(1)).min(1),
+        windowStartAt: z.string().datetime(),
+        windowEndAt: z.string().datetime(),
+        classSpecKey: z.string().min(1).optional(),
+      }),
+      body,
+    );
+    return this.useCases.createLfgWatch(actorFromRequest(request), {
+      guildId: parsed.guildId,
+      organizationId: parsed.organizationId,
+      characterId: parsed.characterId,
+      activityTypeKey: parsed.activityTypeKey,
+      sessionRoles: parsed.sessionRoles,
+      windowStartAt: parsed.windowStartAt,
+      windowEndAt: parsed.windowEndAt,
+      ...(parsed.classSpecKey !== undefined ? { classSpecKey: parsed.classSpecKey } : {}),
+    });
+  }
+
+  @Get('lfg/watches')
+  @RequireOperation('activity_read')
+  public async listLfgWatches(
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.listMyLfgWatches(actorFromRequest(request), guildId.trim());
+  }
+
+  @Post('lfg/watches/:id/cancel')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async cancelLfgWatch(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.useCases.cancelLfgWatch(actorFromRequest(request), id);
+  }
+
+  @Post('reservations')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async createReservation(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        organizationId: z.string().min(1),
+        resourceId: z.string().uuid(),
+        spotId: z.string().uuid(),
+        startsAt: z.string().datetime(),
+        endsAt: z.string().datetime(),
+      }),
+      body,
+    );
+    return this.useCases.createReservation(actorFromRequest(request), parsed);
+  }
+
+  @Post('marketplace/offers')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async createMarketplaceOffer(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        organizationId: z.string().min(1),
+        side: z.enum(['BUY', 'SELL']),
+        categoryKey: z.string().min(1),
+        itemLabel: z.string().min(1).max(200),
+        priceAmount: z.number().nonnegative().nullable().optional(),
+        budgetAmount: z.number().nonnegative().nullable().optional(),
+        quantity: z.number().int().positive().default(1),
+        description: z.string().max(2000).default(''),
+        expiresAt: z.string().datetime().nullable().optional(),
+      }),
+      body,
+    );
+    return this.useCases.createMarketplaceOffer(actorFromRequest(request), {
+      guildId: parsed.guildId,
+      organizationId: parsed.organizationId,
+      side: parsed.side,
+      categoryKey: parsed.categoryKey,
+      itemLabel: parsed.itemLabel,
+      quantity: parsed.quantity,
+      description: parsed.description,
+      ...(parsed.priceAmount !== undefined ? { priceAmount: parsed.priceAmount } : {}),
+      ...(parsed.budgetAmount !== undefined ? { budgetAmount: parsed.budgetAmount } : {}),
+      ...(parsed.expiresAt !== undefined ? { expiresAt: parsed.expiresAt } : {}),
+    });
+  }
+
   @Post('activities/:id/reports')
   @HttpCode(200)
   @RequireOperation('activity_mutate')

@@ -321,6 +321,45 @@ function createAdminMemoryRepo(): {
     },
     async upsertNotificationDedupeMemory() {},
     async recordNotificationDeliveryAttempt() {},
+    async listOpenActivitiesForLfg() {
+      return [];
+    },
+    async listActivityRoleRequirements() {
+      return [];
+    },
+    async countParticipationsByPartyRole() {
+      return {};
+    },
+    async countOccupiedParticipations() {
+      return 0;
+    },
+    async insertLfgIntent() {
+      return notImpl();
+    },
+    async cancelLfgIntent() {},
+    async listLfgIntentsForUser() {
+      return [];
+    },
+    async listActiveLfgIntents() {
+      return [];
+    },
+    async hasLfgNotifiedMatch() {
+      return false;
+    },
+    async recordLfgNotifiedMatch() {},
+    async listReservationsForSpot() {
+      return [];
+    },
+    async insertReservation() {
+      return notImpl();
+    },
+    async cancelReservation() {},
+    async insertMarketplaceOffer() {
+      return notImpl();
+    },
+    async listActiveMarketplaceWatches() {
+      return [];
+    },
     async createReport() {
       return notImpl();
     },

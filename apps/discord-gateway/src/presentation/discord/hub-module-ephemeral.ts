@@ -99,11 +99,14 @@ export function renderHubActivitiesMenu(input: {
           '## Aktywności',
           'Organizuj wydarzenia i zbieraj ekipę.',
           '',
-          'Wybierz działanie (prywatnie):',
+          '**Szukam ekipy** = matching (postać → role → okno czasu → dopasowania),',
+          'nie tablica publicznych postów.',
+          '',
+          'Kolejność: dopasuj istniejące → Znajdź mi ekipę → dopiero potem Utwórz.',
         ].join('\n'),
       ),
     )
-    .addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(create, lfg));
+    .addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(lfg, create));
 
   return {
     components: [container],

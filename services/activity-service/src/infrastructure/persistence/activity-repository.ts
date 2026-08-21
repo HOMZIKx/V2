@@ -1544,6 +1544,245 @@ function createTx(client: PoolClient): ActivityTx {
       );
     },
 
+    async listOpenActivitiesForLfg(input) {
+      const result = await client.query(
+        `SELECT a.*
+         FROM activities a
+         LEFT JOIN activity_types t ON t.id = a.type_id
+         WHERE a.guild_id = $1
+           AND a.status IN ('published', 'registrations_open')
+           AND a.cancelled_at IS NULL
+           AND (t.key = $2 OR a.name ILIKE $3)
+         ORDER BY a.start_at ASC
+         LIMIT 50`,
+        [input.guildId, input.activityTypeKey, `%${input.activityTypeKey}%`],
+      );
+      return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
+    },
+
+    async listActivityRoleRequirements(activityId) {
+      const result = await client.query(
+        `SELECT party_role_key, required_count, preferred
+         FROM activity_role_requirements WHERE activity_id = $1::uuid`,
+        [activityId],
+      );
+      return result.rows.map((row) => ({
+        role: String((row as { party_role_key: unknown }).party_role_key) as
+          'TANK' | 'BUFF' | 'DPS' | 'FLEX',
+        requiredCount: Number((row as { required_count: unknown }).required_count),
+        preferred: Boolean((row as { preferred: unknown }).preferred),
+      }));
+    },
+
+    async countParticipationsByPartyRole() {
+      // Party role on participation is Stage 5 extension; empty map until RSVP carries roles.
+      return {};
+    },
+
+    async countOccupiedParticipations(activityId) {
+      const result = await client.query(
+        `SELECT COUNT(*)::int AS n FROM participations
+         WHERE activity_id = $1::uuid
+           AND resigned_at IS NULL AND removed_at IS NULL
+           AND occupies_slot = TRUE`,
+        [activityId],
+      );
+      return Number((result.rows[0] as { n: number } | undefined)?.n ?? 0);
+    },
+
+    async insertLfgIntent(input) {
+      const result = await client.query(
+        `INSERT INTO lfg_intents (
+           guild_id, organization_id, recipient_discord_user_id, character_id,
+           activity_type_key, session_roles, window_start_at, window_end_at,
+           expires_at, class_spec_key
+         ) VALUES ($1,$2,$3,$4,$5,$6::text[],$7,$8,$9,$10)
+         RETURNING id::text`,
+        [
+          input.guildId,
+          input.organizationId,
+          input.recipientDiscordUserId,
+          input.characterId,
+          input.activityTypeKey,
+          input.sessionRoles,
+          input.windowStartAt.toISOString(),
+          input.windowEndAt.toISOString(),
+          input.expiresAt.toISOString(),
+          input.classSpecKey,
+        ],
+      );
+      return String((result.rows[0] as { id: string }).id);
+    },
+
+    async cancelLfgIntent(intentId, recipientDiscordUserId, now) {
+      await client.query(
+        `UPDATE lfg_intents
+         SET cancelled_at = $3, updated_at = $3
+         WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL`,
+        [intentId, recipientDiscordUserId, now.toISOString()],
+      );
+    },
+
+    async listLfgIntentsForUser(guildId, recipientDiscordUserId) {
+      const result = await client.query(
+        `SELECT id::text, activity_type_key, session_roles, expires_at, cancelled_at
+         FROM lfg_intents
+         WHERE guild_id = $1 AND recipient_discord_user_id = $2
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [guildId, recipientDiscordUserId],
+      );
+      return result.rows.map((row) => ({
+        id: String((row as { id: unknown }).id),
+        activityTypeKey: String((row as { activity_type_key: unknown }).activity_type_key),
+        sessionRoles: Array.isArray((row as { session_roles: unknown }).session_roles)
+          ? ((row as { session_roles: unknown[] }).session_roles as string[])
+          : [],
+        expiresAt: asRequiredDate((row as { expires_at: unknown }).expires_at, 'expires_at'),
+        cancelledAt: asNullableDate((row as { cancelled_at: unknown }).cancelled_at),
+      }));
+    },
+
+    async listActiveLfgIntents(input) {
+      const result = await client.query(
+        `SELECT id::text, recipient_discord_user_id, session_roles
+         FROM lfg_intents
+         WHERE guild_id = $1
+           AND activity_type_key = $2
+           AND cancelled_at IS NULL
+           AND expires_at > $3`,
+        [input.guildId, input.activityTypeKey, input.now.toISOString()],
+      );
+      return result.rows.map((row) => ({
+        id: String((row as { id: unknown }).id),
+        recipientDiscordUserId: String(
+          (row as { recipient_discord_user_id: unknown }).recipient_discord_user_id,
+        ),
+        sessionRoles: Array.isArray((row as { session_roles: unknown }).session_roles)
+          ? ((row as { session_roles: unknown[] }).session_roles as string[])
+          : [],
+      }));
+    },
+
+    async hasLfgNotifiedMatch(recipientDiscordUserId, activityId, fingerprint) {
+      const result = await client.query(
+        `SELECT 1 FROM lfg_notified_matches
+         WHERE recipient_discord_user_id = $1 AND activity_id = $2::uuid AND fingerprint = $3`,
+        [recipientDiscordUserId, activityId, fingerprint],
+      );
+      return result.rows.length > 0;
+    },
+
+    async recordLfgNotifiedMatch(recipientDiscordUserId, activityId, fingerprint, now) {
+      await client.query(
+        `INSERT INTO lfg_notified_matches (
+           recipient_discord_user_id, activity_id, fingerprint, notified_at
+         ) VALUES ($1,$2::uuid,$3,$4)
+         ON CONFLICT DO NOTHING`,
+        [recipientDiscordUserId, activityId, fingerprint, now.toISOString()],
+      );
+    },
+
+    async listReservationsForSpot(spotId, statuses) {
+      const result = await client.query(
+        `SELECT starts_at, ends_at FROM reservations
+         WHERE spot_id = $1::uuid AND status = ANY($2::text[])`,
+        [spotId, statuses],
+      );
+      return result.rows.map((row) => ({
+        startsAt: asRequiredDate((row as { starts_at: unknown }).starts_at, 'starts_at'),
+        endsAt: asRequiredDate((row as { ends_at: unknown }).ends_at, 'ends_at'),
+      }));
+    },
+
+    async insertReservation(input) {
+      await client.query(
+        `INSERT INTO reservations (
+           id, guild_id, organization_id, resource_id, spot_id,
+           owner_discord_user_id, starts_at, ends_at, status
+         ) VALUES ($1::uuid,$2,$3,$4::uuid,$5::uuid,$6,$7,$8,$9)`,
+        [
+          input.id,
+          input.guildId,
+          input.organizationId,
+          input.resourceId,
+          input.spotId,
+          input.ownerDiscordUserId,
+          input.startsAt.toISOString(),
+          input.endsAt.toISOString(),
+          input.status,
+        ],
+      );
+      return input.id;
+    },
+
+    async cancelReservation(id, ownerDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE reservations
+         SET status = 'cancelled', updated_at = $3, version = version + 1
+         WHERE id = $1::uuid AND owner_discord_user_id = $2 AND status IN ('pending','confirmed')
+         RETURNING id`,
+        [id, ownerDiscordUserId, now.toISOString()],
+      );
+      if (result.rows.length === 0) {
+        throw new ActivityError('NOT_FOUND', 'Reservation not found');
+      }
+    },
+
+    async insertMarketplaceOffer(input) {
+      await client.query(
+        `INSERT INTO marketplace_offers (
+           id, guild_id, organization_id, owner_discord_user_id, side, category_key,
+           item_label, price_amount, budget_amount, quantity, description, expires_at
+         ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [
+          input.id,
+          input.guildId,
+          input.organizationId,
+          input.ownerDiscordUserId,
+          input.side,
+          input.categoryKey,
+          input.itemLabel,
+          input.priceAmount,
+          input.budgetAmount,
+          input.quantity,
+          input.description,
+          input.expiresAt?.toISOString() ?? null,
+        ],
+      );
+      return input.id;
+    },
+
+    async listActiveMarketplaceWatches(guildId) {
+      const result = await client.query(
+        `SELECT id::text, recipient_discord_user_id, side, category_key, item_query,
+                max_price, min_budget
+         FROM marketplace_watches
+         WHERE guild_id = $1 AND cancelled_at IS NULL
+           AND (expires_at IS NULL OR expires_at > now())`,
+        [guildId],
+      );
+      return result.rows.map((row) => ({
+        id: String((row as { id: unknown }).id),
+        recipientDiscordUserId: String(
+          (row as { recipient_discord_user_id: unknown }).recipient_discord_user_id,
+        ),
+        side: ((row as { side: unknown }).side as 'BUY' | 'SELL' | null) ?? null,
+        categoryKey: asNullableString((row as { category_key: unknown }).category_key),
+        itemQuery: asNullableString((row as { item_query: unknown }).item_query),
+        maxPrice:
+          (row as { max_price: unknown }).max_price === null ||
+          (row as { max_price: unknown }).max_price === undefined
+            ? null
+            : Number((row as { max_price: unknown }).max_price),
+        minBudget:
+          (row as { min_budget: unknown }).min_budget === null ||
+          (row as { min_budget: unknown }).min_budget === undefined
+            ? null
+            : Number((row as { min_budget: unknown }).min_budget),
+      }));
+    },
+
     async createReport(input) {
       const result = await client.query(
         `INSERT INTO activity_reports (

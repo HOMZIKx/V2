@@ -2108,6 +2108,154 @@ export class ActivityUseCases {
     });
   }
 
+  public async searchLfg(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      activityTypeKey: string;
+      characterClassSpecKey: string;
+      characterSupportedRoles: readonly string[];
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+    },
+  ) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { searchLfgMatches } = await import('./lfg.use-cases.js');
+      return searchLfgMatches(tx, actor, {
+        guildId: input.guildId,
+        organizationId: input.organizationId,
+        activityTypeKey: input.activityTypeKey,
+        characterClassSpecKey: input.characterClassSpecKey,
+        characterSupportedRoles: input.characterSupportedRoles,
+        sessionRoles: input.sessionRoles,
+        windowStartAt: new Date(input.windowStartAt),
+        windowEndAt: new Date(input.windowEndAt),
+      });
+    });
+  }
+
+  public async createLfgWatch(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      characterId: string;
+      activityTypeKey: string;
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+      classSpecKey?: string;
+    },
+  ) {
+    const now = this.deps.clock.now();
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { createLfgIntent } = await import('./lfg.use-cases.js');
+      return createLfgIntent(
+        tx,
+        actor,
+        {
+          guildId: input.guildId,
+          organizationId: input.organizationId,
+          characterId: input.characterId,
+          activityTypeKey: input.activityTypeKey,
+          sessionRoles: input.sessionRoles,
+          windowStartAt: new Date(input.windowStartAt),
+          windowEndAt: new Date(input.windowEndAt),
+          ...(input.classSpecKey !== undefined ? { classSpecKey: input.classSpecKey } : {}),
+        },
+        now,
+      );
+    });
+  }
+
+  public async cancelLfgWatch(actor: ActorSubject, intentId: string) {
+    const now = this.deps.clock.now();
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { cancelLfgIntent } = await import('./lfg.use-cases.js');
+      await cancelLfgIntent(tx, actor, intentId, now);
+      return { id: intentId, status: 'cancelled' };
+    });
+  }
+
+  public async listMyLfgWatches(actor: ActorSubject, guildId: string) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { listMyLfgIntents } = await import('./lfg.use-cases.js');
+      return listMyLfgIntents(tx, actor, guildId);
+    });
+  }
+
+  public async createReservation(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      resourceId: string;
+      spotId: string;
+      startsAt: string;
+      endsAt: string;
+    },
+  ) {
+    const now = this.deps.clock.now();
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { createReservation } = await import('./reservations.use-cases.js');
+      return createReservation(
+        tx,
+        actor,
+        {
+          guildId: input.guildId,
+          organizationId: input.organizationId,
+          resourceId: input.resourceId,
+          spotId: input.spotId,
+          startsAt: new Date(input.startsAt),
+          endsAt: new Date(input.endsAt),
+        },
+        now,
+      );
+    });
+  }
+
+  public async createMarketplaceOffer(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      side: 'BUY' | 'SELL';
+      categoryKey: string;
+      itemLabel: string;
+      priceAmount?: number | null;
+      budgetAmount?: number | null;
+      quantity: number;
+      description: string;
+      expiresAt?: string | null;
+    },
+  ) {
+    const now = this.deps.clock.now();
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { createMarketplaceOffer } = await import('./marketplace.use-cases.js');
+      return createMarketplaceOffer(
+        tx,
+        actor,
+        {
+          guildId: input.guildId,
+          organizationId: input.organizationId,
+          side: input.side,
+          categoryKey: input.categoryKey,
+          itemLabel: input.itemLabel,
+          quantity: input.quantity,
+          description: input.description,
+          ...(input.priceAmount !== undefined ? { priceAmount: input.priceAmount } : {}),
+          ...(input.budgetAmount !== undefined ? { budgetAmount: input.budgetAmount } : {}),
+          ...(input.expiresAt !== undefined && input.expiresAt !== null
+            ? { expiresAt: new Date(input.expiresAt) }
+            : {}),
+        },
+        now,
+      );
+    });
+  }
+
   public async enqueueInbox(
     input: {
       guildId: string;

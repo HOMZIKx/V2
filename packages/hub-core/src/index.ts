@@ -48,3 +48,14 @@ export {
 } from './channel-retirement.js';
 
 export { HUB_SYNC_RULES, type HubSyncRules } from './sync-rules.js';
+
+export {
+  isLfgIntentActive,
+  normalizeSessionRoles,
+  rankLfgMatch,
+  type LfgGroupMatchInput,
+  type LfgIntent,
+  type LfgMatchRank,
+  type LfgRoleNeed,
+  type LfgSeekerInput,
+} from './lfg-matching.js';

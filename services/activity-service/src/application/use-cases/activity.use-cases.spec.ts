@@ -514,6 +514,45 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     },
     async upsertNotificationDedupeMemory() {},
     async recordNotificationDeliveryAttempt() {},
+    async listOpenActivitiesForLfg() {
+      return [];
+    },
+    async listActivityRoleRequirements() {
+      return [];
+    },
+    async countParticipationsByPartyRole() {
+      return {};
+    },
+    async countOccupiedParticipations() {
+      return 0;
+    },
+    async insertLfgIntent() {
+      return '00000000-0000-4000-8000-000000000001';
+    },
+    async cancelLfgIntent() {},
+    async listLfgIntentsForUser() {
+      return [];
+    },
+    async listActiveLfgIntents() {
+      return [];
+    },
+    async hasLfgNotifiedMatch() {
+      return false;
+    },
+    async recordLfgNotifiedMatch() {},
+    async listReservationsForSpot() {
+      return [];
+    },
+    async insertReservation(input) {
+      return input.id;
+    },
+    async cancelReservation() {},
+    async insertMarketplaceOffer(input) {
+      return input.id;
+    },
+    async listActiveMarketplaceWatches() {
+      return [];
+    },
     async createReport(input) {
       const report = {
         id: input.id,

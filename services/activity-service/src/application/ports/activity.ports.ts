@@ -581,6 +581,107 @@ export interface ActivityTx {
     attemptNumber: number;
     errorDetail?: string | null;
   }): Promise<void>;
+  listOpenActivitiesForLfg(input: {
+    guildId: string;
+    activityTypeKey: string;
+  }): Promise<ActivityRecord[]>;
+  listActivityRoleRequirements(
+    activityId: string,
+  ): Promise<
+    readonly {
+      role: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+      requiredCount: number;
+      preferred?: boolean;
+    }[]
+  >;
+  countParticipationsByPartyRole(
+    activityId: string,
+  ): Promise<Readonly<Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>>>>;
+  countOccupiedParticipations(activityId: string): Promise<number>;
+  insertLfgIntent(input: {
+    guildId: string;
+    organizationId: string;
+    recipientDiscordUserId: string;
+    characterId: string;
+    activityTypeKey: string;
+    sessionRoles: readonly string[];
+    windowStartAt: Date;
+    windowEndAt: Date;
+    expiresAt: Date;
+    classSpecKey: string | null;
+  }): Promise<string>;
+  cancelLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<void>;
+  listLfgIntentsForUser(
+    guildId: string,
+    recipientDiscordUserId: string,
+  ): Promise<
+    readonly {
+      id: string;
+      activityTypeKey: string;
+      sessionRoles: readonly string[];
+      expiresAt: Date;
+      cancelledAt: Date | null;
+    }[]
+  >;
+  listActiveLfgIntents(input: { guildId: string; activityTypeKey: string; now: Date }): Promise<
+    readonly {
+      id: string;
+      recipientDiscordUserId: string;
+      sessionRoles: readonly string[];
+    }[]
+  >;
+  hasLfgNotifiedMatch(
+    recipientDiscordUserId: string,
+    activityId: string,
+    fingerprint: string,
+  ): Promise<boolean>;
+  recordLfgNotifiedMatch(
+    recipientDiscordUserId: string,
+    activityId: string,
+    fingerprint: string,
+    now: Date,
+  ): Promise<void>;
+  listReservationsForSpot(
+    spotId: string,
+    statuses: readonly string[],
+  ): Promise<readonly { startsAt: Date; endsAt: Date }[]>;
+  insertReservation(input: {
+    id: string;
+    guildId: string;
+    organizationId: string;
+    resourceId: string;
+    spotId: string;
+    ownerDiscordUserId: string;
+    startsAt: Date;
+    endsAt: Date;
+    status: string;
+  }): Promise<string>;
+  cancelReservation(id: string, ownerDiscordUserId: string, now: Date): Promise<void>;
+  insertMarketplaceOffer(input: {
+    id: string;
+    guildId: string;
+    organizationId: string;
+    ownerDiscordUserId: string;
+    side: 'BUY' | 'SELL';
+    categoryKey: string;
+    itemLabel: string;
+    priceAmount: number | null;
+    budgetAmount: number | null;
+    quantity: number;
+    description: string;
+    expiresAt: Date | null;
+  }): Promise<string>;
+  listActiveMarketplaceWatches(guildId: string): Promise<
+    readonly {
+      id: string;
+      recipientDiscordUserId: string;
+      side: 'BUY' | 'SELL' | null;
+      categoryKey: string | null;
+      itemQuery: string | null;
+      maxPrice: number | null;
+      minBudget: number | null;
+    }[]
+  >;
   createReport(input: {
     id: string;
     guildId: string;
