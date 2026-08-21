@@ -2,7 +2,7 @@
 
 ## Status
 
-`DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT` — automatic Discord projection hardening landed.
+`DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT` ? automatic Discord projection hardening landed.
 Hub Core discovery still gated (`HUB-CORE-001`). Owner Discord login still needed for
 `LIVE_GUILD_INVENTORY=PASS`.
 
@@ -14,10 +14,10 @@ Not APPROVED. Not merged.
 
 | Field                   | Value                                                                  |
 | ----------------------- | ---------------------------------------------------------------------- |
-| CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
+| CURRENT_STAGE           | 3 ? V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
 | CURRENT_TASK            | `V2-DEEP-RETROSPECTIVE-POLISH-AND-AUTO-DISCORD-SYNC-001`                |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | _(set to DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA on commit)_          |
+| CURRENT_HEAD / PR_HEAD  | `90fc38442285def9f497cd14076769db78b6af14`                             |
 | PR                      | #19                                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
 | CURRENT_CI              | pending on tip                                                         |
@@ -33,13 +33,13 @@ Not APPROVED. Not merged.
 | P4_5_FINAL_CHECKPOINT_SHA                 | `e3c694fcc3980cd309843cac2c42c346083c8cb1` | READY_FOR_CHATGPT_P4_5_ASYNC_AUDIT         |
 | P4_6_FINAL_CHECKPOINT_SHA                 | `6d80ea7716b439ec6827141707a6bf7ec5974147` | READY_FOR_CHATGPT_P4_6_ASYNC_AUDIT         |
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
-| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | 5e95dcff35e78edca8ceba70ae8f2d7bccb88146                       | AUTO_DISCORD_SYNC_STATUS=PASS              |
+| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
 | V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | —                                          |
-| ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
-| RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | —                                          |
-| MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | —                                          |
-| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | —                                          |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | ?                                          |
+| ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | ?                                          |
+| RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | ?                                          |
+| MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | ?                                          |
+| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | ?                                          |
 
 ## AUDIT_QUEUE
 
@@ -57,6 +57,7 @@ Not APPROVED. Not merged.
 | NORMAL_PRODUCT_MANUAL_SYNC_STEPS | 0 |
 | CRITICAL | 0 |
 | HIGH | 0 |
+| CODE_FIX_SHA | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` |
 | Evidence doc | `docs/ai/DEEP_RETROSPECTIVE_AUDIT.md` |
 
 ## Explicit gates
@@ -66,5 +67,5 @@ Not APPROVED. Not merged.
 
 ## Last updated
 
-2026-08-21 — Deep retrospective: fixed broken auto event projection (enrich + messageId write-back),
+2026-08-21 ? Deep retrospective: fixed broken auto event projection (enrich + messageId write-back),
 closed mutation enqueue gaps, Admin hub auto-reconcile, client idempotency, secret timing.
