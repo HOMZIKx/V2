@@ -2,6 +2,22 @@
 
 ## Aktywne
 
+### HUB-CORE-001 — Stage 3 V2 Hub Core discovery before implement
+
+- **Status:** `OWNER_DECISION_REQUIRED`
+- **Context:** Issue #26 Stage 3 + Issue #22. P4.6 final checkpoint is green
+  (`P4_6_FINAL_CHECKPOINT_SHA` = `6d80ea7716b439ec6827141707a6bf7ec5974147`).
+  Continuous execution reached Hub Core, but #22/#26 forbid Cursor inventing
+  Hub information architecture, module map, public vs ephemeral rules, `Moje`,
+  Notifications placement, channel retirement plan, or overlay integration.
+- **Required before code:** Owner↔ChatGPT discovery → Accepted decisions in SoT
+  (module map, Discord vs WWW roles, navigation/back, `Moje`/`Dla mnie`,
+  Notifications slot, deep-link rule, channel keep/replace, module registry,
+  shared permissions baseline, surface sync baseline, #25 security baseline).
+- **Cursor action while blocked:** no Hub product shell invent; keep Activity
+  Centrum as current Discord hub; await Accepted shell scope lock.
+- **Unblocks:** `V2_HUB_CORE_CHECKPOINT_SHA` implementation.
+
 ### P4-OAUTH-SPLIT-ORIGIN — bounce WWW po Discord
 
 - **Status:** `CODE_FIX` (ta gałąź) — nie blokuje właściciela, nie zastępuje
