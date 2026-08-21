@@ -13,6 +13,8 @@ import {
 } from 'discord.js';
 import { createHash } from 'node:crypto';
 
+import { getHubModule, isHubModuleKey } from '@v2/hub-core';
+
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
 import {
   ActivityHttpError,
@@ -45,6 +47,12 @@ import {
 } from '../../presentation/discord/activity-schedule-form.js';
 import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
 import { DraftUiStateCache } from '../../presentation/discord/draft-ui-state-cache.js';
+import {
+  renderHubActivitiesMenu,
+  renderHubForMeFoundationEphemeral,
+  renderHubProfileFoundationEphemeral,
+  renderHubRoadmapEphemeral,
+} from '../../presentation/discord/hub-module-ephemeral.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
@@ -239,6 +247,15 @@ export class ActivityInteractionHandler {
 
     if (parsed.scope === 'panel' && (parsed.action === 'create' || parsed.action === 'lfg')) {
       await this.openCreateOrLfg(interaction, parsed);
+      return true;
+    }
+
+    if (
+      parsed.scope === 'panel' &&
+      parsed.action === 'module' &&
+      interaction.isStringSelectMenu()
+    ) {
+      await this.handleHubModuleSelect(interaction, parsed);
       return true;
     }
 
@@ -683,6 +700,64 @@ export class ActivityInteractionHandler {
     await interaction.editReply({
       content: `Konfiguracja testowa gotowa. Statusów: ${Array.isArray(statuses) ? statuses.length : '?'}`,
     });
+  }
+
+  private async handleHubModuleSelect(
+    interaction: MessageComponentInteraction,
+    parsed: Extract<ParsedActivityCustomId, { scope: 'panel' }>,
+  ): Promise<void> {
+    if (!interaction.isStringSelectMenu()) {
+      return;
+    }
+    const selected = interaction.values[0];
+    if (selected === undefined || !isHubModuleKey(selected)) {
+      await interaction.reply({
+        content: 'Nieznany moduł V2. Odśwież panel Centrum.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const module = getHubModule(selected);
+
+    if (selected === 'activities') {
+      await interaction.reply(
+        renderHubActivitiesMenu({
+          opaquePanelId: parsed.opaqueId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        }),
+      );
+      return;
+    }
+
+    if (selected === 'mine') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await this.handlePanelAction(interaction, { ...parsed, action: 'mine' });
+      return;
+    }
+
+    if (selected === 'notifications') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await this.handlePanelAction(interaction, { ...parsed, action: 'inbox' });
+      return;
+    }
+
+    if (selected === 'profile') {
+      await interaction.reply(renderHubProfileFoundationEphemeral());
+      return;
+    }
+
+    if (selected === 'for_me') {
+      await interaction.reply(renderHubForMeFoundationEphemeral());
+      return;
+    }
+
+    if (module.availability === 'roadmap' || module.availability === 'disabled') {
+      await interaction.reply(renderHubRoadmapEphemeral(selected));
+      return;
+    }
+
+    await interaction.reply(renderHubRoadmapEphemeral(selected));
   }
 
   private async handlePanelAction(

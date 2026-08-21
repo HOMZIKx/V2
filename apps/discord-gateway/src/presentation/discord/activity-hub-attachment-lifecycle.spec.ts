@@ -1,4 +1,4 @@
-import { AttachmentBuilder, ButtonStyle, ComponentType } from 'discord.js';
+import { AttachmentBuilder, ComponentType } from 'discord.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { deliverHubPanel } from '../../application/interactions/hub-panel-delivery.js';
@@ -36,10 +36,10 @@ function extractSignedCustomIds(payload: { components?: readonly unknown[] }): s
 }
 
 describe('activity hub attachment lifecycle', () => {
-  it('keeps header attachment and signed Section buttons across publish and three reconcile/edit cycles', async () => {
+  it('keeps header attachment and signed module select across publish and three reconcile/edit cycles', async () => {
     const hubPayload = buildHubPayload();
     const signedCustomIds = extractSignedCustomIds(hubPayload);
-    expect(signedCustomIds).toHaveLength(4);
+    expect(signedCustomIds).toEqual([createPanelCustomId(opaquePanelId, 'module', signingSecret)]);
 
     const editPayloads: Array<{ files?: readonly unknown[]; attachments?: readonly unknown[] }> =
       [];
@@ -118,27 +118,16 @@ describe('activity hub attachment lifecycle', () => {
     expect(serialized).not.toContain('attachment://moje-aktywnosci-icon.webp');
     expect(serialized).not.toContain('attachment://powiadomienia-icon.webp');
 
-    expect(serialized).toContain(`"style":${ButtonStyle.Secondary}`);
-    expect(serialized).not.toContain(`"style":${ButtonStyle.Primary}`);
-    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'create', signingSecret));
-    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'lfg', signingSecret));
-    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'mine', signingSecret));
-    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'inbox', signingSecret));
+    expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'module', signingSecret));
 
     const container = (
       lastPayload.components?.[0] as { toJSON: () => Record<string, unknown> }
     ).toJSON();
     const components = (container.components as Array<Record<string, unknown>>) ?? [];
-    const sections = components.filter((component) => component.type === ComponentType.Section);
-    expect(sections).toHaveLength(5);
-
-    const buttonAccessories = sections.filter((section) => {
-      const accessory = section.accessory as Record<string, unknown>;
-      return accessory.type === ComponentType.Button;
-    });
-    expect(buttonAccessories).toHaveLength(4);
-
     const actionRows = components.filter((component) => component.type === ComponentType.ActionRow);
-    expect(actionRows).toHaveLength(0);
+    expect(actionRows).toHaveLength(1);
+    const select = ((actionRows[0]!.components as Array<Record<string, unknown>>) ?? [])[0];
+    expect(select?.type).toBe(ComponentType.StringSelect);
+    expect(select?.custom_id).toBe(createPanelCustomId(opaquePanelId, 'module', signingSecret));
   });
 });

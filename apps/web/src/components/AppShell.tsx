@@ -11,7 +11,9 @@ import { useSession } from './SessionProvider';
 
 const NAV: readonly { href: string; label: string }[] = [
   { href: '/aktywnosci', label: 'Aktywności' },
+  { href: '/dla-mnie', label: 'Dla mnie' },
   { href: '/moje', label: 'Moje' },
+  { href: '/profil', label: 'Profil' },
   { href: '/powiadomienia', label: 'Powiadomienia' },
 ];
 

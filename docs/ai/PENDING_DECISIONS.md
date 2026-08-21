@@ -4,19 +4,20 @@
 
 ### HUB-CORE-001 — Stage 3 V2 Hub Core discovery before implement
 
-- **Status:** `OWNER_DECISION_REQUIRED`
-- **Context:** Issue #26 Stage 3 + Issue #22. P4.6 final checkpoint is green
-  (`P4_6_FINAL_CHECKPOINT_SHA` = `6d80ea7716b439ec6827141707a6bf7ec5974147`).
-  Continuous execution reached Hub Core, but #22/#26 forbid Cursor inventing
-  Hub information architecture, module map, public vs ephemeral rules, `Moje`,
-  Notifications placement, channel retirement plan, or overlay integration.
-- **Required before code:** Owner↔ChatGPT discovery → Accepted decisions in SoT
-  (module map, Discord vs WWW roles, navigation/back, `Moje`/`Dla mnie`,
-  Notifications slot, deep-link rule, channel keep/replace, module registry,
-  shared permissions baseline, surface sync baseline, #25 security baseline).
-- **Cursor action while blocked:** no Hub product shell invent; keep Activity
-  Centrum as current Discord hub; await Accepted shell scope lock.
-- **Unblocks:** `V2_HUB_CORE_CHECKPOINT_SHA` implementation.
+- **Status:** `OWNER_ACCEPTED` (2026-08-21) — task `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`
+- **SoT:** `docs/ai/HUB_CORE_SCOPE_LOCK.md` (+ architecture note
+  `docs/architecture/V2_HUB_CORE.md`).
+- **Accepted summary:** V2 = central operating layer; Discord = chat/voice/social;
+  one Admin-configured `#v2-centrum` Hub message (edit-in-place, auto-reconcile);
+  IA map GRA/RYNEK/GILDIA/TY; Hub Core = shell/registry/nav + profile/for_me/mine
+  foundations + notifications entry; no auto channel delete (retirement model
+  `LEGACY_ACTIVE`/`V2_READY`/`OWNER_CAN_RETIRE`); public Hub vs ephemeral/personal;
+  WWW equal surface; Admin Control Center; class/spec ≠ party role; Interests #27
+  SoT with role projection safety; interest ≠ role ≠ notification preference;
+  durable V2 deep links; Overlay not in Stage 3.
+- **Cursor action:** implement Hub Core per scope lock; do **not** reopen broad
+  Hub discovery; do **not** invent Reservations/Marketplace/full LFG/Notifications.
+- **Checkpoint:** `V2_HUB_CORE_CHECKPOINT_SHA` on validated tip.
 
 ### P4-OAUTH-SPLIT-ORIGIN — bounce WWW po Discord
 

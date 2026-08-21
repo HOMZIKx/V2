@@ -1,6 +1,5 @@
 import {
-  ButtonBuilder,
-  ButtonStyle,
+  ActionRowBuilder,
   ContainerBuilder,
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
@@ -8,19 +7,17 @@ import {
   SectionBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   TextDisplayBuilder,
   ThumbnailBuilder,
   type MessageCreateOptions,
   type MessageEditOptions,
 } from 'discord.js';
 
+import { HUB_GROUP_LABELS, listHubModulesForSelect, type HubModuleDefinition } from '@v2/hub-core';
+
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
-import {
-  hubActionIconPrefix,
-  resolveHubActionEmojisFromEnv,
-  type HubActionEmojiMap,
-  type HubActionKey,
-} from './activity-hub-action-emojis.js';
 import {
   buildActivityHubMessageAttachmentFiles,
   getActivityHubAssetDefinition,
@@ -33,22 +30,24 @@ export { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 export type ActivityHubRenderInput = {
   opaquePanelId: string;
   signingSecret: string;
-  /** Optional override; defaults to DISCORD_ACTIVITY_HUB_ACTION_EMOJIS_JSON. */
-  actionEmojis?: HubActionEmojiMap;
+  /** Optional override of registry modules (tests / Admin-disabled modules). */
+  modules?: readonly HubModuleDefinition[];
 };
 
 export type ActivityHubMessagePayload = MessageCreateOptions & MessageEditOptions;
 
-const HUB_INTRO = 'Organizuj wydarzenia i zbieraj ekipę.';
+const HUB_TITLE = 'V2 Centrum';
+const HUB_INTRO =
+  'Potrzebujesz czegoś związanego z grą lub społecznością — zacznij tutaj. Wybierz obszar z listy.';
+const SELECT_PLACEHOLDER = 'Nie wybrano żadnej opcji';
 
 /**
- * Public Centrum Aktywności hub — one Components V2 Container.
- * Header thumbnail + optional wide MediaGallery banner + four Section buttons.
- * Action icons are emoji-scale (custom emoji config) — never large ThumbnailAccessory.
+ * Canonical V2 Hub — one Components V2 Container + native StringSelect navigation.
+ * Personalized flows continue in ephemeral / DM / WWW — never in this public message.
  */
 export function renderActivityHubMessage(input: ActivityHubRenderInput): ActivityHubMessagePayload {
   const { opaquePanelId, signingSecret } = input;
-  const actionEmojis = input.actionEmojis ?? resolveHubActionEmojisFromEnv();
+  const modules = listHubModulesForSelect(input.modules);
 
   const container = new ContainerBuilder().setAccentColor(ACTIVITY_HUB_ACCENT);
 
@@ -56,7 +55,7 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
   container.addSectionComponents(
     new SectionBuilder()
       .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(['## Centrum Aktywności', HUB_INTRO].join('\n')),
+        new TextDisplayBuilder().setContent(['## ' + HUB_TITLE, HUB_INTRO].join('\n')),
       )
       .setThumbnailAccessory(
         new ThumbnailBuilder().setURL(hubAsset.attachmentUrl).setDescription(hubAsset.alt),
@@ -72,38 +71,43 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
     );
   }
 
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**DZIAŁAJ**'));
-
-  addHubActionSection(container, opaquePanelId, signingSecret, actionEmojis, {
-    title: 'Utwórz aktywność',
-    description: 'Zaplanuj wydarzenie dla innych.',
-    label: 'Utwórz',
-    action: 'create',
-  });
-  addHubActionSection(container, opaquePanelId, signingSecret, actionEmojis, {
-    title: 'Szukam ekipy',
-    description: 'Znajdź aktywną ekipę.',
-    label: 'Szukaj',
-    action: 'lfg',
-  });
-
   container.addSeparatorComponents(
     new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent('**TWOJE**'));
 
-  addHubActionSection(container, opaquePanelId, signingSecret, actionEmojis, {
-    title: 'Moje aktywności',
-    description: 'Twoje wydarzenia i zapisy.',
-    label: 'Otwórz',
-    action: 'mine',
+  const groupLines = (['GRA', 'RYNEK', 'GILDIA', 'TY'] as const).map((group) => {
+    const labels = modules
+      .filter((module) => module.group === group)
+      .map((module) => module.label)
+      .join(' · ');
+    return `**${HUB_GROUP_LABELS[group]}** — ${labels.length > 0 ? labels : '—'}`;
   });
-  addHubActionSection(container, opaquePanelId, signingSecret, actionEmojis, {
-    title: 'Powiadomienia',
-    description: 'Zmiany, przypomnienia i lista rezerwowa.',
-    label: 'Otwórz',
-    action: 'inbox',
-  });
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(['**Mapa V2**', ...groupLines].join('\n')),
+  );
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(createPanelCustomId(opaquePanelId, 'module', signingSecret))
+    .setPlaceholder(SELECT_PLACEHOLDER)
+    .addOptions(
+      modules.map((module) => {
+        const option = new StringSelectMenuOptionBuilder()
+          .setLabel(module.label)
+          .setValue(module.discord.selectValue)
+          .setDescription(selectDescription(module));
+        return option;
+      }),
+    );
+
+  container.addActionRowComponents(
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
+  );
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      '-# Wybór otwiera prywatny flow. Ten kanał nie jest miejscem na rozmowę.',
+    ),
+  );
 
   return {
     components: [container],
@@ -112,36 +116,13 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
   };
 }
 
-function hubButton(
-  opaquePanelId: string,
-  signingSecret: string,
-  label: string,
-  action: HubActionKey,
-): ButtonBuilder {
-  return new ButtonBuilder()
-    .setCustomId(createPanelCustomId(opaquePanelId, action, signingSecret))
-    .setLabel(label)
-    .setStyle(ButtonStyle.Secondary);
-}
-
-function addHubActionSection(
-  container: ContainerBuilder,
-  opaquePanelId: string,
-  signingSecret: string,
-  actionEmojis: HubActionEmojiMap,
-  copy: {
-    title: string;
-    description: string;
-    label: string;
-    action: HubActionKey;
-  },
-): void {
-  const icon = hubActionIconPrefix(copy.action, actionEmojis);
-  container.addSectionComponents(
-    new SectionBuilder()
-      .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`**${icon}${copy.title}**\n${copy.description}`),
-      )
-      .setButtonAccessory(hubButton(opaquePanelId, signingSecret, copy.label, copy.action)),
-  );
+function selectDescription(module: HubModuleDefinition): string {
+  const availabilityLabel =
+    module.availability === 'available'
+      ? 'Dostępne'
+      : module.availability === 'foundation'
+        ? 'Fundament'
+        : 'Wkrótce';
+  const base = `${HUB_GROUP_LABELS[module.group]} · ${availabilityLabel}`;
+  return base.slice(0, 100);
 }

@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage.js';
 import { EventDetailPage } from './pages/EventDetailPage.js';
 import { EventsPage } from './pages/EventsPage.js';
 import { FieldsPage } from './pages/FieldsPage.js';
+import { HubModulesPage } from './pages/HubModulesPage.js';
 import { HubPage } from './pages/HubPage.js';
 import { LimitsPage } from './pages/LimitsPage.js';
 import { NotificationsPage } from './pages/NotificationsPage.js';
@@ -38,6 +39,7 @@ export function App() {
         <Route path="/activity/reports" element={<ReportsPage />} />
         <Route path="/activity/audit" element={<AuditPage />} />
         <Route path="/activity/hub" element={<HubPage />} />
+        <Route path="/activity/hub-modules" element={<HubModulesPage />} />
       </Route>
     </Routes>
   );

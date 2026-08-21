@@ -341,6 +341,18 @@ function createAdminMemoryRepo(): {
     async setHubChannelId() {
       return notImpl();
     },
+    async listHubLegacyChannels() {
+      return [];
+    },
+    async upsertHubLegacyChannel() {
+      return notImpl();
+    },
+    async getHubModuleOverrides() {
+      return {};
+    },
+    async setHubModuleOverrides() {
+      return notImpl();
+    },
     async insertActivityType() {
       return notImpl();
     },

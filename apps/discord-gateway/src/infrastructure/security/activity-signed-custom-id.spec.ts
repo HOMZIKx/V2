@@ -16,7 +16,7 @@ const statusOpaque = '112233445566';
 
 describe('activity-signed-custom-id', () => {
   it('round-trips panel custom ids including panelId', () => {
-    for (const action of ['create', 'lfg', 'mine', 'inbox'] as const) {
+    for (const action of ['create', 'lfg', 'mine', 'inbox', 'module'] as const) {
       const raw = createPanelCustomId(panelOpaque, action, secret);
       expect(raw.length).toBeLessThanOrEqual(100);
       expect(raw).toContain(`:panel:${panelOpaque}:${action}`);

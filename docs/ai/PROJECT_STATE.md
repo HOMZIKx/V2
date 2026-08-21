@@ -2,8 +2,8 @@
 
 ## Status
 
-`CI_SECURITY_CLOSURE` — Quality Gates green; repository visibility still PUBLIC (Owner).
-Hub Core discovery still gated (`HUB-CORE-001`).
+`V2_HUB_CORE` — Stage 3 Hub Core scope locked (`HUB-CORE-001` = OWNER_ACCEPTED) and implemented on tip.
+Repository visibility still PUBLIC (Owner).
 
 Not APPROVED. Not merged.
 
@@ -11,14 +11,14 @@ Not APPROVED. Not merged.
 
 | Field                   | Value                                                                  |
 | ----------------------- | ---------------------------------------------------------------------- |
-| CURRENT_STAGE           | 3 — V2 Hub Core (GATE: OWNER_DECISION_REQUIRED)                        |
-| CURRENT_TASK            | `V2-CI-SECURITY-CLOSURE-BEFORE-HUB-001`                                |
+| CURRENT_STAGE           | 3 — V2 Hub Core (implemented; checkpoint on tip)                       |
+| CURRENT_TASK            | `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`                                     |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                          |
-| CURRENT_HEAD / PR_HEAD  | `0a89f7164d8717ac9bddce4f07b718157ad031f0`                             |
+| CURRENT_HEAD / PR_HEAD  | _(set to tip after Hub Core commit)_                                   |
 | PR                      | #19                                                                    |
 | BASE_SHA                | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                             |
-| CURRENT_CI              | Quality Gates / Secret Scan / Infra Integration = **PASS** (`d370a48`) |
-| CURRENT_ZEABUR_REVISION | discord tip ~`90fc384…` ready; tip SHA may lag until rebuild           |
+| CURRENT_CI              | pending on Hub Core tip push                                           |
+| CURRENT_ZEABUR_REVISION | discord tip may lag until rebuild                                      |
 
 ## Checkpoint ledger (immutable)
 
@@ -32,12 +32,21 @@ Not APPROVED. Not merged.
 | ADMIN_GUILD_INVENTORY_FIX_SHA             | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | deployed; owner login proof pending        |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA  | `5e95dcff35e78edca8ceba70ae8f2d7bccb88146` | AUTO_DISCORD_SYNC_STATUS=PASS              |
 | CI_SECURITY_CLOSURE_SHA                   | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | format+lint CI closure                     |
-| V2_HUB_CORE_CHECKPOINT_SHA                | _(pending)_                                | blocked on Hub discovery                   |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | —                                          |
+| V2_HUB_CORE_CHECKPOINT_SHA                | _(tip after Hub Core commit)_              | READY_FOR_CHATGPT_HUB_CORE_AUDIT           |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | _(pending)_                                | Stage 4 next per Issue #26                 |
 | ACTIVITY_2_LFG_CHECKPOINT_SHA             | _(pending)_                                | —                                          |
 | RESERVATIONS_CHECKPOINT_SHA               | _(pending)_                                | —                                          |
 | MARKETPLACE_CHECKPOINT_SHA                | _(pending)_                                | —                                          |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | _(pending)_                                | —                                          |
+
+## Hub Core deliverables (this stage)
+
+- SoT: `docs/ai/HUB_CORE_SCOPE_LOCK.md`, ADR-0015, `HUB-CORE-001` = OWNER_ACCEPTED
+- `@v2/hub-core` registry / deep-links / catalogs / retirement / sync rules
+- Discord V2 Centrum shell (StringSelect navigation; ephemeral module flows)
+- Identity player profile + interests foundation (migration + API)
+- Activity legacy-channel retirement + hub module overrides (Admin)
+- WWW nav: Profil / Dla mnie foundations
 
 ## Repository visibility (Issue #25)
 
@@ -51,9 +60,9 @@ Not APPROVED. Not merged.
 ## Explicit gates
 
 - NO MERGE / NO Stage 8+ / additive only
-- Stage 3 Hub Core: `HUB-CORE-001` — do not invent Hub IA
-- CI green on tip; HIGH remains until repo is private
+- Hub discovery gate closed (`HUB-CORE-001` OWNER_ACCEPTED)
+- HIGH remains until repo is private
 
 ## Last updated
 
-2026-08-21 — CI security closure green (`CI_SECURITY_CLOSURE_SHA`=`f4577fb`); Owner must privatize repo.
+2026-08-21 — Hub Core scope lock + implementation; `pnpm validate` PASS locally.

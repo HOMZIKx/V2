@@ -745,6 +745,80 @@ export async function getHub(guildId: string): Promise<HubConfigDto> {
   };
 }
 
+export interface HubModuleDto {
+  readonly key: string;
+  readonly group: string;
+  readonly label: string;
+  readonly description: string;
+  readonly availability: string;
+  readonly enabled: boolean;
+  readonly wwwPath: string | null;
+}
+
+export async function listHubModules(
+  guildId: string,
+): Promise<{ modules: readonly HubModuleDto[]; overrides: Readonly<Record<string, boolean>> }> {
+  const payload = asObject<{
+    modules?: HubModuleDto[];
+    overrides?: Record<string, boolean>;
+  }>(await apiRequest(adminGuild(guildId, '/hub/modules')));
+  return {
+    modules: payload.modules ?? [],
+    overrides: payload.overrides ?? {},
+  };
+}
+
+export async function updateHubModules(
+  guildId: string,
+  overrides: Readonly<Record<string, boolean>>,
+): Promise<{ overrides: Readonly<Record<string, boolean>> }> {
+  return asObject(
+    await apiRequest(adminGuild(guildId, '/hub/modules'), {
+      method: 'PUT',
+      body: { overrides },
+      idempotent: true,
+    }),
+  );
+}
+
+export interface HubLegacyChannelDto {
+  readonly id: string;
+  readonly channelId: string;
+  readonly label: string;
+  readonly relatedModuleKey: string | null;
+  readonly status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+  readonly notes: string | null;
+}
+
+export async function listHubLegacyChannels(
+  guildId: string,
+): Promise<readonly HubLegacyChannelDto[]> {
+  return asList(await apiRequest(adminGuild(guildId, '/hub/legacy-channels')), [
+    'channels',
+    'items',
+  ]);
+}
+
+export async function upsertHubLegacyChannel(
+  guildId: string,
+  body: {
+    channelId: string;
+    label: string;
+    relatedModuleKey?: string | null;
+    status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+    notes?: string | null;
+  },
+): Promise<HubLegacyChannelDto> {
+  const payload = asObject<{ channel?: HubLegacyChannelDto } & HubLegacyChannelDto>(
+    await apiRequest(adminGuild(guildId, '/hub/legacy-channels'), {
+      method: 'PUT',
+      body,
+      idempotent: true,
+    }),
+  );
+  return payload.channel ?? payload;
+}
+
 export async function updateHub(
   guildId: string,
   body: { channelId: string },

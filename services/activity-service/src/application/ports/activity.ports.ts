@@ -563,6 +563,36 @@ export interface ActivityTx {
   ): Promise<GuildActivitySettingsRecord>;
   setPingRoleIds(guildId: string, roleIds: readonly string[]): Promise<GuildActivitySettingsRecord>;
   setHubChannelId(guildId: string, channelId: string | null): Promise<GuildActivitySettingsRecord>;
+  listHubLegacyChannels(guildId: string): Promise<
+    readonly {
+      readonly id: string;
+      readonly channelId: string;
+      readonly label: string;
+      readonly relatedModuleKey: string | null;
+      readonly status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+      readonly notes: string | null;
+    }[]
+  >;
+  upsertHubLegacyChannel(input: {
+    guildId: string;
+    channelId: string;
+    label: string;
+    relatedModuleKey?: string | null;
+    status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+    notes?: string | null;
+  }): Promise<{
+    readonly id: string;
+    readonly channelId: string;
+    readonly label: string;
+    readonly relatedModuleKey: string | null;
+    readonly status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+    readonly notes: string | null;
+  }>;
+  getHubModuleOverrides(guildId: string): Promise<Readonly<Record<string, boolean>>>;
+  setHubModuleOverrides(
+    guildId: string,
+    overrides: Readonly<Record<string, boolean>>,
+  ): Promise<Readonly<Record<string, boolean>>>;
   listActivityTypes(guildId: string): Promise<ActivityTypeRecord[]>;
   getActivityType(id: string): Promise<ActivityTypeRecord | null>;
   insertActivityType(input: {

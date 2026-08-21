@@ -75,7 +75,7 @@ describe('user facing errors', () => {
 });
 
 describe('hub visual identity', () => {
-  it('uses Centrum module accent decoupled from V2 LAB purple', () => {
+  it('uses V2 Centrum shell accent decoupled from V2 LAB purple', () => {
     expect(ACTIVITY_HUB_ACCENT).toBe(ACTIVITY_MODULE_ACCENT);
     expect(ACTIVITY_HUB_ACCENT).toBe(0xd48632);
     expect(ACTIVITY_HUB_ACCENT).not.toBe(0x7c3aed);
@@ -85,11 +85,11 @@ describe('hub visual identity', () => {
     });
     const json = JSON.stringify(payload);
     expect(json).not.toMatch(/one-shot|waitlist|reconfirm|opaque/i);
-    expect(json).toContain('Utwórz aktywność');
-    expect(json).toContain('lista rezerwowa');
-    expect(json).toContain('**DZIAŁAJ**');
-    expect(json).toContain('**TWOJE**');
-    expect(json).toContain('Organizuj wydarzenia i zbieraj ekipę.');
+    expect(json).toContain('V2 Centrum');
+    expect(json).toContain('**Mapa V2**');
+    expect(json).toContain('Aktywności');
+    expect(json).toContain('Mój profil');
+    expect(json).toContain('Nie wybrano żadnej opcji');
     expect(json).not.toContain('edytujesz sekcje w dowolnej kolejności');
     expect(json).not.toContain('Szybsza publikacja tej samej aktywności');
     expect(json).not.toContain('v2-lab-banner');

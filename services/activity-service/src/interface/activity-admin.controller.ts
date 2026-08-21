@@ -694,6 +694,73 @@ export class ActivityAdminController {
     return this.admin.getHubStatus(guildId, actorFromRequest(request));
   }
 
+  @Get('guilds/:guildId/hub/modules')
+  @RequireOperation('activity_read')
+  public async listHubModules(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.admin.listHubModules(guildId, actorFromRequest(request));
+  }
+
+  @Put('guilds/:guildId/hub/modules')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async updateHubModules(
+    @Param('guildId') guildId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(z.object({ overrides: z.record(z.string(), z.boolean()) }), body);
+    return this.admin.updateHubModuleOverrides(
+      guildId,
+      parsed.overrides,
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Get('guilds/:guildId/hub/legacy-channels')
+  @RequireOperation('activity_read')
+  public async listHubLegacyChannels(
+    @Param('guildId') guildId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.admin.listHubLegacyChannels(guildId, actorFromRequest(request));
+  }
+
+  @Put('guilds/:guildId/hub/legacy-channels')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async upsertHubLegacyChannel(
+    @Param('guildId') guildId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(
+      z.object({
+        channelId: z.string().min(1),
+        label: z.string().min(1).max(200),
+        relatedModuleKey: z.string().min(1).max(64).nullable().optional(),
+        status: z.enum(['LEGACY_ACTIVE', 'V2_READY', 'OWNER_CAN_RETIRE']),
+        notes: z.string().max(2000).nullable().optional(),
+      }),
+      body,
+    );
+    return this.admin.upsertHubLegacyChannel(
+      guildId,
+      {
+        channelId: parsed.channelId,
+        label: parsed.label,
+        relatedModuleKey: parsed.relatedModuleKey ?? null,
+        status: parsed.status,
+        notes: parsed.notes ?? null,
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
   @Post('guilds/:guildId/hub/publish-intent')
   @HttpCode(200)
   @RequireOperation('activity_mutate')

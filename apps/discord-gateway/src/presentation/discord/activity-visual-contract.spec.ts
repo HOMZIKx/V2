@@ -19,7 +19,7 @@ function toJson(component: unknown): Record<string, unknown> {
 }
 
 describe('Activity Discord visual contract', () => {
-  it('keeps hub as one Container with module accent, header thumbnail and Section buttons', () => {
+  it('keeps hub as one Container with module accent, map copy and StringSelect navigation', () => {
     const payload = renderActivityHubMessage({
       opaquePanelId: 'aabbccddeeff',
       signingSecret: secret,
@@ -33,12 +33,11 @@ describe('Activity Discord visual contract', () => {
     expect(container.accent_color).toBe(0xd48632);
     const json = JSON.stringify(container);
     expect(json).not.toMatch(/"style"\s*:\s*1\b/);
-    expect(json).toContain('**DZIAŁAJ**');
-    expect(json).toContain('**TWOJE**');
-    expect(json).toContain(':panel:aabbccddeeff:create');
-    expect(json).toContain(':panel:aabbccddeeff:lfg');
-    expect(json).toContain(':panel:aabbccddeeff:mine');
-    expect(json).toContain(':panel:aabbccddeeff:inbox');
+    expect(json).toContain('V2 Centrum');
+    expect(json).toContain('**Mapa V2**');
+    expect(json).toContain(':panel:aabbccddeeff:module');
+    expect(json).toContain('Aktywności');
+    expect(json).toContain('Mój profil');
     expect(json).toContain('attachment://centrum-aktywnosci-icon.webp');
     expect(json).not.toContain('attachment://utworz-wydarzenie-icon.webp');
     expect(json).not.toContain('attachment://szukam-ekipy-icon.webp');

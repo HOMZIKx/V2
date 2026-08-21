@@ -13,6 +13,7 @@ const PULPIT = { to: '/', label: 'Pulpit' } as const;
 const CENTRUM_NAV: readonly { readonly to: string; readonly label: string }[] = [
   { to: '/activity', label: 'Przegląd' },
   { to: '/activity/channels', label: 'Kanały i panel' },
+  { to: '/activity/hub-modules', label: 'Moduły Hub' },
   { to: '/activity/types', label: 'Typy aktywności' },
   { to: '/activity/statuses', label: 'Statusy zapisów' },
   { to: '/activity/fields', label: 'Formularz uczestnika' },

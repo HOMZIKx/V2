@@ -570,6 +570,18 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async setHubChannelId() {
       throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
     },
+    async listHubLegacyChannels() {
+      return [];
+    },
+    async upsertHubLegacyChannel() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
+    async getHubModuleOverrides() {
+      return {};
+    },
+    async setHubModuleOverrides() {
+      throw new ActivityError('NOT_FOUND', 'not implemented in memory fixture');
+    },
     async listActivityTypes() {
       return [];
     },

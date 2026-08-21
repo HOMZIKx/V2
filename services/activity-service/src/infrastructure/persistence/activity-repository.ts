@@ -1677,6 +1677,117 @@ function createTx(client: PoolClient): ActivityTx {
       return mapSettings(row);
     },
 
+    async listHubLegacyChannels(guildId) {
+      const result = await client.query(
+        `SELECT id::text, channel_id, label, related_module_key, status, notes
+         FROM hub_legacy_channels
+         WHERE guild_id = $1
+         ORDER BY label ASC`,
+        [guildId],
+      );
+      return result.rows.map((row) => ({
+        id: String((row as { id: unknown }).id),
+        channelId: String((row as { channel_id: unknown }).channel_id),
+        label: String((row as { label: unknown }).label),
+        relatedModuleKey:
+          (row as { related_module_key: unknown }).related_module_key === null ||
+          (row as { related_module_key: unknown }).related_module_key === undefined
+            ? null
+            : String((row as { related_module_key: unknown }).related_module_key),
+        status: String((row as { status: unknown }).status) as
+          'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE',
+        notes:
+          (row as { notes: unknown }).notes === null ||
+          (row as { notes: unknown }).notes === undefined
+            ? null
+            : String((row as { notes: unknown }).notes),
+      }));
+    },
+
+    async upsertHubLegacyChannel(input) {
+      const result = await client.query(
+        `INSERT INTO hub_legacy_channels (
+           guild_id, channel_id, label, related_module_key, status, notes
+         ) VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (guild_id, channel_id) DO UPDATE SET
+           label = EXCLUDED.label,
+           related_module_key = EXCLUDED.related_module_key,
+           status = EXCLUDED.status,
+           notes = EXCLUDED.notes,
+           updated_at = now()
+         RETURNING id::text, channel_id, label, related_module_key, status, notes`,
+        [
+          input.guildId,
+          input.channelId,
+          input.label,
+          input.relatedModuleKey ?? null,
+          input.status,
+          input.notes ?? null,
+        ],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('VALIDATION_FAILED', 'Failed to upsert legacy channel');
+      }
+      return {
+        id: String(row.id),
+        channelId: String(row.channel_id),
+        label: String(row.label),
+        relatedModuleKey: asNullableString(row.related_module_key),
+        status: String(row.status) as 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE',
+        notes: asNullableString(row.notes),
+      };
+    },
+
+    async getHubModuleOverrides(guildId) {
+      const result = await client.query(
+        `SELECT hub_module_overrides FROM guild_activity_settings WHERE guild_id = $1`,
+        [guildId],
+      );
+      const row = result.rows[0] as { hub_module_overrides?: unknown } | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Guild settings not found');
+      }
+      const raw = row.hub_module_overrides;
+      if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) {
+        return {};
+      }
+      const overrides: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+        if (typeof value === 'boolean') {
+          overrides[key] = value;
+        }
+      }
+      return overrides;
+    },
+
+    async setHubModuleOverrides(guildId, overrides) {
+      const result = await client.query(
+        `UPDATE guild_activity_settings
+         SET hub_module_overrides = $2::jsonb,
+             config_revision = config_revision + 1,
+             updated_at = now()
+         WHERE guild_id = $1
+         RETURNING hub_module_overrides`,
+        [guildId, JSON.stringify(overrides)],
+      );
+      const row = result.rows[0] as { hub_module_overrides?: unknown } | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Guild settings not found');
+      }
+      const raw = row.hub_module_overrides;
+      if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) {
+        return {};
+      }
+      const next: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+        if (typeof value === 'boolean') {
+          next[key] = value;
+        }
+      }
+      return next;
+    },
+
     async listActivityTypes(guildId) {
       const result = await client.query(
         `SELECT * FROM activity_types WHERE guild_id = $1 ORDER BY sort_order, key`,

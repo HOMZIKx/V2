@@ -5,7 +5,7 @@ export const ACTIVITY_CUSTOM_ID_VERSION = 'v1';
 
 export type ActivityCustomScope = 'panel' | 'event' | 'draft' | 'modal';
 
-export type ActivityPanelAction = 'create' | 'lfg' | 'mine' | 'inbox';
+export type ActivityPanelAction = 'create' | 'lfg' | 'mine' | 'inbox' | 'module';
 
 export type ActivityEventAction =
   | 'rsvp'
@@ -65,7 +65,7 @@ export type ParsedActivityCustomId =
       signature: string;
     };
 
-const PANEL_ACTIONS = new Set<ActivityPanelAction>(['create', 'lfg', 'mine', 'inbox']);
+const PANEL_ACTIONS = new Set<ActivityPanelAction>(['create', 'lfg', 'mine', 'inbox', 'module']);
 const EVENT_ACTIONS = new Set<ActivityEventAction>([
   'rsvp',
   'participants',

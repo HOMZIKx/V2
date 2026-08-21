@@ -9,6 +9,7 @@ import { type AuthRuntime, createBetterAuth } from '../infrastructure/auth/creat
 import { type IdentityEnv, parseIdentityEnv } from '../infrastructure/config/identity-env.js';
 import { createAssertionJtiStore } from '../infrastructure/internal-jwt/assertion-jti-store.js';
 import { createInternalJwtRuntime } from '../infrastructure/internal-jwt/create-internal-jwt-runtime.js';
+import { PlayerProfileRepository } from '../infrastructure/persistence/player-profile.repository.js';
 import { AuthBootstrapService } from './auth-bootstrap.service.js';
 import { HealthController } from './health.controller.js';
 import { IdentityController } from './identity.controller.js';
@@ -19,9 +20,11 @@ import {
   IDENTITY_SESSION_PORT,
   INTERNAL_JWT_ISSUE_PORT,
   INTERNAL_JWT_RUNTIME,
+  PLAYER_PROFILE_REPOSITORY,
 } from './identity.tokens.js';
 import { InternalJwtLifecycleService } from './internal-jwt-lifecycle.service.js';
 import { InternalTokenController } from './internal-token.controller.js';
+import { PlayerProfileController } from './player-profile.controller.js';
 import { ProofUiController } from './proof-ui.controller.js';
 import { SystemRevokeController } from './system-revoke.controller.js';
 import { WebOauthController } from './web-oauth.controller.js';
@@ -41,6 +44,12 @@ const providers: Provider[] = [
     provide: IDENTITY_SESSION_PORT,
     useFactory: (runtime: AuthRuntime | null): BetterAuthIdentityAdapter | null =>
       runtime === null ? null : new BetterAuthIdentityAdapter(runtime.auth),
+    inject: [AUTH_RUNTIME],
+  },
+  {
+    provide: PLAYER_PROFILE_REPOSITORY,
+    useFactory: (runtime: AuthRuntime | null): PlayerProfileRepository | null =>
+      runtime === null ? null : new PlayerProfileRepository(runtime.pool),
     inject: [AUTH_RUNTIME],
   },
   {
@@ -81,6 +90,7 @@ const providers: Provider[] = [
   controllers: [
     HealthController,
     IdentityController,
+    PlayerProfileController,
     InternalTokenController,
     SystemRevokeController,
     ProofUiController,

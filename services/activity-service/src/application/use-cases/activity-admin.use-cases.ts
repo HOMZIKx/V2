@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { DEFAULT_HUB_MODULES } from '@v2/hub-core';
+
 import {
   assertCreateHorizonDays,
   assertParticipantFieldType,
@@ -944,11 +946,86 @@ export class ActivityAdminUseCases {
       }
       const panels = await tx.listPanels(guildId);
       const hub = panels.find((p) => p.panelType === 'hub') ?? null;
+      const moduleOverrides = await tx.getHubModuleOverrides(guildId);
+      const legacyChannels = await tx.listHubLegacyChannels(guildId);
       return {
         hubChannelId: settings.hubChannelId,
         configRevision: settings.configRevision,
         panel: hub,
+        moduleOverrides,
+        legacyChannels,
       };
+    });
+  }
+
+  public async listHubModules(guildId: string, actor: ActorSubject) {
+    await this.requirePanelManage(actor, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const overrides = await tx.getHubModuleOverrides(guildId);
+      return {
+        modules: DEFAULT_HUB_MODULES.map((module) => {
+          const forced = overrides[module.key];
+          return {
+            key: module.key,
+            group: module.group,
+            label: module.label,
+            description: module.description,
+            availability: module.availability,
+            enabled: forced === undefined ? module.availability !== 'disabled' : forced,
+            wwwPath: module.www?.path ?? null,
+          };
+        }),
+        overrides,
+      };
+    });
+  }
+
+  public async updateHubModuleOverrides(
+    guildId: string,
+    overrides: Readonly<Record<string, boolean>>,
+    ctx: MutationContext,
+  ) {
+    await this.requirePanelManage(ctx.actor, guildId);
+    return this.mutate(ctx, 'admin-hub-modules', `guild:${guildId}`, async (tx) => {
+      const updated = await tx.setHubModuleOverrides(guildId, overrides);
+      await this.audit(tx, ctx, guildId, 'admin.hub.modules_update', { overrides: updated });
+      return { overrides: updated };
+    });
+  }
+
+  public async listHubLegacyChannels(guildId: string, actor: ActorSubject) {
+    await this.requirePanelManage(actor, guildId);
+    return this.deps.repository.withTransaction(async (tx) => ({
+      channels: await tx.listHubLegacyChannels(guildId),
+    }));
+  }
+
+  public async upsertHubLegacyChannel(
+    guildId: string,
+    input: {
+      channelId: string;
+      label: string;
+      relatedModuleKey?: string | null;
+      status: 'LEGACY_ACTIVE' | 'V2_READY' | 'OWNER_CAN_RETIRE';
+      notes?: string | null;
+    },
+    ctx: MutationContext,
+  ) {
+    await this.requirePanelManage(ctx.actor, guildId);
+    return this.mutate(ctx, 'admin-hub-legacy-channel', `guild:${guildId}`, async (tx) => {
+      const channel = await tx.upsertHubLegacyChannel({
+        guildId,
+        channelId: input.channelId,
+        label: input.label,
+        relatedModuleKey: input.relatedModuleKey ?? null,
+        status: input.status,
+        notes: input.notes ?? null,
+      });
+      await this.audit(tx, ctx, guildId, 'admin.hub.legacy_channel_upsert', {
+        channelId: channel.channelId,
+        status: channel.status,
+      });
+      return { channel };
     });
   }
 
