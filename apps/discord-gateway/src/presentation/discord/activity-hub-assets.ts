@@ -6,9 +6,10 @@ import { fileURLToPath } from 'node:url';
 /**
  * Central Activity Hub visual asset registry.
  *
- * OWNER_ASSET_REQUIRED — wide banner (not yet in repo):
+ * OWNER_ASSET_REQUIRED — wide banner path when file is absent:
  *   apps/discord-gateway/assets/v2-activity-banner.webp
  *   Spec: ~4:1–5:1, amber → graphite → warm green, no text, no LAB logo.
+ *   Present in repo: optional MediaGallery attaches automatically.
  *
  * OWNER_ASSET_UPLOAD_REQUIRED — small function icons as Discord custom emoji
  *   (upload from utworz/szukam/moje/powiadomienia webp, ~emoji scale).
