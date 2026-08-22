@@ -5,6 +5,8 @@ import { assertNoDoubleBooking } from '../../domain/reservations.js';
 import type { ActivityTx, ActorSubject } from '../ports/activity.ports.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
+/** PROTOTYPE / FOUNDATION WIP — RESERVATIONS_OWNER_DISCOVERY_REQUIRED. Do not expand. */
+
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
     throw new ActivityError('UNAUTHENTICATED', 'Discord actor required');

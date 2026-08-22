@@ -5,6 +5,8 @@ import { offerMatchesWatch } from '../../domain/marketplace.js';
 import type { ActivityTx, ActorSubject } from '../ports/activity.ports.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
+/** PROTOTYPE / FOUNDATION WIP — Issue #28 NOT_ACCEPTED. See OWNER_DISCOVERY_GAPS.md. */
+
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
     throw new ActivityError('UNAUTHENTICATED', 'Discord actor required');

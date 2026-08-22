@@ -2,6 +2,15 @@
 
 ## Aktywne
 
+### GOVERNANCE-001 — Owner Discovery gate (all new product functions)
+
+- **Status:** `OWNER_PROCESS_ACCEPTED` (Issue #26 amendment + remediation task)
+- **Rule:** IDEA → Owner+ChatGPT Discovery → Options → Owner Decisions → Accepted SoT →
+  implementation prompt. Continuous execution does **not** override.
+- **SoT:** `docs/ai/OWNER_DISCOVERY_GAPS.md`
+- **Cursor action:** no Stage 6/7 product expansion; classify prototype code as
+  `FOUNDATION_WIP`; do not treat API stubs as released product.
+
 ### CI-BILLING-001 — GitHub Actions jobs not started (billing / spending limit)
 
 - **Status:** `OWNER_ACTION_REQUIRED` (CRITICAL for required CI green)
@@ -17,13 +26,43 @@
 
 ### MARKETPLACE-DISC-001 — Issue #28 Owner Discovery before Stage 7
 
-- **Status:** `OWNER_PRODUCT_DISCOVERY_REQUIRED`
-- **SoT:** Issue #28 — **DO NOT IMPLEMENT YET**.
-- **Correction:** local `MARKETPLACE_SCOPE_LOCK` incorrectly claimed
-  `OWNER_ACCEPTED`; revoked in recovery task. Premature WIP remains historical
-  under `MARKETPLACE_FOUNDATION_WIP_SHA` only.
-- **Cursor action:** no further Marketplace product implementation until #28
-  Definition of Ready is Owner-Accepted.
+- **Status:** `OWNER_DISCOVERY_REQUIRED` · `FOUNDATION_WIP_EXISTS` ·
+  `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`
+- **SoT:** Issue #28 — **DO NOT IMPLEMENT YET** (authoritative).
+- **Prototype on branch:** migration 015, `offerMatchesWatch`, POST offer API — **do not
+  expand**; do not delete.
+- **Cursor action:** no further Marketplace product implementation until #28 Definition of
+  Ready is Owner-Accepted. See `MARKETPLACE_SCOPE_LOCK.md` + `OWNER_DISCOVERY_GAPS.md`.
+
+### RESERVATIONS-DISC-001 — Reservations Owner Discovery before Stage 6 product
+
+- **Status:** `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`
+- **SoT:** No complete Owner Discovery pack recorded (unlike Hub #22 / Marketplace #28).
+- **Prototype on branch:** migration 014, conflict domain, create/cancel API — **do not
+  expand** product UX/semantics.
+- **Cursor action:** run Owner Discovery before treating Reservations as Accepted.
+
+### LFG-DISC-001 — LFG remaining UX and DoD (Issue #20)
+
+- **Status:** `FOUNDATION_WIP` — direction partially Accepted (#20), details open
+- **Accepted direction includes:** matching not board, DM-first, characters, class/spec,
+  party roles, discovery-first, no public role-ping spam as primary UX.
+- **Open:** Discord wizard, team-space, Admin/WWW, anti-spam, scoring display.
+- **SoT:** `LFG_SCOPE_LOCK.md` governance matrix + `OWNER_DISCOVERY_GAPS.md`.
+
+### NOTIFICATIONS-DISC-001 — Notification product catalog and timings
+
+- **Status:** principles **Accepted** (#24 / ADR-0016); catalog/timings **open**
+- **Open:** coalescing window duration, digest, quiet hours, retention, per-kind copy,
+  preference UX on Discord/WWW.
+- **SoT:** `NOTIFICATIONS_CORE_SCOPE_LOCK.md` + gap matrix.
+
+### PROFILE-DISC-001 — Interest→role Discord mutation
+
+- **Status:** `ROLE_PROJECTION_POLICY` implemented; `ROLE_PROJECTION_DISCORD_MUTATION`
+  **pending**
+- **Evidence:** `interest-role-projection.ts` computes desired state; no gateway apply loop.
+- **Cursor action:** do not wire silent Discord role apply until Owner decides timing/UX.
 
 ### HUB-CORE-001 — Stage 3 V2 Hub Core discovery before implement
 

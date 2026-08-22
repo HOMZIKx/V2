@@ -1,5 +1,7 @@
 /**
- * Marketplace offer matching — Stage 7 (BUY/SELL watches).
+ * Marketplace offer matching — PROTOTYPE / FOUNDATION WIP (Stage 7).
+ * NOT Accepted product (#28 OWNER_DISCOVERY_REQUIRED).
+ * Do not expand semantics; see docs/ai/OWNER_DISCOVERY_GAPS.md.
  */
 
 export type MarketplaceOffer = {

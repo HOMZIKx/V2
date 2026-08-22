@@ -2,21 +2,41 @@
 
 ## Status
 
-`FOUNDATION_WIP` — matching/intents foundations exist; **not** Accepted Stage 5 DoD.
+| Flag                  | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| **Product direction** | Issue **#20** (incl. Owner Amendment: DM-first matchmaking)        |
+| **Implementation**    | `FOUNDATION_WIP` — not Accepted Stage 5 DoD                        |
+| **Governance**        | Issue #26 amendment — continuous resume does not replace discovery |
 
-Issue **#20** (incl. Owner Amendment for DM-first matchmaking) is the product SoT.
-Full Discord multi-step discovery UX, team-space, and complete DoD tests remain open.
+Full Discord multi-step discovery UX, team-space, Admin/WWW parity, and complete DoD
+tests remain **open**.
 
-Owner Product Discovery process amendment in Issue #26 (2026-08-21) requires
-ChatGPT↔Owner design conversation before treating a module as Accepted for final
-review. Continuous resume shipped technical foundations early; do not call this
-READY for Core Foundation Owner review.
+Historical WIP: `ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA` (`24828b7`).
 
-## Premature / partial implementation
+## Governance matrix (Issue #20 + branch reality)
 
-Historical WIP under `24828b7`. Treat as:
+| Topic                                  | Status                      | Notes                         |
+| -------------------------------------- | --------------------------- | ----------------------------- |
+| Matching, not public post board        | **ACCEPTED**                | Hub copy + `rankLfgMatch`     |
+| DM-first match delivery                | **ACCEPTED** (direction)    | Copy/flows still Owner review |
+| Characters + class/spec                | **ACCEPTED** (model)        | Picker UX open                |
+| Party roles TANK/BUFF/DPS/FLEX         | **ACCEPTED**                | Class/spec ≠ party role       |
+| Discovery-first (match before create)  | **ACCEPTED** (principle)    | Wizard step order open        |
+| Waiting intent / watch pool            | **FOUNDATION_WIP**          | `lfg_intents` + API           |
+| Discord multi-step LFG wizard          | **OWNER_DECISION_REQUIRED** | Partial implementation        |
+| Team-space after match                 | **OWNER_DECISION_REQUIRED** | Not built                     |
+| No public role-ping spam as primary UX | **ACCEPTED** (forbidden)    | Do not add                    |
+| Match score display / reasons UX       | **OWNER_DECISION_REQUIRED** | Engine is **TECHNICAL_ONLY**  |
+| Anti-spam / rate limits                | **OWNER_DECISION_REQUIRED** | Minimal today                 |
+| Admin / WWW LFG surfaces               | **OWNER_DECISION_REQUIRED** | Not built                     |
 
-`ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA` — **not** a final Accepted Stage 5 checkpoint.
+Full gap rows: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
+
+## Cursor rules
+
+- Do **not** invent remaining user-facing LFG behavior.
+- Do **not** call Stage 5 Accepted for Core Foundation review.
+- Safe work inside **ACCEPTED** direction only; expand UX only after Owner decisions.
 
 ## Checkpoint
 

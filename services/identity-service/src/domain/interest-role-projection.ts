@@ -1,5 +1,7 @@
 /**
  * Interest → Discord role projection safety (Hub Core foundation).
+ * ROLE_PROJECTION_POLICY: safety + desired-state compute implemented.
+ * ROLE_PROJECTION_DISCORD_MUTATION: pending Owner decision — no apply loop wired.
  * Interest role is informational; never treat as permission unless separately configured.
  */
 

@@ -17,6 +17,8 @@ valid.
 
 ## Current product status
 
-`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`
+`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
 Integrated checkpoint SHA is historical WIP only — not review-ready.
+
+Governance gap matrix: `docs/ai/OWNER_DISCOVERY_GAPS.md`.

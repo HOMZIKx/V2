@@ -2,66 +2,71 @@
 
 ## Status
 
-`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`
+`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-Task: `V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`  
+Task: `V2-OWNER-DISCOVERY-GATE-COMPLIANCE-REMEDIATION-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
-HEAD: `abc553c…` (tip) — `CORE_STATE_AND_CI_RECOVERY_SHA` = `cf15925…`
+HEAD: `dbecbf2a617890c02088940594a27e537ef39b79` (`OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA`)
 
 ## Fresh facts
 
-| Field                  | Value                                                  |
-| ---------------------- | ------------------------------------------------------ |
-| CURRENT_HEAD / PR_HEAD | `abc553c…` (tip)                                       |
-| REPOSITORY_VISIBILITY  | **PRIVATE_CONFIRMED** (prior session `gh api`)         |
-| CI_STATUS              | **RED** — billing: jobs not started (0 steps)          |
-| LOCAL_VALIDATE         | **PASS** — `corepack pnpm validate` on 2026-08-22      |
-| PR_TITLE_STATUS        | **updated** — WIP conventional title on PR #19         |
-| CURRENT_PRODUCT_STATUS | `WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`             |
+| Field                  | Value                                          |
+| ---------------------- | ---------------------------------------------- |
+| CURRENT_HEAD / PR_HEAD | `dbecbf2…`                                     |
+| CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED` |
+| REPOSITORY_VISIBILITY  | **PRIVATE_CONFIRMED**                          |
+| CI_STATUS              | **RED** — billing: jobs not started (0 steps)  |
+| LOCAL_VALIDATE         | **PASS** — `corepack pnpm validate` 2026-08-22 |
+| PR_TITLE_STATUS        | WIP conventional title on PR #19               |
 
-## Local validation (recovery)
+## Governance remediation delivered
 
-Command: `corepack pnpm validate`  
-Result: **PASS** (format, lint, typecheck, test:coverage, architecture, build,
-e2e admin+web, runtime-smoke, docker compose config).
+1. Created **`docs/ai/OWNER_DISCOVERY_GAPS.md`** — module gap matrix (Hub, Profile,
+   Interests, Notifications, Activity, LFG, Reservations, Marketplace).
+2. Audited scope locks — Marketplace #28 authoritative; Reservations discovery required;
+   LFG governance matrix; Notifications split principles vs open product details.
+3. **No feature deletion** — prototype code remains `FOUNDATION_WIP`.
+4. **No new product behavior** — documentation + classification only.
+5. Profile/Interests: `ROLE_PROJECTION_POLICY` implemented; `ROLE_PROJECTION_DISCORD_MUTATION` pending.
 
-Fixes in this remediation tip:
+## Fundamental rule (Owner)
 
-- `notification-core` policy/enqueue unit tests → 100% coverage thresholds
-- lint fixes in `activity-admin.use-cases.spec.ts`, `discord-js-adapter.ts`
-- SoT docs: revoke READY; Marketplace #28 discovery gate; checkpoint ledger WIP
-- admin login origin (`VITE_ADMIN_PUBLIC_ORIGIN`) for production OAuth callback
+Every new product function: IDEA → Owner+ChatGPT Discovery → Options → Owner Decisions →
+Accepted SoT → implementation prompt. Continuous execution does **not** override.
 
-CI remains **RED** until Owner restores GitHub Actions billing/spending limit
-(`CI-BILLING-001`). Not a code assertion failure.
+## Module status (truthful)
 
-## Why READY was invalid
+| Module        | Status                                                                          |
+| ------------- | ------------------------------------------------------------------------------- |
+| Hub Core      | Accepted (#22) + flagged implementation assumptions                             |
+| Notifications | Principles Accepted (#24); catalog/timings **OWNER_DECISION_REQUIRED**          |
+| LFG           | Foundation WIP; #20 direction partial                                           |
+| Reservations  | **RESERVATIONS_OWNER_DISCOVERY_REQUIRED**                                       |
+| Marketplace   | **OWNER_DISCOVERY_REQUIRED** (#28); **NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION** |
 
-1. Required GitHub CI red (billing/spending limit — not a code assertion failure).
-2. Stages 5–7 collapsed into one commit without Accepted DoD.
-3. Marketplace #28 = **DO NOT IMPLEMENT** / Owner Discovery required; local scope
-   lock wrongly said OWNER_ACCEPTED.
-4. Functional gaps remain (LFG UX, Admin/WWW, role apply).
+## Ledger
 
-## Ledger (truthful)
-
-| Marker                                    | SHA          | Class                             |
-| ----------------------------------------- | ------------ | --------------------------------- |
-| V2_HUB_CORE_CHECKPOINT_SHA                | `178a37e…`   | Accepted Stage 3                  |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA         | `ea3e7b9…`   | Historical Stage 4 implementation |
-| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA     | `24828b7…`   | WIP not Accepted                  |
-| RESERVATIONS_FOUNDATION_WIP_SHA           | `24828b7…`   | WIP not Accepted                  |
-| MARKETPLACE_FOUNDATION_WIP_SHA            | `24828b7…`   | WIP + #28 gate                    |
-| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | n/a final    | **revoked**                       |
-| CORE_STATE_AND_CI_RECOVERY_SHA            | `cf15925…`   | remediation                       |
+| Marker                                     | SHA          | Class                               |
+| ------------------------------------------ | ------------ | ----------------------------------- |
+| V2_HUB_CORE_CHECKPOINT_SHA                 | `178a37e…`   | Accepted Stage 3                    |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA          | `ea3e7b9…`   | Implementation marker; catalog open |
+| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7…`   | Foundation WIP                      |
+| RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7…`   | Foundation WIP + discovery required |
+| MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7…`   | Prototype + #28 gate                |
+| CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925…`   | Prior remediation                   |
+| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `dbecbf2…`   | Governance remediation              |
 
 ## Owner actions required
 
-1. Fix GitHub **Billing & plans / spending limit** so Actions can start.
-2. Complete Issue **#28** Marketplace Owner Discovery before any Stage 7 product work.
-3. Re-run CI on tip after billing restored.
+1. GitHub **Billing** — restore Actions (`CI-BILLING-001`).
+2. Issue **#28** — complete Marketplace Owner Discovery before any Stage 7 product work.
+3. **Reservations** — run Owner Discovery (no pack in SoT today).
+4. **LFG / Notifications catalog** — close gaps in `OWNER_DISCOVERY_GAPS.md`.
+5. **Interest→role apply** — decide Discord mutation policy before wiring apply loop.
 
 ## STOP
 
-No READY claim. No merge. No Stage 8.
+No READY. No merge. No Stage 8. **No Stage 6/7 product expansion.**
+
+Safe work only: tests, security, CI, bug fixes, isolation docs, diagnostics.

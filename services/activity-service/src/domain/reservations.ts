@@ -1,6 +1,7 @@
 /**
- * Reservation conflict detection — Stage 6.
- * Overlap is half-open [start, end).
+ * Reservation conflict detection — PROTOTYPE / FOUNDATION WIP (Stage 6).
+ * RESERVATIONS_OWNER_DISCOVERY_REQUIRED — do not expand product semantics.
+ * See docs/ai/OWNER_DISCOVERY_GAPS.md.
  */
 
 export type ReservationInterval = {

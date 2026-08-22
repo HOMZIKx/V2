@@ -1,6 +1,7 @@
 /**
- * LFG matching pure domain — Activity 2.0 / Issue #20.
- * Class/spec never implies a fixed party role.
+ * LFG matching pure domain — FOUNDATION WIP (Issue #20 direction partial).
+ * Do not invent remaining user-facing behavior.
+ * See docs/ai/LFG_SCOPE_LOCK.md and docs/ai/OWNER_DISCOVERY_GAPS.md.
  */
 
 import { type PartyRoleKey, isPartyRoleKey } from './catalogs/party-role.js';

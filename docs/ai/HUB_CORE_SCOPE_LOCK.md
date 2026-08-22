@@ -43,6 +43,8 @@ Normal member operation must not require slash-command discovery.
 - Class/spec catalog + party-role catalog (separate dimensions)
 - Interests foundation (Issue #27); interest ≠ Discord role ≠ notification preference
 - Role projection **contract + safety requirements** (full reconcile may continue iteratively)
+- **Role projection Discord mutation (apply)** is **not** complete — only safety +
+  desired-state compute exist (`ROLE_PROJECTION_DISCORD_MUTATION = pending`)
 
 ## Out of Stage 3
 
@@ -71,3 +73,18 @@ Functionality > decoration. Missing artwork does not block shell.
 ## Checkpoint
 
 `V2_HUB_CORE_CHECKPOINT_SHA` — set when Stage 3 implementation on tip is validated.
+
+## Implementation assumptions requiring Owner review
+
+The following **do not** reopen Accepted Hub Core decisions; they flag product copy/flows
+where implementation got ahead of explicit Owner acceptance. See
+`docs/ai/OWNER_DISCOVERY_GAPS.md`.
+
+| Area | Risk |
+| ---- | ---- |
+| Hub Activities menu LFG ordering/copy | Assumes detailed #20 flow not fully discovered |
+| “Dla mnie” example reasons | Assumes ranking/reason taxonomy |
+| Deep links for unreleased modules | Placeholder paths must not imply released product |
+
+Preserve Accepted shell, registry, reconcile, and public vs personal split. Do not delete
+safe foundation.

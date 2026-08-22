@@ -4,6 +4,8 @@ import { ActivityError } from '../../domain/errors.js';
 import type { ActivityRecord, ActivityTx, ActorSubject } from '../ports/activity.ports.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
+/** FOUNDATION WIP — LFG UX not fully Owner-Accepted. Do not expand user-facing flows. */
+
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
     throw new ActivityError('UNAUTHENTICATED', 'Discord actor required');
