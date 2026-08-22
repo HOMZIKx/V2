@@ -538,6 +538,15 @@ export interface ActivityTx {
     interestKey?: string | null;
     activityId?: string | null;
   }): Promise<{ item: InboxItemRecord; created: boolean }>;
+  refreshNotificationInboxItem(input: {
+    id: string;
+    recipientDiscordUserId: string;
+    title: string;
+    body: string;
+    deepLink: string | null;
+    fingerprint: string;
+    payload: Record<string, unknown>;
+  }): Promise<InboxItemRecord>;
   getNotificationPreference(
     guildId: string,
     recipientDiscordUserId: string,
@@ -583,6 +592,7 @@ export interface ActivityTx {
   }): Promise<void>;
   listOpenActivitiesForLfg(input: {
     guildId: string;
+    organizationId: string;
     activityTypeKey: string;
   }): Promise<ActivityRecord[]>;
   listActivityRoleRequirements(activityId: string): Promise<
@@ -608,7 +618,7 @@ export interface ActivityTx {
     expiresAt: Date;
     classSpecKey: string | null;
   }): Promise<string>;
-  cancelLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<void>;
+  cancelLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<boolean>;
   listLfgIntentsForUser(
     guildId: string,
     recipientDiscordUserId: string,
@@ -621,7 +631,12 @@ export interface ActivityTx {
       cancelledAt: Date | null;
     }[]
   >;
-  listActiveLfgIntents(input: { guildId: string; activityTypeKey: string; now: Date }): Promise<
+  listActiveLfgIntents(input: {
+    guildId: string;
+    organizationId: string;
+    activityTypeKey: string;
+    now: Date;
+  }): Promise<
     readonly {
       id: string;
       recipientDiscordUserId: string;
@@ -643,6 +658,14 @@ export interface ActivityTx {
     spotId: string,
     statuses: readonly string[],
   ): Promise<readonly { startsAt: Date; endsAt: Date }[]>;
+  getReservationSpotScope(spotId: string): Promise<{
+    spotId: string;
+    resourceId: string;
+    guildId: string;
+    organizationId: string;
+    spotEnabled: boolean;
+    resourceEnabled: boolean;
+  } | null>;
   insertReservation(input: {
     id: string;
     guildId: string;

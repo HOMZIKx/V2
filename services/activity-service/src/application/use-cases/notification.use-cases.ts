@@ -31,6 +31,39 @@ export async function getOrCreateNotificationPreference(
   };
 }
 
+async function enqueueDmOutbox(
+  tx: ActivityTx,
+  input: {
+    inboxItemId: string;
+    guildId: string;
+    recipientDiscordUserId: string;
+    title: string;
+    body: string;
+    deepLink: string | null;
+    notificationClass: EnqueueNotificationInput['notificationClass'];
+    kind: string;
+  },
+  now: Date,
+): Promise<void> {
+  await tx.insertOutbox({
+    eventType: OUTBOX_EVENT_TYPES.NOTIFICATION_DELIVER,
+    aggregateType: 'notification',
+    aggregateId: input.inboxItemId,
+    aggregateVersion: 1,
+    payload: {
+      inboxItemId: input.inboxItemId,
+      guildId: input.guildId,
+      recipientDiscordUserId: input.recipientDiscordUserId,
+      title: input.title,
+      body: input.body,
+      deepLink: input.deepLink,
+      notificationClass: input.notificationClass,
+      kind: input.kind,
+    },
+    occurredAt: now,
+  });
+}
+
 /**
  * Enqueue durable Inbox item + optional DM delivery outbox, respecting class/mute policy.
  */
@@ -83,6 +116,8 @@ export async function enqueueUserNotification(
     return { created: false, suppressed: true, inboxItemId: null };
   }
 
+  const fingerprintChanged = memory?.fingerprint !== fingerprint;
+
   const enqueued = await tx.enqueueInbox({
     guildId: input.guildId,
     recipientDiscordUserId: input.recipientDiscordUserId,
@@ -103,6 +138,8 @@ export async function enqueueUserNotification(
     dedupeKey: input.dedupeKey,
   });
 
+  const contentChanged = enqueued.created || fingerprintChanged;
+
   await tx.recordNotificationDeliveryAttempt({
     inboxItemId: enqueued.item.id,
     channel: 'INBOX',
@@ -117,13 +154,10 @@ export async function enqueueUserNotification(
     lastNotifiedAt: now,
   });
 
-  if (enqueued.created && shouldAttemptDm(preference)) {
-    await tx.insertOutbox({
-      eventType: OUTBOX_EVENT_TYPES.NOTIFICATION_DELIVER,
-      aggregateType: 'notification',
-      aggregateId: enqueued.item.id,
-      aggregateVersion: 1,
-      payload: {
+  if (contentChanged && shouldAttemptDm(preference)) {
+    await enqueueDmOutbox(
+      tx,
+      {
         inboxItemId: enqueued.item.id,
         guildId: input.guildId,
         recipientDiscordUserId: input.recipientDiscordUserId,
@@ -133,8 +167,8 @@ export async function enqueueUserNotification(
         notificationClass: input.notificationClass,
         kind: input.kind,
       },
-      occurredAt: now,
-    });
+      now,
+    );
   }
 
   return { created: enqueued.created, suppressed: false, inboxItemId: enqueued.item.id };

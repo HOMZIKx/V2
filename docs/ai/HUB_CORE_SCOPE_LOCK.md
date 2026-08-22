@@ -80,11 +80,11 @@ The following **do not** reopen Accepted Hub Core decisions; they flag product c
 where implementation got ahead of explicit Owner acceptance. See
 `docs/ai/OWNER_DISCOVERY_GAPS.md`.
 
-| Area | Risk |
-| ---- | ---- |
-| Hub Activities menu LFG ordering/copy | Assumes detailed #20 flow not fully discovered |
-| “Dla mnie” example reasons | Assumes ranking/reason taxonomy |
-| Deep links for unreleased modules | Placeholder paths must not imply released product |
+| Area                                  | Risk                                              |
+| ------------------------------------- | ------------------------------------------------- |
+| Hub Activities menu LFG ordering/copy | Assumes detailed #20 flow not fully discovered    |
+| “Dla mnie” example reasons            | Assumes ranking/reason taxonomy                   |
+| Deep links for unreleased modules     | Placeholder paths must not imply released product |
 
 Preserve Accepted shell, registry, reconcile, and public vs personal split. Do not delete
 safe foundation.

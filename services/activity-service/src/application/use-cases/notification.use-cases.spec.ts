@@ -99,4 +99,46 @@ describe('enqueueUserNotification', () => {
     expect(result.suppressed).toBe(true);
     expect(enqueueInbox).not.toHaveBeenCalled();
   });
+
+  it('refreshes inbox and enqueues DM when fingerprint changes under same dedupeKey', async () => {
+    const insertOutbox = vi.fn();
+    const enqueueInbox = vi.fn(() =>
+      Promise.resolve({
+        created: false,
+        item: {
+          id: '11111111-1111-1111-1111-111111111111',
+          guildId: 'g1',
+          recipientDiscordUserId: 'u1',
+          recipientV2UserId: null,
+          kind: 'lfg.match',
+          payload: {},
+          readAt: null,
+          createdAt: new Date(),
+          fingerprint: 'new',
+        },
+      }),
+    );
+    const tx = makeTx({
+      getNotificationDedupeMemory: () =>
+        Promise.resolve({ fingerprint: 'old', lastNotifiedAt: new Date() }),
+      enqueueInbox: enqueueInbox as unknown as ActivityTx['enqueueInbox'],
+      insertOutbox: insertOutbox as unknown as ActivityTx['insertOutbox'],
+    });
+    const result = await enqueueUserNotification(
+      tx,
+      {
+        guildId: 'g1',
+        recipientDiscordUserId: 'u1',
+        notificationClass: 'DISCOVERY',
+        kind: 'lfg.match',
+        title: 'updated',
+        body: 'body',
+        dedupeKey: 'dup',
+        fingerprint: 'new',
+      },
+      new Date(),
+    );
+    expect(result.suppressed).toBe(false);
+    expect(insertOutbox).toHaveBeenCalledOnce();
+  });
 });

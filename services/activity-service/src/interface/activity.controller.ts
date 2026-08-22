@@ -971,38 +971,62 @@ export class ActivityController {
   @Post('lfg/search')
   @HttpCode(200)
   @RequireOperation('activity_read')
-  public async searchLfg(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  public async searchLfg(
+    @Body() body: unknown,
+    @Query('memberRoleIds') memberRoleIdsRaw: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
     const parsed = parseOrThrow(
-      z.object({
-        guildId: z.string().min(1),
-        organizationId: z.string().min(1),
-        activityTypeKey: z.string().min(1),
-        characterClassSpecKey: z.string().min(1),
-        characterSupportedRoles: z.array(z.string().min(1)).min(1),
-        sessionRoles: z.array(z.string().min(1)).min(1),
-        windowStartAt: z.string().datetime(),
-        windowEndAt: z.string().datetime(),
-      }),
+      z
+        .object({
+          guildId: z.string().min(1),
+          organizationId: z.string().min(1),
+          activityTypeKey: z.string().min(1),
+          characterClassSpecKey: z.string().min(1),
+          characterSupportedRoles: z.array(partyRole).min(1),
+          sessionRoles: z.array(partyRole).min(1),
+          windowStartAt: z.string().datetime(),
+          windowEndAt: z.string().datetime(),
+        })
+        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
+          message: 'windowEndAt must be after windowStartAt',
+        }),
       body,
     );
-    return this.useCases.searchLfg(actorFromRequest(request), parsed);
+    const memberRoleIds =
+      memberRoleIdsRaw === undefined || memberRoleIdsRaw.trim() === ''
+        ? undefined
+        : memberRoleIdsRaw
+            .split(',')
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0);
+    return this.useCases.searchLfg(actorFromRequest(request), {
+      ...parsed,
+      ...(memberRoleIds !== undefined ? { memberRoleIds } : {}),
+    });
   }
 
   @Post('lfg/watches')
   @HttpCode(200)
   @RequireOperation('activity_mutate')
   public async createLfgWatch(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
     const parsed = parseOrThrow(
-      z.object({
-        guildId: z.string().min(1),
-        organizationId: z.string().min(1),
-        characterId: z.string().min(1),
-        activityTypeKey: z.string().min(1),
-        sessionRoles: z.array(z.string().min(1)).min(1),
-        windowStartAt: z.string().datetime(),
-        windowEndAt: z.string().datetime(),
-        classSpecKey: z.string().min(1).optional(),
-      }),
+      z
+        .object({
+          guildId: z.string().min(1),
+          organizationId: z.string().min(1),
+          characterId: z.string().min(1),
+          activityTypeKey: z.string().min(1),
+          sessionRoles: z.array(partyRole).min(1),
+          windowStartAt: z.string().datetime(),
+          windowEndAt: z.string().datetime(),
+          classSpecKey: z.string().min(1).optional(),
+        })
+        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
+          message: 'windowEndAt must be after windowStartAt',
+        }),
       body,
     );
     return this.useCases.createLfgWatch(actorFromRequest(request), {
@@ -1032,8 +1056,15 @@ export class ActivityController {
   @Post('lfg/watches/:id/cancel')
   @HttpCode(200)
   @RequireOperation('activity_mutate')
-  public async cancelLfgWatch(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-    return this.useCases.cancelLfgWatch(actorFromRequest(request), id);
+  public async cancelLfgWatch(
+    @Param('id') id: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.cancelLfgWatch(actorFromRequest(request), id, guildId.trim());
   }
 
   @Post('reservations')

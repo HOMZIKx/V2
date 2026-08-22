@@ -321,6 +321,9 @@ function createAdminMemoryRepo(): {
     },
     async upsertNotificationDedupeMemory() {},
     async recordNotificationDeliveryAttempt() {},
+    async refreshNotificationInboxItem() {
+      return notImpl();
+    },
     async listOpenActivitiesForLfg() {
       return [];
     },
@@ -336,7 +339,9 @@ function createAdminMemoryRepo(): {
     async insertLfgIntent() {
       return notImpl();
     },
-    async cancelLfgIntent() {},
+    async cancelLfgIntent() {
+      return true;
+    },
     async listLfgIntentsForUser() {
       return [];
     },
@@ -349,6 +354,9 @@ function createAdminMemoryRepo(): {
     async recordLfgNotifiedMatch() {},
     async listReservationsForSpot() {
       return [];
+    },
+    async getReservationSpotScope() {
+      return notImpl();
     },
     async insertReservation() {
       return notImpl();

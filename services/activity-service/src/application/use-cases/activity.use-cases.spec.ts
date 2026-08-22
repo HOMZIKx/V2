@@ -514,6 +514,19 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     },
     async upsertNotificationDedupeMemory() {},
     async recordNotificationDeliveryAttempt() {},
+    async refreshNotificationInboxItem(input) {
+      return {
+        id: input.id,
+        guildId: 'g1',
+        recipientDiscordUserId: input.recipientDiscordUserId,
+        recipientV2UserId: null,
+        kind: 'test',
+        payload: input.payload,
+        readAt: null,
+        createdAt: new Date(),
+        fingerprint: input.fingerprint,
+      };
+    },
     async listOpenActivitiesForLfg() {
       return [];
     },
@@ -529,7 +542,9 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async insertLfgIntent() {
       return '00000000-0000-4000-8000-000000000001';
     },
-    async cancelLfgIntent() {},
+    async cancelLfgIntent() {
+      return true;
+    },
     async listLfgIntentsForUser() {
       return [];
     },
@@ -542,6 +557,9 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async recordLfgNotifiedMatch() {},
     async listReservationsForSpot() {
       return [];
+    },
+    async getReservationSpotScope() {
+      return null;
     },
     async insertReservation(input) {
       return input.id;

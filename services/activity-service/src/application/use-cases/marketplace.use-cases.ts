@@ -7,6 +7,8 @@ import { enqueueUserNotification } from './notification.use-cases.js';
 
 /** PROTOTYPE / FOUNDATION WIP — Issue #28 NOT_ACCEPTED. See OWNER_DISCOVERY_GAPS.md. */
 
+const MAX_MARKETPLACE_MATCH_NOTIFICATIONS = 50;
+
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
     throw new ActivityError('UNAUTHENTICATED', 'Discord actor required');
@@ -50,6 +52,9 @@ export async function createMarketplaceOffer(
   const watches = await tx.listActiveMarketplaceWatches(input.guildId);
   let matched = 0;
   for (const watch of watches) {
+    if (matched >= MAX_MARKETPLACE_MATCH_NOTIFICATIONS) {
+      break;
+    }
     if (watch.recipientDiscordUserId === owner) {
       continue;
     }

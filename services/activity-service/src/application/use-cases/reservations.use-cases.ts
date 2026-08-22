@@ -31,6 +31,19 @@ export async function createReservation(
   if (input.endsAt.getTime() <= input.startsAt.getTime()) {
     throw new ActivityError('VALIDATION_FAILED', 'endsAt must be after startsAt');
   }
+  const scope = await tx.getReservationSpotScope(input.spotId);
+  if (scope === null) {
+    throw new ActivityError('NOT_FOUND', 'Reservation spot not found');
+  }
+  if (!scope.spotEnabled || !scope.resourceEnabled) {
+    throw new ActivityError('VALIDATION_FAILED', 'Reservation spot is not available');
+  }
+  if (scope.resourceId !== input.resourceId) {
+    throw new ActivityError('VALIDATION_FAILED', 'spotId does not belong to resourceId');
+  }
+  if (scope.guildId !== input.guildId || scope.organizationId !== input.organizationId) {
+    throw new ActivityError('FORBIDDEN', 'Reservation scope mismatch');
+  }
   const existing = await tx.listReservationsForSpot(input.spotId, ['pending', 'confirmed']);
   const conflict = assertNoDoubleBooking({
     candidate: {
@@ -47,10 +60,10 @@ export async function createReservation(
   }
   const id = await tx.insertReservation({
     id: randomUUID(),
-    guildId: input.guildId,
-    organizationId: input.organizationId,
-    resourceId: input.resourceId,
-    spotId: input.spotId,
+    guildId: scope.guildId,
+    organizationId: scope.organizationId,
+    resourceId: scope.resourceId,
+    spotId: scope.spotId,
     ownerDiscordUserId: owner,
     startsAt: input.startsAt,
     endsAt: input.endsAt,
@@ -59,7 +72,7 @@ export async function createReservation(
   await enqueueUserNotification(
     tx,
     {
-      guildId: input.guildId,
+      guildId: scope.guildId,
       recipientDiscordUserId: owner,
       notificationClass: 'TRANSACTIONAL',
       kind: 'reservation.confirmed',

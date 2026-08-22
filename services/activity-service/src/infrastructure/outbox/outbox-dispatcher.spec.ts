@@ -122,4 +122,49 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
     );
     await expect(dispatcher.onModuleInit()).rejects.toThrow(/ACTIVITY_PROJECTION_SHARED_SECRET/);
   });
+
+  it('retries notification deliver when gateway returns rate_limited in body', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ status: 'rate_limited', outboxId: 'n1' }), { status: 200 }),
+      );
+    const completeOutbox = vi.fn();
+    const failOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () =>
+            Promise.resolve([
+              {
+                id: 'outbox-notify',
+                eventType: 'activity.notification.deliver.v1',
+                aggregateType: 'notification',
+                aggregateId: 'inbox-1',
+                aggregateVersion: 1,
+                payload: {
+                  inboxItemId: 'inbox-1',
+                  recipientDiscordUserId: 'u1',
+                  title: 't',
+                  body: 'b',
+                  notificationClass: 'DISCOVERY',
+                  kind: 'lfg.match',
+                },
+                attemptCount: 1,
+              },
+            ]),
+          completeOutbox,
+          failOutbox,
+          permanentFailOutbox: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(failOutbox).toHaveBeenCalledOnce();
+    expect(completeOutbox).not.toHaveBeenCalled();
+  });
 });

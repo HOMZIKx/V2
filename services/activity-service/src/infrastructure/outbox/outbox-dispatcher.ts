@@ -300,6 +300,25 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
 
     if (response.ok) {
       const bodyText = await response.text().catch(() => '');
+      if (message.eventType === OUTBOX_EVENT_TYPES.NOTIFICATION_DELIVER) {
+        let deliverStatus: string | undefined;
+        try {
+          const parsed = JSON.parse(bodyText) as { status?: unknown };
+          deliverStatus = typeof parsed.status === 'string' ? parsed.status : undefined;
+        } catch {
+          deliverStatus = undefined;
+        }
+        if (deliverStatus === 'rate_limited' || deliverStatus === 'upstream_error') {
+          await this.failRetry(message, `Notification DM ${deliverStatus}`);
+          return 'retry';
+        }
+        if (deliverStatus === 'rejected') {
+          await this.repository.withTransaction((tx) =>
+            tx.permanentFailOutbox(message.id, 'Notification DM rejected'),
+          );
+          return 'permanent';
+        }
+      }
       await this.completeWithMessageWriteBack(message, bodyText);
       return 'delivered';
     }

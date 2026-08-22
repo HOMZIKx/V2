@@ -2,6 +2,7 @@ import { isPartyRoleKey, rankLfgMatch, type LfgGroupMatchInput } from '@v2/hub-c
 
 import { ActivityError } from '../../domain/errors.js';
 import type { ActivityRecord, ActivityTx, ActorSubject } from '../ports/activity.ports.js';
+import { canViewPrivateActivity } from './activity-p46.helpers.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
 /** FOUNDATION WIP — LFG UX not fully Owner-Accepted. Do not expand user-facing flows. */
@@ -13,6 +14,12 @@ function requireDiscord(actor: ActorSubject): string {
   return actor.discordUserId;
 }
 
+function assertValidWindow(windowStartAt: Date, windowEndAt: Date): void {
+  if (windowEndAt.getTime() <= windowStartAt.getTime()) {
+    throw new ActivityError('VALIDATION_FAILED', 'windowEndAt must be after windowStartAt');
+  }
+}
+
 export type LfgSearchInput = {
   readonly guildId: string;
   readonly organizationId: string;
@@ -22,6 +29,7 @@ export type LfgSearchInput = {
   readonly sessionRoles: readonly string[];
   readonly windowStartAt: Date;
   readonly windowEndAt: Date;
+  readonly memberRoleIds?: readonly string[];
 };
 
 export async function searchLfgMatches(
@@ -37,10 +45,15 @@ export async function searchLfgMatches(
   }[];
 }> {
   requireDiscord(actor);
+  assertValidWindow(input.windowStartAt, input.windowEndAt);
   const supported = input.characterSupportedRoles.filter(isPartyRoleKey);
   const session = input.sessionRoles.filter(isPartyRoleKey);
+  if (supported.length === 0 || session.length === 0) {
+    throw new ActivityError('VALIDATION_FAILED', 'At least one valid party role is required');
+  }
   const activities = await tx.listOpenActivitiesForLfg({
     guildId: input.guildId,
+    organizationId: input.organizationId,
     activityTypeKey: input.activityTypeKey,
   });
 
@@ -52,6 +65,15 @@ export async function searchLfgMatches(
   }> = [];
 
   for (const activity of activities) {
+    if (
+      !canViewPrivateActivity({
+        activity,
+        actor,
+        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+      })
+    ) {
+      continue;
+    }
     const needs = await tx.listActivityRoleRequirements(activity.id);
     const filled = await tx.countParticipationsByPartyRole(activity.id);
     const occupied = await tx.countOccupiedParticipations(activity.id);
@@ -82,7 +104,7 @@ export async function searchLfgMatches(
       sessionRoles: session,
       windowStartMs: input.windowStartAt.getTime(),
       windowEndMs: input.windowEndAt.getTime(),
-      membershipOk: true,
+      membershipOk: activity.guildId === input.guildId,
     });
     if (rank.eligible) {
       matches.push({
@@ -115,6 +137,7 @@ export async function createLfgIntent(
   now: Date,
 ): Promise<{ intentId: string }> {
   const userId = requireDiscord(actor);
+  assertValidWindow(input.windowStartAt, input.windowEndAt);
   const roles = input.sessionRoles.filter(isPartyRoleKey);
   if (roles.length === 0) {
     throw new ActivityError('VALIDATION_FAILED', 'At least one session party role is required');
@@ -143,7 +166,10 @@ export async function cancelLfgIntent(
   now: Date,
 ): Promise<void> {
   const userId = requireDiscord(actor);
-  await tx.cancelLfgIntent(intentId, userId, now);
+  const cancelled = await tx.cancelLfgIntent(intentId, userId, now);
+  if (!cancelled) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found');
+  }
 }
 
 export async function listMyLfgIntents(tx: ActivityTx, actor: ActorSubject, guildId: string) {
@@ -160,6 +186,7 @@ export async function notifyLfgIntentsForActivity(
 ): Promise<number> {
   const intents = await tx.listActiveLfgIntents({
     guildId: activity.guildId,
+    organizationId: activity.organizationId,
     activityTypeKey,
     now,
   });
@@ -186,12 +213,13 @@ export async function notifyLfgIntentsForActivity(
         dedupeKey: `lfg-match:${activity.id}:${intent.id}`,
         activityId: activity.id,
         interestKey: activityTypeKey,
+        activityTypeKey,
         deepLink: `v2://activities/${activity.id}`,
         fingerprint,
       },
       now,
     );
-    if (result.created) {
+    if (!result.suppressed && result.inboxItemId !== null) {
       await tx.recordLfgNotifiedMatch(intent.recipientDiscordUserId, activity.id, fingerprint, now);
       sent += 1;
     }

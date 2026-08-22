@@ -2081,6 +2081,7 @@ export class ActivityUseCases {
 
   public async getNotificationPreferences(actor: ActorSubject, guildId: string) {
     const discordUserId = requireDiscord(actor);
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { getOrCreateNotificationPreference } = await import('./notification.use-cases.js');
       return getOrCreateNotificationPreference(tx, guildId, discordUserId);
@@ -2098,6 +2099,7 @@ export class ActivityUseCases {
     },
   ) {
     const discordUserId = requireDiscord(actor);
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { updateNotificationPreference } = await import('./notification.use-cases.js');
       return updateNotificationPreference(tx, {
@@ -2119,8 +2121,10 @@ export class ActivityUseCases {
       sessionRoles: readonly string[];
       windowStartAt: string;
       windowEndAt: string;
+      memberRoleIds?: readonly string[];
     },
   ) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { searchLfgMatches } = await import('./lfg.use-cases.js');
       return searchLfgMatches(tx, actor, {
@@ -2132,6 +2136,7 @@ export class ActivityUseCases {
         sessionRoles: input.sessionRoles,
         windowStartAt: new Date(input.windowStartAt),
         windowEndAt: new Date(input.windowEndAt),
+        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
       });
     });
   }
@@ -2150,6 +2155,7 @@ export class ActivityUseCases {
     },
   ) {
     const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { createLfgIntent } = await import('./lfg.use-cases.js');
       return createLfgIntent(
@@ -2170,8 +2176,9 @@ export class ActivityUseCases {
     });
   }
 
-  public async cancelLfgWatch(actor: ActorSubject, intentId: string) {
+  public async cancelLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
     const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { cancelLfgIntent } = await import('./lfg.use-cases.js');
       await cancelLfgIntent(tx, actor, intentId, now);
@@ -2180,6 +2187,7 @@ export class ActivityUseCases {
   }
 
   public async listMyLfgWatches(actor: ActorSubject, guildId: string) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { listMyLfgIntents } = await import('./lfg.use-cases.js');
       return listMyLfgIntents(tx, actor, guildId);
@@ -2198,6 +2206,7 @@ export class ActivityUseCases {
     },
   ) {
     const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { createReservation } = await import('./reservations.use-cases.js');
       return createReservation(
@@ -2232,6 +2241,7 @@ export class ActivityUseCases {
     },
   ) {
     const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { createMarketplaceOffer } = await import('./marketplace.use-cases.js');
       return createMarketplaceOffer(

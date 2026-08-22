@@ -13,10 +13,10 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| CURRENT_TASK           | `V2-OWNER-DISCOVERY-GATE-COMPLIANCE-REMEDIATION-001`         |
+| CURRENT_TASK           | `V2-POST-OVERBUILD-TECHNICAL-AUDIT-001`                      |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `e1f819d…` (tip; governance marker `9a6ab22…`)                |
+| CURRENT_HEAD / PR_HEAD | _(set after audit commit)_                                   |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22                 |
@@ -45,7 +45,9 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
 | CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                              |
-| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | this governance remediation                                    |
+| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA   | `90fc384…`                                 | historical auto-sync baseline                                  |
+| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                         |
+| POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | _(pending tip)_                            | this technical audit                                           |
 
 ## Module discovery status (summary)
 
@@ -69,4 +71,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-22 — Owner Discovery gate compliance remediation; gap matrix; scope lock audit.
+2026-08-22 — Post-overbuild technical audit: CRITICAL/HIGH security fixes; audit report.

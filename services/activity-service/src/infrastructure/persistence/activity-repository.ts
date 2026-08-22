@@ -424,6 +424,15 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+function isExclusionViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    asNullableString(error.code) === '23P01'
+  );
+}
+
 async function loadActivityType(
   client: PoolClient,
   row: Record<string, unknown>,
@@ -1425,8 +1434,53 @@ function createTx(client: PoolClient): ActivityTx {
         if (row === undefined) {
           throw error;
         }
-        return { item: mapInbox(row), created: false };
+        const existingItem = mapInbox(row);
+        if (
+          input.fingerprint !== undefined &&
+          input.fingerprint !== null &&
+          existingItem.fingerprint !== input.fingerprint
+        ) {
+          const refreshed = await this.refreshNotificationInboxItem({
+            id: existingItem.id,
+            recipientDiscordUserId: input.recipientDiscordUserId,
+            title: input.title ?? '',
+            body: input.body ?? '',
+            deepLink: input.deepLink ?? null,
+            fingerprint: input.fingerprint,
+            payload,
+          });
+          return { item: refreshed, created: false };
+        }
+        return { item: existingItem, created: false };
       }
+    },
+
+    async refreshNotificationInboxItem(input) {
+      const result = await client.query(
+        `UPDATE notification_inbox_items
+         SET title = $3,
+             body = $4,
+             deep_link = $5,
+             fingerprint = $6,
+             payload = $7::jsonb,
+             read_at = NULL
+         WHERE id = $1::uuid AND recipient_discord_user_id = $2
+         RETURNING *`,
+        [
+          input.id,
+          input.recipientDiscordUserId,
+          input.title,
+          input.body,
+          input.deepLink,
+          input.fingerprint,
+          JSON.stringify(input.payload),
+        ],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        throw new ActivityError('NOT_FOUND', 'Inbox item not found');
+      }
+      return mapInbox(row);
     },
 
     async getNotificationPreference(guildId, recipientDiscordUserId) {
@@ -1548,14 +1602,15 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `SELECT a.*
          FROM activities a
-         LEFT JOIN activity_types t ON t.id = a.type_id
+         INNER JOIN activity_types t ON t.id = a.type_id
          WHERE a.guild_id = $1
+           AND a.organization_id = $2
            AND a.status IN ('published', 'registrations_open')
            AND a.cancelled_at IS NULL
-           AND (t.key = $2 OR a.name ILIKE $3)
+           AND t.key = $3
          ORDER BY a.start_at ASC
          LIMIT 50`,
-        [input.guildId, input.activityTypeKey, `%${input.activityTypeKey}%`],
+        [input.guildId, input.organizationId, input.activityTypeKey],
       );
       return result.rows.map((row) => mapActivity(row as Record<string, unknown>));
     },
@@ -1615,12 +1670,13 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async cancelLfgIntent(intentId, recipientDiscordUserId, now) {
-      await client.query(
+      const result = await client.query(
         `UPDATE lfg_intents
          SET cancelled_at = $3, updated_at = $3
          WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL`,
         [intentId, recipientDiscordUserId, now.toISOString()],
       );
+      return (result.rowCount ?? 0) > 0;
     },
 
     async listLfgIntentsForUser(guildId, recipientDiscordUserId) {
@@ -1648,10 +1704,11 @@ function createTx(client: PoolClient): ActivityTx {
         `SELECT id::text, recipient_discord_user_id, session_roles
          FROM lfg_intents
          WHERE guild_id = $1
-           AND activity_type_key = $2
+           AND organization_id = $2
+           AND activity_type_key = $3
            AND cancelled_at IS NULL
-           AND expires_at > $3`,
-        [input.guildId, input.activityTypeKey, input.now.toISOString()],
+           AND expires_at > $4`,
+        [input.guildId, input.organizationId, input.activityTypeKey, input.now.toISOString()],
       );
       return result.rows.map((row) => ({
         id: String((row as { id: unknown }).id),
@@ -1683,6 +1740,33 @@ function createTx(client: PoolClient): ActivityTx {
       );
     },
 
+    async getReservationSpotScope(spotId) {
+      const result = await client.query(
+        `SELECT s.id::text AS spot_id,
+                s.resource_id::text AS resource_id,
+                s.enabled AS spot_enabled,
+                r.guild_id,
+                r.organization_id,
+                r.enabled AS resource_enabled
+         FROM reservation_spots s
+         INNER JOIN reservation_resources r ON r.id = s.resource_id
+         WHERE s.id = $1::uuid`,
+        [spotId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        spotId: String(row.spot_id),
+        resourceId: String(row.resource_id),
+        guildId: String(row.guild_id),
+        organizationId: String(row.organization_id),
+        spotEnabled: Boolean(row.spot_enabled),
+        resourceEnabled: Boolean(row.resource_enabled),
+      };
+    },
+
     async listReservationsForSpot(spotId, statuses) {
       const result = await client.query(
         `SELECT starts_at, ends_at FROM reservations
@@ -1696,23 +1780,30 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async insertReservation(input) {
-      await client.query(
-        `INSERT INTO reservations (
-           id, guild_id, organization_id, resource_id, spot_id,
-           owner_discord_user_id, starts_at, ends_at, status
-         ) VALUES ($1::uuid,$2,$3,$4::uuid,$5::uuid,$6,$7,$8,$9)`,
-        [
-          input.id,
-          input.guildId,
-          input.organizationId,
-          input.resourceId,
-          input.spotId,
-          input.ownerDiscordUserId,
-          input.startsAt.toISOString(),
-          input.endsAt.toISOString(),
-          input.status,
-        ],
-      );
+      try {
+        await client.query(
+          `INSERT INTO reservations (
+             id, guild_id, organization_id, resource_id, spot_id,
+             owner_discord_user_id, starts_at, ends_at, status
+           ) VALUES ($1::uuid,$2,$3,$4::uuid,$5::uuid,$6,$7,$8,$9)`,
+          [
+            input.id,
+            input.guildId,
+            input.organizationId,
+            input.resourceId,
+            input.spotId,
+            input.ownerDiscordUserId,
+            input.startsAt.toISOString(),
+            input.endsAt.toISOString(),
+            input.status,
+          ],
+        );
+      } catch (error) {
+        if (isUniqueViolation(error) || isExclusionViolation(error)) {
+          throw new ActivityError('CONFLICT', 'Spot already reserved for that time window');
+        }
+        throw error;
+      }
       return input.id;
     },
 
