@@ -19,7 +19,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                  |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | _(update after tip-redeploy commit)_                         |
+| CURRENT_HEAD / PR_HEAD |                          |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | revision unit tests PASS; full validate pending tip push     |
