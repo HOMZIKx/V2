@@ -92,6 +92,7 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: z.string().optional(),
     DISCORD_TO_ACTIVITY_ACTIVE_KID: z.string().optional(),
     ACTIVITY_ASSERTION_AUD: z.string().optional(),
+    IDENTITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4200'),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
   })

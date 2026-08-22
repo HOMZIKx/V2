@@ -1152,3 +1152,159 @@ describe('ActivityInteractionHandler draft preview / edit', () => {
     ).toBeNull();
   });
 });
+
+describe('ActivityInteractionHandler LFG wizard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('opens LFG wizard instead of modal for panel lfg action', async () => {
+    const identityClient = {
+      getProfile: vi.fn(() =>
+        Promise.resolve({
+          userId: 'u1',
+          displayName: 'Tester',
+          activeCharacterId: 'char-1',
+          characters: [
+            {
+              id: 'char-1',
+              nickname: 'Main',
+              classSpecKey: 'warrior_body',
+              partyRoles: ['TANK', 'DPS'],
+              isDefault: true,
+            },
+          ],
+          interestKeys: [],
+        }),
+      ),
+    };
+    const handler = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: {} as never,
+      identityClient: identityClient as never,
+      logger: createLogger(),
+    });
+
+    const showModal = vi.fn();
+    const deferReply = vi.fn(() => Promise.resolve(undefined));
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    const interaction = {
+      customId: createPanelCustomId(opaquePanel, 'lfg', secret),
+      guildId,
+      user: { id: operatorId },
+      id: 'lfg-open-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      showModal,
+      deferReply,
+      editReply,
+      reply: vi.fn(),
+    };
+
+    const handled = await handler.handleComponent(interaction as never);
+    expect(handled).toBe(true);
+    expect(showModal).not.toHaveBeenCalled();
+    expect(deferReply).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledOnce();
+    expect(identityClient.getProfile).toHaveBeenCalledWith({ discordUserId: operatorId });
+  });
+
+  it('handles lfg join custom id with atomic joinLfg call', async () => {
+    const joinLfg = vi.fn(() => Promise.resolve({ joined: true, waitlistPosition: null }));
+    const activityClient = { joinLfg, searchLfg: vi.fn(), listLfgWatches: vi.fn() };
+    const { createLfgCustomId } =
+      await import('../../infrastructure/security/lfg-signed-custom-id.js');
+    const activityOpaque = '111111222333';
+    const customId = createLfgCustomId(opaquePanel, 'join', secret, activityOpaque);
+
+    const lfgCache = new (
+      await import('../../presentation/discord/lfg-ui-state-cache.js')
+    ).LfgUiStateCache();
+    lfgCache.set(
+      { guildId, discordUserId: operatorId, opaquePanelId: opaquePanel },
+      {
+        screen: 'wizard',
+        dungeonKey: 'azrael',
+        characterId: 'char-1',
+        characterLabel: 'Main',
+        classSpecKey: 'warrior_body',
+        characterSupportedRoles: ['TANK', 'DPS'],
+        sessionRoles: ['TANK'],
+        timePreset: 'now',
+        showAllMatches: false,
+        matches: [
+          {
+            activityId: '11111111-2222-3333-4444-555555555555',
+            opaqueId: activityOpaque,
+            dungeonLabel: 'Azrael',
+            startAtLabel: '22.08.2026 18:00',
+            occupancyLabel: '3/8',
+            roleNeedSummary: 'Potrzeba: 1 × TANK',
+            matchReason: 'Twoja rola pasuje',
+          },
+        ],
+        similarGroupsWarning: null,
+        viewedMatchOpaqueId: null,
+      },
+    );
+
+    const identityClient = {
+      getProfile: vi.fn(() =>
+        Promise.resolve({
+          userId: 'u1',
+          displayName: null,
+          activeCharacterId: 'char-1',
+          characters: [
+            {
+              id: 'char-1',
+              nickname: 'Main',
+              classSpecKey: 'warrior_body',
+              partyRoles: ['TANK', 'DPS'],
+              isDefault: true,
+            },
+          ],
+          interestKeys: [],
+        }),
+      ),
+    };
+
+    const handlerWithCache = new ActivityInteractionHandler({
+      config: makeConfig(),
+      gateway: {} as never,
+      activityClient: activityClient as never,
+      identityClient: identityClient as never,
+      logger: createLogger(),
+      lfgUiStateCache: lfgCache,
+    });
+
+    const deferUpdate = vi.fn(() => Promise.resolve(undefined));
+    const editReply = vi.fn(() => Promise.resolve(undefined));
+    await handlerWithCache.handleComponent({
+      customId,
+      guildId,
+      user: { id: operatorId },
+      id: 'lfg-join-1',
+      isButton: () => true,
+      isStringSelectMenu: () => false,
+      message: { flags: { has: () => true }, components: [] },
+      deferUpdate,
+      deferReply: vi.fn(),
+      editReply,
+      reply: vi.fn(),
+      showModal: vi.fn(),
+    } as never);
+
+    expect(joinLfg).toHaveBeenCalledOnce();
+    expect(joinLfg).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activityId: '11111111-2222-3333-4444-555555555555',
+        characterId: 'char-1',
+        partyRoleKey: 'TANK',
+      }),
+      expect.objectContaining({ discordUserId: operatorId }),
+    );
+    expect(deferUpdate).toHaveBeenCalledOnce();
+    expect(editReply).toHaveBeenCalledOnce();
+  });
+});

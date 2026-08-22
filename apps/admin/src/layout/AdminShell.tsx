@@ -16,6 +16,7 @@ const CENTRUM_NAV: readonly { readonly to: string; readonly label: string }[] = 
   { to: '/activity/channels', label: 'Kanały i panel' },
   { to: '/activity/hub-modules', label: 'Moduły Hub' },
   { to: '/activity/types', label: 'Typy aktywności' },
+  { to: '/activity/lfg-composition', label: 'Skład LFG' },
   { to: '/activity/statuses', label: 'Statusy zapisów' },
   { to: '/activity/fields', label: 'Formularz uczestnika' },
   { to: '/activity/pings', label: 'Role i pingi' },

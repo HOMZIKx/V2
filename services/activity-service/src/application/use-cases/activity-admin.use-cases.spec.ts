@@ -327,6 +327,9 @@ function createAdminMemoryRepo(): {
     async listOpenActivitiesForLfg() {
       return [];
     },
+    async getActivityTypeKeyByTypeId() {
+      return null;
+    },
     async listActivityRoleRequirements() {
       return [];
     },
@@ -339,8 +342,27 @@ function createAdminMemoryRepo(): {
     async insertLfgIntent() {
       return notImpl();
     },
+    async hasOverlappingLfgIntent() {
+      return false;
+    },
     async cancelLfgIntent() {
       return true;
+    },
+    async pauseLfgIntent() {
+      return true;
+    },
+    async resumeLfgIntent() {
+      return true;
+    },
+    async fulfillLfgIntent() {
+      return true;
+    },
+    async recordLfgIntentSuppression() {},
+    async isLfgIntentSuppressed() {
+      return false;
+    },
+    async getLfgIntentById() {
+      return null;
     },
     async listLfgIntentsForUser() {
       return [];
@@ -348,6 +370,19 @@ function createAdminMemoryRepo(): {
     async listActiveLfgIntents() {
       return [];
     },
+    async insertLfgFullGroupWatch() {
+      return notImpl();
+    },
+    async cancelLfgFullGroupWatch() {
+      return true;
+    },
+    async listLfgFullGroupWatchesForActivity() {
+      return [];
+    },
+    async listActivityTypeCompositionTemplates() {
+      return [];
+    },
+    async upsertActivityTypeCompositionTemplate() {},
     async hasLfgNotifiedMatch() {
       return false;
     },

@@ -56,6 +56,7 @@ function participation(
     removeReason: null,
     occupiesSlot: true,
     statusBehavior: 'confirmed',
+    partyRoleKey: null,
     ...patch,
   };
 }

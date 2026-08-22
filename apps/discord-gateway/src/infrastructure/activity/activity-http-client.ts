@@ -145,6 +145,81 @@ const rsvpResultSchema = z
   })
   .passthrough();
 
+const lfgMatchSchema = z
+  .object({
+    activityId: z.string().min(1),
+    opaqueId: z.string().optional(),
+    score: z.number().optional(),
+    reasons: z.array(z.string()).optional(),
+    occupancy: z.string().optional(),
+    occupancyLabel: z.string().optional(),
+    roleNeedSummary: z.string().optional(),
+    matchReason: z.string().optional(),
+    startAt: z.string().optional(),
+    startAtLabel: z.string().optional(),
+    activityTypeKey: z.string().optional(),
+    dungeonLabel: z.string().optional(),
+    fingerprint: z.string().optional(),
+  })
+  .passthrough();
+
+const lfgSearchResultSchema = z
+  .object({
+    matches: z.array(lfgMatchSchema).default([]),
+    similarGroupsWarning: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+const lfgWatchSchema = z
+  .object({
+    id: z.string().min(1),
+    activityTypeKey: z.string().optional(),
+    sessionRoles: z.array(z.string()).optional(),
+    windowStartAt: z.string().optional(),
+    windowEndAt: z.string().optional(),
+    expiresAt: z.string().optional(),
+    cancelledAt: z.string().nullable().optional(),
+    pausedAt: z.string().nullable().optional(),
+    fulfilledAt: z.string().nullable().optional(),
+    characterId: z.string().optional(),
+    classSpecKey: z.string().optional(),
+    status: z.string().optional(),
+  })
+  .passthrough();
+
+const lfgWatchListSchema = z
+  .union([
+    z.array(lfgWatchSchema),
+    z
+      .object({
+        items: z.array(lfgWatchSchema).optional(),
+        watches: z.array(lfgWatchSchema).optional(),
+      })
+      .passthrough(),
+  ])
+  .transform((value): Array<z.infer<typeof lfgWatchSchema>> => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return value.items ?? value.watches ?? [];
+  });
+
+const lfgWatchMutationSchema = z
+  .object({
+    id: z.string().optional(),
+    intentId: z.string().optional(),
+    status: z.string().optional(),
+  })
+  .passthrough();
+
+const lfgJoinResultSchema = z
+  .object({
+    joined: z.boolean().optional(),
+    waitlistPosition: z.number().nullable().optional(),
+    partyRoleKey: z.string().optional(),
+  })
+  .passthrough();
+
 const ASSERTION_HEADER = 'Activity-Client-Assertion';
 
 export type ActivityHttpClientDeps = {
@@ -533,6 +608,120 @@ export class ActivityHttpClient {
       'POST',
       `/activity/v1/activities/${encodeURIComponent(id)}/participants/remove`,
       z.record(z.string(), z.unknown()),
+      { body, actor },
+    );
+  }
+
+  public async searchLfg(
+    body: {
+      guildId: string;
+      organizationId: string;
+      activityTypeKey: string;
+      characterClassSpecKey: string;
+      characterSupportedRoles: readonly string[];
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+    },
+    actor: ActivityActorContext,
+    query?: { memberRoleIds?: readonly string[] },
+  ) {
+    const params = new URLSearchParams();
+    if (query?.memberRoleIds !== undefined && query.memberRoleIds.length > 0) {
+      params.set('memberRoleIds', query.memberRoleIds.join(','));
+    }
+    const suffix = params.size > 0 ? `?${params.toString()}` : '';
+    return this.request('POST', `/activity/v1/lfg/search${suffix}`, lfgSearchResultSchema, {
+      body,
+      actor,
+    });
+  }
+
+  public async createLfgWatch(
+    body: {
+      guildId: string;
+      organizationId: string;
+      characterId: string;
+      activityTypeKey: string;
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+      classSpecKey?: string;
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request('POST', '/activity/v1/lfg/watches', lfgWatchMutationSchema, {
+      body,
+      actor,
+    });
+  }
+
+  public async listLfgWatches(guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/lfg/watches?guildId=${encodeURIComponent(guildId)}`,
+      lfgWatchListSchema,
+      { actor },
+    );
+  }
+
+  public async cancelLfgWatch(intentId: string, guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'POST',
+      `/activity/v1/lfg/watches/${encodeURIComponent(intentId)}/cancel?guildId=${encodeURIComponent(guildId)}`,
+      lfgWatchMutationSchema,
+      { actor },
+    );
+  }
+
+  public async pauseLfgWatch(intentId: string, guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'POST',
+      `/activity/v1/lfg/watches/${encodeURIComponent(intentId)}/pause?guildId=${encodeURIComponent(guildId)}`,
+      lfgWatchMutationSchema,
+      { actor },
+    );
+  }
+
+  public async resumeLfgWatch(intentId: string, guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'POST',
+      `/activity/v1/lfg/watches/${encodeURIComponent(intentId)}/resume?guildId=${encodeURIComponent(guildId)}`,
+      lfgWatchMutationSchema,
+      { actor },
+    );
+  }
+
+  public async joinLfg(
+    body: {
+      guildId: string;
+      organizationId: string;
+      activityId: string;
+      characterId: string;
+      sessionRoles: readonly string[];
+      partyRoleKey?: string;
+      intentId?: string;
+      classSpecKey?: string;
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request('POST', '/activity/v1/lfg/join', lfgJoinResultSchema, { body, actor });
+  }
+
+  public async suppressLfgMatch(
+    activityId: string,
+    body: {
+      guildId: string;
+      organizationId: string;
+      fingerprint?: string;
+      intentId?: string;
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'POST',
+      `/activity/v1/lfg/matches/${encodeURIComponent(activityId)}/suppress`,
+      z.object({ suppressed: z.boolean().optional() }).passthrough(),
       { body, actor },
     );
   }

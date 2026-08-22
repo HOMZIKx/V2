@@ -9,6 +9,7 @@ import { EventsPage } from './pages/EventsPage.js';
 import { FieldsPage } from './pages/FieldsPage.js';
 import { HubModulesPage } from './pages/HubModulesPage.js';
 import { HubPage } from './pages/HubPage.js';
+import { LfgCompositionPage } from './pages/LfgCompositionPage.js';
 import { LimitsPage } from './pages/LimitsPage.js';
 import { NotificationsPage } from './pages/NotificationsPage.js';
 import { OverviewPage } from './pages/OverviewPage.js';
@@ -26,6 +27,7 @@ export function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/activity" element={<OverviewPage />} />
         <Route path="/activity/types" element={<TypesPage />} />
+        <Route path="/activity/lfg-composition" element={<LfgCompositionPage />} />
         <Route path="/activity/statuses" element={<StatusesPage />} />
         <Route path="/activity/fields" element={<FieldsPage />} />
         <Route path="/activity/channels" element={<ChannelsPage />} />

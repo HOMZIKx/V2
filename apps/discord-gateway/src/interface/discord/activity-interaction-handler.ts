@@ -8,12 +8,18 @@ import {
   ButtonStyle,
   MessageFlags,
   type ChatInputCommandInteraction,
+  type InteractionReplyOptions,
   type MessageComponentInteraction,
   type ModalSubmitInteraction,
 } from 'discord.js';
 import { createHash } from 'node:crypto';
 
-import { getHubModule, isHubModuleKey } from '@v2/hub-core';
+import {
+  getHubModule,
+  isHubModuleKey,
+  isPartyRoleKey,
+  LFG_DUNGEON_ACTIVITY_TYPES,
+} from '@v2/hub-core';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
 import {
@@ -22,6 +28,8 @@ import {
 } from '../../infrastructure/activity/activity-http-client.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import type { IdentityHttpClient } from '../../infrastructure/identity/identity-http-client.js';
+import { createIdentityHttpClientOrNull } from '../../infrastructure/identity/identity-http-client.js';
 import {
   createEventCustomId,
   isActivityCustomId,
@@ -30,6 +38,11 @@ import {
   parseModalCustomId,
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import {
+  isLfgCustomId,
+  parseLfgCustomId,
+  type ParsedLfgCustomId,
+} from '../../infrastructure/security/lfg-signed-custom-id.js';
 import {
   draftPayloadToFormUiState,
   formUiStateToModalPayload,
@@ -54,6 +67,22 @@ import {
   renderHubRoadmapEphemeral,
 } from '../../presentation/discord/hub-module-ephemeral.js';
 import {
+  applyProfileCharacter,
+  buildLfgSearchBody,
+  buildLfgWatchBody,
+  isWizardReady,
+  mapSearchMatches,
+  renderLfgHubEphemeral,
+  toggleSessionRole,
+  type LfgWatchRow,
+} from '../../presentation/discord/lfg-hub-ephemeral.js';
+import {
+  createDefaultLfgWizardState,
+  LfgUiStateCache,
+  type LfgUiStateCacheKey,
+  type LfgWizardState,
+} from '../../presentation/discord/lfg-ui-state-cache.js';
+import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
 } from '../../presentation/discord/localized-datetime.js';
@@ -63,12 +92,14 @@ export type ActivityInteractionDeps = {
   config: DiscordGatewayConfig;
   gateway: DiscordJsGatewayAdapter;
   activityClient: ActivityHttpClient;
+  identityClient?: IdentityHttpClient | null;
   logger: {
     info(message: string, meta?: Record<string, unknown>): void;
     warn(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
   };
   draftUiStateCache?: DraftUiStateCache;
+  lfgUiStateCache?: LfgUiStateCache;
 };
 
 function actorOf(userId: string) {
@@ -145,9 +176,21 @@ function draftSummaryLines(payload: Record<string, unknown>): string[] {
 
 export class ActivityInteractionHandler {
   private readonly draftUiCache: DraftUiStateCache;
+  private readonly lfgUiCache: LfgUiStateCache;
+  private readonly identityClient: IdentityHttpClient | null;
 
   public constructor(private readonly deps: ActivityInteractionDeps) {
     this.draftUiCache = deps.draftUiStateCache ?? new DraftUiStateCache();
+    this.lfgUiCache = deps.lfgUiStateCache ?? new LfgUiStateCache();
+    this.identityClient =
+      deps.identityClient ??
+      createIdentityHttpClientOrNull({
+        DISCORD_ACTIVITY_ENABLED: deps.config.DISCORD_ACTIVITY_ENABLED,
+        IDENTITY_SERVICE_BASE_URL: deps.config.IDENTITY_SERVICE_BASE_URL,
+        ACTIVITY_CLIENT_MODE: deps.config.ACTIVITY_CLIENT_MODE,
+        DISCORD_CLIENT_ASSERTION_MAX_TTL_SECONDS:
+          deps.config.DISCORD_CLIENT_ASSERTION_MAX_TTL_SECONDS,
+      });
   }
 
   private resolveGuildId(guildId: string | null): string {
@@ -194,8 +237,71 @@ export class ActivityInteractionHandler {
     });
   }
 
+  private lfgCacheKey(
+    guildId: string | null,
+    discordUserId: string,
+    opaquePanelId: string,
+  ): LfgUiStateCacheKey {
+    return {
+      guildId: this.resolveGuildId(guildId),
+      discordUserId,
+      opaquePanelId,
+    };
+  }
+
+  private readLfgState(
+    guildId: string | null,
+    discordUserId: string,
+    opaquePanelId: string,
+  ): LfgWizardState {
+    return (
+      this.lfgUiCache.get(this.lfgCacheKey(guildId, discordUserId, opaquePanelId)) ??
+      createDefaultLfgWizardState()
+    );
+  }
+
+  private writeLfgState(
+    guildId: string | null,
+    discordUserId: string,
+    opaquePanelId: string,
+    state: LfgWizardState,
+  ): void {
+    this.lfgUiCache.set(this.lfgCacheKey(guildId, discordUserId, opaquePanelId), state);
+  }
+
+  private async loadProfile(discordUserId: string) {
+    if (this.identityClient === null) {
+      return null;
+    }
+    try {
+      return await this.identityClient.getProfile({ discordUserId });
+    } catch (error) {
+      this.deps.logger.warn('LFG profile load failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  private renderLfgView(input: {
+    opaquePanelId: string;
+    state: LfgWizardState;
+    profile: Awaited<ReturnType<ActivityInteractionHandler['loadProfile']>>;
+    watches?: readonly LfgWatchRow[];
+    statusLine?: string;
+  }): InteractionReplyOptions {
+    return renderLfgHubEphemeral({
+      opaquePanelId: input.opaquePanelId,
+      signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      state: input.state,
+      profile: input.profile,
+      ...(input.watches !== undefined ? { watches: input.watches } : {}),
+      ...(input.statusLine !== undefined ? { statusLine: input.statusLine } : {}),
+    });
+  }
+
   public isActivityComponent(customId: string): boolean {
-    return isActivityCustomId(customId);
+    return isActivityCustomId(customId) || isLfgCustomId(customId);
   }
 
   public async handleCommand(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -227,6 +333,12 @@ export class ActivityInteractionHandler {
     if (!interaction.isButton() && !interaction.isStringSelectMenu()) {
       return false;
     }
+
+    if (isLfgCustomId(interaction.customId)) {
+      await this.handleLfgComponent(interaction);
+      return true;
+    }
+
     if (!isActivityCustomId(interaction.customId)) {
       return false;
     }
@@ -245,8 +357,13 @@ export class ActivityInteractionHandler {
       return true;
     }
 
-    if (parsed.scope === 'panel' && (parsed.action === 'create' || parsed.action === 'lfg')) {
+    if (parsed.scope === 'panel' && parsed.action === 'create') {
       await this.openCreateOrLfg(interaction, parsed);
+      return true;
+    }
+
+    if (parsed.scope === 'panel' && parsed.action === 'lfg') {
+      await this.openLfgWizard(interaction, parsed.opaqueId);
       return true;
     }
 
@@ -467,15 +584,14 @@ export class ActivityInteractionHandler {
     parsed: Extract<ParsedActivityCustomId, { scope: 'panel' }>,
   ): Promise<void> {
     try {
-      // First Discord response must be showModal — no unbounded HTTP beforehand.
       const modal = buildActivityFormModal({
         opaqueDraftId: parsed.opaqueId,
         signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-        mode: parsed.action === 'lfg' ? 'lfg' : 'create',
+        mode: 'create',
       });
       await interaction.showModal(modal);
     } catch (error) {
-      this.deps.logger.error('Centrum create/lfg open failed', {
+      this.deps.logger.error('Centrum create open failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       const content = toUserFacingError(error);
@@ -485,6 +601,329 @@ export class ActivityInteractionHandler {
         await interaction.reply({ content, flags: MessageFlags.Ephemeral });
       }
     }
+  }
+
+  private async openLfgWizard(
+    interaction: MessageComponentInteraction,
+    opaquePanelId: string,
+  ): Promise<void> {
+    try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const profile = await this.loadProfile(interaction.user.id);
+      let state = this.readLfgState(interaction.guildId, interaction.user.id, opaquePanelId);
+      state = applyProfileCharacter(state, profile);
+      this.writeLfgState(interaction.guildId, interaction.user.id, opaquePanelId, state);
+      await interaction.editReply(
+        asEditPayload(this.renderLfgView({ opaquePanelId, state, profile })),
+      );
+    } catch (error) {
+      this.deps.logger.error('Centrum LFG wizard open failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const content = toUserFacingError(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      }
+    }
+  }
+
+  private async handleLfgComponent(interaction: MessageComponentInteraction): Promise<void> {
+    let parsed: ParsedLfgCustomId;
+    try {
+      parsed = parseLfgCustomId(
+        interaction.customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+    } catch {
+      await interaction.reply({
+        content:
+          'Ta interakcja LFG jest nieprawidłowa lub wygasła. Otwórz **Szukam ekipy** ponownie.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const opaquePanelId = parsed.opaquePanelId;
+    const guildId = this.resolveGuildId(interaction.guildId);
+    const userId = interaction.user.id;
+    const actor = actorOf(userId);
+    const organizationId = this.deps.config.ACTIVITY_ORGANIZATION_ID;
+
+    if (parsed.action === 'confirm_create') {
+      const modal = buildActivityFormModal({
+        opaqueDraftId: opaquePanelId,
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        mode: 'lfg',
+      });
+      await interaction.showModal(modal);
+      return;
+    }
+
+    const fromExisting =
+      interaction.message !== null &&
+      'flags' in interaction.message &&
+      interaction.message.flags.has(MessageFlags.Ephemeral);
+    if (fromExisting) {
+      await interaction.deferUpdate();
+    } else {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
+
+    try {
+      let state = this.readLfgState(interaction.guildId, userId, opaquePanelId);
+      const profile = await this.loadProfile(userId);
+      let statusLine: string | undefined;
+      let watches: readonly LfgWatchRow[] | undefined;
+
+      if (parsed.action === 'dungeon' && interaction.isStringSelectMenu()) {
+        const selected = interaction.values[0];
+        if (selected !== undefined) {
+          state = { ...state, dungeonKey: selected, matches: [], showAllMatches: false };
+        }
+      } else if (parsed.action === 'character' && interaction.isStringSelectMenu()) {
+        const selected = interaction.values[0];
+        if (selected !== undefined) {
+          state = applyProfileCharacter(state, profile, selected);
+        }
+      } else if (parsed.action === 'quick_add' && interaction.isStringSelectMenu()) {
+        const classSpecKey = interaction.values[0];
+        if (classSpecKey !== undefined && this.identityClient !== null) {
+          const nickname =
+            ('displayName' in interaction.user &&
+            typeof interaction.user.displayName === 'string' &&
+            interaction.user.displayName.length > 0
+              ? interaction.user.displayName
+              : interaction.user.username) ?? 'Gracz';
+          const created = await this.identityClient.createCharacter(
+            {
+              nickname: nickname.slice(0, 64),
+              classSpecKey,
+              partyRoles: ['TANK', 'BUFF', 'DPS', 'FLEX'],
+              isDefault: true,
+            },
+            actor,
+          );
+          state = applyProfileCharacter(state, created.profile, created.characterId);
+          statusLine = `Dodano postać **${nickname.slice(0, 64)}**.`;
+        } else {
+          statusLine = 'Profil niedostępny — skonfiguruj postać w /profil.';
+        }
+      } else if (
+        parsed.action === 'role' &&
+        parsed.param !== undefined &&
+        isPartyRoleKey(parsed.param)
+      ) {
+        state = toggleSessionRole(state, parsed.param);
+      } else if (parsed.action === 'time' && parsed.param !== undefined) {
+        if (parsed.param === 'now' || parsed.param === 'plus2h' || parsed.param === 'evening') {
+          state = { ...state, timePreset: parsed.param, matches: [], showAllMatches: false };
+        }
+      } else if (parsed.action === 'search') {
+        const searchBody = buildLfgSearchBody({ guildId, organizationId, state });
+        if (searchBody === null) {
+          statusLine = 'Uzupełnij dungeon, postać, role i czas przed wyszukiwaniem.';
+        } else {
+          const result = await this.deps.activityClient.searchLfg(searchBody, actor);
+          const dungeonLabel =
+            LFG_DUNGEON_ACTIVITY_TYPES.find((entry) => entry.key === state.dungeonKey)?.label ??
+            'Dungeon';
+          const rawMatches = Array.isArray(result.matches)
+            ? (result.matches as Record<string, unknown>[])
+            : [];
+          state = {
+            ...state,
+            matches: mapSearchMatches(rawMatches, dungeonLabel),
+            showAllMatches: false,
+            similarGroupsWarning:
+              typeof result.similarGroupsWarning === 'string' ? result.similarGroupsWarning : null,
+          };
+          statusLine =
+            state.matches.length > 0
+              ? `Znaleziono ${String(state.matches.length)} dopasowań.`
+              : 'Brak dopasowań — możesz włączyć poszukiwanie lub utworzyć własną ekipę.';
+        }
+      } else if (parsed.action === 'show_more') {
+        state = { ...state, showAllMatches: true };
+      } else if (parsed.action === 'view' && parsed.param !== undefined) {
+        state = { ...state, screen: 'match_view', viewedMatchOpaqueId: parsed.param };
+      } else if (parsed.action === 'back') {
+        state = {
+          ...state,
+          screen: 'wizard',
+          viewedMatchOpaqueId: null,
+          similarGroupsWarning: null,
+        };
+      } else if (parsed.action === 'my_searches') {
+        const listed = await this.deps.activityClient.listLfgWatches(guildId, actor);
+        watches = listed.map((watch) => ({
+          id: watch.id,
+          activityTypeKey:
+            typeof watch.activityTypeKey === 'string' ? watch.activityTypeKey : 'unknown',
+          sessionRoles: Array.isArray(watch.sessionRoles) ? watch.sessionRoles : [],
+          ...(typeof watch.windowStartAt === 'string'
+            ? { windowStartAt: watch.windowStartAt }
+            : {}),
+          ...(typeof watch.windowEndAt === 'string' ? { windowEndAt: watch.windowEndAt } : {}),
+          ...(typeof watch.expiresAt === 'string' ? { expiresAt: watch.expiresAt } : {}),
+          pausedAt: watch.pausedAt ?? null,
+          cancelledAt: watch.cancelledAt ?? null,
+          fulfilledAt: watch.fulfilledAt ?? null,
+        }));
+        state = { ...state, screen: 'my_searches' };
+      } else if (parsed.action === 'watch_pause' && parsed.param !== undefined) {
+        await this.deps.activityClient.pauseLfgWatch(parsed.param, guildId, {
+          ...actor,
+          idempotencyKey: idem(userId, 'lfg-pause', parsed.param),
+        });
+        statusLine = 'Poszukiwanie wstrzymane.';
+        state = { ...state, screen: 'my_searches' };
+        watches = await this.loadLfgWatchRows(guildId, actor);
+      } else if (parsed.action === 'watch_resume' && parsed.param !== undefined) {
+        await this.deps.activityClient.resumeLfgWatch(parsed.param, guildId, {
+          ...actor,
+          idempotencyKey: idem(userId, 'lfg-resume', parsed.param),
+        });
+        statusLine = 'Poszukiwanie wznowione.';
+        state = { ...state, screen: 'my_searches' };
+        watches = await this.loadLfgWatchRows(guildId, actor);
+      } else if (parsed.action === 'watch_cancel' && parsed.param !== undefined) {
+        await this.deps.activityClient.cancelLfgWatch(parsed.param, guildId, {
+          ...actor,
+          idempotencyKey: idem(userId, 'lfg-cancel', parsed.param),
+        });
+        statusLine = 'Poszukiwanie anulowane.';
+        state = { ...state, screen: 'my_searches' };
+        watches = await this.loadLfgWatchRows(guildId, actor);
+      } else if (parsed.action === 'watch') {
+        const watchBody = buildLfgWatchBody({ guildId, organizationId, state });
+        if (watchBody === null) {
+          statusLine = 'Uzupełnij kryteria przed włączeniem poszukiwania.';
+        } else {
+          await this.deps.activityClient.createLfgWatch(watchBody, {
+            ...actor,
+            idempotencyKey: idem(
+              userId,
+              'lfg-watch',
+              `${watchBody.activityTypeKey}:${watchBody.windowStartAt}`,
+            ),
+          });
+          statusLine = 'Poszukiwanie włączone — powiadomimy Cię prywatnie o dopasowaniu.';
+          state = { ...state, screen: 'wizard' };
+        }
+      } else if (parsed.action === 'create') {
+        if (!isWizardReady(state)) {
+          statusLine = 'Uzupełnij kryteria przed utworzeniem własnej ekipy.';
+        } else {
+          state = {
+            ...state,
+            screen: 'confirm_create',
+            similarGroupsWarning:
+              state.similarGroupsWarning ??
+              'Sprawdź, czy nie ma już podobnej otwartej grupy — tworzenie duplikatu utrudnia składanie ekip.',
+          };
+        }
+      } else if (parsed.action === 'join' && parsed.param !== undefined) {
+        const match =
+          state.matches.find((entry) => entry.opaqueId === parsed.param) ??
+          state.matches.find((entry) => entry.activityId === parsed.param);
+        if (match === undefined || state.characterId === null) {
+          statusLine = 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+        } else {
+          const primaryRole = state.sessionRoles[0];
+          const joined = await this.deps.activityClient.joinLfg(
+            {
+              guildId,
+              organizationId,
+              activityId: match.activityId,
+              characterId: state.characterId,
+              sessionRoles: state.sessionRoles,
+              ...(primaryRole !== undefined ? { partyRoleKey: primaryRole } : {}),
+              ...(state.classSpecKey !== null ? { classSpecKey: state.classSpecKey } : {}),
+            },
+            {
+              ...actor,
+              idempotencyKey: idem(
+                userId,
+                'lfg-join',
+                `${match.activityId}:${primaryRole ?? 'any'}`,
+              ),
+            },
+          );
+          const waitlist =
+            typeof joined.waitlistPosition === 'number'
+              ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
+              : '';
+          statusLine = `Dołączono do ekipy.${waitlist}`;
+          state = { ...state, screen: 'wizard', viewedMatchOpaqueId: null };
+        }
+      } else if (parsed.action === 'suppress' && parsed.param !== undefined) {
+        const match = state.matches.find((entry) => entry.opaqueId === parsed.param);
+        if (match !== undefined) {
+          await this.deps.activityClient.suppressLfgMatch(
+            match.activityId,
+            {
+              guildId,
+              organizationId,
+              ...(match.fingerprint !== undefined ? { fingerprint: match.fingerprint } : {}),
+            },
+            {
+              ...actor,
+              idempotencyKey: idem(userId, 'lfg-suppress', match.activityId),
+            },
+          );
+          state = {
+            ...state,
+            matches: state.matches.filter((entry) => entry.opaqueId !== parsed.param),
+          };
+          statusLine = 'Ukryto to dopasowanie.';
+        }
+      }
+
+      if (state.screen === 'wizard' && state.characterId === null) {
+        state = applyProfileCharacter(state, profile);
+      }
+
+      this.writeLfgState(interaction.guildId, userId, opaquePanelId, state);
+      await interaction.editReply(
+        asEditPayload(
+          this.renderLfgView({
+            opaquePanelId,
+            state,
+            profile,
+            ...(watches !== undefined ? { watches } : {}),
+            ...(statusLine !== undefined ? { statusLine } : {}),
+          }),
+        ),
+      );
+    } catch (error) {
+      this.deps.logger.error('Centrum LFG component failed', {
+        error: error instanceof Error ? error.message : String(error),
+        status: error instanceof ActivityHttpError ? error.status : undefined,
+        operation: parsed.action,
+      });
+      await interaction.editReply({ content: toUserFacingError(error) });
+    }
+  }
+
+  private async loadLfgWatchRows(
+    guildId: string,
+    actor: ReturnType<typeof actorOf>,
+  ): Promise<readonly LfgWatchRow[]> {
+    const listed = await this.deps.activityClient.listLfgWatches(guildId, actor);
+    return listed.map((watch) => ({
+      id: watch.id,
+      activityTypeKey:
+        typeof watch.activityTypeKey === 'string' ? watch.activityTypeKey : 'unknown',
+      sessionRoles: Array.isArray(watch.sessionRoles) ? watch.sessionRoles : [],
+      ...(typeof watch.windowStartAt === 'string' ? { windowStartAt: watch.windowStartAt } : {}),
+      ...(typeof watch.windowEndAt === 'string' ? { windowEndAt: watch.windowEndAt } : {}),
+      ...(typeof watch.expiresAt === 'string' ? { expiresAt: watch.expiresAt } : {}),
+      pausedAt: watch.pausedAt ?? null,
+      cancelledAt: watch.cancelledAt ?? null,
+      fulfilledAt: watch.fulfilledAt ?? null,
+    }));
   }
 
   private async openDraftEditModal(

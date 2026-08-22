@@ -269,6 +269,7 @@ export interface ParticipationRecord {
   readonly removeReason: string | null;
   readonly occupiesSlot: boolean;
   readonly statusBehavior: StatusBehavior;
+  readonly partyRoleKey: string | null;
 }
 
 export interface HubPanelRecord {
@@ -465,11 +466,13 @@ export interface ActivityTx {
       | 'removedAt'
       | 'removeReason'
       | 'scopeGuildId'
+      | 'partyRoleKey'
     > & {
       scopeGuildId?: string | null;
       resignedAt?: Date | null;
       removedAt?: Date | null;
       removeReason?: string | null;
+      partyRoleKey?: string | null;
     },
   ): Promise<ParticipationRecord>;
   markParticipationResigned(id: string, at: Date): Promise<void>;
@@ -602,10 +605,19 @@ export interface ActivityTx {
       preferred?: boolean;
     }[]
   >;
+  getActivityTypeKeyByTypeId(typeId: string): Promise<string | null>;
   countParticipationsByPartyRole(
     activityId: string,
   ): Promise<Readonly<Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>>>>;
   countOccupiedParticipations(activityId: string): Promise<number>;
+  hasOverlappingLfgIntent(input: {
+    recipientDiscordUserId: string;
+    characterId: string;
+    activityTypeKey: string;
+    windowStartAt: Date;
+    windowEndAt: Date;
+    now: Date;
+  }): Promise<boolean>;
   insertLfgIntent(input: {
     guildId: string;
     organizationId: string;
@@ -619,6 +631,36 @@ export interface ActivityTx {
     classSpecKey: string | null;
   }): Promise<string>;
   cancelLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<boolean>;
+  pauseLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<boolean>;
+  resumeLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<boolean>;
+  fulfillLfgIntent(intentId: string, recipientDiscordUserId: string, now: Date): Promise<boolean>;
+  recordLfgIntentSuppression(input: {
+    intentId: string;
+    activityId: string;
+    fingerprint: string;
+    now: Date;
+  }): Promise<void>;
+  isLfgIntentSuppressed(
+    intentId: string,
+    activityId: string,
+    fingerprint: string,
+  ): Promise<boolean>;
+  getLfgIntentById(intentId: string): Promise<{
+    readonly id: string;
+    readonly guildId: string;
+    readonly organizationId: string;
+    readonly recipientDiscordUserId: string;
+    readonly characterId: string;
+    readonly activityTypeKey: string;
+    readonly sessionRoles: readonly string[];
+    readonly windowStartAt: Date;
+    readonly windowEndAt: Date;
+    readonly expiresAt: Date;
+    readonly cancelledAt: Date | null;
+    readonly pausedAt: Date | null;
+    readonly fulfilledAt: Date | null;
+    readonly classSpecKey: string | null;
+  } | null>;
   listLfgIntentsForUser(
     guildId: string,
     recipientDiscordUserId: string,
@@ -629,6 +671,12 @@ export interface ActivityTx {
       sessionRoles: readonly string[];
       expiresAt: Date;
       cancelledAt: Date | null;
+      pausedAt: Date | null;
+      fulfilledAt: Date | null;
+      windowStartAt: Date;
+      windowEndAt: Date;
+      characterId: string;
+      classSpecKey: string | null;
     }[]
   >;
   listActiveLfgIntents(input: {
@@ -641,8 +689,53 @@ export interface ActivityTx {
       id: string;
       recipientDiscordUserId: string;
       sessionRoles: readonly string[];
+      characterId: string;
+      classSpecKey: string | null;
+      windowStartAt: Date;
+      windowEndAt: Date;
     }[]
   >;
+  insertLfgFullGroupWatch(input: {
+    guildId: string;
+    organizationId: string;
+    recipientDiscordUserId: string;
+    activityId: string;
+    characterId: string;
+    sessionRoles: readonly string[];
+    classSpecKey: string | null;
+  }): Promise<string>;
+  cancelLfgFullGroupWatch(
+    watchId: string,
+    recipientDiscordUserId: string,
+    now: Date,
+  ): Promise<boolean>;
+  listLfgFullGroupWatchesForActivity(activityId: string): Promise<
+    readonly {
+      id: string;
+      recipientDiscordUserId: string;
+      characterId: string;
+      sessionRoles: readonly string[];
+      classSpecKey: string | null;
+      cancelledAt: Date | null;
+    }[]
+  >;
+  listActivityTypeCompositionTemplates(
+    organizationId: string,
+    activityTypeKey: string,
+  ): Promise<
+    readonly {
+      partyRoleKey: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+      requiredCount: number;
+      preferred: boolean;
+    }[]
+  >;
+  upsertActivityTypeCompositionTemplate(input: {
+    organizationId: string;
+    activityTypeKey: string;
+    partyRoleKey: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+    requiredCount: number;
+    preferred: boolean;
+  }): Promise<void>;
   hasLfgNotifiedMatch(
     recipientDiscordUserId: string,
     activityId: string,

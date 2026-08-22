@@ -1306,4 +1306,62 @@ export class ActivityAdminUseCases {
       return activity;
     });
   }
+
+  public async listLfgCompositionTemplates(
+    organizationId: string,
+    activityTypeKey: string,
+    guildId: string,
+    actor: ActorSubject,
+  ) {
+    await this.requireConfigManage(actor, guildId);
+    if (activityTypeKey !== 'azrael' && activityTypeKey !== 'smok') {
+      throw new ActivityError('VALIDATION_FAILED', 'activityTypeKey must be azrael or smok');
+    }
+    return this.deps.repository.withTransaction(async (tx) => {
+      const roles = await tx.listActivityTypeCompositionTemplates(organizationId, activityTypeKey);
+      return { organizationId, activityTypeKey, roles };
+    });
+  }
+
+  public async upsertLfgCompositionTemplates(
+    organizationId: string,
+    guildId: string,
+    input: {
+      activityTypeKey: 'azrael' | 'smok';
+      roles: readonly {
+        partyRoleKey: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+        requiredCount: number;
+        preferred?: boolean;
+      }[];
+    },
+    ctx: MutationContext,
+  ) {
+    await this.requireConfigManage(ctx.actor, guildId);
+    return this.mutate(
+      ctx,
+      'lfg-composition-upsert',
+      `org:${organizationId}:${input.activityTypeKey}`,
+      async (tx) => {
+        for (const role of input.roles) {
+          await tx.upsertActivityTypeCompositionTemplate({
+            organizationId,
+            activityTypeKey: input.activityTypeKey,
+            partyRoleKey: role.partyRoleKey,
+            requiredCount: role.requiredCount,
+            preferred: role.preferred ?? false,
+          });
+        }
+        await this.audit(tx, ctx, guildId, 'lfg.composition_templates.upsert', {
+          organizationId,
+          activityTypeKey: input.activityTypeKey,
+          roles: input.roles,
+        });
+        const roles = await tx.listActivityTypeCompositionTemplates(
+          organizationId,
+          input.activityTypeKey,
+        );
+        return { organizationId, activityTypeKey: input.activityTypeKey, roles };
+      },
+    );
+  }
 }

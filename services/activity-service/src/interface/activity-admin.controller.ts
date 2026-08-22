@@ -190,6 +190,17 @@ const hubPublishIntentSchema = z.object({
   expectedRevision: z.number().int().positive().optional(),
 });
 
+const lfgCompositionRoleSchema = z.object({
+  partyRoleKey: z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']),
+  requiredCount: z.number().int().nonnegative(),
+  preferred: z.boolean().optional(),
+});
+
+const lfgCompositionPutSchema = z.object({
+  activityTypeKey: z.enum(['azrael', 'smok']),
+  roles: z.array(lfgCompositionRoleSchema).min(1).max(4),
+});
+
 @Controller('activity/v1/admin')
 @UseGuards(InboundAssertionGuard)
 @UseFilters(ActivityExceptionFilter)
@@ -839,5 +850,56 @@ export class ActivityAdminController {
         actorFromRequest(request),
       ),
     };
+  }
+
+  @Get('organizations/:orgId/lfg/composition-templates')
+  @RequireOperation('activity_read')
+  public async listLfgCompositionTemplates(
+    @Param('orgId') orgId: string,
+    @Query('activityTypeKey') activityTypeKey: string | undefined,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (activityTypeKey === undefined || activityTypeKey.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'activityTypeKey is required');
+    }
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.admin.listLfgCompositionTemplates(
+      orgId.trim(),
+      activityTypeKey.trim(),
+      guildId.trim(),
+      actorFromRequest(request),
+    );
+  }
+
+  @Put('organizations/:orgId/lfg/composition-templates')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async putLfgCompositionTemplates(
+    @Param('orgId') orgId: string,
+    @Query('guildId') guildId: string | undefined,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    const parsed = parseOrThrow(lfgCompositionPutSchema, body);
+    return this.admin.upsertLfgCompositionTemplates(
+      orgId.trim(),
+      guildId.trim(),
+      {
+        activityTypeKey: parsed.activityTypeKey,
+        roles: parsed.roles.map((role) => ({
+          partyRoleKey: role.partyRoleKey,
+          requiredCount: role.requiredCount,
+          ...(role.preferred !== undefined ? { preferred: role.preferred } : {}),
+        })),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
   }
 }

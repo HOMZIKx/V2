@@ -16,6 +16,7 @@ import {
 } from '@v2/hub-core';
 
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
+import { createLfgCustomId } from '../../infrastructure/security/lfg-signed-custom-id.js';
 import { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 
 export function renderHubRoadmapEphemeral(moduleKey: HubModuleKey): InteractionReplyOptions {
@@ -90,6 +91,10 @@ export function renderHubActivitiesMenu(input: {
     .setCustomId(createPanelCustomId(input.opaquePanelId, 'lfg', input.signingSecret))
     .setLabel('Szukam ekipy')
     .setStyle(ButtonStyle.Secondary);
+  const mySearches = new ButtonBuilder()
+    .setCustomId(createLfgCustomId(input.opaquePanelId, 'my_searches', input.signingSecret))
+    .setLabel('Moje poszukiwania')
+    .setStyle(ButtonStyle.Secondary);
 
   const container = new ContainerBuilder()
     .setAccentColor(ACTIVITY_HUB_ACCENT)
@@ -106,7 +111,9 @@ export function renderHubActivitiesMenu(input: {
         ].join('\n'),
       ),
     )
-    .addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(lfg, create));
+    .addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(lfg, mySearches, create),
+    );
 
   return {
     components: [container],

@@ -92,6 +92,7 @@ describe('buildEventProjectionPayload', () => {
       removeReason: null,
       occupiesSlot: true,
       statusBehavior: 'confirmed',
+      partyRoleKey: null,
     };
 
     const payload = buildEventProjectionPayload({

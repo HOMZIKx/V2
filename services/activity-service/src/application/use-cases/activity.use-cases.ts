@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { isPartyRoleKey } from '@v2/hub-core';
+
 import type { AttendanceMark } from '../../domain/attendance.js';
 import { assertAttendanceWindowOpen } from '../../domain/attendance.js';
 import { countOccupiedSlots, hasOpenSeat } from '../../domain/capacity.js';
@@ -367,6 +369,15 @@ export class ActivityUseCases {
         occurredAt: now,
       });
     }
+  }
+
+  private async triggerLfgMatchingAfterProjection(
+    tx: ActivityTx,
+    activity: ActivityRecord,
+    now: Date,
+  ): Promise<void> {
+    const { triggerLfgMatchingForActivity } = await import('./lfg.use-cases.js');
+    await triggerLfgMatchingForActivity(tx, activity, now);
   }
 
   private async mutate<T>(
@@ -747,6 +758,7 @@ export class ActivityUseCases {
         occurredAt: now,
       });
       await this.requestProjection(tx, activity, now);
+      await this.triggerLfgMatchingAfterProjection(tx, activity, now);
       await tx.deleteDraft(id);
       await tx.insertAudit({
         guildId: activity.guildId,
@@ -1064,6 +1076,7 @@ export class ActivityUseCases {
           );
         }
         await this.requestProjection(tx, updated, now);
+        await this.triggerLfgMatchingAfterProjection(tx, updated, now);
         last = updated;
       }
 
@@ -1287,11 +1300,14 @@ export class ActivityUseCases {
 
   public async rsvp(
     id: string,
-    input: { statusDefId: string; guildId?: string },
+    input: { statusDefId: string; guildId?: string; partyRoleKey?: string },
     ctx: MutationContext,
   ) {
     const discordUserId = requireDiscord(ctx.actor);
     const now = this.deps.clock.now();
+    if (input.partyRoleKey !== undefined && !isPartyRoleKey(input.partyRoleKey)) {
+      throw new ActivityError('VALIDATION_FAILED', 'Invalid party role key');
+    }
     return this.mutate(ctx, 'rsvp', `activity:${id}:${discordUserId}`, async (tx) => {
       const activity = await tx.lockActivity(id);
       const requestGuildId = input.guildId ?? activity.guildId;
@@ -1355,6 +1371,7 @@ export class ActivityUseCases {
         reconfirmDeadline: null,
         waitlistPosition,
         scopeGuildId,
+        ...(input.partyRoleKey !== undefined ? { partyRoleKey: input.partyRoleKey } : {}),
       });
 
       await tx.insertOutbox({
@@ -1379,6 +1396,7 @@ export class ActivityUseCases {
         now,
         activity.participantMode === 'separate' ? { onlyGuildIds: [requestGuildId] } : undefined,
       );
+      await this.triggerLfgMatchingAfterProjection(tx, activity, now);
       return participation;
     });
   }
@@ -1415,6 +1433,7 @@ export class ActivityUseCases {
         occurredAt: now,
       });
       await this.requestProjection(tx, activity, now);
+      await this.triggerLfgMatchingAfterProjection(tx, activity, now);
       return { resigned: true, promoted };
     });
   }
@@ -1562,6 +1581,7 @@ export class ActivityUseCases {
           dedupeKey: `remove:${id}:${input.discordUserId}:${activity.version}`,
         });
         await this.requestProjection(tx, activity, now);
+        await this.triggerLfgMatchingAfterProjection(tx, activity, now);
         return { removed: true, promoted };
       },
     );
@@ -1791,6 +1811,7 @@ export class ActivityUseCases {
         occurredAt: now,
       });
       await this.requestProjection(tx, updated, now);
+      await this.triggerLfgMatchingAfterProjection(tx, updated, now);
       return updated;
     });
   }
@@ -2191,6 +2212,119 @@ export class ActivityUseCases {
     return this.deps.repository.withTransaction(async (tx) => {
       const { listMyLfgIntents } = await import('./lfg.use-cases.js');
       return listMyLfgIntents(tx, actor, guildId);
+    });
+  }
+
+  public async joinLfg(
+    actor: ActorSubject,
+    input: {
+      activityId: string;
+      statusDefId: string;
+      partyRoleKey: string;
+      guildId?: string;
+      intentId?: string;
+      characterClassSpecKey?: string;
+      characterSupportedRoles?: readonly string[];
+      sessionRoles?: readonly string[];
+      memberRoleIds?: readonly string[];
+    },
+    ctx: MutationContext,
+  ) {
+    requireDiscord(actor);
+    const now = this.deps.clock.now();
+    return this.mutate(ctx, 'lfg-join', `activity:${input.activityId}`, async (tx) => {
+      const activityPreview = await tx.getActivity(input.activityId);
+      if (activityPreview === null) {
+        throw new ActivityError('NOT_FOUND', 'Activity not found');
+      }
+      const requestGuildId = input.guildId ?? activityPreview.guildId;
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, requestGuildId);
+      const { joinLfgActivity } = await import('./lfg.use-cases.js');
+      const participation = await joinLfgActivity(
+        tx,
+        actor,
+        { ...input, ...(input.guildId !== undefined ? { guildId: input.guildId } : {}) },
+        now,
+      );
+      const activity = await tx.getActivity(input.activityId);
+      if (activity === null) {
+        throw new ActivityError('NOT_FOUND', 'Activity not found');
+      }
+      await tx.insertOutbox({
+        eventType: OUTBOX_EVENT_TYPES.RSVP_CHANGED,
+        aggregateType: 'activity',
+        aggregateId: input.activityId,
+        aggregateVersion: activity.version,
+        payload: {
+          activityId: input.activityId,
+          opaqueId: activity.opaqueId,
+          participationId: participation.id,
+          discordUserId: actor.discordUserId,
+          partyRoleKey: input.partyRoleKey,
+          lfgJoin: true,
+        },
+        occurredAt: now,
+      });
+      await this.requestProjection(tx, activity, now);
+      await this.triggerLfgMatchingAfterProjection(tx, activity, now);
+      return participation;
+    });
+  }
+
+  public async pauseLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
+    const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { pauseLfgIntent } = await import('./lfg.use-cases.js');
+      await pauseLfgIntent(tx, actor, intentId, now);
+      return { id: intentId, status: 'paused' };
+    });
+  }
+
+  public async resumeLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
+    const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { resumeLfgIntent } = await import('./lfg.use-cases.js');
+      await resumeLfgIntent(tx, actor, intentId, now);
+      return { id: intentId, status: 'active' };
+    });
+  }
+
+  public async suppressLfgMatch(
+    actor: ActorSubject,
+    activityId: string,
+    input: { intentId: string; guildId: string },
+  ) {
+    const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { suppressLfgMatch } = await import('./lfg.use-cases.js');
+      await suppressLfgMatch(tx, actor, { activityId, intentId: input.intentId }, now);
+      return { activityId, intentId: input.intentId, suppressed: true };
+    });
+  }
+
+  public async searchSimilarLfgGroups(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      activityTypeKey: string;
+      startAt: string;
+      memberRoleIds?: readonly string[];
+    },
+  ) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, input.guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { searchSimilarGroupsBeforeCreate } = await import('./lfg.use-cases.js');
+      return searchSimilarGroupsBeforeCreate(tx, actor, {
+        guildId: input.guildId,
+        organizationId: input.organizationId,
+        activityTypeKey: input.activityTypeKey,
+        startAt: new Date(input.startAt),
+        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+      });
     });
   }
 

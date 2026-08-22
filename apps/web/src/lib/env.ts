@@ -43,3 +43,9 @@ export function isLoginConfigured(): boolean {
     web: getWebOrigin(),
   });
 }
+
+/** Organization scope for Activity LFG (matches gateway ACTIVITY_ORGANIZATION_ID). */
+export function getActivityOrganizationId(): string | null {
+  const value = process.env.NEXT_PUBLIC_ACTIVITY_ORGANIZATION_ID?.trim();
+  return value !== undefined && value !== '' ? value : null;
+}

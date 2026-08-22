@@ -282,6 +282,7 @@ function mapParticipation(row: Record<string, unknown>): ParticipationRecord {
       row.status_behavior ?? row.behavior,
       'status_behavior',
     ) as StatusBehavior,
+    partyRoleKey: asNullableString(row.party_role_key),
   };
 }
 
@@ -1033,7 +1034,7 @@ function createTx(client: PoolClient): ActivityTx {
         const result = await client.query(
           `UPDATE participations SET
              status_def_id = $2, confirmation_state = $3, reconfirm_deadline = $4,
-             waitlist_position = $5, scope_guild_id = $6, updated_at = now()
+             waitlist_position = $5, scope_guild_id = $6, party_role_key = $7, updated_at = now()
            WHERE id = $1
            RETURNING id`,
           [
@@ -1043,6 +1044,7 @@ function createTx(client: PoolClient): ActivityTx {
             input.reconfirmDeadline?.toISOString() ?? null,
             input.waitlistPosition,
             scopeGuildId,
+            input.partyRoleKey ?? null,
           ],
         );
         const id = String((result.rows[0] as { id: string }).id);
@@ -1060,8 +1062,8 @@ function createTx(client: PoolClient): ActivityTx {
       await client.query(
         `INSERT INTO participations (
            id, activity_id, discord_user_id, v2_user_id, status_def_id,
-           confirmation_state, reconfirm_deadline, waitlist_position, scope_guild_id
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+           confirmation_state, reconfirm_deadline, waitlist_position, scope_guild_id, party_role_key
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
           id,
           input.activityId,
@@ -1072,6 +1074,7 @@ function createTx(client: PoolClient): ActivityTx {
           input.reconfirmDeadline?.toISOString() ?? null,
           input.waitlistPosition,
           scopeGuildId,
+          input.partyRoleKey ?? null,
         ],
       );
       const full = await client.query(
@@ -1629,20 +1632,73 @@ function createTx(client: PoolClient): ActivityTx {
       }));
     },
 
-    countParticipationsByPartyRole() {
-      // Party role on participation is Stage 5 extension; empty map until RSVP carries roles.
-      return Promise.resolve({});
+    async getActivityTypeKeyByTypeId(typeId) {
+      const result = await client.query(`SELECT key FROM activity_types WHERE id = $1::uuid`, [
+        typeId,
+      ]);
+      const row = result.rows[0] as { key: unknown } | undefined;
+      return row === undefined ? null : String(row.key);
+    },
+
+    async countParticipationsByPartyRole(activityId) {
+      const result = await client.query(
+        `SELECT p.party_role_key, COUNT(*)::int AS n
+         FROM participations p
+         INNER JOIN participation_status_defs s ON s.id = p.status_def_id
+         WHERE p.activity_id = $1::uuid
+           AND p.party_role_key IS NOT NULL
+           AND s.occupies_slot = TRUE
+           AND p.resigned_at IS NULL
+           AND p.removed_at IS NULL
+         GROUP BY p.party_role_key`,
+        [activityId],
+      );
+      const filled: Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>> = {};
+      for (const row of result.rows) {
+        const role = String((row as { party_role_key: unknown }).party_role_key);
+        if (role === 'TANK' || role === 'BUFF' || role === 'DPS' || role === 'FLEX') {
+          filled[role] = Number((row as { n: unknown }).n);
+        }
+      }
+      return filled;
     },
 
     async countOccupiedParticipations(activityId) {
       const result = await client.query(
-        `SELECT COUNT(*)::int AS n FROM participations
-         WHERE activity_id = $1::uuid
-           AND resigned_at IS NULL AND removed_at IS NULL
-           AND occupies_slot = TRUE`,
+        `SELECT COUNT(*)::int AS n
+         FROM participations p
+         INNER JOIN participation_status_defs s ON s.id = p.status_def_id
+         WHERE p.activity_id = $1::uuid
+           AND p.resigned_at IS NULL AND p.removed_at IS NULL
+           AND s.occupies_slot = TRUE`,
         [activityId],
       );
       return Number((result.rows[0] as { n: number } | undefined)?.n ?? 0);
+    },
+
+    async hasOverlappingLfgIntent(input) {
+      const result = await client.query(
+        `SELECT 1 FROM lfg_intents
+         WHERE recipient_discord_user_id = $1
+           AND character_id = $2
+           AND activity_type_key = $3
+           AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL
+           AND paused_at IS NULL
+           AND expires_at > $4
+           AND window_start_at < $6
+           AND window_end_at > $5
+         LIMIT 1`,
+        [
+          input.recipientDiscordUserId,
+          input.characterId,
+          input.activityTypeKey,
+          input.now.toISOString(),
+          input.windowStartAt.toISOString(),
+          input.windowEndAt.toISOString(),
+        ],
+      );
+      return result.rows.length > 0;
     },
 
     async insertLfgIntent(input) {
@@ -1679,9 +1735,100 @@ function createTx(client: PoolClient): ActivityTx {
       return (result.rowCount ?? 0) > 0;
     },
 
+    async pauseLfgIntent(intentId, recipientDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE lfg_intents
+         SET paused_at = $3, updated_at = $3
+         WHERE id = $1::uuid
+           AND recipient_discord_user_id = $2
+           AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL
+           AND paused_at IS NULL`,
+        [intentId, recipientDiscordUserId, now.toISOString()],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async resumeLfgIntent(intentId, recipientDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE lfg_intents
+         SET paused_at = NULL, updated_at = $3
+         WHERE id = $1::uuid
+           AND recipient_discord_user_id = $2
+           AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL
+           AND paused_at IS NOT NULL`,
+        [intentId, recipientDiscordUserId, now.toISOString()],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async fulfillLfgIntent(intentId, recipientDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE lfg_intents
+         SET fulfilled_at = $3, updated_at = $3
+         WHERE id = $1::uuid
+           AND recipient_discord_user_id = $2
+           AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL`,
+        [intentId, recipientDiscordUserId, now.toISOString()],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async recordLfgIntentSuppression(input) {
+      await client.query(
+        `INSERT INTO lfg_intent_suppressions (intent_id, activity_id, fingerprint, suppressed_at)
+         VALUES ($1::uuid, $2::uuid, $3, $4)
+         ON CONFLICT (intent_id, activity_id, fingerprint) DO UPDATE SET
+           suppressed_at = EXCLUDED.suppressed_at`,
+        [input.intentId, input.activityId, input.fingerprint, input.now.toISOString()],
+      );
+    },
+
+    async isLfgIntentSuppressed(intentId, activityId, fingerprint) {
+      const result = await client.query(
+        `SELECT 1 FROM lfg_intent_suppressions
+         WHERE intent_id = $1::uuid AND activity_id = $2::uuid AND fingerprint = $3`,
+        [intentId, activityId, fingerprint],
+      );
+      return result.rows.length > 0;
+    },
+
+    async getLfgIntentById(intentId) {
+      const result = await client.query(
+        `SELECT id::text, guild_id, organization_id, recipient_discord_user_id, character_id,
+                activity_type_key, session_roles, window_start_at, window_end_at, expires_at,
+                cancelled_at, paused_at, fulfilled_at, class_spec_key
+         FROM lfg_intents WHERE id = $1::uuid`,
+        [intentId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        id: String(row.id),
+        guildId: String(row.guild_id),
+        organizationId: String(row.organization_id),
+        recipientDiscordUserId: String(row.recipient_discord_user_id),
+        characterId: String(row.character_id),
+        activityTypeKey: String(row.activity_type_key),
+        sessionRoles: Array.isArray(row.session_roles) ? (row.session_roles as string[]) : [],
+        windowStartAt: asRequiredDate(row.window_start_at, 'window_start_at'),
+        windowEndAt: asRequiredDate(row.window_end_at, 'window_end_at'),
+        expiresAt: asRequiredDate(row.expires_at, 'expires_at'),
+        cancelledAt: asNullableDate(row.cancelled_at),
+        pausedAt: asNullableDate(row.paused_at),
+        fulfilledAt: asNullableDate(row.fulfilled_at),
+        classSpecKey: asNullableString(row.class_spec_key),
+      };
+    },
+
     async listLfgIntentsForUser(guildId, recipientDiscordUserId) {
       const result = await client.query(
-        `SELECT id::text, activity_type_key, session_roles, expires_at, cancelled_at
+        `SELECT id::text, activity_type_key, session_roles, expires_at, cancelled_at,
+                paused_at, fulfilled_at, window_start_at, window_end_at, character_id, class_spec_key
          FROM lfg_intents
          WHERE guild_id = $1 AND recipient_discord_user_id = $2
          ORDER BY created_at DESC
@@ -1696,17 +1843,32 @@ function createTx(client: PoolClient): ActivityTx {
           : [],
         expiresAt: asRequiredDate((row as { expires_at: unknown }).expires_at, 'expires_at'),
         cancelledAt: asNullableDate((row as { cancelled_at: unknown }).cancelled_at),
+        pausedAt: asNullableDate((row as { paused_at: unknown }).paused_at),
+        fulfilledAt: asNullableDate((row as { fulfilled_at: unknown }).fulfilled_at),
+        windowStartAt: asRequiredDate(
+          (row as { window_start_at: unknown }).window_start_at,
+          'window_start_at',
+        ),
+        windowEndAt: asRequiredDate(
+          (row as { window_end_at: unknown }).window_end_at,
+          'window_end_at',
+        ),
+        characterId: String((row as { character_id: unknown }).character_id),
+        classSpecKey: asNullableString((row as { class_spec_key: unknown }).class_spec_key),
       }));
     },
 
     async listActiveLfgIntents(input) {
       const result = await client.query(
-        `SELECT id::text, recipient_discord_user_id, session_roles
+        `SELECT id::text, recipient_discord_user_id, session_roles, character_id, class_spec_key,
+                window_start_at, window_end_at
          FROM lfg_intents
          WHERE guild_id = $1
            AND organization_id = $2
            AND activity_type_key = $3
            AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL
+           AND paused_at IS NULL
            AND expires_at > $4`,
         [input.guildId, input.organizationId, input.activityTypeKey, input.now.toISOString()],
       );
@@ -1718,7 +1880,103 @@ function createTx(client: PoolClient): ActivityTx {
         sessionRoles: Array.isArray((row as { session_roles: unknown }).session_roles)
           ? ((row as { session_roles: unknown[] }).session_roles as string[])
           : [],
+        characterId: String((row as { character_id: unknown }).character_id),
+        classSpecKey: asNullableString((row as { class_spec_key: unknown }).class_spec_key),
+        windowStartAt: asRequiredDate(
+          (row as { window_start_at: unknown }).window_start_at,
+          'window_start_at',
+        ),
+        windowEndAt: asRequiredDate(
+          (row as { window_end_at: unknown }).window_end_at,
+          'window_end_at',
+        ),
       }));
+    },
+
+    async insertLfgFullGroupWatch(input) {
+      const result = await client.query(
+        `INSERT INTO lfg_full_group_watches (
+           guild_id, organization_id, recipient_discord_user_id, activity_id,
+           character_id, session_roles, class_spec_key
+         ) VALUES ($1,$2,$3,$4::uuid,$5,$6::text[],$7)
+         RETURNING id::text`,
+        [
+          input.guildId,
+          input.organizationId,
+          input.recipientDiscordUserId,
+          input.activityId,
+          input.characterId,
+          input.sessionRoles,
+          input.classSpecKey,
+        ],
+      );
+      return String((result.rows[0] as { id: string }).id);
+    },
+
+    async cancelLfgFullGroupWatch(watchId, recipientDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE lfg_full_group_watches
+         SET cancelled_at = $3, updated_at = $3
+         WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL`,
+        [watchId, recipientDiscordUserId, now.toISOString()],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async listLfgFullGroupWatchesForActivity(activityId) {
+      const result = await client.query(
+        `SELECT id::text, recipient_discord_user_id, character_id, session_roles, class_spec_key,
+                cancelled_at
+         FROM lfg_full_group_watches
+         WHERE activity_id = $1::uuid AND cancelled_at IS NULL`,
+        [activityId],
+      );
+      return result.rows.map((row) => ({
+        id: String((row as { id: unknown }).id),
+        recipientDiscordUserId: String(
+          (row as { recipient_discord_user_id: unknown }).recipient_discord_user_id,
+        ),
+        characterId: String((row as { character_id: unknown }).character_id),
+        sessionRoles: Array.isArray((row as { session_roles: unknown }).session_roles)
+          ? ((row as { session_roles: unknown[] }).session_roles as string[])
+          : [],
+        classSpecKey: asNullableString((row as { class_spec_key: unknown }).class_spec_key),
+        cancelledAt: asNullableDate((row as { cancelled_at: unknown }).cancelled_at),
+      }));
+    },
+
+    async listActivityTypeCompositionTemplates(organizationId, activityTypeKey) {
+      const result = await client.query(
+        `SELECT party_role_key, required_count, preferred
+         FROM activity_type_composition_templates
+         WHERE organization_id = $1 AND activity_type_key = $2
+         ORDER BY party_role_key ASC`,
+        [organizationId, activityTypeKey],
+      );
+      return result.rows.map((row) => ({
+        partyRoleKey: String((row as { party_role_key: unknown }).party_role_key) as
+          'TANK' | 'BUFF' | 'DPS' | 'FLEX',
+        requiredCount: Number((row as { required_count: unknown }).required_count),
+        preferred: Boolean((row as { preferred: unknown }).preferred),
+      }));
+    },
+
+    async upsertActivityTypeCompositionTemplate(input) {
+      await client.query(
+        `INSERT INTO activity_type_composition_templates (
+           organization_id, activity_type_key, party_role_key, required_count, preferred
+         ) VALUES ($1,$2,$3,$4,$5)
+         ON CONFLICT (organization_id, activity_type_key, party_role_key) DO UPDATE SET
+           required_count = EXCLUDED.required_count,
+           preferred = EXCLUDED.preferred`,
+        [
+          input.organizationId,
+          input.activityTypeKey,
+          input.partyRoleKey,
+          input.requiredCount,
+          input.preferred,
+        ],
+      );
     },
 
     async hasLfgNotifiedMatch(recipientDiscordUserId, activityId, fingerprint) {

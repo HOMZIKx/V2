@@ -1,11 +1,35 @@
-import { isPartyRoleKey, rankLfgMatch, type LfgGroupMatchInput } from '@v2/hub-core';
+import { randomUUID } from 'node:crypto';
 
+import {
+  buildLfgMatchFingerprint,
+  deriveIntentExpiresAt,
+  formatLfgMatchReason,
+  formatLfgRoleNeedSummary,
+  isPartyRoleKey,
+  rankLfgMatch,
+  type LfgGroupMatchInput,
+  type PartyRoleKey,
+} from '@v2/hub-core';
+
+import { countOccupiedSlots, hasOpenSeat } from '../../domain/capacity.js';
 import { ActivityError } from '../../domain/errors.js';
-import type { ActivityRecord, ActivityTx, ActorSubject } from '../ports/activity.ports.js';
+import {
+  filterParticipationsForMode,
+  isGuildPublicationTarget,
+  resolveParticipationScopeGuildId,
+} from '../../domain/participant-mode.js';
+import { assignWaitlistPosition } from '../../domain/waitlist.js';
+import type {
+  ActivityRecord,
+  ActivityTx,
+  ActorSubject,
+  ParticipationRecord,
+} from '../ports/activity.ports.js';
 import { canViewPrivateActivity } from './activity-p46.helpers.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
-/** FOUNDATION WIP — LFG UX not fully Owner-Accepted. Do not expand user-facing flows. */
+const LFG_DUNGEON_TYPE_KEYS = new Set(['azrael', 'smok']);
+const SIMILAR_GROUP_WINDOW_MS = 2 * 3_600_000;
 
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
@@ -20,6 +44,64 @@ function assertValidWindow(windowStartAt: Date, windowEndAt: Date): void {
   }
 }
 
+function activityGroupStatus(
+  activity: ActivityRecord,
+  occupied: number,
+  capacity: number,
+): LfgGroupMatchInput['status'] {
+  if (activity.status === 'cancelled') {
+    return 'cancelled';
+  }
+  if (activity.status === 'completed') {
+    return 'ended';
+  }
+  if (occupied >= capacity) {
+    return 'full';
+  }
+  return 'open';
+}
+
+async function buildGroupMatchContext(
+  tx: ActivityTx,
+  activity: ActivityRecord,
+  activityTypeKey: string,
+): Promise<{
+  needs: LfgGroupMatchInput['roleNeeds'];
+  filled: Readonly<Partial<Record<PartyRoleKey, number>>>;
+  occupied: number;
+  capacity: number;
+  group: LfgGroupMatchInput;
+  fingerprint: string;
+  roleNeedSummary: string;
+}> {
+  const needs = await tx.listActivityRoleRequirements(activity.id);
+  const filled = await tx.countParticipationsByPartyRole(activity.id);
+  const occupied = await tx.countOccupiedParticipations(activity.id);
+  const capacity = activity.participantLimit ?? 8;
+  const group: LfgGroupMatchInput = {
+    activityTypeKey,
+    guildId: activity.guildId,
+    organizationId: activity.organizationId,
+    capacity,
+    occupied,
+    status: activityGroupStatus(activity, occupied, capacity),
+    startAtMs: activity.startAt.getTime(),
+    roleNeeds: needs,
+    filledByRole: filled,
+  };
+  const fingerprint = buildLfgMatchFingerprint({
+    activityId: activity.id,
+    activityVersion: activity.version,
+    startAtIso: activity.startAt.toISOString(),
+    occupied,
+    capacity,
+    roleNeeds: needs,
+    filledByRole: filled,
+  });
+  const roleNeedSummary = formatLfgRoleNeedSummary(needs, filled);
+  return { needs, filled, occupied, capacity, group, fingerprint, roleNeedSummary };
+}
+
 export type LfgSearchInput = {
   readonly guildId: string;
   readonly organizationId: string;
@@ -32,18 +114,20 @@ export type LfgSearchInput = {
   readonly memberRoleIds?: readonly string[];
 };
 
+export type LfgSearchMatch = {
+  readonly activityId: string;
+  readonly opaqueId: string;
+  readonly occupancy: { readonly occupied: number; readonly capacity: number };
+  readonly roleNeedSummary: string;
+  readonly matchReason: string;
+  readonly score?: number;
+};
+
 export async function searchLfgMatches(
   tx: ActivityTx,
   actor: ActorSubject,
   input: LfgSearchInput,
-): Promise<{
-  matches: readonly {
-    activityId: string;
-    opaqueId: string;
-    score: number;
-    reasons: readonly string[];
-  }[];
-}> {
+): Promise<{ matches: readonly LfgSearchMatch[] }> {
   requireDiscord(actor);
   assertValidWindow(input.windowStartAt, input.windowEndAt);
   const supported = input.characterSupportedRoles.filter(isPartyRoleKey);
@@ -57,12 +141,7 @@ export async function searchLfgMatches(
     activityTypeKey: input.activityTypeKey,
   });
 
-  const matches: Array<{
-    activityId: string;
-    opaqueId: string;
-    score: number;
-    reasons: readonly string[];
-  }> = [];
+  const ranked: Array<LfgSearchMatch & { score: number }> = [];
 
   for (const activity of activities) {
     if (
@@ -74,28 +153,8 @@ export async function searchLfgMatches(
     ) {
       continue;
     }
-    const needs = await tx.listActivityRoleRequirements(activity.id);
-    const filled = await tx.countParticipationsByPartyRole(activity.id);
-    const occupied = await tx.countOccupiedParticipations(activity.id);
-    const group: LfgGroupMatchInput = {
-      activityTypeKey: input.activityTypeKey,
-      guildId: activity.guildId,
-      organizationId: activity.organizationId,
-      capacity: activity.participantLimit ?? 8,
-      occupied,
-      status:
-        activity.status === 'cancelled'
-          ? 'cancelled'
-          : activity.status === 'completed'
-            ? 'ended'
-            : occupied >= (activity.participantLimit ?? 8)
-              ? 'full'
-              : 'open',
-      startAtMs: activity.startAt.getTime(),
-      roleNeeds: needs,
-      filledByRole: filled,
-    };
-    const rank = rankLfgMatch(group, {
+    const ctx = await buildGroupMatchContext(tx, activity, input.activityTypeKey);
+    const rank = rankLfgMatch(ctx.group, {
       guildId: input.guildId,
       organizationId: input.organizationId,
       activityTypeKey: input.activityTypeKey,
@@ -107,17 +166,73 @@ export async function searchLfgMatches(
       membershipOk: activity.guildId === input.guildId,
     });
     if (rank.eligible) {
-      matches.push({
+      ranked.push({
         activityId: activity.id,
         opaqueId: activity.opaqueId,
+        occupancy: { occupied: ctx.occupied, capacity: ctx.capacity },
+        roleNeedSummary: ctx.roleNeedSummary,
+        matchReason: formatLfgMatchReason(rank.reasons),
         score: rank.score,
-        reasons: rank.reasons,
       });
     }
   }
 
-  matches.sort((a, b) => b.score - a.score);
-  return { matches };
+  ranked.sort((a, b) => b.score - a.score);
+  return {
+    matches: ranked.map(({ score: _score, ...match }) =>
+      _score !== undefined ? { ...match, score: _score } : match,
+    ),
+  };
+}
+
+export async function searchSimilarGroupsBeforeCreate(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  input: {
+    readonly guildId: string;
+    readonly organizationId: string;
+    readonly activityTypeKey: string;
+    readonly startAt: Date;
+    readonly memberRoleIds?: readonly string[];
+  },
+): Promise<{
+  warnings: readonly {
+    activityId: string;
+    opaqueId: string;
+    name: string;
+    startAt: Date;
+  }[];
+}> {
+  requireDiscord(actor);
+  const activities = await tx.listOpenActivitiesForLfg({
+    guildId: input.guildId,
+    organizationId: input.organizationId,
+    activityTypeKey: input.activityTypeKey,
+  });
+  const startMs = input.startAt.getTime();
+  const warnings: Array<{ activityId: string; opaqueId: string; name: string; startAt: Date }> = [];
+  for (const activity of activities) {
+    if (
+      !canViewPrivateActivity({
+        activity,
+        actor,
+        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+      })
+    ) {
+      continue;
+    }
+    const delta = Math.abs(activity.startAt.getTime() - startMs);
+    if (delta <= SIMILAR_GROUP_WINDOW_MS) {
+      warnings.push({
+        activityId: activity.id,
+        opaqueId: activity.opaqueId,
+        name: activity.name,
+        startAt: activity.startAt,
+      });
+    }
+  }
+  warnings.sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  return { warnings };
 }
 
 export async function createLfgIntent(
@@ -131,7 +246,6 @@ export async function createLfgIntent(
     sessionRoles: readonly string[];
     windowStartAt: Date;
     windowEndAt: Date;
-    ttlHours?: number;
     classSpecKey?: string;
   },
   now: Date,
@@ -142,8 +256,18 @@ export async function createLfgIntent(
   if (roles.length === 0) {
     throw new ActivityError('VALIDATION_FAILED', 'At least one session party role is required');
   }
-  const ttlHours = input.ttlHours ?? 6;
-  const expiresAt = new Date(now.getTime() + ttlHours * 3_600_000);
+  const overlapping = await tx.hasOverlappingLfgIntent({
+    recipientDiscordUserId: userId,
+    characterId: input.characterId,
+    activityTypeKey: input.activityTypeKey,
+    windowStartAt: input.windowStartAt,
+    windowEndAt: input.windowEndAt,
+    now,
+  });
+  if (overlapping) {
+    throw new ActivityError('CONFLICT', 'An active LFG watch already covers this time window');
+  }
+  const expiresAt = deriveIntentExpiresAt(input.windowEndAt, now);
   const intentId = await tx.insertLfgIntent({
     guildId: input.guildId,
     organizationId: input.organizationId,
@@ -172,12 +296,212 @@ export async function cancelLfgIntent(
   }
 }
 
+export async function pauseLfgIntent(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  intentId: string,
+  now: Date,
+): Promise<void> {
+  const userId = requireDiscord(actor);
+  const paused = await tx.pauseLfgIntent(intentId, userId, now);
+  if (!paused) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found or not pausable');
+  }
+}
+
+export async function resumeLfgIntent(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  intentId: string,
+  now: Date,
+): Promise<void> {
+  const userId = requireDiscord(actor);
+  const resumed = await tx.resumeLfgIntent(intentId, userId, now);
+  if (!resumed) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found or not resumable');
+  }
+}
+
 export async function listMyLfgIntents(tx: ActivityTx, actor: ActorSubject, guildId: string) {
   const userId = requireDiscord(actor);
   return tx.listLfgIntentsForUser(guildId, userId);
 }
 
-/** Notify waiting intents when a matching group appears (deduped DISCOVERY). */
+export async function suppressLfgMatch(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  input: { activityId: string; intentId: string },
+  now: Date,
+): Promise<void> {
+  const userId = requireDiscord(actor);
+  const intent = await tx.getLfgIntentById(input.intentId);
+  if (intent === null || intent.recipientDiscordUserId !== userId) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found');
+  }
+  const activity = await tx.getActivity(input.activityId);
+  if (activity === null) {
+    throw new ActivityError('NOT_FOUND', 'Activity not found');
+  }
+  const activityTypeKey =
+    activity.typeId === null ? null : await tx.getActivityTypeKeyByTypeId(activity.typeId);
+  if (activityTypeKey === null || activityTypeKey !== intent.activityTypeKey) {
+    throw new ActivityError('VALIDATION_FAILED', 'Activity does not match LFG watch');
+  }
+  const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  await tx.recordLfgIntentSuppression({
+    intentId: input.intentId,
+    activityId: input.activityId,
+    fingerprint: ctx.fingerprint,
+    now,
+  });
+}
+
+export async function joinLfgActivity(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  input: {
+    activityId: string;
+    statusDefId: string;
+    partyRoleKey: string;
+    guildId?: string;
+    intentId?: string;
+    characterClassSpecKey?: string;
+    characterSupportedRoles?: readonly string[];
+    sessionRoles?: readonly string[];
+    memberRoleIds?: readonly string[];
+  },
+  now: Date,
+): Promise<ParticipationRecord> {
+  const discordUserId = requireDiscord(actor);
+  if (!isPartyRoleKey(input.partyRoleKey)) {
+    throw new ActivityError('VALIDATION_FAILED', 'Invalid party role key');
+  }
+
+  const activity = await tx.lockActivity(input.activityId);
+  const requestGuildId = input.guildId ?? activity.guildId;
+  const targets = await tx.listPublicationTargets(input.activityId);
+  const targetGuildIds = targets.length > 0 ? targets.map((t) => t.guildId) : [activity.guildId];
+  if (!isGuildPublicationTarget(requestGuildId, targetGuildIds)) {
+    throw new ActivityError('FORBIDDEN', 'Guild is not a publication target for this activity');
+  }
+  if (
+    !canViewPrivateActivity({
+      activity,
+      actor,
+      ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+    })
+  ) {
+    throw new ActivityError('FORBIDDEN', 'Private activity access denied');
+  }
+  if (!activity.enrollmentOpen) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Enrollment is closed');
+  }
+
+  const activityTypeKey =
+    activity.typeId === null ? null : await tx.getActivityTypeKeyByTypeId(activity.typeId);
+  if (activityTypeKey === null || !LFG_DUNGEON_TYPE_KEYS.has(activityTypeKey)) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Activity is not an LFG dungeon event');
+  }
+
+  const intent = input.intentId !== undefined ? await tx.getLfgIntentById(input.intentId) : null;
+  if (input.intentId !== undefined) {
+    if (intent === null || intent.recipientDiscordUserId !== discordUserId) {
+      throw new ActivityError('NOT_FOUND', 'LFG watch not found');
+    }
+    if (
+      intent.cancelledAt !== null ||
+      intent.fulfilledAt !== null ||
+      intent.pausedAt !== null ||
+      intent.expiresAt.getTime() <= now.getTime()
+    ) {
+      throw new ActivityError('PRECONDITION_FAILED', 'LFG watch is not active');
+    }
+    if (intent.activityTypeKey !== activityTypeKey) {
+      throw new ActivityError('VALIDATION_FAILED', 'LFG watch type mismatch');
+    }
+  }
+
+  const supported = (
+    input.characterSupportedRoles ??
+    intent?.sessionRoles ?? [input.partyRoleKey]
+  ).filter(isPartyRoleKey);
+  const session = (input.sessionRoles ?? intent?.sessionRoles ?? [input.partyRoleKey]).filter(
+    isPartyRoleKey,
+  );
+  const classSpecKey = input.characterClassSpecKey ?? intent?.classSpecKey ?? 'unknown';
+
+  const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  const rank = rankLfgMatch(ctx.group, {
+    guildId: requestGuildId,
+    organizationId: activity.organizationId,
+    activityTypeKey,
+    characterClassSpecKey: classSpecKey,
+    characterSupportedRoles: supported,
+    sessionRoles: session,
+    windowStartMs: intent?.windowStartAt.getTime() ?? activity.startAt.getTime() - 3_600_000,
+    windowEndMs: intent?.windowEndAt.getTime() ?? activity.startAt.getTime() + 3_600_000,
+    membershipOk: activity.guildId === requestGuildId,
+  });
+  if (!rank.eligible) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Group no longer matches your LFG criteria');
+  }
+
+  const statusDef = await tx.getStatusDef(input.statusDefId);
+  if (statusDef === null || !statusDef.active || !statusDef.selectableByMember) {
+    throw new ActivityError('VALIDATION_FAILED', 'Invalid status definition');
+  }
+
+  const scopeGuildId = resolveParticipationScopeGuildId({
+    mode: activity.participantMode,
+    requestGuildId,
+  });
+  const targetMeta = targets.find((t) => t.guildId === requestGuildId);
+  const participantLimit =
+    activity.participantMode === 'separate'
+      ? (targetMeta?.participantLimit ?? activity.participantLimit)
+      : activity.participantLimit;
+
+  const participants = await tx.listParticipations(input.activityId);
+  const pool = filterParticipationsForMode(participants, activity.participantMode, requestGuildId);
+  const occupied = countOccupiedSlots(pool);
+  let waitlistPosition: number | null = null;
+  if (statusDef.occupiesSlot && !hasOpenSeat({ participantLimit, currentOccupied: occupied })) {
+    const positions = pool
+      .filter((p) => p.waitlistPosition !== null && p.resignedAt === null && p.removedAt === null)
+      .map((p) => p.waitlistPosition as number);
+    waitlistPosition = assignWaitlistPosition(positions);
+  }
+
+  const participation = await tx.upsertParticipation({
+    id: randomUUID(),
+    activityId: input.activityId,
+    discordUserId,
+    v2UserId: actor.v2UserId ?? null,
+    statusDefId: input.statusDefId,
+    confirmationState: 'confirmed',
+    reconfirmDeadline: null,
+    waitlistPosition,
+    scopeGuildId,
+    partyRoleKey: input.partyRoleKey,
+  });
+
+  if (intent !== null) {
+    await tx.fulfillLfgIntent(intent.id, discordUserId, now);
+  }
+
+  return participation;
+}
+
+type IntentMatchCandidate = {
+  intentId: string;
+  recipientDiscordUserId: string;
+  score: number;
+  reasons: readonly string[];
+  fingerprint: string;
+  roleNeedSummary: string;
+};
+
+/** Notify waiting intents when a matching group appears (deduped DISCOVERY, coalesced per user). */
 export async function notifyLfgIntentsForActivity(
   tx: ActivityTx,
   activity: ActivityRecord,
@@ -190,39 +514,125 @@ export async function notifyLfgIntentsForActivity(
     activityTypeKey,
     now,
   });
-  let sent = 0;
+  if (intents.length === 0) {
+    return 0;
+  }
+
+  const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  const byUser = new Map<string, IntentMatchCandidate[]>();
+
   for (const intent of intents) {
-    const fingerprint = `${activity.id}|${activity.version}|${activity.startAt.toISOString()}`;
+    const supported = intent.sessionRoles.filter(isPartyRoleKey);
+    if (supported.length === 0) {
+      continue;
+    }
+    const rank = rankLfgMatch(ctx.group, {
+      guildId: activity.guildId,
+      organizationId: activity.organizationId,
+      activityTypeKey,
+      characterClassSpecKey: intent.classSpecKey ?? 'unknown',
+      characterSupportedRoles: supported,
+      sessionRoles: supported,
+      windowStartMs: intent.windowStartAt.getTime(),
+      windowEndMs: intent.windowEndAt.getTime(),
+      membershipOk: true,
+    });
+    if (!rank.eligible) {
+      continue;
+    }
+    if (
+      !canViewPrivateActivity({
+        activity,
+        actor: { discordUserId: intent.recipientDiscordUserId },
+      })
+    ) {
+      continue;
+    }
+    if (await tx.isLfgIntentSuppressed(intent.id, activity.id, ctx.fingerprint)) {
+      continue;
+    }
     const already = await tx.hasLfgNotifiedMatch(
       intent.recipientDiscordUserId,
       activity.id,
-      fingerprint,
+      ctx.fingerprint,
     );
     if (already) {
       continue;
     }
+
+    const candidate: IntentMatchCandidate = {
+      intentId: intent.id,
+      recipientDiscordUserId: intent.recipientDiscordUserId,
+      score: rank.score,
+      reasons: rank.reasons,
+      fingerprint: ctx.fingerprint,
+      roleNeedSummary: ctx.roleNeedSummary,
+    };
+    const existing = byUser.get(intent.recipientDiscordUserId) ?? [];
+    existing.push(candidate);
+    byUser.set(intent.recipientDiscordUserId, existing);
+  }
+
+  let sent = 0;
+  for (const [recipientDiscordUserId, candidates] of byUser) {
+    candidates.sort((a, b) => b.score - a.score);
+    const best = candidates[0]!;
+    const additionalCount = candidates.length - 1;
+    const matchReason = formatLfgMatchReason(best.reasons);
+    const bodyBase = `${matchReason} — ${best.roleNeedSummary}. Termin: ${activity.startAt.toISOString()}.`;
+    const body =
+      additionalCount > 0
+        ? `${bodyBase} (+${additionalCount} ${additionalCount === 1 ? 'inne dopasowanie' : 'inne dopasowania'})`
+        : bodyBase;
+
     const result = await enqueueUserNotification(
       tx,
       {
         guildId: activity.guildId,
-        recipientDiscordUserId: intent.recipientDiscordUserId,
+        recipientDiscordUserId,
         notificationClass: 'DISCOVERY',
         kind: 'lfg.match',
         title: `Dopasowanie: ${activityTypeKey}`,
-        body: `Znaleziono ekipę (${activity.startAt.toISOString()}).`,
-        dedupeKey: `lfg-match:${activity.id}:${intent.id}`,
+        body,
+        dedupeKey: `lfg-match:${activity.id}:${recipientDiscordUserId}`,
         activityId: activity.id,
         interestKey: activityTypeKey,
         activityTypeKey,
         deepLink: `v2://activities/${activity.id}`,
-        fingerprint,
+        fingerprint: best.fingerprint,
       },
       now,
     );
     if (!result.suppressed && result.inboxItemId !== null) {
-      await tx.recordLfgNotifiedMatch(intent.recipientDiscordUserId, activity.id, fingerprint, now);
+      for (const candidate of candidates) {
+        await tx.recordLfgNotifiedMatch(
+          recipientDiscordUserId,
+          activity.id,
+          candidate.fingerprint,
+          now,
+        );
+      }
       sent += 1;
     }
   }
   return sent;
+}
+
+/** Run LFG discovery notifications after activity composition or schedule changes. */
+export async function triggerLfgMatchingForActivity(
+  tx: ActivityTx,
+  activity: ActivityRecord,
+  now: Date,
+): Promise<number> {
+  if (activity.typeId === null || activity.cancelledAt !== null) {
+    return 0;
+  }
+  if (activity.status !== 'published' && activity.status !== 'registrations_open') {
+    return 0;
+  }
+  const activityTypeKey = await tx.getActivityTypeKeyByTypeId(activity.typeId);
+  if (activityTypeKey === null || !LFG_DUNGEON_TYPE_KEYS.has(activityTypeKey)) {
+    return 0;
+  }
+  return notifyLfgIntentsForActivity(tx, activity, activityTypeKey, now);
 }

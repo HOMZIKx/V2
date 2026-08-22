@@ -4,6 +4,8 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
+LFG v1: **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`** (Issue #20 discovery closed 2026-08-22).
+
 Not READY for Core Foundation Owner/ChatGPT review.  
 Not APPROVED. Not merged. STOP before Stage 8.  
 **STOP Stage 6/7 product expansion** until Owner Discovery closes (see
@@ -13,13 +15,14 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| CURRENT_TASK           | `V2-POST-OVERBUILD-TECHNICAL-AUDIT-001`                      |
+| CURRENT_TASK           | `V2-DUNGEON-LFG-V1-OWNER-ACCEPTED-IMPLEMENTATION-001`        |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
+| LFG_STATUS             | `IMPLEMENTED_PENDING_CHATGPT_AUDIT`                          |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `25552dc75a5551f7185d77a8c02bbca5999bee89`                  |
+| CURRENT_HEAD / PR_HEAD | pending checkpoint push                                      |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
-| LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22                 |
+| LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22 (LFG tip)       |
 | PR_TITLE_STATUS        | WIP conventional title on PR #19                             |
 | REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                          |
 
@@ -31,6 +34,8 @@ implementation prompt. Continuous execution does **not** override this.
 
 SoT gap matrix: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
 
+Issue #20 Owner closure (2026-08-22): **DISCOVERY STATUS: CLOSED FOR DUNGEON LFG v1. IMPLEMENTATION AUTHORIZED.**
+
 ## Checkpoint ledger
 
 Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **prototype**.
@@ -40,14 +45,15 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | CI_SECURITY_CLOSURE_SHA                    | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | HISTORICAL / prior closure                                     |
 | V2_HUB_CORE_CHECKPOINT_SHA                 | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA          | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open   |
-| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — not Accepted Stage 5                          |
+| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                   |
+| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**    | pending                                    | **IMPLEMENTED_PENDING_CHATGPT_AUDIT**                          |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`       |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
 | CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                              |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA   | `90fc384…`                                 | historical auto-sync baseline                                  |
 | OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                         |
-| POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | this technical audit                                           |
+| POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                        |
 
 ## Module discovery status (summary)
 
@@ -56,7 +62,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | Hub Core      | Accepted Stage 3 (+ implementation assumptions flagged) |
 | Notifications | Principles Accepted #24; product catalog/timings open   |
 | Activity P4   | Accepted P4 decisions                                   |
-| LFG           | Foundation WIP; #20 direction partial                   |
+| LFG           | **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`** (#20 closed)    |
 | Reservations  | `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`                 |
 | Marketplace   | `OWNER_DISCOVERY_REQUIRED` (#28); prototype only        |
 
@@ -68,7 +74,17 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | MARKETPLACE-DISC-001  | HIGH (scope)        | Issue #28 — do not treat Stage 7 as done                     |
 | RESERVATIONS-DISC-001 | HIGH (scope)        | No Owner Discovery pack — do not expand Reservations         |
 | GOVERNANCE-001        | HIGH (process)      | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`         |
+| LFG-AUDIT-001         | HIGH (process)      | LFG v1 pending Owner+ChatGPT audit before Accepted Stage 5   |
+
+## LFG v1 delivery (summary)
+
+- Migration `017_lfg_v1.sql` — intents, suppressions, full-group watches, composition templates, `party_role_key`
+- `@v2/hub-core/lfg-v1` — fingerprint, TTL, role-need copy
+- activity-service — search, intents, atomic join, dynamic matching, H-08/H-09 fixes
+- discord-gateway — mobile-first ephemeral Hub wizard + signed custom IDs
+- web — `/szukam-ekipy` parity
+- admin — composition template defaults per dungeon type
 
 ## Last updated
 
-2026-08-22 — Post-overbuild technical audit: CRITICAL/HIGH security fixes; audit report.
+2026-08-22 — Dungeon LFG v1 Owner-Accepted implementation checkpoint (pending SHA record).

@@ -2,42 +2,45 @@
 
 ## Status
 
-| Flag                  | Value                                                              |
-| --------------------- | ------------------------------------------------------------------ |
-| **Product direction** | Issue **#20** (incl. Owner Amendment: DM-first matchmaking)        |
-| **Implementation**    | `FOUNDATION_WIP` — not Accepted Stage 5 DoD                        |
-| **Governance**        | Issue #26 amendment — continuous resume does not replace discovery |
+| Flag                  | Value                                                                 |
+| --------------------- | --------------------------------------------------------------------- |
+| **Product direction** | Issue **#20** (Owner-delegated discovery closure 2026-08-22)        |
+| **Implementation**    | **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`**                               |
+| **Governance**        | Issue #26 amendment — continuous resume does not replace discovery    |
 
-Full Discord multi-step discovery UX, team-space, Admin/WWW parity, and complete DoD
-tests remain **open**.
+Owner Issue #20 closure comment (2026-08-22): **DISCOVERY STATUS: CLOSED FOR DUNGEON LFG v1. IMPLEMENTATION AUTHORIZED.**
 
 Historical WIP: `ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA` (`24828b7`).
 
-## Governance matrix (Issue #20 + branch reality)
+## Governance matrix (Issue #20 + implementation reality)
 
-| Topic                                  | Status                      | Notes                         |
-| -------------------------------------- | --------------------------- | ----------------------------- |
-| Matching, not public post board        | **ACCEPTED**                | Hub copy + `rankLfgMatch`     |
-| DM-first match delivery                | **ACCEPTED** (direction)    | Copy/flows still Owner review |
-| Characters + class/spec                | **ACCEPTED** (model)        | Picker UX open                |
-| Party roles TANK/BUFF/DPS/FLEX         | **ACCEPTED**                | Class/spec ≠ party role       |
-| Discovery-first (match before create)  | **ACCEPTED** (principle)    | Wizard step order open        |
-| Waiting intent / watch pool            | **FOUNDATION_WIP**          | `lfg_intents` + API           |
-| Discord multi-step LFG wizard          | **OWNER_DECISION_REQUIRED** | Partial implementation        |
-| Team-space after match                 | **OWNER_DECISION_REQUIRED** | Not built                     |
-| No public role-ping spam as primary UX | **ACCEPTED** (forbidden)    | Do not add                    |
-| Match score display / reasons UX       | **OWNER_DECISION_REQUIRED** | Engine is **TECHNICAL_ONLY**  |
-| Anti-spam / rate limits                | **OWNER_DECISION_REQUIRED** | Minimal today                 |
-| Admin / WWW LFG surfaces               | **OWNER_DECISION_REQUIRED** | Not built                     |
+| Topic                                  | Status                               | Notes                                              |
+| -------------------------------------- | ------------------------------------ | -------------------------------------------------- |
+| Matching, not public post board        | **IMPLEMENTED**                      | Hub ephemeral + `rankLfgMatch` + WWW search        |
+| DM-first match delivery                | **IMPLEMENTED**                      | DISCOVERY notifications, coalesce, Nie teraz, mute   |
+| Characters + class/spec                | **IMPLEMENTED**                      | Profile foundation + quick change / inline add     |
+| Party roles TANK/BUFF/DPS/FLEX         | **IMPLEMENTED**                      | Session roles ≠ profile mutation                   |
+| Discovery-first (match before create)  | **IMPLEMENTED**                      | Matches → Join/View → Znajdź mi ekipę → create     |
+| Waiting intent / watch pool            | **IMPLEMENTED**                      | `lfg_intents` pause/resume/cancel/fulfill + dedupe   |
+| Discord multi-step LFG wizard          | **IMPLEMENTED** (v1)                 | Mobile-first ephemeral Hub flow                    |
+| Team-space after match                   | **OWNER_DECISION_REQUIRED**          | Not in v1 scope                                    |
+| No public role-ping spam as primary UX | **ACCEPTED** (forbidden)             | Not used                                           |
+| Match score display / reasons UX       | **IMPLEMENTED** (human-readable)     | No raw ranking numbers in UX                       |
+| Anti-spam / rate limits                | **IMPLEMENTED** (baseline)           | Intent/join abuse guards; ChatGPT audit may tune |
+| Admin / WWW LFG surfaces               | **IMPLEMENTED** (v1 parity baseline) | Composition templates + `/szukam-ekipy`            |
 
 Full gap rows: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
 
 ## Cursor rules
 
-- Do **not** invent remaining user-facing LFG behavior.
-- Do **not** call Stage 5 Accepted for Core Foundation review.
-- Safe work inside **ACCEPTED** direction only; expand UX only after Owner decisions.
+- Do **not** expand into Reservations or Marketplace product work.
+- Do **not** claim Stage 5 **Accepted** until Owner + ChatGPT audit closes.
+- Team-space and post-match party UX remain Owner Discovery.
 
 ## Checkpoint
 
-Accepted Stage 5 checkpoint: **pending** gap closure + Owner/ChatGPT audit.
+| Marker                             | SHA     |
+| ---------------------------------- | ------- |
+| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | pending |
+
+Recorded in `PROJECT_STATE.md` after immutable checkpoint push.

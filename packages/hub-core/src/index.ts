@@ -59,3 +59,12 @@ export {
   type LfgRoleNeed,
   type LfgSeekerInput,
 } from './lfg-matching.js';
+
+export {
+  LFG_DUNGEON_ACTIVITY_TYPES,
+  buildLfgMatchFingerprint,
+  deriveIntentExpiresAt,
+  formatLfgMatchReason,
+  formatLfgRoleNeedSummary,
+  type LfgMatchFingerprintInput,
+} from './lfg-v1.js';

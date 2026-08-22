@@ -63,4 +63,38 @@ describe('ActivityHttpClient', () => {
       code: 'RATE_LIMITED',
     });
   });
+
+  it('sends actor headers for LFG search', async () => {
+    const fetchImpl = vi.fn((): Promise<Response> =>
+      Promise.resolve(Response.json({ matches: [] })),
+    );
+    const client = new ActivityHttpClient({
+      config: {
+        baseUrl: 'http://127.0.0.1:4400',
+        mode: 'headers',
+        organizationId: 'org-1',
+      },
+      fetchImpl,
+    });
+
+    await client.searchLfg(
+      {
+        guildId: 'g1',
+        organizationId: 'org-1',
+        activityTypeKey: 'azrael',
+        characterClassSpecKey: 'warrior_body',
+        characterSupportedRoles: ['TANK'],
+        sessionRoles: ['TANK'],
+        windowStartAt: '2026-08-22T10:00:00.000Z',
+        windowEndAt: '2026-08-22T12:00:00.000Z',
+      },
+      { discordUserId: '111' },
+    );
+
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(call[0]).toContain('/activity/v1/lfg/search');
+    const headers = call[1].headers as Record<string, string>;
+    expect(headers['X-Actor-Discord-User-Id']).toBe('111');
+  });
 });

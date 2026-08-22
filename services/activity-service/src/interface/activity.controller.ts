@@ -132,6 +132,7 @@ const attendanceSchema = z.object({
 const rsvpSchema = z.object({
   statusDefId: z.string().uuid(),
   guildId: z.string().min(1).optional(),
+  partyRoleKey: z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']).optional(),
 });
 
 const removeParticipantSchema = z.object({
@@ -564,6 +565,7 @@ export class ActivityController {
       {
         statusDefId: parsed.statusDefId,
         ...(parsed.guildId !== undefined ? { guildId: parsed.guildId } : {}),
+        ...(parsed.partyRoleKey !== undefined ? { partyRoleKey: parsed.partyRoleKey } : {}),
       },
       mutationCtx(request, idempotencyKey),
     );
@@ -1065,6 +1067,94 @@ export class ActivityController {
       throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
     }
     return this.useCases.cancelLfgWatch(actorFromRequest(request), id, guildId.trim());
+  }
+
+  @Post('lfg/join')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async joinLfg(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
+    const parsed = parseOrThrow(
+      z.object({
+        activityId: z.string().uuid(),
+        statusDefId: z.string().uuid(),
+        partyRoleKey: partyRole,
+        guildId: z.string().min(1).optional(),
+        intentId: z.string().uuid().optional(),
+        characterClassSpecKey: z.string().min(1).optional(),
+        characterSupportedRoles: z.array(partyRole).optional(),
+        sessionRoles: z.array(partyRole).optional(),
+      }),
+      body,
+    );
+    return this.useCases.joinLfg(
+      actorFromRequest(request),
+      {
+        activityId: parsed.activityId,
+        statusDefId: parsed.statusDefId,
+        partyRoleKey: parsed.partyRoleKey,
+        ...(parsed.guildId !== undefined ? { guildId: parsed.guildId } : {}),
+        ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
+        ...(parsed.characterClassSpecKey !== undefined
+          ? { characterClassSpecKey: parsed.characterClassSpecKey }
+          : {}),
+        ...(parsed.characterSupportedRoles !== undefined
+          ? { characterSupportedRoles: parsed.characterSupportedRoles }
+          : {}),
+        ...(parsed.sessionRoles !== undefined ? { sessionRoles: parsed.sessionRoles } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Post('lfg/watches/:id/pause')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async pauseLfgWatch(
+    @Param('id') id: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.pauseLfgWatch(actorFromRequest(request), id, guildId.trim());
+  }
+
+  @Post('lfg/watches/:id/resume')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async resumeLfgWatch(
+    @Param('id') id: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.resumeLfgWatch(actorFromRequest(request), id, guildId.trim());
+  }
+
+  @Post('lfg/matches/:activityId/suppress')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async suppressLfgMatch(
+    @Param('activityId') activityId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = parseOrThrow(
+      z.object({
+        intentId: z.string().uuid(),
+        guildId: z.string().min(1),
+      }),
+      body,
+    );
+    return this.useCases.suppressLfgMatch(actorFromRequest(request), activityId, parsed);
   }
 
   @Post('reservations')

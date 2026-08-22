@@ -94,6 +94,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       removeReason: string | null;
       occupiesSlot: boolean;
       statusBehavior: 'confirmed' | 'tentative' | 'declined' | 'custom';
+      partyRoleKey: string | null;
     }
   >();
   const outbox: unknown[] = [];
@@ -399,6 +400,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
         resignedAt: input.resignedAt ?? null,
         removedAt: input.removedAt ?? null,
         removeReason: input.removeReason ?? null,
+        partyRoleKey: input.partyRoleKey ?? null,
         occupiesSlot: status?.occupiesSlot ?? false,
         statusBehavior: status?.behavior ?? 'custom',
       };
@@ -530,6 +532,9 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async listOpenActivitiesForLfg() {
       return [];
     },
+    async getActivityTypeKeyByTypeId() {
+      return null;
+    },
     async listActivityRoleRequirements() {
       return [];
     },
@@ -542,8 +547,27 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async insertLfgIntent() {
       return '00000000-0000-4000-8000-000000000001';
     },
+    async hasOverlappingLfgIntent() {
+      return false;
+    },
     async cancelLfgIntent() {
       return true;
+    },
+    async pauseLfgIntent() {
+      return true;
+    },
+    async resumeLfgIntent() {
+      return true;
+    },
+    async fulfillLfgIntent() {
+      return true;
+    },
+    async recordLfgIntentSuppression() {},
+    async isLfgIntentSuppressed() {
+      return false;
+    },
+    async getLfgIntentById() {
+      return null;
     },
     async listLfgIntentsForUser() {
       return [];
@@ -551,6 +575,19 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async listActiveLfgIntents() {
       return [];
     },
+    async insertLfgFullGroupWatch() {
+      return 'watch-1';
+    },
+    async cancelLfgFullGroupWatch() {
+      return true;
+    },
+    async listLfgFullGroupWatchesForActivity() {
+      return [];
+    },
+    async listActivityTypeCompositionTemplates() {
+      return [];
+    },
+    async upsertActivityTypeCompositionTemplate() {},
     async hasLfgNotifiedMatch() {
       return false;
     },
