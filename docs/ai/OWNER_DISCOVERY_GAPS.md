@@ -163,4 +163,4 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 ## Checkpoint
 
 Recorded under `OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA`
-(`dbecbf2a617890c02088940594a27e537ef39b79`) in `PROJECT_STATE.md`.
+(`9a6ab229544776f68ced8be6de4d6f4add3d496c`) in `PROJECT_STATE.md`.

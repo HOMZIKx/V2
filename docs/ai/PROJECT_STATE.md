@@ -16,7 +16,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_TASK           | `V2-OWNER-DISCOVERY-GATE-COMPLIANCE-REMEDIATION-001`         |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `dbecbf2a617890c02088940594a27e537ef39b79`                  |
+| CURRENT_HEAD / PR_HEAD | `9a6ab229544776f68ced8be6de4d6f4add3d496c`                  |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22                 |
@@ -45,7 +45,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
 | CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                              |
-| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `dbecbf2a617890c02088940594a27e537ef39b79` | this governance remediation                                    |
+| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | this governance remediation                                    |
 
 ## Module discovery status (summary)
 

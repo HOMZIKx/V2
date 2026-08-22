@@ -7,13 +7,13 @@
 Task: `V2-OWNER-DISCOVERY-GATE-COMPLIANCE-REMEDIATION-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
-HEAD: `dbecbf2a617890c02088940594a27e537ef39b79` (`OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA`)
+HEAD: `9a6ab229544776f68ced8be6de4d6f4add3d496c` (`OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA`)
 
 ## Fresh facts
 
 | Field                  | Value                                          |
 | ---------------------- | ---------------------------------------------- |
-| CURRENT_HEAD / PR_HEAD | `dbecbf2…`                                     |
+| CURRENT_HEAD / PR_HEAD | `9a6ab22…`                                     |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED` |
 | REPOSITORY_VISIBILITY  | **PRIVATE_CONFIRMED**                          |
 | CI_STATUS              | **RED** — billing: jobs not started (0 steps)  |
@@ -55,7 +55,7 @@ Accepted SoT → implementation prompt. Continuous execution does **not** overri
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7…`   | Foundation WIP + discovery required |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7…`   | Prototype + #28 gate                |
 | CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925…`   | Prior remediation                   |
-| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `dbecbf2…`   | Governance remediation              |
+| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab22…`   | Governance remediation              |
 
 ## Owner actions required
 
