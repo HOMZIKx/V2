@@ -50,7 +50,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                   |
 | **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**      | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                         |
 | **DUNGEON_LFG_V1_AUDIT_SHA**               | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                   |
-| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | _(remediation commit)_                     | **READY_FOR_CHATGPT_REAUDIT**                                  |
+| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | `3c3009991f656e4369d3f600fcb05266683ede50` | **READY_FOR_CHATGPT_REAUDIT**                                  |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — discovery prep ready                          |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
