@@ -36,7 +36,8 @@ export type ActivityDraftAction =
   | 'section_limit'
   | 'section_extra';
 
-export type ActivityModalKind = 'create' | 'lfg' | 'edit' | 'report' | 'basics' | 'schedule';
+export type ActivityModalKind =
+  'create' | 'lfg' | 'edit' | 'report' | 'basics' | 'schedule' | 'lfg_time' | 'lfg_watch_edit';
 
 export type ParsedActivityCustomId =
   | {
@@ -102,6 +103,8 @@ const MODAL_KINDS = new Set<ActivityModalKind>([
   'report',
   'basics',
   'schedule',
+  'lfg_time',
+  'lfg_watch_edit',
 ]);
 
 function base64Url(buffer: Buffer): string {

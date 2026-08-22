@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { DEFAULT_HUB_MODULES } from '@v2/hub-core';
+import { DEFAULT_HUB_MODULES, LFG_DUNGEON_ACTIVITY_TYPES } from '@v2/hub-core';
 
 import {
   assertCreateHorizonDays,
@@ -95,6 +95,16 @@ function assertChannelsValid(results: readonly ChannelValidationResult[]): void 
     )
     .join('; ');
   throw new ActivityError('VALIDATION_FAILED', `Channel validation failed: ${detail}`);
+}
+
+function assertLfgDungeonActivityTypeKey(activityTypeKey: string): void {
+  const allowed = new Set(LFG_DUNGEON_ACTIVITY_TYPES.map((entry) => entry.key));
+  if (!allowed.has(activityTypeKey)) {
+    throw new ActivityError(
+      'VALIDATION_FAILED',
+      `activityTypeKey must be one of: ${[...allowed].join(', ')}`,
+    );
+  }
 }
 
 export class ActivityAdminUseCases {
@@ -1314,9 +1324,7 @@ export class ActivityAdminUseCases {
     actor: ActorSubject,
   ) {
     await this.requireConfigManage(actor, guildId);
-    if (activityTypeKey !== 'azrael' && activityTypeKey !== 'smok') {
-      throw new ActivityError('VALIDATION_FAILED', 'activityTypeKey must be azrael or smok');
-    }
+    assertLfgDungeonActivityTypeKey(activityTypeKey);
     return this.deps.repository.withTransaction(async (tx) => {
       const roles = await tx.listActivityTypeCompositionTemplates(organizationId, activityTypeKey);
       return { organizationId, activityTypeKey, roles };
@@ -1327,7 +1335,7 @@ export class ActivityAdminUseCases {
     organizationId: string,
     guildId: string,
     input: {
-      activityTypeKey: 'azrael' | 'smok';
+      activityTypeKey: string;
       roles: readonly {
         partyRoleKey: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
         requiredCount: number;
@@ -1337,6 +1345,7 @@ export class ActivityAdminUseCases {
     ctx: MutationContext,
   ) {
     await this.requireConfigManage(ctx.actor, guildId);
+    assertLfgDungeonActivityTypeKey(input.activityTypeKey);
     return this.mutate(
       ctx,
       'lfg-composition-upsert',

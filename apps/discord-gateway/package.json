@@ -19,6 +19,7 @@
     "@v2/configuration": "workspace:*",
     "@v2/hub-core": "workspace:*",
     "@v2/messaging": "workspace:*",
+    "@v2/notification-core": "workspace:*",
     "@v2/observability": "workspace:*",
     "discord.js": "14.25.1",
     "jose": "6.2.8",

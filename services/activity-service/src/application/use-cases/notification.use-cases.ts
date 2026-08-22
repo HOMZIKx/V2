@@ -5,6 +5,7 @@ import {
   shouldAttemptDm,
   shouldSuppressAsUnchanged,
   type EnqueueNotificationInput,
+  type NotificationDeliveryActions,
   type NotificationPreferenceView,
 } from '@v2/notification-core';
 
@@ -42,6 +43,7 @@ async function enqueueDmOutbox(
     deepLink: string | null;
     notificationClass: EnqueueNotificationInput['notificationClass'];
     kind: string;
+    deliveryActions?: NotificationDeliveryActions;
   },
   now: Date,
 ): Promise<void> {
@@ -59,6 +61,7 @@ async function enqueueDmOutbox(
       deepLink: input.deepLink,
       notificationClass: input.notificationClass,
       kind: input.kind,
+      ...(input.deliveryActions !== undefined ? { deliveryActions: input.deliveryActions } : {}),
     },
     occurredAt: now,
   });
@@ -166,6 +169,7 @@ export async function enqueueUserNotification(
         deepLink: input.deepLink ?? null,
         notificationClass: input.notificationClass,
         kind: input.kind,
+        ...(input.deliveryActions !== undefined ? { deliveryActions: input.deliveryActions } : {}),
       },
       now,
     );

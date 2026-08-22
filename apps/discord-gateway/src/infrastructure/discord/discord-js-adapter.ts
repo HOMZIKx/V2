@@ -1,4 +1,6 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
   ChannelType,
   Client,
   Events,
@@ -431,7 +433,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
    */
   public async sendDirectMessage(
     discordUserId: string,
-    payload: { content: string },
+    payload: { content: string; components?: ActionRowBuilder<ButtonBuilder>[] },
   ): Promise<{
     ok: boolean;
     code?: 'DM_BLOCKED' | 'DM_CLOSED' | 'RATE_LIMITED' | 'UPSTREAM_ERROR';
@@ -441,7 +443,10 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     try {
       const user = await this.client.users.fetch(discordUserId);
       const dm = await user.createDM();
-      const message = await dm.send({ content: payload.content.slice(0, 2000) });
+      const message = await dm.send({
+        content: payload.content.slice(0, 2000),
+        ...(payload.components !== undefined ? { components: payload.components } : {}),
+      });
       return { ok: true, messageId: message.id };
     } catch (error) {
       const status = readNumericProp(error, 'status');

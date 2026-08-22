@@ -19,6 +19,8 @@ import {
   isHubModuleKey,
   isPartyRoleKey,
   LFG_DUNGEON_ACTIVITY_TYPES,
+  pickDeterministicJoinRole,
+  type PartyRoleKey,
 } from '@v2/hub-core';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
@@ -38,6 +40,12 @@ import {
   parseModalCustomId,
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import {
+  createLfgDmCustomId,
+  isLfgDmCustomId,
+  parseLfgDmCustomId,
+  type ParsedLfgDmCustomId,
+} from '../../infrastructure/security/lfg-dm-signed-custom-id.js';
 import {
   isLfgCustomId,
   parseLfgCustomId,
@@ -71,20 +79,30 @@ import {
   buildLfgSearchBody,
   buildLfgWatchBody,
   isWizardReady,
+  listJoinRoleChoices,
   mapSearchMatches,
+  pickJoinRole,
   renderLfgHubEphemeral,
   toggleSessionRole,
   type LfgWatchRow,
 } from '../../presentation/discord/lfg-hub-ephemeral.js';
 import {
+  buildLfgCustomTimeModal,
+  buildLfgWatchEditModal,
+  parseLfgCustomTimeModal,
+  parseLfgWatchEditModal,
+} from '../../presentation/discord/lfg-modals.js';
+import {
   createDefaultLfgWizardState,
   LfgUiStateCache,
+  type LfgMatchCard,
   type LfgUiStateCacheKey,
   type LfgWizardState,
 } from '../../presentation/discord/lfg-ui-state-cache.js';
 import {
   formatPolishLocalDateTime,
   LocalizedDateParseError,
+  parsePolishLocalDateTime,
 } from '../../presentation/discord/localized-datetime.js';
 import { executeHubPanelOperation } from './hub-panel-operation.js';
 
@@ -301,7 +319,7 @@ export class ActivityInteractionHandler {
   }
 
   public isActivityComponent(customId: string): boolean {
-    return isActivityCustomId(customId) || isLfgCustomId(customId);
+    return isActivityCustomId(customId) || isLfgCustomId(customId) || isLfgDmCustomId(customId);
   }
 
   public async handleCommand(interaction: ChatInputCommandInteraction): Promise<boolean> {
@@ -332,6 +350,11 @@ export class ActivityInteractionHandler {
     }
     if (!interaction.isButton() && !interaction.isStringSelectMenu()) {
       return false;
+    }
+
+    if (isLfgDmCustomId(interaction.customId)) {
+      await this.handleLfgDmComponent(interaction);
+      return true;
     }
 
     if (isLfgCustomId(interaction.customId)) {
@@ -440,6 +463,86 @@ export class ActivityInteractionHandler {
     const { kind, opaqueId } = parsedModal;
 
     try {
+      if (kind === 'lfg_time' && opaqueId !== undefined) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const parsedTime = parseLfgCustomTimeModal(interaction);
+        const startAt = parsePolishLocalDateTime(`${parsedTime.date} ${parsedTime.from}`);
+        const endAt = parsePolishLocalDateTime(`${parsedTime.date} ${parsedTime.to}`);
+        if (endAt.getTime() <= startAt.getTime()) {
+          throw new LocalizedDateParseError(
+            'Godzina zakończenia musi być późniejsza niż rozpoczęcia.',
+          );
+        }
+        let state = this.readLfgState(interaction.guildId, interaction.user.id, opaqueId);
+        const profile = await this.loadProfile(interaction.user.id);
+        state = {
+          ...state,
+          timePreset: 'custom',
+          customWindow: {
+            windowStartAt: startAt.toISOString(),
+            windowEndAt: endAt.toISOString(),
+            label: `${formatPolishLocalDateTime(startAt)} – ${formatPolishLocalDateTime(endAt)}`,
+          },
+          matches: [],
+          showAllMatches: false,
+        };
+        this.writeLfgState(interaction.guildId, interaction.user.id, opaqueId, state);
+        await interaction.editReply(
+          asEditPayload(
+            this.renderLfgView({
+              opaquePanelId: opaqueId,
+              state,
+              profile,
+              statusLine: 'Zapisano własne okno czasu.',
+            }),
+          ),
+        );
+        return true;
+      }
+
+      if (kind === 'lfg_watch_edit' && opaqueId !== undefined) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const parsedWatch = parseLfgWatchEditModal(interaction);
+        const sessionRoles = parsedWatch.sessionRoles.filter(isPartyRoleKey);
+        if (sessionRoles.length === 0) {
+          throw new Error('Podaj co najmniej jedną rolę: TANK, BUFF, DPS lub FLEX.');
+        }
+        const windowStartAt = parsePolishLocalDateTime(parsedWatch.windowStartRaw);
+        const windowEndAt = parsePolishLocalDateTime(parsedWatch.windowEndRaw);
+        if (windowEndAt.getTime() <= windowStartAt.getTime()) {
+          throw new LocalizedDateParseError('Okno musi kończyć się po starcie.');
+        }
+        const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
+        const actor = actorOf(interaction.user.id);
+        await this.deps.activityClient.updateLfgWatch(
+          parsedWatch.watchId,
+          {
+            guildId,
+            sessionRoles,
+            windowStartAt: windowStartAt.toISOString(),
+            windowEndAt: windowEndAt.toISOString(),
+          },
+          actor,
+        );
+        let state = this.readLfgState(interaction.guildId, interaction.user.id, opaqueId);
+        const profile = await this.loadProfile(interaction.user.id);
+        const watches = await this.loadLfgWatchRows(guildId, actor);
+        state = { ...state, screen: 'my_searches' };
+        this.writeLfgState(interaction.guildId, interaction.user.id, opaqueId, state);
+        await interaction.editReply(
+          asEditPayload(
+            this.renderLfgView({
+              opaquePanelId: opaqueId,
+              state,
+              profile,
+              watches,
+              statusLine: 'Poszukiwanie zaktualizowane.',
+            }),
+          ),
+        );
+        return true;
+      }
+
       if ((kind === 'create' || kind === 'lfg' || kind === 'edit') && opaqueId !== undefined) {
         const fromExistingPreview = isDraftPreviewMessage(interaction.message);
         // Create: new ephemeral preview. Edit: ACK+update the same preview (no stack).
@@ -661,6 +764,35 @@ export class ActivityInteractionHandler {
       return;
     }
 
+    if (parsed.action === 'custom_time') {
+      await interaction.showModal(
+        buildLfgCustomTimeModal({
+          opaquePanelId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        }),
+      );
+      return;
+    }
+
+    if (parsed.action === 'watch_edit' && parsed.param !== undefined) {
+      const listed = await this.loadLfgWatchRows(guildId, actor);
+      const watch = listed.find((entry) => entry.id === parsed.param);
+      const windowLabel =
+        watch?.windowStartAt !== undefined && watch?.windowEndAt !== undefined
+          ? `${formatPolishLocalDateTime(new Date(watch.windowStartAt))} – ${formatPolishLocalDateTime(new Date(watch.windowEndAt))}`
+          : '';
+      await interaction.showModal(
+        buildLfgWatchEditModal({
+          opaquePanelId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          watchId: parsed.param,
+          sessionRolesLabel: watch?.sessionRoles.join(',') ?? '',
+          windowLabel,
+        }),
+      );
+      return;
+    }
+
     const fromExisting =
       interaction.message !== null &&
       'flags' in interaction.message &&
@@ -689,7 +821,38 @@ export class ActivityInteractionHandler {
         }
       } else if (parsed.action === 'quick_add' && interaction.isStringSelectMenu()) {
         const classSpecKey = interaction.values[0];
-        if (classSpecKey !== undefined && this.identityClient !== null) {
+        if (classSpecKey !== undefined) {
+          state = {
+            ...state,
+            pendingQuickAdd: { classSpecKey, partyRoles: [] },
+          };
+          statusLine = 'Wybierz co najmniej jedną rolę postaci.';
+        }
+      } else if (
+        parsed.action === 'quick_add_role' &&
+        parsed.param !== undefined &&
+        isPartyRoleKey(parsed.param) &&
+        state.pendingQuickAdd !== null
+      ) {
+        const selected = new Set(state.pendingQuickAdd.partyRoles);
+        if (selected.has(parsed.param)) {
+          selected.delete(parsed.param);
+        } else {
+          selected.add(parsed.param);
+        }
+        state = {
+          ...state,
+          pendingQuickAdd: {
+            ...state.pendingQuickAdd,
+            partyRoles: ['TANK', 'BUFF', 'DPS', 'FLEX'].filter((role) =>
+              selected.has(role as PartyRoleKey),
+            ) as PartyRoleKey[],
+          },
+        };
+      } else if (parsed.action === 'confirm_quick_add' && state.pendingQuickAdd !== null) {
+        if (state.pendingQuickAdd.partyRoles.length === 0) {
+          statusLine = 'Wybierz co najmniej jedną rolę przed zapisem postaci.';
+        } else if (this.identityClient !== null) {
           const nickname =
             ('displayName' in interaction.user &&
             typeof interaction.user.displayName === 'string' &&
@@ -699,13 +862,14 @@ export class ActivityInteractionHandler {
           const created = await this.identityClient.createCharacter(
             {
               nickname: nickname.slice(0, 64),
-              classSpecKey,
-              partyRoles: ['TANK', 'BUFF', 'DPS', 'FLEX'],
+              classSpecKey: state.pendingQuickAdd.classSpecKey,
+              partyRoles: [...state.pendingQuickAdd.partyRoles],
               isDefault: true,
             },
             actor,
           );
           state = applyProfileCharacter(state, created.profile, created.characterId);
+          state = { ...state, pendingQuickAdd: null };
           statusLine = `Dodano postać **${nickname.slice(0, 64)}**.`;
         } else {
           statusLine = 'Profil niedostępny — skonfiguruj postać w /profil.';
@@ -830,43 +994,89 @@ export class ActivityInteractionHandler {
           state.matches.find((entry) => entry.activityId === parsed.param);
         if (match === undefined || state.characterId === null) {
           statusLine = 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+        } else if (match.isFull === true) {
+          statusLine = 'Grupa jest pełna — włącz powiadomienie o zwolnieniu miejsca.';
+        } else if (state.sessionRoles.length === 0) {
+          statusLine = 'Wybierz co najmniej jedną rolę sesji przed dołączeniem.';
         } else {
-          const primaryRole = state.sessionRoles[0];
-          if (primaryRole === undefined || !isPartyRoleKey(primaryRole)) {
-            statusLine = 'Wybierz co najmniej jedną rolę sesji przed dołączeniem.';
+          const choices = listJoinRoleChoices(match, state.sessionRoles);
+          if (choices.length > 1) {
+            state = {
+              ...state,
+              pendingJoinRolePick: { matchOpaqueId: match.opaqueId, eligibleRoles: choices },
+            };
+            statusLine = 'Wybierz rolę, w której chcesz dołączyć.';
           } else {
-            try {
-              const statusDefId = await this.resolveLfgJoinStatusDefId(guildId, userId);
-              const joined = await this.deps.activityClient.joinLfg(
-                {
-                  activityId: match.activityId,
-                  statusDefId,
-                  partyRoleKey: primaryRole,
-                  guildId,
-                  ...(state.classSpecKey !== null
-                    ? { characterClassSpecKey: state.classSpecKey }
-                    : {}),
-                  characterSupportedRoles: state.characterSupportedRoles,
-                  sessionRoles: state.sessionRoles,
-                },
-                {
-                  ...actor,
-                  idempotencyKey: idem(userId, 'lfg-join', `${match.activityId}:${primaryRole}`),
-                },
-              );
-              const waitlist =
-                typeof joined.waitlistPosition === 'number'
-                  ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
-                  : '';
-              statusLine = `Dołączono do ekipy.${waitlist}`;
-              state = { ...state, screen: 'wizard', viewedMatchOpaqueId: null };
-            } catch (error) {
-              statusLine =
-                error instanceof Error && error.message.length > 0
-                  ? error.message
-                  : 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+            const partyRoleKey = pickJoinRole(match, state.sessionRoles);
+            if (partyRoleKey === null) {
+              statusLine = 'Brak pasującej roli do dołączenia.';
+            } else {
+              statusLine = await this.executeLfgJoin({
+                match,
+                partyRoleKey,
+                guildId,
+                userId,
+                actor,
+                state,
+              });
+              state = {
+                ...state,
+                screen: 'wizard',
+                viewedMatchOpaqueId: null,
+                pendingJoinRolePick: null,
+              };
             }
           }
+        }
+      } else if (parsed.action === 'join_role' && parsed.param !== undefined) {
+        const [matchOpaque, roleRaw] = parsed.param.split(':');
+        const match =
+          matchOpaque !== undefined
+            ? state.matches.find((entry) => entry.opaqueId === matchOpaque)
+            : undefined;
+        if (
+          match === undefined ||
+          roleRaw === undefined ||
+          !isPartyRoleKey(roleRaw) ||
+          state.characterId === null
+        ) {
+          statusLine = 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+        } else {
+          statusLine = await this.executeLfgJoin({
+            match,
+            partyRoleKey: roleRaw,
+            guildId,
+            userId,
+            actor,
+            state,
+          });
+          state = {
+            ...state,
+            screen: 'wizard',
+            viewedMatchOpaqueId: null,
+            pendingJoinRolePick: null,
+          };
+        }
+      } else if (parsed.action === 'full_group_watch' && parsed.param !== undefined) {
+        const match = state.matches.find((entry) => entry.opaqueId === parsed.param);
+        if (match === undefined || state.characterId === null || state.sessionRoles.length === 0) {
+          statusLine = 'Nie udało się włączyć powiadomienia — odśwież wyszukiwanie.';
+        } else {
+          await this.deps.activityClient.createFullGroupWatch(
+            {
+              guildId,
+              organizationId,
+              activityId: match.activityId,
+              characterId: state.characterId,
+              sessionRoles: state.sessionRoles,
+              ...(state.classSpecKey !== null ? { classSpecKey: state.classSpecKey } : {}),
+            },
+            {
+              ...actor,
+              idempotencyKey: idem(userId, 'lfg-full-watch', match.activityId),
+            },
+          );
+          statusLine = 'Powiadomimy Cię prywatnie, gdy zwolni się miejsce w tej ekipie.';
         }
       } else if (parsed.action === 'suppress' && parsed.param !== undefined) {
         const match = state.matches.find((entry) => entry.opaqueId === parsed.param);
@@ -1637,6 +1847,223 @@ export class ActivityInteractionHandler {
       throw new Error('Brak dostępnego statusu zapisu dla LFG.');
     }
     return chosen.id;
+  }
+
+  private async executeLfgJoin(input: {
+    match: LfgMatchCard;
+    partyRoleKey: PartyRoleKey;
+    guildId: string;
+    userId: string;
+    actor: ReturnType<typeof actorOf>;
+    state: LfgWizardState;
+  }): Promise<string> {
+    try {
+      const statusDefId = await this.resolveLfgJoinStatusDefId(input.guildId, input.userId);
+      const joined = await this.deps.activityClient.joinLfg(
+        {
+          activityId: input.match.activityId,
+          statusDefId,
+          partyRoleKey: input.partyRoleKey,
+          guildId: input.guildId,
+          ...(input.state.classSpecKey !== null
+            ? { characterClassSpecKey: input.state.classSpecKey }
+            : {}),
+          characterSupportedRoles: input.state.characterSupportedRoles,
+          sessionRoles: input.state.sessionRoles,
+        },
+        {
+          ...input.actor,
+          idempotencyKey: idem(
+            input.userId,
+            'lfg-join',
+            `${input.match.activityId}:${input.partyRoleKey}`,
+          ),
+        },
+      );
+      const waitlist =
+        typeof joined.waitlistPosition === 'number'
+          ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
+          : '';
+      return `Dołączono do ekipy.${waitlist}`;
+    } catch (error) {
+      return error instanceof Error && error.message.length > 0
+        ? error.message
+        : 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+    }
+  }
+
+  private async handleLfgDmComponent(interaction: MessageComponentInteraction): Promise<void> {
+    let parsed: ParsedLfgDmCustomId;
+    try {
+      parsed = parseLfgDmCustomId(
+        interaction.customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+    } catch {
+      await interaction.reply({
+        content: 'Ta interakcja DM wygasła lub jest nieprawidłowa.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const userId = interaction.user.id;
+    const actor = actorOf(userId);
+    const organizationId = this.deps.config.ACTIVITY_ORGANIZATION_ID;
+
+    try {
+      if (parsed.action === 'mute') {
+        const activity = await this.deps.activityClient.resolveActivityByOpaque(
+          parsed.activityOpaqueId,
+          actor,
+        );
+        const activityTypeKey =
+          typeof activity.activityTypeKey === 'string'
+            ? activity.activityTypeKey
+            : (parsed.param ?? 'unknown');
+        const guildId =
+          typeof activity.guildId === 'string'
+            ? activity.guildId
+            : (parsed.param ?? this.deps.config.DISCORD_TEST_GUILD_ID);
+        await this.deps.activityClient.updateNotificationPreferences(
+          {
+            guildId,
+            mutedInterestKeys: [activityTypeKey],
+          },
+          {
+            ...actor,
+            idempotencyKey: idem(userId, 'lfg-mute', `${guildId}:${activityTypeKey}`),
+          },
+        );
+        await interaction.editReply({
+          content: `Wyciszono powiadomienia discovery dla **${activityTypeKey}**. Nadal zobaczysz powiadomienia transakcyjne.`,
+        });
+        return;
+      }
+
+      const activity = await this.deps.activityClient.resolveActivityByOpaque(
+        parsed.activityOpaqueId,
+        actor,
+      );
+      const activityId = String(activity.id);
+      const resolvedGuildId =
+        typeof activity.guildId === 'string'
+          ? activity.guildId
+          : (parsed.param?.split(':')[0] ?? this.deps.config.DISCORD_TEST_GUILD_ID);
+
+      if (parsed.action === 'suppress') {
+        await this.deps.activityClient.suppressLfgMatch(
+          activityId,
+          { guildId: resolvedGuildId, organizationId },
+          {
+            ...actor,
+            idempotencyKey: idem(userId, 'lfg-dm-suppress', activityId),
+          },
+        );
+        await interaction.editReply({ content: 'Ukryto to dopasowanie.' });
+        return;
+      }
+
+      if (parsed.action === 'view') {
+        const name = typeof activity.name === 'string' ? activity.name : 'Aktywność';
+        const startAt =
+          typeof activity.startAt === 'string'
+            ? formatPolishLocalDateTime(new Date(activity.startAt))
+            : 'Termin do potwierdzenia';
+        await interaction.editReply({
+          content: [`**${name}**`, `Termin: ${startAt}`, `ID: \`${activityId}\``].join('\n'),
+        });
+        return;
+      }
+
+      if (parsed.action === 'join') {
+        const profile = await this.loadProfile(userId);
+        const state = applyProfileCharacter(createDefaultLfgWizardState(), profile);
+        if (state.characterId === null || state.sessionRoles.length === 0) {
+          await interaction.editReply({
+            content: 'Skonfiguruj postać w /profil przed dołączeniem z DM.',
+          });
+          return;
+        }
+
+        const roleParam = parsed.param?.includes(':') ? parsed.param.split(':')[1] : undefined;
+        if (roleParam !== undefined && isPartyRoleKey(roleParam)) {
+          const statusLine = await this.executeLfgJoin({
+            match: {
+              activityId,
+              opaqueId: parsed.activityOpaqueId,
+              dungeonLabel: 'Dungeon',
+              startAtLabel: '',
+              occupancyLabel: '',
+              roleNeedSummary: '',
+              matchReason: '',
+            },
+            partyRoleKey: roleParam,
+            guildId: resolvedGuildId,
+            userId,
+            actor,
+            state,
+          });
+          await interaction.editReply({ content: statusLine });
+          return;
+        }
+
+        const choices = state.sessionRoles.filter(isPartyRoleKey);
+        if (choices.length > 1) {
+          await interaction.editReply({
+            content: 'Wybierz rolę, w której chcesz dołączyć:',
+            components: [
+              new ActionRowBuilder<ButtonBuilder>().addComponents(
+                ...choices.map((role) =>
+                  new ButtonBuilder()
+                    .setCustomId(
+                      createLfgDmCustomId(
+                        parsed.activityOpaqueId,
+                        'join',
+                        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+                        `${resolvedGuildId}:${role}`,
+                      ),
+                    )
+                    .setLabel(role)
+                    .setStyle(ButtonStyle.Primary),
+                ),
+              ),
+            ],
+          });
+          return;
+        }
+
+        const partyRoleKey = pickDeterministicJoinRole(choices) ?? choices[0] ?? null;
+        if (partyRoleKey === null) {
+          await interaction.editReply({ content: 'Brak pasującej roli do dołączenia.' });
+          return;
+        }
+        const statusLine = await this.executeLfgJoin({
+          match: {
+            activityId,
+            opaqueId: parsed.activityOpaqueId,
+            dungeonLabel: 'Dungeon',
+            startAtLabel: '',
+            occupancyLabel: '',
+            roleNeedSummary: '',
+            matchReason: '',
+          },
+          partyRoleKey,
+          guildId: resolvedGuildId,
+          userId,
+          actor,
+          state,
+        });
+        await interaction.editReply({ content: statusLine });
+      }
+    } catch (error) {
+      this.deps.logger.error('Centrum LFG DM component failed', {
+        error: error instanceof Error ? error.message : String(error),
+        operation: parsed.action,
+      });
+      await interaction.editReply({ content: toUserFacingError(error) });
+    }
   }
 }
 

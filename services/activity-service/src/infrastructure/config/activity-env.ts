@@ -70,6 +70,17 @@ const baseSchema = z.object({
     }),
   ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM: optionalTrimmed,
   ACTIVITY_TO_AUTHZ_ACTIVE_KID: optionalTrimmed,
+  ACTIVITY_IDENTITY_BASE_URL: optionalTrimmed,
+  ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD: optionalTrimmed,
+  ACTIVITY_TO_IDENTITY_CLIENT_ID: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === '' ? 'v2.activity-service' : trimmed;
+    }),
+  ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM: optionalTrimmed,
+  ACTIVITY_TO_IDENTITY_ACTIVE_KID: optionalTrimmed,
   ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   ACTIVITY_INBOUND_CLIENTS_JSON: optionalTrimmed,
   /** Zeabur-friendly alternative when JSON commas break CLI `-k` flags. */
@@ -130,6 +141,18 @@ function assertEnabledRequirements(
   }
   if (config.ACTIVITY_TO_AUTHZ_ACTIVE_KID === undefined) {
     addIssue('ACTIVITY_TO_AUTHZ_ACTIVE_KID', 'is required when ACTIVITY_ENABLED=true');
+  }
+  if (config.ACTIVITY_IDENTITY_BASE_URL === undefined) {
+    addIssue('ACTIVITY_IDENTITY_BASE_URL', 'is required when ACTIVITY_ENABLED=true');
+  }
+  if (config.ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD === undefined) {
+    addIssue('ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD', 'is required when ACTIVITY_ENABLED=true');
+  }
+  if (config.ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM === undefined) {
+    addIssue('ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM', 'is required when ACTIVITY_ENABLED=true');
+  }
+  if (config.ACTIVITY_TO_IDENTITY_ACTIVE_KID === undefined) {
+    addIssue('ACTIVITY_TO_IDENTITY_ACTIVE_KID', 'is required when ACTIVITY_ENABLED=true');
   }
   if (config.ACTIVITY_INBOUND_CLIENTS_JSON === undefined) {
     addIssue('ACTIVITY_INBOUND_CLIENTS_JSON', 'is required when ACTIVITY_ENABLED=true');

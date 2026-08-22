@@ -22,6 +22,7 @@ import {
   INTERNAL_JWT_RUNTIME,
   PLAYER_PROFILE_REPOSITORY,
 } from './identity.tokens.js';
+import { InternalCharacterController } from './internal-character.controller.js';
 import { InternalJwtLifecycleService } from './internal-jwt-lifecycle.service.js';
 import { InternalTokenController } from './internal-token.controller.js';
 import { PlayerProfileController } from './player-profile.controller.js';
@@ -92,6 +93,7 @@ const providers: Provider[] = [
     IdentityController,
     PlayerProfileController,
     InternalTokenController,
+    InternalCharacterController,
     SystemRevokeController,
     ProofUiController,
     WebOauthController,

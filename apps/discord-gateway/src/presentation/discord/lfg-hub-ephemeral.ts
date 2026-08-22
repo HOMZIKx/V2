@@ -19,6 +19,7 @@ import {
   formatLfgMatchReason,
   isPartyRoleKey,
   listEnabledClassSpecs,
+  pickDeterministicJoinRole,
   type PartyRoleKey,
 } from '@v2/hub-core';
 
@@ -34,6 +35,55 @@ import { formatPolishLocalDateTime } from './localized-datetime.js';
 export const LFG_WIZARD_ACCENT = 0x5c6bc0;
 
 const ALL_ROLES: readonly PartyRoleKey[] = ['TANK', 'BUFF', 'DPS', 'FLEX'];
+
+function enabledPartyRoles(): readonly PartyRoleKey[] {
+  return DEFAULT_PARTY_ROLE_CATALOG.filter((entry) => entry.enabled).map((entry) => entry.key);
+}
+
+export function resolveLfgTimeLabel(state: LfgWizardState): string {
+  if (state.timePreset === null) {
+    return 'Nie wybrano';
+  }
+  if (state.timePreset === 'custom') {
+    return state.customWindow?.label ?? 'Własne okno (nie uzupełniono)';
+  }
+  return deriveTimeWindow(state.timePreset).label;
+}
+
+export function pickJoinRole(
+  match: LfgMatchCard,
+  sessionRoles: readonly PartyRoleKey[],
+): PartyRoleKey | null {
+  if (match.suggestedPartyRole !== undefined && isPartyRoleKey(match.suggestedPartyRole)) {
+    if (sessionRoles.includes(match.suggestedPartyRole)) {
+      return match.suggestedPartyRole;
+    }
+  }
+  const eligible = (match.eligiblePartyRoles ?? []).filter(
+    (role): role is PartyRoleKey => isPartyRoleKey(role) && sessionRoles.includes(role),
+  );
+  if (eligible.length > 0) {
+    return pickDeterministicJoinRole(eligible);
+  }
+  return pickDeterministicJoinRole(sessionRoles.filter(isPartyRoleKey));
+}
+
+export function listJoinRoleChoices(
+  match: LfgMatchCard,
+  sessionRoles: readonly PartyRoleKey[],
+): readonly PartyRoleKey[] {
+  const eligible = (match.eligiblePartyRoles ?? []).filter(
+    (role): role is PartyRoleKey => isPartyRoleKey(role) && sessionRoles.includes(role),
+  );
+  if (eligible.length > 0) {
+    return eligible;
+  }
+  const suggested =
+    match.suggestedPartyRole !== undefined && sessionRoles.includes(match.suggestedPartyRole)
+      ? match.suggestedPartyRole
+      : null;
+  return suggested !== null ? [suggested] : sessionRoles.filter((role) => isPartyRoleKey(role));
+}
 
 export type LfgHubRenderInput = {
   readonly opaquePanelId: string;
@@ -184,6 +234,25 @@ export function mapSearchMatches(
         : 'Potrzeby w trakcie ustalania';
     const matchReason =
       typeof entry.matchReason === 'string' ? entry.matchReason : formatLfgMatchReason(reasons);
+    const eligibleRaw = Array.isArray(entry.eligiblePartyRoles) ? entry.eligiblePartyRoles : [];
+    const eligiblePartyRoles = eligibleRaw.filter(isPartyRoleKey);
+    const suggestedRaw =
+      typeof entry.suggestedPartyRole === 'string' ? entry.suggestedPartyRole : undefined;
+    const suggestedPartyRole =
+      suggestedRaw !== undefined && isPartyRoleKey(suggestedRaw) ? suggestedRaw : undefined;
+    const occupied =
+      typeof entry.occupancy === 'object' &&
+      entry.occupancy !== null &&
+      typeof (entry.occupancy as { occupied?: unknown }).occupied === 'number' &&
+      typeof (entry.occupancy as { capacity?: unknown }).capacity === 'number'
+        ? (entry.occupancy as { occupied: number; capacity: number })
+        : null;
+    const isFull =
+      typeof entry.isFull === 'boolean'
+        ? entry.isFull
+        : occupied !== null
+          ? occupied.occupied >= occupied.capacity
+          : occupancy.includes('/') && occupancy.split('/')[0] === occupancy.split('/')[1];
     return {
       activityId: String(entry.activityId),
       opaqueId:
@@ -204,6 +273,9 @@ export function mapSearchMatches(
       roleNeedSummary,
       matchReason,
       ...(typeof entry.fingerprint === 'string' ? { fingerprint: entry.fingerprint } : {}),
+      ...(eligiblePartyRoles.length > 0 ? { eligiblePartyRoles } : {}),
+      ...(suggestedPartyRole !== undefined ? { suggestedPartyRole } : {}),
+      ...(isFull ? { isFull: true } : {}),
     };
   });
 }
@@ -224,8 +296,7 @@ export function renderLfgHubEphemeral(input: LfgHubRenderInput): InteractionRepl
 function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
   const { opaquePanelId, signingSecret, state, profile } = input;
   const dungeon = LFG_DUNGEON_ACTIVITY_TYPES.find((entry) => entry.key === state.dungeonKey);
-  const timeLabel =
-    state.timePreset === null ? 'Nie wybrano' : deriveTimeWindow(state.timePreset).label;
+  const timeLabel = resolveLfgTimeLabel(state);
   const characterLine =
     state.characterLabel !== null
       ? `**${state.characterLabel}** (${state.classSpecKey ?? '?'})`
@@ -302,6 +373,28 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
     container.addActionRowComponents(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(quickAddSelect),
     );
+    if (state.pendingQuickAdd !== null) {
+      const quickRoles = enabledPartyRoles().map((role) => {
+        const active = state.pendingQuickAdd!.partyRoles.includes(role);
+        const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
+        return new ButtonBuilder()
+          .setCustomId(createLfgCustomId(opaquePanelId, 'quick_add_role', signingSecret, role))
+          .setLabel(catalog?.label ?? role)
+          .setStyle(active ? ButtonStyle.Primary : ButtonStyle.Secondary);
+      });
+      container.addActionRowComponents(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(...quickRoles),
+      );
+      container.addActionRowComponents(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(createLfgCustomId(opaquePanelId, 'confirm_quick_add', signingSecret))
+            .setLabel('Zapisz postać')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(state.pendingQuickAdd.partyRoles.length === 0),
+        ),
+      );
+    }
   }
 
   const roleButtons = ALL_ROLES.map((role) => {
@@ -328,6 +421,12 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
       .setLabel(label)
       .setStyle(state.timePreset === preset ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
+  timeButtons.push(
+    new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'custom_time', signingSecret))
+      .setLabel('Wybierz czas')
+      .setStyle(state.timePreset === 'custom' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+  );
   container.addActionRowComponents(
     new ActionRowBuilder<ButtonBuilder>().addComponents(...timeButtons),
   );
@@ -342,12 +441,33 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
     );
     const visibleMatches = state.showAllMatches ? state.matches : state.matches.slice(0, 3);
     for (const match of visibleMatches) {
+      const joinButtons =
+        state.pendingJoinRolePick?.matchOpaqueId === match.opaqueId
+          ? state.pendingJoinRolePick.eligibleRoles.map((role) => {
+              const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
+              return new ButtonBuilder()
+                .setCustomId(
+                  createLfgCustomId(
+                    opaquePanelId,
+                    'join_role',
+                    signingSecret,
+                    `${match.opaqueId}:${role}`,
+                  ),
+                )
+                .setLabel(catalog?.label ?? role)
+                .setStyle(ButtonStyle.Primary);
+            })
+          : [
+              new ButtonBuilder()
+                .setCustomId(
+                  createLfgCustomId(opaquePanelId, 'join', signingSecret, match.opaqueId),
+                )
+                .setLabel('Dołącz')
+                .setStyle(ButtonStyle.Success),
+            ];
       container.addActionRowComponents(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(createLfgCustomId(opaquePanelId, 'join', signingSecret, match.opaqueId))
-            .setLabel('Dołącz')
-            .setStyle(ButtonStyle.Success),
+          ...joinButtons,
           new ButtonBuilder()
             .setCustomId(createLfgCustomId(opaquePanelId, 'view', signingSecret, match.opaqueId))
             .setLabel('Zobacz')
@@ -461,6 +581,10 @@ function renderMySearchesScreen(input: LfgHubRenderInput): InteractionReplyOptio
           .setLabel(paused ? 'Wznów' : 'Wstrzymaj')
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
+          .setCustomId(createLfgCustomId(opaquePanelId, 'watch_edit', signingSecret, watch.id))
+          .setLabel('Edytuj')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
           .setCustomId(createLfgCustomId(opaquePanelId, 'watch_cancel', signingSecret, watch.id))
           .setLabel('Anuluj')
           .setStyle(ButtonStyle.Danger),
@@ -536,17 +660,48 @@ function renderMatchViewScreen(input: LfgHubRenderInput): InteractionReplyOption
     );
 
   if (match !== undefined) {
+    const joinButtons =
+      state.pendingJoinRolePick?.matchOpaqueId === match.opaqueId
+        ? state.pendingJoinRolePick.eligibleRoles.map((role) => {
+            const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
+            return new ButtonBuilder()
+              .setCustomId(
+                createLfgCustomId(
+                  opaquePanelId,
+                  'join_role',
+                  signingSecret,
+                  `${match.opaqueId}:${role}`,
+                ),
+              )
+              .setLabel(catalog?.label ?? role)
+              .setStyle(ButtonStyle.Primary);
+          })
+        : [
+            new ButtonBuilder()
+              .setCustomId(createLfgCustomId(opaquePanelId, 'join', signingSecret, match.opaqueId))
+              .setLabel('Dołącz')
+              .setStyle(ButtonStyle.Success)
+              .setDisabled(match.isFull === true),
+          ];
+    const actionButtons = [
+      ...joinButtons,
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'back', signingSecret))
+        .setLabel('Wróć')
+        .setStyle(ButtonStyle.Secondary),
+    ];
+    if (match.isFull === true) {
+      actionButtons.unshift(
+        new ButtonBuilder()
+          .setCustomId(
+            createLfgCustomId(opaquePanelId, 'full_group_watch', signingSecret, match.opaqueId),
+          )
+          .setLabel('Powiadom mnie, jeśli zwolni się miejsce')
+          .setStyle(ButtonStyle.Primary),
+      );
+    }
     container.addActionRowComponents(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(createLfgCustomId(opaquePanelId, 'join', signingSecret, match.opaqueId))
-          .setLabel('Dołącz')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId(createLfgCustomId(opaquePanelId, 'back', signingSecret))
-          .setLabel('Wróć')
-          .setStyle(ButtonStyle.Secondary),
-      ),
+      new ActionRowBuilder<ButtonBuilder>().addComponents(...actionButtons),
     );
   } else {
     container.addActionRowComponents(
@@ -588,11 +743,13 @@ function formatMatchesBlock(matches: readonly LfgMatchCard[], showAll: boolean):
 }
 
 export function isWizardReady(state: LfgWizardState): boolean {
+  const timeReady =
+    state.timePreset !== null && (state.timePreset !== 'custom' || state.customWindow !== null);
   return (
     state.dungeonKey !== null &&
     state.characterId !== null &&
     state.sessionRoles.length > 0 &&
-    state.timePreset !== null
+    timeReady
   );
 }
 
@@ -618,8 +775,23 @@ export function buildLfgSearchBody(input: {
     return null;
   }
   const preset = input.state.timePreset;
-  if (preset === null || preset === 'custom') {
+  if (preset === null) {
     return null;
+  }
+  if (preset === 'custom') {
+    if (input.state.customWindow === null) {
+      return null;
+    }
+    return {
+      guildId: input.guildId,
+      organizationId: input.organizationId,
+      activityTypeKey: input.state.dungeonKey,
+      characterClassSpecKey: input.state.classSpecKey,
+      characterSupportedRoles: input.state.characterSupportedRoles,
+      sessionRoles: input.state.sessionRoles,
+      windowStartAt: input.state.customWindow.windowStartAt,
+      windowEndAt: input.state.customWindow.windowEndAt,
+    };
   }
   const window = deriveTimeWindow(preset);
   return {

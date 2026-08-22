@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLfgIntentActive, rankLfgMatch } from './lfg-matching.js';
+import {
+  isLfgIntentActive,
+  listEligibleJoinRoles,
+  pickDeterministicJoinRole,
+  rankLfgMatch,
+} from './lfg-matching.js';
 
 const baseGroup = {
   activityTypeKey: 'azrael',
@@ -47,6 +52,41 @@ describe('lfg matching', () => {
       baseSeeker,
     );
     expect(asDps.eligible).toBe(true);
+  });
+
+  it('picks DPS when TANK and BUFF full and user has TANK+DPS', () => {
+    const group = {
+      ...baseGroup,
+      filledByRole: { TANK: 1, BUFF: 1, DPS: 2 },
+    };
+    const seeker = {
+      ...baseSeeker,
+      characterSupportedRoles: ['TANK', 'DPS'] as const,
+      sessionRoles: ['TANK', 'DPS'] as const,
+    };
+    const eligible = listEligibleJoinRoles(group, seeker);
+    expect(eligible).toEqual(['DPS']);
+    expect(pickDeterministicJoinRole(eligible)).toBe('DPS');
+  });
+
+  it('joins as DPS when TANK full and only DPS open among session roles', () => {
+    const group = {
+      ...baseGroup,
+      filledByRole: { TANK: 1, BUFF: 1, DPS: 2 },
+      roleNeeds: [
+        { role: 'TANK' as const, requiredCount: 1 },
+        { role: 'BUFF' as const, requiredCount: 1 },
+        { role: 'DPS' as const, requiredCount: 4 },
+      ],
+    };
+    const seeker = {
+      ...baseSeeker,
+      characterSupportedRoles: ['TANK', 'DPS'] as const,
+      sessionRoles: ['TANK', 'DPS'] as const,
+    };
+    const eligible = listEligibleJoinRoles(group, seeker);
+    expect(eligible).toEqual(['DPS']);
+    expect(pickDeterministicJoinRole(eligible)).toBe('DPS');
   });
 
   it('rejects time / guild / membership mismatches and full groups', () => {

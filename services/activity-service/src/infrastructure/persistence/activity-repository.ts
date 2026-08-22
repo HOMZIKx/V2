@@ -1677,6 +1677,18 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async hasOverlappingLfgIntent(input) {
+      const excludeClause = input.excludeIntentId !== undefined ? 'AND id <> $7::uuid' : '';
+      const params: unknown[] = [
+        input.recipientDiscordUserId,
+        input.characterId,
+        input.activityTypeKey,
+        input.now.toISOString(),
+        input.windowStartAt.toISOString(),
+        input.windowEndAt.toISOString(),
+      ];
+      if (input.excludeIntentId !== undefined) {
+        params.push(input.excludeIntentId);
+      }
       const result = await client.query(
         `SELECT 1 FROM lfg_intents
          WHERE recipient_discord_user_id = $1
@@ -1688,17 +1700,44 @@ function createTx(client: PoolClient): ActivityTx {
            AND expires_at > $4
            AND window_start_at < $6
            AND window_end_at > $5
+           ${excludeClause}
          LIMIT 1`,
-        [
-          input.recipientDiscordUserId,
-          input.characterId,
-          input.activityTypeKey,
-          input.now.toISOString(),
-          input.windowStartAt.toISOString(),
-          input.windowEndAt.toISOString(),
-        ],
+        params,
       );
       return result.rows.length > 0;
+    },
+
+    async updateLfgIntent(input) {
+      const result = await client.query(
+        `UPDATE lfg_intents
+         SET session_roles = $3::text[],
+             window_start_at = $4,
+             window_end_at = $5,
+             expires_at = $6,
+             class_spec_key = $7,
+             updated_at = $8
+         WHERE id = $1::uuid
+           AND recipient_discord_user_id = $2
+           AND cancelled_at IS NULL
+           AND fulfilled_at IS NULL`,
+        [
+          input.intentId,
+          input.recipientDiscordUserId,
+          input.sessionRoles,
+          input.windowStartAt.toISOString(),
+          input.windowEndAt.toISOString(),
+          input.expiresAt.toISOString(),
+          input.classSpecKey,
+          input.now.toISOString(),
+        ],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async clearLfgIntentSuppressions(intentId) {
+      await client.query(`DELETE FROM lfg_intent_suppressions WHERE intent_id = $1::uuid`, [
+        intentId,
+      ]);
     },
 
     async insertLfgIntent(input) {

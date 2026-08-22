@@ -7,6 +7,7 @@ import {
   DEFAULT_PARTY_ROLE_CATALOG,
   LFG_DUNGEON_ACTIVITY_TYPES,
   isPartyRoleKey,
+  pickDeterministicJoinRole,
   type PartyRoleKey,
 } from '@v2/hub-core';
 
@@ -22,6 +23,7 @@ import {
   pauseLfgWatch,
   resumeLfgWatch,
   searchLfg,
+  updateLfgWatch,
   type IdentityProfileCharacterDto,
   type LfgMatchDto,
   type LfgPartyRoleKey,
@@ -42,7 +44,7 @@ import {
   UnavailableState,
 } from './StateViews';
 
-type TimePreset = 'now' | 'plus2h' | 'evening';
+type TimePreset = 'now' | 'plus2h' | 'evening' | 'custom';
 
 const ALL_ROLES: readonly PartyRoleKey[] = ['TANK', 'BUFF', 'DPS', 'FLEX'];
 
@@ -50,6 +52,7 @@ const TIME_PRESETS: readonly { value: TimePreset; label: string }[] = [
   { value: 'now', label: 'Teraz (do 2 h)' },
   { value: 'plus2h', label: 'Za 2 h (okno 2 h)' },
   { value: 'evening', label: 'Wieczór (18:00–23:00)' },
+  { value: 'custom', label: 'Własne okno czasu' },
 ];
 
 function deriveTimeWindow(
@@ -140,6 +143,7 @@ export function LfgPage() {
   const [supportedRoles, setSupportedRoles] = useState<PartyRoleKey[]>([]);
   const [classSpecKey, setClassSpecKey] = useState<string | null>(null);
   const [timePreset, setTimePreset] = useState<TimePreset>('now');
+  const [customWindowRaw, setCustomWindowRaw] = useState('');
   const [matches, setMatches] = useState<LfgMatchDto[]>([]);
   const [watches, setWatches] = useState<LfgWatchDto[]>([]);
   const [joinStatusId, setJoinStatusId] = useState<string | null>(null);
@@ -245,13 +249,31 @@ export function LfgPage() {
     characterId !== null &&
     classSpecKey !== null &&
     sessionRoles.length > 0 &&
-    timePreset !== null;
+    (timePreset !== 'custom' || customWindowRaw.trim().length > 0);
 
   const buildSearchBody = useCallback(() => {
     if (!wizardReady || guildId === null || organizationId === null || classSpecKey === null) {
       return null;
     }
-    const window = deriveTimeWindow(timePreset);
+    let windowStartAt: string;
+    let windowEndAt: string;
+    if (timePreset === 'custom') {
+      const split = customWindowRaw.split(/\s*[–-]\s*/u);
+      if (split.length !== 2) {
+        return null;
+      }
+      const start = new Date(split[0]!.trim());
+      const end = new Date(split[1]!.trim());
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+        return null;
+      }
+      windowStartAt = start.toISOString();
+      windowEndAt = end.toISOString();
+    } else {
+      const window = deriveTimeWindow(timePreset);
+      windowStartAt = window.windowStartAt.toISOString();
+      windowEndAt = window.windowEndAt.toISOString();
+    }
     return {
       guildId,
       organizationId,
@@ -259,12 +281,13 @@ export function LfgPage() {
       characterClassSpecKey: classSpecKey,
       characterSupportedRoles: supportedRoles,
       sessionRoles: sessionRoles,
-      windowStartAt: window.windowStartAt.toISOString(),
-      windowEndAt: window.windowEndAt.toISOString(),
+      windowStartAt,
+      windowEndAt,
     };
   }, [
     characterId,
     classSpecKey,
+    customWindowRaw,
     dungeonKey,
     guildId,
     organizationId,
@@ -332,6 +355,11 @@ export function LfgPage() {
       setActionError('Nie udało się dołączyć — brak statusu zapisu lub roli.');
       return;
     }
+    const partyRoleKey = pickDeterministicJoinRole(sessionRoles) ?? sessionRoles[0];
+    if (partyRoleKey === undefined) {
+      setActionError('Wybierz co najmniej jedną rolę sesji.');
+      return;
+    }
     setBusy(true);
     setActionError(null);
     setFlash(null);
@@ -339,7 +367,7 @@ export function LfgPage() {
       const result = await joinLfg({
         activityId: match.activityId,
         statusDefId: joinStatusId,
-        partyRoleKey: sessionRoles[0] as LfgPartyRoleKey,
+        partyRoleKey,
         guildId,
         ...(classSpecKey !== null ? { characterClassSpecKey: classSpecKey } : {}),
         characterSupportedRoles: supportedRoles,
@@ -378,6 +406,53 @@ export function LfgPage() {
         await cancelLfgWatch(watchId, guildId);
         setFlash('Poszukiwanie anulowane.');
       }
+      await loadWatches();
+    } catch (err) {
+      setActionError(memberErrorCopy(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onEditWatch(watch: LfgWatchDto): Promise<void> {
+    if (guildId === null) {
+      return;
+    }
+    const rolesRaw = window.prompt(
+      'Role sesji (TANK,BUFF,DPS,FLEX):',
+      (watch.sessionRoles ?? []).join(','),
+    );
+    const windowRaw = window.prompt(
+      'Okno czasu (ISO od – do):',
+      watch.windowStartAt !== undefined && watch.windowEndAt !== undefined
+        ? `${watch.windowStartAt} – ${watch.windowEndAt}`
+        : '',
+    );
+    if (rolesRaw === null || windowRaw === null) {
+      return;
+    }
+    const sessionRolesParsed = rolesRaw
+      .split(',')
+      .map((part) => part.trim().toUpperCase())
+      .filter((part): part is LfgPartyRoleKey =>
+        ['TANK', 'BUFF', 'DPS', 'FLEX'].includes(part as LfgPartyRoleKey),
+      );
+    const split = windowRaw.split(/\s*[–-]\s*/u);
+    if (sessionRolesParsed.length === 0 || split.length !== 2) {
+      setActionError('Podaj role i okno w poprawnym formacie.');
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    setFlash(null);
+    try {
+      await updateLfgWatch(watch.id, {
+        guildId,
+        sessionRoles: sessionRolesParsed,
+        windowStartAt: split[0]!.trim(),
+        windowEndAt: split[1]!.trim(),
+      });
+      setFlash('Poszukiwanie zaktualizowane.');
       await loadWatches();
     } catch (err) {
       setActionError(memberErrorCopy(err));
@@ -549,6 +624,23 @@ export function LfgPage() {
               setMatches([]);
             }}
           />
+          {timePreset === 'custom' ? (
+            <p className="muted">
+              <label htmlFor="lfg-custom-window">
+                Okno ISO lub lokalne (od – do), np. 2026-08-22T18:00:00.000Z –
+                2026-08-22T21:00:00.000Z
+              </label>
+              <input
+                id="lfg-custom-window"
+                className="input"
+                value={customWindowRaw}
+                onChange={(event) => {
+                  setCustomWindowRaw(event.target.value);
+                  setMatches([]);
+                }}
+              />
+            </p>
+          ) : null}
         </Panel>
 
         <div className="toolbar lfg-actions">
@@ -630,6 +722,13 @@ export function LfgPage() {
                           Wstrzymaj
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => void onEditWatch(watch)}
+                      >
+                        Edytuj
+                      </Button>
                       <Button
                         variant="ghost"
                         disabled={busy}

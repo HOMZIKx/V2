@@ -97,6 +97,15 @@ const baseSchema = z.object({
         ? 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions'
         : trimmed;
     }),
+  IDENTITY_CHARACTER_RESOLVE_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/character/resolve'
+        : trimmed;
+    }),
   IDENTITY_SERVICE_CLIENTS_JSON: optionalTrimmed,
   IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS: z.coerce
@@ -276,6 +285,12 @@ function assertInternalJwtRequirements(
     requireHttps: isProduction,
     rejectLocalhost: isProduction,
   });
+  assertValidOriginUrl(
+    config.IDENTITY_CHARACTER_RESOLVE_URL,
+    'IDENTITY_CHARACTER_RESOLVE_URL',
+    addIssue,
+    { requireHttps: isProduction, rejectLocalhost: isProduction },
+  );
 }
 
 function assertAuthorizationRequirements(

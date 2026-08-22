@@ -15,6 +15,7 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
+import { LFG_DUNGEON_ACTIVITY_TYPES } from '@v2/hub-core';
 import { z } from 'zod';
 
 import type { ActorSubject } from '../application/ports/activity.ports.js';
@@ -196,8 +197,13 @@ const lfgCompositionRoleSchema = z.object({
   preferred: z.boolean().optional(),
 });
 
+const lfgDungeonTypeKeys = LFG_DUNGEON_ACTIVITY_TYPES.map((entry) => entry.key) as [
+  string,
+  ...string[],
+];
+
 const lfgCompositionPutSchema = z.object({
-  activityTypeKey: z.enum(['azrael', 'smok']),
+  activityTypeKey: z.enum(lfgDungeonTypeKeys),
   roles: z.array(lfgCompositionRoleSchema).min(1).max(4),
 });
 

@@ -32,7 +32,7 @@ export async function upsertLfgCompositionTemplates(
   orgId: string,
   guildId: string,
   body: {
-    activityTypeKey: 'azrael' | 'smok';
+    activityTypeKey: string;
     roles: readonly {
       partyRoleKey: LfgCompositionRoleKey;
       requiredCount: number;

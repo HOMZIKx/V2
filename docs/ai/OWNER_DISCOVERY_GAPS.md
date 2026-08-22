@@ -93,7 +93,7 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 
 ## LFG (Activity 2.0 / Issue #20)
 
-**Module status:** `READY_FOR_CHATGPT_AUDIT` · Issue #20 discovery **CLOSED** (2026-08-22).
+**Module status:** `READY_FOR_CHATGPT_REAUDIT` · Issue #20 discovery **CLOSED** (2026-08-22). ChatGPT remediation `V2-DUNGEON-LFG-V1-CHATGPT-AUDIT-REMEDIATION-003` complete.
 
 | DECISION                                       | CURRENT IMPLEMENTATION                                             | STATUS                         | OWNER DECISION NEEDED | SAFE TO KEEP? | MUST NOT EXPAND? |
 | ---------------------------------------------- | ------------------------------------------------------------------ | ------------------------------ | --------------------- | ------------- | ---------------- |
@@ -120,7 +120,7 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 
 | DECISION                                       | CURRENT IMPLEMENTATION                                     | STATUS                                              | OWNER DECISION NEEDED                   | SAFE TO KEEP? | MUST NOT EXPAND? |
 | ---------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------- | --------------------------------------- | ------------- | ---------------- |
-| Complete Owner Discovery pack                  | **none recorded** in SoT                                   | **OWNER_DECISION_REQUIRED**                         | Full #26-style discovery before product | N/A           | **YES**          |
+| Complete Owner Discovery pack                  | `docs/ai/RESERVATIONS_DISCOVERY_PREP.md`                   | **OWNER_DECISION_REQUIRED** (prep **READY**)        | Owner session using prep pack (8 questions) | N/A           | **YES**          |
 | Resource model (CH / spots / org scope)        | migration 014 `reservation_resources`, `reservation_spots` | **FOUNDATION_WIP**                                  | Resource types, hierarchy, admin setup  | YES (schema)  | **YES**          |
 | Half-open interval double-booking              | `assertNoDoubleBooking`                                    | **TECHNICAL_ONLY**                                  | Conflict UX, waitlist, grace periods    | YES           | YES              |
 | Reservation duration rules / min-max slot      | API accepts arbitrary start/end                            | **OWNER_DECISION_REQUIRED**                         | Slot length, buffers, timezone display  | YES (API)     | **YES**          |
@@ -132,7 +132,7 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 | WWW UX                                         | route stub `/rezerwacje` in registry                       | **OWNER_DECISION_REQUIRED**                         | Full flow                               | YES           | **YES**          |
 | Admin UX                                       | not implemented                                            | **OWNER_DECISION_REQUIRED**                         | Resource admin, calendars               | N/A           | YES              |
 
-**Module status:** `RESERVATIONS_OWNER_DISCOVERY_REQUIRED` · `FOUNDATION_WIP_EXISTS`
+**Module status:** `RESERVATIONS_OWNER_DISCOVERY_REQUIRED` · `FOUNDATION_WIP_EXISTS` · prep **`RESERVATIONS_DISCOVERY_PREP_READY`**
 
 ---
 

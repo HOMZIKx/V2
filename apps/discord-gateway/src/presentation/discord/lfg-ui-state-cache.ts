@@ -2,6 +2,22 @@ import type { PartyRoleKey } from '@v2/hub-core';
 
 export type LfgTimePreset = 'now' | 'plus2h' | 'evening' | 'custom';
 
+export type LfgCustomWindow = {
+  readonly windowStartAt: string;
+  readonly windowEndAt: string;
+  readonly label: string;
+};
+
+export type LfgPendingJoinRolePick = {
+  readonly matchOpaqueId: string;
+  readonly eligibleRoles: readonly PartyRoleKey[];
+};
+
+export type LfgPendingQuickAdd = {
+  readonly classSpecKey: string;
+  readonly partyRoles: readonly PartyRoleKey[];
+};
+
 export type LfgMatchCard = {
   readonly activityId: string;
   readonly opaqueId: string;
@@ -11,6 +27,9 @@ export type LfgMatchCard = {
   readonly roleNeedSummary: string;
   readonly matchReason: string;
   readonly fingerprint?: string;
+  readonly eligiblePartyRoles?: readonly PartyRoleKey[];
+  readonly suggestedPartyRole?: PartyRoleKey;
+  readonly isFull?: boolean;
 };
 
 export type LfgWizardState = {
@@ -22,10 +41,14 @@ export type LfgWizardState = {
   readonly characterSupportedRoles: readonly PartyRoleKey[];
   readonly sessionRoles: readonly PartyRoleKey[];
   readonly timePreset: LfgTimePreset | null;
+  readonly customWindow: LfgCustomWindow | null;
   readonly showAllMatches: boolean;
   readonly matches: readonly LfgMatchCard[];
   readonly similarGroupsWarning: string | null;
   readonly viewedMatchOpaqueId: string | null;
+  readonly pendingJoinRolePick: LfgPendingJoinRolePick | null;
+  readonly pendingQuickAdd: LfgPendingQuickAdd | null;
+  readonly editingWatchId: string | null;
 };
 
 export type LfgUiStateCacheKey = {
@@ -52,10 +75,14 @@ export function createDefaultLfgWizardState(): LfgWizardState {
     characterSupportedRoles: [],
     sessionRoles: [],
     timePreset: null,
+    customWindow: null,
     showAllMatches: false,
     matches: [],
     similarGroupsWarning: null,
     viewedMatchOpaqueId: null,
+    pendingJoinRolePick: null,
+    pendingQuickAdd: null,
+    editingWatchId: null,
   };
 }
 
@@ -126,5 +153,22 @@ function cloneState(state: LfgWizardState): LfgWizardState {
     characterSupportedRoles: [...state.characterSupportedRoles],
     sessionRoles: [...state.sessionRoles],
     matches: state.matches.map((match) => ({ ...match })),
+    ...(state.customWindow !== null ? { customWindow: { ...state.customWindow } } : {}),
+    ...(state.pendingJoinRolePick !== null
+      ? {
+          pendingJoinRolePick: {
+            ...state.pendingJoinRolePick,
+            eligibleRoles: [...state.pendingJoinRolePick.eligibleRoles],
+          },
+        }
+      : {}),
+    ...(state.pendingQuickAdd !== null
+      ? {
+          pendingQuickAdd: {
+            ...state.pendingQuickAdd,
+            partyRoles: [...state.pendingQuickAdd.partyRoles],
+          },
+        }
+      : {}),
   };
 }

@@ -9,6 +9,7 @@ import { ActivityUseCases } from '../../application/use-cases/activity.use-cases
 import { FixedClock } from '../../domain/clock.js';
 import { AllowAllAuthorizationClient } from '../authorization/authorization-client.js';
 import { runMigrations } from '../db/run-migrations.js';
+import { PassThroughCharacterVerifyClient } from '../identity/identity-character-client.js';
 import { ActivityRepository } from './activity-repository.js';
 
 const wantInfra = process.env.RUN_INFRA_TESTS === 'true';
@@ -56,11 +57,13 @@ describe.skipIf(!wantInfra)('ActivityRepository (infra)', () => {
       useCases = new ActivityUseCases({
         repository,
         authorize,
+        characterVerify: new PassThroughCharacterVerifyClient(),
         clock,
       });
       admin = new ActivityAdminUseCases({
         repository,
         authorize,
+        characterVerify: new PassThroughCharacterVerifyClient(),
         clock,
       });
       infraReady = true;

@@ -21,7 +21,13 @@ export type LfgAction =
   | 'watch_resume'
   | 'watch_cancel'
   | 'back'
-  | 'quick_add';
+  | 'quick_add'
+  | 'join_role'
+  | 'custom_time'
+  | 'watch_edit'
+  | 'full_group_watch'
+  | 'quick_add_role'
+  | 'confirm_quick_add';
 
 const LFG_ACTIONS = new Set<LfgAction>([
   'dungeon',
@@ -42,6 +48,12 @@ const LFG_ACTIONS = new Set<LfgAction>([
   'watch_cancel',
   'back',
   'quick_add',
+  'join_role',
+  'custom_time',
+  'watch_edit',
+  'full_group_watch',
+  'quick_add_role',
+  'confirm_quick_add',
 ]);
 
 export type ParsedLfgCustomId = {

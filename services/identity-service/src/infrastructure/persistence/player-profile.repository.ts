@@ -101,6 +101,55 @@ export class PlayerProfileRepository {
     };
   }
 
+  public async resolveUserIdByDiscordAccountId(discordUserId: string): Promise<string | null> {
+    const result = await this.pool.query<{ userId: string }>(
+      `SELECT "userId" AS "userId"
+       FROM "account"
+       WHERE "providerId" = 'discord' AND "accountId" = $1
+       LIMIT 1`,
+      [discordUserId],
+    );
+    return result.rows[0]?.userId ?? null;
+  }
+
+  public async getCharacterForUser(
+    userId: string,
+    characterId: string,
+  ): Promise<PlayerCharacterView | null> {
+    const characterResult = await this.pool.query<{
+      id: string;
+      nickname: string;
+      class_spec_key: string;
+      level: number | null;
+      is_default: boolean;
+    }>(
+      `SELECT id::text, nickname, class_spec_key, level, is_default
+       FROM player_characters
+       WHERE user_id = $1 AND id = $2::uuid`,
+      [userId, characterId],
+    );
+    const row = characterResult.rows[0];
+    if (row === undefined) {
+      return null;
+    }
+
+    const rolesResult = await this.pool.query<{ party_role_key: string }>(
+      `SELECT party_role_key FROM player_character_party_roles WHERE character_id = $1::uuid`,
+      [row.id],
+    );
+    const partyRoles = assertValidPartyRoles(rolesResult.rows.map((r) => r.party_role_key));
+
+    return {
+      id: row.id,
+      nickname: row.nickname,
+      classSpecKey: row.class_spec_key,
+      classSpecLabel: resolveClassSpecLabel(row.class_spec_key),
+      level: row.level,
+      isDefault: row.is_default,
+      partyRoles,
+    };
+  }
+
   public async listInterestCatalog(): Promise<readonly InterestCatalogView[]> {
     const result = await this.pool.query<{
       key: string;

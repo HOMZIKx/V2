@@ -213,6 +213,9 @@ importers:
       '@v2/messaging':
         specifier: workspace:*
         version: link:../../packages/messaging
+      '@v2/notification-core':
+        specifier: workspace:*
+        version: link:../../packages/notification-core
       '@v2/observability':
         specifier: workspace:*
         version: link:../../packages/observability

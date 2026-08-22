@@ -276,6 +276,23 @@ export async function resumeLfgWatch(watchId: string, guildId: string): Promise<
   });
 }
 
+export async function updateLfgWatch(
+  watchId: string,
+  body: {
+    guildId: string;
+    sessionRoles: readonly LfgPartyRoleKey[];
+    windowStartAt: string;
+    windowEndAt: string;
+    classSpecKey?: string;
+  },
+): Promise<unknown> {
+  return lfgRequest(`/activity/v1/lfg/watches/${encodeURIComponent(watchId)}`, {
+    method: 'PATCH',
+    body,
+    idempotent: true,
+  });
+}
+
 export async function joinLfg(body: {
   activityId: string;
   statusDefId: string;

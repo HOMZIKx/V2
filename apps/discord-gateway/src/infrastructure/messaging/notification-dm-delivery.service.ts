@@ -1,5 +1,9 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { z } from 'zod';
+
+import { LFG_DUNGEON_ACTIVITY_TYPES } from '@v2/hub-core';
+import { NotificationDeliveryActionsSchema } from '@v2/notification-core';
 
 import {
   DISCORD_CONFIG_TOKEN,
@@ -7,6 +11,7 @@ import {
 } from '../../interface/discord/discord.tokens.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../discord/discord-js-adapter.js';
+import { createLfgDmCustomId } from '../security/lfg-dm-signed-custom-id.js';
 import { timingSafeEqualUtf8 } from '../security/timing-safe-equal.js';
 
 const deliverSchema = z.object({
@@ -19,6 +24,7 @@ const deliverSchema = z.object({
   notificationClass: z.enum(['DISCOVERY', 'TRANSACTIONAL', 'SYSTEM_SECURITY']),
   kind: z.string().min(1),
   guildId: z.string().min(1).optional(),
+  deliveryActions: NotificationDeliveryActionsSchema.optional(),
 });
 
 export type NotificationDmDeliveryResult = {
@@ -80,8 +86,16 @@ export class NotificationDmDeliveryService {
       .filter((line): line is string => line !== null)
       .join('\n');
 
+    const components = buildDeliveryActionComponents(
+      parsed.data.deliveryActions,
+      parsed.data.guildId,
+      parsed.data.notificationClass,
+      this.config.DISCORD_COMPONENT_SIGNING_SECRET,
+    );
+
     const result = await this.gateway.sendDirectMessage(parsed.data.recipientDiscordUserId, {
       content,
+      ...(components !== undefined ? { components } : {}),
     });
 
     if (result.ok) {
@@ -123,4 +137,47 @@ export class NotificationDmDeliveryService {
       throw new UnauthorizedException('Invalid projection secret.');
     }
   }
+}
+
+function buildDeliveryActionComponents(
+  deliveryActions: z.infer<typeof NotificationDeliveryActionsSchema> | undefined,
+  payloadGuildId: string | undefined,
+  notificationClass: 'DISCOVERY' | 'TRANSACTIONAL' | 'SYSTEM_SECURITY',
+  signingSecret: string,
+): ActionRowBuilder<ButtonBuilder>[] | undefined {
+  if (deliveryActions === undefined) {
+    return undefined;
+  }
+  const guildId = deliveryActions.guildId ?? payloadGuildId;
+  if (guildId === undefined || guildId.length === 0) {
+    return undefined;
+  }
+  const { activityOpaqueId, activityTypeKey } = deliveryActions;
+  const secret = signingSecret;
+  const buttons = [
+    new ButtonBuilder()
+      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'join', secret, guildId))
+      .setLabel('Dołącz')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'view', secret, guildId))
+      .setLabel('Zobacz')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'suppress', secret, guildId))
+      .setLabel('Nie teraz')
+      .setStyle(ButtonStyle.Secondary),
+  ];
+  if (notificationClass === 'DISCOVERY') {
+    const dungeonLabel =
+      LFG_DUNGEON_ACTIVITY_TYPES.find((entry) => entry.key === activityTypeKey)?.label ??
+      activityTypeKey;
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(createLfgDmCustomId(activityOpaqueId, 'mute', secret, activityTypeKey))
+        .setLabel(`Wycisz ${dungeonLabel}`)
+        .setStyle(ButtonStyle.Danger),
+    );
+  }
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons)];
 }

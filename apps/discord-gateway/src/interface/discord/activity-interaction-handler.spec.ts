@@ -1262,6 +1262,10 @@ describe('ActivityInteractionHandler LFG wizard', () => {
         ],
         similarGroupsWarning: null,
         viewedMatchOpaqueId: null,
+        customWindow: null,
+        pendingJoinRolePick: null,
+        pendingQuickAdd: null,
+        editingWatchId: null,
       },
     );
 

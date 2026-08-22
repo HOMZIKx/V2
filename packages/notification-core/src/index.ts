@@ -14,3 +14,8 @@ export {
 } from './policy.js';
 
 export { EnqueueNotificationSchema, type EnqueueNotificationInput } from './enqueue.js';
+
+export {
+  NotificationDeliveryActionsSchema,
+  type NotificationDeliveryActions,
+} from './delivery-actions.js';

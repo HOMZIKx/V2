@@ -51,7 +51,9 @@ export { HUB_SYNC_RULES, type HubSyncRules } from './sync-rules.js';
 
 export {
   isLfgIntentActive,
+  listEligibleJoinRoles,
   normalizeSessionRoles,
+  pickDeterministicJoinRole,
   rankLfgMatch,
   type LfgGroupMatchInput,
   type LfgIntent,

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../domain/clock.js';
 import { ActivityError } from '../../domain/errors.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
+import { PassThroughCharacterVerifyClient } from '../../infrastructure/identity/identity-character-client.js';
 import type {
   ActivityRecord,
   ActivityRepositoryPort,
@@ -17,6 +18,8 @@ import type {
   ParticipationStatusDefRecord,
 } from '../ports/activity.ports.js';
 import { ActivityAdminUseCases } from './activity-admin.use-cases.js';
+
+const passThroughCharacterVerify = new PassThroughCharacterVerifyClient();
 
 class AllowAuthz implements AuthorizePort {
   public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
@@ -345,6 +348,10 @@ function createAdminMemoryRepo(): {
     async hasOverlappingLfgIntent() {
       return false;
     },
+    async updateLfgIntent() {
+      return true;
+    },
+    async clearLfgIntentSuppressions() {},
     async cancelLfgIntent() {
       return true;
     },
@@ -552,6 +559,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     await expect(
@@ -568,6 +576,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const updated = await useCases.putAdminConfig(
@@ -585,6 +594,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     await expect(
@@ -601,6 +611,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     await expect(
@@ -654,6 +665,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const updated = await useCases.deactivateType('guild-1', 'type-raid', { actor });
@@ -666,6 +678,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordChannelValidation: {
         validateChannels(guildId, channelIds) {
@@ -694,6 +707,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const readiness = await useCases.getReadiness('guild-1', actor);
@@ -708,6 +722,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordChannelValidation: null,
     });
@@ -722,6 +737,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordChannelValidation: {
         validateChannels(_guildId, channelIds) {
@@ -750,6 +766,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordChannelValidation: {
         validateChannels(_guildId, channelIds) {
@@ -772,6 +789,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     await expect(
@@ -784,6 +802,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const created = await useCases.createStatus(
@@ -817,6 +836,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new SelectiveAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [
@@ -852,6 +872,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new SelectiveAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [],
@@ -884,6 +905,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [{ id: 'guild-a', name: 'Alpha' }],
@@ -908,6 +930,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new BrokenAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [
@@ -933,6 +956,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => {
@@ -957,6 +981,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => {
@@ -990,6 +1015,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new SelectiveAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [
@@ -1016,6 +1042,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: null,
     });
@@ -1031,6 +1058,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => {
@@ -1063,6 +1091,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new DenyAll(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [{ id: 'guild-b', name: 'Bravo' }],
@@ -1082,6 +1111,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [],
@@ -1105,6 +1135,7 @@ describe('ActivityAdminUseCases (in-memory)', () => {
     const useCases = new ActivityAdminUseCases({
       repository: mem.repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [],

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { isPartyRoleKey } from '@v2/hub-core';
+import { formatLfgRoleNeedSummary, isPartyRoleKey } from '@v2/hub-core';
 
 import type { AttendanceMark } from '../../domain/attendance.js';
 import { assertAttendanceWindowOpen } from '../../domain/attendance.js';
@@ -377,7 +377,13 @@ export class ActivityUseCases {
     now: Date,
   ): Promise<void> {
     const { triggerLfgMatchingForActivity } = await import('./lfg.use-cases.js');
-    await triggerLfgMatchingForActivity(tx, activity, now);
+    await triggerLfgMatchingForActivity(
+      tx,
+      activity,
+      this.deps.authorize,
+      this.deps.characterVerify,
+      now,
+    );
   }
 
   private async mutate<T>(
@@ -2137,8 +2143,7 @@ export class ActivityUseCases {
       guildId: string;
       organizationId: string;
       activityTypeKey: string;
-      characterClassSpecKey: string;
-      characterSupportedRoles: readonly string[];
+      characterId: string;
       sessionRoles: readonly string[];
       windowStartAt: string;
       windowEndAt: string;
@@ -2148,17 +2153,21 @@ export class ActivityUseCases {
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { searchLfgMatches } = await import('./lfg.use-cases.js');
-      return searchLfgMatches(tx, actor, {
-        guildId: input.guildId,
-        organizationId: input.organizationId,
-        activityTypeKey: input.activityTypeKey,
-        characterClassSpecKey: input.characterClassSpecKey,
-        characterSupportedRoles: input.characterSupportedRoles,
-        sessionRoles: input.sessionRoles,
-        windowStartAt: new Date(input.windowStartAt),
-        windowEndAt: new Date(input.windowEndAt),
-        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
-      });
+      return searchLfgMatches(
+        tx,
+        actor,
+        {
+          guildId: input.guildId,
+          organizationId: input.organizationId,
+          activityTypeKey: input.activityTypeKey,
+          characterId: input.characterId,
+          sessionRoles: input.sessionRoles,
+          windowStartAt: new Date(input.windowStartAt),
+          windowEndAt: new Date(input.windowEndAt),
+          ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+        },
+        this.deps.characterVerify,
+      );
     });
   }
 
@@ -2172,7 +2181,6 @@ export class ActivityUseCases {
       sessionRoles: readonly string[];
       windowStartAt: string;
       windowEndAt: string;
-      classSpecKey?: string;
     },
   ) {
     const now = this.deps.clock.now();
@@ -2190,10 +2198,41 @@ export class ActivityUseCases {
           sessionRoles: input.sessionRoles,
           windowStartAt: new Date(input.windowStartAt),
           windowEndAt: new Date(input.windowEndAt),
-          ...(input.classSpecKey !== undefined ? { classSpecKey: input.classSpecKey } : {}),
         },
+        this.deps.characterVerify,
         now,
       );
+    });
+  }
+
+  public async updateLfgWatch(
+    actor: ActorSubject,
+    intentId: string,
+    input: {
+      guildId: string;
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+    },
+  ) {
+    const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { updateLfgIntent } = await import('./lfg.use-cases.js');
+      await updateLfgIntent(
+        tx,
+        actor,
+        {
+          intentId,
+          guildId: input.guildId,
+          sessionRoles: input.sessionRoles,
+          windowStartAt: new Date(input.windowStartAt),
+          windowEndAt: new Date(input.windowEndAt),
+        },
+        this.deps.characterVerify,
+        now,
+      );
+      return { id: intentId, status: 'active' };
     });
   }
 
@@ -2223,9 +2262,7 @@ export class ActivityUseCases {
       partyRoleKey: string;
       guildId?: string;
       intentId?: string;
-      characterClassSpecKey?: string;
-      characterSupportedRoles?: readonly string[];
-      sessionRoles?: readonly string[];
+      characterId?: string;
       memberRoleIds?: readonly string[];
     },
     ctx: MutationContext,
@@ -2243,7 +2280,16 @@ export class ActivityUseCases {
       const participation = await joinLfgActivity(
         tx,
         actor,
-        { ...input, ...(input.guildId !== undefined ? { guildId: input.guildId } : {}) },
+        {
+          activityId: input.activityId,
+          statusDefId: input.statusDefId,
+          partyRoleKey: input.partyRoleKey,
+          ...(input.guildId !== undefined ? { guildId: input.guildId } : {}),
+          ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
+          ...(input.characterId !== undefined ? { characterId: input.characterId } : {}),
+          ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+        },
+        this.deps.characterVerify,
         now,
       );
       const activity = await tx.getActivity(input.activityId);
@@ -2313,6 +2359,72 @@ export class ActivityUseCases {
         activityId,
         ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
         suppressed: true,
+      };
+    });
+  }
+
+  public async createLfgFullGroupWatch(
+    actor: ActorSubject,
+    input: {
+      guildId: string;
+      organizationId: string;
+      activityId: string;
+      characterId: string;
+      sessionRoles: readonly string[];
+    },
+  ) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, input.guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { createLfgFullGroupWatch } = await import('./lfg.use-cases.js');
+      return createLfgFullGroupWatch(tx, actor, input, this.deps.characterVerify);
+    });
+  }
+
+  public async cancelLfgFullGroupWatch(actor: ActorSubject, watchId: string, guildId: string) {
+    const now = this.deps.clock.now();
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { cancelLfgFullGroupWatch } = await import('./lfg.use-cases.js');
+      await cancelLfgFullGroupWatch(tx, actor, watchId, now);
+      return { id: watchId, status: 'cancelled' };
+    });
+  }
+
+  public async resolveLfgActivityByOpaque(
+    opaqueId: string,
+    actor: ActorSubject,
+    access?: { memberRoleIds?: readonly string[] },
+  ) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const activity = await tx.getActivityByOpaqueId(opaqueId);
+      if (activity === null || activity.status === 'deleted') {
+        throw new ActivityError('NOT_FOUND', 'Activity not found');
+      }
+      await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, activity.guildId);
+      if (
+        !canViewPrivateActivity({
+          activity,
+          actor,
+          ...(access?.memberRoleIds !== undefined ? { memberRoleIds: access.memberRoleIds } : {}),
+        })
+      ) {
+        throw new ActivityError('FORBIDDEN', 'Private activity access denied');
+      }
+      const activityTypeKey =
+        activity.typeId === null ? null : await tx.getActivityTypeKeyByTypeId(activity.typeId);
+      const roleNeeds = await tx.listActivityRoleRequirements(activity.id);
+      const filled = await tx.countParticipationsByPartyRole(activity.id);
+      return {
+        activityId: activity.id,
+        opaqueId: activity.opaqueId,
+        name: activity.name,
+        startAt: activity.startAt.toISOString(),
+        guildId: activity.guildId,
+        organizationId: activity.organizationId,
+        activityTypeKey,
+        enrollmentOpen: activity.enrollmentOpen,
+        status: activity.status,
+        roleNeedSummary: formatLfgRoleNeedSummary(roleNeeds, filled),
       };
     });
   }

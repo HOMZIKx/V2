@@ -1,7 +1,11 @@
 import { Module, type Provider } from '@nestjs/common';
 import type { Pool } from 'pg';
 
-import type { ActivityRepositoryPort, AuthorizePort } from '../application/ports/activity.ports.js';
+import type {
+  ActivityRepositoryPort,
+  AuthorizePort,
+  LfgCharacterVerifyPort,
+} from '../application/ports/activity.ports.js';
 import type { DiscordChannelValidationPort } from '../application/ports/discord-channel-validation.port.js';
 import type { DiscordGuildMetadataPort } from '../application/ports/discord-guild-metadata.port.js';
 import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
@@ -12,6 +16,7 @@ import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/act
 import { createActivityPool } from '../infrastructure/db/pg-pool.js';
 import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
 import { createDiscordGuildMetadataPort } from '../infrastructure/discord/discord-guild-metadata-client.js';
+import { createIdentityCharacterClient } from '../infrastructure/identity/identity-character-client.js';
 import {
   type AssertionJtiStore,
   createAssertionJtiStore,
@@ -33,6 +38,7 @@ import {
   ACTIVITY_USE_CASES,
   ASSERTION_JTI_STORE,
   AUTHORIZE_PORT,
+  CHARACTER_VERIFY_PORT,
   DISCORD_CHANNEL_VALIDATION,
   DISCORD_GUILD_METADATA,
   INBOUND_CLIENT_REGISTRY,
@@ -61,6 +67,12 @@ const providers: Provider[] = [
     inject: [ACTIVITY_CONFIG],
   },
   {
+    provide: CHARACTER_VERIFY_PORT,
+    useFactory: (config: ActivityEnv): LfgCharacterVerifyPort =>
+      createIdentityCharacterClient(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
     provide: ACTIVITY_CLOCK,
     useFactory: (): Clock => new SystemClock(),
   },
@@ -81,23 +93,32 @@ const providers: Provider[] = [
     useFactory: (
       repository: ActivityRepositoryPort,
       authorize: AuthorizePort,
+      characterVerify: LfgCharacterVerifyPort,
       clock: Clock,
       config: ActivityEnv,
     ): ActivityUseCases =>
       new ActivityUseCases({
         repository,
         authorize,
+        characterVerify,
         clock,
         allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
         nodeEnv: config.NODE_ENV,
       }),
-    inject: [ACTIVITY_REPOSITORY, AUTHORIZE_PORT, ACTIVITY_CLOCK, ACTIVITY_CONFIG],
+    inject: [
+      ACTIVITY_REPOSITORY,
+      AUTHORIZE_PORT,
+      CHARACTER_VERIFY_PORT,
+      ACTIVITY_CLOCK,
+      ACTIVITY_CONFIG,
+    ],
   },
   {
     provide: ACTIVITY_ADMIN_USE_CASES,
     useFactory: (
       repository: ActivityRepositoryPort,
       authorize: AuthorizePort,
+      characterVerify: LfgCharacterVerifyPort,
       clock: Clock,
       config: ActivityEnv,
       discordChannelValidation: DiscordChannelValidationPort | null,
@@ -106,6 +127,7 @@ const providers: Provider[] = [
       new ActivityAdminUseCases({
         repository,
         authorize,
+        characterVerify,
         clock,
         allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
         nodeEnv: config.NODE_ENV,
@@ -115,6 +137,7 @@ const providers: Provider[] = [
     inject: [
       ACTIVITY_REPOSITORY,
       AUTHORIZE_PORT,
+      CHARACTER_VERIFY_PORT,
       ACTIVITY_CLOCK,
       ACTIVITY_CONFIG,
       DISCORD_CHANNEL_VALIDATION,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { NotificationDeliveryActionsSchema } from './delivery-actions.js';
 import { NOTIFICATION_CLASSES } from './policy.js';
 
 export const EnqueueNotificationSchema = z.object({
@@ -16,6 +17,7 @@ export const EnqueueNotificationSchema = z.object({
   activityId: z.string().uuid().optional(),
   fingerprint: z.string().min(1).max(200).optional(),
   coalesceSeconds: z.number().int().positive().max(86_400).optional(),
+  deliveryActions: NotificationDeliveryActionsSchema.optional(),
 });
 
 export type EnqueueNotificationInput = z.infer<typeof EnqueueNotificationSchema>;

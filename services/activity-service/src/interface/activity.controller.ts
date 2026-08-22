@@ -985,8 +985,7 @@ export class ActivityController {
           guildId: z.string().min(1),
           organizationId: z.string().min(1),
           activityTypeKey: z.string().min(1),
-          characterClassSpecKey: z.string().min(1),
-          characterSupportedRoles: z.array(partyRole).min(1),
+          characterId: z.string().uuid(),
           sessionRoles: z.array(partyRole).min(1),
           windowStartAt: z.string().datetime(),
           windowEndAt: z.string().datetime(),
@@ -1019,12 +1018,11 @@ export class ActivityController {
         .object({
           guildId: z.string().min(1),
           organizationId: z.string().min(1),
-          characterId: z.string().min(1),
+          characterId: z.string().uuid(),
           activityTypeKey: z.string().min(1),
           sessionRoles: z.array(partyRole).min(1),
           windowStartAt: z.string().datetime(),
           windowEndAt: z.string().datetime(),
-          classSpecKey: z.string().min(1).optional(),
         })
         .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
           message: 'windowEndAt must be after windowStartAt',
@@ -1039,8 +1037,32 @@ export class ActivityController {
       sessionRoles: parsed.sessionRoles,
       windowStartAt: parsed.windowStartAt,
       windowEndAt: parsed.windowEndAt,
-      ...(parsed.classSpecKey !== undefined ? { classSpecKey: parsed.classSpecKey } : {}),
     });
+  }
+
+  @Patch('lfg/watches/:id')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async updateLfgWatch(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
+    const parsed = parseOrThrow(
+      z
+        .object({
+          guildId: z.string().min(1),
+          sessionRoles: z.array(partyRole).min(1),
+          windowStartAt: z.string().datetime(),
+          windowEndAt: z.string().datetime(),
+        })
+        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
+          message: 'windowEndAt must be after windowStartAt',
+        }),
+      body,
+    );
+    return this.useCases.updateLfgWatch(actorFromRequest(request), id, parsed);
   }
 
   @Get('lfg/watches')
@@ -1085,9 +1107,7 @@ export class ActivityController {
         partyRoleKey: partyRole,
         guildId: z.string().min(1).optional(),
         intentId: z.string().uuid().optional(),
-        characterClassSpecKey: z.string().min(1).optional(),
-        characterSupportedRoles: z.array(partyRole).optional(),
-        sessionRoles: z.array(partyRole).optional(),
+        characterId: z.string().uuid().optional(),
       }),
       body,
     );
@@ -1099,15 +1119,65 @@ export class ActivityController {
         partyRoleKey: parsed.partyRoleKey,
         ...(parsed.guildId !== undefined ? { guildId: parsed.guildId } : {}),
         ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
-        ...(parsed.characterClassSpecKey !== undefined
-          ? { characterClassSpecKey: parsed.characterClassSpecKey }
-          : {}),
-        ...(parsed.characterSupportedRoles !== undefined
-          ? { characterSupportedRoles: parsed.characterSupportedRoles }
-          : {}),
-        ...(parsed.sessionRoles !== undefined ? { sessionRoles: parsed.sessionRoles } : {}),
+        ...(parsed.characterId !== undefined ? { characterId: parsed.characterId } : {}),
       },
       mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Post('lfg/full-group-watches')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async createLfgFullGroupWatch(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
+    const parsed = parseOrThrow(
+      z.object({
+        guildId: z.string().min(1),
+        organizationId: z.string().min(1),
+        activityId: z.string().uuid(),
+        characterId: z.string().uuid(),
+        sessionRoles: z.array(partyRole).min(1),
+      }),
+      body,
+    );
+    return this.useCases.createLfgFullGroupWatch(actorFromRequest(request), parsed);
+  }
+
+  @Post('lfg/full-group-watches/:id/cancel')
+  @HttpCode(200)
+  @RequireOperation('activity_mutate')
+  public async cancelLfgFullGroupWatch(
+    @Param('id') id: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.cancelLfgFullGroupWatch(actorFromRequest(request), id, guildId.trim());
+  }
+
+  @Get('lfg/activities/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async resolveLfgActivityByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Query('memberRoleIds') memberRoleIdsRaw: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const memberRoleIds =
+      memberRoleIdsRaw === undefined || memberRoleIdsRaw.trim() === ''
+        ? undefined
+        : memberRoleIdsRaw
+            .split(',')
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0);
+    return this.useCases.resolveLfgActivityByOpaque(
+      opaqueId,
+      actorFromRequest(request),
+      ...(memberRoleIds !== undefined ? [{ memberRoleIds }] : []),
     );
   }
 

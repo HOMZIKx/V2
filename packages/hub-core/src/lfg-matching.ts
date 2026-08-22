@@ -51,6 +51,45 @@ export function normalizeSessionRoles(
   return chosen.length > 0 ? chosen : supported;
 }
 
+const PARTY_ROLE_PRIORITY: readonly PartyRoleKey[] = ['TANK', 'BUFF', 'DPS', 'FLEX'];
+
+/** Open party roles the seeker can fill for this group (server-side join selection). */
+export function listEligibleJoinRoles(
+  group: LfgGroupMatchInput,
+  seeker: LfgSeekerInput,
+): readonly PartyRoleKey[] {
+  const sessionRoles = normalizeSessionRoles(seeker.characterSupportedRoles, seeker.sessionRoles);
+  const openNeeds = group.roleNeeds.filter((need) => {
+    const filled = group.filledByRole[need.role] ?? 0;
+    return filled < need.requiredCount;
+  });
+  const matching = openNeeds
+    .filter((need) => sessionRoles.includes(need.role))
+    .map((need) => need.role);
+  if (matching.length > 0) {
+    return matching;
+  }
+  if (sessionRoles.includes('FLEX') && group.occupied < group.capacity) {
+    return ['FLEX'];
+  }
+  return [];
+}
+
+/** Deterministic safe choice when multiple join roles remain (no randomness). */
+export function pickDeterministicJoinRole(
+  eligibleRoles: readonly PartyRoleKey[],
+): PartyRoleKey | null {
+  if (eligibleRoles.length === 0) {
+    return null;
+  }
+  for (const role of PARTY_ROLE_PRIORITY) {
+    if (eligibleRoles.includes(role)) {
+      return role;
+    }
+  }
+  return eligibleRoles[0] ?? null;
+}
+
 export function rankLfgMatch(group: LfgGroupMatchInput, seeker: LfgSeekerInput): LfgMatchRank {
   const reasons: string[] = [];
   if (!seeker.membershipOk) {

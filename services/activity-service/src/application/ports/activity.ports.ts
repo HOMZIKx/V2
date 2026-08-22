@@ -617,7 +617,19 @@ export interface ActivityTx {
     windowStartAt: Date;
     windowEndAt: Date;
     now: Date;
+    excludeIntentId?: string;
   }): Promise<boolean>;
+  updateLfgIntent(input: {
+    intentId: string;
+    recipientDiscordUserId: string;
+    sessionRoles: readonly string[];
+    windowStartAt: Date;
+    windowEndAt: Date;
+    expiresAt: Date;
+    classSpecKey: string | null;
+    now: Date;
+  }): Promise<boolean>;
+  clearLfgIntentSuppressions(intentId: string): Promise<void>;
   insertLfgIntent(input: {
     guildId: string;
     organizationId: string;
@@ -1038,9 +1050,26 @@ export type OutboxHealthSnapshot = {
   readonly state: 'idle' | 'working' | 'backlogged' | 'retrying' | 'stuck';
 };
 
+export type VerifiedLfgCharacter = {
+  readonly characterId: string;
+  readonly classSpecKey: string;
+  readonly classSpecLabel: string;
+  readonly supportedPartyRoles: readonly ('TANK' | 'BUFF' | 'DPS' | 'FLEX')[];
+  readonly sessionRoles: readonly ('TANK' | 'BUFF' | 'DPS' | 'FLEX')[];
+};
+
+export interface LfgCharacterVerifyPort {
+  resolveCharacter(input: {
+    readonly discordUserId: string;
+    readonly characterId: string;
+    readonly sessionRoles: readonly string[];
+  }): Promise<VerifiedLfgCharacter>;
+}
+
 export interface ActivityUseCaseDeps {
   readonly repository: ActivityRepositoryPort;
   readonly authorize: AuthorizePort;
+  readonly characterVerify: LfgCharacterVerifyPort;
   readonly clock: Clock;
   readonly allowTestSeed?: boolean;
   readonly nodeEnv?: string;

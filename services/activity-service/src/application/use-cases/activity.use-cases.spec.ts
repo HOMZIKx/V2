@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { FixedClock } from '../../domain/clock.js';
 import { ActivityError } from '../../domain/errors.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
+import { PassThroughCharacterVerifyClient } from '../../infrastructure/identity/identity-character-client.js';
 import type {
   ActivityRecord,
   ActivityRepositoryPort,
@@ -14,6 +15,8 @@ import type {
   AuthorizeResult,
 } from '../ports/activity.ports.js';
 import { ActivityUseCases } from './activity.use-cases.js';
+
+const passThroughCharacterVerify = new PassThroughCharacterVerifyClient();
 
 class AllowAuthz implements AuthorizePort {
   public authorize(request: AuthorizeRequest): Promise<AuthorizeResult> {
@@ -550,6 +553,10 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async hasOverlappingLfgIntent() {
       return false;
     },
+    async updateLfgIntent() {
+      return true;
+    },
+    async clearLfgIntentSuppressions() {},
     async cancelLfgIntent() {
       return true;
     },
@@ -831,6 +838,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -857,6 +865,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new DenyHorizonAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -878,6 +887,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -907,6 +917,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const other = { discordUserId: 'creator-2' };
@@ -949,11 +960,13 @@ describe('ActivityUseCases (in-memory)', () => {
     const seeder = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const attacker = new ActivityUseCases({
       repository: repo,
       authorize: new GuildScopedAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const organizer = { discordUserId: 'organizer-b' };
@@ -983,6 +996,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1021,6 +1035,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       discordGuildMetadata: {
         listGuilds: async () => [],
@@ -1077,6 +1092,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1137,6 +1153,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const expireCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock: laterClock,
     });
     const expired = await expireCases.expireReconfirmations({
@@ -1163,6 +1180,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: denyAll,
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     await expect(useCases.createDraft({ guildId: 'guild-1' }, { actor })).rejects.toMatchObject({
@@ -1175,6 +1193,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const first = await useCases.enqueueInbox(
@@ -1208,6 +1227,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1237,6 +1257,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1266,6 +1287,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       nodeEnv: 'production',
       allowTestSeed: true,
@@ -1283,6 +1305,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
       nodeEnv: 'development',
       allowTestSeed: false,
@@ -1300,6 +1323,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1355,6 +1379,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1378,6 +1403,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });
@@ -1412,6 +1438,7 @@ describe('ActivityUseCases (in-memory)', () => {
     const useCases = new ActivityUseCases({
       repository: repo,
       authorize: new AllowAuthz(),
+      characterVerify: passThroughCharacterVerify,
       clock,
     });
     const draft = await useCases.createDraft({ guildId: 'guild-1' }, { actor });

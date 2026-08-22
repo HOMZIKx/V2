@@ -726,6 +726,75 @@ export class ActivityHttpClient {
     );
   }
 
+  public async updateLfgWatch(
+    intentId: string,
+    body: {
+      guildId: string;
+      sessionRoles: readonly string[];
+      windowStartAt: string;
+      windowEndAt: string;
+      classSpecKey?: string;
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'PATCH',
+      `/activity/v1/lfg/watches/${encodeURIComponent(intentId)}`,
+      lfgWatchMutationSchema,
+      { body, actor },
+    );
+  }
+
+  public async createFullGroupWatch(
+    body: {
+      guildId: string;
+      organizationId: string;
+      activityId: string;
+      characterId: string;
+      sessionRoles: readonly string[];
+      classSpecKey?: string;
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'POST',
+      '/activity/v1/lfg/full-group-watches',
+      z.object({ watchId: z.string().optional(), id: z.string().optional() }).passthrough(),
+      { body, actor },
+    );
+  }
+
+  public async cancelFullGroupWatch(watchId: string, actor: ActivityActorContext) {
+    return this.request(
+      'POST',
+      `/activity/v1/lfg/full-group-watches/${encodeURIComponent(watchId)}/cancel`,
+      z.object({ cancelled: z.boolean().optional() }).passthrough(),
+      { actor },
+    );
+  }
+
+  public async resolveActivityByOpaque(opaqueId: string, actor: ActivityActorContext) {
+    return this.lookupActivityByOpaque(opaqueId, actor);
+  }
+
+  public async updateNotificationPreferences(
+    body: {
+      guildId: string;
+      dmEnabled?: boolean;
+      mutedInterestKeys?: readonly string[];
+      mutedActivityTypeKeys?: readonly string[];
+      mutedActivityIds?: readonly string[];
+    },
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'PUT',
+      '/activity/v1/notifications/preferences',
+      z.record(z.string(), z.unknown()),
+      { body, actor },
+    );
+  }
+
   private async request<T>(
     method: string,
     path: string,
