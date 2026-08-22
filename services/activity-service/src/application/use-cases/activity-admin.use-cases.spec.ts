@@ -361,6 +361,10 @@ function createAdminMemoryRepo(): {
     async isLfgIntentSuppressed() {
       return false;
     },
+    async recordLfgActorMatchSuppression() {},
+    async isLfgActorMatchSuppressed() {
+      return false;
+    },
     async getLfgIntentById() {
       return null;
     },

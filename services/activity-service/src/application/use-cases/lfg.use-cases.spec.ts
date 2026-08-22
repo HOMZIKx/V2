@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ActivityRecord, ActivityTx } from '../ports/activity.ports.js';
 import {
   createLfgIntent,
+  joinLfgActivity,
   notifyLfgIntentsForActivity,
   searchLfgMatches,
   suppressLfgMatch,
@@ -12,6 +13,7 @@ import * as notificationUseCases from './notification.use-cases.js';
 const START = new Date('2026-08-22T18:00:00.000Z');
 const END = new Date('2026-08-22T22:00:00.000Z');
 const NOW = new Date('2026-08-22T12:00:00.000Z');
+const CHAR_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
 function baseActivity(overrides: Partial<ActivityRecord> = {}): ActivityRecord {
   return {
@@ -81,7 +83,7 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
         guildId: 'g1',
         organizationId: 'o1',
         recipientDiscordUserId: 'u1',
-        characterId: 'char1',
+        characterId: CHAR_ID,
         activityTypeKey: 'azrael',
         sessionRoles: ['BUFF'],
         windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
@@ -93,14 +95,16 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
         classSpecKey: 'priest_buff',
       }),
     recordLfgIntentSuppression: () => Promise.resolve(),
+    recordLfgActorMatchSuppression: () => Promise.resolve(),
     isLfgIntentSuppressed: () => Promise.resolve(false),
+    isLfgActorMatchSuppressed: () => Promise.resolve(false),
     listActiveLfgIntents: () =>
       Promise.resolve([
         {
           id: 'intent-1',
           recipientDiscordUserId: 'u1',
           sessionRoles: ['BUFF'],
-          characterId: 'char1',
+          characterId: CHAR_ID,
           classSpecKey: 'priest_buff',
           windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
           windowEndAt: END,
@@ -198,7 +202,7 @@ describe('createLfgIntent', () => {
         {
           guildId: 'g1',
           organizationId: 'o1',
-          characterId: 'char1',
+          characterId: CHAR_ID,
           activityTypeKey: 'azrael',
           sessionRoles: ['DPS'],
           windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
@@ -218,7 +222,7 @@ describe('createLfgIntent', () => {
       {
         guildId: 'g1',
         organizationId: 'o1',
-        characterId: 'char1',
+        characterId: CHAR_ID,
         activityTypeKey: 'azrael',
         sessionRoles: ['DPS'],
         windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
@@ -274,5 +278,79 @@ describe('notifyLfgIntentsForActivity', () => {
     const tx = makeTx({ listActiveLfgIntents: () => Promise.resolve([]) });
     const sent = await notifyLfgIntentsForActivity(tx, baseActivity(), 'azrael', NOW);
     expect(sent).toBe(0);
+  });
+});
+
+describe('suppressLfgMatch without intent', () => {
+  it('records actor-level suppression for Nie teraz', async () => {
+    const record = vi.fn(() => Promise.resolve());
+    const tx = makeTx({ recordLfgActorMatchSuppression: record });
+    await suppressLfgMatch(
+      tx,
+      { discordUserId: 'u1' },
+      { activityId: '11111111-1111-4111-8111-111111111111' },
+      NOW,
+    );
+    expect(record).toHaveBeenCalledOnce();
+  });
+});
+
+describe('createLfgIntent validation', () => {
+  it('rejects invalid character id', async () => {
+    const tx = makeTx();
+    await expect(
+      createLfgIntent(
+        tx,
+        { discordUserId: 'u1' },
+        {
+          guildId: 'g1',
+          organizationId: 'o1',
+          characterId: 'not-a-uuid',
+          activityTypeKey: 'azrael',
+          sessionRoles: ['DPS'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+        },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+});
+
+describe('joinLfgActivity', () => {
+  it('rejects join when selected role slot is already filled', async () => {
+    const tx = makeTx({
+      lockActivity: async () => Promise.resolve(baseActivity()),
+      listPublicationTargets: () => Promise.resolve([]),
+      getStatusDef: () =>
+        Promise.resolve({
+          id: 'status-1',
+          guildId: 'g1',
+          label: 'Confirmed',
+          occupiesSlot: true,
+          behavior: 'confirmed',
+          selectableByMember: true,
+          active: true,
+          sortOrder: 0,
+          seedKey: 'confirmed',
+        }),
+      listParticipations: () => Promise.resolve([]),
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 1, DPS: 4 }),
+    });
+    await expect(
+      joinLfgActivity(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          activityId: '11111111-1111-4111-8111-111111111111',
+          statusDefId: 'status-1',
+          partyRoleKey: 'BUFF',
+          guildId: 'g1',
+          characterSupportedRoles: ['BUFF'],
+          sessionRoles: ['BUFF'],
+        },
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
   });
 });

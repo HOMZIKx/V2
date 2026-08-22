@@ -645,6 +645,17 @@ export interface ActivityTx {
     activityId: string,
     fingerprint: string,
   ): Promise<boolean>;
+  recordLfgActorMatchSuppression(input: {
+    recipientDiscordUserId: string;
+    activityId: string;
+    fingerprint: string;
+    now: Date;
+  }): Promise<void>;
+  isLfgActorMatchSuppressed(
+    recipientDiscordUserId: string,
+    activityId: string,
+    fingerprint: string,
+  ): Promise<boolean>;
   getLfgIntentById(intentId: string): Promise<{
     readonly id: string;
     readonly guildId: string;

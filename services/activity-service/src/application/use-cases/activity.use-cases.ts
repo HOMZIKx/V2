@@ -2294,14 +2294,26 @@ export class ActivityUseCases {
   public async suppressLfgMatch(
     actor: ActorSubject,
     activityId: string,
-    input: { intentId: string; guildId: string },
+    input: { intentId?: string; guildId: string },
   ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
     return this.deps.repository.withTransaction(async (tx) => {
       const { suppressLfgMatch } = await import('./lfg.use-cases.js');
-      await suppressLfgMatch(tx, actor, { activityId, intentId: input.intentId }, now);
-      return { activityId, intentId: input.intentId, suppressed: true };
+      await suppressLfgMatch(
+        tx,
+        actor,
+        {
+          activityId,
+          ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
+        },
+        now,
+      );
+      return {
+        activityId,
+        ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
+        suppressed: true,
+      };
     });
   }
 

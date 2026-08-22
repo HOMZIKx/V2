@@ -4,7 +4,7 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG v1: **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`** (Issue #20 discovery closed 2026-08-22).
+LFG v1: **`READY_FOR_CHATGPT_AUDIT`** (deep audit `V2-DUNGEON-LFG-V1-DEEP-AUDIT-002`).
 
 Not READY for Core Foundation Owner/ChatGPT review.  
 Not APPROVED. Not merged. STOP before Stage 8.  
@@ -15,9 +15,9 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| CURRENT_TASK           | `V2-DUNGEON-LFG-V1-OWNER-ACCEPTED-IMPLEMENTATION-001`        |
+| CURRENT_TASK           | `V2-DUNGEON-LFG-V1-DEEP-AUDIT-002`                           |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
-| LFG_STATUS             | `IMPLEMENTED_PENDING_CHATGPT_AUDIT`                          |
+| LFG_STATUS             | `READY_FOR_CHATGPT_AUDIT`                                    |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
 | CURRENT_HEAD / PR_HEAD | `976b89cf4740ef9b3948dd83a82e32659e4eeb07`                   |
 | PR                     | #19                                                          |
@@ -46,7 +46,8 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | V2_HUB_CORE_CHECKPOINT_SHA                 | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA          | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open   |
 | ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                   |
-| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**    | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | **IMPLEMENTED_PENDING_CHATGPT_AUDIT**                          |
+| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**      | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | **READY_FOR_CHATGPT_AUDIT** (post deep audit)                  |
+| **DUNGEON_LFG_V1_AUDIT_SHA**               | pending                                    | Deep audit — CRITICAL/HIGH = 0                                 |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`       |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
@@ -62,7 +63,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | Hub Core      | Accepted Stage 3 (+ implementation assumptions flagged) |
 | Notifications | Principles Accepted #24; product catalog/timings open   |
 | Activity P4   | Accepted P4 decisions                                   |
-| LFG           | **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`** (#20 closed)    |
+| LFG           | **`READY_FOR_CHATGPT_AUDIT`** (#20 closed; audit CRITICAL/HIGH = 0) |
 | Reservations  | `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`                 |
 | Marketplace   | `OWNER_DISCOVERY_REQUIRED` (#28); prototype only        |
 
@@ -74,7 +75,6 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | MARKETPLACE-DISC-001  | HIGH (scope)        | Issue #28 — do not treat Stage 7 as done                     |
 | RESERVATIONS-DISC-001 | HIGH (scope)        | No Owner Discovery pack — do not expand Reservations         |
 | GOVERNANCE-001        | HIGH (process)      | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`         |
-| LFG-AUDIT-001         | HIGH (process)      | LFG v1 pending Owner+ChatGPT audit before Accepted Stage 5   |
 
 ## LFG v1 delivery (summary)
 
@@ -87,4 +87,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-22 — Dungeon LFG v1 checkpoint `976b89c` — IMPLEMENTED_PENDING_CHATGPT_AUDIT.
+2026-08-22 — LFG v1 deep audit complete; status READY_FOR_CHATGPT_AUDIT.

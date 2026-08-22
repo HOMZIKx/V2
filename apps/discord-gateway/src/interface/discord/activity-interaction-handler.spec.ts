@@ -1212,7 +1212,23 @@ describe('ActivityInteractionHandler LFG wizard', () => {
 
   it('handles lfg join custom id with atomic joinLfg call', async () => {
     const joinLfg = vi.fn(() => Promise.resolve({ joined: true, waitlistPosition: null }));
-    const activityClient = { joinLfg, searchLfg: vi.fn(), listLfgWatches: vi.fn() };
+    const activityClient = {
+      joinLfg,
+      searchLfg: vi.fn(),
+      listLfgWatches: vi.fn(),
+      getGuildConfig: vi.fn(() =>
+        Promise.resolve({
+          statuses: [
+            {
+              id: 'status-confirmed',
+              active: true,
+              selectableByMember: true,
+              behavior: 'confirmed',
+            },
+          ],
+        }),
+      ),
+    };
     const { createLfgCustomId } =
       await import('../../infrastructure/security/lfg-signed-custom-id.js');
     const activityOpaque = '111111222333';
@@ -1299,8 +1315,11 @@ describe('ActivityInteractionHandler LFG wizard', () => {
     expect(joinLfg).toHaveBeenCalledWith(
       expect.objectContaining({
         activityId: '11111111-2222-3333-4444-555555555555',
-        characterId: 'char-1',
+        statusDefId: 'status-confirmed',
         partyRoleKey: 'TANK',
+        guildId,
+        characterSupportedRoles: ['TANK', 'DPS'],
+        sessionRoles: ['TANK'],
       }),
       expect.objectContaining({ discordUserId: operatorId }),
     );

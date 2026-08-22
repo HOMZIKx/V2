@@ -1757,8 +1757,10 @@ function createTx(client: PoolClient): ActivityTx {
            AND recipient_discord_user_id = $2
            AND cancelled_at IS NULL
            AND fulfilled_at IS NULL
-           AND paused_at IS NOT NULL`,
-        [intentId, recipientDiscordUserId, now.toISOString()],
+           AND paused_at IS NOT NULL
+           AND expires_at > $4
+           AND window_end_at > $4`,
+        [intentId, recipientDiscordUserId, now.toISOString(), now.toISOString()],
       );
       return (result.rowCount ?? 0) > 0;
     },
@@ -1791,6 +1793,31 @@ function createTx(client: PoolClient): ActivityTx {
         `SELECT 1 FROM lfg_intent_suppressions
          WHERE intent_id = $1::uuid AND activity_id = $2::uuid AND fingerprint = $3`,
         [intentId, activityId, fingerprint],
+      );
+      return result.rows.length > 0;
+    },
+
+    async recordLfgActorMatchSuppression(input) {
+      await client.query(
+        `INSERT INTO lfg_actor_match_suppressions (
+           recipient_discord_user_id, activity_id, fingerprint, suppressed_at
+         ) VALUES ($1, $2::uuid, $3, $4)
+         ON CONFLICT (recipient_discord_user_id, activity_id, fingerprint) DO UPDATE SET
+           suppressed_at = EXCLUDED.suppressed_at`,
+        [
+          input.recipientDiscordUserId,
+          input.activityId,
+          input.fingerprint,
+          input.now.toISOString(),
+        ],
+      );
+    },
+
+    async isLfgActorMatchSuppressed(recipientDiscordUserId, activityId, fingerprint) {
+      const result = await client.query(
+        `SELECT 1 FROM lfg_actor_match_suppressions
+         WHERE recipient_discord_user_id = $1 AND activity_id = $2::uuid AND fingerprint = $3`,
+        [recipientDiscordUserId, activityId, fingerprint],
       );
       return result.rows.length > 0;
     },

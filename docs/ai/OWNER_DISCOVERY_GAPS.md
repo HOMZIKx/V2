@@ -21,15 +21,15 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 
 ## Hub
 
-| DECISION                                                | CURRENT IMPLEMENTATION                                          | STATUS                                              | OWNER DECISION NEEDED                                       | SAFE TO KEEP?   | MUST NOT EXPAND?                       |
-| ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------- | --------------- | -------------------------------------- |
-| One `#v2-centrum` Hub message, edit-in-place, reconcile | Hub panel publish/reconcile in discord-gateway + activity admin | **ACCEPTED** (#22 / Hub scope lock)                 | —                                                           | YES             | NO (within Accepted shell)             |
-| IA map GRA/RYNEK/GILDIA/TY + module registry            | `@v2/hub-core` `DEFAULT_HUB_MODULES`                            | **ACCEPTED**                                        | —                                                           | YES             | NO (registry only)                     |
-| Reservations/Marketplace as roadmap stubs in Hub        | `availability: 'roadmap'` + roadmap ephemeral                   | **ACCEPTED** (stub only)                            | Final module UX when modules ship                           | YES             | YES (no fake “available”)              |
-| Activities Hub copy: matching-first LFG order           | `hub-module-ephemeral.ts` + `lfg-hub-ephemeral.ts`              | **IMPLEMENTED** (#20 v1)                            | Team-space / polish only                                  | YES             | YES (team-space only)                  |
-| “Dla mnie” example reasons incl. LFG                    | `renderHubForMeFoundationEphemeral`                             | **IMPLEMENTATION_ASSUMPTION_REQUIRES_OWNER_REVIEW** | Which reasons appear, ranking, empty-state policy           | YES             | YES                                    |
-| Profile foundation ephemeral field list                 | `renderHubProfileFoundationEphemeral`                           | **ACCEPTED** (foundation scope)                     | Full edit flows, validation rules, multi-char UX            | YES             | YES (beyond foundation)                |
-| Deep links `v2://…` contract                            | notification + activity deep links in code                      | **ACCEPTED** (principle)                            | Per-module URL taxonomy for unreleased modules              | YES             | YES for Marketplace/Reservations paths |
+| DECISION                                                | CURRENT IMPLEMENTATION                                          | STATUS                                              | OWNER DECISION NEEDED                             | SAFE TO KEEP? | MUST NOT EXPAND?                       |
+| ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------- | ------------- | -------------------------------------- |
+| One `#v2-centrum` Hub message, edit-in-place, reconcile | Hub panel publish/reconcile in discord-gateway + activity admin | **ACCEPTED** (#22 / Hub scope lock)                 | —                                                 | YES           | NO (within Accepted shell)             |
+| IA map GRA/RYNEK/GILDIA/TY + module registry            | `@v2/hub-core` `DEFAULT_HUB_MODULES`                            | **ACCEPTED**                                        | —                                                 | YES           | NO (registry only)                     |
+| Reservations/Marketplace as roadmap stubs in Hub        | `availability: 'roadmap'` + roadmap ephemeral                   | **ACCEPTED** (stub only)                            | Final module UX when modules ship                 | YES           | YES (no fake “available”)              |
+| Activities Hub copy: matching-first LFG order           | `hub-module-ephemeral.ts` + `lfg-hub-ephemeral.ts`              | **IMPLEMENTED** (#20 v1)                            | Team-space / polish only                          | YES           | YES (team-space only)                  |
+| “Dla mnie” example reasons incl. LFG                    | `renderHubForMeFoundationEphemeral`                             | **IMPLEMENTATION_ASSUMPTION_REQUIRES_OWNER_REVIEW** | Which reasons appear, ranking, empty-state policy | YES           | YES                                    |
+| Profile foundation ephemeral field list                 | `renderHubProfileFoundationEphemeral`                           | **ACCEPTED** (foundation scope)                     | Full edit flows, validation rules, multi-char UX  | YES           | YES (beyond foundation)                |
+| Deep links `v2://…` contract                            | notification + activity deep links in code                      | **ACCEPTED** (principle)                            | Per-module URL taxonomy for unreleased modules    | YES           | YES for Marketplace/Reservations paths |
 
 ---
 
@@ -93,26 +93,26 @@ Legend: **SAFE TO KEEP?** = retain as reusable prototype without treating as fin
 
 ## LFG (Activity 2.0 / Issue #20)
 
-**Module status:** `IMPLEMENTED_PENDING_CHATGPT_AUDIT` · Issue #20 discovery **CLOSED** (2026-08-22).
+**Module status:** `READY_FOR_CHATGPT_AUDIT` · Issue #20 discovery **CLOSED** (2026-08-22).
 
-| DECISION                                       | CURRENT IMPLEMENTATION                                               | STATUS                           | OWNER DECISION NEEDED     | SAFE TO KEEP? | MUST NOT EXPAND? |
-| ---------------------------------------------- | -------------------------------------------------------------------- | -------------------------------- | ------------------------- | ------------- | ---------------- |
-| Matching not public post board                 | `rankLfgMatch`, Hub + WWW search, no channel spam                    | **IMPLEMENTED**                  | —                         | YES           | NO (within v1)   |
-| DM-first match delivery                        | `notifyLfgIntentsForActivity` → DISCOVERY DM/Inbox, coalesce, mute   | **IMPLEMENTED**                  | Copy polish               | YES           | YES (team-space) |
-| Characters + class/spec + party roles          | identity profile + session roles (no profile mutation)               | **IMPLEMENTED**                  | Multi-char polish         | YES           | YES (polish)     |
-| TANK / BUFF / DPS / FLEX party roles           | `@v2/hub-core` + migration 017 `party_role_key`                      | **IMPLEMENTED**                  | —                         | YES           | NO               |
-| Discovery-first (match existing before create) | ephemeral wizard + similar-group warning before create               | **IMPLEMENTED**                  | —                         | YES           | NO               |
-| Waiting intent / watch pool                    | `lfg_intents` pause/resume/cancel/fulfill + overlap guard             | **IMPLEMENTED**                  | TTL tuning                | YES           | YES (constants)  |
-| Multi-step Discord LFG wizard                  | `lfg-hub-ephemeral.ts` mobile-first flow + Moje poszukiwania         | **IMPLEMENTED** (v1)             | Team-space                | YES           | YES (team-space) |
-| Team-space / party thread UX                   | not implemented                                                      | **OWNER_DECISION_REQUIRED**      | Post-match flow           | N/A           | **YES**          |
-| Public role-ping spam as primary UX            | not implemented (by design)                                          | **ACCEPTED** (forbidden)         | —                         | N/A           | YES              |
-| Match scoring weights / reasons display        | human-readable `matchReason`; scores not shown in UX                 | **IMPLEMENTED** (v1 UX policy)   | Weight tuning             | YES           | YES              |
-| Anti-spam / rate limits for LFG                | intent/join guards + notification dedupe                             | **IMPLEMENTED** (baseline)       | Limit tuning              | YES           | YES              |
-| Admin LFG configuration                        | composition templates per activity type                              | **IMPLEMENTED** (v1 templates)   | Diagnostics polish        | YES           | YES (polish)     |
-| WWW LFG surface                                | `/szukam-ekipy` search, intents, join/view                           | **IMPLEMENTED** (v1 parity)      | Mobile polish             | YES           | YES (polish)     |
-| Dynamic matching on Activity lifecycle         | outbox hooks publish/RSVP/resign/cancel/schedule                     | **IMPLEMENTED**                  | —                         | YES           | NO               |
-| H-08 party role fill accounting                | `countParticipationsByPartyRole` real SQL                            | **IMPLEMENTED**                  | —                         | YES           | NO               |
-| H-09 notify wiring                             | `triggerLfgMatchingForActivity` on lifecycle                       | **IMPLEMENTED**                  | —                         | YES           | NO               |
+| DECISION                                       | CURRENT IMPLEMENTATION                                             | STATUS                         | OWNER DECISION NEEDED | SAFE TO KEEP? | MUST NOT EXPAND? |
+| ---------------------------------------------- | ------------------------------------------------------------------ | ------------------------------ | --------------------- | ------------- | ---------------- |
+| Matching not public post board                 | `rankLfgMatch`, Hub + WWW search, no channel spam                  | **IMPLEMENTED**                | —                     | YES           | NO (within v1)   |
+| DM-first match delivery                        | `notifyLfgIntentsForActivity` → DISCOVERY DM/Inbox, coalesce, mute | **IMPLEMENTED**                | Copy polish           | YES           | YES (team-space) |
+| Characters + class/spec + party roles          | identity profile + session roles (no profile mutation)             | **IMPLEMENTED**                | Multi-char polish     | YES           | YES (polish)     |
+| TANK / BUFF / DPS / FLEX party roles           | `@v2/hub-core` + migration 017 `party_role_key`                    | **IMPLEMENTED**                | —                     | YES           | NO               |
+| Discovery-first (match existing before create) | ephemeral wizard + similar-group warning before create             | **IMPLEMENTED**                | —                     | YES           | NO               |
+| Waiting intent / watch pool                    | `lfg_intents` pause/resume/cancel/fulfill + overlap guard          | **IMPLEMENTED**                | TTL tuning            | YES           | YES (constants)  |
+| Multi-step Discord LFG wizard                  | `lfg-hub-ephemeral.ts` mobile-first flow + Moje poszukiwania       | **IMPLEMENTED** (v1)           | Team-space            | YES           | YES (team-space) |
+| Team-space / party thread UX                   | not implemented                                                    | **OWNER_DECISION_REQUIRED**    | Post-match flow       | N/A           | **YES**          |
+| Public role-ping spam as primary UX            | not implemented (by design)                                        | **ACCEPTED** (forbidden)       | —                     | N/A           | YES              |
+| Match scoring weights / reasons display        | human-readable `matchReason`; scores not shown in UX               | **IMPLEMENTED** (v1 UX policy) | Weight tuning         | YES           | YES              |
+| Anti-spam / rate limits for LFG                | intent/join guards + notification dedupe                           | **IMPLEMENTED** (baseline)     | Limit tuning          | YES           | YES              |
+| Admin LFG configuration                        | composition templates per activity type                            | **IMPLEMENTED** (v1 templates) | Diagnostics polish    | YES           | YES (polish)     |
+| WWW LFG surface                                | `/szukam-ekipy` search, intents, join/view                         | **IMPLEMENTED** (v1 parity)    | Mobile polish         | YES           | YES (polish)     |
+| Dynamic matching on Activity lifecycle         | outbox hooks publish/RSVP/resign/cancel/schedule                   | **IMPLEMENTED**                | —                     | YES           | NO               |
+| H-08 party role fill accounting                | `countParticipationsByPartyRole` real SQL                          | **IMPLEMENTED**                | —                     | YES           | NO               |
+| H-09 notify wiring                             | `triggerLfgMatchingForActivity` on lifecycle                       | **IMPLEMENTED**                | —                     | YES           | NO               |
 
 ---
 

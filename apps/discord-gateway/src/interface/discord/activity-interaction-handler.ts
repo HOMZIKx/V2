@@ -832,31 +832,41 @@ export class ActivityInteractionHandler {
           statusLine = 'Nie udało się dołączyć — odśwież wyszukiwanie.';
         } else {
           const primaryRole = state.sessionRoles[0];
-          const joined = await this.deps.activityClient.joinLfg(
-            {
-              guildId,
-              organizationId,
-              activityId: match.activityId,
-              characterId: state.characterId,
-              sessionRoles: state.sessionRoles,
-              ...(primaryRole !== undefined ? { partyRoleKey: primaryRole } : {}),
-              ...(state.classSpecKey !== null ? { classSpecKey: state.classSpecKey } : {}),
-            },
-            {
-              ...actor,
-              idempotencyKey: idem(
-                userId,
-                'lfg-join',
-                `${match.activityId}:${primaryRole ?? 'any'}`,
-              ),
-            },
-          );
-          const waitlist =
-            typeof joined.waitlistPosition === 'number'
-              ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
-              : '';
-          statusLine = `Dołączono do ekipy.${waitlist}`;
-          state = { ...state, screen: 'wizard', viewedMatchOpaqueId: null };
+          if (primaryRole === undefined || !isPartyRoleKey(primaryRole)) {
+            statusLine = 'Wybierz co najmniej jedną rolę sesji przed dołączeniem.';
+          } else {
+            try {
+              const statusDefId = await this.resolveLfgJoinStatusDefId(guildId, userId);
+              const joined = await this.deps.activityClient.joinLfg(
+                {
+                  activityId: match.activityId,
+                  statusDefId,
+                  partyRoleKey: primaryRole,
+                  guildId,
+                  ...(state.classSpecKey !== null
+                    ? { characterClassSpecKey: state.classSpecKey }
+                    : {}),
+                  characterSupportedRoles: state.characterSupportedRoles,
+                  sessionRoles: state.sessionRoles,
+                },
+                {
+                  ...actor,
+                  idempotencyKey: idem(userId, 'lfg-join', `${match.activityId}:${primaryRole}`),
+                },
+              );
+              const waitlist =
+                typeof joined.waitlistPosition === 'number'
+                  ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
+                  : '';
+              statusLine = `Dołączono do ekipy.${waitlist}`;
+              state = { ...state, screen: 'wizard', viewedMatchOpaqueId: null };
+            } catch (error) {
+              statusLine =
+                error instanceof Error && error.message.length > 0
+                  ? error.message
+                  : 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+            }
+          }
         }
       } else if (parsed.action === 'suppress' && parsed.param !== undefined) {
         const match = state.matches.find((entry) => entry.opaqueId === parsed.param);
@@ -866,7 +876,6 @@ export class ActivityInteractionHandler {
             {
               guildId,
               organizationId,
-              ...(match.fingerprint !== undefined ? { fingerprint: match.fingerprint } : {}),
             },
             {
               ...actor,
@@ -1614,6 +1623,20 @@ export class ActivityInteractionHandler {
       throw new Error('Nie znaleziono wybranego statusu zapisu.');
     }
     return match.id;
+  }
+
+  private async resolveLfgJoinStatusDefId(guildId: string, userId: string): Promise<string> {
+    const config = await this.deps.activityClient.getGuildConfig(guildId, actorOf(userId));
+    const statuses = Array.isArray(config.statuses) ? config.statuses : [];
+    const selectable = statuses.filter(
+      (status) => status.active === true && status.selectableByMember === true,
+    );
+    const confirmed = selectable.find((status) => status.behavior === 'confirmed');
+    const chosen = confirmed ?? selectable[0];
+    if (chosen === undefined) {
+      throw new Error('Brak dostępnego statusu zapisu dla LFG.');
+    }
+    return chosen.id;
   }
 }
 

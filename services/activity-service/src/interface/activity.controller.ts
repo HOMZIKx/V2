@@ -1149,12 +1149,15 @@ export class ActivityController {
   ) {
     const parsed = parseOrThrow(
       z.object({
-        intentId: z.string().uuid(),
+        intentId: z.string().uuid().optional(),
         guildId: z.string().min(1),
       }),
       body,
     );
-    return this.useCases.suppressLfgMatch(actorFromRequest(request), activityId, parsed);
+    return this.useCases.suppressLfgMatch(actorFromRequest(request), activityId, {
+      guildId: parsed.guildId,
+      ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
+    });
   }
 
   @Post('reservations')

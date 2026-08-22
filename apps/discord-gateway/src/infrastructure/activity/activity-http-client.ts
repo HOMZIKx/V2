@@ -694,14 +694,14 @@ export class ActivityHttpClient {
 
   public async joinLfg(
     body: {
-      guildId: string;
-      organizationId: string;
       activityId: string;
-      characterId: string;
-      sessionRoles: readonly string[];
-      partyRoleKey?: string;
+      statusDefId: string;
+      partyRoleKey: string;
+      guildId?: string;
       intentId?: string;
-      classSpecKey?: string;
+      characterClassSpecKey?: string;
+      characterSupportedRoles?: readonly string[];
+      sessionRoles?: readonly string[];
     },
     actor: ActivityActorContext,
   ) {

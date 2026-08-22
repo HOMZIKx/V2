@@ -18,7 +18,6 @@ import {
   isGuildPublicationTarget,
   resolveParticipationScopeGuildId,
 } from '../../domain/participant-mode.js';
-import { assignWaitlistPosition } from '../../domain/waitlist.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -30,6 +29,8 @@ import { enqueueUserNotification } from './notification.use-cases.js';
 
 const LFG_DUNGEON_TYPE_KEYS = new Set(['azrael', 'smok']);
 const SIMILAR_GROUP_WINDOW_MS = 2 * 3_600_000;
+const LFG_SEARCH_RESULT_LIMIT = 50;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
@@ -41,6 +42,33 @@ function requireDiscord(actor: ActorSubject): string {
 function assertValidWindow(windowStartAt: Date, windowEndAt: Date): void {
   if (windowEndAt.getTime() <= windowStartAt.getTime()) {
     throw new ActivityError('VALIDATION_FAILED', 'windowEndAt must be after windowStartAt');
+  }
+}
+
+function assertValidCharacterId(characterId: string): void {
+  if (!UUID_RE.test(characterId)) {
+    throw new ActivityError('VALIDATION_FAILED', 'Invalid character id');
+  }
+}
+
+function assertPartyRoleStillOpen(
+  partyRoleKey: PartyRoleKey,
+  roleNeeds: LfgGroupMatchInput['roleNeeds'],
+  filledByRole: Readonly<Partial<Record<PartyRoleKey, number>>>,
+): void {
+  if (roleNeeds.length === 0) {
+    return;
+  }
+  const need = roleNeeds.find((entry) => entry.role === partyRoleKey);
+  if (need === undefined) {
+    if (partyRoleKey !== 'FLEX') {
+      throw new ActivityError('PRECONDITION_FAILED', 'Selected party role is not needed');
+    }
+    return;
+  }
+  const filled = filledByRole[partyRoleKey] ?? 0;
+  if (filled >= need.requiredCount) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Selected party role slot is already filled');
   }
 }
 
@@ -120,7 +148,6 @@ export type LfgSearchMatch = {
   readonly occupancy: { readonly occupied: number; readonly capacity: number };
   readonly roleNeedSummary: string;
   readonly matchReason: string;
-  readonly score?: number;
 };
 
 export async function searchLfgMatches(
@@ -179,9 +206,10 @@ export async function searchLfgMatches(
 
   ranked.sort((a, b) => b.score - a.score);
   return {
-    matches: ranked.map(({ score: _score, ...match }) =>
-      _score !== undefined ? { ...match, score: _score } : match,
-    ),
+    matches: ranked.slice(0, LFG_SEARCH_RESULT_LIMIT).map(({ score, ...match }) => {
+      void score;
+      return match;
+    }),
   };
 }
 
@@ -252,6 +280,7 @@ export async function createLfgIntent(
 ): Promise<{ intentId: string }> {
   const userId = requireDiscord(actor);
   assertValidWindow(input.windowStartAt, input.windowEndAt);
+  assertValidCharacterId(input.characterId);
   const roles = input.sessionRoles.filter(isPartyRoleKey);
   if (roles.length === 0) {
     throw new ActivityError('VALIDATION_FAILED', 'At least one session party role is required');
@@ -316,6 +345,19 @@ export async function resumeLfgIntent(
   now: Date,
 ): Promise<void> {
   const userId = requireDiscord(actor);
+  const intent = await tx.getLfgIntentById(intentId);
+  if (intent === null || intent.recipientDiscordUserId !== userId) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found or not resumable');
+  }
+  if (
+    intent.cancelledAt !== null ||
+    intent.fulfilledAt !== null ||
+    intent.pausedAt === null ||
+    intent.expiresAt.getTime() <= now.getTime() ||
+    intent.windowEndAt.getTime() <= now.getTime()
+  ) {
+    throw new ActivityError('PRECONDITION_FAILED', 'LFG watch is not resumable');
+  }
   const resumed = await tx.resumeLfgIntent(intentId, userId, now);
   if (!resumed) {
     throw new ActivityError('NOT_FOUND', 'LFG watch not found or not resumable');
@@ -330,26 +372,40 @@ export async function listMyLfgIntents(tx: ActivityTx, actor: ActorSubject, guil
 export async function suppressLfgMatch(
   tx: ActivityTx,
   actor: ActorSubject,
-  input: { activityId: string; intentId: string },
+  input: { activityId: string; intentId?: string },
   now: Date,
 ): Promise<void> {
   const userId = requireDiscord(actor);
-  const intent = await tx.getLfgIntentById(input.intentId);
-  if (intent === null || intent.recipientDiscordUserId !== userId) {
-    throw new ActivityError('NOT_FOUND', 'LFG watch not found');
-  }
   const activity = await tx.getActivity(input.activityId);
   if (activity === null) {
     throw new ActivityError('NOT_FOUND', 'Activity not found');
   }
   const activityTypeKey =
     activity.typeId === null ? null : await tx.getActivityTypeKeyByTypeId(activity.typeId);
-  if (activityTypeKey === null || activityTypeKey !== intent.activityTypeKey) {
-    throw new ActivityError('VALIDATION_FAILED', 'Activity does not match LFG watch');
+  if (activityTypeKey === null) {
+    throw new ActivityError('VALIDATION_FAILED', 'Activity type is not eligible for LFG');
   }
   const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
-  await tx.recordLfgIntentSuppression({
-    intentId: input.intentId,
+
+  if (input.intentId !== undefined) {
+    const intent = await tx.getLfgIntentById(input.intentId);
+    if (intent === null || intent.recipientDiscordUserId !== userId) {
+      throw new ActivityError('NOT_FOUND', 'LFG watch not found');
+    }
+    if (activityTypeKey !== intent.activityTypeKey) {
+      throw new ActivityError('VALIDATION_FAILED', 'Activity does not match LFG watch');
+    }
+    await tx.recordLfgIntentSuppression({
+      intentId: input.intentId,
+      activityId: input.activityId,
+      fingerprint: ctx.fingerprint,
+      now,
+    });
+    return;
+  }
+
+  await tx.recordLfgActorMatchSuppression({
+    recipientDiscordUserId: userId,
     activityId: input.activityId,
     fingerprint: ctx.fingerprint,
     now,
@@ -419,6 +475,10 @@ export async function joinLfgActivity(
     if (intent.activityTypeKey !== activityTypeKey) {
       throw new ActivityError('VALIDATION_FAILED', 'LFG watch type mismatch');
     }
+    if (intent.guildId !== requestGuildId || intent.organizationId !== activity.organizationId) {
+      throw new ActivityError('FORBIDDEN', 'LFG watch scope mismatch');
+    }
+    assertValidCharacterId(intent.characterId);
   }
 
   const supported = (
@@ -445,6 +505,7 @@ export async function joinLfgActivity(
   if (!rank.eligible) {
     throw new ActivityError('PRECONDITION_FAILED', 'Group no longer matches your LFG criteria');
   }
+  assertPartyRoleStillOpen(input.partyRoleKey, ctx.needs, ctx.filled);
 
   const statusDef = await tx.getStatusDef(input.statusDefId);
   if (statusDef === null || !statusDef.active || !statusDef.selectableByMember) {
@@ -463,14 +524,24 @@ export async function joinLfgActivity(
 
   const participants = await tx.listParticipations(input.activityId);
   const pool = filterParticipationsForMode(participants, activity.participantMode, requestGuildId);
-  const occupied = countOccupiedSlots(pool);
-  let waitlistPosition: number | null = null;
-  if (statusDef.occupiesSlot && !hasOpenSeat({ participantLimit, currentOccupied: occupied })) {
-    const positions = pool
-      .filter((p) => p.waitlistPosition !== null && p.resignedAt === null && p.removedAt === null)
-      .map((p) => p.waitlistPosition as number);
-    waitlistPosition = assignWaitlistPosition(positions);
+  const alreadyJoined = pool.some(
+    (row) =>
+      row.discordUserId === discordUserId &&
+      row.resignedAt === null &&
+      row.removedAt === null &&
+      row.waitlistPosition === null,
+  );
+  if (alreadyJoined) {
+    throw new ActivityError('CONFLICT', 'Already participating in this activity');
   }
+  const occupied = countOccupiedSlots(pool);
+  if (statusDef.occupiesSlot && !hasOpenSeat({ participantLimit, currentOccupied: occupied })) {
+    throw new ActivityError(
+      'PRECONDITION_FAILED',
+      'No open slot remains — refresh matches or enable persistent search',
+    );
+  }
+  const waitlistPosition: number | null = null;
 
   const participation = await tx.upsertParticipation({
     id: randomUUID(),
@@ -551,6 +622,15 @@ export async function notifyLfgIntentsForActivity(
     if (await tx.isLfgIntentSuppressed(intent.id, activity.id, ctx.fingerprint)) {
       continue;
     }
+    if (
+      await tx.isLfgActorMatchSuppressed(
+        intent.recipientDiscordUserId,
+        activity.id,
+        ctx.fingerprint,
+      )
+    ) {
+      continue;
+    }
     const already = await tx.hasLfgNotifiedMatch(
       intent.recipientDiscordUserId,
       activity.id,
@@ -618,6 +698,155 @@ export async function notifyLfgIntentsForActivity(
   return sent;
 }
 
+export async function createLfgFullGroupWatch(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  input: {
+    guildId: string;
+    organizationId: string;
+    activityId: string;
+    characterId: string;
+    sessionRoles: readonly string[];
+    classSpecKey?: string;
+  },
+): Promise<{ watchId: string }> {
+  const userId = requireDiscord(actor);
+  assertValidCharacterId(input.characterId);
+  const roles = input.sessionRoles.filter(isPartyRoleKey);
+  if (roles.length === 0) {
+    throw new ActivityError('VALIDATION_FAILED', 'At least one session party role is required');
+  }
+  const activity = await tx.getActivity(input.activityId);
+  if (activity === null) {
+    throw new ActivityError('NOT_FOUND', 'Activity not found');
+  }
+  if (activity.guildId !== input.guildId || activity.organizationId !== input.organizationId) {
+    throw new ActivityError('FORBIDDEN', 'Activity scope mismatch');
+  }
+  const activityTypeKey =
+    activity.typeId === null ? null : await tx.getActivityTypeKeyByTypeId(activity.typeId);
+  if (activityTypeKey === null || !LFG_DUNGEON_TYPE_KEYS.has(activityTypeKey)) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Activity is not an LFG dungeon event');
+  }
+  const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  if (ctx.group.status !== 'full') {
+    throw new ActivityError('PRECONDITION_FAILED', 'Activity is not full');
+  }
+  const watchId = await tx.insertLfgFullGroupWatch({
+    guildId: input.guildId,
+    organizationId: input.organizationId,
+    recipientDiscordUserId: userId,
+    activityId: input.activityId,
+    characterId: input.characterId,
+    sessionRoles: roles,
+    classSpecKey: input.classSpecKey ?? null,
+  });
+  return { watchId };
+}
+
+export async function cancelLfgFullGroupWatch(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  watchId: string,
+  now: Date,
+): Promise<void> {
+  const userId = requireDiscord(actor);
+  const cancelled = await tx.cancelLfgFullGroupWatch(watchId, userId, now);
+  if (!cancelled) {
+    throw new ActivityError('NOT_FOUND', 'Full-group watch not found');
+  }
+}
+
+/** Notify users watching a previously full group when a slot reopens. */
+export async function notifyFullGroupWatchesForActivity(
+  tx: ActivityTx,
+  activity: ActivityRecord,
+  activityTypeKey: string,
+  now: Date,
+): Promise<number> {
+  const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  if (
+    ctx.group.status === 'full' ||
+    ctx.group.status === 'cancelled' ||
+    ctx.group.status === 'ended'
+  ) {
+    return 0;
+  }
+  const watches = await tx.listLfgFullGroupWatchesForActivity(activity.id);
+  if (watches.length === 0) {
+    return 0;
+  }
+
+  let sent = 0;
+  for (const watch of watches) {
+    const supported = watch.sessionRoles.filter(isPartyRoleKey);
+    if (supported.length === 0) {
+      continue;
+    }
+    const rank = rankLfgMatch(ctx.group, {
+      guildId: activity.guildId,
+      organizationId: activity.organizationId,
+      activityTypeKey,
+      characterClassSpecKey: watch.classSpecKey ?? 'unknown',
+      characterSupportedRoles: supported,
+      sessionRoles: supported,
+      windowStartMs: activity.startAt.getTime() - 3_600_000,
+      windowEndMs: activity.startAt.getTime() + 3_600_000,
+      membershipOk: true,
+    });
+    if (!rank.eligible) {
+      continue;
+    }
+    if (
+      !canViewPrivateActivity({
+        activity,
+        actor: { discordUserId: watch.recipientDiscordUserId },
+      })
+    ) {
+      continue;
+    }
+    if (
+      await tx.isLfgActorMatchSuppressed(watch.recipientDiscordUserId, activity.id, ctx.fingerprint)
+    ) {
+      continue;
+    }
+    if (await tx.hasLfgNotifiedMatch(watch.recipientDiscordUserId, activity.id, ctx.fingerprint)) {
+      continue;
+    }
+
+    const matchReason = formatLfgMatchReason(rank.reasons);
+    const body = `${matchReason} — ${ctx.roleNeedSummary}. Zwolniło się miejsce: ${activity.startAt.toISOString()}.`;
+    const result = await enqueueUserNotification(
+      tx,
+      {
+        guildId: activity.guildId,
+        recipientDiscordUserId: watch.recipientDiscordUserId,
+        notificationClass: 'DISCOVERY',
+        kind: 'lfg.slot_reopened',
+        title: `Wolne miejsce: ${activityTypeKey}`,
+        body,
+        dedupeKey: `lfg-reopen:${activity.id}:${watch.recipientDiscordUserId}`,
+        activityId: activity.id,
+        interestKey: activityTypeKey,
+        activityTypeKey,
+        deepLink: `v2://activities/${activity.id}`,
+        fingerprint: ctx.fingerprint,
+      },
+      now,
+    );
+    if (!result.suppressed && result.inboxItemId !== null) {
+      await tx.recordLfgNotifiedMatch(
+        watch.recipientDiscordUserId,
+        activity.id,
+        ctx.fingerprint,
+        now,
+      );
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
 /** Run LFG discovery notifications after activity composition or schedule changes. */
 export async function triggerLfgMatchingForActivity(
   tx: ActivityTx,
@@ -630,9 +859,14 @@ export async function triggerLfgMatchingForActivity(
   if (activity.status !== 'published' && activity.status !== 'registrations_open') {
     return 0;
   }
+  if (!activity.enrollmentOpen) {
+    return 0;
+  }
   const activityTypeKey = await tx.getActivityTypeKeyByTypeId(activity.typeId);
   if (activityTypeKey === null || !LFG_DUNGEON_TYPE_KEYS.has(activityTypeKey)) {
     return 0;
   }
-  return notifyLfgIntentsForActivity(tx, activity, activityTypeKey, now);
+  const intentSent = await notifyLfgIntentsForActivity(tx, activity, activityTypeKey, now);
+  const reopenSent = await notifyFullGroupWatchesForActivity(tx, activity, activityTypeKey, now);
+  return intentSent + reopenSent;
 }
