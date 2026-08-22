@@ -10,7 +10,7 @@ Task: `V2-DUNGEON-LFG-V1-CHATGPT-AUDIT-REMEDIATION-003`
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
 Prior audit: `DUNGEON_LFG_V1_AUDIT_SHA` (`53e7d3ab8597f4a021abae96bdf3e6d1faad60a4`)  
-Remediation: `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — _(see commit below)_
+Remediation: `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — `3c3009991f656e4369d3f600fcb05266683ede50`
 
 ## ChatGPT remediation delivered
 
