@@ -16,7 +16,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_TASK           | `V2-POST-OVERBUILD-TECHNICAL-AUDIT-001`                      |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | _(set after audit commit)_                                   |
+| CURRENT_HEAD / PR_HEAD | `25552dc75a5551f7185d77a8c02bbca5999bee89`                  |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22                 |
@@ -47,7 +47,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | CORE_STATE_AND_CI_RECOVERY_SHA             | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                              |
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA   | `90fc384…`                                 | historical auto-sync baseline                                  |
 | OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                         |
-| POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | _(pending tip)_                            | this technical audit                                           |
+| POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | this technical audit                                           |
 
 ## Module discovery status (summary)
 

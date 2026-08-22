@@ -7,7 +7,7 @@
 Task: `V2-POST-OVERBUILD-TECHNICAL-AUDIT-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
-HEAD: _(after audit push)_
+HEAD: `25552dc75a5551f7185d77a8c02bbca5999bee89` (`POST_OVERBUILD_TECHNICAL_AUDIT_SHA`)
 
 ## Audit delivered
 
@@ -47,7 +47,7 @@ Range: `DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA` (`90fc384…`) → audit tip.
 
 | Marker                                       | SHA          |
 | -------------------------------------------- | ------------ |
-| `POST_OVERBUILD_TECHNICAL_AUDIT_SHA`         | _(this tip)_ |
+| `POST_OVERBUILD_TECHNICAL_AUDIT_SHA`         | `25552dc…`   |
 | `OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA` | `9a6ab22…`   |
 | `DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA`   | `90fc384…`   |
 
