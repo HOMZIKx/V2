@@ -19,7 +19,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                  |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`                   |
+| CURRENT_HEAD / PR_HEAD | `28c8adb0ab1e0bc73d453b0688daf3bc50a00917`                   |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22 (Zeabur audit)  |
