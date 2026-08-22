@@ -16,7 +16,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_TASK           | `V2-OWNER-DISCOVERY-GATE-COMPLIANCE-REMEDIATION-001`         |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `9a6ab229544776f68ced8be6de4d6f4add3d496c`                  |
+| CURRENT_HEAD / PR_HEAD | `e1f819d…` (tip; governance marker `9a6ab22…`)                |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22                 |
