@@ -14,7 +14,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_TASK           | `V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`               |
 | CURRENT_PRODUCT_STATUS | `WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`                   |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `0a3cb75b574fda5dc12995cf6fc1888ea4c018a0`                 |
+| CURRENT_HEAD / PR_HEAD | `cf15925248f24aad7ceca4c0715d10686dc0199e`                 |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22               |
@@ -34,7 +34,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP**.
 | RESERVATIONS_FOUNDATION_WIP_SHA           | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | HISTORICAL_IMPLEMENTATION_MARKER — **not** Accepted Stage 6     |
 | MARKETPLACE_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | HISTORICAL_IMPLEMENTATION_MARKER — **blocked by #28 discovery** |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                 |
-| CORE_STATE_AND_CI_RECOVERY_SHA            | `0a3cb75b574fda5dc12995cf6fc1888ea4c018a0` | this remediation                                                |
+| CORE_STATE_AND_CI_RECOVERY_SHA            | `cf15925248f24aad7ceca4c0715d10686dc0199e` | this remediation                                                |
 
 Former names `ACTIVITY_2_LFG_CHECKPOINT_SHA` / `RESERVATIONS_CHECKPOINT_SHA` /
 `MARKETPLACE_CHECKPOINT_SHA` as Accepted Stage checkpoints are **withdrawn**.

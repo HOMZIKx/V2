@@ -7,13 +7,13 @@
 Task: `V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
-HEAD: `0a3cb75b574fda5dc12995cf6fc1888ea4c018a0` (`CORE_STATE_AND_CI_RECOVERY_SHA`)
+HEAD: `cf15925248f24aad7ceca4c0715d10686dc0199e` (`CORE_STATE_AND_CI_RECOVERY_SHA`)
 
 ## Fresh facts
 
 | Field                  | Value                                                  |
 | ---------------------- | ------------------------------------------------------ |
-| CURRENT_HEAD / PR_HEAD | `0a3cb75…` (`CORE_STATE_AND_CI_RECOVERY_SHA`)          |
+| CURRENT_HEAD / PR_HEAD | `cf15925…` (`CORE_STATE_AND_CI_RECOVERY_SHA`)          |
 | REPOSITORY_VISIBILITY  | **PRIVATE_CONFIRMED** (prior session `gh api`)         |
 | CI_STATUS              | **RED** — billing: jobs not started (0 steps)          |
 | LOCAL_VALIDATE         | **PASS** — `corepack pnpm validate` on 2026-08-22      |
@@ -54,7 +54,7 @@ CI remains **RED** until Owner restores GitHub Actions billing/spending limit
 | RESERVATIONS_FOUNDATION_WIP_SHA           | `24828b7…`   | WIP not Accepted                  |
 | MARKETPLACE_FOUNDATION_WIP_SHA            | `24828b7…`   | WIP + #28 gate                    |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA | n/a final    | **revoked**                       |
-| CORE_STATE_AND_CI_RECOVERY_SHA            | `0a3cb75…`   | remediation                       |
+| CORE_STATE_AND_CI_RECOVERY_SHA            | `cf15925…`   | remediation                       |
 
 ## Owner actions required
 
