@@ -40,6 +40,10 @@ export class AuthorizationAdapter implements AuthorizationStorePort {
     return this.repository.ping();
   }
 
+  public hasSchemaMigration(migrationId: string): Promise<boolean> {
+    return this.repository.hasSchemaMigration(migrationId);
+  }
+
   public bootstrapOwner(command: BootstrapOwnerCommand): Promise<BootstrapOwnerResult> {
     return this.repository.bootstrapOwner(command);
   }

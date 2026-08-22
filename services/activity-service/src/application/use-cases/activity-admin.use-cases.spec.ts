@@ -546,6 +546,9 @@ function createAdminMemoryRepo(): {
         return fn(tx);
       },
       async ping() {},
+      async hasSchemaMigration() {
+        return true;
+      },
     },
   };
 }

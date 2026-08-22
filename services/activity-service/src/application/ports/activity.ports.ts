@@ -1038,6 +1038,7 @@ export interface ActivityTx {
 export interface ActivityRepositoryPort {
   withTransaction<T>(fn: (tx: ActivityTx) => Promise<T>): Promise<T>;
   ping(): Promise<void>;
+  hasSchemaMigration(migrationId: string): Promise<boolean>;
   countOutboxByStatus?(): Promise<OutboxHealthSnapshot>;
 }
 

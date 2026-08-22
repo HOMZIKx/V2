@@ -63,7 +63,6 @@ function startApplication(application) {
     cwd: repositoryRoot,
     env: {
       ...process.env,
-      ...application.env,
       AUTHORIZATION_DATABASE_URL: dummyDatabaseUrl,
       IDENTITY_DATABASE_URL: dummyDatabaseUrl,
       ACTIVITY_DATABASE_URL: dummyDatabaseUrl,
@@ -79,6 +78,7 @@ function startApplication(application) {
       DISCORD_AUTHORIZATION_SYNC_ENABLED: 'false',
       NODE_ENV: 'production',
       NEXT_TELEMETRY_DISABLED: '1',
+      ...application.env,
     },
     shell: application.shell ?? false,
     stdio: 'inherit',
@@ -270,6 +270,8 @@ const applications = [
     env: {
       AUTHORIZATION_SERVICE_HOST: '127.0.0.1',
       AUTHORIZATION_SERVICE_PORT: String(authorizationPort),
+      // Production Zeabur requires AUTHORIZATION_ENABLED=true; smoke uses disabled auth without live Postgres.
+      NODE_ENV: 'test',
     },
     name: 'authorization-service',
     url: `http://127.0.0.1:${authorizationPort}/health/live`,

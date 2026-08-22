@@ -30,6 +30,7 @@ describe('HealthController', () => {
   it('ready includes outbox operator state when the repository provides it', async () => {
     const repository = {
       ping: vi.fn().mockResolvedValue(undefined),
+      hasSchemaMigration: vi.fn().mockResolvedValue(true),
       countOutboxByStatus: vi.fn().mockResolvedValue({
         pending: 0,
         claimed: 0,
@@ -42,8 +43,17 @@ describe('HealthController', () => {
     const controller = new HealthController(config, repository, null);
     await expect(controller.ready()).resolves.toMatchObject({
       status: 'ok',
-      checks: { database: true, redis: 'not_configured' },
+      checks: { database: true, redis: 'not_configured', migrations: true },
       outbox: { state: 'idle' },
     });
+  });
+
+  it('ready fails when foundation migration is missing', async () => {
+    const repository = {
+      ping: vi.fn().mockResolvedValue(undefined),
+      hasSchemaMigration: vi.fn().mockResolvedValue(false),
+    } as unknown as ActivityRepositoryPort;
+    const controller = new HealthController(config, repository, null);
+    await expect(controller.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 });

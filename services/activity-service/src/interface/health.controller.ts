@@ -7,6 +7,8 @@ import type { AssertionJtiStore } from '../infrastructure/internal/assertion-jti
 import { pingRedis } from '../infrastructure/redis/ping-redis.js';
 import { ACTIVITY_CONFIG, ACTIVITY_REPOSITORY, ASSERTION_JTI_STORE } from './activity.tokens.js';
 
+const MIGRATION_ID = '001_activity_foundation.sql';
+
 @Controller()
 export class HealthController {
   public constructor(
@@ -31,12 +33,17 @@ export class HealthController {
   public async ready(): Promise<{
     status: 'ok';
     activityDisabled?: true;
-    checks: { database: boolean; redis: boolean | 'not_configured' };
+    checks: { database: boolean; redis: boolean | 'not_configured'; migrations: boolean };
     outbox?: Awaited<ReturnType<NonNullable<ActivityRepositoryPort['countOutboxByStatus']>>>;
   }> {
-    const checks: { database: boolean; redis: boolean | 'not_configured' } = {
+    const checks: {
+      database: boolean;
+      redis: boolean | 'not_configured';
+      migrations: boolean;
+    } = {
       database: false,
       redis: this.config.ACTIVITY_REDIS_URL === undefined ? 'not_configured' : false,
+      migrations: false,
     };
 
     try {
@@ -44,6 +51,12 @@ export class HealthController {
       checks.database = true;
     } catch {
       checks.database = false;
+    }
+
+    try {
+      checks.migrations = await this.repository.hasSchemaMigration(MIGRATION_ID);
+    } catch {
+      checks.migrations = false;
     }
 
     if (this.config.ACTIVITY_REDIS_URL !== undefined) {
@@ -65,7 +78,7 @@ export class HealthController {
         : await this.repository.countOutboxByStatus().catch(() => undefined);
 
     const redisOk = checks.redis === 'not_configured' || checks.redis === true;
-    if (!checks.database || !redisOk) {
+    if (!checks.database || !checks.migrations || !redisOk) {
       throw new ServiceUnavailableException({
         status: 'error',
         checks,

@@ -197,6 +197,7 @@ export interface PolicyMutationResult {
 export interface AuthorizationStorePort {
   ensureOrganization(preferredId?: string): Promise<EnsureOrganizationResult>;
   ping(): Promise<void>;
+  hasSchemaMigration(migrationId: string): Promise<boolean>;
   bootstrapOwner(command: BootstrapOwnerCommand): Promise<BootstrapOwnerResult>;
   upsertIdentityLink(command: UpsertIdentityLinkCommand): Promise<IdentityLinkResult>;
   authorize(command: AuthorizeCommand): Promise<AuthorizationExplanation>;

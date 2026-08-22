@@ -3101,6 +3101,14 @@ export class ActivityRepository implements ActivityRepositoryPort {
     await this.pool.query('SELECT 1');
   }
 
+  public async hasSchemaMigration(migrationId: string): Promise<boolean> {
+    const result = await this.pool.query<{ id: string }>(
+      'SELECT id FROM activity_schema_migrations WHERE id = $1',
+      [migrationId],
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
   public async countOutboxByStatus(): Promise<OutboxHealthSnapshot> {
     const result = await this.pool.query<{ status: string; n: string; retrying: string }>(
       `SELECT

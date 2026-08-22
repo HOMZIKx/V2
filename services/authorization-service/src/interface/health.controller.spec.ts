@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthorizationStorePort } from '../application/ports/authorization.ports.js';
@@ -30,13 +31,35 @@ describe('HealthController', () => {
     expect(ping).not.toHaveBeenCalled();
   });
 
-  it('ready checks database with SELECT 1 when authorization is enabled', async () => {
+  it('ready checks database and migrations when authorization is enabled', async () => {
     const ping = vi.fn().mockResolvedValue(undefined);
-    const store = { ping } as unknown as AuthorizationStorePort;
-    const enabled = { AUTHORIZATION_ENABLED: true } as AuthorizationEnv;
+    const hasSchemaMigration = vi.fn().mockResolvedValue(true);
+    const store = { ping, hasSchemaMigration } as unknown as AuthorizationStorePort;
+    const enabled = {
+      AUTHORIZATION_ENABLED: true,
+      AUTHORIZATION_ASSERTION_REDIS_URL: undefined,
+    } as AuthorizationEnv;
     const controller = new HealthController(enabled, store);
 
-    await expect(controller.ready()).resolves.toEqual({ status: 'ok' });
+    await expect(controller.ready()).resolves.toMatchObject({
+      status: 'ok',
+      checks: { database: true, migrations: true, redis: 'not_configured' },
+    });
     expect(ping).toHaveBeenCalledTimes(1);
+    expect(hasSchemaMigration).toHaveBeenCalledWith('001_authorization_foundation.sql');
+  });
+
+  it('ready fails when foundation migration is missing', async () => {
+    const store = {
+      ping: vi.fn().mockResolvedValue(undefined),
+      hasSchemaMigration: vi.fn().mockResolvedValue(false),
+    } as unknown as AuthorizationStorePort;
+    const enabled = {
+      AUTHORIZATION_ENABLED: true,
+      AUTHORIZATION_ASSERTION_REDIS_URL: undefined,
+    } as AuthorizationEnv;
+    const controller = new HealthController(enabled, store);
+
+    await expect(controller.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 });

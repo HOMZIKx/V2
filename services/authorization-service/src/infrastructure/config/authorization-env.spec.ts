@@ -22,6 +22,15 @@ describe('parseAuthorizationEnv', () => {
     expect(() => parseAuthorizationEnv({})).toThrow(AuthorizationConfigError);
   });
 
+  it('rejects disabled authorization in production', () => {
+    expect(() =>
+      parseAuthorizationEnv({
+        ...baseEnv(),
+        NODE_ENV: 'production',
+      }),
+    ).toThrow(/AUTHORIZATION_ENABLED must be true/);
+  });
+
   it('requires inbound and outbound fields when enabled', () => {
     expect(() =>
       parseAuthorizationEnv({

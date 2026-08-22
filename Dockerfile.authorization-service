@@ -38,6 +38,8 @@ COPY --from=build /app/packages/observability/package.json ./packages/observabil
 COPY --from=build /app/packages/observability/dist ./packages/observability/dist
 COPY --from=build /app/services/authorization-service/package.json ./services/authorization-service/package.json
 COPY --from=build /app/services/authorization-service/dist ./services/authorization-service/dist
+COPY --from=build /app/services/authorization-service/migrations ./services/authorization-service/migrations
+COPY --from=build /app/services/authorization-service/scripts/migrate-prod.mjs ./services/authorization-service/scripts/migrate-prod.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/authorization-service...
 WORKDIR /app/services/authorization-service
 EXPOSE 4300

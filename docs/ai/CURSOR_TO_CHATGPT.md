@@ -4,51 +4,44 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG: **`READY_FOR_CHATGPT_REAUDIT`**
+LFG: **`READY_FOR_CHATGPT_REAUDIT`** (unchanged by Zeabur audit)
 
-Task: `V2-DUNGEON-LFG-V1-CHATGPT-AUDIT-REMEDIATION-003`  
+Task: `V2-ZEABUR-PRODUCTION-READINESS-AUDIT-001`  
 Branch: `cursor/p4-1-activity-domain`  
-PR: #19  
-Prior audit: `DUNGEON_LFG_V1_AUDIT_SHA` (`53e7d3ab8597f4a021abae96bdf3e6d1faad60a4`)  
-Remediation: `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — `3c3009991f656e4369d3f600fcb05266683ede50`
+PR: #19
 
-## ChatGPT remediation delivered
+## Zeabur production readiness audit
 
-Report: `docs/ai/DUNGEON_LFG_V1_AUDIT.md` (ChatGPT remediation section)
+Report: `docs/ai/ZEABUR_PRODUCTION_READINESS_AUDIT.md`  
+Checkpoint: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` *(recorded after commit)*
 
-### HIGH addressed (11)
+### Safe fixes (no product behavior)
 
-1. **Actionable match DM** — signed `lfgdm` buttons; `deliveryActions` payload; Inbox fallback preserved
-2. **Server-verified character** — Identity S2S resolve; activity rejects forged class/roles
-3. **Quick-add** — no default all-role assignment; user selects party roles
-4. **Multi-role join** — eligible role resolution; deterministic pick or role picker
-5. **Custom time** — Wybierz czas modal; validated window for search + intent
-6. **Moje poszukiwania edit** — PATCH watch; suppressions cleared on edit
-7. **Full-group watch UX** — member create/cancel + reopen notify with revalidation
-8. **Admin composition** — guild activity types; FLEX; explicit preferred flags
-9. **Background membership** — JOIN authorize before discovery notify (not hardcoded membershipOk)
-10. **Security adversarial tests** — foreign char, forged roles, membership lost, multi-role join
-11. **Issue #20 UX closure** — Hub + DM/Inbox hybrid re-checked against implementation
+1. **Authorization migrations in Docker** — `migrate-prod.mjs`, Dockerfile copies `migrations/`
+2. **Production fail-closed** — `AUTHORIZATION_ENABLED` must be `true` when `NODE_ENV=production`
+3. **Readiness migration gates** — authz + activity ready verify foundation migrations; authz pings Redis when configured
+4. **Env template** — `ACTIVITY_IDENTITY_*`, `IDENTITY_CHARACTER_RESOLVE_URL` in `.env.example`
+5. **Runtime smoke** — authorization uses `NODE_ENV=test` for tokenless boot (prod Zeabur still requires enabled auth)
 
-### Reservations (no product implementation)
+### Open deploy items (Owner)
 
-Prep: `docs/ai/RESERVATIONS_DISCOVERY_PREP.md` — **`RESERVATIONS_DISCOVERY_PREP_READY`**
+- Full identity/auth/activity secret matrix on Zeabur
+- `btree_gist` before activity migration 016
+- API gateway→activity assertion bundle when `ACTIVITY_ENABLED=true`
+- CI billing restore
+
+## LFG (prior task — unchanged)
+
+Remediation: `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — `3c3009991f656e4369d3f600fcb05266683ede50`  
+Await ChatGPT re-audit; no E2E contract remediation SHA yet.
 
 ## Validation
 
-| Check          | Result                                                |
-| -------------- | ----------------------------------------------------- |
-| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate` (remediation tip) |
-| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT**             |
-
-## Ledger
-
-| Marker                                   | SHA        |
-| ---------------------------------------- | ---------- |
-| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA`      | `976b89c…` |
-| `DUNGEON_LFG_V1_AUDIT_SHA`               | `53e7d3a…` |
-| `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` | _(commit)_ |
+| Check          | Result                                    |
+| -------------- | ----------------------------------------- |
+| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate`       |
+| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
 
 ## STOP
 
-Not APPROVED. No merge. Marketplace unchanged. Await ChatGPT **re-audit**.
+Not APPROVED. No merge. No Reservations/Marketplace product work.
