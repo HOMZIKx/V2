@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Headers,
   Inject,
   NotFoundException,
   Param,
@@ -35,6 +36,7 @@ export class WebOauthController {
   public async startOAuth(
     @Param('provider') provider: string,
     @Query('callbackURL') callbackURL: string | undefined,
+    @Headers('accept') accept: string | undefined,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     if (this.runtime === null || !this.config.IDENTITY_AUTH_ENABLED) {
@@ -54,10 +56,17 @@ export class WebOauthController {
       .max(2048)
       .safeParse(callbackURL ?? fallback);
     if (!parsedCallback.success) {
-      throw new IdentityError('VALIDATION_FAILED', 'Invalid callbackURL');
+      this.rejectCallback(reply, accept, 'Invalid callbackURL', callbackURL);
+      return;
     }
     if (!isAllowedCallbackUrl(parsedCallback.data, this.config)) {
-      throw new IdentityError('VALIDATION_FAILED', 'callbackURL is not an allowed origin');
+      this.rejectCallback(
+        reply,
+        accept,
+        'callbackURL is not an allowed origin',
+        parsedCallback.data,
+      );
+      return;
     }
 
     const result = await this.runtime.auth.api.signInSocial({
@@ -79,4 +88,46 @@ export class WebOauthController {
 
     void reply.redirect(url, 302);
   }
+
+  private rejectCallback(
+    reply: FastifyReply,
+    accept: string | undefined,
+    message: string,
+    callbackURL: string | undefined,
+  ): void {
+    const prefersHtml = (accept ?? '').includes('text/html');
+    if (!prefersHtml) {
+      throw new IdentityError('VALIDATION_FAILED', message);
+    }
+
+    const trusted = this.config.IDENTITY_TRUSTED_ORIGINS.join(', ') || '(empty)';
+    const html = `<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"/><title>V2 login</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#111;color:#eee;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.45}
+code{background:#222;padding:.1rem .35rem;border-radius:4px}
+a{color:#f0a46a}
+</style></head><body>
+<h1>Logowanie Discord zablokowane</h1>
+<p><strong>${escapeHtml(message)}</strong></p>
+<p>Callback: <code>${escapeHtml(callbackURL ?? '(brak)')}</code></p>
+<p>Control Center otwieraj wyłącznie z dozwolonego originu, np.
+<a href="https://v2-admin.zeabur.app/">https://v2-admin.zeabur.app/</a>
+(nie z lokalnego <code>localhost</code> przeciwko produkcyjnemu API).</p>
+<p>Na Zeabur w <code>identity-service</code> ustaw
+<code>IDENTITY_TRUSTED_ORIGINS</code> na:
+<code>https://v2-web.zeabur.app,https://v2-admin.zeabur.app</code>
+i zrób redeploy Identity.</p>
+<p>Aktualna lista trusted origins (serwer): <code>${escapeHtml(trusted)}</code></p>
+</body></html>`;
+    void reply.status(400).type('text/html; charset=utf-8').send(html);
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }

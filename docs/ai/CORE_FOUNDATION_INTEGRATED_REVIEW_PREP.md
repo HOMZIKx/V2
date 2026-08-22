@@ -2,36 +2,21 @@
 
 ## Status
 
-`READY_FOR_OWNER_AND_CHATGPT_CORE_FOUNDATION_REVIEW` — after Stage 3–7 checkpoints.
+`INVALID_AS_FINAL_REVIEW_READINESS` — revoked by
+`V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`.
 
-## Cross-module matrix (this continuous resume)
+Do **not** treat prior `READY_FOR_OWNER_AND_CHATGPT_CORE_FOUNDATION_REVIEW` as
+valid.
 
-| Area | Status |
-| --- | --- |
-| Hub shell / registry / deep links | Stage 3 checkpoint |
-| Profile / interests / role projection safety | Stage 3 + Stage 4 foundation |
-| Notifications classes / prefs / DM+Inbox | Stage 4 checkpoint |
-| Activity 2.0 LFG matching / intents | Stage 5 checkpoint |
-| Reservations conflict + lifecycle | Stage 6 checkpoint |
-| Marketplace offers + watches | Stage 7 checkpoint |
-| Moje / Dla mnie / Discord / WWW / Admin | foundations + entry points |
+## Why
 
-## Outage / isolation checks (automated + local)
+- Required GitHub Actions on tip were red (billing/spending limit — jobs never started).
+- Stages 5–7 collapsed into one feature commit without Accepted DoD separation.
+- Marketplace #28 explicitly requires Owner Discovery and forbids implementation.
+- Known product/UX gaps remain (LFG wizard, Admin/WWW polish, role projection apply).
 
-- Unit/domain: LFG matching, notification mute policy, reservation overlap, marketplace watch match
-- Activity + Discord gateway vitest suites
-- Outbox deliver paths include notification DM
-- Cross-guild / org mismatch rejected in LFG ranker
-- DB/Redis/Rabbit/Discord outage full soak: **follow-up on live Zeabur** (DEC-001)
+## Current product status
 
-## Explicit gaps for Owner/ChatGPT
+`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`
 
-1. Full Discord LFG multi-step modal wizard (character → roles → window) still thin vs matching API.
-2. Reservation Admin CRUD UI + WWW pages not fully productized (API + schema present).
-3. Marketplace Admin categories UI + WWW list pages thin (API + schema + matching present).
-4. Interest→Discord role reconcile apply (safety compute exists; Discord role mutate wire pending).
-5. GitHub issue comments not re-read live (repo private; agent lacks `gh` auth) — scope locks mirror Owner continuous task.
-
-## Stop rule
-
-STOP before Stage 8. Do not merge without APPROVED.
+Integrated checkpoint SHA is historical WIP only — not review-ready.

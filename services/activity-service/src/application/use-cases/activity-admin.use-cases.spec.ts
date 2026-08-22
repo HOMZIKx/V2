@@ -307,7 +307,7 @@ function createAdminMemoryRepo(): {
     async markInboxRead() {
       return notImpl();
     },
-    async enqueueInbox(input) {
+    async enqueueInbox() {
       return notImpl();
     },
     async getNotificationPreference() {

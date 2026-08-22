@@ -18,4 +18,14 @@ describe('buildAdminDiscordLoginUrl', () => {
     expect(shouldOfferIdentityLogin('dev-actor')).toBe(false);
     expect(shouldOfferIdentityLogin('identity-cookie')).toBe(true);
   });
+
+  it('prefers VITE_ADMIN_PUBLIC_ORIGIN over window origin', () => {
+    const url = buildAdminDiscordLoginUrl(
+      'http://localhost:4200',
+      'https://v2-api.zeabur.app',
+      'https://v2-admin.zeabur.app',
+    );
+    expect(url).toContain(encodeURIComponent('https://v2-admin.zeabur.app/'));
+    expect(url).not.toContain('localhost');
+  });
 });

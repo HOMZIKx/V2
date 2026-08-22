@@ -585,9 +585,7 @@ export interface ActivityTx {
     guildId: string;
     activityTypeKey: string;
   }): Promise<ActivityRecord[]>;
-  listActivityRoleRequirements(
-    activityId: string,
-  ): Promise<
+  listActivityRoleRequirements(activityId: string): Promise<
     readonly {
       role: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
       requiredCount: number;

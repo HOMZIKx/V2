@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router';
 
 import { Button } from '@v2/design-system';
 
+import { getApiBaseUrl } from '../api/http.js';
 import { buildAdminDiscordLoginUrl, shouldOfferIdentityLogin } from '../auth/login.js';
 import { isDevActorMode, readAdminSession } from '../auth/session.js';
 import { Flash } from '../components/ui.js';
@@ -32,7 +33,11 @@ const ADVANCED_NAV: readonly { readonly to: string; readonly label: string }[] =
 ];
 
 function IdentityLoginActions() {
-  const loginUrl = buildAdminDiscordLoginUrl(window.location.origin);
+  const loginUrl = buildAdminDiscordLoginUrl(
+    window.location.origin,
+    getApiBaseUrl(),
+    import.meta.env.VITE_ADMIN_PUBLIC_ORIGIN,
+  );
   return (
     <div className="guild-selector-actions">
       <a className="v2-btn v2-btn-primary" href={loginUrl}>

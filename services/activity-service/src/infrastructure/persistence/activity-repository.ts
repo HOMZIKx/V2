@@ -1574,9 +1574,9 @@ function createTx(client: PoolClient): ActivityTx {
       }));
     },
 
-    async countParticipationsByPartyRole() {
+    countParticipationsByPartyRole() {
       // Party role on participation is Stage 5 extension; empty map until RSVP carries roles.
-      return {};
+      return Promise.resolve({});
     },
 
     async countOccupiedParticipations(activityId) {

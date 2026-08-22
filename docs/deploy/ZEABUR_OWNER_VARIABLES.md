@@ -251,6 +251,18 @@ Na każdym serwisie APP ustaw `GIT_COMMIT_SHA` (PUBLIC) na SHA **tego** redeploy
 
 `https://v2-api.zeabur.app/api/auth/callback/discord`
 
+### Control Center: `callbackURL is not an allowed origin`
+
+Ten JSON z `/identity/oauth/discord` oznacza, że `callbackURL` (origin Admin/WWW)
+**nie** jest na liście `IDENTITY_TRUSTED_ORIGINS` Identity.
+
+Naprawa właściciela (Zeabur → `identity-service` → Variables):
+
+1. Ustaw `IDENTITY_TRUSTED_ORIGINS=https://v2-web.zeabur.app,https://v2-admin.zeabur.app`
+2. Redeploy `identity-service` (i `api-gateway` jeśli CORS nie zawiera Admin)
+3. Otwórz panel wyłącznie z `https://v2-admin.zeabur.app` (nie `localhost` + prod API)
+4. Kliknij ponownie „Zaloguj przez Discord”
+
 Cookie sesji jest host-only na `v2-api.zeabur.app`. WWW/Admin na innych hostach
 Zeabur są cross-site: Identity ustawia `SameSite=None; Secure`. `API_GATEWAY_CORS_ORIGINS`
 musi zawierać te same originy WWW i Admin. Po OAuth nie oczekuj cookie na

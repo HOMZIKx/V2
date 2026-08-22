@@ -444,20 +444,8 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       const message = await dm.send({ content: payload.content.slice(0, 2000) });
       return { ok: true, messageId: message.id };
     } catch (error) {
-      const status =
-        typeof error === 'object' &&
-        error !== null &&
-        'status' in error &&
-        typeof (error as { status: unknown }).status === 'number'
-          ? (error as { status: number }).status
-          : undefined;
-      const code =
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        typeof (error as { code: unknown }).code === 'number'
-          ? (error as { code: number }).code
-          : undefined;
+      const status = readNumericProp(error, 'status');
+      const code = readNumericProp(error, 'code');
       if (status === 429 || code === 429) {
         return {
           ok: false,
@@ -942,6 +930,17 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     process.exitCode = 1;
     await this.stop();
   }
+}
+
+function readNumericProp(error: unknown, key: 'status' | 'code'): number | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  if (!(key in error)) {
+    return undefined;
+  }
+  const value: unknown = (error as Record<'status' | 'code', unknown>)[key];
+  return typeof value === 'number' ? value : undefined;
 }
 
 /**

@@ -2,31 +2,22 @@
 
 ## Status
 
-`OWNER_ACCEPTED` via `V2-CORE-FOUNDATION-CONTINUOUS-RESUME-004` / Issue #20
-(including Owner Amendment: DM-first matchmaking / characters / party roles).
+`FOUNDATION_WIP` — matching/intents foundations exist; **not** Accepted Stage 5 DoD.
 
-GitHub issue body not fetchable without auth in this agent session; this file
-mirrors the continuous task Accepted requirements.
+Issue **#20** (incl. Owner Amendment for DM-first matchmaking) is the product SoT.
+Full Discord multi-step discovery UX, team-space, and complete DoD tests remain open.
 
-## Core concept
+Owner Product Discovery process amendment in Issue #26 (2026-08-21) requires
+ChatGPT↔Owner design conversation before treating a module as Accepted for final
+review. Continuous resume shipped technical foundations early; do not call this
+READY for Core Foundation Owner review.
 
-LFG is a **matching system on top of Activity**, not a Discord post board.
+## Premature / partial implementation
 
-## Primary flow
+Historical WIP under `24828b7`. Treat as:
 
-Szukam ekipy → dungeon/activity → character → session party role(s) → time window
-→ show matching groups → Dołącz/Zobacz → if none: Znajdź mi ekipę / Powiadom mnie
-→ only then: Utwórz nową ekipę.
-
-Discovery-first is mandatory.
-
-## Invariants
-
-- Class/spec ≠ party role (catalogs from `@v2/hub-core`).
-- No public `#azrael` / role-ping spam as primary discovery.
-- Backend SoT; auto Discord/WWW sync; Notifications Core for DM/Inbox.
-- Waiting pool intents with TTL; cancel in Moje poszukiwania.
+`ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA` — **not** a final Accepted Stage 5 checkpoint.
 
 ## Checkpoint
 
-`ACTIVITY_2_LFG_CHECKPOINT_SHA`
+Accepted Stage 5 checkpoint: **pending** gap closure + Owner/ChatGPT audit.

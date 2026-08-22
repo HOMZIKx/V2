@@ -2,6 +2,29 @@
 
 ## Aktywne
 
+### CI-BILLING-001 — GitHub Actions jobs not started (billing / spending limit)
+
+- **Status:** `OWNER_ACTION_REQUIRED` (CRITICAL for required CI green)
+- **Evidence:** tip `e11c830` CI/PR Title annotations:
+  “The job was not started because recent account payments have failed or your
+  spending limit needs to be increased.”
+- **Jobs:** Quality gates, Infrastructure integration, Secret scan, Conventional
+  PR title — all failed with **0 steps** / empty runner (not a code failure).
+- **Cursor action:** cannot obtain GitHub CI=GREEN until Owner fixes Billing &
+  plans / spending limit; keep local `pnpm validate` green; re-run Actions after
+  billing restored.
+- **Do not** weaken CI workflows to fake green.
+
+### MARKETPLACE-DISC-001 — Issue #28 Owner Discovery before Stage 7
+
+- **Status:** `OWNER_PRODUCT_DISCOVERY_REQUIRED`
+- **SoT:** Issue #28 — **DO NOT IMPLEMENT YET**.
+- **Correction:** local `MARKETPLACE_SCOPE_LOCK` incorrectly claimed
+  `OWNER_ACCEPTED`; revoked in recovery task. Premature WIP remains historical
+  under `MARKETPLACE_FOUNDATION_WIP_SHA` only.
+- **Cursor action:** no further Marketplace product implementation until #28
+  Definition of Ready is Owner-Accepted.
+
 ### HUB-CORE-001 — Stage 3 V2 Hub Core discovery before implement
 
 - **Status:** `OWNER_ACCEPTED` (2026-08-21) — task `V2-HUB-CORE-OWNER-SCOPE-LOCK-002`

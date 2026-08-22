@@ -2,16 +2,28 @@
 
 ## Status
 
-`OWNER_ACCEPTED` via continuous task `V2-CORE-FOUNDATION-CONTINUOUS-RESUME-004`.
+`OWNER_PRODUCT_DISCOVERY_REQUIRED` — **DO NOT IMPLEMENT YET**
 
-## Required
+SoT: GitHub Issue **#28** (Authoritative).  
+Previous local claim of `OWNER_ACCEPTED` via continuous resume was **incorrect** and is
+**revoked** by this remediation (`V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`).
 
-BUY/SELL, item/category, price/budget, quantity, description, status, expiry,
-search/filters, my offers, watches/matching, Dla mnie, Notifications, deep links,
-Admin category/config, Discord, WWW.
+## Gate
 
-Matching/watch pattern extracted from use cases — not a generic rules engine.
+Issue #28: before any implementation prompt, ChatGPT must run full Owner product
+discovery. Owner decides UX/behavior. Cursor must not invent final Marketplace UX.
+
+Stage 7 in Issue #26 remains the implementation slot **only after** #28 Definition of
+Ready checkboxes are Accepted.
+
+## Premature code on branch
+
+Historical WIP landed under `24828b7` (schema/domain/API stubs). Treat as:
+
+`MARKETPLACE_FOUNDATION_WIP_SHA` — **not** an Accepted Stage 7 checkpoint.
+
+Do **not** expand Marketplace product behavior until #28 discovery closes.
 
 ## Checkpoint
 
-`MARKETPLACE_CHECKPOINT_SHA`
+Accepted Stage 7 checkpoint: **none** until Owner Discovery + DoD.

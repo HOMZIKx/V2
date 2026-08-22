@@ -5,23 +5,20 @@ import { enqueueUserNotification } from './notification.use-cases.js';
 
 function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
   const base = {
-    async getNotificationPreference() {
-      return {
+    getNotificationPreference: () =>
+      Promise.resolve({
         userDiscordId: 'u1',
         guildId: 'g1',
         dmEnabled: true,
         mutedInterestKeys: ['azrael'],
         mutedActivityTypeKeys: [] as string[],
         mutedActivityIds: [] as string[],
-      };
-    },
-    async getNotificationDedupeMemory() {
-      return null;
-    },
-    async upsertNotificationDedupeMemory() {},
-    async recordNotificationDeliveryAttempt() {},
-    async enqueueInbox() {
-      return {
+      }),
+    getNotificationDedupeMemory: () => Promise.resolve(null),
+    upsertNotificationDedupeMemory: () => Promise.resolve(),
+    recordNotificationDeliveryAttempt: () => Promise.resolve(),
+    enqueueInbox: () =>
+      Promise.resolve({
         created: true,
         item: {
           id: '11111111-1111-1111-1111-111111111111',
@@ -33,9 +30,8 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
           readAt: null,
           createdAt: new Date(),
         },
-      };
-    },
-    async insertOutbox() {},
+      }),
+    insertOutbox: () => Promise.resolve(),
   };
   return { ...base, ...overrides } as ActivityTx;
 }
@@ -78,13 +74,13 @@ describe('enqueueUserNotification', () => {
   });
 
   it('dedupes unchanged fingerprints', async () => {
+    const enqueueInbox = vi.fn(() => {
+      throw new Error('should not enqueue');
+    });
     const tx = makeTx({
-      async getNotificationDedupeMemory() {
-        return { fingerprint: 'same', lastNotifiedAt: new Date() };
-      },
-      enqueueInbox: vi.fn(async () => {
-        throw new Error('should not enqueue');
-      }) as ActivityTx['enqueueInbox'],
+      getNotificationDedupeMemory: () =>
+        Promise.resolve({ fingerprint: 'same', lastNotifiedAt: new Date() }),
+      enqueueInbox: enqueueInbox as unknown as ActivityTx['enqueueInbox'],
     });
     const result = await enqueueUserNotification(
       tx,
@@ -101,5 +97,6 @@ describe('enqueueUserNotification', () => {
       new Date(),
     );
     expect(result.suppressed).toBe(true);
+    expect(enqueueInbox).not.toHaveBeenCalled();
   });
 });

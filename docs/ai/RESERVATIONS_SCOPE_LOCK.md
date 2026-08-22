@@ -2,16 +2,18 @@
 
 ## Status
 
-`OWNER_ACCEPTED` via continuous task `V2-CORE-FOUNDATION-CONTINUOUS-RESUME-004`.
+`FOUNDATION_WIP` — not an Accepted Stage 6 DoD checkpoint.
 
-## Required
+Owner Product Discovery gate (Issue #26 process amendment 2026-08-21) applies to
+new modules. No separate Owner-Accepted reservations discovery pack is recorded
+as complete in SoT at remediation time.
 
-resource, CH, spot, time/date, owner, status, conflict detection, lifecycle,
-Moje / Dla mnie / Notifications / Discord / WWW / Admin, automatic updates,
-double-booking concurrency protection.
+## Premature / partial implementation
 
-No dedicated legacy Discord channel as primary UX.
+Historical WIP under `24828b7` (schema + conflict domain + create API). Treat as:
+
+`RESERVATIONS_FOUNDATION_WIP_SHA` — **not** `RESERVATIONS_CHECKPOINT_SHA` Accepted.
 
 ## Checkpoint
 
-`RESERVATIONS_CHECKPOINT_SHA`
+Accepted Stage 6 checkpoint: **pending** Owner Discovery + DoD.
