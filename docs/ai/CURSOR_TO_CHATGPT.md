@@ -10,7 +10,7 @@ Task: `V2-DUNGEON-LFG-V1-OWNER-ACCEPTED-IMPLEMENTATION-001`
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
 Base audit: `POST_OVERBUILD_TECHNICAL_AUDIT_SHA` (`25552dc…`)  
-Checkpoint: `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` — pending push
+Checkpoint: `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` — `976b89cf4740ef9b3948dd83a82e32659e4eeb07`
 
 ## Owner authorization
 
@@ -86,7 +86,7 @@ Report: create/update `docs/ai/DUNGEON_LFG_V1_IMPLEMENTATION_AUDIT.md`.
 | Marker                               | SHA        |
 | ------------------------------------ | ---------- |
 | `POST_OVERBUILD_TECHNICAL_AUDIT_SHA` | `25552dc…` |
-| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA`| pending    |
+| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA`| `976b89c…` |
 
 ## STOP
 

@@ -19,7 +19,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `IMPLEMENTED_PENDING_CHATGPT_AUDIT`                          |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | pending checkpoint push                                      |
+| CURRENT_HEAD / PR_HEAD | `976b89cf4740ef9b3948dd83a82e32659e4eeb07`                   |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22 (LFG tip)       |
@@ -46,7 +46,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | V2_HUB_CORE_CHECKPOINT_SHA                 | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                |
 | NOTIFICATIONS_CORE_CHECKPOINT_SHA          | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open   |
 | ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                   |
-| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**    | pending                                    | **IMPLEMENTED_PENDING_CHATGPT_AUDIT**                          |
+| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**    | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | **IMPLEMENTED_PENDING_CHATGPT_AUDIT**                          |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — `RESERVATIONS_OWNER_DISCOVERY_REQUIRED`       |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
@@ -87,4 +87,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-22 — Dungeon LFG v1 Owner-Accepted implementation checkpoint (pending SHA record).
+2026-08-22 — Dungeon LFG v1 checkpoint `976b89c` — IMPLEMENTED_PENDING_CHATGPT_AUDIT.

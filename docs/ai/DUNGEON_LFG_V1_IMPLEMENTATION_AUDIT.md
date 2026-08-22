@@ -1,7 +1,7 @@
 # Dungeon LFG v1 — Implementation Audit (Cursor pre-ChatGPT)
 
 Task: `V2-DUNGEON-LFG-V1-OWNER-ACCEPTED-IMPLEMENTATION-001`  
-Audit range: `POST_OVERBUILD_TECHNICAL_AUDIT_SHA` (`25552dc…`) → `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` (pending)  
+Audit range: `POST_OVERBUILD_TECHNICAL_AUDIT_SHA` (`25552dc…`) → `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` (`976b89c…`)  
 Product status: **`IMPLEMENTED_PENDING_CHATGPT_AUDIT`**
 
 Owner authorization: Issue #20 discovery closure 2026-08-22 — **IMPLEMENTATION AUTHORIZED**.
@@ -128,4 +128,4 @@ CI_STATUS — BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
 
 | Marker                               | SHA     |
 | ------------------------------------ | ------- |
-| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | pending |
+| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` |

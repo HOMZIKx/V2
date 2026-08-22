@@ -41,6 +41,6 @@ Full gap rows: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
 
 | Marker                             | SHA     |
 | ---------------------------------- | ------- |
-| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | pending |
+| `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` |
 
 Recorded in `PROJECT_STATE.md` after immutable checkpoint push.
