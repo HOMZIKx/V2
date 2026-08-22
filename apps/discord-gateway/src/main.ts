@@ -15,6 +15,12 @@ loadEnvFile(path.resolve(process.cwd(), '.env'));
 loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
 
 function resolveGitCommitSha(): string {
+  // Prefer image-baked SHA (Zeabur build) over a stale manual GIT_COMMIT_SHA Variable.
+  const baked =
+    process.env.V2_IMAGE_GIT_COMMIT_SHA?.trim() || process.env.ZEABUR_GIT_COMMIT_SHA?.trim();
+  if (baked && baked !== 'unknown') {
+    return baked;
+  }
   if (process.env.GIT_COMMIT_SHA && process.env.GIT_COMMIT_SHA !== 'unknown') {
     return process.env.GIT_COMMIT_SHA;
   }

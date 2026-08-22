@@ -25,13 +25,16 @@ ARG NEXT_PUBLIC_WEB_GUILDS
 ARG NEXT_PUBLIC_DISCORD_TEST_GUILD_ID
 ARG GIT_COMMIT_SHA
 ARG NEXT_PUBLIC_GIT_COMMIT_SHA
+ARG ZEABUR_GIT_COMMIT_SHA
 RUN node --input-type=module -e "import { evaluatePublicOrigin } from './tools/runtime/public-origin.mjs'; const keys=['NEXT_PUBLIC_API_BASE_URL','NEXT_PUBLIC_IDENTITY_URL','NEXT_PUBLIC_WEB_ORIGIN']; for (const key of keys) { const result=evaluatePublicOrigin(process.env[key],{requireHttps:true}); if(!result.ok){ console.error(key+' must be a public https origin at image build ('+result.reason+')'); process.exit(1);} }"
-RUN sh -c 'if [ -n "$GIT_COMMIT_SHA" ]; then export NEXT_PUBLIC_GIT_COMMIT_SHA="$GIT_COMMIT_SHA"; fi; if [ -n "$NEXT_PUBLIC_WEB_GUILDS" ]; then export NEXT_PUBLIC_WEB_GUILDS="$NEXT_PUBLIC_WEB_GUILDS"; fi; if [ -n "$NEXT_PUBLIC_DISCORD_TEST_GUILD_ID" ]; then export NEXT_PUBLIC_DISCORD_TEST_GUILD_ID="$NEXT_PUBLIC_DISCORD_TEST_GUILD_ID"; fi; pnpm --filter @v2/web build'
+RUN sh -c 'sha="${GIT_COMMIT_SHA:-${ZEABUR_GIT_COMMIT_SHA:-$NEXT_PUBLIC_GIT_COMMIT_SHA}}"; if [ -n "$sha" ]; then export NEXT_PUBLIC_GIT_COMMIT_SHA="$sha"; export GIT_COMMIT_SHA="$sha"; fi; if [ -n "$NEXT_PUBLIC_WEB_GUILDS" ]; then export NEXT_PUBLIC_WEB_GUILDS="$NEXT_PUBLIC_WEB_GUILDS"; fi; if [ -n "$NEXT_PUBLIC_DISCORD_TEST_GUILD_ID" ]; then export NEXT_PUBLIC_DISCORD_TEST_GUILD_ID="$NEXT_PUBLIC_DISCORD_TEST_GUILD_ID"; fi; pnpm --filter @v2/web build'
 
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ARG ZEABUR_GIT_COMMIT_SHA
+ENV V2_IMAGE_GIT_COMMIT_SHA=$ZEABUR_GIT_COMMIT_SHA
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./

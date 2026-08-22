@@ -21,17 +21,20 @@ COPY apps/admin ./apps/admin
 ARG VITE_API_BASE_URL
 ARG GIT_COMMIT_SHA
 ARG VITE_GIT_COMMIT_SHA
+ARG ZEABUR_GIT_COMMIT_SHA
 ARG VITE_ADMIN_DEV_ACTOR_DISCORD_ID
 ARG VITE_ADMIN_DEV_GUILDS
 ARG VITE_ADMIN_DEV_ORG_ID
 # Local image builds must export VITE_API_BASE_URL first.
-RUN node -e "const fs=require('fs'); const e=process.env; const url=(e.VITE_API_BASE_URL||'').trim(); if(!url.startsWith('http')){ console.error('VITE_API_BASE_URL must be a public http(s) origin at image build'); process.exit(1);} const sha=(e.GIT_COMMIT_SHA||e.VITE_GIT_COMMIT_SHA||'').trim(); fs.writeFileSync('/app/.env', ['VITE_API_BASE_URL='+url,'VITE_GIT_COMMIT_SHA='+sha,'VITE_ADMIN_DEV_ACTOR_DISCORD_ID='+(e.VITE_ADMIN_DEV_ACTOR_DISCORD_ID||''),'VITE_ADMIN_DEV_GUILDS='+(e.VITE_ADMIN_DEV_GUILDS||''),'VITE_ADMIN_DEV_ORG_ID='+(e.VITE_ADMIN_DEV_ORG_ID||'')].join('\\n')+'\\n')"
+RUN node -e "const fs=require('fs'); const e=process.env; const url=(e.VITE_API_BASE_URL||'').trim(); if(!url.startsWith('http')){ console.error('VITE_API_BASE_URL must be a public http(s) origin at image build'); process.exit(1);} const sha=(e.GIT_COMMIT_SHA||e.ZEABUR_GIT_COMMIT_SHA||e.VITE_GIT_COMMIT_SHA||'').trim(); fs.writeFileSync('/app/.env', ['VITE_API_BASE_URL='+url,'VITE_GIT_COMMIT_SHA='+sha,'VITE_ADMIN_DEV_ACTOR_DISCORD_ID='+(e.VITE_ADMIN_DEV_ACTOR_DISCORD_ID||''),'VITE_ADMIN_DEV_GUILDS='+(e.VITE_ADMIN_DEV_GUILDS||''),'VITE_ADMIN_DEV_ORG_ID='+(e.VITE_ADMIN_DEV_ORG_ID||'')].join('\\n')+'\\n')"
 RUN pnpm --filter @v2/admin build
 
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3001
+ARG ZEABUR_GIT_COMMIT_SHA
+ENV V2_IMAGE_GIT_COMMIT_SHA=$ZEABUR_GIT_COMMIT_SHA
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/admin/node_modules ./apps/admin/node_modules
 COPY --from=deps /app/packages/design-system/node_modules ./packages/design-system/node_modules

@@ -21,6 +21,31 @@ describe('readRuntimeRevision', () => {
       appVersion: '1.2.3',
     });
   });
+
+  it('prefers baked image SHA over stale GIT_COMMIT_SHA Variable', () => {
+    expect(
+      readRuntimeRevision({
+        V2_IMAGE_GIT_COMMIT_SHA: 'bakeddeadbeef',
+        GIT_COMMIT_SHA: 'staleoldsha',
+        APP_VERSION: '0.1.0-zeabur',
+      }),
+    ).toEqual({
+      gitCommitSha: 'bakeddeadbeef',
+      appVersion: '0.1.0-zeabur',
+    });
+  });
+
+  it('ignores empty baked SHA and falls back to GIT_COMMIT_SHA', () => {
+    expect(
+      readRuntimeRevision({
+        V2_IMAGE_GIT_COMMIT_SHA: '   ',
+        GIT_COMMIT_SHA: 'fallbacksha',
+      }),
+    ).toEqual({
+      gitCommitSha: 'fallbacksha',
+      appVersion: '0.0.0-dev',
+    });
+  });
 });
 
 describe('compareRevisions', () => {

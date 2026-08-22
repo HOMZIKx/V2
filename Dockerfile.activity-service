@@ -36,6 +36,8 @@ ENV HOST=0.0.0.0
 ENV PORT=4400
 ENV ACTIVITY_SERVICE_HOST=0.0.0.0
 ENV ACTIVITY_SERVICE_PORT=4400
+ARG ZEABUR_GIT_COMMIT_SHA
+ENV V2_IMAGE_GIT_COMMIT_SHA=$ZEABUR_GIT_COMMIT_SHA
 WORKDIR /app
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=build /app/packages/typescript-config ./packages/typescript-config

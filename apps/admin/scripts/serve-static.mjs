@@ -30,7 +30,11 @@ const CONTENT_TYPES = {
 
 export function healthPayload() {
   const gitCommitSha =
-    process.env.GIT_COMMIT_SHA?.trim() || process.env.VITE_GIT_COMMIT_SHA?.trim() || 'unknown';
+    process.env.V2_IMAGE_GIT_COMMIT_SHA?.trim() ||
+    process.env.ZEABUR_GIT_COMMIT_SHA?.trim() ||
+    process.env.GIT_COMMIT_SHA?.trim() ||
+    process.env.VITE_GIT_COMMIT_SHA?.trim() ||
+    'unknown';
   const appVersion = process.env.APP_VERSION?.trim() || '0.0.0-dev';
   return { status: 'ok', gitCommitSha, appVersion };
 }

@@ -73,13 +73,23 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 
 ## Wspólne (wszystkie app services)
 
-| Klucz                          | Tag          | Wartość                  |
-| ------------------------------ | ------------ | ------------------------ |
-| `NODE_ENV`                     | PUBLIC VALUE | `production`             |
-| `ALLOW_PRODUCTION_CONNECTIONS` | PUBLIC VALUE | `true`                   |
-| `HOST`                         | PUBLIC VALUE | `0.0.0.0`                |
-| `APP_VERSION`                  | PUBLIC VALUE | np. `0.1.0-zeabur`       |
-| `GIT_COMMIT_SHA`               | PUBLIC VALUE | SHA deployu (branch tip) |
+| Klucz                          | Tag          | Wartość                                                         |
+| ------------------------------ | ------------ | --------------------------------------------------------------- |
+| `NODE_ENV`                     | PUBLIC VALUE | `production`                                                    |
+| `ALLOW_PRODUCTION_CONNECTIONS` | PUBLIC VALUE | `true`                                                          |
+| `HOST`                         | PUBLIC VALUE | `0.0.0.0`                                                       |
+| `APP_VERSION`                  | PUBLIC VALUE | np. `0.1.0-zeabur` (label; opcjonalnie)                         |
+| `GIT_COMMIT_SHA`               | PUBLIC VALUE | **opcjonalnie** — nadpisuje tylko gdy brak bake; preferuj obraz |
+
+> **Revision / Discord `/status`:** obrazy Nest/WWW/Admin wypiekają
+> `V2_IMAGE_GIT_COMMIT_SHA` z Zeabur `ZEABUR_GIT_COMMIT_SHA` w czasie buildu.
+> Health i Discord biorą **najpierw** bake z obrazu, potem ręczne `GIT_COMMIT_SHA`.
+> Po redeployu z tipu brancha **nie** musisz ręcznie aktualizować `GIT_COMMIT_SHA`
+> (stary skrót w Variables nie kłamie już o wersji). Opcjonalnie usuń przestarzałe
+> `GIT_COMMIT_SHA` z Variables albo ustaw je na tip przy każdym redeployu.
+>
+> Agent / CI: `ZEABUR_TOKEN` + `ZEABUR_ENV_ID` →
+> `node ./tools/scripts/zeabur-redeploy.mjs`
 
 ---
 
@@ -233,19 +243,23 @@ Kolejność przy pełnym stosie: add-ony healthy → migrate identity/authz/acti
 
 ## Weryfikacja wersji po deployu
 
-Na każdym serwisie ustaw:
+Obrazy wypiekają `V2_IMAGE_GIT_COMMIT_SHA` z `ZEABUR_GIT_COMMIT_SHA` (build Git).
+Health `GET /health/live` oraz Discord `/status` preferują bake z obrazu nad ręcznym
+`GIT_COMMIT_SHA` Variable — żeby stary skrót w panelu Zeabur nie udawał starego builda.
 
-- `APP_VERSION`
-- `GIT_COMMIT_SHA` = tip brancha `cursor/p4-1-activity-domain`
-
-Owner potwierdza w logach startu / health metadata:
+Po redeployu Owner potwierdza:
 
 - BRANCH: `cursor/p4-1-activity-domain`
-- SHA: `<FINAL HEAD>`
+- SHA z `https://v2-api.zeabur.app/health/live` = tip brancha
+- Discord `/status` → to samo SHA
 
-„Deployment successful” bez SHA **nie wystarczy**.
+Redeploy wszystkich APP (wymaga tokenu API):
 
-Na każdym serwisie APP ustaw `GIT_COMMIT_SHA` (PUBLIC) na SHA **tego** redeployu oraz opcjonalnie `APP_VERSION`. Health `GET /health/live` zwraca te pola. Nie zostawiaj starego skrótu po nowym obrazie.
+```text
+ZEABUR_TOKEN=... ZEABUR_ENV_ID=... node ./tools/scripts/zeabur-redeploy.mjs
+```
+
+„Deployment successful” bez zgodnego SHA w health **nie wystarczy**.
 
 `identity-service` `IDENTITY_TRUSTED_ORIGINS` musi zawierać publiczne originy WWW i Admin, np. `https://v2-web.zeabur.app,https://v2-admin.zeabur.app` (oraz origin `IDENTITY_AUTH_BASE_URL`). Discord Developer Portal redirect:
 

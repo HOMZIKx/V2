@@ -3,12 +3,31 @@ export type RuntimeRevision = {
   readonly appVersion: string;
 };
 
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed !== undefined && trimmed.length > 0 && trimmed !== 'unknown') {
+      return trimmed;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Resolve the running image revision.
+ *
+ * Prefer `V2_IMAGE_GIT_COMMIT_SHA` (baked from Zeabur `ZEABUR_GIT_COMMIT_SHA` at
+ * Docker build) over a manual `GIT_COMMIT_SHA` Variable — the latter often goes
+ * stale across redeploys and makes Discord `/status` lie about the image.
+ */
 export function readRuntimeRevision(env: NodeJS.ProcessEnv = process.env): RuntimeRevision {
-  const gitCommitSha = env.GIT_COMMIT_SHA?.trim();
-  const appVersion = env.APP_VERSION?.trim();
+  const gitCommitSha =
+    firstNonEmpty(env.V2_IMAGE_GIT_COMMIT_SHA, env.ZEABUR_GIT_COMMIT_SHA, env.GIT_COMMIT_SHA) ??
+    'unknown';
+  const appVersion = firstNonEmpty(env.APP_VERSION) ?? '0.0.0-dev';
   return {
-    gitCommitSha: gitCommitSha !== undefined && gitCommitSha.length > 0 ? gitCommitSha : 'unknown',
-    appVersion: appVersion !== undefined && appVersion.length > 0 ? appVersion : '0.0.0-dev',
+    gitCommitSha,
+    appVersion,
   };
 }
 

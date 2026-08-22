@@ -15,14 +15,17 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| CURRENT_TASK           | `V2-ZEABUR-PRODUCTION-READINESS-AUDIT-001`                 |
+| CURRENT_TASK           | `V2-ZEABUR-TIP-REDEPLOY-001`                                   |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                  |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `28c8adb0ab1e0bc73d453b0688daf3bc50a00917`                   |
+| CURRENT_HEAD / PR_HEAD | _(update after tip-redeploy commit)_                         |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
-| LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22 (Zeabur audit)  |
+| LOCAL_VALIDATE         | revision unit tests PASS; full validate pending tip push     |
+| ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale; 36 commits behind tip before redeploy)     |
+| ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale; 71 commits behind tip before redeploy)     |
+| ZEABUR_REDEPLOY        | **BLOCKED** — Owner must provide `ZEABUR_TOKEN` (+ `ZEABUR_ENV_ID`) |
 | PR_TITLE_STATUS        | WIP conventional title on PR #19                             |
 | REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                          |
 
