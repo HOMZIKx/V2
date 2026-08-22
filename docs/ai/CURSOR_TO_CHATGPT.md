@@ -13,7 +13,7 @@ PR: #19
 ## Zeabur production readiness audit
 
 Report: `docs/ai/ZEABUR_PRODUCTION_READINESS_AUDIT.md`  
-Checkpoint: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` *(recorded after commit)*
+Checkpoint: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`
 
 ### Safe fixes (no product behavior)
 

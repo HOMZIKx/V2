@@ -17,7 +17,7 @@ Product status unchanged: **`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`**. LF
 | MEDIUM   | 14    | 1                | 13               |
 | LOW      | 10+   | 0                | 10+              |
 
-Local validation: `corepack pnpm validate` on audit tip (see `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA`).
+Local validation: `corepack pnpm validate` **PASS** at `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`.
 
 ---
 
@@ -345,7 +345,7 @@ JWKS: inbound registries via `*_INBOUND_CLIENTS_JSON`; TTL/skew via `*_CLIENT_AS
 
 | Check                    | Result                                                               |
 | ------------------------ | -------------------------------------------------------------------- |
-| `corepack pnpm validate` | Run on audit tip                                                     |
+| `corepack pnpm validate` | **PASS** — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`                |
 | Production builds        | Included in validate (`pnpm build` + runtime smoke)                  |
 | Migration scripts        | authz `migrate-prod.mjs` added; syntax via existing `run-migrations` |
 | Docker parity            | authz Dockerfile updated                                             |

@@ -19,7 +19,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                  |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | *(see `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` after push)*   |
+| CURRENT_HEAD / PR_HEAD | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`                   |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22 (Zeabur audit)  |
@@ -58,7 +58,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA   | `90fc384…`                                 | historical auto-sync baseline                                  |
 | OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                         |
 | POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                        |
-| **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**  | *(this commit — recorded after push)*       | Zeabur deploy readiness audit + safe fixes                     |
+| **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**  | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                     |
 
 ## Module discovery status (summary)
 
