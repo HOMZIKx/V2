@@ -14,11 +14,11 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_TASK           | `V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`               |
 | CURRENT_PRODUCT_STATUS | `WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`                   |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `cf15925248f24aad7ceca4c0715d10686dc0199e`                 |
+| CURRENT_HEAD / PR_HEAD | `abc553c…` (tip; recovery marker `cf15925…`)                 |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
 | LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` 2026-08-22               |
-| PR_TITLE_STATUS        | pending update — `gh` not authed in agent shell              |
+| PR_TITLE_STATUS        | updated — `fix(core): core foundation WIP - state and discovery remediation` |
 | REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                          |
 
 ## Checkpoint ledger

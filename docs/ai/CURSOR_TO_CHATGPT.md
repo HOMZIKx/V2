@@ -7,17 +7,17 @@
 Task: `V2-CORE-FOUNDATION-STATE-AND-CI-RECOVERY-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
-HEAD: `cf15925248f24aad7ceca4c0715d10686dc0199e` (`CORE_STATE_AND_CI_RECOVERY_SHA`)
+HEAD: `abc553c…` (tip) — `CORE_STATE_AND_CI_RECOVERY_SHA` = `cf15925…`
 
 ## Fresh facts
 
 | Field                  | Value                                                  |
 | ---------------------- | ------------------------------------------------------ |
-| CURRENT_HEAD / PR_HEAD | `cf15925…` (`CORE_STATE_AND_CI_RECOVERY_SHA`)          |
+| CURRENT_HEAD / PR_HEAD | `abc553c…` (tip)                                       |
 | REPOSITORY_VISIBILITY  | **PRIVATE_CONFIRMED** (prior session `gh api`)         |
 | CI_STATUS              | **RED** — billing: jobs not started (0 steps)          |
 | LOCAL_VALIDATE         | **PASS** — `corepack pnpm validate` on 2026-08-22      |
-| PR_TITLE_STATUS        | stale P4.1–P4.4 title; update pending (`gh` not authed) |
+| PR_TITLE_STATUS        | **updated** — WIP conventional title on PR #19         |
 | CURRENT_PRODUCT_STATUS | `WIP_OWNER_DISCOVERY_REMEDIATION_REQUIRED`             |
 
 ## Local validation (recovery)
