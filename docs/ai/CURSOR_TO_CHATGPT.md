@@ -10,7 +10,7 @@ Task: `V2-DUNGEON-LFG-V1-DEEP-AUDIT-002`
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19  
 Implementation base: `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` (`976b89c…`)  
-Audit tip: `DUNGEON_LFG_V1_AUDIT_SHA` — pending push
+Audit tip: `DUNGEON_LFG_V1_AUDIT_SHA` — `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4`
 
 ## Deep audit delivered
 
@@ -48,7 +48,7 @@ Report: `docs/ai/DUNGEON_LFG_V1_AUDIT.md`
 | Marker                               | SHA        |
 | ------------------------------------ | ---------- |
 | `DUNGEON_LFG_V1_IMPLEMENTATION_SHA`  | `976b89c…` |
-| `DUNGEON_LFG_V1_AUDIT_SHA`           | pending    |
+| `DUNGEON_LFG_V1_AUDIT_SHA`           | `53e7d3a…` |
 
 ## STOP
 

@@ -219,4 +219,4 @@ Follow-up polish (non-blocking): identity S2S character verify, full-group-watch
 | Marker | SHA |
 | ------ | --- |
 | `DUNGEON_LFG_V1_IMPLEMENTATION_SHA` | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` |
-| `DUNGEON_LFG_V1_AUDIT_SHA` | pending push |
+| `DUNGEON_LFG_V1_AUDIT_SHA` | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` |
