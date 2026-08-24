@@ -34,7 +34,7 @@ describe('ActivityExceptionFilter', () => {
     );
     expect(sent.status).toBe(403);
     expect(sent.body).toEqual({
-      error: { code: 'FORBIDDEN', message: 'nope', category: 'AUTHZ_DENIED' },
+      error: { code: 'FORBIDDEN', message: 'nope', category: 'FORBIDDEN' },
     });
     expect(JSON.stringify(sent.body)).not.toContain('stack');
   });
@@ -62,7 +62,7 @@ describe('UnhandledActivityExceptionFilter', () => {
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Internal error',
-        category: 'INTERNAL_ERROR',
+        category: 'INTERNAL',
       },
     });
     expect(JSON.stringify(sent.body)).not.toContain('ECONNREFUSED');

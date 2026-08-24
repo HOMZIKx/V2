@@ -228,6 +228,12 @@ export class ActivityAdminController {
     return this.admin.diagnoseAdminDependencies(actorFromRequest(request));
   }
 
+  @Get('diagnostics/outbox')
+  @RequireOperation('activity_read')
+  public async outboxDiagnostics(@Req() request: AuthenticatedRequest) {
+    return { outbox: await this.admin.diagnoseOutbox(actorFromRequest(request)) };
+  }
+
   @Get('guilds/:guildId/config')
   @RequireOperation('activity_read')
   public async getConfig(@Param('guildId') guildId: string, @Req() request: AuthenticatedRequest) {

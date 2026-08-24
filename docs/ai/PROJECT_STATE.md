@@ -16,7 +16,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                               |
 | ---------------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-PERFORMANCE-AND-SCALABILITY-AUDIT-001`                          |
+| CURRENT_TASK           | `V2-OBSERVABILITY-OPERABILITY-INCIDENT-READINESS-001`             |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
 | LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL`                                        |
 | LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_APPROVAL` (code path; runtime separate)    |
@@ -72,7 +72,6 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH        |
 | **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
 | **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff               |
-| CURRENT_HEAD / PR_HEAD | `179be84ee645cf2a3709a403798349407a60db56`                          |
 
 ## Module discovery status (summary)
 

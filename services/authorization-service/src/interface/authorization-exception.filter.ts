@@ -1,7 +1,10 @@
 import { type ArgumentsHost, Catch, type ExceptionFilter, HttpStatus } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import { createLogger, operationalCategoryFromCode } from '@v2/observability';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { AuthorizationError, type AuthorizationErrorCode } from '../domain/errors.js';
+
+const logger = createLogger('authorization-service');
 
 const STATUS_BY_CODE: Record<AuthorizationErrorCode, number> = {
   UNAUTHENTICATED: HttpStatus.UNAUTHORIZED,
@@ -15,15 +18,29 @@ const STATUS_BY_CODE: Record<AuthorizationErrorCode, number> = {
   CONFIG_INVALID: HttpStatus.SERVICE_UNAVAILABLE,
 };
 
+function correlationFrom(host: ArgumentsHost): string | undefined {
+  const request = host.switchToHttp().getRequest<FastifyRequest>();
+  const value = request.headers['x-correlation-id'];
+  return typeof value === 'string' ? value : undefined;
+}
+
 /** Maps stable {@link AuthorizationError} codes to HTTP responses. */
 @Catch(AuthorizationError)
 export class AuthorizationExceptionFilter implements ExceptionFilter {
   public catch(exception: AuthorizationError, host: ArgumentsHost): void {
     const reply = host.switchToHttp().getResponse<FastifyReply>();
     const status = STATUS_BY_CODE[exception.code] ?? HttpStatus.BAD_REQUEST;
+    const category = operationalCategoryFromCode(exception.code);
+
+    logger.warn('Authorization request failed.', {
+      event: 'request_failed',
+      category,
+      code: exception.code,
+      correlationId: correlationFrom(host),
+    });
 
     void reply.status(status).send({
-      error: { code: exception.code, message: exception.message },
+      error: { code: exception.code, message: exception.message, category },
     });
   }
 }

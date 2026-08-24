@@ -3,7 +3,11 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { resolveHttpListen } from '@v2/configuration';
-import { createLogger, runBoundedShutdown } from '@v2/observability';
+import {
+  createLogger,
+  registerFastifyRequestCorrelation,
+  runBoundedShutdown,
+} from '@v2/observability';
 
 import { serviceName } from './domain/service-name.js';
 import type { AuthRuntime } from './infrastructure/auth/create-better-auth.js';
@@ -23,6 +27,8 @@ const bootstrap = async (): Promise<void> => {
     AppModule,
     new FastifyAdapter({ bodyLimit: 262_144 }),
   );
+
+  registerFastifyRequestCorrelation(app.getHttpAdapter().getInstance());
 
   const runtime = app.get<AuthRuntime | null>(AUTH_RUNTIME, { strict: false });
 

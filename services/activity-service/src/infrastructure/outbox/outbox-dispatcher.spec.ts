@@ -1,3 +1,4 @@
+import { CORRELATION_ID_HEADER } from '@v2/observability';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ActivityEnv } from '../config/activity-env.js';
@@ -70,6 +71,7 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit;
     const headers = init.headers as Record<string, string>;
     expect(headers[PROJECTION_SECRET_HEADER]).toBe('proj-secret');
+    expect(headers[CORRELATION_ID_HEADER]).toBe('outbox-1');
     expect(completeOutbox).toHaveBeenCalledOnce();
     expect(upsertActivityProjection).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -247,5 +249,77 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
         channelId: 'c1',
       }),
     );
+  });
+
+  it('schedules retry on HTTP 429 with Retry-After', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('rate limited', {
+        status: 429,
+        headers: { 'retry-after': '30' },
+      }),
+    );
+    const failOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () => Promise.resolve([makeMessage()]),
+          completeOutbox: vi.fn(),
+          failOutbox,
+          permanentFailOutbox: vi.fn(),
+          upsertActivityProjection: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(failOutbox).toHaveBeenCalledOnce();
+    expect(failOutbox.mock.calls[0]?.[1]).toContain('HTTP 429');
+  });
+
+  it('schedules retry on HTTP 500 upstream failure', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('upstream', { status: 503 }));
+    const failOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () => Promise.resolve([makeMessage()]),
+          completeOutbox: vi.fn(),
+          failOutbox,
+          permanentFailOutbox: vi.fn(),
+          upsertActivityProjection: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(failOutbox).toHaveBeenCalledOnce();
+  });
+
+  it('schedules retry on connection refused', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('fetch failed ECONNREFUSED'));
+    const failOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () => Promise.resolve([makeMessage()]),
+          completeOutbox: vi.fn(),
+          failOutbox,
+          permanentFailOutbox: vi.fn(),
+          upsertActivityProjection: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(failOutbox).toHaveBeenCalledOnce();
   });
 });

@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { resolveRequestIds } from './correlation.js';
 import { createLogger } from './logger.js';
-import { operationalCategoryFromCode } from './operational-error.js';
+import {
+  operationalCategoryFromCode,
+  operationalCategoryFromDeliveryError,
+} from './operational-error.js';
 import { redactLogContext } from './redact.js';
 
 describe('createLogger', () => {
@@ -69,19 +72,32 @@ describe('redactLogContext', () => {
 });
 
 describe('operationalCategoryFromCode', () => {
-  it('maps current activity codes to operator categories', () => {
-    expect(operationalCategoryFromCode('FORBIDDEN')).toBe('AUTHZ_DENIED');
-    expect(operationalCategoryFromCode('UNAUTHENTICATED')).toBe('AUTH_FAILURE');
-    expect(operationalCategoryFromCode('CONFIG_INVALID')).toBe('DEPENDENCY_UNAVAILABLE');
-    expect(operationalCategoryFromCode('CONFIGURATION_INVALID')).toBe('CONFIG_ERROR');
-    expect(operationalCategoryFromCode('AUTHORIZATION_UNAVAILABLE')).toBe('DEPENDENCY_UNAVAILABLE');
-    expect(operationalCategoryFromCode('DISCORD_GATEWAY_UNAVAILABLE')).toBe(
-      'DEPENDENCY_UNAVAILABLE',
-    );
+  it('maps domain codes to operator categories', () => {
+    expect(operationalCategoryFromCode('FORBIDDEN')).toBe('FORBIDDEN');
+    expect(operationalCategoryFromCode('UNAUTHENTICATED')).toBe('UNAUTHENTICATED');
+    expect(operationalCategoryFromCode('CONFIG_INVALID')).toBe('VALIDATION');
+    expect(operationalCategoryFromCode('CONFIGURATION_INVALID')).toBe('VALIDATION');
+    expect(operationalCategoryFromCode('AUTHORIZATION_UNAVAILABLE')).toBe('UPSTREAM_FAILURE');
+    expect(operationalCategoryFromCode('DISCORD_GATEWAY_UNAVAILABLE')).toBe('UPSTREAM_FAILURE');
     expect(operationalCategoryFromCode('CONFLICT')).toBe('CONFLICT');
-    expect(operationalCategoryFromCode('VALIDATION_FAILED')).toBe('CONFIG_ERROR');
-    expect(operationalCategoryFromCode(undefined)).toBe('INTERNAL_ERROR');
+    expect(operationalCategoryFromCode('VALIDATION_FAILED')).toBe('VALIDATION');
+    expect(operationalCategoryFromCode(undefined)).toBe('INTERNAL');
     expect(operationalCategoryFromCode('X', { timeout: true })).toBe('TIMEOUT');
     expect(operationalCategoryFromCode('X', { retryExhausted: true })).toBe('RETRY_EXHAUSTED');
+  });
+});
+
+describe('operationalCategoryFromDeliveryError', () => {
+  it('classifies outbox last_error text without leaking payloads', () => {
+    expect(operationalCategoryFromDeliveryError(null)).toBeNull();
+    expect(operationalCategoryFromDeliveryError('HTTP 429: rate limited')).toBe('RATE_LIMITED');
+    expect(operationalCategoryFromDeliveryError('fetch failed ECONNREFUSED')).toBe(
+      'UPSTREAM_FAILURE',
+    );
+    expect(operationalCategoryFromDeliveryError('request timed out')).toBe('TIMEOUT');
+    expect(operationalCategoryFromDeliveryError('Exceeded max delivery attempts')).toBe(
+      'RETRY_EXHAUSTED',
+    );
+    expect(operationalCategoryFromDeliveryError('HTTP 500: upstream')).toBe('UPSTREAM_FAILURE');
   });
 });

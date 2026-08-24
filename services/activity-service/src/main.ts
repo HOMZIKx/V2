@@ -4,10 +4,8 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { resolveHttpListen } from '@v2/configuration';
 import {
-  CORRELATION_ID_HEADER,
-  REQUEST_ID_HEADER,
   createLogger,
-  resolveRequestIds,
+  registerFastifyRequestCorrelation,
   runBoundedShutdown,
 } from '@v2/observability';
 import type { Pool } from 'pg';
@@ -33,24 +31,7 @@ const bootstrap = async (): Promise<void> => {
   );
   app.useGlobalFilters(new UnhandledActivityExceptionFilter());
 
-  const instance = app.getHttpAdapter().getInstance() as {
-    addHook: (
-      name: 'onRequest',
-      hook: (
-        request: { headers: Record<string, string | string[] | undefined> },
-        reply: { header: (key: string, value: string) => unknown },
-        done: () => void,
-      ) => void,
-    ) => void;
-  };
-  instance.addHook('onRequest', (request, reply, done) => {
-    const ids = resolveRequestIds(request.headers);
-    request.headers[CORRELATION_ID_HEADER] = ids.correlationId;
-    request.headers[REQUEST_ID_HEADER] = ids.requestId;
-    void reply.header(CORRELATION_ID_HEADER, ids.correlationId);
-    void reply.header(REQUEST_ID_HEADER, ids.requestId);
-    done();
-  });
+  registerFastifyRequestCorrelation(app.getHttpAdapter().getInstance());
 
   const pool = app.get<Pool>(ACTIVITY_POOL);
   const jtiStore = app.get<AssertionJtiStore | null>(ASSERTION_JTI_STORE, { strict: false });

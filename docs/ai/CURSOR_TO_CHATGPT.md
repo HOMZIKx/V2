@@ -4,44 +4,44 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-Task: `V2-PERFORMANCE-AND-SCALABILITY-AUDIT-001`  
+Task: `V2-OBSERVABILITY-OPERABILITY-INCIDENT-READINESS-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19
 
-## Performance and scalability audit
+## Operability and incident readiness audit
 
-Checkpoint: **`PERFORMANCE_SCALABILITY_AUDIT_SHA`** — `179be84ee645cf2a3709a403798349407a60db56`
+Checkpoint: **`OPERABILITY_INCIDENT_READINESS_SHA`** — _set after commit_
+
+Base: `179be84ee645cf2a3709a403798349407a60db56` (PERFORMANCE_SCALABILITY_AUDIT_SHA)
 
 ### Result
 
-| Severity | Found | Fixed | Open |
-| -------- | ----- | ----- | ---- |
-| CRITICAL | 0     | 0     | 0    |
-| HIGH     | 8     | 6     | 2    |
-| MEDIUM   | 9     | 1     | 8    |
-| LOW      | 5     | 0     | 5    |
+| Area | Status |
+| ---- | ------ |
+| Correlation (HTTP + S2S outbox deliver) | DONE |
+| Normalized error categories (10) | DONE |
+| Outbox visibility (ready + Admin diagnostics) | DONE |
+| Health live/ready (no fake-ready) | VERIFIED |
+| Discord diagnostics | VERIFIED (`/health/discord`) |
+| Incident runbooks | DONE (8 new/expanded scenarios) |
+| Fault-injection tests | DONE (429/503/ECONNREFUSED + category maps) |
 
-Full report: `docs/ai/PERFORMANCE_SCALABILITY_AUDIT.md`
+Full report: `docs/ai/OPERABILITY_INCIDENT_READINESS_AUDIT.md`
 
-### HIGH fixes (summary)
+### Key changes
 
-1. **LFG search N+1** — batched role/count/occupied queries (3 SQL vs 3×N).
-2. **LFG intent notify** — batch suppressions/dedupe + membership/character caches.
-3. **`listActiveLfgIntents`** — `LIMIT 500` + index in migration 019.
-4. **`listActivityTypes`** — 3-query batch load (was 1+2N).
-5. **HTTP timeouts** — authorization sync (15s), internal JWT proof (5s).
-6. **Interaction idempotency** — periodic sweep + 10k cap.
-7. **Outbox** — adaptive claim limit, Retry-After on 429, lease reclaim index.
-
-### Open HIGH
-
-- Authorization full-context reload per LFG recipient (narrow query follow-up).
-- api-gateway triple sequential identity HTTP per activity request.
+1. **Shared correlation** — `registerFastifyRequestCorrelation` on identity, authorization, activity, discord-gateway; outbox deliver forwards `x-correlation-id`.
+2. **Error taxonomy** — `VALIDATION` … `INTERNAL`; API responses include `category`, no stack to clients.
+3. **Outbox operator surface** — `oldestPendingAgeSeconds`, `lastErrorCategory`; gateway ready forwards snapshot; Admin `GET /activity/v1/admin/diagnostics/outbox`.
+4. **Structured outbox logs** — `outbox_deliver_success|retry|permanent|exhausted` with safe domain ids.
+5. **Runbooks** — projection/notification backlog, identity/authorization down, migration failure.
 
 ### Proof
 
-- `lfg-batch-queries.spec.ts` — batched LFG search uses exactly 3 batch query calls.
-- `pnpm validate` — PASS.
+- `packages/observability/src/index.test.ts` — category + delivery error classification
+- `outbox-dispatcher.spec.ts` — correlation header, 429/503/ECONNREFUSED retry paths
+- `health-probes.spec.ts` — `readOutboxReadySnapshot`
+- `pnpm validate` — PASS
 
 ## Validation
 

@@ -63,6 +63,66 @@ No secret values in this file. Contain → identify → recover → verify.
 3. **Recover:** restart Redis addon. Do not disable JTI in production.
 4. **Verify:** login works; a replayed assertion is rejected.
 
+## Identity down
+
+1. **Contain:** api-gateway `/health/ready` 503 when identity probe is `unhealthy`.
+   Web login and session refresh fail closed.
+2. **Identify:** gateway ready `checks.identity`, identity-service logs with
+   `correlationId`, category `UPSTREAM_FAILURE` or ready `checks.database`.
+3. **Recover:** restore identity Postgres/Redis, redeploy identity-service.
+   Do not rotate Better Auth secret unless sessions must be invalidated.
+4. **Verify:** identity `/health/ready` 200, gateway ready 200, `/session/me`
+   works after login.
+
+## Authorization down
+
+1. **Contain:** activity admin mutations and entitlement checks fail closed
+   (`AUTHORIZATION_UNAVAILABLE` / category `UPSTREAM_FAILURE`).
+2. **Identify:** authorization ready 503, activity logs `category`:
+   `UPSTREAM_FAILURE`, correlation id from failing Admin request.
+3. **Recover:** restore authorization Postgres, redeploy authorization-service.
+   Sync guild inventory after recovery if reconcile was in flight.
+4. **Verify:** authorization ready 200, Admin guild list loads, one
+   `activity_read` and one `activity_mutate` succeeds.
+
+## Projection backlog (Discord panels stale)
+
+1. **Contain:** Hub/event panels may lag; do not post duplicate Hub messages.
+2. **Identify:** activity ready `outbox.state` (`backlogged`, `retrying`,
+   `stuck`), `oldestPendingAgeSeconds`, `lastErrorCategory`. Admin
+   `GET /activity/v1/admin/diagnostics/outbox`. Discord `/health/discord`
+   for bot state. Filter logs: `event=outbox_deliver_retry`.
+3. **Recover:** fix discord-gateway if disconnected; restore projection secret
+   alignment; let outbox worker reclaim expired leases. Restart activity only
+   if worker stuck — leases expire in ~30s.
+4. **Verify:** outbox `state` returns to `idle` or `working`, projection
+   rows show `delivered`, Hub updates in place.
+
+## Notification backlog (DMs delayed)
+
+1. **Contain:** inbox items remain unread; users may get delayed LFG match DMs.
+2. **Identify:** outbox counts for `activity.notification.deliver.v1`,
+   `lastErrorCategory` `RATE_LIMITED` vs `UPSTREAM_FAILURE`. Discord gateway
+   logs for DM rate limits (no token values).
+3. **Recover:** wait for Discord 429 backoff (Retry-After honored). If
+   `failed` > 0 with category `RETRY_EXHAUSTED`, inspect dead letters in
+   outbox — do not replay payloads manually in production without runbook
+   owner approval.
+4. **Verify:** pending notification outbox drains, sample DM received,
+   outbox `failed` stable at 0.
+
+## Migration failure
+
+1. **Contain:** service ready 503 with `checks.migrations: false`. Do not
+   serve traffic that assumes new schema.
+2. **Identify:** startup logs, `migration-readiness` manifest vs DB
+   `activity_schema_migrations` count. Which migration id is missing.
+3. **Recover:** fix migration SQL offline, redeploy with corrected forward
+   migration only. **Never** down-migrate production. Restore from backup
+   to a **new** database if data is corrupt (`BACKUP_RESTORE.md`).
+4. **Verify:** ready 200, `countSchemaMigrations` matches manifest,
+   smoke read path on affected tables.
+
 ## Bad deploy
 
 1. **Contain:** stop rolling further APPs. Keep previous image if still up.

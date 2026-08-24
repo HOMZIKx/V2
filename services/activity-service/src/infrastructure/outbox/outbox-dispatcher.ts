@@ -1,10 +1,9 @@
+import { Inject, Injectable, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import {
-  Inject,
-  Injectable,
-  Logger,
-  type OnModuleDestroy,
-  type OnModuleInit,
-} from '@nestjs/common';
+  CORRELATION_ID_HEADER,
+  createLogger,
+  operationalCategoryFromDeliveryError,
+} from '@v2/observability';
 import { importPKCS8, SignJWT } from 'jose';
 import { randomUUID } from 'node:crypto';
 
@@ -40,6 +39,36 @@ const ASSERTION_HEADER = 'discord-client-assertion';
 /** Shared contract with discord-gateway ActivityProjectionController. */
 export const PROJECTION_SECRET_HEADER = 'x-activity-projection-secret';
 
+function resolveOutboxCorrelationId(message: OutboxMessageRecord): string {
+  const payloadCorrelation = message.payload.correlationId;
+  if (typeof payloadCorrelation === 'string' && payloadCorrelation.trim().length > 0) {
+    return payloadCorrelation.trim();
+  }
+  return message.id;
+}
+
+function outboxMessageLogContext(
+  message: OutboxMessageRecord,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const guildId = typeof message.payload.guildId === 'string' ? message.payload.guildId : undefined;
+  const activityId = message.aggregateType === 'activity' ? message.aggregateId : undefined;
+  const inboxItemId =
+    typeof message.payload.inboxItemId === 'string' ? message.payload.inboxItemId : undefined;
+  return {
+    outboxId: message.id,
+    eventType: message.eventType,
+    aggregateType: message.aggregateType,
+    aggregateId: message.aggregateId,
+    attemptCount: message.attemptCount,
+    correlationId: resolveOutboxCorrelationId(message),
+    ...(guildId !== undefined ? { guildId } : {}),
+    ...(activityId !== undefined ? { activityId } : {}),
+    ...(inboxItemId !== undefined ? { inboxItemId } : {}),
+    ...extra,
+  };
+}
+
 function isRetryableHttpStatus(status: number): boolean {
   if (status === 408 || status === 429) {
     return true;
@@ -52,9 +81,10 @@ function backoffMs(attemptCount: number): number {
   return Math.min(300_000, 5_000 * 2 ** exponent);
 }
 
+const logger = createLogger('activity-outbox');
+
 @Injectable()
 export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(ActivityOutboxDispatcher.name);
   private readonly leaseOwner = `activity-outbox:${process.pid}:${randomUUID()}`;
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
@@ -78,7 +108,9 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
 
   public async onModuleInit(): Promise<void> {
     if (!this.config.ACTIVITY_OUTBOX_WORKER_ENABLED) {
-      this.logger.log('Activity outbox dispatcher disabled (ACTIVITY_OUTBOX_WORKER_ENABLED=false)');
+      logger.info('Activity outbox dispatcher disabled', {
+        event: 'outbox_worker_disabled',
+      });
       return;
     }
 
@@ -108,10 +140,10 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       void this.safeTick('interval');
     }, POLL_INTERVAL_MS);
     this.timer.unref?.();
-    this.logger.log('Activity outbox dispatcher started', {
+    logger.info('Activity outbox dispatcher started', {
+      event: 'outbox_worker_started',
       leaseOwner: this.leaseOwner,
       transport,
-      baseUrl: this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL,
     });
   }
 
@@ -186,12 +218,14 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
           permanent += 1;
         }
       }
-      this.logger.log('Activity outbox tick', {
+      logger.info('Activity outbox tick', {
+        event: 'outbox_tick',
         source,
         claimed: claimed.length,
         delivered,
         retried,
         permanent,
+        deliveryFailureStreak: this.deliveryFailureStreak,
       });
       if (delivered > 0) {
         this.deliveryFailureStreak = 0;
@@ -199,7 +233,8 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         this.deliveryFailureStreak += 1;
       }
     } catch (error) {
-      this.logger.error('Activity outbox tick failed', {
+      logger.error('Activity outbox tick failed', {
+        event: 'outbox_tick_failed',
         source,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -281,6 +316,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       [PROJECTION_SECRET_HEADER]: secret,
+      [CORRELATION_ID_HEADER]: resolveOutboxCorrelationId(message),
     };
 
     if (this.config.ACTIVITY_ENABLED) {
@@ -312,10 +348,14 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         signal: AbortSignal.timeout(10_000),
       });
     } catch (error) {
-      await this.failRetry(
-        message,
-        error instanceof Error ? error.message : 'Projection deliver network error',
-      );
+      const errorText = error instanceof Error ? error.message : 'Projection deliver network error';
+      logger.warn('Activity outbox deliver network error', {
+        event: 'outbox_deliver_retry',
+        category: operationalCategoryFromDeliveryError(errorText),
+        error: errorText,
+        ...outboxMessageLogContext(message),
+      });
+      await this.failRetry(message, errorText);
       return 'retry';
     }
 
@@ -339,6 +379,10 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         }
       }
       await this.completeWithMessageWriteBack(message, bodyText);
+      logger.info('Activity outbox deliver succeeded', {
+        event: 'outbox_deliver_success',
+        ...outboxMessageLogContext(message),
+      });
       return 'delivered';
     }
 
@@ -355,10 +399,23 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
           }
         }
       }
+      logger.warn('Activity outbox deliver retry scheduled', {
+        event: 'outbox_deliver_retry',
+        category: operationalCategoryFromDeliveryError(errorText),
+        httpStatus: response.status,
+        retryAfterMs,
+        ...outboxMessageLogContext(message),
+      });
       await this.failRetry(message, errorText, retryAfterMs);
       return 'retry';
     }
 
+    logger.error('Activity outbox deliver permanent failure', {
+      event: 'outbox_deliver_permanent',
+      category: operationalCategoryFromDeliveryError(errorText),
+      httpStatus: response.status,
+      ...outboxMessageLogContext(message),
+    });
     await this.permanentFail(message, errorText);
     return 'permanent';
   }
@@ -435,6 +492,12 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   }
 
   private async permanentFail(message: OutboxMessageRecord, error: string): Promise<void> {
+    logger.error('Activity outbox message exhausted', {
+      event: 'outbox_deliver_exhausted',
+      category: operationalCategoryFromDeliveryError(error) ?? 'RETRY_EXHAUSTED',
+      error: error.slice(0, 500),
+      ...outboxMessageLogContext(message),
+    });
     const now = this.clock.now();
     const payloadGuild =
       typeof message.payload.guildId === 'string' ? message.payload.guildId : undefined;

@@ -25,6 +25,7 @@ import type {
   ActivityTx,
   ActivityUseCaseDeps,
   ActorSubject,
+  OutboxHealthSnapshot,
   PutGuildAdminConfigInput,
 } from '../ports/activity.ports.js';
 import type { ChannelValidationResult } from '../ports/discord-channel-validation.port.js';
@@ -1198,6 +1199,20 @@ export class ActivityAdminUseCases {
     }
 
     return { discordGateway, bot, activityToDiscord, authorization, guildInventory };
+  }
+
+  /**
+   * Operator-facing outbox counts without payload contents.
+   * Safe identifiers only — no secrets or message bodies.
+   */
+  public async diagnoseOutbox(actor: ActorSubject): Promise<OutboxHealthSnapshot> {
+    if (actor.discordUserId === undefined && actor.v2UserId === undefined) {
+      throw new ActivityError('UNAUTHENTICATED', 'Actor identity required');
+    }
+    if (this.deps.repository.countOutboxByStatus === undefined) {
+      throw new ActivityError('CONFIG_INVALID', 'Outbox diagnostics are unavailable');
+    }
+    return this.deps.repository.countOutboxByStatus();
   }
 
   public async listDiscordChannels(guildId: string, actor: ActorSubject) {

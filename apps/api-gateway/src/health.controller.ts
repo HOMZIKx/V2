@@ -9,8 +9,10 @@ import {
 import {
   isGatewayReady,
   probeDiscordRuntime,
-  probeUpstreamReady,
+  probeUpstreamReadyBody,
+  readOutboxReadySnapshot,
   type DiscordRuntimeSnapshot,
+  type OutboxReadySnapshot,
   type UpstreamReadyState,
 } from './health-probes.js';
 
@@ -48,12 +50,16 @@ export class HealthController {
     status: 'ok';
     checks: { activity: UpstreamReadyState; identity: UpstreamReadyState };
     discord: DiscordRuntimeSnapshot;
+    outbox?: OutboxReadySnapshot;
   }> {
-    const [activity, identity, discord] = await Promise.all([
-      probeUpstreamReady(this.activityBaseUrl),
-      probeUpstreamReady(this.identityBaseUrl),
+    const [activityProbe, identityProbe, discord] = await Promise.all([
+      probeUpstreamReadyBody(this.activityBaseUrl),
+      probeUpstreamReadyBody(this.identityBaseUrl),
       probeDiscordRuntime(this.discordBaseUrl),
     ]);
+    const activity = activityProbe.state;
+    const identity = identityProbe.state;
+    const outbox = readOutboxReadySnapshot(activityProbe.body);
     const checks = { activity, identity };
     if (!isGatewayReady(activity, identity)) {
       throw new ServiceUnavailableException({
@@ -61,8 +67,14 @@ export class HealthController {
         ...readRuntimeRevision(),
         checks,
         discord,
+        ...(outbox !== undefined ? { outbox } : {}),
       });
     }
-    return { ...healthPayload(), checks, discord };
+    return {
+      ...healthPayload(),
+      checks,
+      discord,
+      ...(outbox !== undefined ? { outbox } : {}),
+    };
   }
 }

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isGatewayReady, probeDiscordRuntime, probeUpstreamReady } from './health-probes.js';
+import {
+  isGatewayReady,
+  probeDiscordRuntime,
+  probeUpstreamReady,
+  readOutboxReadySnapshot,
+} from './health-probes.js';
 
 describe('probeUpstreamReady', () => {
   it('reports not_configured when the URL is missing', async () => {
@@ -98,6 +103,40 @@ describe('probeDiscordRuntime', () => {
     ) as unknown as typeof fetch;
     await expect(probeDiscordRuntime('http://127.0.0.1:4100', fetchImpl)).resolves.toEqual({
       state: 'disconnected',
+    });
+  });
+});
+
+describe('readOutboxReadySnapshot', () => {
+  it('returns undefined when activity ready body lacks outbox', () => {
+    expect(readOutboxReadySnapshot(null)).toBeUndefined();
+    expect(readOutboxReadySnapshot({ status: 'ok' })).toBeUndefined();
+  });
+
+  it('parses outbox operator fields from activity ready', () => {
+    expect(
+      readOutboxReadySnapshot({
+        status: 'ok',
+        outbox: {
+          pending: 2,
+          claimed: 1,
+          failed: 0,
+          delivered: 10,
+          retrying: 1,
+          state: 'working',
+          oldestPendingAgeSeconds: 45,
+          lastErrorCategory: 'UPSTREAM_FAILURE',
+        },
+      }),
+    ).toEqual({
+      pending: 2,
+      claimed: 1,
+      failed: 0,
+      delivered: 10,
+      retrying: 1,
+      state: 'working',
+      oldestPendingAgeSeconds: 45,
+      lastErrorCategory: 'UPSTREAM_FAILURE',
     });
   });
 });

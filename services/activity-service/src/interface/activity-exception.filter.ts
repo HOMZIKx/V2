@@ -81,7 +81,7 @@ export class UnhandledActivityExceptionFilter implements ExceptionFilter {
     }
     logger.error('Unhandled activity error.', {
       event: 'unhandled_error',
-      category: 'INTERNAL_ERROR',
+      category: 'INTERNAL',
       error: exception instanceof Error ? exception.message : String(exception),
       correlationId: correlationFrom(host),
     });
@@ -89,7 +89,7 @@ export class UnhandledActivityExceptionFilter implements ExceptionFilter {
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Internal error',
-        category: 'INTERNAL_ERROR',
+        category: 'INTERNAL',
       },
     });
   }

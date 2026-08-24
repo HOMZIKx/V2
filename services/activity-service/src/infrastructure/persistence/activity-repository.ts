@@ -1,3 +1,4 @@
+import { operationalCategoryFromDeliveryError } from '@v2/observability';
 import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
@@ -3389,14 +3390,28 @@ export class ActivityRepository implements ActivityRepositoryPort {
   }
 
   public async countOutboxByStatus(): Promise<OutboxHealthSnapshot> {
-    const result = await this.pool.query<{ status: string; n: string; retrying: string }>(
-      `SELECT
-         status,
-         COUNT(*)::text AS n,
-         COUNT(*) FILTER (WHERE status = 'pending' AND attempt_count > 0)::text AS retrying
-       FROM outbox_messages
-       GROUP BY status`,
-    );
+    const [result, oldestResult, lastErrorResult] = await Promise.all([
+      this.pool.query<{ status: string; n: string; retrying: string }>(
+        `SELECT
+           status,
+           COUNT(*)::text AS n,
+           COUNT(*) FILTER (WHERE status = 'pending' AND attempt_count > 0)::text AS retrying
+         FROM outbox_messages
+         GROUP BY status`,
+      ),
+      this.pool.query<{ oldest_pending_at: Date | null }>(
+        `SELECT MIN(available_at) AS oldest_pending_at
+         FROM outbox_messages
+         WHERE status = 'pending'`,
+      ),
+      this.pool.query<{ last_error: string | null }>(
+        `SELECT last_error
+         FROM outbox_messages
+         WHERE last_error IS NOT NULL
+         ORDER BY COALESCE(claimed_at, available_at) DESC
+         LIMIT 1`,
+      ),
+    ]);
     const counts = { pending: 0, claimed: 0, failed: 0, delivered: 0, retrying: 0 };
     for (const row of result.rows) {
       const n = Number(row.n);
@@ -3411,7 +3426,18 @@ export class ActivityRepository implements ActivityRepositoryPort {
         counts.delivered = n;
       }
     }
-    return { ...counts, state: classifyOutbox(counts) };
+    const oldestPendingAt = oldestResult.rows[0]?.oldest_pending_at ?? null;
+    const lastError = lastErrorResult.rows[0]?.last_error ?? null;
+    const oldestPendingAgeSeconds =
+      oldestPendingAt === null
+        ? null
+        : Math.max(0, Math.floor((Date.now() - oldestPendingAt.getTime()) / 1000));
+    return {
+      ...counts,
+      state: classifyOutbox(counts),
+      oldestPendingAgeSeconds,
+      lastErrorCategory: operationalCategoryFromDeliveryError(lastError),
+    };
   }
 }
 

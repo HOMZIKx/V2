@@ -1131,6 +1131,8 @@ export type OutboxHealthSnapshot = {
   readonly delivered: number;
   readonly retrying: number;
   readonly state: 'idle' | 'working' | 'backlogged' | 'retrying' | 'stuck';
+  readonly oldestPendingAgeSeconds: number | null;
+  readonly lastErrorCategory: string | null;
 };
 
 export type VerifiedLfgCharacter = {
