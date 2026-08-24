@@ -2,7 +2,7 @@
 
 Task: `V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`  
 Branch: `cursor/p4-1-activity-domain` → `main`  
-Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** — _set after commit_
+Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** = `cc9eb88c27aa1037581428b94b896d0071a9f6e6`
 
 **This PR is large.** Do not squash history for review.
 
@@ -13,7 +13,7 @@ Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** — _set after commit_
 | Field                                   | Value                                      |
 | --------------------------------------- | ------------------------------------------ |
 | **BASE_SHA** (`origin/main`)            | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| **HEAD_SHA** (pre-stabilization commit) | `7e88eb8c8b8995b778cca7a29ee0616851c75c41` |
+| **HEAD_SHA** (stabilization) | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` |
 | **Commit count**                        | **170**                                    |
 | **Files changed**                       | **593**                                    |
 | **Insertions / deletions**              | **+70,171 / −882**                         |

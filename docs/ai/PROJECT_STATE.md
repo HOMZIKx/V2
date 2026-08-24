@@ -19,7 +19,7 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
 | LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)      |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `7e88eb8c8b8995b778cca7a29ee0616851c75c41` (pre-stabilization pin)  |
+| CURRENT_HEAD / PR_HEAD | `cc9eb88c27aa1037581428b94b896d0071a9f6e6`                          |
 | PR                     | #19 — **170 commits**, 593 files (+70,171/−882) vs `main`           |
 | PR_REVIEW_PACKAGE      | `docs/ai/PR19_REVIEW_PACKAGE.md`                                    |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
@@ -73,7 +73,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
 | **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff               |
 | **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks         |
-| **PR19_FINAL_STABILIZATION_SHA**              | _pending pin_                              | PR #19 integrated review package                                  |
+| **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                  |
 
 ## Module discovery status (summary)
 

@@ -12,7 +12,7 @@ PR: **#19** (170 commits, 593 files, +70k/−882 vs `main`)
 
 ## PR #19 review package
 
-Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** — _set after commit_
+Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** — `cc9eb88c27aa1037581428b94b896d0071a9f6e6`
 
 Full matrix: `docs/ai/PR19_REVIEW_PACKAGE.md`
 
