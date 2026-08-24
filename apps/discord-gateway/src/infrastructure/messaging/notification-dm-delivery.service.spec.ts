@@ -77,4 +77,23 @@ describe('NotificationDmDeliveryService', () => {
       expect.arrayContaining(['Dołącz', 'Zobacz', 'Nie teraz', expect.stringContaining('Wycisz')]),
     );
   });
+
+  it('dedupes successful DM delivery by outboxId within process', async () => {
+    const sendDirectMessage = vi.fn(() => Promise.resolve({ ok: true, messageId: 'm1' }));
+    const service = new NotificationDmDeliveryService({ sendDirectMessage } as never, makeConfig());
+    const body = {
+      outboxId: 'outbox-dm-1',
+      inboxItemId: 'inbox-1',
+      recipientDiscordUserId: '222222222222222222',
+      title: 'Dopasowanie',
+      body: 'Twoja rola pasuje.',
+      notificationClass: 'DISCOVERY',
+      kind: 'lfg.match',
+    };
+    const first = await service.deliver(body, 'proj-secret');
+    const second = await service.deliver(body, 'proj-secret');
+    expect(first.status).toBe('delivered');
+    expect(second.status).toBe('delivered');
+    expect(sendDirectMessage).toHaveBeenCalledOnce();
+  });
 });

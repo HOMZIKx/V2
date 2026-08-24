@@ -2327,7 +2327,7 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `WITH picked AS (
            SELECT activity_id FROM activity_projections
-           WHERE status IN ('pending', 'failed', 'degraded', 'missing')
+           WHERE status IN ('failed', 'degraded', 'missing')
              AND (lease_expires_at IS NULL OR lease_expires_at <= $1)
            ORDER BY updated_at
            FOR UPDATE SKIP LOCKED
@@ -2924,7 +2924,7 @@ function createTx(client: PoolClient): ActivityTx {
          WHERE guild_id = $1
            AND status = ANY($2::text[])
          ORDER BY updated_at DESC`,
-        [guildId, ['pending', 'failed', 'degraded', 'missing']],
+        [guildId, ['failed', 'degraded', 'missing']],
       );
       return result.rows.map((row) => mapProjection(row as Record<string, unknown>));
     },

@@ -169,10 +169,10 @@ A regression that restores `characterClassSpecKey`-only search bodies fails thes
 
 ## Validation
 
-| Check                    | Result                        |
-| ------------------------ | ----------------------------- |
+| Check                    | Result                                                |
+| ------------------------ | ----------------------------------------------------- |
 | `corepack pnpm validate` | **PASS** — `b7cf78fa258ac6e431a0510e21c13651271acb1b` |
-| Contract suites          | Included in validate          |
+| Contract suites          | Included in validate                                  |
 
 ---
 

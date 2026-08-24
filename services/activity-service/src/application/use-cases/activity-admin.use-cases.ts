@@ -14,11 +14,11 @@ import {
   type AdminReadinessIssue,
 } from '../../domain/admin-config-validation.js';
 import { ActivityError } from '../../domain/errors.js';
-import { OUTBOX_EVENT_TYPES } from '../../domain/outbox-events.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
 import type { StatusBehavior } from '../../domain/status-def.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import { isDiscordMetadataClientError } from '../discord-metadata-errors.js';
+import { enqueueEventProjection } from '../enqueue-event-projection.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -824,36 +824,21 @@ export class ActivityAdminUseCases {
     const now = this.deps.clock.now();
     return this.mutate(ctx, 'admin-projections-scan', `guild:${guildId}`, async (tx) => {
       const problems = await tx.listProjectionProblems(guildId);
+      let requested = 0;
       for (const projection of problems) {
         const activity = await tx.getActivity(projection.activityId);
         if (activity === null) {
           continue;
         }
-        await tx.upsertActivityProjection({
-          activityId: activity.id,
-          guildId: activity.guildId,
-          channelId: activity.publicationChannelId ?? projection.channelId,
-          opaqueId: activity.opaqueId,
-          status: 'pending',
-        });
-        await tx.insertOutbox({
-          eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
-          aggregateType: 'activity',
-          aggregateId: activity.id,
-          aggregateVersion: activity.version,
-          payload: {
-            activityId: activity.id,
-            opaqueId: activity.opaqueId,
-            guildId: activity.guildId,
-            channelId: activity.publicationChannelId ?? projection.channelId,
-          },
-          occurredAt: now,
+        requested += await enqueueEventProjection(tx, activity, now, {
+          onlyGuildIds: [guildId],
         });
       }
       await this.audit(tx, ctx, guildId, 'admin.projections.scan', {
-        requested: problems.length,
+        problems: problems.length,
+        requested,
       });
-      return { requested: problems.length };
+      return { requested };
     });
   }
 
@@ -865,27 +850,11 @@ export class ActivityAdminUseCases {
       if (activity === null || activity.guildId !== guildId) {
         throw new ActivityError('NOT_FOUND', 'Activity not found');
       }
-      const channelId = activity.publicationChannelId ?? '';
-      const projection = await tx.upsertActivityProjection({
-        activityId: activity.id,
-        guildId: activity.guildId,
-        channelId,
-        opaqueId: activity.opaqueId,
-        status: 'pending',
-      });
-      await tx.insertOutbox({
-        eventType: OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
-        aggregateType: 'activity',
-        aggregateId: activity.id,
-        aggregateVersion: activity.version,
-        payload: {
-          activityId: activity.id,
-          opaqueId: activity.opaqueId,
-          guildId: activity.guildId,
-          channelId,
-        },
-        occurredAt: now,
-      });
+      await enqueueEventProjection(tx, activity, now, { onlyGuildIds: [guildId] });
+      const projection = await tx.getActivityProjectionForGuild(activity.id, guildId);
+      if (projection === null) {
+        throw new ActivityError('NOT_FOUND', 'Projection not found after repair enqueue');
+      }
       await this.audit(tx, ctx, guildId, 'admin.projection.repair', { activityId }, activityId);
       return projection;
     });

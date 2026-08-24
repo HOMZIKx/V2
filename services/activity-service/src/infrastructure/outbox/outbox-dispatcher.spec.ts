@@ -167,4 +167,85 @@ describe('ActivityOutboxDispatcher projection secret contract', () => {
     expect(failOutbox).toHaveBeenCalledOnce();
     expect(completeOutbox).not.toHaveBeenCalled();
   });
+
+  it('completes PANEL_PROJECTION_REPAIRED without Discord deliver', async () => {
+    const fetchImpl = vi.fn();
+    const completeOutbox = vi.fn().mockResolvedValue(undefined);
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () =>
+            Promise.resolve([
+              {
+                id: 'outbox-panel-signal',
+                eventType: 'activity.panel.projection_repaired.v1',
+                aggregateType: 'panel',
+                aggregateId: 'panel-1',
+                aggregateVersion: 1,
+                payload: { panelId: 'panel-1', messageId: 'm1' },
+                attemptCount: 1,
+              },
+            ]),
+          completeOutbox,
+          failOutbox: vi.fn(),
+          permanentFailOutbox: vi.fn(),
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(completeOutbox).toHaveBeenCalledOnce();
+  });
+
+  it('permanently fails after max delivery attempts and marks projection failed', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('upstream', { status: 503 }));
+    const permanentFailOutbox = vi.fn().mockResolvedValue(undefined);
+    const upsertActivityProjection = vi.fn().mockResolvedValue({});
+    const repository = {
+      withTransaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          claimOutbox: () =>
+            Promise.resolve([
+              {
+                id: 'outbox-max',
+                eventType: 'activity.activity.projection_requested.v1',
+                aggregateType: 'activity',
+                aggregateId: 'act-1',
+                aggregateVersion: 1,
+                payload: {
+                  kind: 'event',
+                  guildId: 'g1',
+                  channelId: 'c1',
+                  opaqueEventId: 'a1b2c3d4e5f6',
+                  name: 'Raid',
+                },
+                attemptCount: 26,
+              },
+            ]),
+          completeOutbox: vi.fn(),
+          failOutbox: vi.fn(),
+          permanentFailOutbox,
+          upsertActivityProjection,
+        }),
+      ),
+    };
+    const dispatcher = new ActivityOutboxDispatcher(makeConfig(), repository as never, {
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+    });
+    dispatcher.setFetchImpl(fetchImpl);
+    await dispatcher.runOnce();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(permanentFailOutbox).toHaveBeenCalledOnce();
+    expect(upsertActivityProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'failed',
+        guildId: 'g1',
+        channelId: 'c1',
+      }),
+    );
+  });
 });

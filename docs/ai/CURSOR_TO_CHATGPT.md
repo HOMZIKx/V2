@@ -4,31 +4,37 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG: **`READY_FOR_CHATGPT_REAUDIT`** (unchanged by contract audit)
+LFG: **`READY_FOR_CHATGPT_REAUDIT`** (unchanged)
 
-Task: `V2-CROSS-SERVICE-CONTRACT-DRIFT-AUDIT-001`  
+Task: `V2-DURABILITY-RECOVERY-AND-AUTO-SYNC-AUDIT-002`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19
 
-## Cross-service contract drift audit
+## Durability / recovery audit
 
-Report: `docs/ai/CROSS_SERVICE_CONTRACT_AUDIT.md`  
-Checkpoint: `CROSS_SERVICE_CONTRACT_AUDIT_SHA` — `b7cf78fa258ac6e431a0510e21c13651271acb1b`
+Report: `docs/ai/DURABILITY_RECOVERY_AUDIT.md`  
+Checkpoint: `DURABILITY_RECOVERY_AUDIT_SHA` — _(set after commit)_
 
 ### CRITICAL/HIGH fixed (no product expansion)
 
-1. **LFG search** — consumers now send `characterId` (server-authoritative); shared `LfgSearchRequestSchema`
-2. **LFG join** — drop client class-spec authority; pass `characterId`
-3. **Discord occupancy** — response schema is `{ occupied, capacity }` via shared contract
-4. **Admin audit** — `offset`/`total` pagination (was broken `cursor`/`nextCursor`)
-5. **Dead `types/reorder` client** — removed
-6. **Full-group cancel** — requires `guildId` query
-7. **`@v2/contracts` transport** + contract tests; Docker builds contracts to dist
+1. Admin repair/scan → full `PROJECTION_REQUESTED` via `enqueueEventProjection`
+2. `PANEL_PROJECTION_REPAIRED` audit-only (no thin Discord deliver)
+3. Block `rabbitmq`/`dual` outbox transport until receipts exist
+4. Max outbox attempts + projection `failed` + auto-repair worker
+5. Projection claim/list exclude healthy `pending`
+6. LFG watch/suppress/full-group Idempotency-Key wiring
+7. Notification DM in-process `outboxId` dedupe
 
-## Prior Zeabur work
+### Remaining (MEDIUM — architecture)
 
-- Audit: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`
-- Tip redeploy prep: image bake of `V2_IMAGE_GIT_COMMIT_SHA`; `pnpm zeabur:redeploy` blocked without Owner `ZEABUR_TOKEN` / `ZEABUR_ENV_ID`
+- Durable cross-restart delivery receipts for Discord create-before-ack
+- Watch re-scan of existing groups = product decision (not implemented)
+- Profile/interest Discord role apply loop = identity foundation only
+
+## Prior audits
+
+- `CROSS_SERVICE_CONTRACT_AUDIT_SHA` — `b7cf78fa258ac6e431a0510e21c13651271acb1b`
+- `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`
 
 ## LFG (prior — unchanged)
 
@@ -39,7 +45,7 @@ Await ChatGPT re-audit.
 
 | Check          | Result                                    |
 | -------------- | ----------------------------------------- |
-| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate`       |
+| LOCAL_VALIDATE | _(pending — run after fixes)_             |
 | CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
 
 ## STOP

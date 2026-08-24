@@ -184,6 +184,12 @@ function assertOutboxWorkerRequirements(
   const needsHttp = transport === 'http' || transport === 'dual';
   const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
 
+  if (needsRabbit) {
+    addIssue(
+      'ACTIVITY_OUTBOX_TRANSPORT',
+      'rabbitmq and dual are blocked until Discord delivery receipts exist; use http',
+    );
+  }
   if (needsHttp && config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
     addIssue(
       'ACTIVITY_DISCORD_PROJECTION_BASE_URL',

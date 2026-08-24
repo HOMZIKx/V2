@@ -26,6 +26,7 @@ import {
   loadInboundClientRegistry,
 } from '../infrastructure/internal/verify-inbound-assertion.js';
 import { ActivityOutboxDispatcher } from '../infrastructure/outbox/outbox-dispatcher.js';
+import { ActivityProjectionAutoRepair } from '../infrastructure/outbox/projection-auto-repair.js';
 import { ActivityRepository } from '../infrastructure/persistence/activity-repository.js';
 import { ActivityAdminController } from './activity-admin.controller.js';
 import { ActivityController } from './activity.controller.js';
@@ -173,6 +174,7 @@ const providers: Provider[] = [
   },
   InboundAssertionGuard,
   ActivityOutboxDispatcher,
+  ActivityProjectionAutoRepair,
 ];
 
 function resolveInboundClientsJson(config: ActivityEnv): string | undefined {

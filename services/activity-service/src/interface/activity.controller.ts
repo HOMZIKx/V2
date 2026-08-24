@@ -1002,17 +1002,25 @@ export class ActivityController {
   @Post('lfg/watches')
   @HttpCode(200)
   @RequireOperation('activity_mutate')
-  public async createLfgWatch(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  public async createLfgWatch(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
     const parsed = parseOrThrow(LfgWatchCreateRequestSchema, body);
-    return this.useCases.createLfgWatch(actorFromRequest(request), {
-      guildId: parsed.guildId,
-      organizationId: parsed.organizationId,
-      characterId: parsed.characterId,
-      activityTypeKey: parsed.activityTypeKey,
-      sessionRoles: parsed.sessionRoles,
-      windowStartAt: parsed.windowStartAt,
-      windowEndAt: parsed.windowEndAt,
-    });
+    return this.useCases.createLfgWatch(
+      actorFromRequest(request),
+      {
+        guildId: parsed.guildId,
+        organizationId: parsed.organizationId,
+        characterId: parsed.characterId,
+        activityTypeKey: parsed.activityTypeKey,
+        sessionRoles: parsed.sessionRoles,
+        windowStartAt: parsed.windowStartAt,
+        windowEndAt: parsed.windowEndAt,
+      },
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Patch('lfg/watches/:id')
@@ -1022,9 +1030,15 @@ export class ActivityController {
     @Param('id') id: string,
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseOrThrow(LfgWatchUpdateRequestSchema, body);
-    return this.useCases.updateLfgWatch(actorFromRequest(request), id, parsed);
+    return this.useCases.updateLfgWatch(
+      actorFromRequest(request),
+      id,
+      parsed,
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Get('lfg/watches')
@@ -1046,11 +1060,17 @@ export class ActivityController {
     @Param('id') id: string,
     @Query('guildId') guildId: string | undefined,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (guildId === undefined || guildId.trim().length === 0) {
       throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
     }
-    return this.useCases.cancelLfgWatch(actorFromRequest(request), id, guildId.trim());
+    return this.useCases.cancelLfgWatch(
+      actorFromRequest(request),
+      id,
+      guildId.trim(),
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('lfg/join')
@@ -1082,6 +1102,7 @@ export class ActivityController {
   public async createLfgFullGroupWatch(
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
     const parsed = parseOrThrow(
@@ -1094,7 +1115,11 @@ export class ActivityController {
       }),
       body,
     );
-    return this.useCases.createLfgFullGroupWatch(actorFromRequest(request), parsed);
+    return this.useCases.createLfgFullGroupWatch(
+      actorFromRequest(request),
+      parsed,
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('lfg/full-group-watches/:id/cancel')
@@ -1104,11 +1129,17 @@ export class ActivityController {
     @Param('id') id: string,
     @Query('guildId') guildId: string | undefined,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (guildId === undefined || guildId.trim().length === 0) {
       throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
     }
-    return this.useCases.cancelLfgFullGroupWatch(actorFromRequest(request), id, guildId.trim());
+    return this.useCases.cancelLfgFullGroupWatch(
+      actorFromRequest(request),
+      id,
+      guildId.trim(),
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Get('lfg/activities/by-opaque/:opaqueId')
@@ -1139,11 +1170,17 @@ export class ActivityController {
     @Param('id') id: string,
     @Query('guildId') guildId: string | undefined,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (guildId === undefined || guildId.trim().length === 0) {
       throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
     }
-    return this.useCases.pauseLfgWatch(actorFromRequest(request), id, guildId.trim());
+    return this.useCases.pauseLfgWatch(
+      actorFromRequest(request),
+      id,
+      guildId.trim(),
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('lfg/watches/:id/resume')
@@ -1153,11 +1190,17 @@ export class ActivityController {
     @Param('id') id: string,
     @Query('guildId') guildId: string | undefined,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (guildId === undefined || guildId.trim().length === 0) {
       throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
     }
-    return this.useCases.resumeLfgWatch(actorFromRequest(request), id, guildId.trim());
+    return this.useCases.resumeLfgWatch(
+      actorFromRequest(request),
+      id,
+      guildId.trim(),
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('lfg/matches/:activityId/suppress')
@@ -1167,12 +1210,18 @@ export class ActivityController {
     @Param('activityId') activityId: string,
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseOrThrow(LfgSuppressMatchRequestSchema, body);
-    return this.useCases.suppressLfgMatch(actorFromRequest(request), activityId, {
-      guildId: parsed.guildId,
-      ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
-    });
+    return this.useCases.suppressLfgMatch(
+      actorFromRequest(request),
+      activityId,
+      {
+        guildId: parsed.guildId,
+        ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
   }
 
   @Post('reservations')

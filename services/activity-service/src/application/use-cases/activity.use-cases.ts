@@ -34,7 +34,7 @@ import {
 import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
-import { buildEventProjectionPayload } from '../event-projection-payload.js';
+import { enqueueEventProjection } from '../enqueue-event-projection.js';
 import {
   collectOrganizerDiscordIds,
   collectParticipantDiscordIds,
@@ -298,77 +298,7 @@ export class ActivityUseCases {
     now: Date,
     options?: { readonly onlyGuildIds?: readonly string[] },
   ): Promise<void> {
-    let targets = await tx.listPublicationTargets(activity.id);
-    if (targets.length === 0) {
-      const channelId = activity.publicationChannelId ?? '';
-      if (channelId.length === 0) {
-        return;
-      }
-      targets = [
-        {
-          id: 'legacy-home',
-          activityId: activity.id,
-          organizationId: activity.organizationId,
-          guildId: activity.guildId,
-          channelId,
-          participantLimit: activity.participantLimit,
-          sortOrder: 0,
-        },
-      ];
-    }
-
-    if (options?.onlyGuildIds !== undefined) {
-      const allowed = new Set(options.onlyGuildIds);
-      targets = targets.filter((t) => allowed.has(t.guildId));
-    }
-
-    const [types, statusDefs, participations] = await Promise.all([
-      tx.listActivityTypes(activity.guildId),
-      tx.listStatusDefs(activity.guildId),
-      tx.listParticipations(activity.id),
-    ]);
-
-    for (const target of targets) {
-      if (target.channelId.trim().length === 0) {
-        continue;
-      }
-      const existing = await tx.getActivityProjectionForGuild(activity.id, target.guildId);
-      const opaqueId =
-        existing?.opaqueId ??
-        (target.guildId === activity.guildId ? activity.opaqueId : opaqueIdFromUuid(randomUUID()));
-      const payload = buildEventProjectionPayload({
-        activity,
-        channelId: target.channelId,
-        opaqueEventId: opaqueId,
-        messageId: existing?.messageId ?? null,
-        types,
-        statusDefs,
-        participations,
-        participantLimit: target.participantLimit ?? activity.participantLimit,
-      });
-      if (payload === null) {
-        continue;
-      }
-
-      await tx.upsertActivityProjection({
-        activityId: activity.id,
-        guildId: target.guildId,
-        channelId: target.channelId,
-        opaqueId,
-        status: 'pending',
-        ...(existing?.messageId !== undefined && existing.messageId !== null
-          ? { messageId: existing.messageId }
-          : {}),
-      });
-      await tx.insertOutbox({
-        eventType: OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
-        aggregateType: 'activity',
-        aggregateId: activity.id,
-        aggregateVersion: activity.version,
-        payload: { ...payload },
-        occurredAt: now,
-      });
-    }
+    await enqueueEventProjection(tx, activity, now, options);
   }
 
   private async triggerLfgMatchingAfterProjection(
@@ -2182,10 +2112,11 @@ export class ActivityUseCases {
       windowStartAt: string;
       windowEndAt: string;
     },
+    ctx: MutationContext,
   ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-watch-create', `guild:${input.guildId}`, async (tx) => {
       const { createLfgIntent } = await import('./lfg.use-cases.js');
       return createLfgIntent(
         tx,
@@ -2214,10 +2145,11 @@ export class ActivityUseCases {
       windowStartAt: string;
       windowEndAt: string;
     },
+    ctx: MutationContext,
   ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-watch-update', `intent:${intentId}`, async (tx) => {
       const { updateLfgIntent } = await import('./lfg.use-cases.js');
       await updateLfgIntent(
         tx,
@@ -2236,10 +2168,15 @@ export class ActivityUseCases {
     });
   }
 
-  public async cancelLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
+  public async cancelLfgWatch(
+    actor: ActorSubject,
+    intentId: string,
+    guildId: string,
+    ctx: MutationContext,
+  ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-watch-cancel', `intent:${intentId}`, async (tx) => {
       const { cancelLfgIntent } = await import('./lfg.use-cases.js');
       await cancelLfgIntent(tx, actor, intentId, now);
       return { id: intentId, status: 'cancelled' };
@@ -2317,20 +2254,30 @@ export class ActivityUseCases {
     });
   }
 
-  public async pauseLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
+  public async pauseLfgWatch(
+    actor: ActorSubject,
+    intentId: string,
+    guildId: string,
+    ctx: MutationContext,
+  ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-watch-pause', `intent:${intentId}`, async (tx) => {
       const { pauseLfgIntent } = await import('./lfg.use-cases.js');
       await pauseLfgIntent(tx, actor, intentId, now);
       return { id: intentId, status: 'paused' };
     });
   }
 
-  public async resumeLfgWatch(actor: ActorSubject, intentId: string, guildId: string) {
+  public async resumeLfgWatch(
+    actor: ActorSubject,
+    intentId: string,
+    guildId: string,
+    ctx: MutationContext,
+  ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-watch-resume', `intent:${intentId}`, async (tx) => {
       const { resumeLfgIntent } = await import('./lfg.use-cases.js');
       await resumeLfgIntent(tx, actor, intentId, now);
       return { id: intentId, status: 'active' };
@@ -2341,10 +2288,11 @@ export class ActivityUseCases {
     actor: ActorSubject,
     activityId: string,
     input: { intentId?: string; guildId: string },
+    ctx: MutationContext,
   ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.CREATE, input.guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-match-suppress', `activity:${activityId}`, async (tx) => {
       const { suppressLfgMatch } = await import('./lfg.use-cases.js');
       await suppressLfgMatch(
         tx,
@@ -2372,18 +2320,29 @@ export class ActivityUseCases {
       characterId: string;
       sessionRoles: readonly string[];
     },
+    ctx: MutationContext,
   ) {
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, input.guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
-      const { createLfgFullGroupWatch } = await import('./lfg.use-cases.js');
-      return createLfgFullGroupWatch(tx, actor, input, this.deps.characterVerify);
-    });
+    return this.mutate(
+      ctx,
+      'lfg-full-group-watch-create',
+      `activity:${input.activityId}`,
+      async (tx) => {
+        const { createLfgFullGroupWatch } = await import('./lfg.use-cases.js');
+        return createLfgFullGroupWatch(tx, actor, input, this.deps.characterVerify);
+      },
+    );
   }
 
-  public async cancelLfgFullGroupWatch(actor: ActorSubject, watchId: string, guildId: string) {
+  public async cancelLfgFullGroupWatch(
+    actor: ActorSubject,
+    watchId: string,
+    guildId: string,
+    ctx: MutationContext,
+  ) {
     const now = this.deps.clock.now();
     await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, guildId);
-    return this.deps.repository.withTransaction(async (tx) => {
+    return this.mutate(ctx, 'lfg-full-group-watch-cancel', `watch:${watchId}`, async (tx) => {
       const { cancelLfgFullGroupWatch } = await import('./lfg.use-cases.js');
       await cancelLfgFullGroupWatch(tx, actor, watchId, now);
       return { id: watchId, status: 'cancelled' };

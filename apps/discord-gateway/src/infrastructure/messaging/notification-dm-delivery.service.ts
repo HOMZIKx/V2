@@ -35,6 +35,10 @@ export type NotificationDmDeliveryResult = {
 
 @Injectable()
 export class NotificationDmDeliveryService {
+  /** Bounded in-process dedupe for rapid outbox retries within one process. */
+  private readonly delivered = new Map<string, NotificationDmDeliveryResult>();
+  private static readonly DEDUPE_LIMIT = 2_000;
+
   public constructor(
     @Inject(DISCORD_GATEWAY_TOKEN) private readonly gateway: DiscordJsGatewayAdapter | null,
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
@@ -66,6 +70,10 @@ export class NotificationDmDeliveryService {
       return { status: 'rejected', outboxId: 'unknown', detail: 'Invalid notification payload.' };
     }
     const outboxId = parsed.data.outboxId ?? parsed.data.inboxItemId;
+    const cached = this.delivered.get(outboxId);
+    if (cached !== undefined) {
+      return { ...cached, status: cached.status === 'rejected' ? 'rejected' : cached.status };
+    }
     if (this.gateway === null) {
       return {
         status: 'fallback_inbox',
@@ -99,15 +107,19 @@ export class NotificationDmDeliveryService {
     });
 
     if (result.ok) {
-      return { status: 'delivered', outboxId };
+      const delivered: NotificationDmDeliveryResult = { status: 'delivered', outboxId };
+      this.rememberDelivered(outboxId, delivered);
+      return delivered;
     }
 
     if (result.code === 'DM_BLOCKED' || result.code === 'DM_CLOSED') {
-      return {
+      const fallback: NotificationDmDeliveryResult = {
         status: 'fallback_inbox',
         outboxId,
         ...(result.detail !== undefined ? { detail: result.detail } : {}),
       };
+      this.rememberDelivered(outboxId, fallback);
+      return fallback;
     }
 
     if (result.code === 'RATE_LIMITED') {
@@ -123,6 +135,17 @@ export class NotificationDmDeliveryService {
       outboxId,
       ...(result.detail !== undefined ? { detail: result.detail } : {}),
     };
+  }
+
+  private rememberDelivered(outboxId: string, result: NotificationDmDeliveryResult): void {
+    this.delivered.set(outboxId, result);
+    if (this.delivered.size <= NotificationDmDeliveryService.DEDUPE_LIMIT) {
+      return;
+    }
+    const oldest = this.delivered.keys().next().value;
+    if (oldest !== undefined) {
+      this.delivered.delete(oldest);
+    }
   }
 
   private assertAuthorized(projectionSecret: string | undefined): void {

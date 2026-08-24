@@ -24,7 +24,8 @@ import { ActivityOutboxRabbitPublisher } from './outbox-rabbit-publisher.js';
 
 const DISCORD_DELIVER_EVENT_TYPES = new Set<string>([
   OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED,
-  OUTBOX_EVENT_TYPES.PANEL_PROJECTION_REPAIRED,
+  // PANEL_PROJECTION_REPAIRED is an audit/signal only: hub Discord apply is direct.
+  // Thin { panelId, messageId } payloads must never hit discord-gateway deliver.
   OUTBOX_EVENT_TYPES.NOTIFICATION_DELIVER,
 ]);
 
@@ -33,6 +34,8 @@ const DELIVER_PATH = '/internal/activity/v1/projections/deliver';
 const POLL_INTERVAL_MS = 2_000;
 const CLAIM_LIMIT = 10;
 const LEASE_SECONDS = 30;
+/** Cap poison / runaway retries; transient Discord outages use backoff until this ceiling. */
+const MAX_DELIVERY_ATTEMPTS = 25;
 const ASSERTION_HEADER = 'discord-client-assertion';
 /** Shared contract with discord-gateway ActivityProjectionController. */
 export const PROJECTION_SECRET_HEADER = 'x-activity-projection-secret';
@@ -79,30 +82,24 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     }
 
     const transport = this.config.ACTIVITY_OUTBOX_TRANSPORT;
-    const needsHttp = transport === 'http' || transport === 'dual';
-    const needsRabbit = transport === 'rabbitmq' || transport === 'dual';
+    if (transport === 'rabbitmq' || transport === 'dual') {
+      throw new Error(
+        'ACTIVITY_OUTBOX_TRANSPORT rabbitmq/dual is not supported until delivery receipts exist (use http)',
+      );
+    }
 
-    if (needsHttp && this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
+    if (this.config.ACTIVITY_DISCORD_PROJECTION_BASE_URL === undefined) {
       throw new Error(
         'Outbox worker enabled but ACTIVITY_DISCORD_PROJECTION_BASE_URL is missing (fail fast)',
       );
     }
     if (
-      needsHttp &&
-      (this.config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined ||
-        this.config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0)
+      this.config.ACTIVITY_PROJECTION_SHARED_SECRET === undefined ||
+      this.config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0
     ) {
       throw new Error(
         'Outbox worker enabled but ACTIVITY_PROJECTION_SHARED_SECRET is missing (fail fast)',
       );
-    }
-    if (needsRabbit) {
-      const rabbitUrl = this.config.ACTIVITY_RABBITMQ_URL;
-      if (rabbitUrl === undefined || rabbitUrl.trim().length === 0) {
-        throw new Error('Outbox worker enabled but ACTIVITY_RABBITMQ_URL is missing (fail fast)');
-      }
-      this.rabbitPublisher = new ActivityOutboxRabbitPublisher(rabbitUrl);
-      await this.rabbitPublisher.ensureReady();
     }
 
     await this.safeTick('startup');
@@ -196,11 +193,19 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   private async deliver(
     message: OutboxMessageRecord,
   ): Promise<'delivered' | 'retry' | 'permanent'> {
-    // Domain events (CREATED/RSVP/…) are durable audit/signal rows.
-    // Discord apply goes only through PROJECTION_REQUESTED (full enriched payload).
+    // Domain events (CREATED/RSVP/…) and panel repair signals are durable audit rows.
+    // Discord apply goes only through PROJECTION_REQUESTED / NOTIFICATION_DELIVER.
     if (!DISCORD_DELIVER_EVENT_TYPES.has(message.eventType)) {
       await this.repository.withTransaction((tx) => tx.completeOutbox(message.id));
       return 'delivered';
+    }
+
+    if (message.attemptCount > MAX_DELIVERY_ATTEMPTS) {
+      await this.permanentFail(
+        message,
+        `Exceeded max delivery attempts (${MAX_DELIVERY_ATTEMPTS})`,
+      );
+      return 'permanent';
     }
 
     const transport = this.config.ACTIVITY_OUTBOX_TRANSPORT;
@@ -313,9 +318,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
           return 'retry';
         }
         if (deliverStatus === 'rejected') {
-          await this.repository.withTransaction((tx) =>
-            tx.permanentFailOutbox(message.id, 'Notification DM rejected'),
-          );
+          await this.permanentFail(message, 'Notification DM rejected');
           return 'permanent';
         }
       }
@@ -330,7 +333,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       return 'retry';
     }
 
-    await this.repository.withTransaction((tx) => tx.permanentFailOutbox(message.id, errorText));
+    await this.permanentFail(message, errorText);
     return 'permanent';
   }
 
@@ -392,8 +395,47 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   }
 
   private async failRetry(message: OutboxMessageRecord, error: string): Promise<void> {
+    if (message.attemptCount >= MAX_DELIVERY_ATTEMPTS) {
+      await this.permanentFail(message, `${error} (max attempts ${MAX_DELIVERY_ATTEMPTS})`);
+      return;
+    }
     const availableAt = new Date(this.clock.now().getTime() + backoffMs(message.attemptCount));
     await this.repository.withTransaction((tx) => tx.failOutbox(message.id, error, availableAt));
+  }
+
+  private async permanentFail(message: OutboxMessageRecord, error: string): Promise<void> {
+    const now = this.clock.now();
+    const payloadGuild =
+      typeof message.payload.guildId === 'string' ? message.payload.guildId : undefined;
+    const payloadChannel =
+      typeof message.payload.channelId === 'string' ? message.payload.channelId : undefined;
+    const payloadOpaque =
+      typeof message.payload.opaqueEventId === 'string'
+        ? message.payload.opaqueEventId
+        : typeof message.payload.opaqueId === 'string'
+          ? message.payload.opaqueId
+          : undefined;
+
+    await this.repository.withTransaction(async (tx) => {
+      await tx.permanentFailOutbox(message.id, error);
+      if (
+        message.eventType === OUTBOX_EVENT_TYPES.PROJECTION_REQUESTED &&
+        payloadGuild !== undefined &&
+        payloadChannel !== undefined &&
+        payloadOpaque !== undefined
+      ) {
+        await tx.upsertActivityProjection({
+          activityId: message.aggregateId,
+          guildId: payloadGuild,
+          channelId: payloadChannel,
+          opaqueId: payloadOpaque,
+          status: 'failed',
+          lastError: error.slice(0, 500),
+          leaseOwner: null,
+          leaseExpiresAt: new Date(now.getTime() + backoffMs(message.attemptCount)),
+        });
+      }
+    });
   }
 
   private async signAssertion(): Promise<string> {
