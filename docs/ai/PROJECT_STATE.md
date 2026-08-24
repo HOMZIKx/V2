@@ -4,7 +4,7 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG v1: **`READY_FOR_CHATGPT_REAUDIT`** (ChatGPT remediation `V2-DUNGEON-LFG-V1-CHATGPT-AUDIT-REMEDIATION-003`).
+LFG v1: **`READY_FOR_CHATGPT_FINAL_REAUDIT`** (durable DM context remediation `V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`).
 
 Not READY for Core Foundation Owner/ChatGPT review.  
 Not APPROVED. Not merged. STOP before Stage 8.  
@@ -15,11 +15,11 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                               |
 | ---------------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-DURABILITY-RECOVERY-AND-AUTO-SYNC-AUDIT-002`                    |
+| CURRENT_TASK           | `V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`                   |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
-| LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                         |
+| LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_REAUDIT`                                   |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `1e5aba20a4616cb4ea40a4bd5150d7460ecc68fc`                          |
+| CURRENT_HEAD / PR_HEAD | _(updated at checkpoint push)_                                      |
 | PR                     | #19                                                                 |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
 | LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
@@ -53,7 +53,8 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA      | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                   |
 | **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**      | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                         |
 | **DUNGEON_LFG_V1_AUDIT_SHA**               | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                   |
-| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | `3c3009991f656e4369d3f600fcb05266683ede50` | **READY_FOR_CHATGPT_REAUDIT**                                  |
+| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                       |
+| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**  | _(checkpoint commit)_                       | **READY_FOR_CHATGPT_FINAL_REAUDIT** — durable DM intent/watch    |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — discovery prep ready                          |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |
@@ -72,7 +73,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | Hub Core      | Accepted Stage 3 (+ implementation assumptions flagged)            |
 | Notifications | Principles Accepted #24; product catalog/timings open              |
 | Activity P4   | Accepted P4 decisions                                              |
-| LFG           | **`READY_FOR_CHATGPT_REAUDIT`** (#20 closed; remediation complete) |
+| LFG           | **`READY_FOR_CHATGPT_FINAL_REAUDIT`** (#20 closed; durable DM context fixed) |
 | Reservations  | `RESERVATIONS_OWNER_DISCOVERY_REQUIRED` (prep ready)               |
 | Marketplace   | `OWNER_DISCOVERY_REQUIRED` (#28); prototype only                   |
 
@@ -88,7 +89,11 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 ## LFG v1 delivery (summary)
 
 - Identity S2S character verify + server-side role authority
-- Actionable LFG match DMs (signed buttons, Inbox fallback)
+- Actionable LFG match DMs with **durable intent/watch context** in signed buttons (≤100 chars)
+- Intent-based join: backend resolves `intentId` → stored character; ignores profile default
+- Full-group watch join: resolves watch opaque id → stored character
+- Nie teraz suppresses exact `intentId` (not actor-wide) when durable intent context present
+- Server `eligiblePartyRoles` rendered in DM; backend revalidates role at click
 - Multi-role join, custom time window, watch edit, full-group watch UX
 - Background notify membership revalidation (JOIN permission)
 - Admin composition from activity type catalog (FLEX + preferred explicit)
@@ -96,4 +101,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-24 — Durability/recovery/auto-sync audit (`V2-DURABILITY-RECOVERY-AND-AUTO-SYNC-AUDIT-002`); LFG status unchanged (`READY_FOR_CHATGPT_REAUDIT`).
+2026-08-24 — Durable DM context remediation (`V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`); `LFG_STATUS = READY_FOR_CHATGPT_FINAL_REAUDIT`.

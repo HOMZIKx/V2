@@ -12,6 +12,15 @@ export const NotificationDeliveryActionsSchema = z.object({
   activityTypeKey: z.string().min(1),
   fingerprint: z.string().min(1).max(200),
   intentId: z.string().uuid().optional(),
+  intentOpaqueId: z
+    .string()
+    .regex(/^[a-f0-9]{12}$/)
+    .optional(),
+  fullGroupWatchId: z.string().uuid().optional(),
+  fullGroupWatchOpaqueId: z
+    .string()
+    .regex(/^[a-f0-9]{12}$/)
+    .optional(),
   suggestedPartyRole: partyRole.optional(),
   eligiblePartyRoles: z.array(partyRole).min(1).max(4).optional(),
 });

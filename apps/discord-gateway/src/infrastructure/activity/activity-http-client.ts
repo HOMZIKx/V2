@@ -689,8 +689,6 @@ export class ActivityHttpClient {
     activityId: string,
     body: {
       guildId: string;
-      organizationId: string;
-      fingerprint?: string;
       intentId?: string;
     },
     actor: ActivityActorContext,
@@ -752,6 +750,51 @@ export class ActivityHttpClient {
 
   public async resolveActivityByOpaque(opaqueId: string, actor: ActivityActorContext) {
     return this.lookupActivityByOpaque(opaqueId, actor);
+  }
+
+  public async resolveLfgIntentByOpaque(
+    opaqueId: string,
+    guildId: string,
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'GET',
+      `/activity/v1/lfg/intents/by-opaque/${encodeURIComponent(opaqueId)}?guildId=${encodeURIComponent(guildId)}`,
+      z
+        .object({
+          id: z.string().uuid(),
+          opaqueId: z.string().regex(/^[a-f0-9]{12}$/),
+          guildId: z.string().min(1),
+          organizationId: z.string().min(1),
+          characterId: z.string().uuid(),
+          sessionRoles: z.array(z.string()),
+          activityTypeKey: z.string().min(1),
+        })
+        .passthrough(),
+      { actor },
+    );
+  }
+
+  public async resolveLfgFullGroupWatchByOpaque(
+    opaqueId: string,
+    guildId: string,
+    actor: ActivityActorContext,
+  ) {
+    return this.request(
+      'GET',
+      `/activity/v1/lfg/full-group-watches/by-opaque/${encodeURIComponent(opaqueId)}?guildId=${encodeURIComponent(guildId)}`,
+      z
+        .object({
+          id: z.string().uuid(),
+          opaqueId: z.string().regex(/^[a-f0-9]{12}$/),
+          guildId: z.string().min(1),
+          activityId: z.string().uuid(),
+          characterId: z.string().uuid(),
+          sessionRoles: z.array(z.string()),
+        })
+        .passthrough(),
+      { actor },
+    );
   }
 
   public async updateNotificationPreferences(

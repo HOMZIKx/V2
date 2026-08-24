@@ -1891,6 +1891,65 @@ function createTx(client: PoolClient): ActivityTx {
       };
     },
 
+    async getLfgIntentByOpaqueId(recipientDiscordUserId, guildId, opaqueId) {
+      const result = await client.query(
+        `SELECT id::text, guild_id, organization_id, recipient_discord_user_id, character_id,
+                activity_type_key, session_roles, window_start_at, window_end_at, expires_at,
+                cancelled_at, paused_at, fulfilled_at, class_spec_key
+         FROM lfg_intents
+         WHERE recipient_discord_user_id = $1
+           AND guild_id = $2
+           AND left(replace(id::text, '-', ''), 12) = $3
+         LIMIT 1`,
+        [recipientDiscordUserId, guildId, opaqueId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        id: String(row.id),
+        guildId: String(row.guild_id),
+        organizationId: String(row.organization_id),
+        recipientDiscordUserId: String(row.recipient_discord_user_id),
+        characterId: String(row.character_id),
+        activityTypeKey: String(row.activity_type_key),
+        sessionRoles: Array.isArray(row.session_roles) ? (row.session_roles as string[]) : [],
+        windowStartAt: asRequiredDate(row.window_start_at, 'window_start_at'),
+        windowEndAt: asRequiredDate(row.window_end_at, 'window_end_at'),
+        expiresAt: asRequiredDate(row.expires_at, 'expires_at'),
+        cancelledAt: asNullableDate(row.cancelled_at),
+        pausedAt: asNullableDate(row.paused_at),
+        fulfilledAt: asNullableDate(row.fulfilled_at),
+        classSpecKey: asNullableString(row.class_spec_key),
+      };
+    },
+
+    async getLfgFullGroupWatchByOpaqueId(recipientDiscordUserId, guildId, opaqueId) {
+      const result = await client.query(
+        `SELECT id::text, activity_id::text, character_id, session_roles, class_spec_key, cancelled_at
+         FROM lfg_full_group_watches
+         WHERE recipient_discord_user_id = $1
+           AND guild_id = $2
+           AND cancelled_at IS NULL
+           AND left(replace(id::text, '-', ''), 12) = $3
+         LIMIT 1`,
+        [recipientDiscordUserId, guildId, opaqueId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        id: String(row.id),
+        activityId: String(row.activity_id),
+        characterId: String(row.character_id),
+        sessionRoles: Array.isArray(row.session_roles) ? (row.session_roles as string[]) : [],
+        classSpecKey: asNullableString(row.class_spec_key),
+        cancelledAt: asNullableDate(row.cancelled_at),
+      };
+    },
+
     async listLfgIntentsForUser(guildId, recipientDiscordUserId) {
       const result = await client.query(
         `SELECT id::text, activity_type_key, session_roles, expires_at, cancelled_at,

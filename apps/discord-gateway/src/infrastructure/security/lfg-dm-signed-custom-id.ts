@@ -71,7 +71,12 @@ export function parseLfgDmCustomId(raw: string, secret: string): ParsedLfgDmCust
     throw new Error('Invalid LFG DM custom ID signature.');
   }
 
-  const [prefix, version, activityOpaqueId, action, param] = parts;
+  const prefix = parts[0];
+  const version = parts[1];
+  const activityOpaqueId = parts[2];
+  const action = parts[3];
+  const param = parts.length > 5 ? parts.slice(4, -1).join(':') : undefined;
+
   if (
     prefix !== LFG_DM_CUSTOM_ID_PREFIX ||
     version !== LFG_DM_CUSTOM_ID_VERSION ||
@@ -89,7 +94,7 @@ export function parseLfgDmCustomId(raw: string, secret: string): ParsedLfgDmCust
     scope: 'lfgdm',
     activityOpaqueId,
     action: action as LfgDmAction,
-    ...(param !== undefined && param !== signature ? { param } : {}),
+    ...(param !== undefined && param.length > 0 ? { param } : {}),
     signature,
   };
 }

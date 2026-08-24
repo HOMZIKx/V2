@@ -375,6 +375,12 @@ function createAdminMemoryRepo(): {
     async getLfgIntentById() {
       return null;
     },
+    async getLfgIntentByOpaqueId() {
+      return null;
+    },
+    async getLfgFullGroupWatchByOpaqueId() {
+      return null;
+    },
     async listLfgIntentsForUser() {
       return [];
     },

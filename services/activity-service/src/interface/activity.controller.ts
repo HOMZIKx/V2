@@ -1142,6 +1142,40 @@ export class ActivityController {
     );
   }
 
+  @Get('lfg/intents/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async resolveLfgIntentByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.resolveLfgIntentByOpaque(
+      opaqueId.trim(),
+      guildId.trim(),
+      actorFromRequest(request),
+    );
+  }
+
+  @Get('lfg/full-group-watches/by-opaque/:opaqueId')
+  @RequireOperation('activity_read')
+  public async resolveLfgFullGroupWatchByOpaque(
+    @Param('opaqueId') opaqueId: string,
+    @Query('guildId') guildId: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (guildId === undefined || guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    return this.useCases.resolveLfgFullGroupWatchByOpaque(
+      opaqueId.trim(),
+      guildId.trim(),
+      actorFromRequest(request),
+    );
+  }
+
   @Get('lfg/activities/by-opaque/:opaqueId')
   @RequireOperation('activity_read')
   public async resolveLfgActivityByOpaque(

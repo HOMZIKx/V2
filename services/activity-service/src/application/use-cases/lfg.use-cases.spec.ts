@@ -23,6 +23,8 @@ const START = new Date('2026-08-22T18:00:00.000Z');
 const END = new Date('2026-08-22T22:00:00.000Z');
 const NOW = new Date('2026-08-22T12:00:00.000Z');
 const CHAR_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const CHARACTER_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const CHARACTER_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const UNKNOWN_CHAR_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 function characterVerifyStub(
@@ -161,7 +163,7 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
     listActiveLfgIntents: () =>
       Promise.resolve([
         {
-          id: 'intent-1',
+          id: '33333333-3333-4333-8333-333333333333',
           recipientDiscordUserId: 'u1',
           sessionRoles: ['BUFF'],
           characterId: CHAR_ID,
@@ -552,6 +554,104 @@ describe('joinLfgActivity', () => {
     );
     expect(upsert).toHaveBeenCalledWith(expect.objectContaining({ partyRoleKey: 'DPS' }));
   });
+
+  it('uses intent characterId and ignores forged client characterId (CHARACTER_A vs CHARACTER_B)', async () => {
+    const resolveCharacter = vi.fn(
+      (input: { characterId: string; sessionRoles: readonly string[] }) => {
+        if (input.characterId !== CHARACTER_B) {
+          return Promise.reject(new ActivityError('NOT_FOUND', 'Character not found for user'));
+        }
+        return Promise.resolve({
+          characterId: CHARACTER_B,
+          classSpecKey: 'priest_buff',
+          classSpecLabel: 'priest_buff',
+          supportedPartyRoles: ['BUFF', 'DPS'] as const,
+          sessionRoles: ['BUFF'] as const,
+        });
+      },
+    );
+    const fulfill = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgIntentById: () =>
+        Promise.resolve({
+          id: 'intent-b',
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          characterId: CHARACTER_B,
+          activityTypeKey: 'azrael',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+          expiresAt: END,
+          cancelledAt: null,
+          pausedAt: null,
+          fulfilledAt: null,
+          classSpecKey: 'priest_buff',
+        }),
+      fulfillLfgIntent: fulfill,
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 0, DPS: 3 }),
+    });
+    await joinLfgActivity(
+      tx,
+      { discordUserId: 'seeker' },
+      {
+        activityId: '11111111-1111-4111-8111-111111111111',
+        statusDefId: 'status-1',
+        partyRoleKey: 'BUFF',
+        guildId: 'g1',
+        intentId: 'intent-b',
+        characterId: CHARACTER_A,
+      },
+      { resolveCharacter },
+      NOW,
+    );
+    expect(resolveCharacter).toHaveBeenCalledWith(
+      expect.objectContaining({ characterId: CHARACTER_B, sessionRoles: ['BUFF'] }),
+    );
+    expect(fulfill).toHaveBeenCalledWith('intent-b', 'seeker', NOW);
+  });
+
+  it('fulfills only the joined intent when multiple active intents exist', async () => {
+    const fulfill = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgIntentById: (id: string) =>
+        Promise.resolve({
+          id,
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          characterId: CHAR_ID,
+          activityTypeKey: 'azrael',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+          expiresAt: END,
+          cancelledAt: null,
+          pausedAt: null,
+          fulfilledAt: null,
+          classSpecKey: 'priest_buff',
+        }),
+      fulfillLfgIntent: fulfill,
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 0, DPS: 3 }),
+    });
+    await joinLfgActivity(
+      tx,
+      { discordUserId: 'seeker' },
+      {
+        activityId: '11111111-1111-4111-8111-111111111111',
+        statusDefId: 'status-1',
+        partyRoleKey: 'BUFF',
+        guildId: 'g1',
+        intentId: 'intent-2',
+        characterId: CHAR_ID,
+      },
+      characterVerifyStub(),
+      NOW,
+    );
+    expect(fulfill).toHaveBeenCalledOnce();
+    expect(fulfill).toHaveBeenCalledWith('intent-2', 'seeker', NOW);
+  });
 });
 
 describe('createLfgFullGroupWatch', () => {
@@ -616,8 +716,11 @@ describe('notifyLfgIntentsForActivity', () => {
       deliveryActions: {
         template: 'lfg_match',
         suggestedPartyRole: 'BUFF',
+        intentId: '33333333-3333-4333-8333-333333333333',
+        intentOpaqueId: '333333333333',
       },
     });
+    expect(notifyInput?.deliveryActions?.eligiblePartyRoles).toContain('BUFF');
     enqueue.mockRestore();
   });
 

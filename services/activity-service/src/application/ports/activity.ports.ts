@@ -684,6 +684,38 @@ export interface ActivityTx {
     readonly fulfilledAt: Date | null;
     readonly classSpecKey: string | null;
   } | null>;
+  getLfgIntentByOpaqueId(
+    recipientDiscordUserId: string,
+    guildId: string,
+    opaqueId: string,
+  ): Promise<{
+    readonly id: string;
+    readonly guildId: string;
+    readonly organizationId: string;
+    readonly recipientDiscordUserId: string;
+    readonly characterId: string;
+    readonly activityTypeKey: string;
+    readonly sessionRoles: readonly string[];
+    readonly windowStartAt: Date;
+    readonly windowEndAt: Date;
+    readonly expiresAt: Date;
+    readonly cancelledAt: Date | null;
+    readonly pausedAt: Date | null;
+    readonly fulfilledAt: Date | null;
+    readonly classSpecKey: string | null;
+  } | null>;
+  getLfgFullGroupWatchByOpaqueId(
+    recipientDiscordUserId: string,
+    guildId: string,
+    opaqueId: string,
+  ): Promise<{
+    readonly id: string;
+    readonly activityId: string;
+    readonly characterId: string;
+    readonly sessionRoles: readonly string[];
+    readonly classSpecKey: string | null;
+    readonly cancelledAt: Date | null;
+  } | null>;
   listLfgIntentsForUser(
     guildId: string,
     recipientDiscordUserId: string,

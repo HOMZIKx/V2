@@ -2349,6 +2349,26 @@ export class ActivityUseCases {
     });
   }
 
+  public async resolveLfgIntentByOpaque(opaqueId: string, guildId: string, actor: ActorSubject) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.READ, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { resolveLfgIntentByOpaque } = await import('./lfg.use-cases.js');
+      return resolveLfgIntentByOpaque(tx, actor, guildId, opaqueId);
+    });
+  }
+
+  public async resolveLfgFullGroupWatchByOpaque(
+    opaqueId: string,
+    guildId: string,
+    actor: ActorSubject,
+  ) {
+    await this.requirePermission(actor, ACTIVITY_PERMISSIONS.JOIN, guildId);
+    return this.deps.repository.withTransaction(async (tx) => {
+      const { resolveLfgFullGroupWatchByOpaque } = await import('./lfg.use-cases.js');
+      return resolveLfgFullGroupWatchByOpaque(tx, actor, guildId, opaqueId);
+    });
+  }
+
   public async resolveLfgActivityByOpaque(
     opaqueId: string,
     actor: ActorSubject,

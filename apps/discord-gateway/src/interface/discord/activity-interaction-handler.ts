@@ -19,7 +19,6 @@ import {
   isHubModuleKey,
   isPartyRoleKey,
   LFG_DUNGEON_ACTIVITY_TYPES,
-  pickDeterministicJoinRole,
   type PartyRoleKey,
 } from '@v2/hub-core';
 
@@ -40,8 +39,8 @@ import {
   parseModalCustomId,
   type ParsedActivityCustomId,
 } from '../../infrastructure/security/activity-signed-custom-id.js';
+import { decodeLfgDmContext } from '../../infrastructure/security/lfg-dm-context.js';
 import {
-  createLfgDmCustomId,
   isLfgDmCustomId,
   parseLfgDmCustomId,
   type ParsedLfgDmCustomId,
@@ -1085,7 +1084,6 @@ export class ActivityInteractionHandler {
             match.activityId,
             {
               guildId,
-              organizationId,
             },
             {
               ...actor,
@@ -1888,6 +1886,49 @@ export class ActivityInteractionHandler {
     }
   }
 
+  private async executeLfgDmJoin(input: {
+    activityId: string;
+    guildId: string;
+    partyRoleKey: PartyRoleKey;
+    userId: string;
+    actor: ReturnType<typeof actorOf>;
+    intentId?: string;
+    characterId?: string;
+  }): Promise<string> {
+    try {
+      const statusDefId = await this.resolveLfgJoinStatusDefId(input.guildId, input.userId);
+      const joined = await this.deps.activityClient.joinLfg(
+        {
+          activityId: input.activityId,
+          statusDefId,
+          partyRoleKey: input.partyRoleKey,
+          guildId: input.guildId,
+          ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
+          ...(input.intentId === undefined && input.characterId !== undefined
+            ? { characterId: input.characterId }
+            : {}),
+        },
+        {
+          ...input.actor,
+          idempotencyKey: idem(
+            input.userId,
+            'lfg-dm-join',
+            `${input.activityId}:${input.intentId ?? input.characterId ?? 'anon'}:${input.partyRoleKey}`,
+          ),
+        },
+      );
+      const waitlist =
+        typeof joined.waitlistPosition === 'number'
+          ? ` Lista rezerwowa: pozycja ${String(joined.waitlistPosition)}.`
+          : '';
+      return `Dołączono do ekipy.${waitlist}`;
+    } catch (error) {
+      return error instanceof Error && error.message.length > 0
+        ? error.message
+        : 'Nie udało się dołączyć — odśwież wyszukiwanie.';
+    }
+  }
+
   private async handleLfgDmComponent(interaction: MessageComponentInteraction): Promise<void> {
     let parsed: ParsedLfgDmCustomId;
     try {
@@ -1906,7 +1947,6 @@ export class ActivityInteractionHandler {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const userId = interaction.user.id;
     const actor = actorOf(userId);
-    const organizationId = this.deps.config.ACTIVITY_ORGANIZATION_ID;
 
     try {
       if (parsed.action === 'mute') {
@@ -1943,18 +1983,32 @@ export class ActivityInteractionHandler {
         actor,
       );
       const activityId = String(activity.id);
+      const durableContext = decodeLfgDmContext(parsed.param);
       const resolvedGuildId =
-        typeof activity.guildId === 'string'
+        durableContext?.guildId ??
+        (typeof activity.guildId === 'string'
           ? activity.guildId
-          : (parsed.param?.split(':')[0] ?? this.deps.config.DISCORD_TEST_GUILD_ID);
+          : (parsed.param?.split(':')[0] ?? this.deps.config.DISCORD_TEST_GUILD_ID));
 
       if (parsed.action === 'suppress') {
+        let intentId: string | undefined;
+        if (durableContext?.kind === 'intent') {
+          const intent = await this.deps.activityClient.resolveLfgIntentByOpaque(
+            durableContext.intentOpaqueId,
+            resolvedGuildId,
+            actor,
+          );
+          intentId = String(intent.id);
+        }
         await this.deps.activityClient.suppressLfgMatch(
           activityId,
-          { guildId: resolvedGuildId, organizationId },
+          {
+            guildId: resolvedGuildId,
+            ...(intentId !== undefined ? { intentId } : {}),
+          },
           {
             ...actor,
-            idempotencyKey: idem(userId, 'lfg-dm-suppress', activityId),
+            idempotencyKey: idem(userId, 'lfg-dm-suppress', `${activityId}:${intentId ?? 'actor'}`),
           },
         );
         await interaction.editReply({ content: 'Ukryto to dopasowanie.' });
@@ -1974,82 +2028,65 @@ export class ActivityInteractionHandler {
       }
 
       if (parsed.action === 'join') {
-        const profile = await this.loadProfile(userId);
-        const state = applyProfileCharacter(createDefaultLfgWizardState(), profile);
-        if (state.characterId === null || state.sessionRoles.length === 0) {
+        const partyRoleKey = durableContext?.partyRole;
+        if (partyRoleKey === undefined || !isPartyRoleKey(partyRoleKey)) {
           await interaction.editReply({
-            content: 'Skonfiguruj postać w /profil przed dołączeniem z DM.',
+            content: 'Wybierz konkretną rolę z przycisków DM (TANK/BUFF/DPS/FLEX).',
           });
           return;
         }
 
-        const roleParam = parsed.param?.includes(':') ? parsed.param.split(':')[1] : undefined;
-        if (roleParam !== undefined && isPartyRoleKey(roleParam)) {
-          const statusLine = await this.executeLfgJoin({
-            match: {
-              activityId,
-              opaqueId: parsed.activityOpaqueId,
-              dungeonLabel: 'Dungeon',
-              startAtLabel: '',
-              occupancyLabel: '',
-              roleNeedSummary: '',
-              matchReason: '',
-            },
-            partyRoleKey: roleParam,
+        if (durableContext?.kind === 'intent') {
+          const intent = await this.deps.activityClient.resolveLfgIntentByOpaque(
+            durableContext.intentOpaqueId,
+            resolvedGuildId,
+            actor,
+          );
+          const statusLine = await this.executeLfgDmJoin({
+            activityId,
             guildId: resolvedGuildId,
+            partyRoleKey,
             userId,
             actor,
-            state,
+            intentId: String(intent.id),
           });
           await interaction.editReply({ content: statusLine });
           return;
         }
 
-        const choices = state.sessionRoles.filter(isPartyRoleKey);
-        if (choices.length > 1) {
-          await interaction.editReply({
-            content: 'Wybierz rolę, w której chcesz dołączyć:',
-            components: [
-              new ActionRowBuilder<ButtonBuilder>().addComponents(
-                ...choices.map((role) =>
-                  new ButtonBuilder()
-                    .setCustomId(
-                      createLfgDmCustomId(
-                        parsed.activityOpaqueId,
-                        'join',
-                        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-                        `${resolvedGuildId}:${role}`,
-                      ),
-                    )
-                    .setLabel(role)
-                    .setStyle(ButtonStyle.Primary),
-                ),
-              ),
-            ],
+        if (durableContext?.kind === 'watch') {
+          const watch = await this.deps.activityClient.resolveLfgFullGroupWatchByOpaque(
+            durableContext.watchOpaqueId,
+            resolvedGuildId,
+            actor,
+          );
+          const statusLine = await this.executeLfgDmJoin({
+            activityId,
+            guildId: resolvedGuildId,
+            partyRoleKey,
+            userId,
+            actor,
+            characterId: String(watch.characterId),
           });
+          await interaction.editReply({ content: statusLine });
           return;
         }
 
-        const partyRoleKey = pickDeterministicJoinRole(choices) ?? choices[0] ?? null;
-        if (partyRoleKey === null) {
-          await interaction.editReply({ content: 'Brak pasującej roli do dołączenia.' });
+        const profile = await this.loadProfile(userId);
+        const state = applyProfileCharacter(createDefaultLfgWizardState(), profile);
+        if (state.characterId === null) {
+          await interaction.editReply({
+            content: 'Skonfiguruj postać w /profil przed dołączeniem z DM.',
+          });
           return;
         }
-        const statusLine = await this.executeLfgJoin({
-          match: {
-            activityId,
-            opaqueId: parsed.activityOpaqueId,
-            dungeonLabel: 'Dungeon',
-            startAtLabel: '',
-            occupancyLabel: '',
-            roleNeedSummary: '',
-            matchReason: '',
-          },
-          partyRoleKey,
+        const statusLine = await this.executeLfgDmJoin({
+          activityId,
           guildId: resolvedGuildId,
+          partyRoleKey,
           userId,
           actor,
-          state,
+          characterId: state.characterId,
         });
         await interaction.editReply({ content: statusLine });
       }

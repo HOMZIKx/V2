@@ -17,6 +17,7 @@ import {
 
 import { countOccupiedSlots, hasOpenSeat } from '../../domain/capacity.js';
 import { ActivityError } from '../../domain/errors.js';
+import { opaqueIdFromUuid } from '../../domain/opaque-id.js';
 import {
   filterParticipationsForMode,
   isGuildPublicationTarget,
@@ -475,6 +476,49 @@ export async function listMyLfgIntents(tx: ActivityTx, actor: ActorSubject, guil
   return tx.listLfgIntentsForUser(guildId, userId);
 }
 
+export async function resolveLfgIntentByOpaque(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  guildId: string,
+  opaqueId: string,
+) {
+  const userId = requireDiscord(actor);
+  const intent = await tx.getLfgIntentByOpaqueId(userId, guildId, opaqueId);
+  if (intent === null) {
+    throw new ActivityError('NOT_FOUND', 'LFG watch not found');
+  }
+  return {
+    id: intent.id,
+    opaqueId: opaqueIdFromUuid(intent.id),
+    guildId: intent.guildId,
+    organizationId: intent.organizationId,
+    characterId: intent.characterId,
+    sessionRoles: intent.sessionRoles,
+    activityTypeKey: intent.activityTypeKey,
+  };
+}
+
+export async function resolveLfgFullGroupWatchByOpaque(
+  tx: ActivityTx,
+  actor: ActorSubject,
+  guildId: string,
+  opaqueId: string,
+) {
+  const userId = requireDiscord(actor);
+  const watch = await tx.getLfgFullGroupWatchByOpaqueId(userId, guildId, opaqueId);
+  if (watch === null) {
+    throw new ActivityError('NOT_FOUND', 'Full-group watch not found');
+  }
+  return {
+    id: watch.id,
+    opaqueId: opaqueIdFromUuid(watch.id),
+    guildId,
+    activityId: watch.activityId,
+    characterId: watch.characterId,
+    sessionRoles: watch.sessionRoles,
+  };
+}
+
 export async function suppressLfgMatch(
   tx: ActivityTx,
   actor: ActorSubject,
@@ -585,7 +629,8 @@ export async function joinLfgActivity(
     }
   }
 
-  const characterId = input.characterId ?? intent?.characterId;
+  const characterId =
+    intent !== null && intent !== undefined ? intent.characterId : input.characterId;
   if (characterId === undefined) {
     throw new ActivityError('VALIDATION_FAILED', 'characterId is required');
   }
@@ -830,6 +875,7 @@ export async function notifyLfgIntentsForActivity(
           activityTypeKey,
           fingerprint: best.fingerprint,
           intentId: best.intentId,
+          intentOpaqueId: opaqueIdFromUuid(best.intentId),
           ...(best.eligiblePartyRoles.length > 0
             ? { eligiblePartyRoles: [...best.eligiblePartyRoles] }
             : {}),
@@ -1015,6 +1061,8 @@ export async function notifyFullGroupWatchesForActivity(
           organizationId: activity.organizationId,
           activityTypeKey,
           fingerprint: ctx.fingerprint,
+          fullGroupWatchId: watch.id,
+          fullGroupWatchOpaqueId: opaqueIdFromUuid(watch.id),
           ...(eligiblePartyRoles.length > 0 ? { eligiblePartyRoles: [...eligiblePartyRoles] } : {}),
           ...(suggestedPartyRole !== null ? { suggestedPartyRole } : {}),
         },

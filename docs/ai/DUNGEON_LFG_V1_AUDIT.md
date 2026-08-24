@@ -269,4 +269,64 @@ CI_STATUS — BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
 
 ## Recommendation
 
-Proceed to **ChatGPT re-audit** with **`READY_FOR_CHATGPT_REAUDIT`**. Do **not** merge.
+Proceed to **ChatGPT final re-audit** with **`READY_FOR_CHATGPT_FINAL_REAUDIT`**. Do **not** merge.
+
+---
+
+## Durable DM context remediation (2026-08-24)
+
+Task: `V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`  
+Base: audited remote HEAD `02b5f4f…`  
+Checkpoint: **`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA`** _(recorded after push)_
+
+Product status: **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
+
+| Severity | Found (ChatGPT re-audit blocker) | Fixed | Open |
+| -------- | -------------------------------- | ----- | ---- |
+| CRITICAL | 1 (DM join used profile default character for persistent intent) | 1 | 0 |
+| HIGH     | 3 (suppress actor-wide; role picker from profile; watch context dropped) | 3 | 0 |
+
+### C-DM-01 — Persistent intent DM join ignored durable character
+
+| Field    | Detail |
+| -------- | ------ |
+| Severity | **CRITICAL** |
+| Cause    | `handleLfgDmComponent` join path loaded profile default character + session roles instead of intent |
+| Path     | Intent notify → DM Dołącz → join |
+| Fix      | Signed `i.{intentOpaque}.{guildId}[.{role}]` in custom_id; resolve intent server-side; `joinLfg` with `intentId` only; backend uses `intent.characterId` |
+| Test     | `lfg-dm-durable-context.spec.ts` CHARACTER_A vs CHARACTER_B; `lfg.use-cases.spec.ts` intent character override |
+
+### H-DM-01 — Nie teraz fell back to actor-wide suppress
+
+| Field    | Detail |
+| -------- | ------ |
+| Severity | **HIGH** |
+| Cause    | Suppress button lacked `intentId`; ephemeral fallback suppressed all matches for actor |
+| Fix      | Durable intent context on suppress; resolve opaque → exact `intentId` |
+| Test     | `lfg-dm-durable-context.spec.ts` intent suppress |
+
+### H-DM-02 — Role picker used profile roles not server eligiblePartyRoles
+
+| Field    | Detail |
+| -------- | ------ |
+| Severity | **HIGH** |
+| Cause    | DM join did not encode server-eligible roles; multi-role UI missing |
+| Fix      | `buildDeliveryActionComponents` renders one button per `eligiblePartyRoles`; backend revalidates at join |
+| Test     | `notification-dm-delivery.service.spec.ts`, `lfg-dm-context.spec.ts` |
+
+### H-DM-03 — Full-group watch slot reopen dropped watch identity
+
+| Field    | Detail |
+| -------- | ------ |
+| Severity | **HIGH** |
+| Cause    | Watch notify context not transported through DM buttons |
+| Fix      | `w.{watchOpaque}.{guildId}[.{role}]`; resolve watch → stored character join |
+| Test     | `lfg-dm-durable-context.spec.ts` watch join path |
+
+## Validation (durable DM remediation)
+
+```
+corepack pnpm validate — PASS
+CI_STATUS — BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
+CRITICAL/HIGH (durable DM scope) — 0
+```

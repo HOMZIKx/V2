@@ -2,7 +2,7 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { z } from 'zod';
 
-import { LFG_DUNGEON_ACTIVITY_TYPES } from '@v2/hub-core';
+import { isPartyRoleKey, LFG_DUNGEON_ACTIVITY_TYPES, type PartyRoleKey } from '@v2/hub-core';
 import { NotificationDeliveryActionsSchema } from '@v2/notification-core';
 
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../interface/discord/discord.tokens.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../discord/discord-js-adapter.js';
+import { encodeLfgDmContext, type LfgDmDurableContext } from '../security/lfg-dm-context.js';
 import { createLfgDmCustomId } from '../security/lfg-dm-signed-custom-id.js';
 import { timingSafeEqualUtf8 } from '../security/timing-safe-equal.js';
 
@@ -162,7 +163,36 @@ export class NotificationDmDeliveryService {
   }
 }
 
-function buildDeliveryActionComponents(
+function resolveDurableBaseContext(
+  deliveryActions: z.infer<typeof NotificationDeliveryActionsSchema>,
+  guildId: string,
+): LfgDmDurableContext {
+  if (deliveryActions.intentOpaqueId !== undefined) {
+    return { kind: 'intent', intentOpaqueId: deliveryActions.intentOpaqueId, guildId };
+  }
+  if (deliveryActions.fullGroupWatchOpaqueId !== undefined) {
+    return { kind: 'watch', watchOpaqueId: deliveryActions.fullGroupWatchOpaqueId, guildId };
+  }
+  return { kind: 'ephemeral', guildId };
+}
+
+function resolveJoinRoles(
+  deliveryActions: z.infer<typeof NotificationDeliveryActionsSchema>,
+): readonly PartyRoleKey[] {
+  const fromEligible = (deliveryActions.eligiblePartyRoles ?? []).filter(isPartyRoleKey);
+  if (fromEligible.length > 0) {
+    return fromEligible;
+  }
+  if (
+    deliveryActions.suggestedPartyRole !== undefined &&
+    isPartyRoleKey(deliveryActions.suggestedPartyRole)
+  ) {
+    return [deliveryActions.suggestedPartyRole];
+  }
+  return [];
+}
+
+export function buildDeliveryActionComponents(
   deliveryActions: z.infer<typeof NotificationDeliveryActionsSchema> | undefined,
   payloadGuildId: string | undefined,
   notificationClass: 'DISCOVERY' | 'TRANSACTIONAL' | 'SYSTEM_SECURITY',
@@ -177,30 +207,73 @@ function buildDeliveryActionComponents(
   }
   const { activityOpaqueId, activityTypeKey } = deliveryActions;
   const secret = signingSecret;
-  const buttons = [
+  const baseContext = resolveDurableBaseContext(deliveryActions, guildId);
+  const joinRoles = resolveJoinRoles(deliveryActions);
+
+  const joinButtons: ButtonBuilder[] = [];
+  if (joinRoles.length <= 1) {
+    const role = joinRoles[0];
+    const joinContext: LfgDmDurableContext =
+      role !== undefined ? { ...baseContext, partyRole: role } : baseContext;
+    joinButtons.push(
+      new ButtonBuilder()
+        .setCustomId(
+          createLfgDmCustomId(activityOpaqueId, 'join', secret, encodeLfgDmContext(joinContext)),
+        )
+        .setLabel('Dołącz')
+        .setStyle(ButtonStyle.Success),
+    );
+  } else {
+    for (const role of joinRoles) {
+      joinButtons.push(
+        new ButtonBuilder()
+          .setCustomId(
+            createLfgDmCustomId(
+              activityOpaqueId,
+              'join',
+              secret,
+              encodeLfgDmContext({ ...baseContext, partyRole: role }),
+            ),
+          )
+          .setLabel(role)
+          .setStyle(ButtonStyle.Success),
+      );
+    }
+  }
+
+  const utilityButtons = [
     new ButtonBuilder()
-      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'join', secret, guildId))
-      .setLabel('Dołącz')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'view', secret, guildId))
+      .setCustomId(
+        createLfgDmCustomId(activityOpaqueId, 'view', secret, encodeLfgDmContext(baseContext)),
+      )
       .setLabel('Zobacz')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId(createLfgDmCustomId(activityOpaqueId, 'suppress', secret, guildId))
+      .setCustomId(
+        createLfgDmCustomId(activityOpaqueId, 'suppress', secret, encodeLfgDmContext(baseContext)),
+      )
       .setLabel('Nie teraz')
       .setStyle(ButtonStyle.Secondary),
   ];
+
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  if (joinButtons.length > 0) {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...joinButtons));
+  }
+  rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...utilityButtons));
+
   if (notificationClass === 'DISCOVERY') {
     const dungeonLabel =
       LFG_DUNGEON_ACTIVITY_TYPES.find((entry) => entry.key === activityTypeKey)?.label ??
       activityTypeKey;
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(createLfgDmCustomId(activityOpaqueId, 'mute', secret, activityTypeKey))
-        .setLabel(`Wycisz ${dungeonLabel}`)
-        .setStyle(ButtonStyle.Danger),
+    rows.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(createLfgDmCustomId(activityOpaqueId, 'mute', secret, activityTypeKey))
+          .setLabel(`Wycisz ${dungeonLabel}`)
+          .setStyle(ButtonStyle.Danger),
+      ),
     );
   }
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons)];
+  return rows;
 }

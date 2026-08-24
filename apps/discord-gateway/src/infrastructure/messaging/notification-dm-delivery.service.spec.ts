@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { opaqueIdFromUuid } from '@v2/hub-core';
+
 import { DiscordGatewayConfigSchema, normalizeDiscordConfig } from '../discord/discord-config.js';
-import { NotificationDmDeliveryService } from './notification-dm-delivery.service.js';
+import { decodeLfgDmContext } from '../security/lfg-dm-context.js';
+import { parseLfgDmCustomId } from '../security/lfg-dm-signed-custom-id.js';
+import {
+  buildDeliveryActionComponents,
+  NotificationDmDeliveryService,
+} from './notification-dm-delivery.service.js';
 
 const secret = 's'.repeat(32);
+const intentId = '22222222-2222-4222-8222-222222222222';
 
 function makeConfig() {
   return normalizeDiscordConfig(
@@ -26,6 +34,33 @@ function makeConfig() {
 describe('NotificationDmDeliveryService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('renders role-specific join buttons with durable intent context', () => {
+    const rows = buildDeliveryActionComponents(
+      {
+        template: 'lfg_match',
+        activityId: '11111111-1111-4111-8111-111111111111',
+        activityOpaqueId: 'a1b2c3d4e5f6',
+        guildId: '1534228693017432124',
+        organizationId: 'org-test',
+        activityTypeKey: 'azrael',
+        fingerprint: 'fp-1',
+        intentId,
+        intentOpaqueId: opaqueIdFromUuid(intentId),
+        eligiblePartyRoles: ['BUFF', 'DPS'],
+      },
+      '1534228693017432124',
+      'DISCOVERY',
+      secret,
+    );
+    expect(rows).toHaveLength(3);
+    const joinRow = rows![0]!.toJSON();
+    expect(joinRow.components).toHaveLength(2);
+    const firstJoin = joinRow.components?.[0] as { custom_id?: string; label?: string };
+    expect(firstJoin.label).toBe('BUFF');
+    const parsed = parseLfgDmCustomId(String(firstJoin.custom_id), secret);
+    expect(decodeLfgDmContext(parsed.param)?.kind).toBe('intent');
   });
 
   it('renders LFG DM action buttons when deliveryActions are present', async () => {
@@ -59,6 +94,7 @@ describe('NotificationDmDeliveryService', () => {
           organizationId: 'org-test',
           activityTypeKey: 'azrael',
           fingerprint: 'fp-1',
+          suggestedPartyRole: 'BUFF',
         },
       },
       'proj-secret',
@@ -67,13 +103,12 @@ describe('NotificationDmDeliveryService', () => {
     expect(result.status).toBe('delivered');
     expect(sendDirectMessage).toHaveBeenCalledOnce();
     const payload = sendDirectMessage.mock.calls[0]![1] as { components?: unknown[] };
-    expect(payload.components).toHaveLength(1);
-    const rowJson = (
-      payload.components?.[0] as { toJSON: () => { components: unknown[] } }
-    ).toJSON();
-    expect(rowJson.components).toHaveLength(4);
-    const labels = rowJson.components.map((button) => (button as { label?: string }).label);
-    expect(labels).toEqual(
+    expect(payload.components).toHaveLength(3);
+    const allLabels = (payload.components ?? []).flatMap((row) => {
+      const json = (row as { toJSON: () => { components: unknown[] } }).toJSON();
+      return json.components.map((button) => (button as { label?: string }).label);
+    });
+    expect(allLabels).toEqual(
       expect.arrayContaining(['Dołącz', 'Zobacz', 'Nie teraz', expect.stringContaining('Wycisz')]),
     );
   });

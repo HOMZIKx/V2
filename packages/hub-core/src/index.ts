@@ -70,3 +70,5 @@ export {
   formatLfgRoleNeedSummary,
   type LfgMatchFingerprintInput,
 } from './lfg-v1.js';
+
+export { isValidOpaqueId, opaqueIdFromUuid } from './opaque-id.js';
