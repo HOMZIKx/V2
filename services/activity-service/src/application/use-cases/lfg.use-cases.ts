@@ -24,6 +24,7 @@ import {
   resolveParticipationScopeGuildId,
 } from '../../domain/participant-mode.js';
 import { ACTIVITY_PERMISSIONS } from '../../domain/permissions.js';
+import { resolveGuildOrganizationId } from '../guild-organization-scope.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -200,6 +201,7 @@ export async function searchLfgMatches(
 ): Promise<{ matches: readonly LfgSearchMatch[] }> {
   const discordUserId = requireDiscord(actor);
   assertValidWindow(input.windowStartAt, input.windowEndAt);
+  const organizationId = await resolveGuildOrganizationId(tx, input.guildId, input.organizationId);
   const verified = await verifyLfgCharacter(characterVerify, {
     discordUserId,
     characterId: input.characterId,
@@ -207,7 +209,7 @@ export async function searchLfgMatches(
   });
   const activities = await tx.listOpenActivitiesForLfg({
     guildId: input.guildId,
-    organizationId: input.organizationId,
+    organizationId,
     activityTypeKey: input.activityTypeKey,
   });
 
@@ -226,7 +228,7 @@ export async function searchLfgMatches(
     const ctx = await buildGroupMatchContext(tx, activity, input.activityTypeKey);
     const seeker = buildSeekerInput(ctx.group, {
       guildId: input.guildId,
-      organizationId: input.organizationId,
+      organizationId,
       activityTypeKey: input.activityTypeKey,
       classSpecKey: verified.classSpecKey,
       supportedPartyRoles: verified.supportedPartyRoles,
@@ -327,6 +329,7 @@ export async function createLfgIntent(
 ): Promise<{ intentId: string }> {
   const userId = requireDiscord(actor);
   assertValidWindow(input.windowStartAt, input.windowEndAt);
+  const organizationId = await resolveGuildOrganizationId(tx, input.guildId, input.organizationId);
   const verified = await verifyLfgCharacter(characterVerify, {
     discordUserId: userId,
     characterId: input.characterId,
@@ -346,7 +349,7 @@ export async function createLfgIntent(
   const expiresAt = deriveIntentExpiresAt(input.windowEndAt, now);
   const intentId = await tx.insertLfgIntent({
     guildId: input.guildId,
-    organizationId: input.organizationId,
+    organizationId,
     recipientDiscordUserId: userId,
     characterId: verified.characterId,
     activityTypeKey: input.activityTypeKey,
@@ -956,6 +959,7 @@ export async function createLfgFullGroupWatch(
   characterVerify: LfgCharacterVerifyPort,
 ): Promise<{ watchId: string }> {
   const userId = requireDiscord(actor);
+  const organizationId = await resolveGuildOrganizationId(tx, input.guildId, input.organizationId);
   const verified = await verifyLfgCharacter(characterVerify, {
     discordUserId: userId,
     characterId: input.characterId,
@@ -965,7 +969,7 @@ export async function createLfgFullGroupWatch(
   if (activity === null) {
     throw new ActivityError('NOT_FOUND', 'Activity not found');
   }
-  if (activity.guildId !== input.guildId || activity.organizationId !== input.organizationId) {
+  if (activity.guildId !== input.guildId || activity.organizationId !== organizationId) {
     throw new ActivityError('FORBIDDEN', 'Activity scope mismatch');
   }
   const activityTypeKey =

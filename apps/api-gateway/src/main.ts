@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { AppModule } from './app.module.js';
 import { applyCorsOnRequest, parseCorsOrigins } from './cors.js';
+import { applyRateLimitOnRequest } from './rate-limit.js';
 import { applyRequestCorrelation } from './request-correlation.js';
 
 const config = createConfig(
@@ -30,6 +31,8 @@ const logger = createLogger('api-gateway');
 type GatewayRequest = {
   headers: Record<string, string | string[] | undefined>;
   method: string;
+  url: string;
+  ip?: string;
 };
 type GatewayReply = {
   header: (key: string, value: string) => unknown;
@@ -53,6 +56,9 @@ const bootstrap = async (): Promise<void> => {
 
   instance.addHook('onRequest', (request, reply, done) => {
     applyRequestCorrelation(request, reply);
+    if (applyRateLimitOnRequest(request, reply)) {
+      return;
+    }
     const ended = applyCorsOnRequest(request, reply, corsOrigins);
     if (ended) {
       return;

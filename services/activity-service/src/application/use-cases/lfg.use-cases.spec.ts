@@ -8,6 +8,7 @@ import type {
   LfgCharacterVerifyPort,
   VerifiedLfgCharacter,
 } from '../ports/activity.ports.js';
+import { stubGuildSettings } from '../test-guild-settings.stub.js';
 import {
   cancelLfgIntent,
   createLfgFullGroupWatch,
@@ -178,6 +179,7 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
       ]),
     hasLfgNotifiedMatch: () => Promise.resolve(false),
     recordLfgNotifiedMatch: () => Promise.resolve(),
+    getSettings: () => Promise.resolve(stubGuildSettings()),
   };
   return { ...base, ...overrides } as ActivityTx;
 }
@@ -226,6 +228,28 @@ describe('searchLfgMatches', () => {
         characterVerifyStub(),
       ),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('rejects organizationId that does not match guild settings', async () => {
+    const tx = makeTx({
+      getSettings: () => Promise.resolve(stubGuildSettings({ orgId: 'o1' })),
+    });
+    await expect(
+      searchLfgMatches(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          guildId: 'g1',
+          organizationId: 'o2',
+          activityTypeKey: 'azrael',
+          characterId: CHAR_ID,
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+        },
+        characterVerifyStub(),
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
   it('rejects fake uuid character id', async () => {

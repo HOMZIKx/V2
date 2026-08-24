@@ -158,6 +158,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
   const idempotency = new Map<string, { responseStatus: number; responseBody: unknown }>();
   let confirmedId = '';
   let inboxSeq = 0;
+  const guildOrgIds = new Map<string, string>();
   const tx: ActivityTx = {
     async lockCreatorAdvisory() {},
     async lockActivity(id) {
@@ -166,6 +167,7 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       return a;
     },
     async ensureGuildDefaults({ guildId, orgId }) {
+      guildOrgIds.set(guildId, orgId);
       confirmedId = confirmedId || 'status-confirmed';
       statuses.set(confirmedId, {
         id: confirmedId,
@@ -211,9 +213,10 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       };
     },
     async getSettings(guildId) {
+      const orgId = guildOrgIds.get(guildId) ?? 'org-1';
       return {
         guildId,
-        orgId: 'org',
+        orgId,
         organizerDefaultStatusId: confirmedId || 'status-confirmed',
         waitlistPromotionStatusId: confirmedId || 'status-confirmed',
         maxActivePerCreator: 4,
@@ -230,9 +233,10 @@ function createMemoryRepo(): ActivityRepositoryPort & {
       };
     },
     async updateSettings(guildId, patch) {
+      const orgId = guildOrgIds.get(guildId) ?? 'org-1';
       return {
         guildId,
-        orgId: 'org',
+        orgId,
         organizerDefaultStatusId: patch.organizerDefaultStatusId ?? confirmedId,
         waitlistPromotionStatusId: patch.waitlistPromotionStatusId ?? confirmedId,
         maxActivePerCreator: patch.maxActivePerCreator ?? 4,

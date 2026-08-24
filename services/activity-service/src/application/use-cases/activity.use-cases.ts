@@ -35,6 +35,7 @@ import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import { enqueueEventProjection } from '../enqueue-event-projection.js';
+import { resolveGuildOrganizationId } from '../guild-organization-scope.js';
 import {
   collectOrganizerDiscordIds,
   collectParticipantDiscordIds,
@@ -362,9 +363,10 @@ export class ActivityUseCases {
       guildId,
       'sensitive',
     );
-    return this.mutate(ctx, 'ensure-defaults', `guild:${guildId}`, async (tx) =>
-      tx.ensureGuildDefaults({ guildId, orgId }),
-    );
+    return this.mutate(ctx, 'ensure-defaults', `guild:${guildId}`, async (tx) => {
+      const resolvedOrgId = await resolveGuildOrganizationId(tx, guildId, orgId);
+      return tx.ensureGuildDefaults({ guildId, orgId: resolvedOrgId });
+    });
   }
 
   public async getGuildConfig(guildId: string, actor: ActorSubject) {
@@ -603,9 +605,14 @@ export class ActivityUseCases {
       });
 
       await tx.lockCreatorAdvisory(draft.guildId, discordUserId);
+      const organizationId = await resolveGuildOrganizationId(
+        tx,
+        draft.guildId,
+        input.organizationId,
+      );
       const defaults = await tx.ensureGuildDefaults({
         guildId: draft.guildId,
-        orgId: input.organizationId,
+        orgId: organizationId,
       });
       const activeCount = await tx.countActiveOwn(draft.guildId, discordUserId);
       assertCreateLimit({
@@ -619,7 +626,7 @@ export class ActivityUseCases {
       const activity = await tx.insertActivity({
         id: activityId,
         guildId: draft.guildId,
-        organizationId: input.organizationId,
+        organizationId,
         typeId: input.typeId ?? null,
         name: input.name,
         description: input.description ?? '',
@@ -667,7 +674,7 @@ export class ActivityUseCases {
       await tx.replacePublicationTargets(
         activity.id,
         publicationTargets.map((target, index) => ({
-          organizationId: input.organizationId,
+          organizationId,
           guildId: target.guildId,
           channelId: target.channelId,
           participantLimit:
@@ -773,9 +780,14 @@ export class ActivityUseCases {
       }
 
       await tx.lockCreatorAdvisory(draft.guildId, discordUserId);
+      const organizationId = await resolveGuildOrganizationId(
+        tx,
+        draft.guildId,
+        input.organizationId,
+      );
       const defaults = await tx.ensureGuildDefaults({
         guildId: draft.guildId,
-        orgId: input.organizationId,
+        orgId: organizationId,
       });
       const activeCount = await tx.countActiveOwn(draft.guildId, discordUserId);
       assertCreateLimit({
@@ -786,7 +798,7 @@ export class ActivityUseCases {
       const { series, activities } = await insertSeriesWithOccurrences(tx, {
         seriesId: randomUUID(),
         draftGuildId: draft.guildId,
-        organizationId: input.organizationId,
+        organizationId,
         discordUserId,
         v2UserId: ctx.actor.v2UserId ?? null,
         publish: input,
@@ -1898,8 +1910,13 @@ export class ActivityUseCases {
     );
     const now = this.deps.clock.now();
     return this.mutate(ctx, 'panel-upsert', `panel:${input.discordGuildId}`, async (tx) => {
+      const organizationId = await resolveGuildOrganizationId(
+        tx,
+        input.discordGuildId,
+        input.organizationId,
+      );
       const { panel, repaired } = await tx.upsertPanel({
-        organizationId: input.organizationId,
+        organizationId,
         discordGuildId: input.discordGuildId,
         channelId: input.channelId,
         panelType: input.panelType ?? 'hub',

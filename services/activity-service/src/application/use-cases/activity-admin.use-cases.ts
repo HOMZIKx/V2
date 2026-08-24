@@ -19,6 +19,7 @@ import type { StatusBehavior } from '../../domain/status-def.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import { isDiscordMetadataClientError } from '../discord-metadata-errors.js';
 import { enqueueEventProjection } from '../enqueue-event-projection.js';
+import { requireGuildOrganizationMatch } from '../guild-organization-scope.js';
 import type {
   ActivityRecord,
   ActivityTx,
@@ -1295,6 +1296,7 @@ export class ActivityAdminUseCases {
     await this.requireConfigManage(actor, guildId);
     assertLfgDungeonActivityTypeKey(activityTypeKey);
     return this.deps.repository.withTransaction(async (tx) => {
+      await requireGuildOrganizationMatch(tx, guildId, organizationId);
       const roles = await tx.listActivityTypeCompositionTemplates(organizationId, activityTypeKey);
       return { organizationId, activityTypeKey, roles };
     });
@@ -1320,6 +1322,7 @@ export class ActivityAdminUseCases {
       'lfg-composition-upsert',
       `org:${organizationId}:${input.activityTypeKey}`,
       async (tx) => {
+        await requireGuildOrganizationMatch(tx, guildId, organizationId);
         for (const role of input.roles) {
           await tx.upsertActivityTypeCompositionTemplate({
             organizationId,
