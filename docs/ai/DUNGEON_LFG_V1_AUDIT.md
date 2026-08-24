@@ -277,7 +277,7 @@ Proceed to **ChatGPT final re-audit** with **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
 
 Task: `V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`  
 Base: audited remote HEAD `02b5f4f…`  
-Checkpoint: **`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA`** _(recorded after push)_
+Checkpoint: **`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA`** — `d781c2b275ecb88275b7ab2e84ae468065163c7f`
 
 Product status: **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
 

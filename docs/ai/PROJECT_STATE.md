@@ -19,7 +19,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
 | LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_REAUDIT`                                   |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | _(updated at checkpoint push)_                                      |
+| CURRENT_HEAD / PR_HEAD | `d781c2b275ecb88275b7ab2e84ae468065163c7f`                          |
 | PR                     | #19                                                                 |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
 | LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
@@ -54,7 +54,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**      | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                         |
 | **DUNGEON_LFG_V1_AUDIT_SHA**               | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                   |
 | **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                       |
-| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**  | _(checkpoint commit)_                       | **READY_FOR_CHATGPT_FINAL_REAUDIT** — durable DM intent/watch    |
+| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**  | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | **READY_FOR_CHATGPT_FINAL_REAUDIT** — durable DM intent/watch    |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — discovery prep ready                          |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION` |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                |

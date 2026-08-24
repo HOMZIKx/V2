@@ -13,7 +13,7 @@ Audited remote HEAD (prior): `02b5f4ffd7e9ea11732e53039d286075137f3317`
 
 ## Durable DM context remediation (ChatGPT re-audit blocker)
 
-Checkpoint: `DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA` — _(recorded after push)_  
+Checkpoint: `DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA` — `d781c2b275ecb88275b7ab2e84ae468065163c7f`  
 Report: `docs/ai/DUNGEON_LFG_V1_AUDIT.md` (§ durable DM context)
 
 ### Root cause
