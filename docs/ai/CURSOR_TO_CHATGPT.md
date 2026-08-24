@@ -12,7 +12,7 @@ PR: #19
 
 ## Final two HIGH fixes (ChatGPT PR #19 review)
 
-Checkpoint: `DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA` — _(recorded after push)_
+Checkpoint: `DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA` — `94e71fef5bcb8c541824a058dae37020c86516af`
 
 ### H-MUTE-01 — LFG dungeon mute used wrong preference field
 

@@ -336,7 +336,7 @@ CRITICAL/HIGH (durable DM scope) — 0
 ## Final two HIGH fixes (2026-08-24)
 
 Task: `V2-LFG-FINAL-TWO-HIGH-FIXES-007`  
-Checkpoint: **`DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA`** — _(recorded after push)_
+Checkpoint: **`DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA`** — `94e71fef5bcb8c541824a058dae37020c86516af`
 
 Product status: **`READY_FOR_CHATGPT_FINAL_APPROVAL`**
 
