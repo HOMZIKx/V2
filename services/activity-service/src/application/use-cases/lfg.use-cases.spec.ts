@@ -164,7 +164,9 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
     recordLfgIntentSuppression: () => Promise.resolve(),
     recordLfgActorMatchSuppression: () => Promise.resolve(),
     isLfgIntentSuppressed: () => Promise.resolve(false),
+    listSuppressedLfgIntentIds: () => Promise.resolve(new Set<string>()),
     isLfgActorMatchSuppressed: () => Promise.resolve(false),
+    listSuppressedLfgActorRecipients: () => Promise.resolve(new Set<string>()),
     listActiveLfgIntents: () =>
       Promise.resolve([
         {
@@ -178,10 +180,30 @@ function makeTx(overrides: Partial<ActivityTx> = {}): ActivityTx {
         },
       ]),
     hasLfgNotifiedMatch: () => Promise.resolve(false),
+    listLfgNotifiedRecipients: () => Promise.resolve(new Set<string>()),
     recordLfgNotifiedMatch: () => Promise.resolve(),
     getSettings: () => Promise.resolve(stubGuildSettings()),
   };
-  return { ...base, ...overrides } as ActivityTx;
+  const merged = { ...base, ...overrides } as ActivityTx;
+  if (overrides.listActivityRoleRequirementsForActivities === undefined) {
+    merged.listActivityRoleRequirementsForActivities = (activityIds) =>
+      Promise.all(activityIds.map((id) => merged.listActivityRoleRequirements(id))).then(
+        (rows) => new Map(activityIds.map((id, index) => [id, rows[index] ?? []])),
+      );
+  }
+  if (overrides.countParticipationsByPartyRoleForActivities === undefined) {
+    merged.countParticipationsByPartyRoleForActivities = (activityIds) =>
+      Promise.all(activityIds.map((id) => merged.countParticipationsByPartyRole(id))).then(
+        (rows) => new Map(activityIds.map((id, index) => [id, rows[index] ?? {}])),
+      );
+  }
+  if (overrides.countOccupiedParticipationsForActivities === undefined) {
+    merged.countOccupiedParticipationsForActivities = (activityIds) =>
+      Promise.all(activityIds.map((id) => merged.countOccupiedParticipations(id))).then(
+        (rows) => new Map(activityIds.map((id, index) => [id, rows[index] ?? 0])),
+      );
+  }
+  return merged;
 }
 
 describe('searchLfgMatches', () => {
@@ -1041,7 +1063,10 @@ describe('notifyLfgIntentsForActivity', () => {
 
   it('skips notify when intent is suppressed', async () => {
     const enqueue = vi.spyOn(notificationUseCases, 'enqueueUserNotification');
-    const tx = makeTx({ isLfgIntentSuppressed: () => Promise.resolve(true) });
+    const tx = makeTx({
+      listSuppressedLfgIntentIds: () =>
+        Promise.resolve(new Set(['33333333-3333-4333-8333-333333333333'])),
+    });
     const sent = await notifyLfgIntentsForActivity(
       tx,
       baseActivity(),

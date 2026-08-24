@@ -4,8 +4,8 @@ import { isSchemaMigrationReady, schemaMigrationManifest } from './migration-rea
 
 describe('migration-readiness', () => {
   it('manifest declares expected activity migration count', () => {
-    expect(schemaMigrationManifest.count).toBe(18);
-    expect(schemaMigrationManifest.latestId).toBe('018_lfg_audit_suppressions.sql');
+    expect(schemaMigrationManifest.count).toBe(19);
+    expect(schemaMigrationManifest.latestId).toBe('019_performance_indexes.sql');
   });
 
   it('requires foundation, latest, and full count', async () => {

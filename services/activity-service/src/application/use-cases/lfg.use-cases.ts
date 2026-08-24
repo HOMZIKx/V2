@@ -40,6 +40,89 @@ const LFG_DUNGEON_TYPE_KEYS = new Set(LFG_DUNGEON_ACTIVITY_TYPES.map((entry) => 
 const SIMILAR_GROUP_WINDOW_MS = 2 * 3_600_000;
 const LFG_SEARCH_RESULT_LIMIT = 50;
 
+type GroupMatchContext = {
+  needs: LfgGroupMatchInput['roleNeeds'];
+  filled: Readonly<Partial<Record<PartyRoleKey, number>>>;
+  occupied: number;
+  capacity: number;
+  group: LfgGroupMatchInput;
+  fingerprint: string;
+  roleNeedSummary: string;
+};
+
+function assembleGroupMatchContext(
+  activity: ActivityRecord,
+  activityTypeKey: string,
+  needs: LfgGroupMatchInput['roleNeeds'],
+  filled: Readonly<Partial<Record<PartyRoleKey, number>>>,
+  occupied: number,
+): GroupMatchContext {
+  const capacity = activity.participantLimit ?? 8;
+  const group: LfgGroupMatchInput = {
+    activityTypeKey,
+    guildId: activity.guildId,
+    organizationId: activity.organizationId,
+    capacity,
+    occupied,
+    status: activityGroupStatus(activity, occupied, capacity),
+    startAtMs: activity.startAt.getTime(),
+    roleNeeds: needs,
+    filledByRole: filled,
+  };
+  const fingerprint = buildLfgMatchFingerprint({
+    activityId: activity.id,
+    activityVersion: activity.version,
+    startAtIso: activity.startAt.toISOString(),
+    occupied,
+    capacity,
+    roleNeeds: needs,
+    filledByRole: filled,
+  });
+  const roleNeedSummary = formatLfgRoleNeedSummary(needs, filled);
+  return { needs, filled, occupied, capacity, group, fingerprint, roleNeedSummary };
+}
+
+async function buildGroupMatchContext(
+  tx: ActivityTx,
+  activity: ActivityRecord,
+  activityTypeKey: string,
+): Promise<GroupMatchContext> {
+  const needs = await tx.listActivityRoleRequirements(activity.id);
+  const filled = await tx.countParticipationsByPartyRole(activity.id);
+  const occupied = await tx.countOccupiedParticipations(activity.id);
+  return assembleGroupMatchContext(activity, activityTypeKey, needs, filled, occupied);
+}
+
+async function buildGroupMatchContextsForActivities(
+  tx: ActivityTx,
+  activities: readonly ActivityRecord[],
+  activityTypeKey: string,
+): Promise<Map<string, GroupMatchContext>> {
+  if (activities.length === 0) {
+    return new Map();
+  }
+  const activityIds = activities.map((activity) => activity.id);
+  const [needsByActivity, filledByActivity, occupiedByActivity] = await Promise.all([
+    tx.listActivityRoleRequirementsForActivities(activityIds),
+    tx.countParticipationsByPartyRoleForActivities(activityIds),
+    tx.countOccupiedParticipationsForActivities(activityIds),
+  ]);
+  const contexts = new Map<string, GroupMatchContext>();
+  for (const activity of activities) {
+    contexts.set(
+      activity.id,
+      assembleGroupMatchContext(
+        activity,
+        activityTypeKey,
+        needsByActivity.get(activity.id) ?? [],
+        filledByActivity.get(activity.id) ?? {},
+        occupiedByActivity.get(activity.id) ?? 0,
+      ),
+    );
+  }
+  return contexts;
+}
+
 function requireDiscord(actor: ActorSubject): string {
   if (actor.discordUserId === undefined || actor.discordUserId.trim().length === 0) {
     throw new ActivityError('UNAUTHENTICATED', 'Discord actor required');
@@ -131,47 +214,6 @@ function activityGroupStatus(
   return 'open';
 }
 
-async function buildGroupMatchContext(
-  tx: ActivityTx,
-  activity: ActivityRecord,
-  activityTypeKey: string,
-): Promise<{
-  needs: LfgGroupMatchInput['roleNeeds'];
-  filled: Readonly<Partial<Record<PartyRoleKey, number>>>;
-  occupied: number;
-  capacity: number;
-  group: LfgGroupMatchInput;
-  fingerprint: string;
-  roleNeedSummary: string;
-}> {
-  const needs = await tx.listActivityRoleRequirements(activity.id);
-  const filled = await tx.countParticipationsByPartyRole(activity.id);
-  const occupied = await tx.countOccupiedParticipations(activity.id);
-  const capacity = activity.participantLimit ?? 8;
-  const group: LfgGroupMatchInput = {
-    activityTypeKey,
-    guildId: activity.guildId,
-    organizationId: activity.organizationId,
-    capacity,
-    occupied,
-    status: activityGroupStatus(activity, occupied, capacity),
-    startAtMs: activity.startAt.getTime(),
-    roleNeeds: needs,
-    filledByRole: filled,
-  };
-  const fingerprint = buildLfgMatchFingerprint({
-    activityId: activity.id,
-    activityVersion: activity.version,
-    startAtIso: activity.startAt.toISOString(),
-    occupied,
-    capacity,
-    roleNeeds: needs,
-    filledByRole: filled,
-  });
-  const roleNeedSummary = formatLfgRoleNeedSummary(needs, filled);
-  return { needs, filled, occupied, capacity, group, fingerprint, roleNeedSummary };
-}
-
 export type LfgSearchInput = {
   readonly guildId: string;
   readonly organizationId: string;
@@ -213,19 +255,26 @@ export async function searchLfgMatches(
     activityTypeKey: input.activityTypeKey,
   });
 
+  const visibleActivities = activities.filter((activity) =>
+    canViewPrivateActivity({
+      activity,
+      actor,
+      ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
+    }),
+  );
+  const contexts = await buildGroupMatchContextsForActivities(
+    tx,
+    visibleActivities,
+    input.activityTypeKey,
+  );
+
   const ranked: Array<LfgSearchMatch & { score: number }> = [];
 
-  for (const activity of activities) {
-    if (
-      !canViewPrivateActivity({
-        activity,
-        actor,
-        ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
-      })
-    ) {
+  for (const activity of visibleActivities) {
+    const ctx = contexts.get(activity.id);
+    if (ctx === undefined) {
       continue;
     }
-    const ctx = await buildGroupMatchContext(tx, activity, input.activityTypeKey);
     const seeker = buildSeekerInput(ctx.group, {
       guildId: input.guildId,
       organizationId,
@@ -802,25 +851,73 @@ export async function notifyLfgIntentsForActivity(
   }
 
   const ctx = await buildGroupMatchContext(tx, activity, activityTypeKey);
+  const intentIds = intents.map((intent) => intent.id);
+  const recipientIds = [...new Set(intents.map((intent) => intent.recipientDiscordUserId))];
+  const [suppressedIntents, suppressedActors, notifiedRecipients] = await Promise.all([
+    tx.listSuppressedLfgIntentIds({
+      activityId: activity.id,
+      fingerprint: ctx.fingerprint,
+      intentIds,
+    }),
+    tx.listSuppressedLfgActorRecipients({
+      activityId: activity.id,
+      fingerprint: ctx.fingerprint,
+      recipientDiscordUserIds: recipientIds,
+    }),
+    tx.listLfgNotifiedRecipients({
+      activityId: activity.id,
+      fingerprint: ctx.fingerprint,
+      recipientDiscordUserIds: recipientIds,
+    }),
+  ]);
+
+  const membershipCache = new Map<string, boolean>();
+  const characterCache = new Map<
+    string,
+    Awaited<ReturnType<typeof verifyLfgCharacter>> | 'invalid'
+  >();
   const byUser = new Map<string, IntentMatchCandidate[]>();
 
   for (const intent of intents) {
-    const membershipOk = await resolveMembershipOk(
-      authorize,
-      activity.guildId,
-      intent.recipientDiscordUserId,
-    );
+    if (suppressedIntents.has(intent.id)) {
+      continue;
+    }
+    if (suppressedActors.has(intent.recipientDiscordUserId)) {
+      continue;
+    }
+    if (notifiedRecipients.has(intent.recipientDiscordUserId)) {
+      continue;
+    }
+
+    let membershipOk = membershipCache.get(intent.recipientDiscordUserId);
+    if (membershipOk === undefined) {
+      membershipOk = await resolveMembershipOk(
+        authorize,
+        activity.guildId,
+        intent.recipientDiscordUserId,
+      );
+      membershipCache.set(intent.recipientDiscordUserId, membershipOk);
+    }
     if (!membershipOk) {
       continue;
     }
-    let verified;
-    try {
-      verified = await verifyLfgCharacter(characterVerify, {
-        discordUserId: intent.recipientDiscordUserId,
-        characterId: intent.characterId,
-        sessionRoles: intent.sessionRoles,
-      });
-    } catch {
+
+    const characterCacheKey = `${intent.recipientDiscordUserId}:${intent.characterId}:${intent.sessionRoles.join(',')}`;
+    let verified = characterCache.get(characterCacheKey);
+    if (verified === undefined) {
+      try {
+        verified = await verifyLfgCharacter(characterVerify, {
+          discordUserId: intent.recipientDiscordUserId,
+          characterId: intent.characterId,
+          sessionRoles: intent.sessionRoles,
+        });
+        characterCache.set(characterCacheKey, verified);
+      } catch {
+        characterCache.set(characterCacheKey, 'invalid');
+        continue;
+      }
+    }
+    if (verified === 'invalid') {
       continue;
     }
     const seeker = buildSeekerInput(ctx.group, {
@@ -844,26 +941,6 @@ export async function notifyLfgIntentsForActivity(
         actor: { discordUserId: intent.recipientDiscordUserId },
       })
     ) {
-      continue;
-    }
-    if (await tx.isLfgIntentSuppressed(intent.id, activity.id, ctx.fingerprint)) {
-      continue;
-    }
-    if (
-      await tx.isLfgActorMatchSuppressed(
-        intent.recipientDiscordUserId,
-        activity.id,
-        ctx.fingerprint,
-      )
-    ) {
-      continue;
-    }
-    const already = await tx.hasLfgNotifiedMatch(
-      intent.recipientDiscordUserId,
-      activity.id,
-      ctx.fingerprint,
-    );
-    if (already) {
       continue;
     }
 
@@ -1036,27 +1113,72 @@ export async function notifyFullGroupWatchesForActivity(
       .map((row) => row.discordUserId),
   );
 
+  const watchRecipientIds = [
+    ...new Set(
+      watches
+        .map((watch) => watch.recipientDiscordUserId)
+        .filter((recipientId) => !activeParticipantIds.has(recipientId)),
+    ),
+  ];
+  const [suppressedActors, notifiedRecipients] = await Promise.all([
+    tx.listSuppressedLfgActorRecipients({
+      activityId: activity.id,
+      fingerprint: ctx.fingerprint,
+      recipientDiscordUserIds: watchRecipientIds,
+    }),
+    tx.listLfgNotifiedRecipients({
+      activityId: activity.id,
+      fingerprint: ctx.fingerprint,
+      recipientDiscordUserIds: watchRecipientIds,
+    }),
+  ]);
+  const membershipCache = new Map<string, boolean>();
+  const characterCache = new Map<
+    string,
+    Awaited<ReturnType<typeof verifyLfgCharacter>> | 'invalid'
+  >();
+
   let sent = 0;
   for (const watch of watches) {
     if (activeParticipantIds.has(watch.recipientDiscordUserId)) {
       continue;
     }
-    const membershipOk = await resolveMembershipOk(
-      authorize,
-      activity.guildId,
-      watch.recipientDiscordUserId,
-    );
+    if (suppressedActors.has(watch.recipientDiscordUserId)) {
+      continue;
+    }
+    if (notifiedRecipients.has(watch.recipientDiscordUserId)) {
+      continue;
+    }
+
+    let membershipOk = membershipCache.get(watch.recipientDiscordUserId);
+    if (membershipOk === undefined) {
+      membershipOk = await resolveMembershipOk(
+        authorize,
+        activity.guildId,
+        watch.recipientDiscordUserId,
+      );
+      membershipCache.set(watch.recipientDiscordUserId, membershipOk);
+    }
     if (!membershipOk) {
       continue;
     }
-    let verified;
-    try {
-      verified = await verifyLfgCharacter(characterVerify, {
-        discordUserId: watch.recipientDiscordUserId,
-        characterId: watch.characterId,
-        sessionRoles: watch.sessionRoles,
-      });
-    } catch {
+
+    const characterCacheKey = `${watch.recipientDiscordUserId}:${watch.characterId}:${watch.sessionRoles.join(',')}`;
+    let verified = characterCache.get(characterCacheKey);
+    if (verified === undefined) {
+      try {
+        verified = await verifyLfgCharacter(characterVerify, {
+          discordUserId: watch.recipientDiscordUserId,
+          characterId: watch.characterId,
+          sessionRoles: watch.sessionRoles,
+        });
+        characterCache.set(characterCacheKey, verified);
+      } catch {
+        characterCache.set(characterCacheKey, 'invalid');
+        continue;
+      }
+    }
+    if (verified === 'invalid') {
       continue;
     }
     const seeker = buildSeekerInput(ctx.group, {
@@ -1080,14 +1202,6 @@ export async function notifyFullGroupWatchesForActivity(
         actor: { discordUserId: watch.recipientDiscordUserId },
       })
     ) {
-      continue;
-    }
-    if (
-      await tx.isLfgActorMatchSuppressed(watch.recipientDiscordUserId, activity.id, ctx.fingerprint)
-    ) {
-      continue;
-    }
-    if (await tx.hasLfgNotifiedMatch(watch.recipientDiscordUserId, activity.id, ctx.fingerprint)) {
       continue;
     }
 

@@ -610,6 +610,24 @@ export interface ActivityTx {
     activityId: string,
   ): Promise<Readonly<Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>>>>;
   countOccupiedParticipations(activityId: string): Promise<number>;
+  listActivityRoleRequirementsForActivities(activityIds: readonly string[]): Promise<
+    ReadonlyMap<
+      string,
+      readonly {
+        role: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+        requiredCount: number;
+        preferred?: boolean;
+      }[]
+    >
+  >;
+  countParticipationsByPartyRoleForActivities(
+    activityIds: readonly string[],
+  ): Promise<
+    ReadonlyMap<string, Readonly<Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>>>>
+  >;
+  countOccupiedParticipationsForActivities(
+    activityIds: readonly string[],
+  ): Promise<ReadonlyMap<string, number>>;
   hasOverlappingLfgIntent(input: {
     recipientDiscordUserId: string;
     characterId: string;
@@ -657,6 +675,11 @@ export interface ActivityTx {
     activityId: string,
     fingerprint: string,
   ): Promise<boolean>;
+  listSuppressedLfgIntentIds(input: {
+    activityId: string;
+    fingerprint: string;
+    intentIds: readonly string[];
+  }): Promise<ReadonlySet<string>>;
   recordLfgActorMatchSuppression(input: {
     recipientDiscordUserId: string;
     activityId: string;
@@ -668,6 +691,11 @@ export interface ActivityTx {
     activityId: string,
     fingerprint: string,
   ): Promise<boolean>;
+  listSuppressedLfgActorRecipients(input: {
+    activityId: string;
+    fingerprint: string;
+    recipientDiscordUserIds: readonly string[];
+  }): Promise<ReadonlySet<string>>;
   getLfgIntentById(intentId: string): Promise<{
     readonly id: string;
     readonly guildId: string;
@@ -812,6 +840,11 @@ export interface ActivityTx {
     activityId: string,
     fingerprint: string,
   ): Promise<boolean>;
+  listLfgNotifiedRecipients(input: {
+    activityId: string;
+    fingerprint: string;
+    recipientDiscordUserIds: readonly string[];
+  }): Promise<ReadonlySet<string>>;
   recordLfgNotifiedMatch(
     recipientDiscordUserId: string,
     activityId: string,

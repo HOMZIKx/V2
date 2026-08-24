@@ -434,6 +434,50 @@ function isExclusionViolation(error: unknown): boolean {
   );
 }
 
+async function loadActivityTypesForGuild(
+  client: PoolClient,
+  guildId: string,
+): Promise<ActivityTypeRecord[]> {
+  const result = await client.query(
+    `SELECT * FROM activity_types WHERE guild_id = $1 ORDER BY sort_order, key`,
+    [guildId],
+  );
+  if (result.rows.length === 0) {
+    return [];
+  }
+  const typeIds = result.rows.map((row) => asRequiredString((row as { id: unknown }).id, 'id'));
+  const statusResult = await client.query(
+    `SELECT type_id, status_def_id FROM activity_type_status_defs WHERE type_id = ANY($1::uuid[])`,
+    [typeIds],
+  );
+  const fieldResult = await client.query(
+    `SELECT type_id, field_def_id, required FROM activity_type_participant_fields WHERE type_id = ANY($1::uuid[])`,
+    [typeIds],
+  );
+  const statusesByType = new Map<string, string[]>();
+  for (const row of statusResult.rows) {
+    const typeId = String((row as { type_id: unknown }).type_id);
+    const list = statusesByType.get(typeId) ?? [];
+    list.push(String((row as { status_def_id: unknown }).status_def_id));
+    statusesByType.set(typeId, list);
+  }
+  const fieldsByType = new Map<string, { fieldDefId: string; required: boolean }[]>();
+  for (const row of fieldResult.rows) {
+    const typeId = String((row as { type_id: unknown }).type_id);
+    const list = fieldsByType.get(typeId) ?? [];
+    list.push({
+      fieldDefId: String((row as { field_def_id: unknown }).field_def_id),
+      required: Boolean((row as { required: unknown }).required),
+    });
+    fieldsByType.set(typeId, list);
+  }
+  return result.rows.map((row) => {
+    const typed = row as Record<string, unknown>;
+    const typeId = asRequiredString(typed.id, 'id');
+    return mapActivityType(typed, statusesByType.get(typeId) ?? [], fieldsByType.get(typeId) ?? []);
+  });
+}
+
 async function loadActivityType(
   client: PoolClient,
   row: Record<string, unknown>,
@@ -1676,6 +1720,99 @@ function createTx(client: PoolClient): ActivityTx {
       return Number((result.rows[0] as { n: number } | undefined)?.n ?? 0);
     },
 
+    async listActivityRoleRequirementsForActivities(activityIds) {
+      const map = new Map<
+        string,
+        {
+          role: 'TANK' | 'BUFF' | 'DPS' | 'FLEX';
+          requiredCount: number;
+          preferred?: boolean;
+        }[]
+      >();
+      for (const activityId of activityIds) {
+        map.set(activityId, []);
+      }
+      if (activityIds.length === 0) {
+        return map;
+      }
+      const result = await client.query(
+        `SELECT activity_id::text, party_role_key, required_count, preferred
+         FROM activity_role_requirements WHERE activity_id = ANY($1::uuid[])`,
+        [activityIds],
+      );
+      for (const row of result.rows) {
+        const activityId = String((row as { activity_id: unknown }).activity_id);
+        const list = map.get(activityId) ?? [];
+        list.push({
+          role: String((row as { party_role_key: unknown }).party_role_key) as
+            'TANK' | 'BUFF' | 'DPS' | 'FLEX',
+          requiredCount: Number((row as { required_count: unknown }).required_count),
+          preferred: Boolean((row as { preferred: unknown }).preferred),
+        });
+        map.set(activityId, list);
+      }
+      return map;
+    },
+
+    async countParticipationsByPartyRoleForActivities(activityIds) {
+      const map = new Map<string, Partial<Record<'TANK' | 'BUFF' | 'DPS' | 'FLEX', number>>>();
+      for (const activityId of activityIds) {
+        map.set(activityId, {});
+      }
+      if (activityIds.length === 0) {
+        return map;
+      }
+      const result = await client.query(
+        `SELECT p.activity_id::text, p.party_role_key, COUNT(*)::int AS n
+         FROM participations p
+         INNER JOIN participation_status_defs s ON s.id = p.status_def_id
+         WHERE p.activity_id = ANY($1::uuid[])
+           AND p.party_role_key IS NOT NULL
+           AND s.occupies_slot = TRUE
+           AND p.resigned_at IS NULL
+           AND p.removed_at IS NULL
+         GROUP BY p.activity_id, p.party_role_key`,
+        [activityIds],
+      );
+      for (const row of result.rows) {
+        const activityId = String((row as { activity_id: unknown }).activity_id);
+        const role = String((row as { party_role_key: unknown }).party_role_key);
+        if (role === 'TANK' || role === 'BUFF' || role === 'DPS' || role === 'FLEX') {
+          const filled = map.get(activityId) ?? {};
+          filled[role] = Number((row as { n: unknown }).n);
+          map.set(activityId, filled);
+        }
+      }
+      return map;
+    },
+
+    async countOccupiedParticipationsForActivities(activityIds) {
+      const map = new Map<string, number>();
+      for (const activityId of activityIds) {
+        map.set(activityId, 0);
+      }
+      if (activityIds.length === 0) {
+        return map;
+      }
+      const result = await client.query(
+        `SELECT p.activity_id::text, COUNT(*)::int AS n
+         FROM participations p
+         INNER JOIN participation_status_defs s ON s.id = p.status_def_id
+         WHERE p.activity_id = ANY($1::uuid[])
+           AND p.resigned_at IS NULL AND p.removed_at IS NULL
+           AND s.occupies_slot = TRUE
+         GROUP BY p.activity_id`,
+        [activityIds],
+      );
+      for (const row of result.rows) {
+        map.set(
+          String((row as { activity_id: unknown }).activity_id),
+          Number((row as { n: unknown }).n),
+        );
+      }
+      return map;
+    },
+
     async hasOverlappingLfgIntent(input) {
       const excludeClause = input.excludeIntentId !== undefined ? 'AND id <> $7::uuid' : '';
       const params: unknown[] = [
@@ -1836,6 +1973,18 @@ function createTx(client: PoolClient): ActivityTx {
       return result.rows.length > 0;
     },
 
+    async listSuppressedLfgIntentIds(input) {
+      if (input.intentIds.length === 0) {
+        return new Set<string>();
+      }
+      const result = await client.query(
+        `SELECT intent_id::text FROM lfg_intent_suppressions
+         WHERE activity_id = $1::uuid AND fingerprint = $2 AND intent_id = ANY($3::uuid[])`,
+        [input.activityId, input.fingerprint, input.intentIds],
+      );
+      return new Set(result.rows.map((row) => String((row as { intent_id: unknown }).intent_id)));
+    },
+
     async recordLfgActorMatchSuppression(input) {
       await client.query(
         `INSERT INTO lfg_actor_match_suppressions (
@@ -1859,6 +2008,23 @@ function createTx(client: PoolClient): ActivityTx {
         [recipientDiscordUserId, activityId, fingerprint],
       );
       return result.rows.length > 0;
+    },
+
+    async listSuppressedLfgActorRecipients(input) {
+      if (input.recipientDiscordUserIds.length === 0) {
+        return new Set<string>();
+      }
+      const result = await client.query(
+        `SELECT recipient_discord_user_id FROM lfg_actor_match_suppressions
+         WHERE activity_id = $1::uuid AND fingerprint = $2
+           AND recipient_discord_user_id = ANY($3::text[])`,
+        [input.activityId, input.fingerprint, input.recipientDiscordUserIds],
+      );
+      return new Set(
+        result.rows.map((row) =>
+          String((row as { recipient_discord_user_id: unknown }).recipient_discord_user_id),
+        ),
+      );
     },
 
     async getLfgIntentById(intentId) {
@@ -2021,7 +2187,8 @@ function createTx(client: PoolClient): ActivityTx {
            AND fulfilled_at IS NULL
            AND paused_at IS NULL
            AND expires_at > $4
-           AND window_end_at > $4`,
+           AND window_end_at > $4
+         LIMIT 500`,
         [input.guildId, input.organizationId, input.activityTypeKey, input.now.toISOString()],
       );
       return result.rows.map((row) => ({
@@ -2148,6 +2315,23 @@ function createTx(client: PoolClient): ActivityTx {
         [recipientDiscordUserId, activityId, fingerprint],
       );
       return result.rows.length > 0;
+    },
+
+    async listLfgNotifiedRecipients(input) {
+      if (input.recipientDiscordUserIds.length === 0) {
+        return new Set<string>();
+      }
+      const result = await client.query(
+        `SELECT recipient_discord_user_id FROM lfg_notified_matches
+         WHERE activity_id = $1::uuid AND fingerprint = $2
+           AND recipient_discord_user_id = ANY($3::text[])`,
+        [input.activityId, input.fingerprint, input.recipientDiscordUserIds],
+      );
+      return new Set(
+        result.rows.map((row) =>
+          String((row as { recipient_discord_user_id: unknown }).recipient_discord_user_id),
+        ),
+      );
     },
 
     async recordLfgNotifiedMatch(recipientDiscordUserId, activityId, fingerprint, now) {
@@ -2314,7 +2498,7 @@ function createTx(client: PoolClient): ActivityTx {
 
     async listReports(guildId) {
       const result = await client.query(
-        `SELECT * FROM activity_reports WHERE guild_id = $1 ORDER BY created_at DESC`,
+        `SELECT * FROM activity_reports WHERE guild_id = $1 ORDER BY created_at DESC LIMIT 200`,
         [guildId],
       );
       return result.rows.map((row) => mapReport(row as Record<string, unknown>));
@@ -2675,15 +2859,7 @@ function createTx(client: PoolClient): ActivityTx {
     },
 
     async listActivityTypes(guildId) {
-      const result = await client.query(
-        `SELECT * FROM activity_types WHERE guild_id = $1 ORDER BY sort_order, key`,
-        [guildId],
-      );
-      const types: ActivityTypeRecord[] = [];
-      for (const row of result.rows) {
-        types.push(await loadActivityType(client, row as Record<string, unknown>));
-      }
-      return types;
+      return loadActivityTypesForGuild(client, guildId);
     },
 
     async getActivityType(id) {

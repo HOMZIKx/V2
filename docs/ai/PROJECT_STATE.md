@@ -16,7 +16,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                               |
 | ---------------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-DATA-INTEGRITY-MIGRATION-BACKUP-RECOVERY-AUDIT-001`           |
+| CURRENT_TASK           | `V2-DATA-INTEGRITY-MIGRATION-BACKUP-RECOVERY-AUDIT-001`             |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
 | LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL`                                        |
 | LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_APPROVAL` (code path; runtime separate)    |
@@ -71,6 +71,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **CROSS_SERVICE_CONTRACT_AUDIT_SHA**          | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport        |
 | **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH        |
 | **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
+| **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | _(pending commit pin)_                     | LFG batching, indexes 019, timeouts, outbox backoff               |
 
 ## Module discovery status (summary)
 

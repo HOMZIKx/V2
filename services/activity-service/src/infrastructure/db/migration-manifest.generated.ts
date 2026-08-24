@@ -2,7 +2,7 @@
 export const schemaMigrationManifest = {
   service: 'activity',
   trackingTable: 'activity_schema_migrations',
-  count: 18,
+  count: 19,
   foundationId: '001_activity_foundation.sql',
-  latestId: '018_lfg_audit_suppressions.sql',
+  latestId: '019_performance_indexes.sql',
 } as const;

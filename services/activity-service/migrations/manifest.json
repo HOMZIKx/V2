@@ -1,9 +1,9 @@
 {
   "service": "activity",
   "trackingTable": "activity_schema_migrations",
-  "count": 18,
+  "count": 19,
   "foundationId": "001_activity_foundation.sql",
-  "latestId": "018_lfg_audit_suppressions.sql",
+  "latestId": "019_performance_indexes.sql",
   "migrations": [
     {
       "id": "001_activity_foundation.sql",
@@ -93,6 +93,11 @@
     {
       "id": "018_lfg_audit_suppressions.sql",
       "checksum": "b7e99714aa0f7385d3ec11f6bf9a9c6e8dc3d308d505d2ac87d126cc68e94e0f",
+      "flags": []
+    },
+    {
+      "id": "019_performance_indexes.sql",
+      "checksum": "42db175b0989b2fac2098f46c6328a052dadb715943d0d76cc40724d4a4a6b2c",
       "flags": []
     }
   ]

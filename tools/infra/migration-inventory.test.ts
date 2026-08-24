@@ -16,7 +16,7 @@ describe('migration inventory (static)', () => {
     expect(output).toContain('Inventory OK');
     expect(output).toContain('identity: 2 migrations');
     expect(output).toContain('authorization: 5 migrations');
-    expect(output).toContain('activity: 18 migrations');
+    expect(output).toContain('activity: 19 migrations');
   });
 
   it('manifest files exist for each service', () => {

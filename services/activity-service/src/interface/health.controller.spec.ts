@@ -31,7 +31,7 @@ describe('HealthController', () => {
     const repository = {
       ping: vi.fn().mockResolvedValue(undefined),
       hasSchemaMigration: vi.fn().mockResolvedValue(true),
-      countSchemaMigrations: vi.fn().mockResolvedValue(18),
+      countSchemaMigrations: vi.fn().mockResolvedValue(19),
       countOutboxByStatus: vi.fn().mockResolvedValue({
         pending: 0,
         claimed: 0,

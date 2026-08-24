@@ -342,6 +342,15 @@ function createAdminMemoryRepo(): {
     async countOccupiedParticipations() {
       return 0;
     },
+    async listActivityRoleRequirementsForActivities() {
+      return new Map();
+    },
+    async countParticipationsByPartyRoleForActivities() {
+      return new Map();
+    },
+    async countOccupiedParticipationsForActivities() {
+      return new Map();
+    },
     async insertLfgIntent() {
       return notImpl();
     },
@@ -368,9 +377,15 @@ function createAdminMemoryRepo(): {
     async isLfgIntentSuppressed() {
       return false;
     },
+    async listSuppressedLfgIntentIds() {
+      return new Set<string>();
+    },
     async recordLfgActorMatchSuppression() {},
     async isLfgActorMatchSuppressed() {
       return false;
+    },
+    async listSuppressedLfgActorRecipients() {
+      return new Set<string>();
     },
     async getLfgIntentById() {
       return null;
@@ -408,6 +423,9 @@ function createAdminMemoryRepo(): {
     async upsertActivityTypeCompositionTemplate() {},
     async hasLfgNotifiedMatch() {
       return false;
+    },
+    async listLfgNotifiedRecipients() {
+      return new Set<string>();
     },
     async recordLfgNotifiedMatch() {},
     async listReservationsForSpot() {
@@ -562,7 +580,7 @@ function createAdminMemoryRepo(): {
         return true;
       },
       async countSchemaMigrations() {
-        return 18;
+        return 19;
       },
     },
   };

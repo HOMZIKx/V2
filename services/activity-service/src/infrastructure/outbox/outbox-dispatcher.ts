@@ -59,6 +59,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
   private tickInFlight: Promise<void> | null = null;
+  private deliveryFailureStreak = 0;
   private fetchImpl: typeof globalThis.fetch;
   private rabbitPublisher: ActivityOutboxRabbitPublisher | null = null;
 
@@ -134,6 +135,16 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     await this.safeTick('manual');
   }
 
+  private getClaimLimit(): number {
+    if (this.deliveryFailureStreak >= 5) {
+      return 3;
+    }
+    if (this.deliveryFailureStreak >= 3) {
+      return 5;
+    }
+    return CLAIM_LIMIT;
+  }
+
   private async safeTick(source: string): Promise<void> {
     if (this.stopped) {
       return;
@@ -153,7 +164,7 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
       const claimed = await this.repository.withTransaction((tx) =>
         tx.claimOutbox({
           owner: this.leaseOwner,
-          limit: CLAIM_LIMIT,
+          limit: this.getClaimLimit(),
           leaseSeconds: LEASE_SECONDS,
           now,
         }),
@@ -182,6 +193,11 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
         retried,
         permanent,
       });
+      if (delivered > 0) {
+        this.deliveryFailureStreak = 0;
+      } else if (retried > 0 && retried === claimed.length) {
+        this.deliveryFailureStreak += 1;
+      }
     } catch (error) {
       this.logger.error('Activity outbox tick failed', {
         source,
@@ -329,7 +345,17 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     const bodyText = await response.text().catch(() => '');
     const errorText = `HTTP ${response.status}: ${bodyText.slice(0, 500)}`;
     if (isRetryableHttpStatus(response.status)) {
-      await this.failRetry(message, errorText);
+      let retryAfterMs: number | undefined;
+      if (response.status === 429) {
+        const retryAfterHeader = response.headers.get('retry-after');
+        if (retryAfterHeader !== null) {
+          const seconds = Number(retryAfterHeader);
+          if (Number.isFinite(seconds) && seconds > 0) {
+            retryAfterMs = seconds * 1000;
+          }
+        }
+      }
+      await this.failRetry(message, errorText, retryAfterMs);
       return 'retry';
     }
 
@@ -394,12 +420,17 @@ export class ActivityOutboxDispatcher implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async failRetry(message: OutboxMessageRecord, error: string): Promise<void> {
+  private async failRetry(
+    message: OutboxMessageRecord,
+    error: string,
+    retryAfterMs?: number,
+  ): Promise<void> {
     if (message.attemptCount >= MAX_DELIVERY_ATTEMPTS) {
       await this.permanentFail(message, `${error} (max attempts ${MAX_DELIVERY_ATTEMPTS})`);
       return;
     }
-    const availableAt = new Date(this.clock.now().getTime() + backoffMs(message.attemptCount));
+    const backoff = retryAfterMs ?? backoffMs(message.attemptCount);
+    const availableAt = new Date(this.clock.now().getTime() + backoff);
     await this.repository.withTransaction((tx) => tx.failOutbox(message.id, error, availableAt));
   }
 

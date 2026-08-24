@@ -96,6 +96,7 @@ export class HttpAuthorizationSyncClient implements AuthorizationSyncPort {
           [ASSERTION_HEADER]: assertion,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15_000),
       });
     } catch (error) {
       this.deps.logger.error('Authorization sync request failed (network)', {
