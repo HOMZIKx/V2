@@ -21,7 +21,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL`                                        |
 | LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_APPROVAL` (code path; runtime separate)    |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `09be1dd6996e31575c677847ed79545239967c36` (pre-security-audit tip) |
+| CURRENT_HEAD / PR_HEAD | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff`                          |
 | PR                     | #19                                                                 |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
 | LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |

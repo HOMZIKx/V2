@@ -10,7 +10,7 @@ PR: #19
 
 ## Adversarial security audit
 
-Checkpoint: **`FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA`** — (recorded after commit)
+Checkpoint: **`FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA`** — `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff`
 
 ### Result
 

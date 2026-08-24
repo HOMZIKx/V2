@@ -2,7 +2,7 @@
 
 Task: `V2-FOUNDATION-ADVERSARIAL-SECURITY-AUDIT-002`  
 Base: `09be1dd6996e31575c677847ed79545239967c36` (PR #19)  
-Checkpoint: **`FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA`** (recorded after this pass)
+Checkpoint: **`FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA`** — `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff`
 
 Scope: api-gateway, identity-service, authorization-service, activity-service, discord-gateway, web, admin, shared contracts, notification pipeline, LFG.
 
