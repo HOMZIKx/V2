@@ -10,7 +10,7 @@ PR: #19
 
 ## Data recovery and migration audit
 
-Checkpoint: **`DATA_RECOVERY_AUDIT_SHA`** — _(pending commit pin)_
+Checkpoint: **`DATA_RECOVERY_AUDIT_SHA`** — `b76dcf556ab8007311aecab046c3ef2e2357aee4`
 
 ### Result
 

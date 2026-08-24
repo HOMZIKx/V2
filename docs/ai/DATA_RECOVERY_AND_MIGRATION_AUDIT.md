@@ -2,7 +2,7 @@
 
 Task: `V2-DATA-INTEGRITY-MIGRATION-BACKUP-RECOVERY-AUDIT-001`  
 Base: `3fa568e6996e31575c677847ed79545239967c36` (PR #19)  
-Checkpoint: **`DATA_RECOVERY_AUDIT_SHA`** (recorded after this pass)
+Checkpoint: **`DATA_RECOVERY_AUDIT_SHA`** = `b76dcf556ab8007311aecab046c3ef2e2357aee4`
 
 Mode: data safety / disaster recovery — **no product behavior changes** (operational readiness hardening only).
 

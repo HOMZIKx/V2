@@ -21,7 +21,7 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL`                                        |
 | LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_APPROVAL` (code path; runtime separate)    |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff`                          |
+| CURRENT_HEAD / PR_HEAD | `b76dcf556ab8007311aecab046c3ef2e2357aee4`                          |
 | PR                     | #19                                                                 |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
 | LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
@@ -70,7 +70,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**     | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                        |
 | **CROSS_SERVICE_CONTRACT_AUDIT_SHA**          | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport        |
 | **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH        |
-| **DATA_RECOVERY_AUDIT_SHA**                   | _(pending commit pin)_                     | Migration/backup/recovery audit + full-chain ready probe          |
+| **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
 
 ## Module discovery status (summary)
 
