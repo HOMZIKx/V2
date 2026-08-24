@@ -1768,7 +1768,7 @@ function createTx(client: PoolClient): ActivityTx {
       const result = await client.query(
         `UPDATE lfg_intents
          SET cancelled_at = $3, updated_at = $3
-         WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL`,
+         WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL AND fulfilled_at IS NULL`,
         [intentId, recipientDiscordUserId, now.toISOString()],
       );
       return (result.rowCount ?? 0) > 0;
@@ -2020,7 +2020,8 @@ function createTx(client: PoolClient): ActivityTx {
            AND cancelled_at IS NULL
            AND fulfilled_at IS NULL
            AND paused_at IS NULL
-           AND expires_at > $4`,
+           AND expires_at > $4
+           AND window_end_at > $4`,
         [input.guildId, input.organizationId, input.activityTypeKey, input.now.toISOString()],
       );
       return result.rows.map((row) => ({

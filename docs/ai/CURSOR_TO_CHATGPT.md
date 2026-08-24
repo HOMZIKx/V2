@@ -4,40 +4,51 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG: **`READY_FOR_CHATGPT_FINAL_APPROVAL`**
+LFG code: **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`)  
+LFG runtime: **not verified in this task** (separate Discord deployment task)
 
-Task: `V2-LFG-FINAL-TWO-HIGH-FIXES-007`  
+Task: `V2-LFG-FINAL-CODE-CLOSURE-AND-RESERVATIONS-DISCOVERY-008`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19
 
-## Final two HIGH fixes (ChatGPT PR #19 review)
+## Final source reaudit
 
-Checkpoint: `DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA` — `94e71fef5bcb8c541824a058dae37020c86516af`
+Checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** — (recorded after commit)
 
-### H-MUTE-01 — LFG dungeon mute used wrong preference field
+Base: `d596a9f6a25e89e4afb0f844f7a4f15922db5590`
 
-| Issue                                                        | Fix                                                             |
-| ------------------------------------------------------------ | --------------------------------------------------------------- |
-| DM **Wycisz &lt;activityType&gt;** wrote `mutedInterestKeys` | Now writes `mutedActivityTypeKeys`                              |
-| LFG discovery uses `activityTypeKey` in mute policy          | Discovery correctly suppressed after mute                       |
-| TRANSACTIONAL unaffected                                     | `isDeliveryAllowedByPreference` bypasses mute for non-DISCOVERY |
+### Result
 
-**Tests:** `notification.use-cases.spec.ts` (Azrael discovery suppressed, transactional join allowed); `lfg-dm-durable-context.spec.ts` (handler sends `mutedActivityTypeKeys`).
+| Severity | Open                                  |
+| -------- | ------------------------------------- |
+| CRITICAL | 0                                     |
+| HIGH     | 0                                     |
+| MEDIUM   | 0 (4 lifecycle items fixed this pass) |
+| LOW      | 2 (non-blocking)                      |
 
-### H-WATCH-01 — Full-group watch not fulfilled on slot-reopened join
+Full report: `docs/ai/DUNGEON_LFG_V1_AUDIT.md` → section **FINAL_SOURCE_REAUDIT**.
 
-| Issue                                              | Fix                                                                              |
-| -------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Join from `lfg_slot_reopened` DM left watch active | `fullGroupWatchId` on join contract + backend path                               |
-| Profile/default character risk on watch join       | Gateway passes `fullGroupWatchId`; backend resolves stored character             |
-| Post-join watch still notified                     | `fulfillLfgFullGroupWatch` idempotently closes exact watch after successful join |
-| Already-participant spam                           | `notifyFullGroupWatchesForActivity` skips active participants                    |
+### MEDIUM lifecycle fixes (this pass)
 
-**Tests:** `lfg.use-cases.spec.ts` — successful join closes watch; stale join does not; two watches closes only matched; cancelled watch rejected; participant skips reopen notify.
+| Issue                                     | Fix                                                   |
+| ----------------------------------------- | ----------------------------------------------------- |
+| Active intent SQL ignored `window_end_at` | `listActiveLfgIntents` adds `window_end_at > now`     |
+| Cancel on fulfilled intent                | `cancelLfgIntent` SQL requires `fulfilled_at IS NULL` |
+| Edit paused/expired intent                | `updateLfgIntent` guards paused + TTL expired         |
+| Join after search window ended            | `joinLfgActivity` rejects `windowEndAt <= now`        |
 
-### Prior checkpoint
+**Tests:** `lfg.use-cases.spec.ts` (+4 cases).
 
-`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA` — `d781c2b275ecb88275b7ab2e84ae468065163c7f`
+### Prior HIGH fixes — still verified
+
+- **H-MUTE-01:** `mutedActivityTypeKeys` (not `mutedInterestKeys`) — SHA `94e71fe`
+- **H-WATCH-02:** `fullGroupWatchId` join → fulfill exact watch — SHA `94e71fe`
+- **Durable DM context:** SHA `d781c2b`
+
+## Reservations discovery
+
+Owner pack: **`docs/ai/RESERVATIONS_OWNER_DECISIONS.md`** (7 decisions, A/B/C + recommended)  
+**RESERVATIONS_STATUS = OWNER_DISCOVERY_READY** — not Accepted, no implementation.
 
 ## Validation
 
@@ -48,4 +59,4 @@ Checkpoint: `DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA` — `94e71fef5bcb8c541824a058d
 
 ## STOP
 
-Not APPROVED. No merge. No Reservations/Marketplace. Await ChatGPT **final approval**.
+Not APPROVED. No merge. No Reservations/Marketplace implementation. Await ChatGPT **code approval**. Live Discord runtime is a separate task.

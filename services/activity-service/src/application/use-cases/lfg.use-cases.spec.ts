@@ -9,6 +9,7 @@ import type {
   VerifiedLfgCharacter,
 } from '../ports/activity.ports.js';
 import {
+  cancelLfgIntent,
   createLfgFullGroupWatch,
   createLfgIntent,
   joinLfgActivity,
@@ -409,6 +410,91 @@ describe('updateLfgIntent', () => {
     );
     expect(clear).toHaveBeenCalledWith('intent-1');
   });
+
+  it('rejects edit while paused', async () => {
+    const tx = makeTx({
+      getLfgIntentById: () =>
+        Promise.resolve({
+          id: 'intent-1',
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'u1',
+          characterId: CHAR_ID,
+          activityTypeKey: 'azrael',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+          expiresAt: END,
+          cancelledAt: null,
+          pausedAt: NOW,
+          fulfilledAt: null,
+          classSpecKey: 'priest_buff',
+        }),
+    });
+    await expect(
+      updateLfgIntent(
+        tx,
+        { discordUserId: 'u1' },
+        {
+          intentId: 'intent-1',
+          guildId: 'g1',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+        },
+        characterVerifyStub(),
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+  });
+
+  it('rejects edit after TTL expiry', async () => {
+    const tx = makeTx({
+      getLfgIntentById: () =>
+        Promise.resolve({
+          id: 'intent-1',
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'u1',
+          characterId: CHAR_ID,
+          activityTypeKey: 'azrael',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+          expiresAt: new Date('2026-08-22T11:00:00.000Z'),
+          cancelledAt: null,
+          pausedAt: null,
+          fulfilledAt: null,
+          classSpecKey: 'priest_buff',
+        }),
+    });
+    await expect(
+      updateLfgIntent(
+        tx,
+        { discordUserId: 'u1' },
+        {
+          intentId: 'intent-1',
+          guildId: 'g1',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: END,
+        },
+        characterVerifyStub(),
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+  });
+});
+
+describe('cancelLfgIntent lifecycle', () => {
+  it('returns NOT_FOUND when fulfilled intent cannot be cancelled', async () => {
+    const tx = makeTx({
+      cancelLfgIntent: () => Promise.resolve(false),
+    });
+    await expect(
+      cancelLfgIntent(tx, { discordUserId: 'u1' }, 'intent-fulfilled', NOW),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
 });
 
 describe('createLfgIntent validation', () => {
@@ -654,6 +740,44 @@ describe('joinLfgActivity', () => {
     );
     expect(fulfill).toHaveBeenCalledOnce();
     expect(fulfill).toHaveBeenCalledWith('intent-2', 'seeker', NOW);
+  });
+
+  it('rejects join when intent search window has ended', async () => {
+    const tx = joinTx({
+      getLfgIntentById: () =>
+        Promise.resolve({
+          id: 'intent-1',
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          characterId: CHAR_ID,
+          activityTypeKey: 'azrael',
+          sessionRoles: ['BUFF'],
+          windowStartAt: new Date('2026-08-22T16:00:00.000Z'),
+          windowEndAt: new Date('2026-08-22T11:30:00.000Z'),
+          expiresAt: END,
+          cancelledAt: null,
+          pausedAt: null,
+          fulfilledAt: null,
+          classSpecKey: 'priest_buff',
+        }),
+    });
+    await expect(
+      joinLfgActivity(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          activityId: '11111111-1111-4111-8111-111111111111',
+          statusDefId: 'status-1',
+          partyRoleKey: 'BUFF',
+          guildId: 'g1',
+          intentId: 'intent-1',
+          characterId: CHAR_ID,
+        },
+        characterVerifyStub(),
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
   });
 
   it('fulfills full-group watch after successful slot-reopened join', async () => {

@@ -385,6 +385,12 @@ export async function updateLfgIntent(
   if (intent.cancelledAt !== null || intent.fulfilledAt !== null) {
     throw new ActivityError('PRECONDITION_FAILED', 'LFG watch is not editable');
   }
+  if (intent.pausedAt !== null) {
+    throw new ActivityError('PRECONDITION_FAILED', 'Resume the watch before editing');
+  }
+  if (intent.expiresAt.getTime() <= now.getTime()) {
+    throw new ActivityError('PRECONDITION_FAILED', 'LFG watch has expired');
+  }
   const verified = await verifyLfgCharacter(characterVerify, {
     discordUserId: userId,
     characterId: intent.characterId,
@@ -621,6 +627,9 @@ export async function joinLfgActivity(
       intent.expiresAt.getTime() <= now.getTime()
     ) {
       throw new ActivityError('PRECONDITION_FAILED', 'LFG watch is not active');
+    }
+    if (intent.windowEndAt.getTime() <= now.getTime()) {
+      throw new ActivityError('PRECONDITION_FAILED', 'LFG watch window has ended');
     }
     if (intent.activityTypeKey !== activityTypeKey) {
       throw new ActivityError('VALIDATION_FAILED', 'LFG watch type mismatch');

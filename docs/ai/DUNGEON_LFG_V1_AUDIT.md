@@ -364,3 +364,133 @@ Product status: **`READY_FOR_CHATGPT_FINAL_APPROVAL`**
 corepack pnpm validate — PASS
 CRITICAL/HIGH (LFG final scope) — 0
 ```
+
+---
+
+## FINAL_SOURCE_REAUDIT (2026-08-24)
+
+Task: `V2-LFG-FINAL-CODE-CLOSURE-AND-RESERVATIONS-DISCOVERY-008`  
+Base remote HEAD: `d596a9f6a25e89e4afb0f844f7a4f15922db5590` (PR #19)  
+Audit checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** (recorded after this pass)
+
+**LFG_CODE_STATUS = READY_FOR_CHATGPT_APPROVAL**  
+(Live runtime verification remains a **separate** task — not claimed here.)
+
+### Scope traced
+
+Full path re-audited: Identity profile character → Discord/WWW transport → Activity controller/service → character verify (Identity authority) → matching (`hub-core/lfg-matching`) → intent/watch lifecycle → activity state → notification enqueue → `deliveryActions` → Discord signed components → join/suppress/mute → participation → intent/watch fulfillment.
+
+### Severity summary
+
+| Severity | Found (this reaudit) | Fixed (this pass) | Open |
+| -------- | -------------------- | ----------------- | ---- |
+| CRITICAL | 0                    | 0                 | 0    |
+| HIGH     | 0                    | 0                 | 0    |
+| MEDIUM   | 4                    | 4                 | 0    |
+| LOW      | 2                    | 0                 | 2    |
+
+**Approval candidate:** CRITICAL = 0, HIGH = 0, LOCAL_VALIDATE = PASS (see validation block below).
+
+### Prior HIGH fixes — verified in code + tests
+
+#### H-MUTE-01 — Wycisz uses `mutedActivityTypeKeys`
+
+| Field      | Detail                                                                                                            |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| Root cause | DM mute wrote `mutedInterestKeys`; discovery mute policy reads `mutedActivityTypeKeys`                            |
+| Fix        | `activity-interaction-handler.ts` → `updateNotificationPreferences({ mutedActivityTypeKeys: [activityTypeKey] })` |
+| Test       | `notification.use-cases.spec.ts`, `lfg-dm-durable-context.spec.ts`                                                |
+| SHA        | `94e71fef5bcb8c541824a058dae37020c86516af`                                                                        |
+
+#### H-WATCH-02 — `lfg_slot_reopened` fulfills exact watch on successful join
+
+| Field      | Detail                                                                                                                |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| Root cause | Join from slot-reopened DM did not pass/close originating full-group watch                                            |
+| Fix        | `fullGroupWatchId` on `LfgJoinRequest`; `fulfillLfgFullGroupWatch` after confirmed join; skip notify for participants |
+| Test       | `lfg.use-cases.spec.ts` (5 cases), `lfg-dm-durable-context.spec.ts`                                                   |
+| SHA        | `94e71fef5bcb8c541824a058dae37020c86516af`                                                                            |
+
+### MEDIUM — found and fixed (lifecycle hardening)
+
+#### M-LIFE-01 — Active intent scan ignored `window_end_at`
+
+| Field      | Detail                                                               |
+| ---------- | -------------------------------------------------------------------- |
+| Root cause | `listActiveLfgIntents` filtered `expires_at` but not `window_end_at` |
+| Fix        | SQL adds `AND window_end_at > $4`                                    |
+| Test       | Covered by join/notify integration with window-end guard (below)     |
+
+#### M-LIFE-02 — Cancel allowed on fulfilled intent (dual terminal state)
+
+| Field      | Detail                                                          |
+| ---------- | --------------------------------------------------------------- |
+| Root cause | `cancelLfgIntent` SQL only checked `cancelled_at IS NULL`       |
+| Fix        | SQL adds `AND fulfilled_at IS NULL`; use case returns NOT_FOUND |
+| Test       | `lfg.use-cases.spec.ts` `cancelLfgIntent lifecycle`             |
+
+#### M-LIFE-03 — Edit could reactivate TTL-expired or paused intent
+
+| Field      | Detail                                                |
+| ---------- | ----------------------------------------------------- |
+| Root cause | `updateLfgIntent` lacked paused/expired guards        |
+| Fix        | Reject when `pausedAt !== null` or `expiresAt <= now` |
+| Test       | `lfg.use-cases.spec.ts` paused + expired edit cases   |
+
+#### M-LIFE-04 — Intent-based join after search window ended
+
+| Field      | Detail                                                     |
+| ---------- | ---------------------------------------------------------- |
+| Root cause | Join validated intent active state but not `window_end_at` |
+| Fix        | `joinLfgActivity` rejects when `intent.windowEndAt <= now` |
+| Test       | `lfg.use-cases.spec.ts` window-ended join case             |
+
+### MEDIUM/LOW — open (non-blocking)
+
+| ID      | Severity | Item                                                                       |
+| ------- | -------- | -------------------------------------------------------------------------- |
+| M-04    | MEDIUM   | Docker integration concurrency suite still partial (documented prior)      |
+| L-WATCH | LOW      | `fulfillLfgFullGroupWatch` no-op when watch already cancelled (idempotent) |
+| L-CI    | LOW      | GitHub Actions billing external blocker unchanged                          |
+
+### Character authority
+
+Repo search: `characterClassSpecKey` / `characterSupportedRoles` appear only in internal matching (`packages/hub-core/src/lfg-matching.ts`), contract **legacy drift** schema (`LfgSearchRequestLegacyDriftSchema`), and Discord UI state sourced from Identity profile — **not** as trusted Discord/WWW join/search input. WWW `lfg-api.ts` sends `characterId` only; backend resolves class/roles via Identity S2S.
+
+### Tenant / authz
+
+Search, intent CRUD, join, DM join, full-group watch, suppress, and notify paths re-checked: guild/org scoping, character ownership via Identity, activity privacy (`canViewPrivateActivity`), JOIN permission on background notify, intent scope match on join — no new IDOR paths found.
+
+### Concurrency & idempotency
+
+DB row locks on activity join, participation upsert idempotency keys, notification dedupe fingerprints, intent suppression uniqueness, full-group watch fulfill via `COALESCE(cancelled_at, …)` — no process-local locks required for correctness on audited paths.
+
+### Contract drift & WWW parity
+
+Shared `packages/contracts` LFG transport used by Discord gateway, WWW client, and activity controller; integration/contract tests present. WWW exposes search, join, persistent intent CRUD, pause/resume/cancel, full-group watch — same backend rules as Discord (no separate WWW domain).
+
+### Dead / legacy code
+
+`LfgSearchRequestLegacyDriftSchema` retained for contract negative tests only — not used by production clients. No unused LFG endpoints removed (none proven dead beyond drift schema purpose).
+
+### Performance
+
+No pathological N+1 introduced; LFG candidate queries remain bounded by guild/type/window filters. No generic matchmaking refactor (out of scope).
+
+### Test quality notes
+
+High-risk paths have real use-case tests with stubbed ports (not mocking the unit under test). Identity-backed verify tested at gateway/service boundaries. Contract tests guard join schema including `fullGroupWatchId` / `intentId`.
+
+## Validation (final source reaudit)
+
+```
+corepack pnpm validate — PASS (NODE_ENV=test)
+CI_STATUS — BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
+CRITICAL/HIGH — 0 open
+LFG_CODE_STATUS — READY_FOR_CHATGPT_APPROVAL
+LIVE_RUNTIME_VERIFIED — not claimed (separate task)
+```
+
+## Recommendation
+
+Proceed to **ChatGPT code approval** with **`LFG_CODE_STATUS = READY_FOR_CHATGPT_APPROVAL`**. Do **not** merge. Runtime smoke on test Discord remains the separate deployment task.
