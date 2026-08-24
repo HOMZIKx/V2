@@ -2,29 +2,29 @@
 
 ## Status
 
-`CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
+`READY_FOR_CHATGPT_INTEGRATED_CODE_REVIEW`
 
-LFG v1 code: **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`, task `V2-LFG-FINAL-CODE-CLOSURE-AND-RESERVATIONS-DISCOVERY-008`).  
-LFG runtime on test Discord: **separate task** — not verified here.
+Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT CI GREEN** · **NOT RUNTIME VERIFIED AT HEAD**
 
-Not READY for Core Foundation Owner/ChatGPT review.  
-Not APPROVED. Not merged. STOP before Stage 8.  
-**STOP Stage 6/7 product expansion** until Owner Discovery closes (see
-`docs/ai/OWNER_DISCOVERY_GAPS.md`).
+LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`) — **runtime on test Discord is a separate task**.
+
+**STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
 
 ## Current execution
 
 | Field                  | Value                                                               |
 | ---------------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-OBSERVABILITY-OPERABILITY-INCIDENT-READINESS-001`             |
+| CURRENT_TASK           | `V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`                |
+| REVIEW_POSTURE         | `READY_FOR_CHATGPT_INTEGRATED_CODE_REVIEW`                          |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
-| LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL`                                        |
-| LFG_STATUS             | `READY_FOR_CHATGPT_FINAL_APPROVAL` (code path; runtime separate)    |
+| LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)      |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `b64952fd107feb4a1e5bb45f58d315d501219614`                          |
-| PR                     | #19                                                                 |
+| CURRENT_HEAD / PR_HEAD | `7e88eb8c8b8995b778cca7a29ee0616851c75c41` (pre-stabilization pin)  |
+| PR                     | #19 — **170 commits**, 593 files (+70,171/−882) vs `main`           |
+| PR_REVIEW_PACKAGE      | `docs/ai/PR19_REVIEW_PACKAGE.md`                                    |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
 | LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
+| RUNTIME_STATUS         | `NOT_VERIFIED_ON_LIVE_DEPLOY_AT_HEAD`                               |
 | ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale before tip redeploy)                               |
 | ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale before tip redeploy)                               |
 | ZEABUR_REDEPLOY        | **BLOCKED** — Owner must provide `ZEABUR_TOKEN` (+ `ZEABUR_ENV_ID`) |
@@ -72,6 +72,8 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH        |
 | **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
 | **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff               |
+| **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks         |
+| **PR19_FINAL_STABILIZATION_SHA**              | _pending pin_                              | PR #19 integrated review package                                  |
 
 ## Module discovery status (summary)
 
@@ -108,4 +110,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-24 — Foundation adversarial security audit (`V2-FOUNDATION-ADVERSARIAL-SECURITY-AUDIT-002`); org scope binding + gateway rate limits.
+2026-08-24 — PR #19 final stabilization review package (`V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`).
