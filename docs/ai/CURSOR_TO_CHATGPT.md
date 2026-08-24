@@ -4,51 +4,48 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG: **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
+LFG: **`READY_FOR_CHATGPT_FINAL_APPROVAL`**
 
-Task: `V2-LFG-DURABLE-DM-CONTEXT-FINAL-REMEDIATION-006`  
+Task: `V2-LFG-FINAL-TWO-HIGH-FIXES-007`  
 Branch: `cursor/p4-1-activity-domain`  
-PR: #19  
-Audited remote HEAD (prior): `02b5f4ffd7e9ea11732e53039d286075137f3317`
+PR: #19
 
-## Durable DM context remediation (ChatGPT re-audit blocker)
+## Final two HIGH fixes (ChatGPT PR #19 review)
 
-Checkpoint: `DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA` — `d781c2b275ecb88275b7ab2e84ae468065163c7f`  
-Report: `docs/ai/DUNGEON_LFG_V1_AUDIT.md` (§ durable DM context)
+Checkpoint: `DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA` — _(recorded after push)_
 
-### Root cause
+### H-MUTE-01 — LFG dungeon mute used wrong preference field
 
-Activity `deliveryActions` already carried `intentId`, `intentOpaqueId`, `eligiblePartyRoles`, `suggestedPartyRole`, `fullGroupWatchId`, etc., but Discord gateway dropped most of it: DM buttons encoded only `activityOpaqueId + guildId`; join used profile default character; suppress omitted `intentId`.
+| Issue                                                        | Fix                                                             |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
+| DM **Wycisz &lt;activityType&gt;** wrote `mutedInterestKeys` | Now writes `mutedActivityTypeKeys`                              |
+| LFG discovery uses `activityTypeKey` in mute policy          | Discovery correctly suppressed after mute                       |
+| TRANSACTIONAL unaffected                                     | `isDeliveryAllowedByPreference` bypasses mute for non-DISCOVERY |
 
-### Fix summary
+**Tests:** `notification.use-cases.spec.ts` (Azrael discovery suppressed, transactional join allowed); `lfg-dm-durable-context.spec.ts` (handler sends `mutedActivityTypeKeys`).
 
-1. **Compact signed durable context** in `lfg-dm-context.ts`: `i.{intentOpaque}.{guildId}[.{role}]`, `w.{watchOpaque}.{guildId}[.{role}]`, legacy ephemeral `e.{guildId}`.
-2. **DM renderer** (`buildDeliveryActionComponents`): one join button per eligible role; suppress/view carry intent/watch opaque ids.
-3. **Interaction handler**: intent join passes `intentId` only (backend uses intent character); watch join resolves stored `characterId`; Nie teraz resolves intent opaque → exact `intentId` suppress.
-4. **Activity service**: `intentOpaqueId` / `fullGroupWatchOpaqueId` in notify payloads; resolve-by-opaque GET routes; `joinLfgActivity` always uses `intent.characterId` when `intentId` present.
-5. **Regression tests**: E2E path notification → buttons → handler → Activity client; CHARACTER_A default vs CHARACTER_B intent; multi-intent fulfill-one; stale role; watch join.
+### H-WATCH-01 — Full-group watch not fulfilled on slot-reopened join
 
-### CRITICAL/HIGH
+| Issue                                              | Fix                                                                              |
+| -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Join from `lfg_slot_reopened` DM left watch active | `fullGroupWatchId` on join contract + backend path                               |
+| Profile/default character risk on watch join       | Gateway passes `fullGroupWatchId`; backend resolves stored character             |
+| Post-join watch still notified                     | `fulfillLfgFullGroupWatch` idempotently closes exact watch after successful join |
+| Already-participant spam                           | `notifyFullGroupWatchesForActivity` skips active participants                    |
 
-**0 open** in durable DM context scope.
+**Tests:** `lfg.use-cases.spec.ts` — successful join closes watch; stale join does not; two watches closes only matched; cancelled watch rejected; participant skips reopen notify.
 
-### Contracts preserved
+### Prior checkpoint
 
-`@v2/contracts` LFG transport unchanged: `characterId` / `intentId` based; no client-authoritative `characterClassSpecKey` / `characterSupportedRoles`.
-
-## Prior audits
-
-- `DURABILITY_RECOVERY_AUDIT_SHA` — `be86063726947930a02c06eab38dad947a4243cc`
-- `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — `3c3009991f656e4369d3f600fcb05266683ede50`
-- `CROSS_SERVICE_CONTRACT_AUDIT_SHA` — `b7cf78fa258ac6e431a0510e21c13651271acb1b`
+`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA` — `d781c2b275ecb88275b7ab2e84ae468065163c7f`
 
 ## Validation
 
-| Check          | Result                                        |
-| -------------- | --------------------------------------------- |
-| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate`           |
-| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT**     |
+| Check          | Result                                    |
+| -------------- | ----------------------------------------- |
+| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate`       |
+| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
 
 ## STOP
 
-Not APPROVED. No merge. No Reservations/Marketplace product work. Await ChatGPT **final** re-audit.
+Not APPROVED. No merge. No Reservations/Marketplace. Await ChatGPT **final approval**.

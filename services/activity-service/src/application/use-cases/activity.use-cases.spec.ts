@@ -586,6 +586,12 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async getLfgFullGroupWatchByOpaqueId() {
       return null;
     },
+    async getLfgFullGroupWatchById() {
+      return null;
+    },
+    async fulfillLfgFullGroupWatch() {
+      return true;
+    },
     async listLfgIntentsForUser() {
       return [];
     },

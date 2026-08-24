@@ -73,6 +73,55 @@ describe('enqueueUserNotification', () => {
     expect(transactional.created).toBe(true);
   });
 
+  it('suppresses Azrael LFG discovery when activity type muted but allows transactional join notice', async () => {
+    const mutedTypeTx = makeTx({
+      getNotificationPreference: () =>
+        Promise.resolve({
+          userDiscordId: 'u1',
+          guildId: 'g1',
+          dmEnabled: true,
+          mutedInterestKeys: [],
+          mutedActivityTypeKeys: ['azrael'],
+          mutedActivityIds: [],
+        }),
+    });
+
+    const discovery = await enqueueUserNotification(
+      mutedTypeTx,
+      {
+        guildId: 'g1',
+        recipientDiscordUserId: 'u1',
+        notificationClass: 'DISCOVERY',
+        kind: 'lfg.match',
+        title: 'Dopasowanie Azrael',
+        body: 'Pasujesz do ekipy',
+        dedupeKey: 'lfg-match-1',
+        activityTypeKey: 'azrael',
+        activityId: '11111111-1111-4111-8111-111111111111',
+      },
+      new Date(),
+    );
+    expect(discovery.suppressed).toBe(true);
+
+    const transactional = await enqueueUserNotification(
+      mutedTypeTx,
+      {
+        guildId: 'g1',
+        recipientDiscordUserId: 'u1',
+        notificationClass: 'TRANSACTIONAL',
+        kind: 'activity.joined',
+        title: 'Dołączyłeś do Azrael',
+        body: 'Zapis potwierdzony',
+        dedupeKey: 'join-1',
+        activityTypeKey: 'azrael',
+        activityId: '11111111-1111-4111-8111-111111111111',
+      },
+      new Date(),
+    );
+    expect(transactional.suppressed).toBe(false);
+    expect(transactional.created).toBe(true);
+  });
+
   it('dedupes unchanged fingerprints', async () => {
     const enqueueInbox = vi.fn(() => {
       throw new Error('should not enqueue');

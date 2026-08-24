@@ -1950,6 +1950,32 @@ function createTx(client: PoolClient): ActivityTx {
       };
     },
 
+    async getLfgFullGroupWatchById(watchId) {
+      const result = await client.query(
+        `SELECT id::text, guild_id, organization_id, recipient_discord_user_id, activity_id::text,
+                character_id, session_roles, class_spec_key, cancelled_at
+         FROM lfg_full_group_watches
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [watchId],
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      if (row === undefined) {
+        return null;
+      }
+      return {
+        id: String(row.id),
+        guildId: String(row.guild_id),
+        organizationId: String(row.organization_id),
+        recipientDiscordUserId: String(row.recipient_discord_user_id),
+        activityId: String(row.activity_id),
+        characterId: String(row.character_id),
+        sessionRoles: Array.isArray(row.session_roles) ? (row.session_roles as string[]) : [],
+        classSpecKey: asNullableString(row.class_spec_key),
+        cancelledAt: asNullableDate(row.cancelled_at),
+      };
+    },
+
     async listLfgIntentsForUser(guildId, recipientDiscordUserId) {
       const result = await client.query(
         `SELECT id::text, activity_type_key, session_roles, expires_at, cancelled_at,
@@ -2043,6 +2069,16 @@ function createTx(client: PoolClient): ActivityTx {
         `UPDATE lfg_full_group_watches
          SET cancelled_at = $3, updated_at = $3
          WHERE id = $1::uuid AND recipient_discord_user_id = $2 AND cancelled_at IS NULL`,
+        [watchId, recipientDiscordUserId, now.toISOString()],
+      );
+      return (result.rowCount ?? 0) > 0;
+    },
+
+    async fulfillLfgFullGroupWatch(watchId, recipientDiscordUserId, now) {
+      const result = await client.query(
+        `UPDATE lfg_full_group_watches
+         SET cancelled_at = COALESCE(cancelled_at, $3), updated_at = $3
+         WHERE id = $1::uuid AND recipient_discord_user_id = $2`,
         [watchId, recipientDiscordUserId, now.toISOString()],
       );
       return (result.rowCount ?? 0) > 0;

@@ -572,6 +572,7 @@ export async function joinLfgActivity(
     guildId?: string;
     intentId?: string;
     characterId?: string;
+    fullGroupWatchId?: string;
     memberRoleIds?: readonly string[];
   },
   characterVerify: LfgCharacterVerifyPort,
@@ -629,8 +630,34 @@ export async function joinLfgActivity(
     }
   }
 
+  const fullGroupWatch =
+    input.fullGroupWatchId !== undefined
+      ? await tx.getLfgFullGroupWatchById(input.fullGroupWatchId)
+      : null;
+  if (input.fullGroupWatchId !== undefined) {
+    if (fullGroupWatch === null || fullGroupWatch.recipientDiscordUserId !== discordUserId) {
+      throw new ActivityError('NOT_FOUND', 'Full-group watch not found');
+    }
+    if (fullGroupWatch.cancelledAt !== null) {
+      throw new ActivityError('PRECONDITION_FAILED', 'Full-group watch is not active');
+    }
+    if (fullGroupWatch.activityId !== input.activityId) {
+      throw new ActivityError('VALIDATION_FAILED', 'Full-group watch activity mismatch');
+    }
+    if (
+      fullGroupWatch.guildId !== requestGuildId ||
+      fullGroupWatch.organizationId !== activity.organizationId
+    ) {
+      throw new ActivityError('FORBIDDEN', 'Full-group watch scope mismatch');
+    }
+  }
+
   const characterId =
-    intent !== null && intent !== undefined ? intent.characterId : input.characterId;
+    intent !== null && intent !== undefined
+      ? intent.characterId
+      : fullGroupWatch !== null && fullGroupWatch !== undefined
+        ? fullGroupWatch.characterId
+        : input.characterId;
   if (characterId === undefined) {
     throw new ActivityError('VALIDATION_FAILED', 'characterId is required');
   }
@@ -638,7 +665,7 @@ export async function joinLfgActivity(
   const verified = await verifyLfgCharacter(characterVerify, {
     discordUserId,
     characterId,
-    sessionRoles: intent?.sessionRoles ?? [input.partyRoleKey],
+    sessionRoles: intent?.sessionRoles ?? fullGroupWatch?.sessionRoles ?? [input.partyRoleKey],
   });
 
   if (!verified.sessionRoles.includes(input.partyRoleKey)) {
@@ -721,6 +748,12 @@ export async function joinLfgActivity(
 
   if (intent !== null) {
     await tx.fulfillLfgIntent(intent.id, discordUserId, now);
+  }
+  if (input.fullGroupWatchId !== undefined) {
+    const fulfilled = await tx.fulfillLfgFullGroupWatch(input.fullGroupWatchId, discordUserId, now);
+    if (!fulfilled) {
+      throw new ActivityError('NOT_FOUND', 'Full-group watch not found');
+    }
   }
 
   return participation;
@@ -981,9 +1014,20 @@ export async function notifyFullGroupWatchesForActivity(
   if (watches.length === 0) {
     return 0;
   }
+  const participants = await tx.listParticipations(activity.id);
+  const activeParticipantIds = new Set(
+    participants
+      .filter(
+        (row) => row.resignedAt === null && row.removedAt === null && row.waitlistPosition === null,
+      )
+      .map((row) => row.discordUserId),
+  );
 
   let sent = 0;
   for (const watch of watches) {
+    if (activeParticipantIds.has(watch.recipientDiscordUserId)) {
+      continue;
+    }
     const membershipOk = await resolveMembershipOk(
       authorize,
       activity.guildId,

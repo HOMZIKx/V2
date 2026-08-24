@@ -716,6 +716,17 @@ export interface ActivityTx {
     readonly classSpecKey: string | null;
     readonly cancelledAt: Date | null;
   } | null>;
+  getLfgFullGroupWatchById(watchId: string): Promise<{
+    readonly id: string;
+    readonly guildId: string;
+    readonly organizationId: string;
+    readonly recipientDiscordUserId: string;
+    readonly activityId: string;
+    readonly characterId: string;
+    readonly sessionRoles: readonly string[];
+    readonly classSpecKey: string | null;
+    readonly cancelledAt: Date | null;
+  } | null>;
   listLfgIntentsForUser(
     guildId: string,
     recipientDiscordUserId: string,
@@ -760,6 +771,11 @@ export interface ActivityTx {
     classSpecKey: string | null;
   }): Promise<string>;
   cancelLfgFullGroupWatch(
+    watchId: string,
+    recipientDiscordUserId: string,
+    now: Date,
+  ): Promise<boolean>;
+  fulfillLfgFullGroupWatch(
     watchId: string,
     recipientDiscordUserId: string,
     now: Date,

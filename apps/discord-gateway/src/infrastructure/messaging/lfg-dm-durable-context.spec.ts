@@ -271,10 +271,54 @@ describe('LFG durable DM context end-to-end', () => {
     const joinBody = joinLfg.mock.calls[0]![0] as {
       intentId?: string;
       characterId?: string;
+      fullGroupWatchId?: string;
       partyRoleKey: string;
     };
     expect(joinBody.intentId).toBeUndefined();
-    expect(joinBody.characterId).toBe(watchCharacter);
+    expect(joinBody.characterId).toBeUndefined();
+    expect(joinBody.fullGroupWatchId).toBe(watchId);
     expect(joinBody.partyRoleKey).toBe('BUFF');
+  });
+
+  it('mutes dungeon activity type via mutedActivityTypeKeys (not interest keys)', async () => {
+    const muteCustomId = createLfgDmCustomId(activityOpaque, 'mute', secret, 'azrael');
+    const updateNotificationPreferences = vi.fn().mockResolvedValue({});
+    const resolveActivityByOpaque = vi.fn().mockResolvedValue({
+      id: activityId,
+      guildId,
+      activityTypeKey: 'azrael',
+    });
+
+    const handler = new ActivityInteractionHandler({
+      activityClient: {
+        updateNotificationPreferences,
+        resolveActivityByOpaque,
+      } as never,
+      config: {
+        DISCORD_COMPONENT_SIGNING_SECRET: secret,
+        DISCORD_TEST_GUILD_ID: guildId,
+      } as never,
+      identityClient: null,
+      gateway: {} as never,
+      logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+    });
+
+    const interaction = {
+      customId: muteCustomId,
+      user: { id: 'user-1' },
+      deferReply: vi.fn().mockResolvedValue(undefined),
+      editReply: vi.fn().mockResolvedValue(undefined),
+    };
+
+    await (
+      handler as unknown as {
+        handleLfgDmComponent: (i: typeof interaction) => Promise<void>;
+      }
+    ).handleLfgDmComponent(interaction);
+
+    expect(updateNotificationPreferences).toHaveBeenCalledWith(
+      { guildId, mutedActivityTypeKeys: ['azrael'] },
+      expect.any(Object),
+    );
   });
 });

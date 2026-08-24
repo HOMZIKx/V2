@@ -1894,6 +1894,7 @@ export class ActivityInteractionHandler {
     actor: ReturnType<typeof actorOf>;
     intentId?: string;
     characterId?: string;
+    fullGroupWatchId?: string;
   }): Promise<string> {
     try {
       const statusDefId = await this.resolveLfgJoinStatusDefId(input.guildId, input.userId);
@@ -1904,7 +1905,12 @@ export class ActivityInteractionHandler {
           partyRoleKey: input.partyRoleKey,
           guildId: input.guildId,
           ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
-          ...(input.intentId === undefined && input.characterId !== undefined
+          ...(input.fullGroupWatchId !== undefined
+            ? { fullGroupWatchId: input.fullGroupWatchId }
+            : {}),
+          ...(input.intentId === undefined &&
+          input.fullGroupWatchId === undefined &&
+          input.characterId !== undefined
             ? { characterId: input.characterId }
             : {}),
         },
@@ -1913,7 +1919,7 @@ export class ActivityInteractionHandler {
           idempotencyKey: idem(
             input.userId,
             'lfg-dm-join',
-            `${input.activityId}:${input.intentId ?? input.characterId ?? 'anon'}:${input.partyRoleKey}`,
+            `${input.activityId}:${input.intentId ?? input.fullGroupWatchId ?? input.characterId ?? 'anon'}:${input.partyRoleKey}`,
           ),
         },
       );
@@ -1965,7 +1971,7 @@ export class ActivityInteractionHandler {
         await this.deps.activityClient.updateNotificationPreferences(
           {
             guildId,
-            mutedInterestKeys: [activityTypeKey],
+            mutedActivityTypeKeys: [activityTypeKey],
           },
           {
             ...actor,
@@ -2066,7 +2072,7 @@ export class ActivityInteractionHandler {
             partyRoleKey,
             userId,
             actor,
-            characterId: String(watch.characterId),
+            fullGroupWatchId: String(watch.id),
           });
           await interaction.editReply({ content: statusLine });
           return;

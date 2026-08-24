@@ -679,6 +679,7 @@ export class ActivityHttpClient {
       guildId?: string;
       intentId?: string;
       characterId?: string;
+      fullGroupWatchId?: string;
     },
     actor: ActivityActorContext,
   ) {

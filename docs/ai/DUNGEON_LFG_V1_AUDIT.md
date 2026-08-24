@@ -281,47 +281,47 @@ Checkpoint: **`DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA`** — `d781c2b275ecb88275b
 
 Product status: **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
 
-| Severity | Found (ChatGPT re-audit blocker) | Fixed | Open |
-| -------- | -------------------------------- | ----- | ---- |
-| CRITICAL | 1 (DM join used profile default character for persistent intent) | 1 | 0 |
-| HIGH     | 3 (suppress actor-wide; role picker from profile; watch context dropped) | 3 | 0 |
+| Severity | Found (ChatGPT re-audit blocker)                                         | Fixed | Open |
+| -------- | ------------------------------------------------------------------------ | ----- | ---- |
+| CRITICAL | 1 (DM join used profile default character for persistent intent)         | 1     | 0    |
+| HIGH     | 3 (suppress actor-wide; role picker from profile; watch context dropped) | 3     | 0    |
 
 ### C-DM-01 — Persistent intent DM join ignored durable character
 
-| Field    | Detail |
-| -------- | ------ |
-| Severity | **CRITICAL** |
-| Cause    | `handleLfgDmComponent` join path loaded profile default character + session roles instead of intent |
-| Path     | Intent notify → DM Dołącz → join |
+| Field    | Detail                                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Severity | **CRITICAL**                                                                                                                                             |
+| Cause    | `handleLfgDmComponent` join path loaded profile default character + session roles instead of intent                                                      |
+| Path     | Intent notify → DM Dołącz → join                                                                                                                         |
 | Fix      | Signed `i.{intentOpaque}.{guildId}[.{role}]` in custom_id; resolve intent server-side; `joinLfg` with `intentId` only; backend uses `intent.characterId` |
-| Test     | `lfg-dm-durable-context.spec.ts` CHARACTER_A vs CHARACTER_B; `lfg.use-cases.spec.ts` intent character override |
+| Test     | `lfg-dm-durable-context.spec.ts` CHARACTER_A vs CHARACTER_B; `lfg.use-cases.spec.ts` intent character override                                           |
 
 ### H-DM-01 — Nie teraz fell back to actor-wide suppress
 
-| Field    | Detail |
-| -------- | ------ |
-| Severity | **HIGH** |
+| Field    | Detail                                                                                 |
+| -------- | -------------------------------------------------------------------------------------- |
+| Severity | **HIGH**                                                                               |
 | Cause    | Suppress button lacked `intentId`; ephemeral fallback suppressed all matches for actor |
-| Fix      | Durable intent context on suppress; resolve opaque → exact `intentId` |
-| Test     | `lfg-dm-durable-context.spec.ts` intent suppress |
+| Fix      | Durable intent context on suppress; resolve opaque → exact `intentId`                  |
+| Test     | `lfg-dm-durable-context.spec.ts` intent suppress                                       |
 
 ### H-DM-02 — Role picker used profile roles not server eligiblePartyRoles
 
-| Field    | Detail |
-| -------- | ------ |
-| Severity | **HIGH** |
-| Cause    | DM join did not encode server-eligible roles; multi-role UI missing |
+| Field    | Detail                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| Severity | **HIGH**                                                                                                 |
+| Cause    | DM join did not encode server-eligible roles; multi-role UI missing                                      |
 | Fix      | `buildDeliveryActionComponents` renders one button per `eligiblePartyRoles`; backend revalidates at join |
-| Test     | `notification-dm-delivery.service.spec.ts`, `lfg-dm-context.spec.ts` |
+| Test     | `notification-dm-delivery.service.spec.ts`, `lfg-dm-context.spec.ts`                                     |
 
 ### H-DM-03 — Full-group watch slot reopen dropped watch identity
 
-| Field    | Detail |
-| -------- | ------ |
-| Severity | **HIGH** |
-| Cause    | Watch notify context not transported through DM buttons |
+| Field    | Detail                                                                      |
+| -------- | --------------------------------------------------------------------------- |
+| Severity | **HIGH**                                                                    |
+| Cause    | Watch notify context not transported through DM buttons                     |
 | Fix      | `w.{watchOpaque}.{guildId}[.{role}]`; resolve watch → stored character join |
-| Test     | `lfg-dm-durable-context.spec.ts` watch join path |
+| Test     | `lfg-dm-durable-context.spec.ts` watch join path                            |
 
 ## Validation (durable DM remediation)
 
@@ -329,4 +329,38 @@ Product status: **`READY_FOR_CHATGPT_FINAL_REAUDIT`**
 corepack pnpm validate — PASS
 CI_STATUS — BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
 CRITICAL/HIGH (durable DM scope) — 0
+```
+
+---
+
+## Final two HIGH fixes (2026-08-24)
+
+Task: `V2-LFG-FINAL-TWO-HIGH-FIXES-007`  
+Checkpoint: **`DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA`** — _(recorded after push)_
+
+Product status: **`READY_FOR_CHATGPT_FINAL_APPROVAL`**
+
+### H-MUTE-01 — Wycisz wrote mutedInterestKeys
+
+| Field    | Detail                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| Severity | **HIGH**                                                                                                 |
+| Cause    | LFG DM mute action updated `mutedInterestKeys`; LFG discovery mute policy checks `mutedActivityTypeKeys` |
+| Fix      | `updateNotificationPreferences({ mutedActivityTypeKeys: [activityTypeKey] })`                            |
+| Test     | `notification.use-cases.spec.ts`, `lfg-dm-durable-context.spec.ts`                                       |
+
+### H-WATCH-02 — Slot-reopened join left watch active
+
+| Field    | Detail                                                                                                           |
+| -------- | ---------------------------------------------------------------------------------------------------------------- |
+| Severity | **HIGH**                                                                                                         |
+| Cause    | Successful join from `lfg_slot_reopened` did not close originating full-group watch                              |
+| Fix      | `fullGroupWatchId` on join; `fulfillLfgFullGroupWatch` after confirmed join; skip notify for active participants |
+| Test     | `lfg.use-cases.spec.ts` (5 cases), `lfg-dm-durable-context.spec.ts`                                              |
+
+## Validation (final HIGH fixes)
+
+```
+corepack pnpm validate — PASS
+CRITICAL/HIGH (LFG final scope) — 0
 ```

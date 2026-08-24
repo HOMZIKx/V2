@@ -2200,6 +2200,7 @@ export class ActivityUseCases {
       guildId?: string;
       intentId?: string;
       characterId?: string;
+      fullGroupWatchId?: string;
       memberRoleIds?: readonly string[];
     },
     ctx: MutationContext,
@@ -2224,6 +2225,9 @@ export class ActivityUseCases {
           ...(input.guildId !== undefined ? { guildId: input.guildId } : {}),
           ...(input.intentId !== undefined ? { intentId: input.intentId } : {}),
           ...(input.characterId !== undefined ? { characterId: input.characterId } : {}),
+          ...(input.fullGroupWatchId !== undefined
+            ? { fullGroupWatchId: input.fullGroupWatchId }
+            : {}),
           ...(input.memberRoleIds !== undefined ? { memberRoleIds: input.memberRoleIds } : {}),
         },
         this.deps.characterVerify,

@@ -12,6 +12,7 @@ import {
   createLfgFullGroupWatch,
   createLfgIntent,
   joinLfgActivity,
+  notifyFullGroupWatchesForActivity,
   notifyLfgIntentsForActivity,
   searchLfgMatches,
   suppressLfgMatch,
@@ -25,6 +26,8 @@ const NOW = new Date('2026-08-22T12:00:00.000Z');
 const CHAR_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 const CHARACTER_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CHARACTER_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const WATCH_ID_A = '44444444-4444-4444-8444-444444444444';
+const WATCH_ID_B = '55555555-5555-4555-8555-555555555555';
 const UNKNOWN_CHAR_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 function characterVerifyStub(
@@ -652,6 +655,154 @@ describe('joinLfgActivity', () => {
     expect(fulfill).toHaveBeenCalledOnce();
     expect(fulfill).toHaveBeenCalledWith('intent-2', 'seeker', NOW);
   });
+
+  it('fulfills full-group watch after successful slot-reopened join', async () => {
+    const fulfillWatch = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgFullGroupWatchById: () =>
+        Promise.resolve({
+          id: WATCH_ID_A,
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          activityId: '11111111-1111-4111-8111-111111111111',
+          characterId: CHARACTER_B,
+          sessionRoles: ['BUFF'],
+          classSpecKey: 'priest_buff',
+          cancelledAt: null,
+        }),
+      fulfillLfgFullGroupWatch: fulfillWatch,
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 0, DPS: 3 }),
+    });
+    await joinLfgActivity(
+      tx,
+      { discordUserId: 'seeker' },
+      {
+        activityId: '11111111-1111-4111-8111-111111111111',
+        statusDefId: 'status-1',
+        partyRoleKey: 'BUFF',
+        guildId: 'g1',
+        fullGroupWatchId: WATCH_ID_A,
+        characterId: CHARACTER_A,
+      },
+      characterVerifyStub({
+        [CHARACTER_B]: { classSpecKey: 'priest_buff', supportedPartyRoles: ['BUFF', 'DPS'] },
+      }),
+      NOW,
+    );
+    expect(fulfillWatch).toHaveBeenCalledOnce();
+    expect(fulfillWatch).toHaveBeenCalledWith(WATCH_ID_A, 'seeker', NOW);
+  });
+
+  it('does not fulfill full-group watch when join fails on stale role', async () => {
+    const fulfillWatch = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgFullGroupWatchById: () =>
+        Promise.resolve({
+          id: WATCH_ID_A,
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          activityId: '11111111-1111-4111-8111-111111111111',
+          characterId: CHARACTER_B,
+          sessionRoles: ['BUFF'],
+          classSpecKey: 'priest_buff',
+          cancelledAt: null,
+        }),
+      fulfillLfgFullGroupWatch: fulfillWatch,
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 1, DPS: 3 }),
+    });
+    await expect(
+      joinLfgActivity(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          activityId: '11111111-1111-4111-8111-111111111111',
+          statusDefId: 'status-1',
+          partyRoleKey: 'BUFF',
+          guildId: 'g1',
+          fullGroupWatchId: WATCH_ID_A,
+        },
+        characterVerifyStub({
+          [CHARACTER_B]: { classSpecKey: 'priest_buff', supportedPartyRoles: ['BUFF', 'DPS'] },
+        }),
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect(fulfillWatch).not.toHaveBeenCalled();
+  });
+
+  it('closes only the matched full-group watch when two watches exist', async () => {
+    const fulfillWatch = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgFullGroupWatchById: (id: string) =>
+        Promise.resolve({
+          id,
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          activityId: '11111111-1111-4111-8111-111111111111',
+          characterId: id === WATCH_ID_A ? CHARACTER_B : CHAR_ID,
+          sessionRoles: ['BUFF'],
+          classSpecKey: 'priest_buff',
+          cancelledAt: null,
+        }),
+      fulfillLfgFullGroupWatch: fulfillWatch,
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 0, DPS: 3 }),
+    });
+    await joinLfgActivity(
+      tx,
+      { discordUserId: 'seeker' },
+      {
+        activityId: '11111111-1111-4111-8111-111111111111',
+        statusDefId: 'status-1',
+        partyRoleKey: 'BUFF',
+        guildId: 'g1',
+        fullGroupWatchId: WATCH_ID_B,
+      },
+      characterVerifyStub(),
+      NOW,
+    );
+    expect(fulfillWatch).toHaveBeenCalledOnce();
+    expect(fulfillWatch).toHaveBeenCalledWith(WATCH_ID_B, 'seeker', NOW);
+  });
+
+  it('rejects join from already cancelled full-group watch without fulfilling', async () => {
+    const fulfillWatch = vi.fn(() => Promise.resolve(true));
+    const tx = joinTx({
+      getLfgFullGroupWatchById: () =>
+        Promise.resolve({
+          id: WATCH_ID_A,
+          guildId: 'g1',
+          organizationId: 'o1',
+          recipientDiscordUserId: 'seeker',
+          activityId: '11111111-1111-4111-8111-111111111111',
+          characterId: CHARACTER_B,
+          sessionRoles: ['BUFF'],
+          classSpecKey: 'priest_buff',
+          cancelledAt: NOW,
+        }),
+      fulfillLfgFullGroupWatch: fulfillWatch,
+    });
+    await expect(
+      joinLfgActivity(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          activityId: '11111111-1111-4111-8111-111111111111',
+          statusDefId: 'status-1',
+          partyRoleKey: 'BUFF',
+          guildId: 'g1',
+          fullGroupWatchId: WATCH_ID_A,
+        },
+        characterVerifyStub({
+          [CHARACTER_B]: { classSpecKey: 'priest_buff', supportedPartyRoles: ['BUFF', 'DPS'] },
+        }),
+        NOW,
+      ),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect(fulfillWatch).not.toHaveBeenCalled();
+  });
 });
 
 describe('createLfgFullGroupWatch', () => {
@@ -767,6 +918,58 @@ describe('notifyLfgIntentsForActivity', () => {
       NOW,
     );
     expect(sent).toBe(0);
+  });
+});
+
+describe('notifyFullGroupWatchesForActivity', () => {
+  it('skips slot-reopened discovery when user is already an active participant', async () => {
+    const enqueue = vi.spyOn(notificationUseCases, 'enqueueUserNotification');
+    const tx = makeTx({
+      countParticipationsByPartyRole: () => Promise.resolve({ TANK: 1, BUFF: 0, DPS: 3 }),
+      countOccupiedParticipations: () => Promise.resolve(4),
+      listParticipations: () =>
+        Promise.resolve([
+          {
+            id: 'part-1',
+            activityId: '11111111-1111-4111-8111-111111111111',
+            discordUserId: 'u1',
+            v2UserId: null,
+            statusDefId: 'status-1',
+            confirmationState: 'confirmed',
+            reconfirmDeadline: null,
+            waitlistPosition: null,
+            resignedAt: null,
+            removedAt: null,
+            removeReason: null,
+            occupiesSlot: true,
+            statusBehavior: 'confirmed',
+            partyRoleKey: 'BUFF',
+            scopeGuildId: null,
+          },
+        ]),
+      listLfgFullGroupWatchesForActivity: () =>
+        Promise.resolve([
+          {
+            id: WATCH_ID_A,
+            recipientDiscordUserId: 'u1',
+            characterId: CHAR_ID,
+            sessionRoles: ['BUFF'],
+            classSpecKey: 'priest_buff',
+            cancelledAt: null,
+          },
+        ]),
+    });
+    const sent = await notifyFullGroupWatchesForActivity(
+      tx,
+      baseActivity(),
+      'azrael',
+      allowAuthorize,
+      characterVerifyStub(),
+      NOW,
+    );
+    expect(sent).toBe(0);
+    expect(enqueue).not.toHaveBeenCalled();
+    enqueue.mockRestore();
   });
 });
 

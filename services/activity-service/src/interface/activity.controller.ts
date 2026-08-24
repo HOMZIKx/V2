@@ -1091,6 +1091,9 @@ export class ActivityController {
         ...(parsed.guildId !== undefined ? { guildId: parsed.guildId } : {}),
         ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),
         ...(parsed.characterId !== undefined ? { characterId: parsed.characterId } : {}),
+        ...(parsed.fullGroupWatchId !== undefined
+          ? { fullGroupWatchId: parsed.fullGroupWatchId }
+          : {}),
       },
       mutationCtx(request, idempotencyKey),
     );

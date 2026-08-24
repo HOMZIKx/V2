@@ -38,6 +38,7 @@ export const LfgJoinRequestSchema = z.object({
   guildId: z.string().min(1).optional(),
   intentId: z.string().uuid().optional(),
   characterId: z.string().uuid().optional(),
+  fullGroupWatchId: z.string().uuid().optional(),
 });
 
 export type LfgJoinRequest = z.infer<typeof LfgJoinRequestSchema>;
