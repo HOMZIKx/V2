@@ -10,7 +10,7 @@ PR: #19
 
 ## Operability and incident readiness audit
 
-Checkpoint: **`OPERABILITY_INCIDENT_READINESS_SHA`** — _set after commit_
+Checkpoint: **`OPERABILITY_INCIDENT_READINESS_SHA`** — `b64952fd107feb4a1e5bb45f58d315d501219614`
 
 Base: `179be84ee645cf2a3709a403798349407a60db56` (PERFORMANCE_SCALABILITY_AUDIT_SHA)
 
