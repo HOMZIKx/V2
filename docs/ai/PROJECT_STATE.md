@@ -2,7 +2,7 @@
 
 ## Status
 
-`READY_FOR_CHATGPT_INTEGRATED_CODE_REVIEW`
+`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_REQUIRED` → **`READY_FOR_CHATGPT_REAUDIT`** (code) · runtime **not** UI-verified
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT CI GREEN** · **NOT RUNTIME VERIFIED AT HEAD**
 
@@ -12,24 +12,26 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 ## Current execution
 
-| Field                  | Value                                                               |
-| ---------------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`                |
-| REVIEW_POSTURE         | `READY_FOR_CHATGPT_INTEGRATED_CODE_REVIEW`                          |
-| CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
-| LFG_CODE_STATUS        | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)      |
-| CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | `cc9eb88c27aa1037581428b94b896d0071a9f6e6`                          |
-| PR                     | #19 — **170 commits**, 593 files (+70,171/−882) vs `main`           |
-| PR_REVIEW_PACKAGE      | `docs/ai/PR19_REVIEW_PACKAGE.md`                                    |
-| CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
-| LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
-| RUNTIME_STATUS         | `NOT_VERIFIED_ON_LIVE_DEPLOY_AT_HEAD`                               |
-| ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale before tip redeploy)                               |
-| ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale before tip redeploy)                               |
-| ZEABUR_REDEPLOY        | **BLOCKED** — Owner must provide `ZEABUR_TOKEN` (+ `ZEABUR_ENV_ID`) |
-| PR_TITLE_STATUS        | WIP conventional title on PR #19                                    |
-| REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                                 |
+| Field                   | Value                                                                |
+| ----------------------- | -------------------------------------------------------------------- |
+| CURRENT_TASK            | `V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`                       |
+| REVIEW_POSTURE          | `READY_FOR_CHATGPT_REAUDIT` (code)                                   |
+| CODE_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                          |
+| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                       |
+| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)       |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                        |
+| CURRENT_HEAD / PR_HEAD  | _(see `CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA` after push)_       |
+| PR                      | #19 — **do not merge**                                               |
+| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                     |
+| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)         |
+| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke         |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see runtime report             |
+| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                        |
+| ZEABUR_LIVE_DISCORD_SHA | `8babc897` (pre-remediation redeploy; re-check after push)           |
+| ZEABUR_LIVE_API_SHA     | `2c2b3e9` (live; ready probe 503)                                    |
+| ZEABUR_DEPLOY           | Zeabur CLI authenticated (`zeabur auth login`); upload redeploy used |
+| PR_TITLE_STATUS         | WIP conventional title on PR #19                                     |
+| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                  |
 
 ## Governance
 
@@ -47,33 +49,34 @@ Reservations: **`OWNER_DISCOVERY_READY`** — Owner pack `docs/ai/RESERVATIONS_O
 
 Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **prototype**.
 
-| Marker                                        | SHA                                        | Class                                                             |
-| --------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------- |
-| CI_SECURITY_CLOSURE_SHA                       | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | HISTORICAL / prior closure                                        |
-| V2_HUB_CORE_CHECKPOINT_SHA                    | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                   |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA             | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open      |
-| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA         | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                      |
-| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**         | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                            |
-| **DUNGEON_LFG_V1_AUDIT_SHA**                  | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                      |
-| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA**    | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                        |
-| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**     | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | Durable DM intent/watch context                                   |
-| **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**       | `94e71fef5bcb8c541824a058dae37020c86516af` | Mute + watch fulfillment                                          |
-| **DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA**     | `d5862da470412343606c7283c827b036981a9cbe` | **READY_FOR_CHATGPT_APPROVAL** — final source reaudit + lifecycle |
-| **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Org IDOR + gateway rate limits — CRITICAL/HIGH = 0                |
-| RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                        |
-| MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`    |
-| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                   |
-| CORE_STATE_AND_CI_RECOVERY_SHA                | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                                 |
-| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA      | `90fc384…`                                 | historical auto-sync baseline                                     |
-| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA    | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                            |
-| POST_OVERBUILD_TECHNICAL_AUDIT_SHA            | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                           |
-| **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**     | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                        |
-| **CROSS_SERVICE_CONTRACT_AUDIT_SHA**          | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport        |
-| **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH        |
-| **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe          |
-| **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff               |
-| **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks         |
-| **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                  |
+| Marker                                        | SHA                                        | Class                                                                         |
+| --------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| CI_SECURITY_CLOSURE_SHA                       | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | HISTORICAL / prior closure                                                    |
+| V2_HUB_CORE_CHECKPOINT_SHA                    | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                               |
+| NOTIFICATIONS_CORE_CHECKPOINT_SHA             | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open                  |
+| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA         | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                                  |
+| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**         | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                                        |
+| **DUNGEON_LFG_V1_AUDIT_SHA**                  | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                                  |
+| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA**    | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                                    |
+| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**     | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | Durable DM intent/watch context                                               |
+| **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**       | `94e71fef5bcb8c541824a058dae37020c86516af` | Mute + watch fulfillment                                                      |
+| **DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA**     | `d5862da470412343606c7283c827b036981a9cbe` | **READY_FOR_CHATGPT_APPROVAL** — final source reaudit + lifecycle             |
+| **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Prior pass — HIGH closure **incomplete** (ChatGPT found residuals)            |
+| **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | _(after push)_                             | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
+| RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
+| MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
+| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
+| CORE_STATE_AND_CI_RECOVERY_SHA                | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                                             |
+| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA      | `90fc384…`                                 | historical auto-sync baseline                                                 |
+| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA    | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                                        |
+| POST_OVERBUILD_TECHNICAL_AUDIT_SHA            | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                                       |
+| **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**     | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                                    |
+| **CROSS_SERVICE_CONTRACT_AUDIT_SHA**          | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport                    |
+| **DURABILITY_RECOVERY_AUDIT_SHA**             | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH                    |
+| **DATA_RECOVERY_AUDIT_SHA**                   | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe                      |
+| **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff                           |
+| **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks                     |
+| **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                              |
 
 ## Module discovery status (summary)
 
@@ -110,4 +113,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-24 — PR #19 final stabilization review package (`V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`).
+2026-08-24 — ChatGPT integrated review remediation (`V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`).

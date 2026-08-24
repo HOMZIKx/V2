@@ -17,6 +17,7 @@ import {
   notifyFullGroupWatchesForActivity,
   notifyLfgIntentsForActivity,
   searchLfgMatches,
+  searchSimilarGroupsBeforeCreate,
   suppressLfgMatch,
   updateLfgIntent,
 } from './lfg.use-cases.js';
@@ -270,6 +271,25 @@ describe('searchLfgMatches', () => {
           windowEndAt: END,
         },
         characterVerifyStub(),
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('rejects foreign organizationId on similar-groups pre-create search', async () => {
+    const tx = makeTx({
+      getSettings: () => Promise.resolve(stubGuildSettings({ orgId: 'o1' })),
+      listOpenActivitiesForLfg: () => Promise.resolve([]),
+    });
+    await expect(
+      searchSimilarGroupsBeforeCreate(
+        tx,
+        { discordUserId: 'seeker' },
+        {
+          guildId: 'g1',
+          organizationId: 'o2',
+          activityTypeKey: 'azrael',
+          startAt: new Date('2026-08-22T18:00:00.000Z'),
+        },
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });

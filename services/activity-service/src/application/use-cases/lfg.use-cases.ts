@@ -330,9 +330,10 @@ export async function searchSimilarGroupsBeforeCreate(
   }[];
 }> {
   requireDiscord(actor);
+  const organizationId = await resolveGuildOrganizationId(tx, input.guildId, input.organizationId);
   const activities = await tx.listOpenActivitiesForLfg({
     guildId: input.guildId,
-    organizationId: input.organizationId,
+    organizationId,
     activityTypeKey: input.activityTypeKey,
   });
   const startMs = input.startAt.getTime();
@@ -1060,7 +1061,7 @@ export async function createLfgFullGroupWatch(
   }
   const watchId = await tx.insertLfgFullGroupWatch({
     guildId: input.guildId,
-    organizationId: input.organizationId,
+    organizationId,
     recipientDiscordUserId: userId,
     activityId: input.activityId,
     characterId: verified.characterId,

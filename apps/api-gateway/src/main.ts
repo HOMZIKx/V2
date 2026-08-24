@@ -17,6 +17,15 @@ const config = createConfig(
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_GATEWAY_PORT: z.coerce.number().int().positive().default(4000),
     API_GATEWAY_HOST: z.string().min(1).default('127.0.0.1'),
+    /**
+     * Zeabur: api-gateway sits behind Zeabur edge proxy (single hop).
+     * Fastify trustProxy lets request.ip reflect the real client; never parse XFF manually.
+     * Local dev/test default false — direct socket IP unless explicitly enabled.
+     */
+    API_GATEWAY_TRUST_PROXY: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     /** Upstream activity-service for Admin/WWW BFF proxy (`/activity/v1/*`). */
     ACTIVITY_SERVICE_BASE_URL: z.string().url().optional(),
     /** Identity base for session→actor resolution (WWW). */
@@ -42,9 +51,12 @@ type GatewayReply = {
 };
 
 const bootstrap = async (): Promise<void> => {
+  const trustProxy =
+    config.API_GATEWAY_TRUST_PROXY ||
+    (config.NODE_ENV === 'production' && process.env['API_GATEWAY_TRUST_PROXY'] !== 'false');
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ bodyLimit: 262_144 }),
+    new FastifyAdapter({ bodyLimit: 262_144, trustProxy }),
   );
   const corsOrigins = parseCorsOrigins(config.API_GATEWAY_CORS_ORIGINS);
   const instance = app.getHttpAdapter().getInstance() as unknown as {

@@ -213,6 +213,20 @@ pnpm smoke:runtime
 
 Bez mutacji danych produkcyjnych. `pnpm test:runtime-smoke` nadal dotyczy lokalnych artefaktów `dist`, nie Zeabur.
 
+## 11. api-gateway — proxy trust (rate limits)
+
+**Assumption (Zeabur):** public `api-gateway` receives traffic through **one Zeabur edge reverse proxy** hop. The platform sets/forwards `X-Forwarded-For` with the real client address; direct browser connections to the container IP are not exposed.
+
+**Configuration:**
+
+| Variable                  | Production (Zeabur)                                           | Local dev         |
+| ------------------------- | ------------------------------------------------------------- | ----------------- |
+| `API_GATEWAY_TRUST_PROXY` | omit (defaults **true** when `NODE_ENV=production`) or `true` | `false` (default) |
+
+Fastify `trustProxy` is enabled from this flag. Rate limiting uses **`request.ip` only** — never manual parsing of client `X-Forwarded-For`.
+
+Spoofed `X-Forwarded-For` from an external client must not create arbitrary rate-limit identities when deployed behind Zeabur.
+
 ### Wersja działającego procesu
 
 `GET /health/live` (Nest) oraz `GET /health` (WWW) zwracają `gitCommitSha` i `appVersion` z `GIT_COMMIT_SHA` / `APP_VERSION`. Ustaw te zmienne na **SHA obrazu**, nie na stary ręczny skrót. Porównanie: `V2_EXPECTED_SHA` vs running → `MATCH` / `MISMATCH` / `UNKNOWN`.

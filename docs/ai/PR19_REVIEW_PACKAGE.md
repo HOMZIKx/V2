@@ -10,13 +10,13 @@ Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** = `cc9eb88c27aa1037581428b94b896d
 
 ## 1. Fresh branch state (`origin/main...HEAD`)
 
-| Field                                   | Value                                      |
-| --------------------------------------- | ------------------------------------------ |
-| **BASE_SHA** (`origin/main`)            | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
+| Field                        | Value                                      |
+| ---------------------------- | ------------------------------------------ |
+| **BASE_SHA** (`origin/main`) | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
 | **HEAD_SHA** (stabilization) | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` |
-| **Commit count**                        | **170**                                    |
-| **Files changed**                       | **593**                                    |
-| **Insertions / deletions**              | **+70,171 / −882**                         |
+| **Commit count**             | **170**                                    |
+| **Files changed**            | **593**                                    |
+| **Insertions / deletions**   | **+70,171 / −882**                         |
 
 First commits on branch (oldest → newest among tip): `480ebeb` (P4.1 foundation) … `7e88eb8` (operability SHA pin).
 
@@ -199,6 +199,23 @@ Prior operability pass: PASS at `b64952f`. Re-run required after doc edits in th
 
 ---
 
+## 12. ChatGPT integrated review remediation (2026-08-24)
+
+Task: `V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`  
+Checkpoint: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`**
+
+| Finding                                    | Fix                                 | Proof                              |
+| ------------------------------------------ | ----------------------------------- | ---------------------------------- |
+| Gateway trusted raw `X-Forwarded-For`      | `trustProxy` + `request.ip` only    | `rate-limit.spec.ts`               |
+| Rate limit Map unbounded                   | Sweep + `RATE_LIMIT_MAX_BUCKETS`    | `rate-limit.spec.ts` stress        |
+| `searchSimilarGroupsBeforeCreate` org IDOR | `resolveGuildOrganizationId`        | `lfg.use-cases.spec.ts`            |
+| Bootstrap org bleed on missing settings    | Split bootstrap vs runtime resolver | `guild-organization-scope.spec.ts` |
+
+**CODE_STATUS:** `READY_FOR_CHATGPT_REAUDIT`  
+**RUNTIME_STATUS:** `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`
+
+---
+
 ## Footer (required)
 
 ```
@@ -206,7 +223,8 @@ CRITICAL_OPEN=1
 HIGH_OPEN=6
 LOCAL_VALIDATE=PASS
 CI_STATUS=BLOCKED_GITHUB_BILLING_SPENDING_LIMIT
-RUNTIME_STATUS=NOT_VERIFIED_ON_LIVE_DEPLOY_AT_HEAD
+CODE_STATUS=READY_FOR_CHATGPT_REAUDIT
+RUNTIME_STATUS=NOT_TEST_DISCORD_RUNTIME_VERIFIED
 OWNER_DISCOVERY_BLOCKERS=Reservations product;Marketplace (#28);Notifications catalog/timings;Profile WWW UX;Interest role Discord apply;Team-space LFG UX;Core governance gate (GOVERNANCE-001)
 SAFE_TO_CHATGPT_REVIEW=YES
 ```

@@ -2,50 +2,80 @@
 
 ## Status
 
-`READY_FOR_CHATGPT_INTEGRATED_CODE_REVIEW`
-
+**CODE:** `READY_FOR_CHATGPT_REAUDIT`  
+**RUNTIME:** `NOT_TEST_DISCORD_RUNTIME_VERIFIED`  
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-PR19-FINAL-STABILIZATION-AND-REVIEW-PACKAGE-001`  
+Task: `V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`  
 Branch: `cursor/p4-1-activity-domain`  
-PR: **#19** (170 commits, 593 files, +70k/−882 vs `main`)
+PR: **#19** — do not merge
 
-## PR #19 review package
+Checkpoint: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`** — _(pinned after push)_
 
-Checkpoint: **`PR19_FINAL_STABILIZATION_SHA`** — `cc9eb88c27aa1037581428b94b896d0071a9f6e6`
+Prior integrated review base at ChatGPT audit: `1623d71ce402d4b979941be81fbf35f8f2d2d7d1` — **do not assume still current**.
 
-Full matrix: `docs/ai/PR19_REVIEW_PACKAGE.md`
+---
 
-### Branch facts (honest)
+## What changed (remediation)
 
-| Field                | Value                                                                    |
-| -------------------- | ------------------------------------------------------------------------ |
-| BASE (`origin/main`) | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                               |
-| HEAD (pre-pin)       | `7e88eb8c8b8995b778cca7a29ee0616851c75c41`                               |
-| Commits              | 170                                                                      |
-| Scope                | P4.1–P4.6, Hub, Admin, WWW, LFG v1, audits — **large integrated branch** |
+### HIGH — rate limit trust boundary (H-SEC-03)
 
-### What ChatGPT/Owner should review
+- Removed manual `X-Forwarded-For` parsing from `clientKeyFromRequest`.
+- Fastify `trustProxy` on api-gateway (`API_GATEWAY_TRUST_PROXY`; production default true on Zeabur single-hop).
+- Documented in `docs/deploy/ZEABUR.md` §11.
+- Tests: spoofed XFF ignored; limit tied to `request.ip`.
 
-1. Governance matrix vs accidental prototype APIs (Reservations/Marketplace).
-2. LFG v1 audit chain vs explicit **non**-runtime-verified status.
-3. Security + operability audits at checkpoint SHAs (see review package §10).
-4. Open deploy/CI blockers — not code-only green.
+### HIGH — rate limit memory bound (H-SEC-04)
 
-### What is NOT true
+- Lazy sweep + `RATE_LIMIT_MAX_BUCKETS` cap on gateway limiter store.
+- Stress test: many identities → expire → bounded size.
 
-- CI green (billing blocked)
-- Live runtime verified at current HEAD (Zeabur SHAs stale)
-- Product APPROVED or READY to merge
-- Reservations/Marketplace accepted product
+### HIGH — org scope (`searchSimilarGroupsBeforeCreate`)
+
+- Now uses authoritative `resolveGuildOrganizationId` before `listOpenActivitiesForLfg`.
+- Negative test: guild O1 + request O2 → `FORBIDDEN`.
+- Fixed `createLfgFullGroupWatch` insert to use resolved org id.
+- Marketplace offer create binds org via `resolveGuildOrganizationId` (prototype scope only).
+
+### Org helper hardening
+
+- `resolveGuildOrganizationId` — fail-closed when guild settings missing.
+- `resolveGuildOrganizationIdForBootstrap` — ensure-defaults / initial publish only.
+
+### Security audit honesty
+
+- `docs/ai/FOUNDATION_ADVERSARIAL_SECURITY_AUDIT.md` — prior H-SEC-01/02 “fully closed” claim corrected; ChatGPT residuals + fixes recorded.
+
+### Activity org-scope audit
+
+All guild-scoped paths audited — see audit doc table. Reservations: spot scope from DB. No remaining cross-org **read** when guild settings bind another org.
+
+---
 
 ## Validation
 
-| Check          | Result                                    |
-| -------------- | ----------------------------------------- |
-| LOCAL_VALIDATE | **PASS** (re-run at stabilization)        |
-| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
+| Check                  | Result                                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------- |
+| LOCAL_VALIDATE         | **PASS** (`corepack pnpm validate`)                                                          |
+| Targeted specs         | **PASS** — `rate-limit.spec.ts`, `guild-organization-scope.spec.ts`, `lfg.use-cases.spec.ts` |
+| CRITICAL / HIGH (code) | **0 / 0** after remediation                                                                  |
+| CI_STATUS              | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT**                                                    |
+
+---
+
+## Runtime (honest)
+
+| Item                                             | Status                                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Zeabur deploy                                    | `activity-service` + `discord-gateway` upload redeploy attempted (CLI auth OK) |
+| discord-gateway health                           | `ready` on guild `1534228693017432124`                                         |
+| Live Discord UI smoke (Centrum, LFG menu clicks) | **NOT VERIFIED** — Discord Web login required                                  |
+| Report                                           | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                                  |
+
+**Do not** set `RUNTIME_STATUS = TEST_DISCORD_RUNTIME_VERIFIED` until Owner/authenticated Discord UI proof.
+
+---
 
 ## STOP
 
-Do **not** merge. Do **not** rebase. Do **not** expand Reservations/Marketplace product scope.
+Do **not** merge. Do **not** implement Reservations or Marketplace product scope.

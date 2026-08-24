@@ -13,28 +13,30 @@ export const GATEWAY_RATE_LIMIT_RULES: readonly RateLimitRule[] = [
   { prefix: '/activity/v1/lfg/intents', methods: ['POST'], max: 30, windowMs: 60_000 },
 ];
 
+/** Safety cap — prevents unbounded Map growth under identity rotation attacks. */
+export const RATE_LIMIT_MAX_BUCKETS = 50_000;
+const RATE_LIMIT_SWEEP_INTERVAL_MS = 60_000;
+
 type Bucket = { count: number; resetAt: number };
 
 const buckets = new Map<string, Bucket>();
+let lastSweepAtMs = 0;
 
 export function resetRateLimitStoreForTests(): void {
   buckets.clear();
+  lastSweepAtMs = 0;
 }
 
-export function clientKeyFromRequest(request: {
-  ip?: string;
-  headers: Record<string, string | string[] | undefined>;
-}): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim() !== '') {
-    const first = forwarded.split(',')[0]?.trim();
-    if (first !== undefined && first !== '') {
-      return first;
-    }
-  }
-  if (Array.isArray(forwarded) && forwarded[0] !== undefined) {
-    return forwarded[0].trim();
-  }
+export function rateLimitStoreSizeForTests(): number {
+  return buckets.size;
+}
+
+/**
+ * Client identity for rate limiting.
+ * Uses Fastify `request.ip` only — never parse X-Forwarded-For manually.
+ * With `trustProxy` enabled on Zeabur, `request.ip` is derived by Fastify from the trusted edge hop.
+ */
+export function clientKeyFromRequest(request: { ip?: string }): string {
   return request.ip ?? 'unknown';
 }
 
@@ -50,6 +52,36 @@ function matchesRule(method: string, path: string, rule: RateLimitRule): boolean
   return path.startsWith(rule.prefix) || path === rule.prefix.replace(/\/$/, '');
 }
 
+function sweepExpiredBuckets(nowMs: number): void {
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= nowMs) {
+      buckets.delete(key);
+    }
+  }
+}
+
+function enforceBucketCap(): void {
+  if (buckets.size <= RATE_LIMIT_MAX_BUCKETS) {
+    return;
+  }
+  const overflow = buckets.size - RATE_LIMIT_MAX_BUCKETS;
+  const oldest = [...buckets.entries()]
+    .sort((left, right) => left[1].resetAt - right[1].resetAt)
+    .slice(0, overflow);
+  for (const [key] of oldest) {
+    buckets.delete(key);
+  }
+}
+
+function maybeSweepBuckets(nowMs: number): void {
+  if (nowMs - lastSweepAtMs < RATE_LIMIT_SWEEP_INTERVAL_MS) {
+    return;
+  }
+  lastSweepAtMs = nowMs;
+  sweepExpiredBuckets(nowMs);
+  enforceBucketCap();
+}
+
 export function checkRateLimit(
   clientKey: string,
   method: string,
@@ -57,6 +89,8 @@ export function checkRateLimit(
   rules: readonly RateLimitRule[] = GATEWAY_RATE_LIMIT_RULES,
   nowMs: number = Date.now(),
 ): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
+  maybeSweepBuckets(nowMs);
+
   const path = normalizePath(url);
   const upperMethod = method.toUpperCase();
   const rule = rules.find((candidate) => matchesRule(upperMethod, path, candidate));
@@ -68,6 +102,7 @@ export function checkRateLimit(
   const existing = buckets.get(key);
   if (existing === undefined || existing.resetAt <= nowMs) {
     buckets.set(key, { count: 1, resetAt: nowMs + rule.windowMs });
+    enforceBucketCap();
     return { allowed: true };
   }
 
@@ -86,7 +121,6 @@ export function applyRateLimitOnRequest(
     method: string;
     url: string;
     ip?: string;
-    headers: Record<string, string | string[] | undefined>;
   },
   reply: {
     header: (key: string, value: string) => unknown;

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { ActivityError } from '../../domain/errors.js';
 import { offerMatchesWatch } from '../../domain/marketplace.js';
+import { resolveGuildOrganizationId } from '../guild-organization-scope.js';
 import type { ActivityTx, ActorSubject } from '../ports/activity.ports.js';
 import { enqueueUserNotification } from './notification.use-cases.js';
 
@@ -34,10 +35,11 @@ export async function createMarketplaceOffer(
   now: Date,
 ): Promise<{ id: string; matchedWatches: number }> {
   const owner = requireDiscord(actor);
+  const organizationId = await resolveGuildOrganizationId(tx, input.guildId, input.organizationId);
   const id = await tx.insertMarketplaceOffer({
     id: randomUUID(),
     guildId: input.guildId,
-    organizationId: input.organizationId,
+    organizationId,
     ownerDiscordUserId: owner,
     side: input.side,
     categoryKey: input.categoryKey,

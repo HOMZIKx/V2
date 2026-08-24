@@ -4,6 +4,7 @@ import { ActivityError } from '../domain/errors.js';
 import {
   requireGuildOrganizationMatch,
   resolveGuildOrganizationId,
+  resolveGuildOrganizationIdForBootstrap,
 } from './guild-organization-scope.js';
 import type { ActivityTx } from './ports/activity.ports.js';
 import { stubGuildSettings } from './test-guild-settings.stub.js';
@@ -15,9 +16,16 @@ function txWithOrg(orgId: string | null): ActivityTx {
 }
 
 describe('guild-organization-scope', () => {
-  it('allows bootstrap org when guild settings are missing', async () => {
+  it('bootstrap allows org when guild settings are missing', async () => {
     const tx = txWithOrg(null);
-    await expect(resolveGuildOrganizationId(tx, 'g1', 'o-new')).resolves.toBe('o-new');
+    await expect(resolveGuildOrganizationIdForBootstrap(tx, 'g1', 'o-new')).resolves.toBe('o-new');
+  });
+
+  it('runtime resolve fails closed when guild settings are missing', async () => {
+    const tx = txWithOrg(null);
+    await expect(resolveGuildOrganizationId(tx, 'g1', 'o-new')).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+    });
   });
 
   it('rejects mismatched org on resolve', async () => {

@@ -35,7 +35,10 @@ import { assertValidReferenceStatus } from '../../domain/status-def.js';
 import { assignWaitlistPosition, nextWaitlistPromotion } from '../../domain/waitlist.js';
 import { authorizeOrFailClosed, requireAllowed } from '../authorize-fail-closed.js';
 import { enqueueEventProjection } from '../enqueue-event-projection.js';
-import { resolveGuildOrganizationId } from '../guild-organization-scope.js';
+import {
+  resolveGuildOrganizationId,
+  resolveGuildOrganizationIdForBootstrap,
+} from '../guild-organization-scope.js';
 import {
   collectOrganizerDiscordIds,
   collectParticipantDiscordIds,
@@ -364,7 +367,7 @@ export class ActivityUseCases {
       'sensitive',
     );
     return this.mutate(ctx, 'ensure-defaults', `guild:${guildId}`, async (tx) => {
-      const resolvedOrgId = await resolveGuildOrganizationId(tx, guildId, orgId);
+      const resolvedOrgId = await resolveGuildOrganizationIdForBootstrap(tx, guildId, orgId);
       return tx.ensureGuildDefaults({ guildId, orgId: resolvedOrgId });
     });
   }
@@ -605,7 +608,7 @@ export class ActivityUseCases {
       });
 
       await tx.lockCreatorAdvisory(draft.guildId, discordUserId);
-      const organizationId = await resolveGuildOrganizationId(
+      const organizationId = await resolveGuildOrganizationIdForBootstrap(
         tx,
         draft.guildId,
         input.organizationId,
@@ -780,7 +783,7 @@ export class ActivityUseCases {
       }
 
       await tx.lockCreatorAdvisory(draft.guildId, discordUserId);
-      const organizationId = await resolveGuildOrganizationId(
+      const organizationId = await resolveGuildOrganizationIdForBootstrap(
         tx,
         draft.guildId,
         input.organizationId,
