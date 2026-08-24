@@ -73,7 +73,29 @@ Produkcja:
 - `API_GATEWAY_FORWARD_ACTOR_HEADERS=false`
 - bez `VITE_ADMIN_DEV_ACTOR_*` na serwisie `admin`
 
-## 6. Redeploy i weryfikacja
+## 6. Continuous deploy (Git push → Zeabur)
+
+Serwisy w project `untitled-1` są typu **OCI upload** (nie natywny Git trigger). Auto-update po pushu:
+
+1. **GitHub Actions** — workflow [`.github/workflows/zeabur-deploy.yml`](../../.github/workflows/zeabur-deploy.yml) na każdy push do `main` / `cursor/**`.
+2. Skrypt [`tools/scripts/zeabur-sync-and-deploy.mjs`](../../tools/scripts/zeabur-sync-and-deploy.mjs):
+   - czyta `Dockerfile.*` z tipa gałęzi,
+   - `updateDockerfile` (pełna treść — wymagane dla upload/OCI),
+   - `npx zeabur deploy` per serwis (kolejność z rejestru).
+3. Sekret repo: **`ZEABUR_TOKEN`** (Zeabur → Developer → API Tokens). `ZEABUR_ENV_ID=6a720a3e5f062718bc7b3421` jest w workflow.
+
+Lokalnie (po `zeabur auth login`):
+
+```text
+pnpm zeabur:deploy
+pnpm zeabur:smoke
+```
+
+**Nie używaj** suffixu `Dockerfile.discord-gateway` jako treści dockerfile na upload — Zeabur wtedy buduje string zamiast pliku. **`ZBPACK_DOCKERFILE_NAME`** = suffix (np. `discord-gateway`); sync skrypt wysyła pełny Dockerfile z repo.
+
+Docelowo (gdy serwisy będą natywnym Git source): podłącz GitHub w UI → push sam triggeruje build bez upload API.
+
+## 7. Redeploy i weryfikacja
 
 **Jeśli `discord-gateway` ma status Crashed:** najpierw upewnij się, że deploy idzie z
 **najnowszego** commita na `cursor/p4-1-activity-domain` (SHA ≥ `e53b1a4` — poprawka
@@ -87,7 +109,7 @@ padał w pętli restartów.
 4. `GET /health/live` → 200; `GET /health/discord` → `state: ready` gdy bot online.
 5. Discord: bot online na `1534228693017432124`, Centrum hub z accent #D48632 (DZIAŁAJ/TWOJE).
 
-## 7. Lokalne budowanie obrazów (opcjonalnie)
+## 8. Lokalne budowanie obrazów (opcjonalnie)
 
 ```text
 docker build -f Dockerfile.discord-gateway -t v2-discord-gateway .
@@ -110,7 +132,7 @@ $env:VITE_API_BASE_URL='https://v2-api.zeabur.app'
 docker build -f Dockerfile.admin -t v2-admin .
 ```
 
-## 8. Macierz serwisów i Definition of Runtime Complete
+## 9. Macierz serwisów i Definition of Runtime Complete
 
 Każdy **nowy serwis aplikacyjny** utworzony w **zatwierdzonym** etapie musi od razu trafić do tej macierzy (i do [ZEABUR_OWNER_VARIABLES.md](./ZEABUR_OWNER_VARIABLES.md)). Nie twórz serwisów produktowych na zapas (watch/room/search/marketplace/reservation/music).
 
@@ -156,7 +178,7 @@ Operability docs (no secret values):
 
 Obecny project testowy może mieć **jeden** add-on Postgres z osobnymi migracjami per usługa. Docelowo ADR-0004 nadal wymaga osobnych baz/kont; wspólny connection string do cudzej bazy jest błędem.
 
-## 9. Rejestr serwisów i operability
+## 10. Rejestr serwisów i operability
 
 Źródło prawdy: [`tools/runtime/service-registry.json`](../../tools/runtime/service-registry.json).
 

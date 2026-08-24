@@ -1,0 +1,46 @@
+name: Zeabur deploy
+
+# After every push to integration branches: sync Dockerfiles from git tip and redeploy all APP services.
+# Requires GitHub secret: ZEABUR_TOKEN (Zeabur → Settings → Developer → API Tokens)
+
+on:
+  push:
+    branches:
+      - main
+      - 'cursor/**'
+  workflow_dispatch:
+
+concurrency:
+  group: zeabur-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Sync and deploy to Zeabur
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+
+      - name: Deploy all services to Zeabur
+        env:
+          ZEABUR_TOKEN: ${{ secrets.ZEABUR_TOKEN }}
+          ZEABUR_ENV_ID: 6a720a3e5f062718bc7b3421
+          CI: 'true'
+          ZEABUR_WAIT_MS: '0'
+        run: node ./tools/scripts/zeabur-sync-and-deploy.mjs
+
+      - name: Post-deploy smoke (best effort — builds may still run)
+        continue-on-error: true
+        run: node ./tools/scripts/zeabur-smoke-public.mjs
+        env:
+          ZEABUR_EXPECT_SHA: ${{ github.sha }}

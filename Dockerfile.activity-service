@@ -33,8 +33,10 @@ RUN pnpm --filter @v2/configuration run build \
   && pnpm --filter @v2/internal-jwt run build \
   && pnpm --filter @v2/messaging run build \
   && pnpm --filter @v2/contracts run build \
-  && node infrastructure/docker/point-workspace-exports-to-dist.mjs packages/configuration packages/observability packages/internal-jwt packages/messaging packages/contracts \
-  && rm -rf packages/configuration/src packages/observability/src packages/internal-jwt/src packages/messaging/src packages/contracts/src \
+  && pnpm --filter @v2/hub-core run build \
+  && pnpm --filter @v2/notification-core run build \
+  && node infrastructure/docker/point-workspace-exports-to-dist.mjs packages/configuration packages/observability packages/internal-jwt packages/messaging packages/contracts packages/hub-core packages/notification-core \
+  && rm -rf packages/configuration/src packages/observability/src packages/internal-jwt/src packages/messaging/src packages/contracts/src packages/hub-core/src packages/notification-core/src \
   && pnpm --filter @v2/activity-service run build
 
 FROM base AS runtime
@@ -58,8 +60,10 @@ COPY --from=build /app/packages/messaging/package.json ./packages/messaging/pack
 COPY --from=build /app/packages/messaging/dist ./packages/messaging/dist
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/package.json
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
-COPY --from=build /app/packages/hub-core ./packages/hub-core
-COPY --from=build /app/packages/notification-core ./packages/notification-core
+COPY --from=build /app/packages/hub-core/package.json ./packages/hub-core/package.json
+COPY --from=build /app/packages/hub-core/dist ./packages/hub-core/dist
+COPY --from=build /app/packages/notification-core/package.json ./packages/notification-core/package.json
+COPY --from=build /app/packages/notification-core/dist ./packages/notification-core/dist
 COPY --from=build /app/services/activity-service/package.json ./services/activity-service/package.json
 COPY --from=build /app/services/activity-service/dist ./services/activity-service/dist
 COPY --from=build /app/services/activity-service/migrations ./services/activity-service/migrations

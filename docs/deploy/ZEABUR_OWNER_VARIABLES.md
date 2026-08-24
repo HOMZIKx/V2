@@ -256,8 +256,11 @@ Po redeployu Owner potwierdza:
 Redeploy wszystkich APP (wymaga tokenu API):
 
 ```text
-ZEABUR_TOKEN=... ZEABUR_ENV_ID=... node ./tools/scripts/zeabur-redeploy.mjs
+pnpm zeabur:deploy
+# lub: ZEABUR_TOKEN=... ZEABUR_ENV_ID=... node ./tools/scripts/zeabur-sync-and-deploy.mjs
 ```
+
+Po każdym pushu do `cursor/**` / `main` workflow `zeabur-deploy.yml` robi to samo (sekret `ZEABUR_TOKEN` w GitHub).
 
 „Deployment successful” bez zgodnego SHA w health **nie wystarczy**.
 

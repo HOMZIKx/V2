@@ -28,6 +28,8 @@
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
     "runtime:doctor": "node ./tools/scripts/runtime-doctor.mjs",
     "zeabur:redeploy": "node ./tools/scripts/zeabur-redeploy.mjs",
+    "zeabur:deploy": "node ./tools/scripts/zeabur-sync-and-deploy.mjs",
+    "zeabur:smoke": "node ./tools/scripts/zeabur-smoke-public.mjs",
     "smoke:runtime": "node ./tools/scripts/runtime-smoke-deployed.mjs",
     "validate": "node ./tools/scripts/validate.mjs",
     "validate:quick": "node ./tools/scripts/validate.mjs --quick",
