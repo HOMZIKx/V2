@@ -13,7 +13,7 @@ PR: #19
 ## Cross-service contract drift audit
 
 Report: `docs/ai/CROSS_SERVICE_CONTRACT_AUDIT.md`  
-Checkpoint: `CROSS_SERVICE_CONTRACT_AUDIT_SHA` _(recorded after rebase tip)_
+Checkpoint: `CROSS_SERVICE_CONTRACT_AUDIT_SHA` — `b7cf78fa258ac6e431a0510e21c13651271acb1b`
 
 ### CRITICAL/HIGH fixed (no product expansion)
 

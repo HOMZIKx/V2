@@ -171,15 +171,15 @@ A regression that restores `characterClassSpecKey`-only search bodies fails thes
 
 | Check                    | Result                        |
 | ------------------------ | ----------------------------- |
-| `corepack pnpm validate` | Recorded after checkpoint tip |
+| `corepack pnpm validate` | **PASS** — `b7cf78fa258ac6e431a0510e21c13651271acb1b` |
 | Contract suites          | Included in validate          |
 
 ---
 
 ## Checkpoint
 
-| Marker                             | SHA                       |
-| ---------------------------------- | ------------------------- |
-| `CROSS_SERVICE_CONTRACT_AUDIT_SHA` | _(recorded after commit)_ |
+| Marker                             | SHA                                        |
+| ---------------------------------- | ------------------------------------------ |
+| `CROSS_SERVICE_CONTRACT_AUDIT_SHA` | `b7cf78fa258ac6e431a0510e21c13651271acb1b` |
 
 No Reservations/Marketplace product work. LFG ChatGPT re-audit status unchanged.
