@@ -10,7 +10,7 @@ PR: #19
 
 ## Performance and scalability audit
 
-Checkpoint: **`PERFORMANCE_SCALABILITY_AUDIT_SHA`** — _(pending commit pin)_
+Checkpoint: **`PERFORMANCE_SCALABILITY_AUDIT_SHA`** — `179be84ee645cf2a3709a403798349407a60db56`
 
 ### Result
 

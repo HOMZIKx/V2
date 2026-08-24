@@ -2,7 +2,7 @@
 
 Task: `V2-PERFORMANCE-AND-SCALABILITY-AUDIT-001`  
 Base: `b76dcf556ab8007311aecab046c3ef2e2357aee4` (DATA_RECOVERY_AUDIT_SHA)  
-Checkpoint: **`PERFORMANCE_SCALABILITY_AUDIT_SHA`** (recorded after this pass)
+Checkpoint: **`PERFORMANCE_SCALABILITY_AUDIT_SHA`** = `179be84ee645cf2a3709a403798349407a60db56`
 
 Mode: performance engineering — **no new product features** (indexes, batching, caps, timeouts only).
 
