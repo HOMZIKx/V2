@@ -59,7 +59,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**     | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | Durable DM intent/watch context                                   |
 | **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**       | `94e71fef5bcb8c541824a058dae37020c86516af` | Mute + watch fulfillment                                          |
 | **DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA**     | `d5862da470412343606c7283c827b036981a9cbe` | **READY_FOR_CHATGPT_APPROVAL** — final source reaudit + lifecycle |
-| **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | _(this commit)_                            | Org IDOR + gateway rate limits — CRITICAL/HIGH = 0                |
+| **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Org IDOR + gateway rate limits — CRITICAL/HIGH = 0                |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                        |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`    |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                   |
