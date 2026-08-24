@@ -23,7 +23,7 @@ Guild: `1534228693017432124` (TEST Discord)
 | Field                              | Value                                                                                         |
 | ---------------------------------- | --------------------------------------------------------------------------------------------- |
 | REMOTE_HEAD (pre-remediation push) | `c4e8d0f7429db178bb3cc2b1516c44a67c96284a`                                                    |
-| REMEDIATION_COMMIT                 | _(pinned after push — see `CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA` in `PROJECT_STATE.md`)_ |
+| REMEDIATION_COMMIT                 | `24ca822dcb4af77569074dba955f790d80cf0836` (`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`) |
 | BRANCH                             | `cursor/p4-1-activity-domain`                                                                 |
 | PR                                 | #19 — **do not merge**                                                                        |
 

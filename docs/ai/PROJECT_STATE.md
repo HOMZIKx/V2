@@ -20,7 +20,7 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 | CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                       |
 | LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)       |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                        |
-| CURRENT_HEAD / PR_HEAD  | _(see `CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA` after push)_       |
+| CURRENT_HEAD / PR_HEAD  | `24ca822dcb4af77569074dba955f790d80cf0836`                           |
 | PR                      | #19 — **do not merge**                                               |
 | PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                     |
 | CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)         |

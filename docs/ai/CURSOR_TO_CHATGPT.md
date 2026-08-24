@@ -10,7 +10,7 @@ Task: `V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`
 Branch: `cursor/p4-1-activity-domain`  
 PR: **#19** — do not merge
 
-Checkpoint: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`** — _(pinned after push)_
+Checkpoint: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`** — `24ca822dcb4af77569074dba955f790d80cf0836`
 
 Prior integrated review base at ChatGPT audit: `1623d71ce402d4b979941be81fbf35f8f2d2d7d1` — **do not assume still current**.
 
