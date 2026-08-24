@@ -13,7 +13,7 @@ PR: #19
 ## Durability / recovery audit
 
 Report: `docs/ai/DURABILITY_RECOVERY_AUDIT.md`  
-Checkpoint: `DURABILITY_RECOVERY_AUDIT_SHA` — _(set after commit)_
+Checkpoint: `DURABILITY_RECOVERY_AUDIT_SHA` — `be86063726947930a02c06eab38dad947a4243cc`
 
 ### CRITICAL/HIGH fixed (no product expansion)
 
@@ -43,10 +43,10 @@ Await ChatGPT re-audit.
 
 ## Validation
 
-| Check          | Result                                    |
-| -------------- | ----------------------------------------- |
-| LOCAL_VALIDATE | _(pending — run after fixes)_             |
-| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
+| Check          | Result                                                             |
+| -------------- | ------------------------------------------------------------------ |
+| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate` (e2e after Playwright install) |
+| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT**                          |
 
 ## STOP
 

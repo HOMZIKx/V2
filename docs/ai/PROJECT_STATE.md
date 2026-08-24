@@ -19,10 +19,10 @@ Not APPROVED. Not merged. STOP before Stage 8.
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                      |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                         |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                       |
-| CURRENT_HEAD / PR_HEAD | _(set after DURABILITY_RECOVERY_AUDIT_SHA)_                         |
+| CURRENT_HEAD / PR_HEAD | `be86063726947930a02c06eab38dad947a4243cc`                          |
 | PR                     | #19                                                                 |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)        |
-| LOCAL_VALIDATE         | _(pending)_                                                         |
+| LOCAL_VALIDATE         | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke        |
 | ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale before tip redeploy)                               |
 | ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale before tip redeploy)                               |
 | ZEABUR_REDEPLOY        | **BLOCKED** — Owner must provide `ZEABUR_TOKEN` (+ `ZEABUR_ENV_ID`) |
@@ -63,7 +63,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                        |
 | **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**  | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                     |
 | **CROSS_SERVICE_CONTRACT_AUDIT_SHA**       | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport     |
-| **DURABILITY_RECOVERY_AUDIT_SHA**          | _(pending commit)_                         | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH     |
+| **DURABILITY_RECOVERY_AUDIT_SHA**          | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH     |
 
 ## Module discovery status (summary)
 

@@ -168,8 +168,8 @@ Default production transport: **`ACTIVITY_OUTBOX_TRANSPORT=http`**.
 
 ## Validation
 
-Run: `corepack pnpm validate`  
-Checkpoint marker: `DURABILITY_RECOVERY_AUDIT_SHA` (set after commit).
+Run: `corepack pnpm validate` — **PASS** (Playwright Chromium installed for e2e on this agent).  
+Checkpoint marker: `DURABILITY_RECOVERY_AUDIT_SHA` = `be86063726947930a02c06eab38dad947a4243cc`.
 
 ## Verdict
 
