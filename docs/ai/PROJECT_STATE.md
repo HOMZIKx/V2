@@ -55,7 +55,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DUNGEON_LFG_V1_AUDIT_SHA**               | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                    |
 | **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA** | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                      |
 | **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**  | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | Durable DM intent/watch context                                 |
-| **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**    | _(checkpoint commit)_                      | **READY_FOR_CHATGPT_FINAL_APPROVAL** — mute + watch fulfillment |
+| **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**    | `94e71fef5bcb8c541824a058dae37020c86516af` | **READY_FOR_CHATGPT_FINAL_APPROVAL** — mute + watch fulfillment |
 | RESERVATIONS_FOUNDATION_WIP_SHA            | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — discovery prep ready                           |
 | MARKETPLACE_FOUNDATION_WIP_SHA             | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`  |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA  | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                 |
