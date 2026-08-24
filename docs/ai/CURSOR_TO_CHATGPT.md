@@ -4,40 +4,50 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-Task: `V2-FOUNDATION-ADVERSARIAL-SECURITY-AUDIT-002`  
+Task: `V2-DATA-INTEGRITY-MIGRATION-BACKUP-RECOVERY-AUDIT-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19
 
-## Adversarial security audit
+## Data recovery and migration audit
 
-Checkpoint: **`FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA`** — `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff`
+Checkpoint: **`DATA_RECOVERY_AUDIT_SHA`** — _(pending commit pin)_
 
 ### Result
 
 | Severity | Found | Fixed | Open |
 | -------- | ----- | ----- | ---- |
 | CRITICAL | 0     | 0     | 0    |
-| HIGH     | 2     | 2     | 0    |
+| HIGH     | 1     | 1     | 0    |
 | MEDIUM   | 3     | 0     | 3    |
-| LOW      | 4     | 0     | 4    |
+| LOW      | 2     | 0     | 2    |
 
-Full report: `docs/ai/FOUNDATION_ADVERSARIAL_SECURITY_AUDIT.md`
+Full report: `docs/ai/DATA_RECOVERY_AND_MIGRATION_AUDIT.md`
 
-### HIGH fixes
+### HIGH fix
 
-1. **H-SEC-01 — Org IDOR:** bind client `organizationId` to `guild_activity_settings.org_id` (`guild-organization-scope.ts`) on publish/LFG/admin composition paths.
-2. **H-SEC-02 — Rate limits:** api-gateway in-memory sliding window on OAuth + LFG mutation routes (`rate-limit.ts`).
+**H-DR-01 — Partial deploy blind spot:** `/health/ready` now requires foundation + latest migration + full manifest count (all three DB services).
 
-### Auth / tenant / Discord (reviewed, no new CRITICAL/HIGH)
+### Deliverables
 
-Production fail-closed on client assertions, actor headers, authorization enabled flag. Discord signed IDs + server revalidation OK. No SSRF/XSS/open-redirect HIGH found.
+- Static migration inventory (`tools/scripts/migration-inventory.mjs`) wired into validate
+- Generated per-service migration manifests + readiness probes
+- Updated `docs/deploy/BACKUP_RESTORE.md` (three-DB matrix)
+- Infra restore drill test (`tools/infra/migration-recovery.test.ts`, `RUN_INFRA_TESTS=true`)
+
+### Live proof status
+
+| Drill              | Result                         |
+| ------------------ | ------------------------------ |
+| Static inventory   | PASS                           |
+| LOCAL_VALIDATE     | PASS                           |
+| Fresh DB migrate   | BLOCKED_LOCAL_DOCKER           |
+| pg_dump restore    | Automated when Postgres available |
 
 ## Validation
 
 | Check           | Result                                    |
 | --------------- | ----------------------------------------- |
 | LOCAL_VALIDATE  | **PASS**                                  |
-| pnpm audit high | **0** high/critical                       |
 | CI_STATUS       | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
 
 ## STOP

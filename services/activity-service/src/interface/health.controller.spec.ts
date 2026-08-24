@@ -31,6 +31,7 @@ describe('HealthController', () => {
     const repository = {
       ping: vi.fn().mockResolvedValue(undefined),
       hasSchemaMigration: vi.fn().mockResolvedValue(true),
+      countSchemaMigrations: vi.fn().mockResolvedValue(18),
       countOutboxByStatus: vi.fn().mockResolvedValue({
         pending: 0,
         claimed: 0,
@@ -52,6 +53,7 @@ describe('HealthController', () => {
     const repository = {
       ping: vi.fn().mockResolvedValue(undefined),
       hasSchemaMigration: vi.fn().mockResolvedValue(false),
+      countSchemaMigrations: vi.fn().mockResolvedValue(0),
     } as unknown as ActivityRepositoryPort;
     const controller = new HealthController(config, repository, null);
     await expect(controller.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);

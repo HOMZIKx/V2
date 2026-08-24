@@ -3,10 +3,9 @@ import { readRuntimeRevision } from '@v2/configuration';
 
 import type { AuthorizationStorePort } from '../application/ports/authorization.ports.js';
 import type { AuthorizationEnv } from '../infrastructure/config/authorization-env.js';
+import { isSchemaMigrationReady } from '../infrastructure/db/migration-readiness.js';
 import { pingRedis } from '../infrastructure/redis/ping-redis.js';
 import { AUTHORIZATION_CONFIG, AUTHORIZATION_STORE_PORT } from './authorization.tokens.js';
-
-const MIGRATION_ID = '001_authorization_foundation.sql';
 
 @Controller('health')
 export class HealthController {
@@ -57,7 +56,7 @@ export class HealthController {
     }
 
     try {
-      checks.migrations = await this.store.hasSchemaMigration(MIGRATION_ID);
+      checks.migrations = await isSchemaMigrationReady(this.store);
     } catch {
       checks.migrations = false;
     }

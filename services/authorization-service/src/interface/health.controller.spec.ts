@@ -34,7 +34,12 @@ describe('HealthController', () => {
   it('ready checks database and migrations when authorization is enabled', async () => {
     const ping = vi.fn().mockResolvedValue(undefined);
     const hasSchemaMigration = vi.fn().mockResolvedValue(true);
-    const store = { ping, hasSchemaMigration } as unknown as AuthorizationStorePort;
+    const countSchemaMigrations = vi.fn().mockResolvedValue(5);
+    const store = {
+      ping,
+      hasSchemaMigration,
+      countSchemaMigrations,
+    } as unknown as AuthorizationStorePort;
     const enabled = {
       AUTHORIZATION_ENABLED: true,
       AUTHORIZATION_ASSERTION_REDIS_URL: undefined,
@@ -46,13 +51,15 @@ describe('HealthController', () => {
       checks: { database: true, migrations: true, redis: 'not_configured' },
     });
     expect(ping).toHaveBeenCalledTimes(1);
-    expect(hasSchemaMigration).toHaveBeenCalledWith('001_authorization_foundation.sql');
+    expect(hasSchemaMigration).toHaveBeenCalled();
+    expect(countSchemaMigrations).toHaveBeenCalledTimes(1);
   });
 
   it('ready fails when foundation migration is missing', async () => {
     const store = {
       ping: vi.fn().mockResolvedValue(undefined),
       hasSchemaMigration: vi.fn().mockResolvedValue(false),
+      countSchemaMigrations: vi.fn().mockResolvedValue(0),
     } as unknown as AuthorizationStorePort;
     const enabled = {
       AUTHORIZATION_ENABLED: true,

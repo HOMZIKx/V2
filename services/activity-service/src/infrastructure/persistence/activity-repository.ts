@@ -3205,6 +3205,13 @@ export class ActivityRepository implements ActivityRepositoryPort {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  public async countSchemaMigrations(): Promise<number> {
+    const result = await this.pool.query<{ n: string }>(
+      'SELECT COUNT(*)::text AS n FROM activity_schema_migrations',
+    );
+    return Number(result.rows[0]?.n ?? '0');
+  }
+
   public async countOutboxByStatus(): Promise<OutboxHealthSnapshot> {
     const result = await this.pool.query<{ status: string; n: string; retrying: string }>(
       `SELECT

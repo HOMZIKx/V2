@@ -1,0 +1,34 @@
+{
+  "service": "authorization",
+  "trackingTable": "authorization_schema_migrations",
+  "count": 5,
+  "foundationId": "001_authorization_foundation.sql",
+  "latestId": "005_activity_permission_catalog.sql",
+  "migrations": [
+    {
+      "id": "001_authorization_foundation.sql",
+      "checksum": "a003f9fa885b6de476599741d5f8980772d14253aa3299767036681a3d8b74ad",
+      "flags": []
+    },
+    {
+      "id": "002_pending_session_revoke.sql",
+      "checksum": "94638ad9e30e1a7dcd9e69cf2cca127a74b25dac83a906d56f616e1d1c98ff31",
+      "flags": []
+    },
+    {
+      "id": "003_pending_revoke_lease.sql",
+      "checksum": "23cebd421649afd713dfed7564465707fb3609725e8a56fe10551db035bddca6",
+      "flags": ["DROP CONSTRAINT"]
+    },
+    {
+      "id": "004_lifecycle_generations.sql",
+      "checksum": "df9fe6d0babf2c8d4ec00a2fed1f9dcc106407cde5fde30e3c44636f6d172e38",
+      "flags": []
+    },
+    {
+      "id": "005_activity_permission_catalog.sql",
+      "checksum": "438f12eb4ecefe6334229f4ef239d62ca3a4655841e55eb174ccedbea631ff67",
+      "flags": []
+    }
+  ]
+}

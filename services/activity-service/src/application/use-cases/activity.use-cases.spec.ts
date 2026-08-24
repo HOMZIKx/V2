@@ -845,6 +845,9 @@ function createMemoryRepo(): ActivityRepositoryPort & {
     async hasSchemaMigration() {
       return true;
     },
+    async countSchemaMigrations() {
+      return 18;
+    },
   };
 }
 

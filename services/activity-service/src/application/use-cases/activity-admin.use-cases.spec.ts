@@ -561,6 +561,9 @@ function createAdminMemoryRepo(): {
       async hasSchemaMigration() {
         return true;
       },
+      async countSchemaMigrations() {
+        return 18;
+      },
     },
   };
 }

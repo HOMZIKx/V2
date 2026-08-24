@@ -139,6 +139,13 @@ export class AuthorizationRepository {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
+  public async countSchemaMigrations(): Promise<number> {
+    const result = await this.pool.query<{ n: string }>(
+      'SELECT COUNT(*)::text AS n FROM authorization_schema_migrations',
+    );
+    return Number(result.rows[0]?.n ?? '0');
+  }
+
   public async ensureOrganization(preferredId?: string): Promise<EnsureOrganizationResult> {
     const existing = await this.pool.query<{ id: string }>(
       'SELECT id FROM organization ORDER BY created_at ASC LIMIT 1',
