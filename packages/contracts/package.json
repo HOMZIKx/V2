@@ -7,12 +7,19 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./health": "./src/health.ts"
+    "./health": "./src/health.ts",
+    "./activity/lfg-transport": "./src/activity/lfg-transport.ts",
+    "./activity/admin-transport": "./src/activity/admin-transport.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "zod": "^4.0.14"
   },
   "devDependencies": {
+    "typescript": "~5.8.3",
     "vitest": "^3.2.4"
   }
 }

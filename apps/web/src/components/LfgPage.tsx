@@ -252,7 +252,7 @@ export function LfgPage() {
     (timePreset !== 'custom' || customWindowRaw.trim().length > 0);
 
   const buildSearchBody = useCallback(() => {
-    if (!wizardReady || guildId === null || organizationId === null || classSpecKey === null) {
+    if (!wizardReady || guildId === null || organizationId === null || characterId === null) {
       return null;
     }
     let windowStartAt: string;
@@ -278,21 +278,18 @@ export function LfgPage() {
       guildId,
       organizationId,
       activityTypeKey: dungeonKey,
-      characterClassSpecKey: classSpecKey,
-      characterSupportedRoles: supportedRoles,
+      characterId,
       sessionRoles: sessionRoles,
       windowStartAt,
       windowEndAt,
     };
   }, [
     characterId,
-    classSpecKey,
     customWindowRaw,
     dungeonKey,
     guildId,
     organizationId,
     sessionRoles,
-    supportedRoles,
     timePreset,
     wizardReady,
   ]);
@@ -339,7 +336,9 @@ export function LfgPage() {
         sessionRoles: body.sessionRoles,
         windowStartAt: body.windowStartAt,
         windowEndAt: body.windowEndAt,
-        classSpecKey: body.characterClassSpecKey,
+        ...(selectedCharacter?.classSpecKey !== undefined
+          ? { classSpecKey: selectedCharacter.classSpecKey }
+          : {}),
       });
       setFlash('Poszukiwanie włączone — powiadomimy Cię o dopasowaniu.');
       await loadWatches();
@@ -369,9 +368,7 @@ export function LfgPage() {
         statusDefId: joinStatusId,
         partyRoleKey,
         guildId,
-        ...(classSpecKey !== null ? { characterClassSpecKey: classSpecKey } : {}),
-        characterSupportedRoles: supportedRoles,
-        sessionRoles: sessionRoles,
+        ...(characterId !== null ? { characterId } : {}),
       });
       const waitlist =
         typeof result.waitlistPosition === 'number'

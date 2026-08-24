@@ -200,8 +200,7 @@ export async function searchLfg(
     guildId: string;
     organizationId: string;
     activityTypeKey: string;
-    characterClassSpecKey: string;
-    characterSupportedRoles: readonly LfgPartyRoleKey[];
+    characterId: string;
     sessionRoles: readonly LfgPartyRoleKey[];
     windowStartAt: string;
     windowEndAt: string;
@@ -299,9 +298,7 @@ export async function joinLfg(body: {
   partyRoleKey: LfgPartyRoleKey;
   guildId?: string;
   intentId?: string;
-  characterClassSpecKey?: string;
-  characterSupportedRoles?: readonly LfgPartyRoleKey[];
-  sessionRoles?: readonly LfgPartyRoleKey[];
+  characterId?: string;
 }): Promise<LfgJoinResultDto> {
   return lfgRequest('/activity/v1/lfg/join', { method: 'POST', body, idempotent: true });
 }

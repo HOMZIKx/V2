@@ -1865,11 +1865,7 @@ export class ActivityInteractionHandler {
           statusDefId,
           partyRoleKey: input.partyRoleKey,
           guildId: input.guildId,
-          ...(input.state.classSpecKey !== null
-            ? { characterClassSpecKey: input.state.classSpecKey }
-            : {}),
-          characterSupportedRoles: input.state.characterSupportedRoles,
-          sessionRoles: input.state.sessionRoles,
+          ...(input.state.characterId !== null ? { characterId: input.state.characterId } : {}),
         },
         {
           ...input.actor,

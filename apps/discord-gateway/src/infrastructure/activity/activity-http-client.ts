@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { LfgSearchResponseSchema } from '@v2/contracts';
 import { importPKCS8, SignJWT } from 'jose';
 import { z } from 'zod';
 
@@ -145,30 +146,9 @@ const rsvpResultSchema = z
   })
   .passthrough();
 
-const lfgMatchSchema = z
-  .object({
-    activityId: z.string().min(1),
-    opaqueId: z.string().optional(),
-    score: z.number().optional(),
-    reasons: z.array(z.string()).optional(),
-    occupancy: z.string().optional(),
-    occupancyLabel: z.string().optional(),
-    roleNeedSummary: z.string().optional(),
-    matchReason: z.string().optional(),
-    startAt: z.string().optional(),
-    startAtLabel: z.string().optional(),
-    activityTypeKey: z.string().optional(),
-    dungeonLabel: z.string().optional(),
-    fingerprint: z.string().optional(),
-  })
-  .passthrough();
-
-const lfgSearchResultSchema = z
-  .object({
-    matches: z.array(lfgMatchSchema).default([]),
-    similarGroupsWarning: z.string().nullable().optional(),
-  })
-  .passthrough();
+const lfgSearchResultSchema = LfgSearchResponseSchema.extend({
+  similarGroupsWarning: z.string().nullable().optional(),
+}).passthrough();
 
 const lfgWatchSchema = z
   .object({
@@ -617,8 +597,7 @@ export class ActivityHttpClient {
       guildId: string;
       organizationId: string;
       activityTypeKey: string;
-      characterClassSpecKey: string;
-      characterSupportedRoles: readonly string[];
+      characterId: string;
       sessionRoles: readonly string[];
       windowStartAt: string;
       windowEndAt: string;
@@ -699,9 +678,7 @@ export class ActivityHttpClient {
       partyRoleKey: string;
       guildId?: string;
       intentId?: string;
-      characterClassSpecKey?: string;
-      characterSupportedRoles?: readonly string[];
-      sessionRoles?: readonly string[];
+      characterId?: string;
     },
     actor: ActivityActorContext,
   ) {
@@ -764,10 +741,10 @@ export class ActivityHttpClient {
     );
   }
 
-  public async cancelFullGroupWatch(watchId: string, actor: ActivityActorContext) {
+  public async cancelFullGroupWatch(watchId: string, guildId: string, actor: ActivityActorContext) {
     return this.request(
       'POST',
-      `/activity/v1/lfg/full-group-watches/${encodeURIComponent(watchId)}/cancel`,
+      `/activity/v1/lfg/full-group-watches/${encodeURIComponent(watchId)}/cancel?guildId=${encodeURIComponent(guildId)}`,
       z.object({ cancelled: z.boolean().optional() }).passthrough(),
       { actor },
     );

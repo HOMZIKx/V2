@@ -4,40 +4,44 @@
 
 `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`
 
-LFG: **`READY_FOR_CHATGPT_REAUDIT`** (unchanged)
+LFG: **`READY_FOR_CHATGPT_REAUDIT`** (unchanged by contract audit)
 
-Task: `V2-ZEABUR-TIP-REDEPLOY-001`  
+Task: `V2-CROSS-SERVICE-CONTRACT-DRIFT-AUDIT-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: #19
 
-## Zeabur tip redeploy
+## Cross-service contract drift audit
 
-Live proof before redeploy:
+Report: `docs/ai/CROSS_SERVICE_CONTRACT_AUDIT.md`  
+Checkpoint: `CROSS_SERVICE_CONTRACT_AUDIT_SHA` _(recorded after rebase tip)_
 
-| Endpoint | Running SHA | vs tip |
-| -------- | ----------- | ------ |
-| `https://v2-api.zeabur.app/health/live` | `2c2b3e9` | 36 commits behind |
-| `https://v2-admin.zeabur.app/health` | `2c2b3e9` | 36 behind |
-| `https://v2-web.zeabur.app/health` | `22ba38b` | 71 behind |
+### CRITICAL/HIGH fixed (no product expansion)
 
-`appVersion` was `0.0.0-dev` (default). Discord `/status` uses the same revision fields.
+1. **LFG search** — consumers now send `characterId` (server-authoritative); shared `LfgSearchRequestSchema`
+2. **LFG join** — drop client class-spec authority; pass `characterId`
+3. **Discord occupancy** — response schema is `{ occupied, capacity }` via shared contract
+4. **Admin audit** — `offset`/`total` pagination (was broken `cursor`/`nextCursor`)
+5. **Dead `types/reorder` client** — removed
+6. **Full-group cancel** — requires `guildId` query
+7. **`@v2/contracts` transport** + contract tests; Docker builds contracts to dist
 
-### Code fix (this push)
+## Prior Zeabur work
 
-1. Bake `V2_IMAGE_GIT_COMMIT_SHA` from Zeabur `ZEABUR_GIT_COMMIT_SHA` in all app Dockerfiles.
-2. `readRuntimeRevision` (+ Discord/web/admin health) **prefers image bake** over stale manual `GIT_COMMIT_SHA` Variable.
-3. Script `tools/scripts/zeabur-redeploy.mjs` / `pnpm zeabur:redeploy` updates vars + redeploys all APP services.
+- Audit: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`
+- Tip redeploy prep: image bake of `V2_IMAGE_GIT_COMMIT_SHA`; `pnpm zeabur:redeploy` blocked without Owner `ZEABUR_TOKEN` / `ZEABUR_ENV_ID`
 
-### Blocker
+## LFG (prior — unchanged)
 
-Redeploy from agent requires Owner secrets: `ZEABUR_TOKEN` and `ZEABUR_ENV_ID`.
-Requested via environment setup actions. Without them CLI cannot call Zeabur API.
+Remediation: `DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA` — `3c3009991f656e4369d3f600fcb05266683ede50`  
+Await ChatGPT re-audit.
 
-## Prior Zeabur audit
+## Validation
 
-Checkpoint: `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` — `b4ce19fb066b7e44ef1322e236df4c730ccf7dce`
+| Check          | Result                                    |
+| -------------- | ----------------------------------------- |
+| LOCAL_VALIDATE | **PASS** — `corepack pnpm validate`       |
+| CI_STATUS      | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
 
 ## STOP
 
 Not APPROVED. No merge. No Reservations/Marketplace product work.
-Await Owner Zeabur token (or manual panel redeploy) then verify health SHA = tip.

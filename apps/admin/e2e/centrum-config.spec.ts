@@ -430,7 +430,7 @@ async function installActivityAdminMocks(
     }
 
     if (rest === '/audit' && method === 'GET') {
-      await json(route, 200, { items: store.audit, nextCursor: null });
+      await json(route, 200, { items: store.audit, total: store.audit.length });
       return;
     }
 

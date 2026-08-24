@@ -207,6 +207,9 @@ importers:
       '@v2/configuration':
         specifier: workspace:*
         version: link:../../packages/configuration
+      '@v2/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@v2/hub-core':
         specifier: workspace:*
         version: link:../../packages/hub-core
@@ -439,6 +442,9 @@ importers:
       '@v2/configuration':
         specifier: workspace:*
         version: link:../../packages/configuration
+      '@v2/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@v2/hub-core':
         specifier: workspace:*
         version: link:../../packages/hub-core

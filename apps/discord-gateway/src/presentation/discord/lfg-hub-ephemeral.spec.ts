@@ -101,7 +101,7 @@ describe('lfg-hub-ephemeral', () => {
       guildId: 'g1',
       organizationId: 'org1',
       activityTypeKey: 'azrael',
-      characterClassSpecKey: 'warrior_body',
+      characterId: 'c1',
       sessionRoles: ['TANK'],
     });
   });

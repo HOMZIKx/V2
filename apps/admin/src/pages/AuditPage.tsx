@@ -7,12 +7,12 @@ import { useRequiredGuildId } from '../layout/GuildContext.js';
 export function AuditPage() {
   const guildId = useRequiredGuildId();
   const [state, setState] = useState<LoadState<AuditEntryDto[]>>({ kind: 'loading' });
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
-    async (pageCursor: string | null, append: boolean) => {
+    async (pageOffset: number, append: boolean) => {
       if (guildId === null) {
         setState({ kind: 'empty' });
         return;
@@ -23,10 +23,10 @@ export function AuditPage() {
       setError(null);
       try {
         const result = await listAudit(guildId, {
-          ...(pageCursor !== null ? { cursor: pageCursor } : {}),
+          offset: pageOffset,
           limit: 50,
         });
-        setNextCursor(result.nextCursor);
+        setNextOffset(result.nextOffset);
         setState((prev) => {
           if (append && prev.kind === 'ready') {
             return { kind: 'ready', data: [...prev.data, ...result.items] };
@@ -49,8 +49,8 @@ export function AuditPage() {
   );
 
   useEffect(() => {
-    setCursor(null);
-    void load(null, false);
+    setOffset(0);
+    void load(0, false);
   }, [guildId, load]);
 
   return (
@@ -91,16 +91,18 @@ export function AuditPage() {
             <div className="row">
               <button
                 type="button"
-                disabled={nextCursor === null}
+                disabled={nextOffset === null}
                 onClick={() => {
-                  const next = nextCursor;
-                  setCursor(next);
-                  void load(next, true);
+                  if (nextOffset === null) {
+                    return;
+                  }
+                  setOffset(nextOffset);
+                  void load(nextOffset, true);
                 }}
               >
                 Load more
               </button>
-              {cursor !== null ? <span className="muted">Cursor: {cursor}</span> : null}
+              {offset > 0 ? <span className="muted">Offset: {offset}</span> : null}
             </div>
           </div>
         )}

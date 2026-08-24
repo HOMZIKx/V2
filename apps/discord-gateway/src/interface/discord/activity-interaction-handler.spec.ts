@@ -1322,8 +1322,7 @@ describe('ActivityInteractionHandler LFG wizard', () => {
         statusDefId: 'status-confirmed',
         partyRoleKey: 'TANK',
         guildId,
-        characterSupportedRoles: ['TANK', 'DPS'],
-        sessionRoles: ['TANK'],
+        characterId: 'char-1',
       }),
       expect.objectContaining({ discordUserId: operatorId }),
     );

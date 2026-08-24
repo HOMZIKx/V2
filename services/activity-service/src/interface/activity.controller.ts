@@ -15,6 +15,13 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
+import {
+  LfgJoinRequestSchema,
+  LfgSearchRequestSchema,
+  LfgSuppressMatchRequestSchema,
+  LfgWatchCreateRequestSchema,
+  LfgWatchUpdateRequestSchema,
+} from '@v2/contracts';
 import { z } from 'zod';
 
 import type { ActorSubject } from '../application/ports/activity.ports.js';
@@ -978,23 +985,7 @@ export class ActivityController {
     @Query('memberRoleIds') memberRoleIdsRaw: string | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
-    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
-    const parsed = parseOrThrow(
-      z
-        .object({
-          guildId: z.string().min(1),
-          organizationId: z.string().min(1),
-          activityTypeKey: z.string().min(1),
-          characterId: z.string().uuid(),
-          sessionRoles: z.array(partyRole).min(1),
-          windowStartAt: z.string().datetime(),
-          windowEndAt: z.string().datetime(),
-        })
-        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
-          message: 'windowEndAt must be after windowStartAt',
-        }),
-      body,
-    );
+    const parsed = parseOrThrow(LfgSearchRequestSchema, body);
     const memberRoleIds =
       memberRoleIdsRaw === undefined || memberRoleIdsRaw.trim() === ''
         ? undefined
@@ -1012,23 +1003,7 @@ export class ActivityController {
   @HttpCode(200)
   @RequireOperation('activity_mutate')
   public async createLfgWatch(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
-    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
-    const parsed = parseOrThrow(
-      z
-        .object({
-          guildId: z.string().min(1),
-          organizationId: z.string().min(1),
-          characterId: z.string().uuid(),
-          activityTypeKey: z.string().min(1),
-          sessionRoles: z.array(partyRole).min(1),
-          windowStartAt: z.string().datetime(),
-          windowEndAt: z.string().datetime(),
-        })
-        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
-          message: 'windowEndAt must be after windowStartAt',
-        }),
-      body,
-    );
+    const parsed = parseOrThrow(LfgWatchCreateRequestSchema, body);
     return this.useCases.createLfgWatch(actorFromRequest(request), {
       guildId: parsed.guildId,
       organizationId: parsed.organizationId,
@@ -1048,20 +1023,7 @@ export class ActivityController {
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
   ) {
-    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
-    const parsed = parseOrThrow(
-      z
-        .object({
-          guildId: z.string().min(1),
-          sessionRoles: z.array(partyRole).min(1),
-          windowStartAt: z.string().datetime(),
-          windowEndAt: z.string().datetime(),
-        })
-        .refine((value) => new Date(value.windowEndAt) > new Date(value.windowStartAt), {
-          message: 'windowEndAt must be after windowStartAt',
-        }),
-      body,
-    );
+    const parsed = parseOrThrow(LfgWatchUpdateRequestSchema, body);
     return this.useCases.updateLfgWatch(actorFromRequest(request), id, parsed);
   }
 
@@ -1099,18 +1061,7 @@ export class ActivityController {
     @Req() request: AuthenticatedRequest,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    const partyRole = z.enum(['TANK', 'BUFF', 'DPS', 'FLEX']);
-    const parsed = parseOrThrow(
-      z.object({
-        activityId: z.string().uuid(),
-        statusDefId: z.string().uuid(),
-        partyRoleKey: partyRole,
-        guildId: z.string().min(1).optional(),
-        intentId: z.string().uuid().optional(),
-        characterId: z.string().uuid().optional(),
-      }),
-      body,
-    );
+    const parsed = parseOrThrow(LfgJoinRequestSchema, body);
     return this.useCases.joinLfg(
       actorFromRequest(request),
       {
@@ -1217,13 +1168,7 @@ export class ActivityController {
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
   ) {
-    const parsed = parseOrThrow(
-      z.object({
-        intentId: z.string().uuid().optional(),
-        guildId: z.string().min(1),
-      }),
-      body,
-    );
+    const parsed = parseOrThrow(LfgSuppressMatchRequestSchema, body);
     return this.useCases.suppressLfgMatch(actorFromRequest(request), activityId, {
       guildId: parsed.guildId,
       ...(parsed.intentId !== undefined ? { intentId: parsed.intentId } : {}),

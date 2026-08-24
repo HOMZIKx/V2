@@ -17,6 +17,7 @@
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-fastify": "^11.1.28",
     "@v2/configuration": "workspace:*",
+    "@v2/contracts": "workspace:*",
     "@v2/hub-core": "workspace:*",
     "@v2/messaging": "workspace:*",
     "@v2/notification-core": "workspace:*",

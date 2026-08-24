@@ -315,19 +315,6 @@ export async function updateType(
   );
 }
 
-export async function reorderTypes(
-  guildId: string,
-  orderedIds: readonly string[],
-): Promise<ActivityTypeDto[]> {
-  return asList(
-    await apiRequest(adminGuild(guildId, '/types/reorder'), {
-      method: 'POST',
-      body: { orderedIds },
-      idempotent: true,
-    }),
-  );
-}
-
 export async function listStatuses(guildId: string): Promise<StatusDefDto[]> {
   return asList(await apiRequest(adminGuild(guildId, '/statuses')));
 }
@@ -685,26 +672,30 @@ export async function resolveReport(
 
 export async function listAudit(
   guildId: string,
-  options?: { cursor?: string; limit?: number },
-): Promise<{ items: AuditEntryDto[]; nextCursor: string | null }> {
+  options?: { offset?: number; limit?: number },
+): Promise<{ items: AuditEntryDto[]; total: number; nextOffset: number | null }> {
+  const limit = options?.limit ?? 50;
+  const offset = options?.offset ?? 0;
   const payload = asObject<{
     items?: AuditEntryDto[];
     data?: AuditEntryDto[];
-    nextCursor?: string | null;
-    cursor?: string | null;
+    total?: number;
   }>(
     await apiRequest(adminGuild(guildId, '/audit'), {
       query: {
-        cursor: options?.cursor,
-        limit: options?.limit ?? 50,
+        offset,
+        limit,
       },
     }),
   );
   const items: AuditEntryDto[] =
     payload.items ?? payload.data ?? (Array.isArray(payload) ? payload : []);
+  const total = typeof payload.total === 'number' ? payload.total : items.length;
+  const nextOffset = offset + items.length < total ? offset + items.length : null;
   return {
     items,
-    nextCursor: payload.nextCursor ?? payload.cursor ?? null,
+    total,
+    nextOffset,
   };
 }
 

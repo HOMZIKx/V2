@@ -761,8 +761,7 @@ export function buildLfgSearchBody(input: {
   guildId: string;
   organizationId: string;
   activityTypeKey: string;
-  characterClassSpecKey: string;
-  characterSupportedRoles: readonly PartyRoleKey[];
+  characterId: string;
   sessionRoles: readonly PartyRoleKey[];
   windowStartAt: string;
   windowEndAt: string;
@@ -770,7 +769,7 @@ export function buildLfgSearchBody(input: {
   if (
     !isWizardReady(input.state) ||
     input.state.dungeonKey === null ||
-    input.state.classSpecKey === null
+    input.state.characterId === null
   ) {
     return null;
   }
@@ -786,8 +785,7 @@ export function buildLfgSearchBody(input: {
       guildId: input.guildId,
       organizationId: input.organizationId,
       activityTypeKey: input.state.dungeonKey,
-      characterClassSpecKey: input.state.classSpecKey,
-      characterSupportedRoles: input.state.characterSupportedRoles,
+      characterId: input.state.characterId,
       sessionRoles: input.state.sessionRoles,
       windowStartAt: input.state.customWindow.windowStartAt,
       windowEndAt: input.state.customWindow.windowEndAt,
@@ -798,8 +796,7 @@ export function buildLfgSearchBody(input: {
     guildId: input.guildId,
     organizationId: input.organizationId,
     activityTypeKey: input.state.dungeonKey,
-    characterClassSpecKey: input.state.classSpecKey,
-    characterSupportedRoles: input.state.characterSupportedRoles,
+    characterId: input.state.characterId,
     sessionRoles: input.state.sessionRoles,
     windowStartAt: window.windowStartAt.toISOString(),
     windowEndAt: window.windowEndAt.toISOString(),
@@ -827,8 +824,8 @@ export function buildLfgWatchBody(input: {
     sessionRoles: searchBody.sessionRoles,
     windowStartAt: searchBody.windowStartAt,
     windowEndAt: searchBody.windowEndAt,
-    ...(searchBody.characterClassSpecKey.length > 0
-      ? { classSpecKey: searchBody.characterClassSpecKey }
+    ...(input.state.classSpecKey !== null && input.state.classSpecKey.length > 0
+      ? { classSpecKey: input.state.classSpecKey }
       : {}),
   };
 }

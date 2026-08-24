@@ -15,16 +15,16 @@ Not APPROVED. Not merged. STOP before Stage 8.
 
 | Field                  | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| CURRENT_TASK           | `V2-ZEABUR-TIP-REDEPLOY-001`                                   |
+| CURRENT_TASK           | `V2-CROSS-SERVICE-CONTRACT-DRIFT-AUDIT-001`                  |
 | CURRENT_PRODUCT_STATUS | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`               |
 | LFG_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                  |
 | CURRENT_BRANCH         | `cursor/p4-1-activity-domain`                                |
-| CURRENT_HEAD / PR_HEAD | `32a3ae07e98761c24fe6395a7edb14789743e8ad`                   |
+| CURRENT_HEAD / PR_HEAD | _(recorded after rebase push)_                               |
 | PR                     | #19                                                          |
 | CI_STATUS              | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started) |
-| LOCAL_VALIDATE         | revision unit tests PASS; full validate pending tip push     |
-| ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale; 36 commits behind tip before redeploy)     |
-| ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale; 71 commits behind tip before redeploy)     |
+| LOCAL_VALIDATE         | `PASS` — `corepack pnpm validate` (contract audit)           |
+| ZEABUR_LIVE_API_SHA    | `2c2b3e9` (stale before tip redeploy)                        |
+| ZEABUR_LIVE_WEB_SHA    | `22ba38b` (stale before tip redeploy)                        |
 | ZEABUR_REDEPLOY        | **BLOCKED** — Owner must provide `ZEABUR_TOKEN` (+ `ZEABUR_ENV_ID`) |
 | PR_TITLE_STATUS        | WIP conventional title on PR #19                             |
 | REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                          |
@@ -62,6 +62,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                         |
 | POST_OVERBUILD_TECHNICAL_AUDIT_SHA         | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                        |
 | **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**  | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                     |
+| **CROSS_SERVICE_CONTRACT_AUDIT_SHA**       | _(after rebase tip)_                       | Cross-service DTO drift audit + shared LFG/admin transport     |
 
 ## Module discovery status (summary)
 
@@ -94,4 +95,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-22 — Zeabur production readiness audit (`V2-ZEABUR-PRODUCTION-READINESS-AUDIT-001`); LFG status unchanged (`READY_FOR_CHATGPT_REAUDIT`).
+2026-08-24 — Cross-service contract drift audit (`V2-CROSS-SERVICE-CONTRACT-DRIFT-AUDIT-001`); LFG status unchanged (`READY_FOR_CHATGPT_REAUDIT`).
