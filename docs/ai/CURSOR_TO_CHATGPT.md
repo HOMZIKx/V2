@@ -13,7 +13,7 @@ PR: #19
 
 ## Final source reaudit
 
-Checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** — (recorded after commit)
+Checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** — `d5862da470412343606c7283c827b036981a9cbe`
 
 Base: `d596a9f6a25e89e4afb0f844f7a4f15922db5590`
 

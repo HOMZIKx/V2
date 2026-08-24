@@ -371,7 +371,7 @@ CRITICAL/HIGH (LFG final scope) — 0
 
 Task: `V2-LFG-FINAL-CODE-CLOSURE-AND-RESERVATIONS-DISCOVERY-008`  
 Base remote HEAD: `d596a9f6a25e89e4afb0f844f7a4f15922db5590` (PR #19)  
-Audit checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** (recorded after this pass)
+Audit checkpoint: **`DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA`** — `d5862da470412343606c7283c827b036981a9cbe`
 
 **LFG_CODE_STATUS = READY_FOR_CHATGPT_APPROVAL**  
 (Live runtime verification remains a **separate** task — not claimed here.)
