@@ -1245,6 +1245,7 @@ describe('ActivityInteractionHandler LFG wizard', () => {
         characterId: 'char-1',
         characterLabel: 'Main',
         classSpecKey: 'warrior_body',
+        classSpecLabel: 'Wojownik Ciało',
         characterSupportedRoles: ['TANK', 'DPS'],
         sessionRoles: ['TANK'],
         timePreset: 'now',

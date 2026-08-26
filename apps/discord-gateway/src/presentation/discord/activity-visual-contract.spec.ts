@@ -19,7 +19,7 @@ function toJson(component: unknown): Record<string, unknown> {
 }
 
 describe('Activity Discord visual contract', () => {
-  it('keeps hub as one Container with module accent, map copy and StringSelect navigation', () => {
+  it('keeps hub as one Container with module accent and direct Centrum actions', () => {
     const payload = renderActivityHubMessage({
       opaquePanelId: 'aabbccddeeff',
       signingSecret: secret,
@@ -34,10 +34,15 @@ describe('Activity Discord visual contract', () => {
     const json = JSON.stringify(container);
     expect(json).not.toMatch(/"style"\s*:\s*1\b/);
     expect(json).toContain('V2 Centrum');
-    expect(json).toContain('**Mapa V2**');
-    expect(json).toContain(':panel:aabbccddeeff:module');
-    expect(json).toContain('Aktywności');
+    expect(json).toContain('**GRA**');
+    expect(json).toContain('**DLA CIEBIE**');
+    expect(json).toContain('Szukam ekipy');
     expect(json).toContain('Mój profil');
+    expect(json).toContain('Wkrótce:');
+    expect(json).not.toContain('**Mapa V2**');
+    expect(json).not.toContain('"value":"activities"');
+    expect(json).not.toContain('"value":"reservations"');
+    expect(json).toContain(':panel:aabbccddeeff:module');
     expect(json).toContain('attachment://centrum-aktywnosci-icon.webp');
     expect(json).not.toContain('attachment://utworz-wydarzenie-icon.webp');
     expect(json).not.toContain('attachment://szukam-ekipy-icon.webp');

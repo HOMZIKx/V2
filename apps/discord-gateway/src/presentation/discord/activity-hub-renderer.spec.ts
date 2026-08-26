@@ -57,12 +57,16 @@ describe('activity-hub-renderer', () => {
 
     const serialized = JSON.stringify(container);
     expect(serialized).toContain('V2 Centrum');
-    expect(serialized).toContain('**Mapa V2**');
     expect(serialized).toContain('**GRA**');
-    expect(serialized).toContain('**TY**');
-    expect(serialized).toContain('Aktywności');
+    expect(serialized).toContain('**DLA CIEBIE**');
+    expect(serialized).toContain('Szukam ekipy');
+    expect(serialized).toContain('Utwórz aktywność');
     expect(serialized).toContain('Mój profil');
-    expect(serialized).toContain('Nie wybrano żadnej opcji');
+    expect(serialized).toContain('Wkrótce:');
+    expect(serialized).not.toContain('**Mapa V2**');
+    expect(serialized).not.toContain('"value":"activities"');
+    expect(serialized).not.toContain('"value":"reservations"');
+    expect(serialized).toContain('Wybierz działanie');
     expect(serialized).toContain(`:panel:${opaquePanelId}:module`);
     expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'module', secret));
     expect(serialized.toLowerCase()).not.toContain('zgłoś');
@@ -70,6 +74,8 @@ describe('activity-hub-renderer', () => {
     expect(serialized).not.toMatch(DEVELOPER_VOCAB);
     expect(serialized).not.toMatch(RANDOM_EMOJI);
     expect(serialized).not.toContain('V2 LAB');
+    expect(serialized).not.toContain('Shell V2');
+    expect(serialized).not.toContain('trafienia');
 
     const components = (container.components as Array<Record<string, unknown>>) ?? [];
     const actionRows = components.filter((c) => c.type === ComponentType.ActionRow);

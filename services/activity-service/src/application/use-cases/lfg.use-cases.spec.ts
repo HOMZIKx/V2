@@ -228,7 +228,7 @@ describe('searchLfgMatches', () => {
     );
     expect(result.matches.length).toBeGreaterThan(0);
     expect(result.matches[0]?.matchReason).toContain('rola');
-    expect(result.matches[0]?.roleNeedSummary).toContain('BUFF');
+    expect(result.matches[0]?.roleNeedSummary).toContain('Buff');
     expect(result.matches[0]?.eligiblePartyRoles).toContain('BUFF');
     expect(result.matches[0]?.suggestedPartyRole).toBe('BUFF');
   });

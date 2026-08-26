@@ -38,7 +38,7 @@ export const DEFAULT_PARTY_ROLE_CATALOG: readonly PartyRoleCatalogEntry[] = [
   },
   {
     key: 'FLEX',
-    label: 'Any / Flex',
+    label: 'Dowolna',
     description: 'Elastyczna rola według potrzeb grupy.',
     enabled: true,
     sortOrder: 40,

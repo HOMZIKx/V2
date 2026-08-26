@@ -138,22 +138,36 @@ export function applyProfileCharacter(
       characterId: null,
       characterLabel: null,
       classSpecKey: null,
+      classSpecLabel: null,
       characterSupportedRoles: [],
       sessionRoles: [],
     };
   }
   const supported = character.partyRoles.filter(isPartyRoleKey);
-  const sessionRoles =
-    state.sessionRoles.length > 0
+  const characterChanged = state.characterId !== character.id;
+  // On character change (or first bind): session roles = all supported capabilities.
+  // Same character: keep narrowed session roles that remain valid.
+  const sessionRoles = characterChanged
+    ? supported
+    : state.sessionRoles.length > 0
       ? state.sessionRoles.filter((role) => supported.includes(role))
       : supported;
+  const classSpecLabel =
+    character.classSpecLabel ??
+    listEnabledClassSpecs(DEFAULT_CLASS_SPEC_CATALOG).find(
+      (entry) => entry.key === character.classSpecKey,
+    )?.label ??
+    character.classSpecKey;
   return {
     ...state,
     characterId: character.id,
     characterLabel: character.nickname,
     classSpecKey: character.classSpecKey,
+    classSpecLabel,
     characterSupportedRoles: supported,
     sessionRoles: sessionRoles.length > 0 ? sessionRoles : supported,
+    pendingQuickAdd: null,
+    screen: state.screen === 'add_character' ? 'wizard' : state.screen,
   };
 }
 
@@ -290,6 +304,21 @@ export function renderLfgHubEphemeral(input: LfgHubRenderInput): InteractionRepl
   if (input.state.screen === 'match_view' && input.state.viewedMatchOpaqueId !== null) {
     return renderMatchViewScreen(input);
   }
+  if (input.state.screen === 'edit_dungeon') {
+    return renderEditDungeonScreen(input);
+  }
+  if (input.state.screen === 'edit_character') {
+    return renderEditCharacterScreen(input);
+  }
+  if (input.state.screen === 'add_character') {
+    return renderAddCharacterScreen(input);
+  }
+  if (input.state.screen === 'edit_roles') {
+    return renderEditSessionRolesScreen(input);
+  }
+  if (input.state.screen === 'edit_time') {
+    return renderEditTimeScreen(input);
+  }
   return renderWizardScreen(input);
 }
 
@@ -297,21 +326,35 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
   const { opaquePanelId, signingSecret, state, profile } = input;
   const dungeon = LFG_DUNGEON_ACTIVITY_TYPES.find((entry) => entry.key === state.dungeonKey);
   const timeLabel = resolveLfgTimeLabel(state);
-  const characterLine =
+  const profession =
+    state.classSpecLabel ??
+    (state.classSpecKey !== null
+      ? (listEnabledClassSpecs(DEFAULT_CLASS_SPEC_CATALOG).find(
+          (entry) => entry.key === state.classSpecKey,
+        )?.label ?? state.classSpecKey)
+      : null);
+  const characterSummary =
     state.characterLabel !== null
-      ? `**${state.characterLabel}** (${state.classSpecKey ?? '?'})`
+      ? `${state.characterLabel}${profession !== null ? ` · ${profession}` : ''}`
       : profile === null || profile.characters.length === 0
-        ? '_Brak postaci — dodaj szybko poniżej._'
-        : '_Wybierz postać._';
+        ? 'Nie masz jeszcze zapisanej postaci.'
+        : 'Nie wybrano';
 
   const headerLines = [
     '## Szukam ekipy',
-    'Dopasowanie prywatne — bez publicznych ogłoszeń.',
+    'Znajdziemy ekipę pasującą do Twojej postaci i czasu.',
     '',
-    `**Dungeon:** ${dungeon?.label ?? 'Nie wybrano'}`,
-    `**Postać:** ${characterLine}`,
-    `**Role sesji:** ${formatSessionRoles(state.sessionRoles)}`,
-    `**Czas:** ${timeLabel}`,
+    `**Loch**`,
+    dungeon?.label ?? '_Nie wybrano_',
+    '',
+    `**Postać**`,
+    characterSummary,
+    '',
+    `**Rola w tej ekipie**`,
+    formatSessionRoles(state.sessionRoles),
+    '',
+    `**Kiedy**`,
+    timeLabel,
   ];
   if (input.statusLine !== undefined && input.statusLine.length > 0) {
     headerLines.push('', input.statusLine);
@@ -324,111 +367,44 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
       new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
     );
 
-  const dungeonSelect = new StringSelectMenuBuilder()
-    .setCustomId(createLfgCustomId(opaquePanelId, 'dungeon', signingSecret))
-    .setPlaceholder(dungeon === undefined ? 'Wybierz dungeon' : dungeon.label)
-    .addOptions(
-      LFG_DUNGEON_ACTIVITY_TYPES.map((entry) =>
-        new StringSelectMenuOptionBuilder()
-          .setLabel(entry.label)
-          .setValue(entry.key)
-          .setDescription(`Dungeon LFG — ${entry.label}`)
-          .setDefault(entry.key === state.dungeonKey),
-      ),
-    );
-  container.addActionRowComponents(
-    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dungeonSelect),
-  );
-
+  const changeRow: ButtonBuilder[] = [
+    new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'edit_dungeon'))
+      .setLabel('Zmień loch')
+      .setStyle(ButtonStyle.Secondary),
+  ];
   if (profile !== null && profile.characters.length > 0) {
-    const characterSelect = new StringSelectMenuBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'character', signingSecret))
-      .setPlaceholder('Zmień postać')
-      .addOptions(
-        profile.characters.slice(0, 25).map((entry) =>
-          new StringSelectMenuOptionBuilder()
-            .setLabel(entry.nickname)
-            .setValue(entry.id)
-            .setDescription(entry.classSpecLabel ?? entry.classSpecKey)
-            .setDefault(entry.id === state.characterId),
-        ),
-      );
-    container.addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(characterSelect),
+    changeRow.push(
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'edit_character'))
+        .setLabel('Zmień postać')
+        .setStyle(ButtonStyle.Secondary),
     );
   } else {
-    const quickAddSelect = new StringSelectMenuBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'quick_add', signingSecret))
-      .setPlaceholder('Szybkie dodanie postaci — wybierz klasę/spec')
-      .addOptions(
-        listEnabledClassSpecs(DEFAULT_CLASS_SPEC_CATALOG)
-          .slice(0, 25)
-          .map((entry) =>
-            new StringSelectMenuOptionBuilder()
-              .setLabel(entry.label)
-              .setValue(entry.key)
-              .setDescription('Utworzy postać z Twoim nickiem Discord'),
-          ),
-      );
-    container.addActionRowComponents(
-      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(quickAddSelect),
+    changeRow.push(
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'add_character'))
+        .setLabel('Dodaj postać')
+        .setStyle(ButtonStyle.Primary),
     );
-    if (state.pendingQuickAdd !== null) {
-      const quickRoles = enabledPartyRoles().map((role) => {
-        const active = state.pendingQuickAdd!.partyRoles.includes(role);
-        const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
-        return new ButtonBuilder()
-          .setCustomId(createLfgCustomId(opaquePanelId, 'quick_add_role', signingSecret, role))
-          .setLabel(catalog?.label ?? role)
-          .setStyle(active ? ButtonStyle.Primary : ButtonStyle.Secondary);
-      });
-      container.addActionRowComponents(
-        new ActionRowBuilder<ButtonBuilder>().addComponents(...quickRoles),
-      );
-      container.addActionRowComponents(
-        new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(createLfgCustomId(opaquePanelId, 'confirm_quick_add', signingSecret))
-            .setLabel('Zapisz postać')
-            .setStyle(ButtonStyle.Success)
-            .setDisabled(state.pendingQuickAdd.partyRoles.length === 0),
-        ),
-      );
-    }
   }
-
-  const roleButtons = ALL_ROLES.map((role) => {
-    const supported = state.characterSupportedRoles.includes(role);
-    const active = state.sessionRoles.includes(role);
-    const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
-    return new ButtonBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'role', signingSecret, role))
-      .setLabel(catalog?.label ?? role)
-      .setStyle(active ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setDisabled(!supported);
-  });
-  container.addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(...roleButtons),
-  );
-
-  const timeButtons = [
-    { preset: 'now' as const, label: 'Teraz' },
-    { preset: 'plus2h' as const, label: '+2 h' },
-    { preset: 'evening' as const, label: 'Wieczór' },
-  ].map(({ preset, label }) =>
+  if (state.characterId !== null) {
+    changeRow.push(
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'edit_roles'))
+        .setLabel('Zmień rolę')
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+  changeRow.push(
     new ButtonBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'time', signingSecret, preset))
-      .setLabel(label)
-      .setStyle(state.timePreset === preset ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'edit_time'))
+      .setLabel('Zmień czas')
+      .setStyle(ButtonStyle.Secondary),
   );
-  timeButtons.push(
-    new ButtonBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'custom_time', signingSecret))
-      .setLabel('Wybierz czas')
-      .setStyle(state.timePreset === 'custom' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-  );
+  // Discord allows max 5 buttons per row — split if needed
   container.addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(...timeButtons),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(...changeRow.slice(0, 5)),
   );
 
   const readyToSearch = isWizardReady(state);
@@ -501,8 +477,8 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
           '### Brak dopasowań',
           'Nie ma teraz otwartej ekipy pasującej do Twoich kryteriów.',
           '',
-          '**Znajdź mi ekipę** — powiadomimy Cię prywatnie, gdy pojawi się dopasowanie.',
-          '**Utwórz własną** — tylko gdy naprawdę chcesz organizować.',
+          '**Znajdź mi ekipę** — damy znać prywatnie, gdy pojawi się dopasowanie.',
+          '**Utwórz własną** — tylko gdy chcesz organizować.',
         ].join('\n'),
       ),
     );
@@ -520,21 +496,244 @@ function renderWizardScreen(input: LfgHubRenderInput): InteractionReplyOptions {
     );
   }
 
-  const footerButtons = [
-    new ButtonBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'search', signingSecret))
-      .setLabel('Szukaj')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(!readyToSearch),
-    new ButtonBuilder()
-      .setCustomId(createLfgCustomId(opaquePanelId, 'my_searches', signingSecret))
-      .setLabel('Moje poszukiwania')
-      .setStyle(ButtonStyle.Secondary),
-  ];
   container.addActionRowComponents(
-    new ActionRowBuilder<ButtonBuilder>().addComponents(...footerButtons),
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'search', signingSecret))
+        .setLabel('Znajdź ekipę')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(!readyToSearch),
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'my_searches', signingSecret))
+        .setLabel('Moje poszukiwania')
+        .setStyle(ButtonStyle.Secondary),
+    ),
   );
 
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+function renderBackRow(
+  opaquePanelId: string,
+  signingSecret: string,
+): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'main'))
+      .setLabel('Wróć')
+      .setStyle(ButtonStyle.Secondary),
+  );
+}
+
+function renderEditDungeonScreen(input: LfgHubRenderInput): InteractionReplyOptions {
+  const { opaquePanelId, signingSecret, state } = input;
+  const dungeonSelect = new StringSelectMenuBuilder()
+    .setCustomId(createLfgCustomId(opaquePanelId, 'dungeon', signingSecret))
+    .setPlaceholder('Wybierz loch')
+    .addOptions(
+      LFG_DUNGEON_ACTIVITY_TYPES.map((entry) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(entry.label)
+          .setValue(entry.key)
+          .setDefault(entry.key === state.dungeonKey),
+      ),
+    );
+  const container = new ContainerBuilder()
+    .setAccentColor(LFG_WIZARD_ACCENT)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(['## Loch', 'Wybierz loch do poszukiwania.'].join('\n')),
+    )
+    .addActionRowComponents(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(dungeonSelect),
+    )
+    .addActionRowComponents(renderBackRow(opaquePanelId, signingSecret));
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+function renderEditCharacterScreen(input: LfgHubRenderInput): InteractionReplyOptions {
+  const { opaquePanelId, signingSecret, state, profile } = input;
+  const container = new ContainerBuilder()
+    .setAccentColor(LFG_WIZARD_ACCENT)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        ['## Postać', 'Wybierz postać — role w tej ekipie ustawią się automatycznie.'].join('\n'),
+      ),
+    );
+  if (profile !== null && profile.characters.length > 0) {
+    const characterSelect = new StringSelectMenuBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'character', signingSecret))
+      .setPlaceholder('Wybierz postać')
+      .addOptions(
+        profile.characters.slice(0, 25).map((entry) =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(entry.nickname)
+            .setValue(entry.id)
+            .setDescription((entry.classSpecLabel ?? entry.classSpecKey).slice(0, 100))
+            .setDefault(entry.id === state.characterId),
+        ),
+      );
+    container.addActionRowComponents(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(characterSelect),
+    );
+  }
+  container.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'add_character'))
+        .setLabel('Dodaj postać')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'main'))
+        .setLabel('Wróć')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+function renderAddCharacterScreen(input: LfgHubRenderInput): InteractionReplyOptions {
+  const { opaquePanelId, signingSecret, state } = input;
+  const container = new ContainerBuilder()
+    .setAccentColor(LFG_WIZARD_ACCENT)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        [
+          '## Dodaj postać',
+          'Wybierz profesję, potem role tej postaci.',
+          'Po zapisie od razu wrócisz do Szukam ekipy z wybraną postacią.',
+        ].join('\n'),
+      ),
+    );
+  const quickAddSelect = new StringSelectMenuBuilder()
+    .setCustomId(createLfgCustomId(opaquePanelId, 'quick_add', signingSecret))
+    .setPlaceholder(
+      state.pendingQuickAdd !== null
+        ? (listEnabledClassSpecs(DEFAULT_CLASS_SPEC_CATALOG).find(
+            (entry) => entry.key === state.pendingQuickAdd!.classSpecKey,
+          )?.label ?? 'Profesja')
+        : 'Wybierz profesję',
+    )
+    .addOptions(
+      listEnabledClassSpecs(DEFAULT_CLASS_SPEC_CATALOG)
+        .slice(0, 25)
+        .map((entry) =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(entry.label)
+            .setValue(entry.key)
+            .setDefault(state.pendingQuickAdd?.classSpecKey === entry.key),
+        ),
+    );
+  container.addActionRowComponents(
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(quickAddSelect),
+  );
+  if (state.pendingQuickAdd !== null) {
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent('**Role tej postaci** (możliwości postaci)'),
+    );
+    const quickRoles = enabledPartyRoles().map((role) => {
+      const active = state.pendingQuickAdd!.partyRoles.includes(role);
+      const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
+      return new ButtonBuilder()
+        .setCustomId(createLfgCustomId(opaquePanelId, 'quick_add_role', signingSecret, role))
+        .setLabel(catalog?.label ?? role)
+        .setStyle(active ? ButtonStyle.Primary : ButtonStyle.Secondary);
+    });
+    container.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(...quickRoles),
+    );
+    container.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(createLfgCustomId(opaquePanelId, 'confirm_quick_add', signingSecret))
+          .setLabel('Zapisz i użyj')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(state.pendingQuickAdd.partyRoles.length === 0),
+        new ButtonBuilder()
+          .setCustomId(createLfgCustomId(opaquePanelId, 'nav', signingSecret, 'main'))
+          .setLabel('Wróć')
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    );
+  } else {
+    container.addActionRowComponents(renderBackRow(opaquePanelId, signingSecret));
+  }
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+function renderEditSessionRolesScreen(input: LfgHubRenderInput): InteractionReplyOptions {
+  const { opaquePanelId, signingSecret, state } = input;
+  const container = new ContainerBuilder()
+    .setAccentColor(LFG_WIZARD_ACCENT)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        [
+          '## Rola w tej ekipie',
+          'Domyślnie: wszystkie role tej postaci.',
+          'Możesz zawęzić wybór na to poszukiwanie.',
+          '',
+          `Aktualnie: ${formatSessionRoles(state.sessionRoles)}`,
+        ].join('\n'),
+      ),
+    );
+  const roleButtons = ALL_ROLES.map((role) => {
+    const supported = state.characterSupportedRoles.includes(role);
+    const active = state.sessionRoles.includes(role);
+    const catalog = DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role);
+    return new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'role', signingSecret, role))
+      .setLabel(catalog?.label ?? role)
+      .setStyle(active ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(!supported);
+  });
+  container.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(...roleButtons),
+  );
+  container.addActionRowComponents(renderBackRow(opaquePanelId, signingSecret));
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+function renderEditTimeScreen(input: LfgHubRenderInput): InteractionReplyOptions {
+  const { opaquePanelId, signingSecret, state } = input;
+  const timeButtons = [
+    { preset: 'now' as const, label: 'Teraz' },
+    { preset: 'plus2h' as const, label: '+2 h' },
+    { preset: 'evening' as const, label: 'Wieczór' },
+  ].map(({ preset, label }) =>
+    new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'time', signingSecret, preset))
+      .setLabel(label)
+      .setStyle(state.timePreset === preset ? ButtonStyle.Primary : ButtonStyle.Secondary),
+  );
+  timeButtons.push(
+    new ButtonBuilder()
+      .setCustomId(createLfgCustomId(opaquePanelId, 'custom_time', signingSecret))
+      .setLabel('Własny czas')
+      .setStyle(state.timePreset === 'custom' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+  );
+  const container = new ContainerBuilder()
+    .setAccentColor(LFG_WIZARD_ACCENT)
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        ['## Kiedy', `Aktualnie: ${resolveLfgTimeLabel(state)}`].join('\n'),
+      ),
+    )
+    .addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(...timeButtons))
+    .addActionRowComponents(renderBackRow(opaquePanelId, signingSecret));
   return {
     components: [container],
     flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,

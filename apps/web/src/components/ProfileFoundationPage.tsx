@@ -1,25 +1,22 @@
 'use client';
 
-import { DEFAULT_CLASS_SPEC_CATALOG, DEFAULT_PARTY_ROLE_CATALOG } from '@v2/hub-core';
+import { DEFAULT_PARTY_ROLE_CATALOG, listEnabledClassSpecs } from '@v2/hub-core';
 
 export function ProfileFoundationPage() {
   return (
     <div className="member-page">
       <h1>Mój profil</h1>
-      <p>
-        Fundament profilu V2 wspólny dla Discord, WWW, LFG i powiadomień. Klasa/spec jest osobna od
-        roli party.
-      </p>
+      <p>Twoje postacie, profesje i role — wspólne dla Discorda i WWW.</p>
       <section>
-        <h2>Katalog klasy / spec</h2>
+        <h2>Profesje</h2>
         <ul>
-          {DEFAULT_CLASS_SPEC_CATALOG.filter((entry) => entry.enabled).map((entry) => (
+          {listEnabledClassSpecs().map((entry) => (
             <li key={entry.key}>{entry.label}</li>
           ))}
         </ul>
       </section>
       <section>
-        <h2>Role party</h2>
+        <h2>Role w ekipie</h2>
         <ul>
           {DEFAULT_PARTY_ROLE_CATALOG.map((entry) => (
             <li key={entry.key}>
@@ -29,8 +26,7 @@ export function ProfileFoundationPage() {
         </ul>
       </section>
       <p className="muted">
-        Edycja postaci i zainteresowań przez API Identity (`/identity/v1/profile`) — UI formularza w
-        kolejnej iteracji.
+        Pełna edycja postaci dostępna też w Discordzie (Mój profil / Szukam ekipy).
       </p>
     </div>
   );

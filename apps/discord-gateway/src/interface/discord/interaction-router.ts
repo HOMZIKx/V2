@@ -110,8 +110,7 @@ export class InteractionRouter {
         error: safeErrorMessage(error, this.secrets),
       });
       if (interaction.isRepliable()) {
-        const content =
-          'Nie udało się obsłużyć interakcji. Spróbuj ponownie albo użyj `/panel-test`.';
+        const content = 'Nie udało się odświeżyć tego widoku. Spróbuj ponownie.';
         if (interaction.deferred || interaction.replied) {
           await interaction.followUp({ content, flags: MessageFlags.Ephemeral });
         } else {
@@ -244,7 +243,7 @@ export class InteractionRouter {
       );
     } catch {
       await interaction.reply({
-        content: 'Ten panel jest nieaktualny. Użyj `/panel-test`, aby opublikować nowy.',
+        content: 'Ten panel jest już nieaktualny. Otwórz aktualne V2 Centrum.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -252,7 +251,7 @@ export class InteractionRouter {
 
     if (parsed.payload !== panelPayload() && !parsed.payload.startsWith(`${panelPayload()}m`)) {
       await interaction.reply({
-        content: 'Ten panel jest nieaktualny. Użyj `/panel-test`, aby opublikować nowy.',
+        content: 'Ten panel jest już nieaktualny. Otwórz aktualne V2 Centrum.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -417,7 +416,7 @@ export class InteractionRouter {
       parseSignedCustomId(interaction.customId, this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET);
     } catch {
       await interaction.reply({
-        content: 'Ten panel jest nieaktualny. Użyj `/panel-test`, aby opublikować nowy.',
+        content: 'Ten panel jest już nieaktualny. Otwórz aktualne V2 Centrum.',
         flags: MessageFlags.Ephemeral,
       });
       return;

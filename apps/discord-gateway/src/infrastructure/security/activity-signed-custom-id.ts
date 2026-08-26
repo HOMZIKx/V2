@@ -5,7 +5,8 @@ export const ACTIVITY_CUSTOM_ID_VERSION = 'v1';
 
 export type ActivityCustomScope = 'panel' | 'event' | 'draft' | 'modal';
 
-export type ActivityPanelAction = 'create' | 'lfg' | 'mine' | 'inbox' | 'module';
+export type ActivityPanelAction =
+  'create' | 'lfg' | 'lfg_add' | 'mine' | 'inbox' | 'module' | 'profile_set';
 
 export type ActivityEventAction =
   | 'rsvp'
@@ -37,7 +38,15 @@ export type ActivityDraftAction =
   | 'section_extra';
 
 export type ActivityModalKind =
-  'create' | 'lfg' | 'edit' | 'report' | 'basics' | 'schedule' | 'lfg_time' | 'lfg_watch_edit';
+  | 'create'
+  | 'lfg'
+  | 'edit'
+  | 'report'
+  | 'basics'
+  | 'schedule'
+  | 'lfg_time'
+  | 'lfg_watch_edit'
+  | 'lfg_char_nick';
 
 export type ParsedActivityCustomId =
   | {
@@ -66,7 +75,15 @@ export type ParsedActivityCustomId =
       signature: string;
     };
 
-const PANEL_ACTIONS = new Set<ActivityPanelAction>(['create', 'lfg', 'mine', 'inbox', 'module']);
+const PANEL_ACTIONS = new Set<ActivityPanelAction>([
+  'create',
+  'lfg',
+  'lfg_add',
+  'mine',
+  'inbox',
+  'module',
+  'profile_set',
+]);
 const EVENT_ACTIONS = new Set<ActivityEventAction>([
   'rsvp',
   'participants',
@@ -105,6 +122,7 @@ const MODAL_KINDS = new Set<ActivityModalKind>([
   'schedule',
   'lfg_time',
   'lfg_watch_edit',
+  'lfg_char_nick',
 ]);
 
 function base64Url(buffer: Buffer): string {

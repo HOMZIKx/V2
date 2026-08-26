@@ -40,7 +40,7 @@ const ASSET_DEFINITIONS: Readonly<
   activityHub: {
     filename: 'centrum-aktywnosci-icon.webp',
     attachmentUrl: 'attachment://centrum-aktywnosci-icon.webp',
-    alt: 'Centrum Aktywności',
+    alt: 'V2 Centrum',
     optional: false,
     ownerStatus: null,
   },

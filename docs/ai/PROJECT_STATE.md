@@ -2,7 +2,7 @@
 
 ## Status
 
-`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_REQUIRED` → **`READY_FOR_CHATGPT_REAUDIT`** (code) · runtime **not** UI-verified
+`V2-DISCORD-OWNER-UX-CORRECTION-PACK-002` → code **`LOCAL_VALIDATE PASS`** · runtime **not** Owner UI-verified
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT CI GREEN** · **NOT RUNTIME VERIFIED AT HEAD**
 
@@ -14,22 +14,22 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 | Field                   | Value                                                                                                |
 | ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-CHATGPT-INTEGRATED-REVIEW-REMEDIATION-001`                                                       |
-| REVIEW_POSTURE          | `READY_FOR_CHATGPT_REAUDIT` (code)                                                                   |
-| CODE_STATUS             | `READY_FOR_CHATGPT_REAUDIT`                                                                          |
+| CURRENT_TASK            | `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`                                                            |
+| REVIEW_POSTURE          | Owner UX pack ready for live TEST Discord verification                                               |
+| CODE_STATUS             | `LOCAL_VALIDATE_PASS`                                                                                |
 | CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                                                       |
 | LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)                                       |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                                                        |
-| CURRENT_HEAD / PR_HEAD  | `f0ac9771f1eee53e914168a5f503323bb5bf9b08`                                                           |
+| CURRENT_HEAD / PR_HEAD  | _(pin after commit)_                                                                                 |
 | PR                      | #19 — **do not merge**                                                                               |
 | PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                                                     |
 | CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                                         |
 | LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke                                         |
 | RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — hub reconcile 403; see report                                  |
 | RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                                                        |
-| ZEABUR_LIVE_DISCORD_SHA | `debd87ef41f93f2fdeae446de94afbafc5bf128d` (**MATCH tip**)                                           |
-| ZEABUR_LIVE_API_SHA     | `2c2b3e9` (stale; dockerfile sync Permission denied)                                                 |
-| ZEABUR_DEPLOY           | CLI auth OK; activity+discord redeployed 2026-08-26; Activity Identity S2S **OWNER_ACTION_REQUIRED** |
+| ZEABUR_LIVE_DISCORD_SHA | prior tip match; redeploy after this pack SHA                                                        |
+| ZEABUR_LIVE_API_SHA     | stale risk remains                                                                                   |
+| ZEABUR_DEPLOY           | Activity Identity S2S **OWNER_ACTION_REQUIRED**                                                      |
 | PR_TITLE_STATUS         | WIP conventional title on PR #19                                                                     |
 | REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                                                  |
 
@@ -63,6 +63,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA**     | `d5862da470412343606c7283c827b036981a9cbe` | **READY_FOR_CHATGPT_APPROVAL** — final source reaudit + lifecycle             |
 | **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Prior pass — HIGH closure **incomplete** (ChatGPT found residuals)            |
 | **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
+| **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**      | _(pin after commit)_                       | Owner Discord UX correction pack 002                                          |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
@@ -113,4 +114,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-26 — tip redeploy: discord SHA match; hub auto-reconcile 403 (`ACTIVITY_ENABLED=false`); runtime UI still open.
+2026-08-26 — `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`: Centrum direct actions, LFG edit-in-place, Polish professions, profile workspace; `LOCAL_VALIDATE` PASS; runtime Owner checklist still open.

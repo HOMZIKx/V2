@@ -80,6 +80,118 @@ describe('lfg-hub-ephemeral', () => {
     expect(state.sessionRoles).toEqual(['DPS']);
   });
 
+  it('defaults session roles to all supported roles when selecting a character', () => {
+    const profile = {
+      userId: 'u1',
+      displayName: null,
+      activeCharacterId: 'char-a',
+      characters: [
+        {
+          id: 'char-a',
+          nickname: 'KuzynBuff',
+          classSpecKey: 'shaman_dragon',
+          classSpecLabel: 'Szaman Smok',
+          partyRoles: ['BUFF', 'DPS'] as ('BUFF' | 'DPS')[],
+          isDefault: true,
+        },
+      ],
+      interestKeys: [],
+    } satisfies IdentityProfile;
+    let state = applyProfileCharacter(createDefaultLfgWizardState(), profile, 'char-a');
+    expect(state.characterId).toBe('char-a');
+    expect(state.classSpecLabel).toBe('Szaman Smok');
+    expect(state.sessionRoles).toEqual(['BUFF', 'DPS']);
+    expect(isWizardReady({ ...state, dungeonKey: 'azrael', timePreset: 'evening' })).toBe(true);
+
+    state = toggleSessionRole(state, 'DPS');
+    expect(state.sessionRoles).toEqual(['BUFF']);
+  });
+
+  it('after quick-create state, selecting new character resets session roles to supported set', () => {
+    const before = {
+      ...createDefaultLfgWizardState(),
+      characterId: 'old',
+      sessionRoles: ['TANK'] as 'TANK'[],
+      characterSupportedRoles: ['TANK', 'DPS'] as ('TANK' | 'DPS')[],
+    };
+    const profile = {
+      userId: 'u1',
+      displayName: null,
+      activeCharacterId: 'new',
+      characters: [
+        {
+          id: 'new',
+          nickname: 'Pasek',
+          classSpecKey: 'warrior_body',
+          classSpecLabel: 'Wojownik Ciało',
+          partyRoles: ['DPS'] as 'DPS'[],
+          isDefault: true,
+        },
+      ],
+      interestKeys: [],
+    } satisfies IdentityProfile;
+    const state = applyProfileCharacter(before, profile, 'new');
+    expect(state.characterId).toBe('new');
+    expect(state.sessionRoles).toEqual(['DPS']);
+    expect(state.pendingQuickAdd).toBeNull();
+  });
+
+  it('add_character screen lists only enabled Polish professions', () => {
+    const view = renderLfgHubEphemeral({
+      opaquePanelId: opaquePanel,
+      signingSecret: secret,
+      state: { ...createDefaultLfgWizardState(), screen: 'add_character' },
+      profile: null,
+    });
+    const serialized = JSON.stringify(view.components);
+    expect(serialized).toContain('Dodaj postać');
+    expect(serialized).toContain('Wojownik Ciało');
+    expect(serialized).toContain('Szaman Leczenie');
+    expect(serialized).not.toContain('Lycan');
+    expect(serialized).not.toContain('Likan');
+    expect(serialized).not.toContain('Wojownik Body');
+  });
+
+  it('main wizard is a summary without permanent profession dropdown', () => {
+    const view = renderLfgHubEphemeral({
+      opaquePanelId: opaquePanel,
+      signingSecret: secret,
+      state: {
+        ...createDefaultLfgWizardState(),
+        dungeonKey: 'azrael',
+        characterId: 'c1',
+        characterLabel: 'KuzynBuff',
+        classSpecKey: 'shaman_dragon',
+        classSpecLabel: 'Szaman Smok',
+        characterSupportedRoles: ['BUFF', 'DPS'],
+        sessionRoles: ['BUFF'],
+        timePreset: 'evening',
+      },
+      profile: {
+        userId: 'u1',
+        displayName: null,
+        activeCharacterId: 'c1',
+        characters: [
+          {
+            id: 'c1',
+            nickname: 'KuzynBuff',
+            classSpecKey: 'shaman_dragon',
+            classSpecLabel: 'Szaman Smok',
+            partyRoles: ['BUFF', 'DPS'],
+            isDefault: true,
+          },
+        ],
+        interestKeys: [],
+      },
+    });
+    const serialized = JSON.stringify(view.components);
+    expect(serialized).toContain('Szukam ekipy');
+    expect(serialized).toContain('Znajdź ekipę');
+    expect(serialized).toContain('Zmień loch');
+    expect(serialized).toContain('KuzynBuff · Szaman Smok');
+    expect(serialized).not.toContain('Szybkie dodanie postaci');
+  });
+
   it('builds search body when wizard is complete', () => {
     const state = {
       ...createDefaultLfgWizardState(),
@@ -87,6 +199,7 @@ describe('lfg-hub-ephemeral', () => {
       characterId: 'c1',
       characterLabel: 'Main',
       classSpecKey: 'warrior_body',
+      classSpecLabel: 'Wojownik Ciało',
       characterSupportedRoles: ['TANK', 'DPS'] as const,
       sessionRoles: ['TANK'] as const,
       timePreset: 'now' as const,

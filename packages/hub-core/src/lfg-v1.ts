@@ -3,13 +3,17 @@
  */
 
 import { DEFAULT_INTEREST_CATALOG } from './catalogs/interests.js';
-import type { PartyRoleKey } from './catalogs/party-role.js';
+import { DEFAULT_PARTY_ROLE_CATALOG, type PartyRoleKey } from './catalogs/party-role.js';
 import type { LfgRoleNeed } from './lfg-matching.js';
 
 /** Dungeon LFG activity types (Issue #20: Azrael + Smok for v1). */
 export const LFG_DUNGEON_ACTIVITY_TYPES = DEFAULT_INTEREST_CATALOG.filter(
   (entry) => entry.enabled && (entry.key === 'azrael' || entry.key === 'smok'),
 );
+
+function partyRolePlayerLabel(role: PartyRoleKey): string {
+  return DEFAULT_PARTY_ROLE_CATALOG.find((entry) => entry.key === role)?.label ?? role;
+}
 
 export type LfgMatchFingerprintInput = {
   readonly activityId: string;
@@ -48,7 +52,7 @@ export function formatLfgRoleNeedSummary(
     .map((need) => {
       const filled = filledByRole[need.role] ?? 0;
       const missing = Math.max(0, need.requiredCount - filled);
-      return missing > 0 ? `${missing} × ${need.role}` : null;
+      return missing > 0 ? `${missing} × ${partyRolePlayerLabel(need.role)}` : null;
     })
     .filter((line): line is string => line !== null);
   if (open.length === 0) {
@@ -62,7 +66,7 @@ export function formatLfgMatchReason(reasons: readonly string[]): string {
     eligible: 'Pasujesz do składu',
     exact_role: 'Twoja rola pasuje',
     preferred_role: 'Preferowana rola',
-    flex_capacity: 'Możesz jako FLEX',
+    flex_capacity: 'Możesz zagrać dowolną rolą',
   };
   for (const reason of reasons) {
     const label = labels[reason];

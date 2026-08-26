@@ -42,7 +42,7 @@ describe('lfg-v1 helpers', () => {
       ],
       { TANK: 1, BUFF: 0 },
     );
-    expect(summary).toContain('BUFF');
+    expect(summary).toContain('Buff');
   });
 
   it('formatLfgMatchReason prefers exact role label', () => {

@@ -32,12 +32,24 @@ export type LfgMatchCard = {
   readonly isFull?: boolean;
 };
 
+export type LfgWizardScreen =
+  | 'wizard'
+  | 'edit_dungeon'
+  | 'edit_character'
+  | 'add_character'
+  | 'edit_roles'
+  | 'edit_time'
+  | 'my_searches'
+  | 'confirm_create'
+  | 'match_view';
+
 export type LfgWizardState = {
-  readonly screen: 'wizard' | 'my_searches' | 'confirm_create' | 'match_view';
+  readonly screen: LfgWizardScreen;
   readonly dungeonKey: string | null;
   readonly characterId: string | null;
   readonly characterLabel: string | null;
   readonly classSpecKey: string | null;
+  readonly classSpecLabel: string | null;
   readonly characterSupportedRoles: readonly PartyRoleKey[];
   readonly sessionRoles: readonly PartyRoleKey[];
   readonly timePreset: LfgTimePreset | null;
@@ -72,6 +84,7 @@ export function createDefaultLfgWizardState(): LfgWizardState {
     characterId: null,
     characterLabel: null,
     classSpecKey: null,
+    classSpecLabel: null,
     characterSupportedRoles: [],
     sessionRoles: [],
     timePreset: null,

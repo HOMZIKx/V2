@@ -86,10 +86,11 @@ describe('hub visual identity', () => {
     const json = JSON.stringify(payload);
     expect(json).not.toMatch(/one-shot|waitlist|reconfirm|opaque/i);
     expect(json).toContain('V2 Centrum');
-    expect(json).toContain('**Mapa V2**');
-    expect(json).toContain('Aktywności');
+    expect(json).toContain('**GRA**');
+    expect(json).toContain('Szukam ekipy');
     expect(json).toContain('Mój profil');
-    expect(json).toContain('Nie wybrano żadnej opcji');
+    expect(json).toContain('Wybierz działanie');
+    expect(json).not.toContain('**Mapa V2**');
     expect(json).not.toContain('edytujesz sekcje w dowolnej kolejności');
     expect(json).not.toContain('Szybsza publikacja tej samej aktywności');
     expect(json).not.toContain('v2-lab-banner');

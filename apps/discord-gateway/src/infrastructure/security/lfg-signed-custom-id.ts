@@ -27,7 +27,8 @@ export type LfgAction =
   | 'watch_edit'
   | 'full_group_watch'
   | 'quick_add_role'
-  | 'confirm_quick_add';
+  | 'confirm_quick_add'
+  | 'nav';
 
 const LFG_ACTIONS = new Set<LfgAction>([
   'dungeon',
@@ -54,6 +55,7 @@ const LFG_ACTIONS = new Set<LfgAction>([
   'full_group_watch',
   'quick_add_role',
   'confirm_quick_add',
+  'nav',
 ]);
 
 export type ParsedLfgCustomId = {

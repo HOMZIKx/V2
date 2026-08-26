@@ -15,8 +15,7 @@ import {
 import { createHash } from 'node:crypto';
 
 import {
-  getHubModule,
-  isHubModuleKey,
+  isHubCentrumActionKey,
   isPartyRoleKey,
   LFG_DUNGEON_ACTIVITY_TYPES,
   type PartyRoleKey,
@@ -68,10 +67,8 @@ import {
 import { toUserFacingError } from '../../presentation/discord/activity-user-errors.js';
 import { DraftUiStateCache } from '../../presentation/discord/draft-ui-state-cache.js';
 import {
-  renderHubActivitiesMenu,
-  renderHubForMeFoundationEphemeral,
-  renderHubProfileFoundationEphemeral,
-  renderHubRoadmapEphemeral,
+  renderHubForMeWorkspace,
+  renderHubProfileWorkspace,
 } from '../../presentation/discord/hub-module-ephemeral.js';
 import {
   applyProfileCharacter,
@@ -86,8 +83,10 @@ import {
   type LfgWatchRow,
 } from '../../presentation/discord/lfg-hub-ephemeral.js';
 import {
+  buildLfgCharacterNickModal,
   buildLfgCustomTimeModal,
   buildLfgWatchEditModal,
+  parseLfgCharacterNickModal,
   parseLfgCustomTimeModal,
   parseLfgWatchEditModal,
 } from '../../presentation/discord/lfg-modals.js';
@@ -389,6 +388,16 @@ export class ActivityInteractionHandler {
       return true;
     }
 
+    if (parsed.scope === 'panel' && parsed.action === 'lfg_add') {
+      await this.openLfgWizard(interaction, parsed.opaqueId, { initialScreen: 'add_character' });
+      return true;
+    }
+
+    if (parsed.scope === 'panel' && parsed.action === 'profile_set') {
+      await this.handleProfileSetActive(interaction, parsed);
+      return true;
+    }
+
     if (
       parsed.scope === 'panel' &&
       parsed.action === 'module' &&
@@ -462,6 +471,70 @@ export class ActivityInteractionHandler {
     const { kind, opaqueId } = parsedModal;
 
     try {
+      if (kind === 'lfg_char_nick' && opaqueId !== undefined) {
+        const nick = parseLfgCharacterNickModal(interaction).nickname;
+        if (nick.length === 0) {
+          await interaction.reply({
+            content: 'Podaj nick postaci w grze.',
+            flags: MessageFlags.Ephemeral,
+          });
+          return true;
+        }
+        const fromEphemeral = this.isEphemeralSourceMessage(interaction);
+        if (fromEphemeral) {
+          await interaction.deferUpdate();
+        } else {
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        }
+        let state = this.readLfgState(interaction.guildId, interaction.user.id, opaqueId);
+        const pending = state.pendingQuickAdd;
+        if (pending === null || pending.partyRoles.length === 0) {
+          await interaction.editReply({
+            content: 'Uzupełnij profesję i role postaci, potem spróbuj ponownie.',
+          });
+          return true;
+        }
+        if (this.identityClient === null) {
+          await interaction.editReply({
+            content: 'Profil niedostępny — spróbuj ponownie później.',
+          });
+          return true;
+        }
+        const created = await this.identityClient.createCharacter(
+          {
+            nickname: nick.slice(0, 64),
+            classSpecKey: pending.classSpecKey,
+            partyRoles: [...pending.partyRoles],
+            isDefault: true,
+          },
+          actorOf(interaction.user.id),
+        );
+        state = applyProfileCharacter(
+          { ...state, characterId: null, sessionRoles: [] },
+          created.profile,
+          created.characterId,
+        );
+        state = {
+          ...state,
+          pendingQuickAdd: null,
+          screen: 'wizard',
+          matches: [],
+          showAllMatches: false,
+        };
+        this.writeLfgState(interaction.guildId, interaction.user.id, opaqueId, state);
+        await interaction.editReply(
+          asEditPayload(
+            this.renderLfgView({
+              opaquePanelId: opaqueId,
+              state,
+              profile: created.profile,
+              statusLine: `Dodano i wybrano **${nick.slice(0, 64)}**.`,
+            }),
+          ),
+        );
+        return true;
+      }
+
       if (kind === 'lfg_time' && opaqueId !== undefined) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const parsedTime = parseLfgCustomTimeModal(interaction);
@@ -708,18 +781,116 @@ export class ActivityInteractionHandler {
   private async openLfgWizard(
     interaction: MessageComponentInteraction,
     opaquePanelId: string,
+    options?: { readonly initialScreen?: LfgWizardState['screen'] },
   ): Promise<void> {
     try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const fromEphemeral = this.isEphemeralSourceMessage(interaction);
+      if (fromEphemeral) {
+        await interaction.deferUpdate();
+      } else {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      }
       const profile = await this.loadProfile(interaction.user.id);
       let state = this.readLfgState(interaction.guildId, interaction.user.id, opaquePanelId);
       state = applyProfileCharacter(state, profile);
+      if (options?.initialScreen !== undefined) {
+        state = { ...state, screen: options.initialScreen, pendingQuickAdd: null };
+      }
       this.writeLfgState(interaction.guildId, interaction.user.id, opaquePanelId, state);
       await interaction.editReply(
         asEditPayload(this.renderLfgView({ opaquePanelId, state, profile })),
       );
     } catch (error) {
       this.deps.logger.error('Centrum LFG wizard open failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      const content = toUserFacingError(error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content });
+      } else {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+      }
+    }
+  }
+
+  private isEphemeralSourceMessage(
+    interaction: MessageComponentInteraction | ModalSubmitInteraction,
+  ): boolean {
+    const message = 'message' in interaction ? interaction.message : null;
+    if (message === null || message === undefined) {
+      return false;
+    }
+    const flags = message.flags;
+    if (flags === null || flags === undefined) {
+      return false;
+    }
+    return flags.has(MessageFlags.Ephemeral);
+  }
+
+  private async handleProfileSetActive(
+    interaction: MessageComponentInteraction,
+    parsed: Extract<ParsedActivityCustomId, { scope: 'panel' }>,
+  ): Promise<void> {
+    if (!interaction.isStringSelectMenu()) {
+      return;
+    }
+    const characterId = interaction.values[0];
+    if (characterId === undefined) {
+      return;
+    }
+    try {
+      await interaction.deferUpdate();
+      if (this.identityClient === null) {
+        await interaction.editReply(
+          asEditPayload(
+            renderHubProfileWorkspace({
+              opaquePanelId: parsed.opaqueId,
+              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+              profile: null,
+              statusLine: 'Profil niedostępny — spróbuj ponownie później.',
+            }),
+          ),
+        );
+        return;
+      }
+      const profile = await this.loadProfile(interaction.user.id);
+      const character = profile?.characters.find((entry) => entry.id === characterId);
+      if (profile === null || character === undefined) {
+        await interaction.editReply(
+          asEditPayload(
+            renderHubProfileWorkspace({
+              opaquePanelId: parsed.opaqueId,
+              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+              profile,
+              statusLine: 'Nie znaleziono tej postaci.',
+            }),
+          ),
+        );
+        return;
+      }
+      const updated = await this.identityClient.updateCharacter(
+        characterId,
+        {
+          nickname: character.nickname,
+          classSpecKey: character.classSpecKey,
+          partyRoles: character.partyRoles.filter(isPartyRoleKey),
+          isDefault: true,
+          level: character.level ?? null,
+        },
+        actorOf(interaction.user.id),
+      );
+      await interaction.editReply(
+        asEditPayload(
+          renderHubProfileWorkspace({
+            opaquePanelId: parsed.opaqueId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            profile: updated.profile,
+            statusLine: `Aktywna postać: **${character.nickname}**.`,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.deps.logger.error('Profile set-active failed', {
         error: error instanceof Error ? error.message : String(error),
       });
       const content = toUserFacingError(error);
@@ -792,6 +963,29 @@ export class ActivityInteractionHandler {
       return;
     }
 
+    if (parsed.action === 'confirm_quick_add') {
+      const pendingState = this.readLfgState(interaction.guildId, userId, opaquePanelId);
+      if (
+        pendingState.pendingQuickAdd !== null &&
+        pendingState.pendingQuickAdd.partyRoles.length > 0
+      ) {
+        const defaultNick =
+          ('displayName' in interaction.user &&
+          typeof interaction.user.displayName === 'string' &&
+          interaction.user.displayName.length > 0
+            ? interaction.user.displayName
+            : interaction.user.username) ?? 'Gracz';
+        await interaction.showModal(
+          buildLfgCharacterNickModal({
+            opaquePanelId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            defaultNickname: defaultNick.slice(0, 64),
+          }),
+        );
+        return;
+      }
+    }
+
     const fromExisting =
       interaction.message !== null &&
       'flags' in interaction.message &&
@@ -811,21 +1005,43 @@ export class ActivityInteractionHandler {
       if (parsed.action === 'dungeon' && interaction.isStringSelectMenu()) {
         const selected = interaction.values[0];
         if (selected !== undefined) {
-          state = { ...state, dungeonKey: selected, matches: [], showAllMatches: false };
+          state = {
+            ...state,
+            dungeonKey: selected,
+            matches: [],
+            showAllMatches: false,
+            screen: 'wizard',
+          };
+        }
+      } else if (parsed.action === 'nav' && parsed.param !== undefined) {
+        if (parsed.param === 'main') {
+          state = { ...state, screen: 'wizard', pendingQuickAdd: null };
+        } else if (parsed.param === 'edit_dungeon') {
+          state = { ...state, screen: 'edit_dungeon' };
+        } else if (parsed.param === 'edit_character') {
+          state = { ...state, screen: 'edit_character' };
+        } else if (parsed.param === 'add_character') {
+          state = { ...state, screen: 'add_character', pendingQuickAdd: null };
+        } else if (parsed.param === 'edit_roles') {
+          state = { ...state, screen: 'edit_roles' };
+        } else if (parsed.param === 'edit_time') {
+          state = { ...state, screen: 'edit_time' };
         }
       } else if (parsed.action === 'character' && interaction.isStringSelectMenu()) {
         const selected = interaction.values[0];
         if (selected !== undefined) {
           state = applyProfileCharacter(state, profile, selected);
+          state = { ...state, screen: 'wizard', matches: [], showAllMatches: false };
         }
       } else if (parsed.action === 'quick_add' && interaction.isStringSelectMenu()) {
         const classSpecKey = interaction.values[0];
         if (classSpecKey !== undefined) {
           state = {
             ...state,
+            screen: 'add_character',
             pendingQuickAdd: { classSpecKey, partyRoles: [] },
           };
-          statusLine = 'Wybierz co najmniej jedną rolę postaci.';
+          statusLine = 'Wybierz role tej postaci, potem Zapisz i użyj.';
         }
       } else if (
         parsed.action === 'quick_add_role' &&
@@ -841,6 +1057,7 @@ export class ActivityInteractionHandler {
         }
         state = {
           ...state,
+          screen: 'add_character',
           pendingQuickAdd: {
             ...state.pendingQuickAdd,
             partyRoles: ['TANK', 'BUFF', 'DPS', 'FLEX'].filter((role) =>
@@ -849,39 +1066,24 @@ export class ActivityInteractionHandler {
           },
         };
       } else if (parsed.action === 'confirm_quick_add' && state.pendingQuickAdd !== null) {
-        if (state.pendingQuickAdd.partyRoles.length === 0) {
-          statusLine = 'Wybierz co najmniej jedną rolę przed zapisem postaci.';
-        } else if (this.identityClient !== null) {
-          const nickname =
-            ('displayName' in interaction.user &&
-            typeof interaction.user.displayName === 'string' &&
-            interaction.user.displayName.length > 0
-              ? interaction.user.displayName
-              : interaction.user.username) ?? 'Gracz';
-          const created = await this.identityClient.createCharacter(
-            {
-              nickname: nickname.slice(0, 64),
-              classSpecKey: state.pendingQuickAdd.classSpecKey,
-              partyRoles: [...state.pendingQuickAdd.partyRoles],
-              isDefault: true,
-            },
-            actor,
-          );
-          state = applyProfileCharacter(state, created.profile, created.characterId);
-          state = { ...state, pendingQuickAdd: null };
-          statusLine = `Dodano postać **${nickname.slice(0, 64)}**.`;
-        } else {
-          statusLine = 'Profil niedostępny — skonfiguruj postać w /profil.';
-        }
+        statusLine = 'Wybierz co najmniej jedną rolę przed zapisem postaci.';
+        state = { ...state, screen: 'add_character' };
       } else if (
         parsed.action === 'role' &&
         parsed.param !== undefined &&
         isPartyRoleKey(parsed.param)
       ) {
         state = toggleSessionRole(state, parsed.param);
+        state = { ...state, screen: 'edit_roles' };
       } else if (parsed.action === 'time' && parsed.param !== undefined) {
         if (parsed.param === 'now' || parsed.param === 'plus2h' || parsed.param === 'evening') {
-          state = { ...state, timePreset: parsed.param, matches: [], showAllMatches: false };
+          state = {
+            ...state,
+            timePreset: parsed.param,
+            matches: [],
+            showAllMatches: false,
+            screen: 'wizard',
+          };
         }
       } else if (parsed.action === 'search') {
         const searchBody = buildLfgSearchBody({ guildId, organizationId, state });
@@ -1366,23 +1568,21 @@ export class ActivityInteractionHandler {
       return;
     }
     const selected = interaction.values[0];
-    if (selected === undefined || !isHubModuleKey(selected)) {
+    if (selected === undefined || !isHubCentrumActionKey(selected)) {
       await interaction.reply({
-        content: 'Nieznany moduł V2. Odśwież panel Centrum.',
+        content: 'Ten widok jest już nieaktualny. Otwórz aktualne V2 Centrum.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
-    const module = getHubModule(selected);
+    if (selected === 'lfg') {
+      await this.openLfgWizard(interaction, parsed.opaqueId);
+      return;
+    }
 
-    if (selected === 'activities') {
-      await interaction.reply(
-        renderHubActivitiesMenu({
-          opaquePanelId: parsed.opaqueId,
-          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-        }),
-      );
+    if (selected === 'create') {
+      await this.openCreateOrLfg(interaction, parsed);
       return;
     }
 
@@ -1399,21 +1599,31 @@ export class ActivityInteractionHandler {
     }
 
     if (selected === 'profile') {
-      await interaction.reply(renderHubProfileFoundationEphemeral());
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const profile = await this.loadProfile(interaction.user.id);
+      await interaction.editReply(
+        asEditPayload(
+          renderHubProfileWorkspace({
+            opaquePanelId: parsed.opaqueId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+            profile,
+          }),
+        ),
+      );
       return;
     }
 
     if (selected === 'for_me') {
-      await interaction.reply(renderHubForMeFoundationEphemeral());
-      return;
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await interaction.editReply(
+        asEditPayload(
+          renderHubForMeWorkspace({
+            opaquePanelId: parsed.opaqueId,
+            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          }),
+        ),
+      );
     }
-
-    if (module.availability === 'roadmap' || module.availability === 'disabled') {
-      await interaction.reply(renderHubRoadmapEphemeral(selected));
-      return;
-    }
-
-    await interaction.reply(renderHubRoadmapEphemeral(selected));
   }
 
   private async handlePanelAction(

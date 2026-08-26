@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Post, Put, Req, UseFilters } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Put, Req, UseFilters } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 
@@ -99,6 +99,42 @@ export class PlayerProfileController {
         isDefault: parsed.data.isDefault ?? false,
         partyRoles: parsed.data.partyRoles,
       });
+      const profile = await this.requireProfiles().getProfile(userId);
+      return { characterId: id, profile };
+    } catch (error) {
+      throw new IdentityError(
+        'VALIDATION_FAILED',
+        error instanceof Error ? error.message : 'Character validation failed',
+      );
+    }
+  }
+
+  @Put('characters/:characterId')
+  public async updateCharacter(
+    @Req() request: FastifyRequest,
+    @Param('characterId') characterId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = await this.requireUserId(request);
+    if (typeof characterId !== 'string' || characterId.trim().length === 0) {
+      throw new IdentityError('VALIDATION_FAILED', 'Invalid character id');
+    }
+    const parsed = characterSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new IdentityError('VALIDATION_FAILED', 'Invalid character payload');
+    }
+    try {
+      const id = await this.requireProfiles().upsertCharacter(
+        userId,
+        {
+          nickname: parsed.data.nickname,
+          classSpecKey: parsed.data.classSpecKey,
+          level: parsed.data.level ?? null,
+          isDefault: parsed.data.isDefault ?? false,
+          partyRoles: parsed.data.partyRoles,
+        },
+        characterId.trim(),
+      );
       const profile = await this.requireProfiles().getProfile(userId);
       return { characterId: id, profile };
     } catch (error) {

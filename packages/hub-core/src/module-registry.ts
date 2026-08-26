@@ -1,6 +1,9 @@
 /**
  * V2 Hub module registry — shared IA map (Owner Accepted Hub Core).
  * Adapters render from this registry; they must not invent parallel navigation trees.
+ *
+ * Discord Centrum (Owner UX correction): only interactive player actions appear in the
+ * public select. Roadmap modules are never clickable placeholders.
  */
 
 export const HUB_MODULE_GROUPS = ['GRA', 'RYNEK', 'GILDIA', 'TY'] as const;
@@ -27,6 +30,17 @@ export const HUB_MODULE_AVAILABILITIES = [
 ] as const;
 export type HubModuleAvailability = (typeof HUB_MODULE_AVAILABILITIES)[number];
 
+/** Discord Centrum select values — direct actions (no Aktywności submenu). */
+export const HUB_CENTRUM_ACTION_KEYS = [
+  'create',
+  'lfg',
+  'mine',
+  'for_me',
+  'profile',
+  'notifications',
+] as const;
+export type HubCentrumActionKey = (typeof HUB_CENTRUM_ACTION_KEYS)[number];
+
 export type HubWwwEntry = {
   readonly path: string;
 };
@@ -49,6 +63,13 @@ export type HubModuleDefinition = {
    * Empty = visible to members; backend still re-authorizes operations.
    */
   readonly navigationPermissionIds: readonly string[];
+};
+
+export type HubCentrumSelectOption = {
+  readonly value: HubCentrumActionKey;
+  readonly label: string;
+  readonly description: string;
+  readonly section: 'GRA' | 'DLA_CIEBIE';
 };
 
 export const DEFAULT_HUB_MODULES: readonly HubModuleDefinition[] = [
@@ -106,8 +127,8 @@ export const DEFAULT_HUB_MODULES: readonly HubModuleDefinition[] = [
     key: 'profile',
     group: 'TY',
     label: 'Mój profil',
-    description: 'Postacie, klasa/spec, role party i zainteresowania.',
-    availability: 'foundation',
+    description: 'Postacie, zainteresowania i ustawienia.',
+    availability: 'available',
     discord: { selectValue: 'profile' },
     www: { path: '/profil' },
     navigationPermissionIds: [],
@@ -116,8 +137,8 @@ export const DEFAULT_HUB_MODULES: readonly HubModuleDefinition[] = [
     key: 'for_me',
     group: 'TY',
     label: 'Dla mnie',
-    description: 'Trafione działania z powodem dopasowania.',
-    availability: 'foundation',
+    description: 'Rzeczy, które mogą Cię zainteresować.',
+    availability: 'available',
     discord: { selectValue: 'for_me' },
     www: { path: '/dla-mnie' },
     navigationPermissionIds: [],
@@ -125,9 +146,9 @@ export const DEFAULT_HUB_MODULES: readonly HubModuleDefinition[] = [
   {
     key: 'mine',
     group: 'TY',
-    label: 'Moje',
-    description: 'Twoje aktywności, grupy, rezerwacje i oferty.',
-    availability: 'foundation',
+    label: 'Moje aktywności',
+    description: 'Twoje aktywności i grupy.',
+    availability: 'available',
     discord: { selectValue: 'mine' },
     www: { path: '/moje' },
     navigationPermissionIds: [],
@@ -136,11 +157,51 @@ export const DEFAULT_HUB_MODULES: readonly HubModuleDefinition[] = [
     key: 'notifications',
     group: 'TY',
     label: 'Powiadomienia',
-    description: 'Wejście do skrzynki (pełny system w etapie 4).',
-    availability: 'foundation',
+    description: 'Skrzynka i preferencje powiadomień.',
+    availability: 'available',
     discord: { selectValue: 'notifications' },
     www: { path: '/powiadomienia' },
     navigationPermissionIds: [],
+  },
+] as const;
+
+/** Direct Centrum actions — replaces module-dropdown + Aktywności submenu. */
+export const HUB_CENTRUM_SELECT_OPTIONS: readonly HubCentrumSelectOption[] = [
+  {
+    value: 'create',
+    label: 'Utwórz aktywność',
+    description: 'Nowa aktywność w Discordzie',
+    section: 'GRA',
+  },
+  {
+    value: 'lfg',
+    label: 'Szukam ekipy',
+    description: 'Dopasuj ekipę do postaci i czasu',
+    section: 'GRA',
+  },
+  {
+    value: 'mine',
+    label: 'Moje aktywności',
+    description: 'Organizuję i jestem zapisany',
+    section: 'GRA',
+  },
+  {
+    value: 'for_me',
+    label: 'Dla mnie',
+    description: 'Propozycje dopasowane do Ciebie',
+    section: 'DLA_CIEBIE',
+  },
+  {
+    value: 'profile',
+    label: 'Mój profil',
+    description: 'Postacie i zainteresowania',
+    section: 'DLA_CIEBIE',
+  },
+  {
+    value: 'notifications',
+    label: 'Powiadomienia',
+    description: 'Skrzynka i wyciszenia',
+    section: 'DLA_CIEBIE',
   },
 ] as const;
 
@@ -151,8 +212,17 @@ export const HUB_GROUP_LABELS: Record<HubModuleGroup, string> = {
   TY: 'TY',
 };
 
+export const HUB_CENTRUM_SECTION_LABELS = {
+  GRA: 'GRA',
+  DLA_CIEBIE: 'DLA CIEBIE',
+} as const;
+
 export function isHubModuleKey(value: string): value is HubModuleKey {
   return (HUB_MODULE_KEYS as readonly string[]).includes(value);
+}
+
+export function isHubCentrumActionKey(value: string): value is HubCentrumActionKey {
+  return (HUB_CENTRUM_ACTION_KEYS as readonly string[]).includes(value);
 }
 
 export function getHubModule(key: HubModuleKey): HubModuleDefinition {
@@ -163,10 +233,27 @@ export function getHubModule(key: HubModuleKey): HubModuleDefinition {
   return found;
 }
 
+/** @deprecated Prefer listHubCentrumSelectOptions for Discord Centrum. */
 export function listHubModulesForSelect(
   modules: readonly HubModuleDefinition[] = DEFAULT_HUB_MODULES,
 ): readonly HubModuleDefinition[] {
-  return modules.filter((module) => module.availability !== 'disabled');
+  return modules.filter(
+    (module) => module.availability === 'available' || module.availability === 'foundation',
+  );
+}
+
+export function listHubCentrumSelectOptions(
+  options: readonly HubCentrumSelectOption[] = HUB_CENTRUM_SELECT_OPTIONS,
+): readonly HubCentrumSelectOption[] {
+  return options;
+}
+
+export function listRoadmapModuleLabels(
+  modules: readonly HubModuleDefinition[] = DEFAULT_HUB_MODULES,
+): readonly string[] {
+  return modules
+    .filter((module) => module.availability === 'roadmap')
+    .map((module) => module.label);
 }
 
 export function isHubModuleInteractive(availability: HubModuleAvailability): boolean {

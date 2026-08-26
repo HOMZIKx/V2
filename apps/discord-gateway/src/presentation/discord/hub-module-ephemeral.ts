@@ -4,116 +4,148 @@ import {
   ButtonStyle,
   ContainerBuilder,
   MessageFlags,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   TextDisplayBuilder,
   type InteractionReplyOptions,
 } from 'discord.js';
 
-import {
-  DEFAULT_CLASS_SPEC_CATALOG,
-  DEFAULT_PARTY_ROLE_CATALOG,
-  getHubModule,
-  type HubModuleKey,
-} from '@v2/hub-core';
-
+import type { IdentityProfile } from '../../infrastructure/identity/identity-http-client.js';
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
-import { createLfgCustomId } from '../../infrastructure/security/lfg-signed-custom-id.js';
 import { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 
-export function renderHubRoadmapEphemeral(moduleKey: HubModuleKey): InteractionReplyOptions {
-  const module = getHubModule(moduleKey);
-  return {
-    content: [
-      `## ${module.label}`,
-      module.description,
-      '',
-      '_Moduł jest na roadmapie. Shell V2 już go zna — pełna funkcja przyjdzie w kolejnym etapie._',
-    ].join('\n'),
-    flags: MessageFlags.Ephemeral,
-  };
-}
+export type HubProfileWorkspaceInput = {
+  readonly opaquePanelId: string;
+  readonly signingSecret: string;
+  readonly profile: IdentityProfile | null;
+  readonly statusLine?: string;
+};
 
-export function renderHubProfileFoundationEphemeral(): InteractionReplyOptions {
-  const classes = DEFAULT_CLASS_SPEC_CATALOG.filter((entry) => entry.enabled)
-    .slice(0, 6)
-    .map((entry) => `• ${entry.label}`)
-    .join('\n');
-  const roles = DEFAULT_PARTY_ROLE_CATALOG.map((entry) => entry.label).join(' · ');
-  return {
-    content: [
-      '## Mój profil',
-      'Fundament profilu V2 (Discord + WWW + LFG).',
-      '',
-      '**Zakres fundamentu**',
-      '• tożsamość użytkownika V2',
-      '• jedna lub wiele postaci + aktywna postać',
-      '• nickname, klasa/spec, opcjonalny poziom',
-      '• role party (osobno od klasy/spec)',
-      '• zainteresowania (SoT V2; ≠ rola Discord ≠ powiadomienia)',
-      '',
-      '**Katalog klasy/spec (fragment)**',
-      classes,
-      '',
-      `**Role party:** ${roles}`,
-      '',
-      '_Edycja WWW: /profil — pełna synchronizacja ról Discord w kolejnych iteracjach Hub Core._',
-    ].join('\n'),
-    flags: MessageFlags.Ephemeral,
-  };
-}
+export type HubForMeWorkspaceInput = {
+  readonly opaquePanelId: string;
+  readonly signingSecret: string;
+  readonly items?: readonly HubForMeItem[];
+};
 
-export function renderHubForMeFoundationEphemeral(): InteractionReplyOptions {
-  return {
-    content: [
-      '## Dla mnie',
-      'Spersonalizowany widok trafień — każdy element powinien mieć powód.',
-      '',
-      'Przykłady powodów:',
-      '• bo obserwujesz X',
-      '• bo jesteś w Y',
-      '• bo organizujesz Z',
-      '• bo LFG pasuje do Twojej postaci',
-      '',
-      '_Na razie brak pozycji. Moduły będą dokładać trafienia wraz z wdrożeniem._',
-    ].join('\n'),
-    flags: MessageFlags.Ephemeral,
-  };
-}
+export type HubForMeItem = {
+  readonly title: string;
+  readonly detail: string;
+  readonly reason: string;
+};
 
-export function renderHubActivitiesMenu(input: {
-  opaquePanelId: string;
-  signingSecret: string;
-}): InteractionReplyOptions {
-  const create = new ButtonBuilder()
-    .setCustomId(createPanelCustomId(input.opaquePanelId, 'create', input.signingSecret))
-    .setLabel('Utwórz')
-    .setStyle(ButtonStyle.Secondary);
-  const lfg = new ButtonBuilder()
-    .setCustomId(createPanelCustomId(input.opaquePanelId, 'lfg', input.signingSecret))
-    .setLabel('Szukam ekipy')
-    .setStyle(ButtonStyle.Secondary);
-  const mySearches = new ButtonBuilder()
-    .setCustomId(createLfgCustomId(input.opaquePanelId, 'my_searches', input.signingSecret))
-    .setLabel('Moje poszukiwania')
-    .setStyle(ButtonStyle.Secondary);
+/**
+ * Real profile workspace — product language only for players.
+ */
+export function renderHubProfileWorkspace(
+  input: HubProfileWorkspaceInput,
+): InteractionReplyOptions {
+  const characters = input.profile?.characters ?? [];
+  const activeId = input.profile?.activeCharacterId ?? null;
+  const active =
+    activeId !== null ? characters.find((entry) => entry.id === activeId) : characters[0];
+  const activeLine =
+    active !== undefined
+      ? `${active.nickname} · ${active.classSpecLabel ?? active.classSpecKey}${
+          active.level !== null && active.level !== undefined ? ` · ${String(active.level)}` : ''
+        }`
+      : '_Brak aktywnej postaci_';
+
+  const listLines =
+    characters.length === 0
+      ? ['_Nie masz jeszcze postaci._']
+      : characters.slice(0, 12).map((entry) => {
+          const mark = entry.id === active?.id ? '★ ' : '• ';
+          return `${mark}${entry.nickname} · ${entry.classSpecLabel ?? entry.classSpecKey}`;
+        });
+
+  const interests =
+    input.profile !== null && input.profile.interestKeys.length > 0
+      ? input.profile.interestKeys.join(' · ')
+      : '_Brak ustawionych zainteresowań_';
+
+  const lines = [
+    '## Mój profil',
+    '',
+    '**Aktywna postać**',
+    activeLine,
+    '',
+    '**Twoje postacie**',
+    ...listLines,
+    '',
+    '**Zainteresowania**',
+    interests,
+    '',
+    '**Powiadomienia**',
+    'Zarządzaj skrzynką z Centrum → Powiadomienia.',
+  ];
+  if (input.statusLine !== undefined && input.statusLine.length > 0) {
+    lines.push('', input.statusLine);
+  }
 
   const container = new ContainerBuilder()
     .setAccentColor(ACTIVITY_HUB_ACCENT)
-    .addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        [
-          '## Aktywności',
-          'Organizuj wydarzenia i zbieraj ekipę.',
-          '',
-          '**Szukam ekipy** = matching (postać → role → okno czasu → dopasowania),',
-          'nie tablica publicznych postów.',
-          '',
-          'Kolejność: dopasuj istniejące → Znajdź mi ekipę → dopiero potem Utwórz.',
-        ].join('\n'),
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
+
+  if (characters.length > 0) {
+    container.addActionRowComponents(
+      new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(createPanelCustomId(input.opaquePanelId, 'profile_set', input.signingSecret))
+          .setPlaceholder('Zmień aktywną postać')
+          .addOptions(
+            characters.slice(0, 25).map((entry) =>
+              new StringSelectMenuOptionBuilder()
+                .setLabel(entry.nickname.slice(0, 100))
+                .setDescription((entry.classSpecLabel ?? entry.classSpecKey).slice(0, 100))
+                .setValue(entry.id)
+                .setDefault(entry.id === active?.id),
+            ),
+          ),
       ),
-    )
-    .addActionRowComponents(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(lfg, mySearches, create),
     );
+  }
+
+  container.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(createPanelCustomId(input.opaquePanelId, 'lfg_add', input.signingSecret))
+        .setLabel('Dodaj postać')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(createPanelCustomId(input.opaquePanelId, 'inbox', input.signingSecret))
+        .setLabel('Powiadomienia')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+
+  return {
+    components: [container],
+    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2,
+  };
+}
+
+export function renderHubForMeWorkspace(input: HubForMeWorkspaceInput): InteractionReplyOptions {
+  const items = input.items ?? [];
+  const body =
+    items.length === 0
+      ? [
+          '## Dla mnie',
+          'Rzeczy, które mogą Cię zainteresować.',
+          '',
+          'Na razie nic nowego.',
+          'Gdy pojawi się coś pasującego do Twoich postaci,',
+          'zainteresowań lub obserwacji, zobaczysz to tutaj.',
+        ]
+      : [
+          '## Dla mnie',
+          'Rzeczy, które mogą Cię zainteresować.',
+          '',
+          ...items.flatMap((item) => [`**${item.title}**`, item.detail, `_${item.reason}_`, '']),
+        ];
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACTIVITY_HUB_ACCENT)
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(body.join('\n')));
 
   return {
     components: [container],

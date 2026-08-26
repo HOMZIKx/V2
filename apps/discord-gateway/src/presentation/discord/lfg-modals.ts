@@ -2,6 +2,34 @@ import { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from
 
 import { createModalCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 
+export function buildLfgCharacterNickModal(input: {
+  opaquePanelId: string;
+  signingSecret: string;
+  defaultNickname?: string;
+}): ModalBuilder {
+  const nickInput = new TextInputBuilder()
+    .setCustomId('nickname')
+    .setLabel('Nick w grze')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMinLength(1)
+    .setMaxLength(64)
+    .setPlaceholder('Np. KuzynBuff');
+  if (input.defaultNickname !== undefined && input.defaultNickname.length > 0) {
+    nickInput.setValue(input.defaultNickname.slice(0, 64));
+  }
+  return new ModalBuilder()
+    .setCustomId(createModalCustomId('lfg_char_nick', input.opaquePanelId, input.signingSecret))
+    .setTitle('Dodaj postać')
+    .addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(nickInput));
+}
+
+export function parseLfgCharacterNickModal(interaction: {
+  fields: { getTextInputValue(id: string): string };
+}): { nickname: string } {
+  return { nickname: interaction.fields.getTextInputValue('nickname').trim() };
+}
+
 export function buildLfgCustomTimeModal(input: {
   opaquePanelId: string;
   signingSecret: string;

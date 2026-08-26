@@ -15,7 +15,12 @@ import {
   type MessageEditOptions,
 } from 'discord.js';
 
-import { HUB_GROUP_LABELS, listHubModulesForSelect, type HubModuleDefinition } from '@v2/hub-core';
+import {
+  HUB_CENTRUM_SECTION_LABELS,
+  listHubCentrumSelectOptions,
+  listRoadmapModuleLabels,
+  type HubCentrumSelectOption,
+} from '@v2/hub-core';
 
 import { createPanelCustomId } from '../../infrastructure/security/activity-signed-custom-id.js';
 import {
@@ -30,24 +35,23 @@ export { ACTIVITY_HUB_ACCENT } from './activity-theme.js';
 export type ActivityHubRenderInput = {
   opaquePanelId: string;
   signingSecret: string;
-  /** Optional override of registry modules (tests / Admin-disabled modules). */
-  modules?: readonly HubModuleDefinition[];
+  /** Optional override of Centrum select options (tests). */
+  options?: readonly HubCentrumSelectOption[];
 };
 
 export type ActivityHubMessagePayload = MessageCreateOptions & MessageEditOptions;
 
 const HUB_TITLE = 'V2 Centrum';
-const HUB_INTRO =
-  'Potrzebujesz czegoś związanego z grą lub społecznością — zacznij tutaj. Wybierz obszar z listy.';
-const SELECT_PLACEHOLDER = 'Nie wybrano żadnej opcji';
+const HUB_INTRO = 'Wybierz działanie — otworzy się prywatny widok tylko dla Ciebie.';
+const SELECT_PLACEHOLDER = 'Wybierz działanie';
 
 /**
- * Canonical V2 Hub — one Components V2 Container + native StringSelect navigation.
- * Personalized flows continue in ephemeral / DM / WWW — never in this public message.
+ * Canonical V2 Hub — one Components V2 Container + native StringSelect.
+ * Direct player actions only; roadmap modules are never interactive.
  */
 export function renderActivityHubMessage(input: ActivityHubRenderInput): ActivityHubMessagePayload {
   const { opaquePanelId, signingSecret } = input;
-  const modules = listHubModulesForSelect(input.modules);
+  const options = listHubCentrumSelectOptions(input.options);
 
   const container = new ContainerBuilder().setAccentColor(ACTIVITY_HUB_ACCENT);
 
@@ -75,28 +79,42 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
     new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small),
   );
 
-  const groupLines = (['GRA', 'RYNEK', 'GILDIA', 'TY'] as const).map((group) => {
-    const labels = modules
-      .filter((module) => module.group === group)
-      .map((module) => module.label)
-      .join(' · ');
-    return `**${HUB_GROUP_LABELS[group]}** — ${labels.length > 0 ? labels : '—'}`;
-  });
+  const graLabels = options
+    .filter((option) => option.section === 'GRA')
+    .map((option) => option.label)
+    .join(' · ');
+  const youLabels = options
+    .filter((option) => option.section === 'DLA_CIEBIE')
+    .map((option) => option.label)
+    .join(' · ');
+  const roadmap = listRoadmapModuleLabels();
+  const soonLine = roadmap.length > 0 ? `\n_Wkrótce: ${roadmap.join(' · ')}_` : '';
+
   container.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(['**Mapa V2**', ...groupLines].join('\n')),
+    new TextDisplayBuilder().setContent(
+      [
+        `**${HUB_CENTRUM_SECTION_LABELS.GRA}**`,
+        graLabels,
+        '',
+        `**${HUB_CENTRUM_SECTION_LABELS.DLA_CIEBIE}**`,
+        youLabels,
+        soonLine,
+      ]
+        .filter((line) => line.length > 0)
+        .join('\n'),
+    ),
   );
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(createPanelCustomId(opaquePanelId, 'module', signingSecret))
     .setPlaceholder(SELECT_PLACEHOLDER)
     .addOptions(
-      modules.map((module) => {
-        const option = new StringSelectMenuOptionBuilder()
-          .setLabel(module.label)
-          .setValue(module.discord.selectValue)
-          .setDescription(selectDescription(module));
-        return option;
-      }),
+      options.map((option) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(option.label)
+          .setValue(option.value)
+          .setDescription(option.description.slice(0, 100)),
+      ),
     );
 
   container.addActionRowComponents(
@@ -105,7 +123,7 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
 
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      '-# Wybór otwiera prywatny flow. Ten kanał nie jest miejscem na rozmowę.',
+      '-# Wybór otwiera prywatny widok. Ten kanał nie jest miejscem na rozmowę.',
     ),
   );
 
@@ -114,15 +132,4 @@ export function renderActivityHubMessage(input: ActivityHubRenderInput): Activit
     files: buildActivityHubMessageAttachmentFiles(),
     flags: MessageFlags.IsComponentsV2,
   };
-}
-
-function selectDescription(module: HubModuleDefinition): string {
-  const availabilityLabel =
-    module.availability === 'available'
-      ? 'Dostępne'
-      : module.availability === 'foundation'
-        ? 'Fundament'
-        : 'Wkrótce';
-  const base = `${HUB_GROUP_LABELS[module.group]} · ${availabilityLabel}`;
-  return base.slice(0, 100);
 }

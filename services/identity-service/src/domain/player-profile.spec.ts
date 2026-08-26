@@ -9,7 +9,7 @@ import {
 
 describe('player-profile domain', () => {
   it('resolves class/spec labels from catalog', () => {
-    expect(resolveClassSpecLabel('warrior_body')).toBe('Wojownik Body');
+    expect(resolveClassSpecLabel('warrior_body')).toBe('Wojownik Ciało');
     expect(() => assertValidClassSpecKey('not-a-class')).toThrow(/Unknown/);
   });
 

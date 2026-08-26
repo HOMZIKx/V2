@@ -113,6 +113,47 @@ export class IdentityHttpClient {
     return { characterId: parsed.characterId, profile: parsed.profile };
   }
 
+  public async updateCharacter(
+    characterId: string,
+    body: {
+      nickname: string;
+      classSpecKey: string;
+      partyRoles: readonly PartyRoleKey[];
+      isDefault?: boolean;
+      level?: number | null;
+    },
+    actor: IdentityActorContext,
+  ): Promise<{ characterId: string; profile: IdentityProfile }> {
+    for (const role of body.partyRoles) {
+      if (!isPartyRoleKey(role)) {
+        throw new IdentityHttpError('Invalid party role in payload', 'VALIDATION');
+      }
+    }
+    const parsed = await this.request(
+      'PUT',
+      `/identity/v1/profile/characters/${encodeURIComponent(characterId)}`,
+      z
+        .object({
+          characterId: z.string().min(1),
+          profile: profileSchema.shape.profile,
+        })
+        .passthrough(),
+      { body, actor },
+    );
+    return { characterId: parsed.characterId, profile: parsed.profile };
+  }
+
+  public async setInterests(
+    interestKeys: readonly string[],
+    actor: IdentityActorContext,
+  ): Promise<IdentityProfile> {
+    const parsed = await this.request('PUT', '/identity/v1/profile/interests', profileSchema, {
+      body: { interestKeys },
+      actor,
+    });
+    return parsed.profile;
+  }
+
   private async request<T>(
     method: string,
     path: string,
