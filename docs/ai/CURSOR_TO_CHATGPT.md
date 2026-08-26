@@ -10,7 +10,7 @@ Task: `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`
 Branch: `cursor/p4-1-activity-domain`  
 PR: **#19** — do not merge
 
-Checkpoint: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — _(set after commit)_  
+Checkpoint: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`  
 Prior remediation: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`** — `24ca822dcb4af77569074dba955f790d80cf0836`
 
 ---
