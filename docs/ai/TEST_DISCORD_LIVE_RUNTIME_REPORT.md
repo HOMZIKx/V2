@@ -10,120 +10,124 @@ Guild: `1534228693017432124` (TEST Discord)
 
 ## Summary
 
-| Field              | Value                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| **RUNTIME_STATUS** | `NOT_TEST_DISCORD_RUNTIME_VERIFIED`                                                                |
-| **Blocker**        | Discord Web UI login required for interactive LFG/menu smoke; automation session not authenticated |
-| **Partial proof**  | `discord-gateway` public health `ready` on target guild; deploy smoke after upload redeploy        |
+| Field              | Value                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **RUNTIME_STATUS** | `NOT_TEST_DISCORD_RUNTIME_VERIFIED`                                                                                                  |
+| **CODE_STATUS**    | `READY_FOR_CHATGPT_REAUDIT` (independent)                                                                                            |
+| **Partial proof**  | `discord-gateway` live SHA = tip; bot `ready`; commands registered                                                                   |
+| **Hard blockers**  | (1) `ACTIVITY_ENABLED=false` → hub reconcile **403**; (2) Discord Web login for UI smoke; (3) missing Activity→Identity S2S env keys |
 
 ---
 
 ## Git / deploy
 
-| Field                              | Value                                                                                         |
-| ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| REMOTE_HEAD (pre-remediation push) | `c4e8d0f7429db178bb3cc2b1516c44a67c96284a`                                                    |
-| REMEDIATION_COMMIT                 | `24ca822dcb4af77569074dba955f790d80cf0836` (`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`) |
-| BRANCH                             | `cursor/p4-1-activity-domain`                                                                 |
-| PR                                 | #19 — **do not merge**                                                                        |
+| Field                                     | Value                                                        |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| REMOTE_HEAD / tip                         | `debd87ef41f93f2fdeae446de94afbafc5bf128d`                   |
+| CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA | `24ca822dcb4af77569074dba955f790d80cf0836`                   |
+| BRANCH                                    | `cursor/p4-1-activity-domain`                                |
+| PR                                        | #19 — **do not merge**                                       |
+| Zeabur redeploy (2026-08-26)              | `activity-service` + `discord-gateway` upload deploy RUNNING |
 
 ---
 
-## Running revision (Zeabur public health — snapshot before remediation SHA deploy)
+## Running revision (verified 2026-08-26)
 
-| Service               | URL                                      | `gitCommitSha`                             | State                                          |
-| --------------------- | ---------------------------------------- | ------------------------------------------ | ---------------------------------------------- |
-| api-gateway           | `https://v2-api.zeabur.app/health/live`  | `2c2b3e972c9177b7a157ed1d4ddc9dba96bff859` | `ok` (live)                                    |
-| api-gateway ready     | `https://v2-api.zeabur.app/health/ready` | —                                          | **503** (activity upstream unhealthy in probe) |
-| discord-gateway       | `https://v22.zeabur.app/health/live`     | `8babc89784820c6fab9b627ce8425049abf52819` | `ok`                                           |
-| discord-gateway ready | `https://v22.zeabur.app/health/ready`    | —                                          | `ok`, `discordState: ready`                    |
-| activity-service      | internal only                            | `upload` (OCI deploy label)                | RUNNING per Zeabur deploy script               |
-
-**SHA note:** Live health SHAs above predate **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`**. Post-push redeploy of `activity-service` + `discord-gateway` required; re-check health after build completes.
+| Service                          | URL / source                                                | `gitCommitSha`                                 | State                                                                     |
+| -------------------------------- | ----------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| **DISCORD_GATEWAY_RUNNING_SHA**  | `https://v22.zeabur.app/health/live`                        | `debd87ef41f93f2fdeae446de94afbafc5bf128d`     | **MATCH tip**                                                             |
+| discord-gateway ready            | `/health/ready`                                             | —                                              | `ok`, `discordState: ready`                                               |
+| discord bot                      | `/health/discord`                                           | same tip                                       | `ready`, `guildId` match, `commandsRegistered: true`, `isolationOk: true` |
+| **ACTIVITY_SERVICE_RUNNING_SHA** | Zeabur deploy `6a8f191b…` + env `GIT_COMMIT_SHA` set to tip | tip via env (upload build has empty commitSHA) | RUNNING; log: `activityEnabled:false`                                     |
+| api-gateway                      | `https://v2-api.zeabur.app/health/live`                     | `2c2b3e9…` **STALE**                           | live ok; dockerfile sync **Permission denied**                            |
+| api-gateway ready                | `/health/ready`                                             | —                                              | **503**                                                                   |
 
 ---
 
 ## Discord target
 
-| Field                | Value                                                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| GUILD_ID             | `1534228693017432124`                                                                                              |
-| HUB_CHANNEL_ID       | `1534228693449179146` (configured hub channel; from gateway tooling defaults)                                      |
-| HUB_MESSAGE_ID       | **UNCONFIRMED LIVE** — historical artifact `1534482713606881381` shows legacy LAB panel, not verified at this pass |
-| COMMAND_REGISTRATION | Not re-verified live this pass (bot `ready` only)                                                                  |
+| Field                | Value                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------- |
+| GUILD_ID             | `1534228693017432124`                                                                           |
+| HUB_CHANNEL_ID       | `1534228693449179146` (startup reconcile used this channel)                                     |
+| HUB_MESSAGE_ID       | **UNCONFIRMED** — auto-reconcile failed before publish/edit                                     |
+| COMMAND_REGISTRATION | **PASS** (`commandsRegistered: true` on `/health/discord`; log: guild commands auto-registered) |
 
 ---
 
-## Health
+## Health / migrations
 
-| Check                           | Result                                                 |
-| ------------------------------- | ------------------------------------------------------ |
-| discord-gateway `/health/live`  | PASS                                                   |
-| discord-gateway `/health/ready` | PASS (`discordEnabled: true`, `discordState: ready`)   |
-| api-gateway `/health/live`      | PASS                                                   |
-| api-gateway `/health/ready`     | FAIL 503                                               |
-| activity-service migrations     | Not probed externally (internal); prior deploy RUNNING |
+| Check                              | Result                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------- |
+| discord-gateway live/ready/discord | PASS                                                                                        |
+| activity-service boot              | PASS (`Activity Service started`, outbox worker started)                                    |
+| activity product mode              | **FAIL for product** — `ACTIVITY_ENABLED=false`                                             |
+| MIGRATION_STATE                    | Not separately probed; service booted (implies migrations applied or not required at start) |
+| api-gateway ready                  | FAIL 503                                                                                    |
 
 ---
 
 ## HUB_AUTO_RECONCILE
 
-| Check                                  | Result                                                                               |
-| -------------------------------------- | ------------------------------------------------------------------------------------ |
-| Startup reconcile code path            | Present (`hub-startup-reconcile.ts`, wired in bootstrap)                             |
-| Live log proof this pass               | **NOT CAPTURED** — Zeabur runtime log API token path unavailable in automation shell |
-| Manual `/centrum-reconcile` dependency | **Must not be required** — not used in this pass                                     |
+| Check                                 | Result                                                                                                                      |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Attempted on startup                  | **YES** (auto, no manual `/sync`)                                                                                           |
+| Outcome                               | **FAIL**                                                                                                                    |
+| Log evidence                          | `Startup hub reconcile failed; use /centrum-reconcile if the panel looks stale` — `Activity service rejected request (403)` |
+| activity-service contemporaneous logs | multiple `FORBIDDEN` / `request_failed`                                                                                     |
+| Root cause (honest)                   | Production fail-closed authorize stub while `ACTIVITY_ENABLED=false`                                                        |
 
-**Status:** `UNVERIFIED` — bot ready implies gateway up; Centrum message content and auto-reconcile success not proven without Discord UI or operator token log scrape.
-
----
-
-## LFG_LIVE_SMOKE
-
-| Step                           | Result                                    |
-| ------------------------------ | ----------------------------------------- |
-| V2 Centrum visible on channel  | **NOT VERIFIED** — Discord Web login wall |
-| Aktywności → Szukam ekipy flow | **NOT VERIFIED**                          |
-| Ephemeral / DM feedback        | **NOT VERIFIED**                          |
+**Status:** `FAILED` — runtime must not depend on manual reconcile, but auto path currently cannot succeed until Activity is fully enabled.
 
 ---
 
-## DM_LIVE_SMOKE
+## LFG_LIVE_SMOKE / DM / AUTO_SYNC
 
-| Step                          | Result           |
-| ----------------------------- | ---------------- |
-| LFG match / intent DM buttons | **NOT VERIFIED** |
+| Smoke                                                | Result                                                           |
+| ---------------------------------------------------- | ---------------------------------------------------------------- |
+| LFG_LIVE_SMOKE (Centrum → Aktywności → Szukam ekipy) | **NOT VERIFIED** — Discord Web login wall + hub reconcile broken |
+| DM_LIVE_SMOKE                                        | **NOT VERIFIED**                                                 |
+| AUTO_SYNC_SMOKE                                      | **FAILED** (see hub reconcile)                                   |
+| Mój profil / Dla mnie / Moje / Powiadomienia         | **NOT VERIFIED**                                                 |
 
 ---
 
-## AUTO_SYNC_SMOKE
+## Activity enablement gap (OWNER_ACTION_REQUIRED)
 
-| Step                                                     | Result           |
-| -------------------------------------------------------- | ---------------- |
-| Hub updates in place after deploy without manual `/sync` | **NOT VERIFIED** |
+`activity-service` env **keys present** include authz, redis, inbound clients, discord projection secret.  
+**Missing keys required for `ACTIVITY_ENABLED=true`:**
+
+- `ACTIVITY_IDENTITY_BASE_URL`
+- `ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD`
+- `ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM`
+- `ACTIVITY_TO_IDENTITY_ACTIVE_KID`
+
+Also: two malformed env **key names** look like accidental PEM fragments (should be deleted by Owner).
+
+Until Identity S2S vars are set and `ACTIVITY_ENABLED=true` redeployed, Centrum/LFG product paths stay fail-closed (403).
 
 ---
 
 ## Owner / operator actions to close runtime gap
 
-1. Log into Discord Web (or desktop) on guild `1534228693017432124`.
-2. Confirm **V2 Centrum** panel in channel `1534228693449179146`; record live `HUB_MESSAGE_ID`.
-3. Click **Aktywności → Szukam ekipy** and profile sections (**Mój profil**, **Dla mnie**, **Moje**, **Powiadomienia**) per foundation status.
-4. After remediation push: confirm `https://v22.zeabur.app/health/live` + activity deploy SHA prefix matches `CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`.
-5. Fix api-gateway `/health/ready` 503 (activity upstream probe) if blocking WWW/Admin flows.
+1. **Activity Identity S2S:** add the four missing `ACTIVITY_*IDENTITY*` variables; remove accidental PEM-as-key entries; set `ACTIVITY_ENABLED=true`; redeploy `activity-service`.
+2. Confirm hub auto-reconcile log: `Startup hub reconcile completed` with `messageId`.
+3. Log into Discord Web on guild `1534228693017432124` and click Centrum → LFG / profile sections; record `HUB_MESSAGE_ID`.
+4. Redeploy `api-gateway` (Owner permission for Dockerfile sync / variables) so rate-limit trust fix + ready probe catch tip SHA.
+5. Re-check `https://v22.zeabur.app/health/live` still matches tip after next push.
 
 ---
 
 ## Validation (code — separate from runtime)
 
-| Check                        | Result                                                                       |
-| ---------------------------- | ---------------------------------------------------------------------------- |
-| `corepack pnpm validate`     | **PASS** (post-remediation, local)                                           |
-| Targeted security specs      | **PASS** (`rate-limit`, `guild-organization-scope`, `lfg.use-cases`)         |
-| CRITICAL / HIGH (code audit) | **0 / 0** after remediation (see `FOUNDATION_ADVERSARIAL_SECURITY_AUDIT.md`) |
+| Check                    | Result                      |
+| ------------------------ | --------------------------- |
+| `corepack pnpm validate` | **PASS** (at remediation)   |
+| Targeted security specs  | **PASS**                    |
+| CRITICAL / HIGH (code)   | **0 / 0** after remediation |
 
 ---
 
 ## Last updated
 
-2026-08-24 — remediation pass; runtime UI smoke blocked on Discord authentication.
+2026-08-26 — tip redeploy verified; hub reconcile 403 + Discord UI login still block `TEST_DISCORD_RUNTIME_VERIFIED`.
