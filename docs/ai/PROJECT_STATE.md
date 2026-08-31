@@ -66,7 +66,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Prior pass — HIGH closure **incomplete** (ChatGPT found residuals)            |
 | **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
 | **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**      | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf` | Owner Discord UX correction pack 002                                          |
-| **GUILD_CONTROL_DISCOVERY_PREP_SHA**          | _(pin after commit)_                       | Guild Control + member monitoring discovery prep 001                          |
+| **GUILD_CONTROL_DISCOVERY_PREP_SHA**          | `e0e4401f547d577305b8675fed1859f142dfe01d` | Guild Control + member monitoring discovery prep 001                          |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |

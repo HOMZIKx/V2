@@ -9,7 +9,7 @@ Task: `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001`
 Branch: `cursor/p4-1-activity-domain`  
 PR: **#19** — do not merge
 
-Checkpoint: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** — _(pin after commit)_  
+Checkpoint: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** = `e0e4401f547d577305b8675fed1859f142dfe01d`  
 Prior: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`
 
 ---
