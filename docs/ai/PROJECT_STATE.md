@@ -12,26 +12,26 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 ## Current execution
 
-| Field                   | Value                                                                                                |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`                                                            |
-| REVIEW_POSTURE          | Owner UX pack ready for live TEST Discord verification                                               |
-| CODE_STATUS             | `LOCAL_VALIDATE_PASS`                                                                                |
-| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                                                       |
-| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)                                       |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                                                        |
-| CURRENT_HEAD / PR_HEAD  | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`                                                           |
-| PR                      | #19 — **do not merge**                                                                               |
-| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                                                     |
-| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                                         |
-| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke                                         |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — hub reconcile 403; see report                                  |
-| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                                                        |
-| ZEABUR_LIVE_DISCORD_SHA | prior tip match; redeploy after this pack SHA                                                        |
-| ZEABUR_LIVE_API_SHA     | stale risk remains                                                                                   |
-| ZEABUR_DEPLOY           | Activity Identity S2S **OWNER_ACTION_REQUIRED**                                                      |
-| PR_TITLE_STATUS         | WIP conventional title on PR #19                                                                     |
-| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                                                  |
+| Field                   | Value                                                                       |
+| ----------------------- | --------------------------------------------------------------------------- |
+| CURRENT_TASK            | `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001` (prep complete) |
+| REVIEW_POSTURE          | Guild Control / G8 discovery prep ready for Owner+ChatGPT                   |
+| CODE_STATUS             | `DISCOVERY_PREP_ONLY` (no product code)                                     |
+| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                              |
+| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)              |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                               |
+| CURRENT_HEAD / PR_HEAD  | _(pin after commit)_                                                        |
+| PR                      | #19 — **do not merge**                                                      |
+| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                            |
+| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                |
+| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke                |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — hub reconcile 403; see report         |
+| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
+| ZEABUR_LIVE_DISCORD_SHA | prior tip match; redeploy after this pack SHA                               |
+| ZEABUR_LIVE_API_SHA     | stale risk remains                                                          |
+| ZEABUR_DEPLOY           | Activity Identity S2S **OWNER_ACTION_REQUIRED**                             |
+| PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |
+| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                         |
 
 ## Governance
 
@@ -44,6 +44,8 @@ SoT gap matrix: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
 Issue #20 Owner closure (2026-08-22): **DISCOVERY STATUS: CLOSED FOR DUNGEON LFG v1. IMPLEMENTATION AUTHORIZED.**
 
 Reservations: **`OWNER_DISCOVERY_READY`** — Owner pack `docs/ai/RESERVATIONS_OWNER_DECISIONS.md` (prep: `docs/ai/RESERVATIONS_DISCOVERY_PREP.md`).
+
+Guild Control / G8 / member monitoring: **`GUILD_CONTROL_DISCOVERY_PREP_READY`** — `docs/ai/GUILD_CONTROL_DISCOVERY_PREP.md` (no implementation).
 
 ## Checkpoint ledger
 
@@ -64,6 +66,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA** | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Prior pass — HIGH closure **incomplete** (ChatGPT found residuals)            |
 | **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
 | **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**      | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf` | Owner Discord UX correction pack 002                                          |
+| **GUILD_CONTROL_DISCOVERY_PREP_SHA**          | _(pin after commit)_                       | Guild Control + member monitoring discovery prep 001                          |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
@@ -89,6 +92,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | LFG           | **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`; runtime separate) |
 | Reservations  | `OWNER_DISCOVERY_READY` — `RESERVATIONS_OWNER_DECISIONS.md`            |
 | Marketplace   | `OWNER_DISCOVERY_REQUIRED` (#28); prototype only                       |
+| Guild Control | `GUILD_CONTROL_DISCOVERY_PREP_READY` — bot-first ops; G8 #21 PLANNING  |
 
 ## CRITICAL / HIGH
 
@@ -114,4 +118,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-26 — `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`: Centrum direct actions, LFG edit-in-place, Polish professions, profile workspace; `LOCAL_VALIDATE` PASS; runtime Owner checklist still open.
+2026-08-31 — `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001`: inventory matrices for Guild Control, member data, Discord events, G8 gaps; no implementation.

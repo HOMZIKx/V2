@@ -2,41 +2,39 @@
 
 ## Status
 
-**CODE:** Owner Discord UX correction pack implemented — `LOCAL_VALIDATE` **PASS**  
-**RUNTIME:** `NOT_TEST_DISCORD_RUNTIME_VERIFIED` (prior Activity `403` / Identity S2S blockers still open)  
+**MODE:** Discovery prep only — **no product implementation**  
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-DISCORD-OWNER-UX-CORRECTION-PACK-002`  
+Task: `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001`  
 Branch: `cursor/p4-1-activity-domain`  
 PR: **#19** — do not merge
 
-Checkpoint: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`  
-Prior remediation: **`CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA`** — `24ca822dcb4af77569074dba955f790d80cf0836`
+Checkpoint: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** — _(pin after commit)_  
+Prior: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`
 
 ---
 
-## What changed (Owner UX correction)
+## Deliverable
 
-- Public **V2 Centrum**: direct GRA / DLA CIEBIE actions; no Mapa V2 / Aktywności submenu; roadmap modules passive “Wkrótce…” only.
-- **One private workspace**, edit-in-place for LFG summary + subviews (dungeon / character / roles / time / add character).
-- Polish profession catalog; **Lycan disabled**; FLEX → **Dowolna**; player-copy scanner bans engineering phrases + `/panel-test`.
-- Character select/create: immediate selection + `sessionRoles` default to all supported roles; nick modal on save.
-- **Mój profil** real workspace (list + set active + add); **Dla mnie** without “trafienia”.
-- Identity `PUT /identity/v1/profile/characters/:id` for set-active/edit path.
-- WWW foundation pages softened to product language.
+Created `docs/ai/GUILD_CONTROL_DISCOVERY_PREP.md` with:
+
+- `CURRENT_CAPABILITY_MATRIX` — authz sync, identity profile, activity admin, partial attendance, missing G8/Guild Control
+- `MEMBER_DATA_MATRIX` — tables/APIs per data domain
+- `DISCORD_EVENT_MATRIX` — consumed vs available (no new telemetry)
+- `G8_IMPLEMENTATION_GAP_MATRIX` — Issue #21 vs P4.6 attendance separation
+- `ADMIN_CONTROL_GAP_MATRIX` — reusable Admin vs missing authz/member UI
+- `SECURITY_PRIVACY_GAPS` — intents, APPLY gate, retention, cross-guild
+- `REUSABLE_FOUNDATION` + Marketplace #28 dependency map (reuse only)
+- `OWNER_DECISIONS_REQUIRED` — **5** major decisions (bot-first boundary, G8 vs attendance, telemetry, role automation, Admin scope)
 
 ## Validation
 
-| Check                  | Result                                    |
-| ---------------------- | ----------------------------------------- |
-| LOCAL_VALIDATE         | **PASS**                                  |
-| CRITICAL / HIGH (code) | **0 / 0** (UX pack)                       |
-| CI_STATUS              | **BLOCKED_GITHUB_BILLING_SPENDING_LIMIT** |
-
-## Runtime
-
-Still **not** Owner-verified on TEST Discord for checklist A–K. Redeploy tip + Activity Identity env remain OWNER_ACTION_REQUIRED (see prior runtime report).
+| Check                   | Result                                                                              |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| Product code changed    | **NO**                                                                              |
+| New telemetry enabled   | **NO**                                                                              |
+| `gh issue view` #21–#28 | **Skipped** (CLI not authenticated) — reconcile Issue #21 body in ChatGPT Discovery |
 
 ## STOP
 
-Do **not** merge. Do **not** implement Reservations or Marketplace product scope.
+No Guild Control · No G8 · No Marketplace · No Reservations · No Community implementation.
