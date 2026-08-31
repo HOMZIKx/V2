@@ -25,10 +25,10 @@ const registry = JSON.parse(
 /** Zeabur service IDs for project untitled-1 */
 const SERVICE_IDS = {
   'authorization-service': '6a8211d5a21454a2cf6ad783',
-  'identity-service': '6a8211cfbdeaa87e2cf6ad39',
+  'identity-service': '6a8211cfbdeaa87e2c52df39',
   'activity-service': '6a8211c2a21454a2cf6ad77b',
   'discord-gateway': '6a8211a6bdeaa87e2c52df28',
-  'api-gateway': '6a8211c9bdeaa87e2cf6ad34',
+  'api-gateway': '6a8211c9bdeaa87e2c52df34',
   web: '6a8211dba21454a2cf6ad789',
   admin: '6a8211e2a21454a2cf6ad78e',
 };
