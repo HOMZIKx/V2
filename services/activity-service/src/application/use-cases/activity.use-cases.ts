@@ -1911,6 +1911,78 @@ export class ActivityUseCases {
       input.discordGuildId,
       'sensitive',
     );
+    return this.upsertPanelInternal(input, ctx);
+  }
+
+  /**
+   * Narrow hub-shell projection path — no AuthorizePort.
+   * Authenticated only via inbound assertion operation `activity_hub_projection`.
+   * Rejects non-hub panel types so this cannot create/join activities or mutate product state.
+   */
+  public async upsertHubProjectionPanel(
+    input: {
+      organizationId: string;
+      discordGuildId: string;
+      channelId: string;
+      messageId?: string | null;
+      status?: string;
+      operationId?: string;
+      nonce?: string;
+      correlationId?: string;
+      occurrenceOutcome?: 'sent' | 'adopted';
+      incident?: { action: string; details?: Record<string, unknown> };
+    },
+    ctx: MutationContext,
+  ) {
+    if (input.discordGuildId.trim().length === 0 || input.channelId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'Hub projection requires guild and channel');
+    }
+    return this.upsertPanelInternal(
+      {
+        ...input,
+        panelType: 'hub',
+      },
+      ctx,
+    );
+  }
+
+  public async listHubProjectionPanels(guildId: string) {
+    if (guildId.trim().length === 0) {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId is required');
+    }
+    const panels = await this.deps.repository.withTransaction((tx) => tx.listPanels(guildId));
+    return panels.filter((panel) => panel.panelType === 'hub' || panel.panelType === undefined);
+  }
+
+  public async getHubProjectionPendingOccurrence(panelId: string) {
+    return this.deps.repository.withTransaction(async (tx) => {
+      const panel = await tx.getPanel(panelId);
+      if (panel === null) {
+        throw new ActivityError('NOT_FOUND', 'Panel not found');
+      }
+      if (panel.panelType !== 'hub' && panel.panelType !== undefined) {
+        throw new ActivityError('FORBIDDEN', 'Hub projection path is limited to hub panels');
+      }
+      return tx.getLatestPendingPublishOccurrence(panelId);
+    });
+  }
+
+  private async upsertPanelInternal(
+    input: {
+      organizationId: string;
+      discordGuildId: string;
+      channelId: string;
+      panelType?: string;
+      messageId?: string | null;
+      status?: string;
+      operationId?: string;
+      nonce?: string;
+      correlationId?: string;
+      occurrenceOutcome?: 'sent' | 'adopted';
+      incident?: { action: string; details?: Record<string, unknown> };
+    },
+    ctx: MutationContext,
+  ) {
     const now = this.deps.clock.now();
     return this.mutate(ctx, 'panel-upsert', `panel:${input.discordGuildId}`, async (tx) => {
       const organizationId = await resolveGuildOrganizationId(

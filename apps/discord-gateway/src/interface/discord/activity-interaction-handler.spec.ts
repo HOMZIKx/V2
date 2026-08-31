@@ -68,7 +68,7 @@ describe('ActivityInteractionHandler hub recovery', () => {
   });
 
   it('adopts existing message on publish without creating a new one', async () => {
-    const upsertPanel = vi
+    const upsertHubProjectionPanel = vi
       .fn()
       .mockResolvedValueOnce({
         id: panelId,
@@ -83,9 +83,9 @@ describe('ActivityInteractionHandler hub recovery', () => {
         channelId,
       });
     const activityClient = {
-      listPanels: vi.fn(() => Promise.resolve([])),
-      getPanelPendingOccurrence: vi.fn(() => Promise.resolve(null)),
-      upsertPanel,
+      listHubProjectionPanels: vi.fn(() => Promise.resolve([])),
+      getHubProjectionPendingOccurrence: vi.fn(() => Promise.resolve(null)),
+      upsertHubProjectionPanel,
     };
     const gateway = {
       fetchChannelMessage: vi.fn(),
@@ -111,8 +111,8 @@ describe('ActivityInteractionHandler hub recovery', () => {
       'msg-adopt',
       expect.objectContaining({ flags: expect.any(Number) as number }),
     );
-    expect(upsertPanel).toHaveBeenCalledTimes(2);
-    expect(upsertPanel.mock.calls[1]?.[0]).toEqual(
+    expect(upsertHubProjectionPanel).toHaveBeenCalledTimes(2);
+    expect(upsertHubProjectionPanel.mock.calls[1]?.[0]).toEqual(
       expect.objectContaining({
         messageId: 'msg-adopt',
         status: 'active',
@@ -122,7 +122,7 @@ describe('ActivityInteractionHandler hub recovery', () => {
   });
 
   it('reconcile adopts scanned message instead of telling operator to re-publish', async () => {
-    const upsertPanel = vi
+    const upsertHubProjectionPanel = vi
       .fn()
       .mockResolvedValueOnce({
         id: panelId,
@@ -137,13 +137,13 @@ describe('ActivityInteractionHandler hub recovery', () => {
         channelId,
       });
     const activityClient = {
-      listPanels: vi.fn(() =>
+      listHubProjectionPanels: vi.fn(() =>
         Promise.resolve([{ id: panelId, opaqueId: opaquePanel, panelType: 'hub', channelId }]),
       ),
-      getPanelPendingOccurrence: vi.fn(() =>
+      getHubProjectionPendingOccurrence: vi.fn(() =>
         Promise.resolve({ operationId: 'op-crash', nonce: 'noncefrompendingocc1234' }),
       ),
-      upsertPanel,
+      upsertHubProjectionPanel,
     };
     const gateway = {
       fetchChannelMessage: vi.fn(() => Promise.reject(new Error('Unknown Message'))),
@@ -172,13 +172,13 @@ describe('ActivityInteractionHandler hub recovery', () => {
         content: expect.stringContaining('przyjęto istniejącą wiadomość') as unknown as string,
       }),
     );
-    expect(upsertPanel.mock.calls[0]?.[0]).toEqual(
+    expect(upsertHubProjectionPanel.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ nonce: 'noncefrompendingocc1234' }),
     );
   });
 
   it('repairs with new publish when message deleted and scan finds nothing', async () => {
-    const upsertPanel = vi
+    const upsertHubProjectionPanel = vi
       .fn()
       .mockResolvedValueOnce({
         id: panelId,
@@ -193,7 +193,7 @@ describe('ActivityInteractionHandler hub recovery', () => {
         channelId,
       });
     const activityClient = {
-      listPanels: vi.fn(() =>
+      listHubProjectionPanels: vi.fn(() =>
         Promise.resolve([
           {
             id: panelId,
@@ -204,8 +204,8 @@ describe('ActivityInteractionHandler hub recovery', () => {
           },
         ]),
       ),
-      getPanelPendingOccurrence: vi.fn(() => Promise.resolve(null)),
-      upsertPanel,
+      getHubProjectionPendingOccurrence: vi.fn(() => Promise.resolve(null)),
+      upsertHubProjectionPanel,
     };
     const gateway = {
       fetchChannelMessage: vi.fn(() => Promise.reject(new Error('Unknown Message'))),
@@ -224,7 +224,7 @@ describe('ActivityInteractionHandler hub recovery', () => {
     await handler.handleCommand(makeOperatorCommand({ commandName: 'centrum-reconcile' }) as never);
 
     expect(gateway.publishComponentsV2Message).toHaveBeenCalledOnce();
-    expect(upsertPanel.mock.calls[1]?.[0]).toEqual(
+    expect(upsertHubProjectionPanel.mock.calls[1]?.[0]).toEqual(
       expect.objectContaining({ messageId: 'msg-new', occurrenceOutcome: 'sent' }),
     );
   });
@@ -448,7 +448,7 @@ describe('ActivityInteractionHandler flags', () => {
     const handler = new ActivityInteractionHandler({
       config,
       gateway: {} as never,
-      activityClient: { upsertPanel: vi.fn() } as never,
+      activityClient: { upsertHubProjectionPanel: vi.fn() } as never,
       logger: createLogger(),
     });
     const reply = vi.fn(() => Promise.resolve(undefined));

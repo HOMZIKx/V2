@@ -439,6 +439,14 @@ export class ActivityHttpClient {
     return this.request('POST', '/activity/v1/panels', panelSchema, { body, actor });
   }
 
+  /** Narrow Hub shell projection — requires inbound op `activity_hub_projection`. */
+  public async upsertHubProjectionPanel(
+    body: Record<string, unknown>,
+    actor: ActivityActorContext,
+  ) {
+    return this.request('POST', '/activity/v1/internal/hub-panels', panelSchema, { body, actor });
+  }
+
   public async getPanel(id: string, actor: ActivityActorContext) {
     return this.request('GET', `/activity/v1/panels/${encodeURIComponent(id)}`, panelSchema, {
       actor,
@@ -454,10 +462,28 @@ export class ActivityHttpClient {
     );
   }
 
+  public async getHubProjectionPendingOccurrence(panelId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/internal/hub-panels/${encodeURIComponent(panelId)}/pending-occurrence`,
+      pendingOccurrenceSchema,
+      { actor },
+    );
+  }
+
   public async listPanels(guildId: string, actor: ActivityActorContext) {
     return this.request(
       'GET',
       `/activity/v1/panels?guildId=${encodeURIComponent(guildId)}`,
+      panelListSchema,
+      { actor },
+    );
+  }
+
+  public async listHubProjectionPanels(guildId: string, actor: ActivityActorContext) {
+    return this.request(
+      'GET',
+      `/activity/v1/internal/hub-panels?guildId=${encodeURIComponent(guildId)}`,
       panelListSchema,
       { actor },
     );

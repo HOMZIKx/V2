@@ -140,20 +140,32 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 
 ### Gdy `ACTIVITY_ENABLED=true` (wymagane nazwy)
 
-| Klucz                                       | Tag                                       |
-| ------------------------------------------- | ----------------------------------------- |
-| `ACTIVITY_AUTHORIZATION_BASE_URL`           | INTERNAL                                  |
-| `ACTIVITY_AUTHORIZATION_ASSERTION_AUD`      | PUBLIC VALUE                              |
-| `ACTIVITY_TO_AUTHZ_CLIENT_ID`               | PUBLIC VALUE                              |
-| `ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM`         | SECRET                                    |
-| `ACTIVITY_TO_AUTHZ_ACTIVE_KID`              | PUBLIC VALUE                              |
-| `ACTIVITY_INBOUND_CLIENTS_JSON`             | SECRET (JSON kluczy publicznych klientów) |
-| `ACTIVITY_ASSERTION_AUD`                    | PUBLIC VALUE                              |
-| `ACTIVITY_TO_DISCORD_CLIENT_ID`             | PUBLIC VALUE                              |
-| `ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM`       | SECRET                                    |
-| `ACTIVITY_TO_DISCORD_ACTIVE_KID`            | PUBLIC VALUE                              |
-| `ACTIVITY_DISCORD_ASSERTION_AUD`            | PUBLIC VALUE                              |
-| `ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS` | PUBLIC VALUE (≤60)                        |
+| Klucz                                  | Tag                                       |
+| -------------------------------------- | ----------------------------------------- |
+| `ACTIVITY_AUTHORIZATION_BASE_URL`      | INTERNAL                                  |
+| `ACTIVITY_AUTHORIZATION_ASSERTION_AUD` | PUBLIC VALUE                              |
+| `ACTIVITY_TO_AUTHZ_CLIENT_ID`          | PUBLIC VALUE                              |
+| `ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM`    | SECRET                                    |
+| `ACTIVITY_TO_AUTHZ_ACTIVE_KID`         | PUBLIC VALUE                              |
+| `ACTIVITY_INBOUND_CLIENTS_JSON`        | SECRET (JSON kluczy publicznych klientów) |
+| `ACTIVITY_ASSERTION_AUD`               | PUBLIC VALUE                              |
+
+**Inbound `allowed_operations` (discord-gateway):** include at least
+`activity_hub_projection` (narrow Hub shell reconcile — **no** product AllowAll),
+plus `activity_read` / `activity_mutate` / `activity_outbox` as needed.
+
+**Security:** Production must **never** use `AllowAllAuthorizationClient` or
+`PassThroughCharacterVerifyClient`. Hub paint uses `activity_hub_projection` or
+Discord-local direct paint. Product/LFG require real Authorization + Identity S2S
+(`ACTIVITY_ENABLED=true` + `ACTIVITY_IDENTITY_*` keys).
+
+| Klucz                                       | Tag                |
+| ------------------------------------------- | ------------------ |
+| `ACTIVITY_TO_DISCORD_CLIENT_ID`             | PUBLIC VALUE       |
+| `ACTIVITY_TO_DISCORD_PRIVATE_KEY_PEM`       | SECRET             |
+| `ACTIVITY_TO_DISCORD_ACTIVE_KID`            | PUBLIC VALUE       |
+| `ACTIVITY_DISCORD_ASSERTION_AUD`            | PUBLIC VALUE       |
+| `ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS` | PUBLIC VALUE (≤60) |
 
 Nie kopiuj „lokalnego .env” w ciemno — użyj **tych nazw**.
 

@@ -78,10 +78,7 @@ describe('DiscordJsGatewayAdapter', () => {
       value: { channels: { fetch } },
     });
 
-    const files = [
-      { name: 'centrum-aktywnosci-icon.png' },
-      { name: 'utworz-wydarzenie-icon.png' },
-    ];
+    const files = [{ name: 'centrum-aktywnosci-icon.png' }, { name: 'utworz-wydarzenie-icon.png' }];
     const payload = { components: [], flags: 1 << 15, files };
 
     await adapter.publishComponentsV2Message('100000000000000099', payload);

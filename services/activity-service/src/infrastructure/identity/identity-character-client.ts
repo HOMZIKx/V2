@@ -9,7 +9,6 @@ import type {
 } from '../../application/ports/activity.ports.js';
 import { ActivityError } from '../../domain/errors.js';
 import type { ActivityEnv } from '../config/activity-env.js';
-import { isProjectionCentrumMode } from '../config/activity-env.js';
 
 export interface HttpIdentityCharacterClientOptions {
   readonly baseUrl: string;
@@ -171,7 +170,9 @@ export class PassThroughCharacterVerifyClient implements LfgCharacterVerifyPort 
 /** Production fail-closed stub when ACTIVITY_ENABLED=false. */
 export class DenyAllCharacterVerifyClient implements LfgCharacterVerifyPort {
   public resolveCharacter(): Promise<VerifiedLfgCharacter> {
-    throw new ActivityError('DEPENDENCY_UNAVAILABLE', 'Character verification is disabled');
+    return Promise.reject(
+      new ActivityError('DEPENDENCY_UNAVAILABLE', 'Character verification is disabled'),
+    );
   }
 }
 
@@ -180,10 +181,12 @@ export function createIdentityCharacterClient(
   fetchImpl?: typeof globalThis.fetch,
 ): LfgCharacterVerifyPort {
   if (!config.ACTIVITY_ENABLED) {
-    if (config.NODE_ENV === 'production' && isProjectionCentrumMode(config)) {
-      return new PassThroughCharacterVerifyClient();
-    }
+    // Production never trusts client-supplied sessionRoles as capability state.
     if (config.NODE_ENV === 'production') {
+      const client = HttpIdentityCharacterClient.fromEnv(config, fetchImpl);
+      if (client !== null) {
+        return client;
+      }
       return new DenyAllCharacterVerifyClient();
     }
     return new PassThroughCharacterVerifyClient();

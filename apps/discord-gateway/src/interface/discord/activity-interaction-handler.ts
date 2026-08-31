@@ -22,6 +22,7 @@ import {
 } from '@v2/hub-core';
 
 import { authorizePanelOperator } from '../../application/interactions/authorization.js';
+import { runDirectHubPaintFallback } from '../../application/interactions/hub-direct-paint.js';
 import {
   ActivityHttpError,
   type ActivityHttpClient,
@@ -103,7 +104,6 @@ import {
   parsePolishLocalDateTime,
 } from '../../presentation/discord/localized-datetime.js';
 import { executeHubPanelOperation } from './hub-panel-operation.js';
-import { runDirectHubPaintFallback } from '../../application/interactions/hub-direct-paint.js';
 
 export type ActivityInteractionDeps = {
   config: DiscordGatewayConfig;

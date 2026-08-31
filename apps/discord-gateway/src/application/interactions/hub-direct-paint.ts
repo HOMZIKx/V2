@@ -1,4 +1,3 @@
-import { deliverHubPanel, type HubPanelDeliveryDeps } from './hub-panel-delivery.js';
 import {
   findHubPanelInMessages,
   PANEL_MESSAGE_SCAN_DEFAULT_LIMIT,
@@ -6,6 +5,7 @@ import {
 } from '../../infrastructure/discord/panel-message-scan.js';
 import { renderActivityHubMessage } from '../../presentation/discord/activity-hub-renderer.js';
 import { toComponentsV2Payload } from '../../presentation/discord/components-v2-payload.js';
+import { deliverHubPanel, type HubPanelDeliveryDeps } from './hub-panel-delivery.js';
 
 export type HubDirectPaintGatewayPort = HubPanelDeliveryDeps['gateway'] & {
   scanChannelMessages?(

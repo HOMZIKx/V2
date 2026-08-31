@@ -122,7 +122,9 @@ async function resolveStartupHubChannelId(
   const { activityClient, config } = deps;
 
   try {
-    const panels = await activityClient.listPanels(guildId, { discordUserId: actorDiscordUserId });
+    const panels = await activityClient.listHubProjectionPanels(guildId, {
+      discordUserId: actorDiscordUserId,
+    });
     const hubPanel = panels.find((row) => {
       const panelType = (row as { panelType?: string }).panelType;
       const channelId = row.channelId;

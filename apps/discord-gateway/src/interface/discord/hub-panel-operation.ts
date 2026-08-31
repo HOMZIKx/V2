@@ -22,12 +22,15 @@ export type HubPanelRecord = {
 };
 
 export type HubPanelActivityPort = {
-  listPanels(guildId: string, actor: HubPanelActor): Promise<readonly HubPanelRecord[]>;
-  getPanelPendingOccurrence(
+  listHubProjectionPanels(
+    guildId: string,
+    actor: HubPanelActor,
+  ): Promise<readonly HubPanelRecord[]>;
+  getHubProjectionPendingOccurrence(
     panelId: string,
     actor: HubPanelActor,
   ): Promise<{ operationId: string; nonce: string } | null>;
-  upsertPanel(
+  upsertHubProjectionPanel(
     body: Record<string, unknown>,
     actor: HubPanelActor & { idempotencyKey: string },
   ): Promise<HubPanelRecord>;
@@ -70,7 +73,7 @@ export async function executeHubPanelOperation(
   input: ExecuteHubPanelInput,
 ): Promise<ExecuteHubPanelResult> {
   const actor = actorOf(input.actorDiscordUserId);
-  const existing = await deps.activityClient.listPanels(input.guildId, actor);
+  const existing = await deps.activityClient.listHubProjectionPanels(input.guildId, actor);
   const hub = existing.find((row) => {
     return (
       (row.panelType === 'hub' || row.panelType === undefined) &&
@@ -81,14 +84,14 @@ export async function executeHubPanelOperation(
   let operationId: string = randomUUID();
   let nonce = operationId.replace(/-/g, '').slice(0, 25);
   if (hub?.id) {
-    const pending = await deps.activityClient.getPanelPendingOccurrence(hub.id, actor);
+    const pending = await deps.activityClient.getHubProjectionPendingOccurrence(hub.id, actor);
     if (pending !== null) {
       operationId = pending.operationId;
       nonce = pending.nonce;
     }
   }
 
-  const panel = await deps.activityClient.upsertPanel(
+  const panel = await deps.activityClient.upsertHubProjectionPanel(
     {
       organizationId: input.organizationId,
       discordGuildId: input.guildId,
@@ -153,7 +156,7 @@ export async function executeHubPanelOperation(
 
   const occurrenceOutcome = delivered.mode === 'adopted' ? 'adopted' : 'sent';
   const ackSuffix = input.preferScanFirst ? 'panel-reconcile' : 'panel-ack';
-  await deps.activityClient.upsertPanel(
+  await deps.activityClient.upsertHubProjectionPanel(
     {
       organizationId: input.organizationId,
       discordGuildId: input.guildId,

@@ -16,20 +16,20 @@ const baseConfig = {
 
 describe('runStartupHubReconcile', () => {
   it('skips when auto reconcile is disabled', async () => {
-    const activityClient = { listPanels: vi.fn() };
+    const activityClient = { listHubProjectionPanels: vi.fn() };
     await runStartupHubReconcile({
       config: { ...baseConfig, DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP: false },
       gateway: {} as never,
       activityClient: activityClient as never,
       logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     });
-    expect(activityClient.listPanels).not.toHaveBeenCalled();
+    expect(activityClient.listHubProjectionPanels).not.toHaveBeenCalled();
   });
 
   it('skips when hub channel cannot be resolved', async () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const activityClient = {
-      listPanels: vi.fn(() => Promise.resolve([])),
+      listHubProjectionPanels: vi.fn(() => Promise.resolve([])),
       getGuildConfig: vi.fn(() => Promise.reject(new Error('not found'))),
     };
 
@@ -50,7 +50,7 @@ describe('runStartupHubReconcile', () => {
     const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
     const panelId = '11111111-1111-4111-8111-111111111111';
     const activityClient = {
-      listPanels: vi.fn(() =>
+      listHubProjectionPanels: vi.fn(() =>
         Promise.resolve([
           {
             id: panelId,
@@ -61,8 +61,8 @@ describe('runStartupHubReconcile', () => {
           },
         ]),
       ),
-      getPanelPendingOccurrence: vi.fn(() => Promise.resolve(null)),
-      upsertPanel: vi.fn((body: Record<string, unknown>) =>
+      getHubProjectionPendingOccurrence: vi.fn(() => Promise.resolve(null)),
+      upsertHubProjectionPanel: vi.fn((body: Record<string, unknown>) =>
         Promise.resolve({
           id: panelId,
           opaqueId: 'abcabcabcabc',

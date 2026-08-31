@@ -848,6 +848,65 @@ export class ActivityController {
     );
   }
 
+  /**
+   * Narrow internal Hub shell projection — operation `activity_hub_projection` only.
+   * Does not grant Activity product mutate/read and never uses AllowAll Authorization.
+   */
+  @Get('internal/hub-panels')
+  @RequireOperation('activity_hub_projection')
+  public async listHubProjectionPanels(@Query('guildId') guildId: string) {
+    if (guildId === undefined || guildId.trim() === '') {
+      throw new ActivityError('VALIDATION_FAILED', 'guildId query is required');
+    }
+    return this.useCases.listHubProjectionPanels(guildId);
+  }
+
+  @Post('internal/hub-panels')
+  @HttpCode(200)
+  @RequireOperation('activity_hub_projection')
+  public async upsertHubProjectionPanel(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    const parsed = parseOrThrow(panelUpsertSchema, body);
+    if (parsed.panelType !== undefined && parsed.panelType !== 'hub') {
+      throw new ActivityError('FORBIDDEN', 'Hub projection path accepts panelType=hub only');
+    }
+    return this.useCases.upsertHubProjectionPanel(
+      {
+        organizationId: parsed.organizationId,
+        discordGuildId: parsed.discordGuildId,
+        channelId: parsed.channelId,
+        ...(parsed.messageId !== undefined ? { messageId: parsed.messageId } : {}),
+        ...(parsed.status !== undefined ? { status: parsed.status } : {}),
+        ...(parsed.operationId !== undefined ? { operationId: parsed.operationId } : {}),
+        ...(parsed.nonce !== undefined ? { nonce: parsed.nonce } : {}),
+        ...(parsed.correlationId !== undefined ? { correlationId: parsed.correlationId } : {}),
+        ...(parsed.occurrenceOutcome !== undefined
+          ? { occurrenceOutcome: parsed.occurrenceOutcome }
+          : {}),
+        ...(parsed.incident !== undefined
+          ? {
+              incident: {
+                action: parsed.incident.action,
+                ...(parsed.incident.details !== undefined
+                  ? { details: parsed.incident.details }
+                  : {}),
+              },
+            }
+          : {}),
+      },
+      mutationCtx(request, idempotencyKey),
+    );
+  }
+
+  @Get('internal/hub-panels/:id/pending-occurrence')
+  @RequireOperation('activity_hub_projection')
+  public async getHubProjectionPendingOccurrence(@Param('id') id: string) {
+    return this.useCases.getHubProjectionPendingOccurrence(id);
+  }
+
   @Get('panels/:id/pending-occurrence')
   @RequireOperation('activity_read')
   public async getPanelPendingOccurrence(

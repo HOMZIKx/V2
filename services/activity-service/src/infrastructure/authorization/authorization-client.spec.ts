@@ -15,6 +15,17 @@ const request: AuthorizeRequest = {
   operationClass: 'sensitive',
 };
 
+const projectionEnv = {
+  ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+  NODE_ENV: 'production' as const,
+  ACTIVITY_ENABLED: 'false',
+  ACTIVITY_OUTBOX_WORKER_ENABLED: 'true',
+  ACTIVITY_PROJECTION_SHARED_SECRET: 'projection-secret-at-least-32-chars!!',
+  ACTIVITY_DISCORD_PROJECTION_BASE_URL: 'http://discord-gateway:8080',
+  ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
+  ACTIVITY_REDIS_URL: 'redis://127.0.0.1:6379/3',
+};
+
 describe('createAuthorizePort', () => {
   it('denies all permissions in production when ACTIVITY_ENABLED=false and projection mode is off', async () => {
     const env = parseActivityEnv({
@@ -30,22 +41,14 @@ describe('createAuthorizePort', () => {
     });
   });
 
-  it('allows permissions in production projection Centrum mode when ACTIVITY_ENABLED=false', async () => {
-    const env = parseActivityEnv({
-      ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
-      NODE_ENV: 'production',
-      ACTIVITY_ENABLED: 'false',
-      ACTIVITY_OUTBOX_WORKER_ENABLED: 'true',
-      ACTIVITY_PROJECTION_SHARED_SECRET: 'projection-secret-at-least-32-chars!!',
-      ACTIVITY_DISCORD_PROJECTION_BASE_URL: 'http://discord-gateway:8080',
-      ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
-      ACTIVITY_REDIS_URL: 'redis://127.0.0.1:6379/3',
-    });
+  it('A: production projection Centrum mode does NOT auto-allow Activity authorization', async () => {
+    const env = parseActivityEnv(projectionEnv);
     const port = createAuthorizePort(env);
-    expect(port).toBeInstanceOf(AllowAllAuthorizationClient);
+    expect(port).toBeInstanceOf(DenyAllAuthorizationClient);
+    expect(port).not.toBeInstanceOf(AllowAllAuthorizationClient);
     await expect(port.authorize(request)).resolves.toMatchObject({
-      allowed: true,
-      decision: 'allow',
+      allowed: false,
+      decision: 'deny',
     });
   });
 

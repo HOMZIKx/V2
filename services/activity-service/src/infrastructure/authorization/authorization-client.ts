@@ -7,7 +7,7 @@ import type {
   AuthorizeResult,
 } from '../../application/ports/activity.ports.js';
 import { ActivityError } from '../../domain/errors.js';
-import { isProjectionCentrumMode, type ActivityEnv } from '../config/activity-env.js';
+import type { ActivityEnv } from '../config/activity-env.js';
 
 export interface HttpAuthorizationClientOptions {
   readonly baseUrl: string;
@@ -143,9 +143,7 @@ export function createAuthorizePort(
   fetchImpl?: typeof globalThis.fetch,
 ): AuthorizePort {
   if (!config.ACTIVITY_ENABLED) {
-    if (config.NODE_ENV === 'production' && isProjectionCentrumMode(config)) {
-      return new AllowAllAuthorizationClient();
-    }
+    // Prefer real Authorization S2S when configured — never AllowAll in production.
     const authzClient = HttpAuthorizationClient.fromEnv(config, fetchImpl);
     if (authzClient !== null) {
       return authzClient;
