@@ -2,39 +2,45 @@
 
 ## Status
 
-**MODE:** Discovery prep only — **no product implementation**  
+**MODE:** Runtime security boundary remediation
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001`  
-Branch: `cursor/p4-1-activity-domain`  
+Task: `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002`
+Branch: `cursor/p4-1-activity-domain`
 PR: **#19** — do not merge
 
-Checkpoint: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** = `e0e4401f547d577305b8675fed1859f142dfe01d`  
-Prior: **`DISCORD_OWNER_UX_CORRECTION_PACK_SHA`** — `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf`
+Checkpoint: **`RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA`** = `04881cbefe015813e2ae0655757e32a37a73f9ab`
+Prior: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** = `e0e4401f547d577305b8675fed1859f142dfe01d`
 
 ---
 
-## Deliverable
+## Security remediation summary
 
-Created `docs/ai/GUILD_CONTROL_DISCOVERY_PREP.md` with:
+Removed production fail-open / bypass paths that blocked honest product enablement:
 
-- `CURRENT_CAPABILITY_MATRIX` — authz sync, identity profile, activity admin, partial attendance, missing G8/Guild Control
-- `MEMBER_DATA_MATRIX` — tables/APIs per data domain
-- `DISCORD_EVENT_MATRIX` — consumed vs available (no new telemetry)
-- `G8_IMPLEMENTATION_GAP_MATRIX` — Issue #21 vs P4.6 attendance separation
-- `ADMIN_CONTROL_GAP_MATRIX` — reusable Admin vs missing authz/member UI
-- `SECURITY_PRIVACY_GAPS` — intents, APPLY gate, retention, cross-guild
-- `REUSABLE_FOUNDATION` + Marketplace #28 dependency map (reuse only)
-- `OWNER_DECISIONS_REQUIRED` — **5** major decisions (bot-first boundary, G8 vs attendance, telemetry, role automation, Admin scope)
+1. **Authorization client** — production no longer falls back to AllowAll; fail-closed when Authz unavailable.
+2. **Identity character client** — production no longer uses PassThrough; requires real Identity S2S.
+3. **Hub projection S2S** — dedicated `activity_hub_projection` inbound op + Activity use-cases/controller endpoints; Discord gateway calls narrowed projection instead of product authorize paths for Centrum paint/reconcile.
+4. **Guards / tests** — `production-stub-guard`, identity client specs, hub-projection-boundary specs.
+5. **Owner vars** — `docs/deploy/ZEABUR_OWNER_VARIABLES.md` + `.env.example` note Identity S2S + fail-closed product/LFG.
+6. **Ops helper** — `tools/scripts/zeabur-ensure-hub-projection-op.mjs` ensures inbound clients JSON includes hub projection op (no secrets printed).
 
-## Validation
+### Validation
 
-| Check                   | Result                                                                              |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| Product code changed    | **NO**                                                                              |
-| New telemetry enabled   | **NO**                                                                              |
-| `gh issue view` #21–#28 | **Skipped** (CLI not authenticated) — reconcile Issue #21 body in ChatGPT Discovery |
+| Check | Result |
+| ----- | ------ |
+| `corepack pnpm validate` | **PASS** (2026-08-31) |
+| Security CRITICAL / HIGH | **0 / 0** |
+| `LOCAL_VALIDATE` | **PASS** |
+
+### Runtime (honest)
+
+| Field | Value |
+| ----- | ----- |
+| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` until tip is live + Hub/reconcile proven |
+| Pre-deploy discord live SHA | `cbd67aa…` (PNG hub path; not remediation tip) |
+| Next | Push tip → redeploy identity + activity + discord-gateway → set `ACTIVITY_ENABLED=true` only after Identity INTERNAL_JWT / S2S healthy |
 
 ## STOP
 
-No Guild Control · No G8 · No Marketplace · No Reservations · No Community implementation.
+No Guild Control · No merge of PR #19 · No force push.

@@ -1,8 +1,8 @@
-﻿# PROJECT_STATE
+# PROJECT_STATE
 
 ## Status
 
-`V2-DISCORD-OWNER-UX-CORRECTION-PACK-002` → code **`LOCAL_VALIDATE PASS`** · runtime **not** Owner UI-verified
+`V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` — code **`LOCAL_VALIDATE PASS`** · security CRITICAL/HIGH = **0** · runtime **partial** (deploy tip pending)
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT CI GREEN** · **NOT RUNTIME VERIFIED AT HEAD**
 
@@ -14,22 +14,22 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 | Field                   | Value                                                                       |
 | ----------------------- | --------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001` (prep complete) |
-| REVIEW_POSTURE          | Guild Control / G8 discovery prep ready for Owner+ChatGPT                   |
-| CODE_STATUS             | `DISCOVERY_PREP_ONLY` (no product code)                                     |
+| CURRENT_TASK            | `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` (code committed; deploy tip next) |
+| REVIEW_POSTURE          | Security boundary remediation — fail-closed Authz/Identity; narrow hub projection S2S |
+| CODE_STATUS             | `SECURITY_REMEDIATION_COMMITTED` — RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA pinned |
 | CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                              |
 | LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)              |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                               |
-| CURRENT_HEAD / PR_HEAD  | _(pin after commit)_                                                        |
+| CURRENT_HEAD / PR_HEAD  | `04881cbefe015813e2ae0655757e32a37a73f9ab` |
 | PR                      | #19 — **do not merge**                                                      |
 | PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                            |
 | CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                |
-| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke                |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — hub reconcile 403; see report         |
+| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31) |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — tip not yet live; prior hub on cbd67aa |
 | RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
-| ZEABUR_LIVE_DISCORD_SHA | prior tip match; redeploy after this pack SHA                               |
+| ZEABUR_LIVE_DISCORD_SHA | `cbd67aaf996d7920a7cc6bb36bc29e6ff9e34beb` (pre-remediation; redeploy tip) |
 | ZEABUR_LIVE_API_SHA     | stale risk remains                                                          |
-| ZEABUR_DEPLOY           | Activity Identity S2S **OWNER_ACTION_REQUIRED**                             |
+| ZEABUR_DEPLOY           | Redeploy identity+activity+discord @ remediation SHA; enable ACTIVITY after Identity S2S healthy |
 | PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |
 | REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                         |
 
@@ -67,6 +67,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
 | **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**      | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf` | Owner Discord UX correction pack 002                                          |
 | **GUILD_CONTROL_DISCOVERY_PREP_SHA**          | `e0e4401f547d577305b8675fed1859f142dfe01d` | Guild Control + member monitoring discovery prep 001                          |
+| **RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA** | `04881cbefe015813e2ae0655757e32a37a73f9ab` | Fail-closed Authz/Identity; narrow hub projection S2S |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
@@ -96,12 +97,14 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## CRITICAL / HIGH
 
-| ID                    | Severity            | Item                                                         |
-| --------------------- | ------------------- | ------------------------------------------------------------ |
-| CI-BILLING-001        | CRITICAL (CI green) | GitHub Actions billing / spending limit — Owner must restore |
-| MARKETPLACE-DISC-001  | HIGH (scope)        | Issue #28 — do not treat Stage 7 as done                     |
-| RESERVATIONS-DISC-001 | HIGH (scope)        | Discovery prep ready — do not expand Reservations product    |
-| GOVERNANCE-001        | HIGH (process)      | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`         |
+| ID                              | Severity                 | Item                                                                                          |
+| ------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------- |
+| **Security (this remediation)** | **0 CRITICAL / 0 HIGH**  | Production Authz AllowAll + Identity PassThrough removed; hub projection S2S narrowed          |
+| CI-BILLING-001                  | CRITICAL (CI green)      | GitHub Actions billing / spending limit — Owner must restore                                  |
+| MARKETPLACE-DISC-001            | HIGH (scope)             | Issue #28 — do not treat Stage 7 as done                                                      |
+| RESERVATIONS-DISC-001           | HIGH (scope)             | Discovery prep ready — do not expand Reservations product                                     |
+| GOVERNANCE-001                  | HIGH (process)           | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`                                          |
+
 
 ## LFG v1 delivery (summary)
 
@@ -118,4 +121,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-31 — `V2-GUILD-CONTROL-AND-MEMBER-MONITORING-DISCOVERY-PREP-001`: inventory matrices for Guild Control, member data, Discord events, G8 gaps; no implementation.
+2026-08-31 — `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002`: LOCAL_VALIDATE PASS; RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA=`04881cbefe015813e2ae0655757e32a37a73f9ab`; security CRITICAL/HIGH=0; live tip deploy pending.
