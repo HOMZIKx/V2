@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 export const OWNER_ASSET_REQUIRED = 'OWNER_ASSET_REQUIRED' as const;
 export const OWNER_ASSET_UPLOAD_REQUIRED = 'OWNER_ASSET_UPLOAD_REQUIRED' as const;
 
-export const ACTIVITY_HUB_BANNER_FILENAME = 'v2-activity-banner.webp';
+export const ACTIVITY_HUB_BANNER_FILENAME = 'v2-activity-banner.png';
 
 export type ActivityHubAssetKey =
   'activityHub' | 'activityBanner' | 'create' | 'lfg' | 'mine' | 'notifications';
@@ -38,8 +38,9 @@ const ASSET_DEFINITIONS: Readonly<
   Record<ActivityHubAssetKey, Omit<ActivityHubAssetDefinition, 'key'>>
 > = {
   activityHub: {
-    filename: 'centrum-aktywnosci-icon.webp',
-    attachmentUrl: 'attachment://centrum-aktywnosci-icon.webp',
+    // Prefer PNG for Components V2 media reliability across Discord clients.
+    filename: 'centrum-aktywnosci-icon.png',
+    attachmentUrl: 'attachment://centrum-aktywnosci-icon.png',
     alt: 'V2 Centrum',
     optional: false,
     ownerStatus: null,
@@ -52,29 +53,29 @@ const ASSET_DEFINITIONS: Readonly<
     ownerStatus: OWNER_ASSET_REQUIRED,
   },
   create: {
-    filename: 'utworz-wydarzenie-icon.webp',
-    attachmentUrl: 'attachment://utworz-wydarzenie-icon.webp',
+    filename: 'utworz-wydarzenie-icon.png',
+    attachmentUrl: 'attachment://utworz-wydarzenie-icon.png',
     alt: 'Utwórz aktywność',
     optional: false,
     ownerStatus: null,
   },
   lfg: {
-    filename: 'szukam-ekipy-icon.webp',
-    attachmentUrl: 'attachment://szukam-ekipy-icon.webp',
+    filename: 'szukam-ekipy-icon.png',
+    attachmentUrl: 'attachment://szukam-ekipy-icon.png',
     alt: 'Szukam ekipy',
     optional: false,
     ownerStatus: null,
   },
   mine: {
-    filename: 'moje-aktywnosci-icon.webp',
-    attachmentUrl: 'attachment://moje-aktywnosci-icon.webp',
+    filename: 'moje-aktywnosci-icon.png',
+    attachmentUrl: 'attachment://moje-aktywnosci-icon.png',
     alt: 'Moje aktywności',
     optional: false,
     ownerStatus: null,
   },
   notifications: {
-    filename: 'powiadomienia-icon.webp',
-    attachmentUrl: 'attachment://powiadomienia-icon.webp',
+    filename: 'powiadomienia-icon.png',
+    attachmentUrl: 'attachment://powiadomienia-icon.png',
     alt: 'Powiadomienia',
     optional: false,
     ownerStatus: null,

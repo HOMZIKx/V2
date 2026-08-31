@@ -92,7 +92,7 @@ describe('runStartupHubReconcile', () => {
       [string, string, { flags?: number; files?: Array<{ name?: string | null }> }] | undefined;
     const editPayload = editCall?.[2];
     expect(editPayload?.flags).toBe(1 << 15);
-    expect(editPayload?.files?.some((file) => file.name === 'centrum-aktywnosci-icon.webp')).toBe(
+    expect(editPayload?.files?.some((file) => file.name === 'centrum-aktywnosci-icon.png')).toBe(
       true,
     );
     expect(logger.info).toHaveBeenCalledWith(

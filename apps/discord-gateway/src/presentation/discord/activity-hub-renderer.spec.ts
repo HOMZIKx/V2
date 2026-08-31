@@ -46,9 +46,9 @@ describe('activity-hub-renderer', () => {
       .map((file) => file.name)
       .sort();
     if (bannerPresent) {
-      expect(attachmentNames).toEqual(['centrum-aktywnosci-icon.webp', 'v2-activity-banner.webp']);
+      expect(attachmentNames).toEqual(['centrum-aktywnosci-icon.png', 'v2-activity-banner.png']);
     } else {
-      expect(attachmentNames).toEqual(['centrum-aktywnosci-icon.webp']);
+      expect(attachmentNames).toEqual(['centrum-aktywnosci-icon.png']);
     }
 
     const container = toJson(payload.components![0]);

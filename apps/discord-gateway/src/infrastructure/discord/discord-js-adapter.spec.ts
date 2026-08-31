@@ -79,8 +79,8 @@ describe('DiscordJsGatewayAdapter', () => {
     });
 
     const files = [
-      { name: 'centrum-aktywnosci-icon.webp' },
-      { name: 'utworz-wydarzenie-icon.webp' },
+      { name: 'centrum-aktywnosci-icon.png' },
+      { name: 'utworz-wydarzenie-icon.png' },
     ];
     const payload = { components: [], flags: 1 << 15, files };
 

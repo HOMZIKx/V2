@@ -43,11 +43,11 @@ describe('Activity Discord visual contract', () => {
     expect(json).not.toContain('"value":"activities"');
     expect(json).not.toContain('"value":"reservations"');
     expect(json).toContain(':panel:aabbccddeeff:module');
-    expect(json).toContain('attachment://centrum-aktywnosci-icon.webp');
-    expect(json).not.toContain('attachment://utworz-wydarzenie-icon.webp');
-    expect(json).not.toContain('attachment://szukam-ekipy-icon.webp');
-    expect(json).not.toContain('attachment://moje-aktywnosci-icon.webp');
-    expect(json).not.toContain('attachment://powiadomienia-icon.webp');
+    expect(json).toContain('attachment://centrum-aktywnosci-icon.png');
+    expect(json).not.toContain('attachment://utworz-wydarzenie-icon.png');
+    expect(json).not.toContain('attachment://szukam-ekipy-icon.png');
+    expect(json).not.toContain('attachment://moje-aktywnosci-icon.png');
+    expect(json).not.toContain('attachment://powiadomienia-icon.png');
     expect(json).not.toContain('v2-lab-banner');
     expect(json).not.toMatch(
       /components v2|projection|backend|activity-service|opaque id|guild config/i,
@@ -65,7 +65,7 @@ describe('Activity Discord visual contract', () => {
     expect((payload.files ?? []).length).toBeGreaterThanOrEqual(1);
     expect((payload.files ?? []).length).toBeLessThanOrEqual(2);
     const names = payload.files?.map((file) => (file as { name?: string }).name) ?? [];
-    expect(names).toContain('centrum-aktywnosci-icon.webp');
+    expect(names).toContain('centrum-aktywnosci-icon.png');
     expect(names).not.toContain('v2-lab-banner.png');
     expect(new Set(names).size).toBe(names.length);
   });

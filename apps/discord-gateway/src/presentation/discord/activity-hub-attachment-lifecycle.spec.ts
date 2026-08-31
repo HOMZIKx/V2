@@ -112,11 +112,11 @@ describe('activity hub attachment lifecycle', () => {
     expect(extractSignedCustomIds(lastPayload)).toEqual(signedCustomIds);
 
     const serialized = JSON.stringify(lastPayload.components ?? []);
-    expect(serialized).toContain('attachment://centrum-aktywnosci-icon.webp');
-    expect(serialized).not.toContain('attachment://utworz-wydarzenie-icon.webp');
-    expect(serialized).not.toContain('attachment://szukam-ekipy-icon.webp');
-    expect(serialized).not.toContain('attachment://moje-aktywnosci-icon.webp');
-    expect(serialized).not.toContain('attachment://powiadomienia-icon.webp');
+    expect(serialized).toContain('attachment://centrum-aktywnosci-icon.png');
+    expect(serialized).not.toContain('attachment://utworz-wydarzenie-icon.png');
+    expect(serialized).not.toContain('attachment://szukam-ekipy-icon.png');
+    expect(serialized).not.toContain('attachment://moje-aktywnosci-icon.png');
+    expect(serialized).not.toContain('attachment://powiadomienia-icon.png');
 
     expect(serialized).toContain(createPanelCustomId(opaquePanelId, 'module', signingSecret));
 

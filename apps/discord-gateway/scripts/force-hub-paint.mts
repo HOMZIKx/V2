@@ -1,5 +1,5 @@
 /**
- * One-shot: edit existing Centrum hub message in place with proper multipart attachments.
+ * Force-repaint Centrum: delete stale hub messages, post a fresh Components V2 message.
  */
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -20,7 +20,6 @@ import {
 } from '../src/infrastructure/discord/panel-message-scan.js';
 import {
   buildActivityHubMessageAttachmentFiles,
-  resolveActivityHubAssetPath,
   tryResolveActivityHubAssetPath,
 } from '../src/presentation/discord/activity-hub-assets.js';
 import { renderActivityHubMessage } from '../src/presentation/discord/activity-hub-renderer.js';
@@ -31,8 +30,11 @@ loadEnvFile(path.join(root, 'apps/discord-gateway/.env'));
 
 const config = normalizeDiscordConfig(createConfig(DiscordGatewayConfigSchema));
 const rest = new REST({ version: '10' }).setToken(config.DISCORD_TOKEN);
+const args = process.argv.slice(2).filter((arg) => arg.length > 0);
+const recreate = args.includes('--recreate') || args.includes('--fresh');
+const channelArg = args.find((arg) => !arg.startsWith('--'));
 const channelId =
-  process.argv[2]?.trim() ||
+  channelArg?.trim() ||
   config.DISCORD_TEST_CHANNEL_ID.trim() ||
   '1534228693449179146';
 
@@ -41,10 +43,10 @@ function opaqueFromUuid(id: string): string {
 }
 
 const messages = (await rest.get(Routes.channelMessages(channelId), {
-  query: new URLSearchParams({ limit: '30' }),
+  query: new URLSearchParams({ limit: '40' }),
 })) as Array<{
   id: string;
-  author?: { id?: string; bot?: boolean };
+  author?: { id?: string };
   components?: unknown;
 }>;
 
@@ -68,21 +70,16 @@ for (const message of messages) {
   let score = 0;
   if (opaque) score += 100;
   if (raw.includes('V2 Centrum') || raw.includes('Centrum')) score += 50;
-  if (raw.includes('Mapa V2') || raw.includes('Wybierz działanie')) score += 20;
+  if (raw.includes('Wybierz działanie') || raw.includes('Mapa V2')) score += 20;
   if (collectCustomIdsFromComponents(message.components).length > 0) score += 10;
   if (score > 0) {
     candidates.push({ messageId: message.id, opaquePanelId: opaque, score });
   }
 }
-
 candidates.sort((a, b) => b.score - a.score || (BigInt(b.messageId) > BigInt(a.messageId) ? 1 : -1));
-const target = candidates[0];
-if (!target) {
-  console.error(JSON.stringify({ ok: false, error: 'HUB_NOT_FOUND', channelId, botId }));
-  process.exit(1);
-}
 
-const opaquePanelId = target.opaquePanelId ?? opaqueFromUuid(randomUUID());
+const best = candidates[0];
+const opaquePanelId = best?.opaquePanelId ?? opaqueFromUuid(randomUUID());
 const rendered = renderActivityHubMessage({
   opaquePanelId,
   signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
@@ -90,22 +87,20 @@ const rendered = renderActivityHubMessage({
 
 const attachmentBuilders = buildActivityHubMessageAttachmentFiles();
 const rawFiles = attachmentBuilders.map((file) => {
-  const name = file.name ?? 'unknown.webp';
-  // Prefer fresh buffer from disk — AttachmentBuilder may not serialize cleanly over REST.
+  const name = file.name ?? 'unknown.png';
   const key =
-    name === 'centrum-aktywnosci-icon.webp'
+    name.startsWith('centrum-')
       ? 'activityHub'
-      : name === 'v2-activity-banner.webp'
+      : name.startsWith('v2-activity-banner')
         ? 'activityBanner'
         : null;
-  const diskPath =
-    key !== null
-      ? (tryResolveActivityHubAssetPath(key) ?? resolveActivityHubAssetPath(key as 'activityHub'))
-      : null;
-  const data = diskPath !== null ? readFileSync(diskPath) : Buffer.alloc(0);
+  const diskPath = key !== null ? tryResolveActivityHubAssetPath(key) : null;
+  if (diskPath === null) {
+    throw new Error(`Missing asset file for ${name}`);
+  }
   return {
     name,
-    data,
+    data: readFileSync(diskPath),
     contentType: name.endsWith('.png') ? ('image/png' as const) : ('image/webp' as const),
   };
 });
@@ -123,41 +118,61 @@ const body = {
   })),
 };
 
-console.log(
-  JSON.stringify({
-    painting: true,
-    messageId: target.messageId,
-    files: rawFiles.map((f) => ({ name: f.name, bytes: f.data.length })),
-  }),
-);
+let messageId = best?.messageId ?? null;
+let mode: 'updated' | 'created' | 'recreated' = 'updated';
 
-await rest.patch(Routes.channelMessage(channelId, target.messageId), {
-  body,
-  files: rawFiles,
-});
+if (recreate || messageId === null) {
+  for (const candidate of candidates) {
+    try {
+      await rest.delete(Routes.channelMessage(channelId, candidate.messageId));
+      console.log(JSON.stringify({ deleted: candidate.messageId }));
+    } catch (error) {
+      console.log(
+        JSON.stringify({
+          deleteFailed: candidate.messageId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    }
+  }
+  const created = (await rest.post(Routes.channelMessages(channelId), {
+    body,
+    files: rawFiles,
+  })) as { id: string; attachments?: unknown[]; components?: unknown };
+  messageId = created.id;
+  mode = 'recreated';
+} else {
+  await rest.patch(Routes.channelMessage(channelId, messageId), {
+    body,
+    files: rawFiles,
+  });
+}
 
-const verify = (await rest.get(Routes.channelMessage(channelId, target.messageId))) as {
+const verify = (await rest.get(Routes.channelMessage(channelId, messageId))) as {
   id: string;
   edited_timestamp?: string | null;
   attachments?: Array<{ filename?: string; size?: number; url?: string }>;
   components?: unknown;
 };
 const verifyRaw = JSON.stringify(verify);
-const attachmentNames = (verify.attachments ?? []).map((a) => a.filename ?? '');
+const loadingStates = [...verifyRaw.matchAll(/"loading_state":(\d+)/g)].map((m) => Number(m[1]));
+const contentTypes = [...verifyRaw.matchAll(/"content_type":"([^"]+)"/g)].map((m) => m[1]);
 
 console.log(
   JSON.stringify(
     {
       ok: true,
+      mode,
       channelId,
-      messageId: target.messageId,
+      messageId,
       opaquePanelId,
-      jumpUrl: `https://discord.com/channels/${config.DISCORD_TEST_GUILD_ID}/${channelId}/${target.messageId}`,
-      attachmentNames,
-      attachmentCount: attachmentNames.length,
+      jumpUrl: `https://discord.com/channels/${config.DISCORD_TEST_GUILD_ID}/${channelId}/${messageId}`,
+      files: rawFiles.map((f) => ({ name: f.name, bytes: f.data.length })),
+      loadingStates,
+      contentTypes,
       hasMapaV2: verifyRaw.includes('Mapa V2'),
       hasWybierzDzialanie: verifyRaw.includes('Wybierz działanie'),
-      hasAttachmentUrl: verifyRaw.includes('attachment://centrum-aktywnosci-icon.webp'),
+      hasUtworz: verifyRaw.includes('Utwórz aktywność'),
       edited: verify.edited_timestamp ?? null,
     },
     null,
