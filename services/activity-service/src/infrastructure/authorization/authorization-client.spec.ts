@@ -16,7 +16,7 @@ const request: AuthorizeRequest = {
 };
 
 describe('createAuthorizePort', () => {
-  it('denies all permissions in production when ACTIVITY_ENABLED=false', async () => {
+  it('denies all permissions in production when ACTIVITY_ENABLED=false and projection mode is off', async () => {
     const env = parseActivityEnv({
       ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
       NODE_ENV: 'production',
@@ -27,6 +27,25 @@ describe('createAuthorizePort', () => {
     await expect(port.authorize(request)).resolves.toMatchObject({
       allowed: false,
       decision: 'deny',
+    });
+  });
+
+  it('allows permissions in production projection Centrum mode when ACTIVITY_ENABLED=false', async () => {
+    const env = parseActivityEnv({
+      ACTIVITY_DATABASE_URL: 'postgresql://activity:x@127.0.0.1:5432/activity',
+      NODE_ENV: 'production',
+      ACTIVITY_ENABLED: 'false',
+      ACTIVITY_OUTBOX_WORKER_ENABLED: 'true',
+      ACTIVITY_PROJECTION_SHARED_SECRET: 'projection-secret-at-least-32-chars!!',
+      ACTIVITY_DISCORD_PROJECTION_BASE_URL: 'http://discord-gateway:8080',
+      ACTIVITY_INBOUND_CLIENTS_JSON: '[]',
+      ACTIVITY_REDIS_URL: 'redis://127.0.0.1:6379/3',
+    });
+    const port = createAuthorizePort(env);
+    expect(port).toBeInstanceOf(AllowAllAuthorizationClient);
+    await expect(port.authorize(request)).resolves.toMatchObject({
+      allowed: true,
+      decision: 'allow',
     });
   });
 

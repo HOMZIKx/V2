@@ -1,6 +1,7 @@
 import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import { executeHubPanelOperation } from '../../interface/discord/hub-panel-operation.js';
+import { runDirectHubPaintFallback } from './hub-direct-paint.js';
 
 export type HubStartupReconcileConfig = {
   readonly DISCORD_ACTIVITY_ENABLED: boolean;
@@ -74,10 +75,41 @@ export async function runStartupHubReconcile(deps: HubStartupReconcileDeps): Pro
       gitCommitSha: config.GIT_COMMIT_SHA,
     });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    try {
+      const painted = await runDirectHubPaintFallback(
+        { gateway, logger },
+        {
+          channelId,
+          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
+        },
+      );
+      if (painted !== null) {
+        logger.info('Startup hub direct paint fallback completed', {
+          guildId,
+          channelId,
+          mode: painted.mode,
+          messageId: painted.messageId,
+          opaquePanelId: painted.opaquePanelId,
+          activityError: detail,
+          gitCommitSha: config.GIT_COMMIT_SHA,
+        });
+        return;
+      }
+    } catch (fallbackError) {
+      logger.warn('Startup hub direct paint fallback failed', {
+        guildId,
+        channelId,
+        activityError: detail,
+        fallbackError:
+          fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      });
+    }
+
     logger.warn('Startup hub reconcile failed; use /centrum-reconcile if the panel looks stale', {
       guildId,
       channelId,
-      error: error instanceof Error ? error.message : String(error),
+      error: detail,
     });
   }
 }

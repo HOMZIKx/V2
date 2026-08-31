@@ -287,6 +287,20 @@ function hasInboundClientConfig(config: ActivityEnv): boolean {
   );
 }
 
+/**
+ * Zeabur minimal Centrum deploy: projection outbox + inbound gateway assertions,
+ * without ACTIVITY_ENABLED=true (no Identity character S2S yet).
+ */
+export function isProjectionCentrumMode(config: ActivityEnv): boolean {
+  return (
+    !config.ACTIVITY_ENABLED &&
+    config.ACTIVITY_PROJECTION_SHARED_SECRET !== undefined &&
+    config.ACTIVITY_OUTBOX_WORKER_ENABLED &&
+    config.ACTIVITY_DISCORD_PROJECTION_BASE_URL !== undefined &&
+    hasInboundClientConfig(config)
+  );
+}
+
 const URL_CREDENTIALS = /(\/\/[^:/@\s]+:)([^@/\s]+)(@)/g;
 const SENSITIVE_ASSIGNMENT =
   /((?:SECRET|PASSWORD|TOKEN|PRIVATE_KEY|CLIENT_SECRET)[A-Z_]*\s*[=:]\s*)(\S+)/gi;

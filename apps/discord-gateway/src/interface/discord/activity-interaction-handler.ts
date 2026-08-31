@@ -103,6 +103,7 @@ import {
   parsePolishLocalDateTime,
 } from '../../presentation/discord/localized-datetime.js';
 import { executeHubPanelOperation } from './hub-panel-operation.js';
+import { runDirectHubPaintFallback } from '../../application/interactions/hub-direct-paint.js';
 
 export type ActivityInteractionDeps = {
   config: DiscordGatewayConfig;
@@ -1453,32 +1454,50 @@ export class ActivityInteractionHandler {
     const channelId = interaction.channelId;
     const guildId = interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID;
 
-    const delivered = await executeHubPanelOperation(
-      {
-        gateway: this.deps.gateway,
-        logger: this.deps.logger,
-        activityClient: this.deps.activityClient,
-      },
-      {
-        guildId,
-        channelId,
-        actorDiscordUserId: interaction.user.id,
-        organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
-        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-        preferScanFirst: options.preferScanFirst,
-      },
-    );
+    try {
+      const delivered = await executeHubPanelOperation(
+        {
+          gateway: this.deps.gateway,
+          logger: this.deps.logger,
+          activityClient: this.deps.activityClient,
+        },
+        {
+          guildId,
+          channelId,
+          actorDiscordUserId: interaction.user.id,
+          organizationId: this.deps.config.ACTIVITY_ORGANIZATION_ID,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          preferScanFirst: options.preferScanFirst,
+        },
+      );
 
-    const replyByMode = {
-      updated: 'Panel Centrum zaktualizowany w istniejącej wiadomości.',
-      adopted: 'Panel uzgodniony — przyjęto istniejącą wiadomość (bez duplikatu).',
-      created:
-        options.preferScanFirst === true
-          ? 'Panel odtworzony — opublikowano nową wiadomość.'
-          : 'Panel Centrum opublikowany.',
-    } as const;
+      const replyByMode = {
+        updated: 'Panel Centrum zaktualizowany w istniejącej wiadomości.',
+        adopted: 'Panel uzgodniony — przyjęto istniejącą wiadomość (bez duplikatu).',
+        created:
+          options.preferScanFirst === true
+            ? 'Panel odtworzony — opublikowano nową wiadomość.'
+            : 'Panel Centrum opublikowany.',
+      } as const;
 
-    await interaction.editReply({ content: replyByMode[delivered.mode] });
+      await interaction.editReply({ content: replyByMode[delivered.mode] });
+      return;
+    } catch (error) {
+      const painted = await runDirectHubPaintFallback(
+        { gateway: this.deps.gateway, logger: this.deps.logger },
+        {
+          channelId,
+          signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        },
+      );
+      if (painted !== null) {
+        await interaction.editReply({
+          content: 'Panel Centrum odświeżony (fallback bez Activity API).',
+        });
+        return;
+      }
+      throw error;
+    }
   }
 
   private async hubStatus(interaction: ChatInputCommandInteraction): Promise<void> {

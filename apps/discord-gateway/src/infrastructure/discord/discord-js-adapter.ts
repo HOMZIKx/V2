@@ -550,23 +550,30 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     options?: { limit?: number },
   ): Promise<Array<{ messageId: string; channelId: string }>> {
     const limit = options?.limit ?? PANEL_MESSAGE_SCAN_DEFAULT_LIMIT;
+    const scanned = await this.scanChannelMessages(channelId, { limit });
+    const botUserId = this.client.user?.id ?? (await this.fetchApplication()).botUserId;
+    return filterBotPanelMatches(scanned, opaquePanelId, botUserId).map((message) => ({
+      messageId: message.messageId,
+      channelId: message.channelId,
+    }));
+  }
+
+  public async scanChannelMessages(
+    channelId: string,
+    options?: { limit?: number },
+  ): Promise<ScannedChannelMessage[]> {
+    const limit = options?.limit ?? PANEL_MESSAGE_SCAN_DEFAULT_LIMIT;
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || !channel.isTextBased() || channel.isDMBased()) {
       throw new Error('Channel unavailable for panel message scan.');
     }
 
-    const botUserId = this.client.user?.id ?? (await this.fetchApplication()).botUserId;
     const fetched = await channel.messages.fetch({ limit });
-    const scanned: ScannedChannelMessage[] = [...fetched.values()].map((message) => ({
+    return [...fetched.values()].map((message) => ({
       messageId: message.id,
       channelId,
       authorId: message.author.id,
       components: message.components,
-    }));
-
-    return filterBotPanelMatches(scanned, opaquePanelId, botUserId).map((message) => ({
-      messageId: message.messageId,
-      channelId: message.channelId,
     }));
   }
 

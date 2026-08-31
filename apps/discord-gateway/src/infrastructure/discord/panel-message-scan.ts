@@ -1,6 +1,7 @@
 import {
   ACTIVITY_CUSTOM_ID_PREFIX,
   ACTIVITY_CUSTOM_ID_VERSION,
+  parseActivityCustomId,
 } from '../security/activity-signed-custom-id.js';
 
 /** Bounded scan window for panel adopt/reconcile (P4-D6). */
@@ -92,4 +93,43 @@ export function filterBotPanelMatches(
     (message) =>
       message.authorId === botUserId && messageMatchesPanelOpaqueId(message, opaquePanelId),
   );
+}
+
+/** Extract hub panel opaque id from signed custom_ids (first valid panel scope). */
+export function extractHubPanelOpaqueIdFromComponents(
+  components: unknown,
+  signingSecret: string,
+): string | null {
+  for (const customId of collectCustomIdsFromComponents(components)) {
+    try {
+      const parsed = parseActivityCustomId(customId, signingSecret);
+      if (parsed.scope === 'panel') {
+        return parsed.opaqueId;
+      }
+    } catch {
+      // Try next custom_id in the message.
+    }
+  }
+  return null;
+}
+
+export function findHubPanelInMessages(
+  messages: readonly ScannedChannelMessage[],
+  botUserId: string,
+  signingSecret: string,
+): { messageId: string; channelId: string; opaquePanelId: string } | null {
+  for (const message of messages) {
+    if (message.authorId !== botUserId) {
+      continue;
+    }
+    const opaquePanelId = extractHubPanelOpaqueIdFromComponents(message.components, signingSecret);
+    if (opaquePanelId !== null) {
+      return {
+        messageId: message.messageId,
+        channelId: message.channelId,
+        opaquePanelId,
+      };
+    }
+  }
+  return null;
 }

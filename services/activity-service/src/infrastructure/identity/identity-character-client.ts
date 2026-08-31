@@ -9,6 +9,7 @@ import type {
 } from '../../application/ports/activity.ports.js';
 import { ActivityError } from '../../domain/errors.js';
 import type { ActivityEnv } from '../config/activity-env.js';
+import { isProjectionCentrumMode } from '../config/activity-env.js';
 
 export interface HttpIdentityCharacterClientOptions {
   readonly baseUrl: string;
@@ -179,6 +180,9 @@ export function createIdentityCharacterClient(
   fetchImpl?: typeof globalThis.fetch,
 ): LfgCharacterVerifyPort {
   if (!config.ACTIVITY_ENABLED) {
+    if (config.NODE_ENV === 'production' && isProjectionCentrumMode(config)) {
+      return new PassThroughCharacterVerifyClient();
+    }
     if (config.NODE_ENV === 'production') {
       return new DenyAllCharacterVerifyClient();
     }
