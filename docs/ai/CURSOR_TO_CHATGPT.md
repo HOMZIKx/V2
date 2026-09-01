@@ -2,49 +2,47 @@
 
 ## Status
 
-**MODE:** Task 006 checkpoint — `PLAYER_TOOLKIT_CORE_V1` (code complete; deploy pending)
+**MODE:** Task 005 checkpoint — `ADMIN_CONTROL_CENTER_UX_V1`
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-PLAYER-TOOLKIT-CORE-FOUNDATION-006`
+Task: `V2-ADMIN-CONTROL-CENTER-UX-005`
 Branch: `cursor/p4-1-activity-domain`
 PR: **#19** — do not merge
-Tip: see `PLAYER_TOOLKIT_CORE_V1_SHA`
+Tip: see `ADMIN_CONTROL_CENTER_UX_V1_SHA`
+
+Task 006 (`PLAYER_TOOLKIT_CORE_V1`) remains at `PLAYER_TOOLKIT_CORE_V1_SHA` — deploy pending; not expanded in this handoff.
 
 ---
 
-## Delivered (006)
+## Git classification (005 continuation)
 
-| Gate | Result |
-|------|--------|
-| PLAYER_CORE_ACCOUNT_MODEL | PASS (migration `003`, API `identity/v1/player/accounts`) |
-| PLAYER_CORE_CHARACTER_MODEL | PASS (canonical `player_characters` + `gameAccountId`) |
-| PLAYER_CORE_EXISTING_MIGRATION | PASS (idempotent default **Moje konto** backfill) |
-| PLAYER_CORE_WWW | PASS (Profil IA: Przegląd / Postacie / …; account-grouped UX) |
-| PLAYER_CORE_DISCORD | PASS (profile home + Postacie view, WWW deep links) |
-| PLAYER_CORE_LFG_REGRESSION | PASS (same character IDs; class labels PL) |
-| PLAYER_CORE_AUTHZ_ISOLATION | PASS (unit + integration spec; owner-scoped repo) |
-| `corepack pnpm validate` | PASS except **VERSION_DRIFT** (Zeabur tip lag; needs identity+web deploy) |
+| Class        | Scope                                                     | Action                                                            |
+| ------------ | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| A — task 004 | Already in `a36718c` + activity organizer DI in `2af092f` | No uncommitted 004 product diff; separate 004 commit not required |
+| B — task 005 | Admin IA in `2af092f` + E2E alignment (this checkpoint)   | E2E updated for Pulpit / settings tabs / legacy redirects         |
+| C — unclear  | Migration manifest regen (activity + authorization)       | Committed as tooling sync                                         |
 
-### Key changes
+---
 
-- **Identity:** `player_game_accounts`, `player_private_audit`, `game_account_id` on characters; `PlayerAccountsController`; profile payloads include `gameAccounts`.
-- **WWW:** `/profil`, `/profil/postacie`, subnav; create/edit/move character + create/rename account.
-- **Discord:** Mój profil shows Postacie/Konta/Aktywna; `profile_chars` navigation; `DISCORD_MEMBER_WWW_ORIGIN` deep links.
-- **hub-core:** Polish class labels; `v2://profile/me?action=characters` → `/profil/postacie`.
+## Delivered (005)
 
-### Not in scope (deferred)
+| Gate                     | Result                               |
+| ------------------------ | ------------------------------------ |
+| Admin unit tests         | PASS (64/64)                         |
+| Admin E2E (Playwright)   | PASS (6/6) after IA selector updates |
+| `corepack pnpm validate` | see checkpoint SHA                   |
+| Admin deploy TESTOWY     | see `DEPLOYED_SHA` below             |
+| Live smoke gates         | see LIVE block below                 |
 
-Trackers, elixirs, EQ Board, sharing — per task 006.
+### Key changes (005)
 
-### Owner / deploy next
-
-1. Deploy **identity-service** (migration 003) + **web** + **discord-gateway**.
-2. Set `DISCORD_MEMBER_WWW_ORIGIN` on discord-gateway.
-3. Live smoke: WWW_ACCOUNT_CREATE, WWW_CHARACTER_CREATE/EDIT/MOVE, DISCORD_PROFILE_ACCOUNT_CONTEXT, LFG_CANONICAL_CHARACTER.
-4. Owner + ChatGPT review WWW + Discord UX before Trackers.
+- **IA:** Pulpit `/`, Discord Bot, Aktywności, System; legacy `/activity/*` redirects.
+- **Pages:** Dashboard, Centrum V2 + HubPreview, Diagnostics, Event create/edit, settings tabs.
+- **UX:** FormActions, unsaved-changes blocker, audit labels, product cards on Pulpit.
+- **E2E:** `home.spec.ts`, `centrum-config.spec.ts` aligned with new nav and settings layout.
 
 ---
 
 ## STOP
 
-No Tracker implementation. No merge to `main`.
+No task 006 expansion. No merge to `main`.

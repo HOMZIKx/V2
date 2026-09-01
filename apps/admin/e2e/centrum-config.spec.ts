@@ -458,16 +458,19 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     const nav = page.getByLabel('V2 Control Center');
 
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'V2 Control Center' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pulpit' })).toBeVisible();
     await expect(page.locator('#guild-select')).toHaveValue(GUILD_A);
     await expect(page.locator('#guild-select')).toContainText('E2E Guild Alpha');
     await expect(page.locator('#guild-select')).not.toContainText(`Guild ${GUILD_A}`);
     await expect(page.locator('#guild-select')).not.toContainText('E2E Guild Beta');
 
-    await nav.getByRole('link', { name: 'Przegląd' }).click();
-    await expect(page.getByRole('heading', { name: 'Konfiguracja Centrum' })).toBeVisible();
+    const settingsTabs = page.getByLabel('Sekcje ustawień aktywności');
 
-    await nav.getByRole('link', { name: 'Statusy zapisów' }).click();
+    await nav.getByRole('link', { name: 'Przegląd' }).click();
+    await expect(page.getByRole('heading', { name: 'Przegląd aktywności' })).toBeVisible();
+
+    await nav.getByRole('link', { name: 'Ustawienia' }).click();
+    await settingsTabs.getByRole('link', { name: 'Zapisy' }).click();
     await expect(page.getByRole('heading', { name: 'Statusy zapisów' })).toBeVisible();
 
     async function createStatus(label: string, behavior: string) {
@@ -496,7 +499,8 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await expect(page.getByText('Raid night')).toBeVisible();
     await expect(page.getByText('Aktywny').first()).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Formularz uczestnika' }).click();
+    await nav.getByRole('link', { name: 'Ustawienia' }).click();
+    await settingsTabs.getByRole('link', { name: 'Formularz uczestnika' }).click();
     await page.getByRole('button', { name: 'Dodaj pole' }).click();
     await page.getByLabel('Nazwa', { exact: true }).fill('Klasa');
     await page.getByLabel('Klucz techniczny').fill('player_class');
@@ -531,7 +535,8 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await page.getByRole('button', { name: 'Opublikuj / odśwież' }).click();
     await expect(page.getByText(/Panel opublikowany/)).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Role i pingi' }).click();
+    await nav.getByRole('link', { name: 'Ustawienia' }).click();
+    await settingsTabs.getByRole('link', { name: 'Role' }).click();
     await expect(page.getByText('Smok')).toBeVisible();
     await page.getByRole('checkbox', { name: /Smok/ }).check();
     await page.getByRole('button', { name: 'Zapisz' }).click();
@@ -545,12 +550,13 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await page.getByRole('button', { name: 'Zapisz' }).click();
     await expect(page.getByText('Powiadomienia zapisane.')).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Limity' }).click();
+    await nav.getByRole('link', { name: 'Ustawienia' }).click();
+    await settingsTabs.getByRole('link', { name: 'Limity' }).click();
     await page.getByLabel('Maksymalna liczba aktywności użytkownika').fill('3');
     await page.getByRole('button', { name: 'Zapisz' }).click();
     await expect(page.getByText('Limity zapisane.')).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Powody zgłoszeń' }).click();
+    await settingsTabs.getByRole('link', { name: 'Powody zgłoszeń' }).click();
     await page.getByRole('button', { name: 'Dodaj' }).click();
     await page.getByLabel('Nazwa', { exact: true }).fill('Spam');
     await page.getByLabel('Klucz techniczny').fill('spam');
@@ -617,7 +623,7 @@ test.describe('Centrum admin config flow (mocked API)', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'V2 Control Center' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pulpit' })).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     );
