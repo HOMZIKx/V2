@@ -60,7 +60,8 @@ export class IdentityProxyController {
         lower === 'origin' ||
         lower === 'referer' ||
         lower === 'x-request-id' ||
-        lower === 'x-correlation-id'
+        lower === 'x-correlation-id' ||
+        lower === 'identity-client-assertion'
       ) {
         headers[lower] = Array.isArray(value) ? value.join('; ') : value;
       }
