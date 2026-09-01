@@ -14,20 +14,20 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 | Field                   | Value                                                                       |
 | ----------------------- | --------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` (code committed; deploy tip next) |
+| CURRENT_TASK            | `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` (code done; runtime partial) |
 | REVIEW_POSTURE          | Security boundary remediation — fail-closed Authz/Identity; narrow hub projection S2S |
 | CODE_STATUS             | `SECURITY_REMEDIATION_COMMITTED` — RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA pinned |
 | CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                              |
 | LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)              |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                               |
-| CURRENT_HEAD / PR_HEAD  | `04881cbefe015813e2ae0655757e32a37a73f9ab` |
+| CURRENT_HEAD / PR_HEAD  | `8306f3e17591622922510804b1098b713b76b8d6` (docs tip; remediation code `04881cb`) |
 | PR                      | #19 — **do not merge**                                                      |
 | PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                            |
 | CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                |
 | LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31) |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — tip not yet live; prior hub on cbd67aa |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — Hub shell @ tip; activity+identity unhealthy |
 | RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
-| ZEABUR_LIVE_DISCORD_SHA | `cbd67aaf996d7920a7cc6bb36bc29e6ff9e34beb` (pre-remediation; redeploy tip) |
+| ZEABUR_LIVE_DISCORD_SHA | `8306f3e17591622922510804b1098b713b76b8d6` (**MATCH** docs tip, 2026-09-01) |
 | ZEABUR_LIVE_API_SHA     | stale risk remains                                                          |
 | ZEABUR_DEPLOY           | Redeploy identity+activity+discord @ remediation SHA; enable ACTIVITY after Identity S2S healthy |
 | PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |

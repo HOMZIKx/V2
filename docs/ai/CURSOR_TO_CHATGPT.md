@@ -37,9 +37,11 @@ Removed production fail-open / bypass paths that blocked honest product enableme
 
 | Field | Value |
 | ----- | ----- |
-| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` until tip is live + Hub/reconcile proven |
-| Pre-deploy discord live SHA | `cbd67aa…` (PNG hub path; not remediation tip) |
-| Next | Push tip → redeploy identity + activity + discord-gateway → set `ACTIVITY_ENABLED=true` only after Identity INTERNAL_JWT / S2S healthy |
+| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — Hub @ tip OK; activity+identity unhealthy |
+| discord-gateway live SHA | `8306f3e…` **MATCH tip** (2026-09-01) |
+| Hub Centrum UI | **PASS** (Owner screenshot; PNG, single panel) |
+| api-gateway ready | **503** — activity + identity unhealthy |
+| Next | Restore identity+activity health → `ACTIVITY_ENABLED=true` only after S2S proof → LFG/profile smoke |
 
 ## STOP
 
