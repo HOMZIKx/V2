@@ -2,9 +2,9 @@
 
 ## Status
 
-`V2-005-006-INTEGRATION-RECOVERY` — remediation checkpoint (additive; no history rewrite)
+`V2-CURRENT-HEAD-STABILIZATION-006A` — checkpoint repair (no new product features)
 
-**Task 005:** `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` → `CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW` after remediation
+**Task 005:** `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` — code checkpoint ready; **runtime proof blocked** (deploy lag)
 **Task 006:** `TASK_006_CODE_IMPLEMENTED_PREMATURELY_AND_NOT_ACCEPTED` — see `PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
@@ -17,14 +17,16 @@ Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of th
 
 ## Current execution
 
-| Field                 | Value                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| CURRENT_TASK          | `V2-005-006-INTEGRATION-RECOVERY`                                                  |
-| REVIEW_POSTURE        | 005 ready for Owner visual review; 006 blocked pending 005 acceptance gate         |
-| CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — see `ADMIN_CONTROL_CENTER_UX_V1_SHA`                |
-| PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` historical + `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` |
-| LOCAL_VALIDATE        | see checkpoint handoff                                                             |
-| RUNTIME_STATUS        | Admin live smoke on TESTOWY — see `CURSOR_TO_CHATGPT.md`                           |
+| Field                 | Value                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| CURRENT_HEAD          | `9306fcf6c6c4c36cf65cfc3ad86fff3005a590ea` (update after stabilization push)                |
+| CURRENT_TASK          | `V2-CURRENT-HEAD-STABILIZATION-006A`                                                        |
+| REVIEW_POSTURE        | 005 ready for Owner visual review; 006 blocked pending 005 acceptance gate                  |
+| CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…`                  |
+| PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` + remediation; live deploy **BLOCKED**                             |
+| INFRA_DB_ISOLATION    | **PASS** on fresh Docker volume (CI-equivalent); stale local volume caused prior false FAIL |
+| LOCAL_VALIDATE        | rerun after stabilization commit                                                            |
+| RUNTIME_STATUS        | Deployed services behind HEAD — see `CURSOR_TO_CHATGPT.md`                                  |
 
 ## Governance
 
@@ -78,6 +80,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **PLAYER_TOOLKIT_CORE_V1_SHA**                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity |
 | **ADMIN_CONTROL_CENTER_UX_V1_SHA**             | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | Admin IA + owner copy remediation; CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW     |
 | **PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA** | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | CI infra fix, architecture boundary, process truth                            |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | _(pending push)_                           | E2E port env, Zeabur error surfacing, truthful handoff                        |
 
 ## Module discovery status (summary)
 
@@ -116,4 +119,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-08-31 — `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002`: LOCAL_VALIDATE PASS; RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA=`04881cbefe015813e2ae0655757e32a37a73f9ab`; security CRITICAL/HIGH=0; live tip deploy pending.
+2026-09-02 — `V2-CURRENT-HEAD-STABILIZATION-006A`: infra db-isolation PASS on fresh volume; deploy/runtime proof BLOCKED (Zeabur legacy token + tip not deployed); validate rerun pending.

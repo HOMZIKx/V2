@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
+const webOrigin = `http://127.0.0.1:${process.env.WEB_E2E_PORT?.trim() || '3000'}`;
+
 const GUILD_A = '1534228693017432124';
 const GUILD_B = '999000999000999000';
 
@@ -183,7 +185,7 @@ test.beforeEach(async ({ context }) => {
     {
       name: 'v2.identity.session',
       value: 'e2e-session',
-      url: 'http://127.0.0.1:3000',
+      url: webOrigin,
     },
   ]);
 });

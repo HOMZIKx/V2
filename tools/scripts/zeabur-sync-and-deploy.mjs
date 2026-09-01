@@ -106,7 +106,11 @@ async function syncDockerfile(token, serviceName, serviceID) {
     { serviceID, dockerfile: content },
   );
   if (result.errors?.length) {
-    return { ok: false, error: result.errors[0]?.message ?? 'updateDockerfile failed' };
+    const message = result.errors[0]?.message ?? result.message ?? 'updateDockerfile failed';
+    return { ok: false, error: message };
+  }
+  if (result.message && !result.data?.updateDockerfile) {
+    return { ok: false, error: result.message };
   }
   return { ok: true, bytes: content.length };
 }
