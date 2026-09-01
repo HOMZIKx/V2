@@ -5,28 +5,67 @@ alwaysApply: true
 
 # Konstytucja projektu V2
 
-Przed rozpoczęciem pracy przeczytaj:
-1. `docs/NON_NEGOTIABLES.md`
-2. `docs/PROJECT_CHARTER.md`
-3. `docs/DECISION_LOG.md`
-4. `docs/ai/PROJECT_STATE.md`
-5. `docs/ai/PENDING_DECISIONS.md`
-6. ADR-y dotyczące zadania
+## Odczyt kontekstu
+
+Nie wykonuj pełnego odczytu dokumentacji przy każdym kroku.
+
+Dla kontynuacji istniejącego tasku wystarczy:
+
+1. `AGENTS.md`;
+2. `docs/ai/PROJECT_STATE.md`;
+3. `docs/ai/CURSOR_TO_CHATGPT.md`;
+4. spec/ADR bezpośrednio dotyczący zadania;
+5. zmiany od ostatniego checkpointu.
+
+Dopiero przy cold start, nowym obszarze, konflikcie lub dużej niepewności rozszerz odczyt o `NON_NEGOTIABLES`, `PROJECT_CHARTER`, `DECISION_LOG`, `SYSTEM_ARCHITECTURE`, `PENDING_DECISIONS` i właściwe ADR-y.
+
+Nie czytaj wszystkich ADR-ów bez związku z zadaniem.
 
 ## Zasady bezwzględne
-- Nie zmieniaj samodzielnie architektury, bezpieczeństwa, modelu danych, zakresu produktu ani UX.
-- W przypadku konfliktu zatrzymaj się i zapisz decyzję w `docs/ai/PENDING_DECISIONS.md`.
+
+- Nie zmieniaj samodzielnie granic usług, ownership danych, bezpieczeństwa ani zaakceptowanych kontraktów domenowych.
+- Nowe duże zachowanie produktu wymaga Owner discovery.
+- Niskiego ryzyka microdetails, bugfixy, refactory, CI, security i recovery zgodne z Accepted SoT możesz realizować autonomicznie.
 - Nie importuj logiki biznesowej pomiędzy usługami.
 - Nie korzystaj z bazy danych innej usługi.
 - Domain i Application nie mogą zależeć od NestJS, Fastify, ORM, RabbitMQ ani Discord SDK.
 - Nie używaj `any`; waliduj wejścia zewnętrzne w runtime.
-- Nie omijaj testów, kontroli bezpieczeństwa ani granic architektury.
+- Nie omijaj wymaganych testów, kontroli bezpieczeństwa ani granic architektury.
 - Nie kopiuj architektury starego projektu. Stary projekt jest wyłącznie referencją.
 
-## Przed implementacją
-Przedstaw plan, zakres, poza zakresem, zmieniane usługi, dane, kontrakty, ryzyka i wymagane decyzje.
+## Planowanie proporcjonalne
 
-## Po implementacji
-Uruchom lint, typecheck i odpowiednie testy. Zaktualizuj `docs/ai/PROJECT_STATE.md` i raport `docs/ai/CURSOR_TO_CHATGPT.md`. Podaj dokładne komendy, wyniki, commit SHA, ograniczenia i dług techniczny.
+- FAST task: nie przedstawiaj osobnego planu, jeśli rozwiązanie jest jednoznaczne.
+- STANDARD task: krótki plan tylko gdy istnieje realne ryzyko, kilka sensownych ścieżek albo zmiana dotyka kontraktów/danych.
+- CHECKPOINT / nowy duży feature: pełny plan, zakres, out-of-scope, ryzyka i decyzje Ownera.
 
-Nie rozpoczynaj kolejnego dużego etapu bez statusu `APPROVED`.
+Nie używaj ceremonii planowania jako obowiązkowego kroku dla prostych poprawek.
+
+## Autonomia
+
+Dla zaakceptowanego zakresu:
+
+- nie pytaj o zgodę na zwykłe komendy;
+- nie pytaj, czy kontynuować oczywistą następną część tego samego zadania;
+- commituj i pushuj rutynowe bezpieczne zmiany autonomicznie;
+- po checkpointcie możesz kontynuować niezależną zaakceptowaną pracę bez czekania na audit ChatGPT.
+
+Zatrzymaj się tylko przy rzeczywistym Owner decision, credentials/access blockerze, nieodwracalnym działaniu lub CRITICAL/HIGH security/data-isolation finding.
+
+## Walidacja proporcjonalna
+
+- FAST: targeted/affected lint, typecheck, testy i ewentualny build zmienionego obszaru.
+- STANDARD: affected checks + potrzebne integration tests.
+- CHECKPOINT: pełny `corepack pnpm validate` oraz runtime/security/recovery odpowiednio do etapu.
+
+Nie uruchamiaj pełnego monorepo validate po każdej drobnej iteracji.
+
+## Raportowanie
+
+`PROJECT_STATE.md` i pełny handoff aktualizuj przy checkpointach, zmianie statusu, blockerze lub zakończeniu istotnego zakresu. Drobny FAST task nie wymaga osobnej wielostronicowej dokumentacji.
+
+## Git
+
+Podczas aktywnego audit queue: additive commits only; bez amend, rebase, force push i squash. Nie merguj samodzielnie do `main`.
+
+Continuous execution nie oznacza zgody na nowy produkt bez discovery; oznacza brak zbędnego czekania w już zaakceptowanym zakresie.
