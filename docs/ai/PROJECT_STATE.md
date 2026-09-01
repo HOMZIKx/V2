@@ -12,26 +12,26 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 ## Current execution
 
-| Field                   | Value                                                                       |
-| ----------------------- | --------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003` (infra + S2S green; UI smoke pending) |
-| REVIEW_POSTURE          | Stage 5 runtime closure — fail-closed Authz/Identity; narrow hub projection S2S |
-| CODE_STATUS             | `STAGE5_RUNTIME_WIP` — tip `ac35d6a` on PR #19 |
-| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                              |
-| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)              |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                               |
-| CURRENT_HEAD / PR_HEAD  | `ac35d6a…` (Stage 5 runtime closure WIP) |
-| PR                      | #19 — **do not merge**                                                      |
-| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                            |
-| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                |
-| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31) |
+| Field                   | Value                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| CURRENT_TASK            | `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003` (infra + S2S green; UI smoke pending)                                 |
+| REVIEW_POSTURE          | Stage 5 runtime closure — fail-closed Authz/Identity; narrow hub projection S2S                             |
+| CODE_STATUS             | `STAGE5_RUNTIME_WIP` — tip `ac35d6a` on PR #19                                                              |
+| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                                                              |
+| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)                                              |
+| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                                                               |
+| CURRENT_HEAD / PR_HEAD  | `ac35d6a…` (Stage 5 runtime closure WIP)                                                                    |
+| PR                      | #19 — **do not merge**                                                                                      |
+| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                                                            |
+| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                                                |
+| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31)                                   |
 | RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — all services ready @ `9d5fdcd`; S2S PASS; LFG/DM/auto-sync UI pending |
-| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
-| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MATCH** tip deploy, 2026-09-01) |
-| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` |
-| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script |
-| PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |
-| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                         |
+| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                                                               |
+| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MATCH** tip deploy, 2026-09-01)                               |
+| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4`                                                                  |
+| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script                                   |
+| PR_TITLE_STATUS         | WIP conventional title on PR #19                                                                            |
+| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                                                         |
 
 ## Governance
 
@@ -67,7 +67,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA** | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
 | **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**      | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf` | Owner Discord UX correction pack 002                                          |
 | **GUILD_CONTROL_DISCOVERY_PREP_SHA**          | `e0e4401f547d577305b8675fed1859f142dfe01d` | Guild Control + member monitoring discovery prep 001                          |
-| **RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA** | `04881cbefe015813e2ae0655757e32a37a73f9ab` | Fail-closed Authz/Identity; narrow hub projection S2S |
+| **RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA** | `04881cbefe015813e2ae0655757e32a37a73f9ab` | Fail-closed Authz/Identity; narrow hub projection S2S                         |
 | RESERVATIONS_FOUNDATION_WIP_SHA               | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
 | MARKETPLACE_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
 | CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA     | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
@@ -97,14 +97,13 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## CRITICAL / HIGH
 
-| ID                              | Severity                 | Item                                                                                          |
-| ------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------- |
-| **Security (this remediation)** | **0 CRITICAL / 0 HIGH**  | Production Authz AllowAll + Identity PassThrough removed; hub projection S2S narrowed          |
-| CI-BILLING-001                  | CRITICAL (CI green)      | GitHub Actions billing / spending limit — Owner must restore                                  |
-| MARKETPLACE-DISC-001            | HIGH (scope)             | Issue #28 — do not treat Stage 7 as done                                                      |
-| RESERVATIONS-DISC-001           | HIGH (scope)             | Discovery prep ready — do not expand Reservations product                                     |
-| GOVERNANCE-001                  | HIGH (process)           | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`                                          |
-
+| ID                              | Severity                | Item                                                                                  |
+| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
+| **Security (this remediation)** | **0 CRITICAL / 0 HIGH** | Production Authz AllowAll + Identity PassThrough removed; hub projection S2S narrowed |
+| CI-BILLING-001                  | CRITICAL (CI green)     | GitHub Actions billing / spending limit — Owner must restore                          |
+| MARKETPLACE-DISC-001            | HIGH (scope)            | Issue #28 — do not treat Stage 7 as done                                              |
+| RESERVATIONS-DISC-001           | HIGH (scope)            | Discovery prep ready — do not expand Reservations product                             |
+| GOVERNANCE-001                  | HIGH (process)          | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`                                  |
 
 ## LFG v1 delivery (summary)
 

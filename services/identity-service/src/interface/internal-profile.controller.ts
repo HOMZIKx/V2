@@ -10,8 +10,8 @@ import {
   Req,
   UseFilters,
 } from '@nestjs/common';
-import { decodeJwt } from 'jose';
 import type { FastifyRequest } from 'fastify';
+import { decodeJwt } from 'jose';
 import { z } from 'zod';
 
 import { PARTY_ROLE_KEYS } from '@v2/hub-core';
@@ -122,7 +122,10 @@ export class InternalProfileController {
   public async getProfile(@Req() request: FastifyRequest) {
     const readUrl = this.config.IDENTITY_INTERNAL_PROFILE_READ_URL;
     if (readUrl === undefined) {
-      throw new IdentityError('INTERNAL_JWT_DISABLED', 'Internal profile read URL is not configured');
+      throw new IdentityError(
+        'INTERNAL_JWT_DISABLED',
+        'Internal profile read URL is not configured',
+      );
     }
     const { discordUserId } = await this.verifyAssertion(request, readUrl);
     const userId = await this.requireUserId(discordUserId);

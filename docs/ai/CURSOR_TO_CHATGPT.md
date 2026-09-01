@@ -16,14 +16,14 @@ Tip: **`ac35d6a…`** (runtime closure WIP)
 
 ## Runtime progress (2026-09-01)
 
-| Area | Result |
-| ---- | ------ |
-| All services ready | **PASS** @ `9d5fdcd` — identity, activity (`ACTIVITY_ENABLED=true`), api-gateway, discord |
-| S2S Activity→Identity | **PASS** (signed probe, assertion accepted) |
-| S2S Activity→Authorization | **PASS** (internal path; keys + enabled) |
-| S2S Discord→Identity profile | **PASS** (HTTP 200 test operator profile) |
-| Hub auto-reconcile | **PASS** — single Centrum `1544034743614570589` |
-| LFG / profile / DM / auto-sync UI | **NOT VERIFIED** — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
+| Area                              | Result                                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| All services ready                | **PASS** @ `9d5fdcd` — identity, activity (`ACTIVITY_ENABLED=true`), api-gateway, discord |
+| S2S Activity→Identity             | **PASS** (signed probe, assertion accepted)                                               |
+| S2S Activity→Authorization        | **PASS** (internal path; keys + enabled)                                                  |
+| S2S Discord→Identity profile      | **PASS** (HTTP 200 test operator profile)                                                 |
+| Hub auto-reconcile                | **PASS** — single Centrum `1544034743614570589`                                           |
+| LFG / profile / DM / auto-sync UI | **NOT VERIFIED** — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                              |
 
 ### Code fixes this session
 

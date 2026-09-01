@@ -4,8 +4,6 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createPrivateKey, randomUUID, sign } from 'node:crypto';
-import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,7 +16,17 @@ const API_BASE = 'https://v2-api.zeabur.app';
 function listVarMap(serviceID) {
   const listed = spawnSync(
     'npx',
-    ['zeabur@latest', '-i=false', 'variable', 'list', '--id', serviceID, '--env-id', environmentID, '--json'],
+    [
+      'zeabur@latest',
+      '-i=false',
+      'variable',
+      'list',
+      '--id',
+      serviceID,
+      '--env-id',
+      environmentID,
+      '--json',
+    ],
     { encoding: 'utf8', shell: true },
   );
   const jsonStart = listed.stdout.indexOf('{');
@@ -92,15 +100,21 @@ const discordVars = listVarMap(discordServiceID);
 console.log('ACTIVITY_ENABLED=', activityVars.get('ACTIVITY_ENABLED') ?? '(missing)');
 console.log(
   'activity identity keys present=',
-  ['ACTIVITY_IDENTITY_BASE_URL', 'ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD', 'ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM', 'ACTIVITY_TO_IDENTITY_ACTIVE_KID'].every((k) =>
-    Boolean(activityVars.get(k)),
-  ),
+  [
+    'ACTIVITY_IDENTITY_BASE_URL',
+    'ACTIVITY_IDENTITY_CHARACTER_ASSERTION_AUD',
+    'ACTIVITY_TO_IDENTITY_PRIVATE_KEY_PEM',
+    'ACTIVITY_TO_IDENTITY_ACTIVE_KID',
+  ].every((k) => Boolean(activityVars.get(k))),
 );
 console.log(
   'activity authz keys present=',
-  ['ACTIVITY_AUTHORIZATION_BASE_URL', 'ACTIVITY_AUTHORIZATION_ASSERTION_AUD', 'ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM', 'ACTIVITY_TO_AUTHZ_ACTIVE_KID'].every((k) =>
-    Boolean(activityVars.get(k)),
-  ),
+  [
+    'ACTIVITY_AUTHORIZATION_BASE_URL',
+    'ACTIVITY_AUTHORIZATION_ASSERTION_AUD',
+    'ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM',
+    'ACTIVITY_TO_AUTHZ_ACTIVE_KID',
+  ].every((k) => Boolean(activityVars.get(k))),
 );
 
 const results = [];
@@ -117,28 +131,27 @@ if (
     ttlSeconds: Number(activityVars.get('ACTIVITY_CLIENT_ASSERTION_MAX_TTL_SECONDS') ?? 60),
   });
   results.push(
-    await probe(
-      'ACTIVITY_TO_IDENTITY_S2S',
-      `${API_BASE}/identity/v1/internal/character/resolve`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'identity-client-assertion': assertion,
-        },
-        body: JSON.stringify({
-          discordUserId: '000000000000000001',
-          characterId: '00000000-0000-4000-8000-000000000001',
-          sessionRoles: ['DPS'],
-        }),
+    await probe('ACTIVITY_TO_IDENTITY_S2S', `${API_BASE}/identity/v1/internal/character/resolve`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'identity-client-assertion': assertion,
       },
-    ),
+      body: JSON.stringify({
+        discordUserId: '000000000000000001',
+        characterId: '00000000-0000-4000-8000-000000000001',
+        sessionRoles: ['DPS'],
+      }),
+    }),
   );
 } else {
   console.log('ACTIVITY_TO_IDENTITY_S2S: SKIP missing env');
 }
 
-if (activityVars.get('ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM') && activityVars.get('ACTIVITY_AUTHORIZATION_ASSERTION_AUD')) {
+if (
+  activityVars.get('ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM') &&
+  activityVars.get('ACTIVITY_AUTHORIZATION_ASSERTION_AUD')
+) {
   const assertion = signAssertion({
     clientId: activityVars.get('ACTIVITY_TO_AUTHZ_CLIENT_ID') ?? 'v2.activity-service',
     kid: activityVars.get('ACTIVITY_TO_AUTHZ_ACTIVE_KID'),
@@ -165,8 +178,13 @@ if (activityVars.get('ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM') && activityVars.get('A
   console.log('ACTIVITY_TO_AUTHORIZATION_S2S: SKIP missing env');
 }
 
-if (discordVars.get('DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM') && discordVars.get('IDENTITY_ASSERTION_AUD')) {
-  const operatorId = (discordVars.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
+if (
+  discordVars.get('DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM') &&
+  discordVars.get('IDENTITY_ASSERTION_AUD')
+) {
+  const operatorId =
+    (discordVars.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() ||
+    '000000000000000001';
   const assertion = signAssertion({
     clientId: discordVars.get('DISCORD_TO_IDENTITY_CLIENT_ID') ?? 'v2.discord-gateway',
     kid: discordVars.get('DISCORD_TO_IDENTITY_ACTIVE_KID'),

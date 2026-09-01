@@ -3,8 +3,8 @@
  * Ensure discord-gateway has Identity S2S profile assertion env and Identity registers the client.
  * Does not print secrets.
  */
-import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -36,7 +36,17 @@ async function gql(token, query, variables = {}) {
 async function listVars(serviceID) {
   const listed = spawnSync(
     'npx',
-    ['zeabur@latest', '-i=false', 'variable', 'list', '--id', serviceID, '--env-id', environmentID, '--json'],
+    [
+      'zeabur@latest',
+      '-i=false',
+      'variable',
+      'list',
+      '--id',
+      serviceID,
+      '--env-id',
+      environmentID,
+      '--json',
+    ],
     { encoding: 'utf8', shell: true },
   );
   const jsonStart = listed.stdout.indexOf('{');

@@ -190,7 +190,10 @@ export class IdentityHttpClient {
       }
     } else {
       const audience = this.deps.config.audience;
-      headers[ASSERTION_HEADER] = await this.buildAssertion(options.actor, audience ?? `${this.baseUrl}${path}`);
+      headers[ASSERTION_HEADER] = await this.buildAssertion(
+        options.actor,
+        audience ?? `${this.baseUrl}${path}`,
+      );
     }
 
     const init: RequestInit = {

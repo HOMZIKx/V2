@@ -95,26 +95,26 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 
 ## `discord-gateway`
 
-| Klucz                                   | Tag                                                                               |
-| --------------------------------------- | --------------------------------------------------------------------------------- |
-| `ZBPACK_DOCKERFILE_NAME`                | PUBLIC VALUE = `discord-gateway`                                                  |
-| `DISCORD_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                                          |
-| `DISCORD_ENABLED`                       | PUBLIC VALUE = `true`                                                             |
-| `DISCORD_APPLICATION_ID`                | PUBLIC VALUE                                                                      |
-| `DISCORD_TOKEN`                         | SECRET                                                                            |
-| `DISCORD_TEST_GUILD_ID`                 | PUBLIC VALUE = `1534228693017432124`                                              |
-| `DISCORD_TEST_OPERATOR_IDS`             | PUBLIC VALUE (Twoje Discord snowflake)                                            |
-| `DISCORD_COMPONENT_SIGNING_SECRET`      | SECRET (≥32)                                                                      |
-| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS`  | PUBLIC VALUE = `true`                                                             |
-| `DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP` | PUBLIC VALUE = `true` (domyślnie — hub odświeża się po każdym redeploy gateway)   |
-| `DISCORD_STRICT_GUILD_ISOLATION`        | PUBLIC VALUE = `true`                                                             |
-| `DISCORD_ACTIVITY_ENABLED`              | PUBLIC VALUE = `true`                                                             |
-| `ACTIVITY_ORGANIZATION_ID`              | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)                       |
-| `ACTIVITY_PROJECTION_SHARED_SECRET`     | SECRET (ten sam co activity)                                                      |
+| Klucz                                   | Tag                                                                                            |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`                | PUBLIC VALUE = `discord-gateway`                                                               |
+| `DISCORD_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                                                       |
+| `DISCORD_ENABLED`                       | PUBLIC VALUE = `true`                                                                          |
+| `DISCORD_APPLICATION_ID`                | PUBLIC VALUE                                                                                   |
+| `DISCORD_TOKEN`                         | SECRET                                                                                         |
+| `DISCORD_TEST_GUILD_ID`                 | PUBLIC VALUE = `1534228693017432124`                                                           |
+| `DISCORD_TEST_OPERATOR_IDS`             | PUBLIC VALUE (Twoje Discord snowflake)                                                         |
+| `DISCORD_COMPONENT_SIGNING_SECRET`      | SECRET (≥32)                                                                                   |
+| `DISCORD_AUTO_REGISTER_GUILD_COMMANDS`  | PUBLIC VALUE = `true`                                                                          |
+| `DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP` | PUBLIC VALUE = `true` (domyślnie — hub odświeża się po każdym redeploy gateway)                |
+| `DISCORD_STRICT_GUILD_ISOLATION`        | PUBLIC VALUE = `true`                                                                          |
+| `DISCORD_ACTIVITY_ENABLED`              | PUBLIC VALUE = `true`                                                                          |
+| `ACTIVITY_ORGANIZATION_ID`              | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)                                    |
+| `ACTIVITY_PROJECTION_SHARED_SECRET`     | SECRET (ten sam co activity)                                                                   |
 | `ACTIVITY_SERVICE_BASE_URL`             | INTERNAL → `http://service-<activity-service-id>:8080` (Zeabur **listen port 8080**, nie 4400) |
-| `DISCORD_TEST_CHANNEL_ID`               | PUBLIC VALUE (opcjonalnie)                                                        |
-| `DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`    | PUBLIC VALUE (P4.5; comma-separated extra guilds; home = `DISCORD_TEST_GUILD_ID`) |
-| `DISCORD_ACTIVITY_RABBITMQ_URL`         | SECRET/INTERNAL (P4.5; empty = HTTP-only consumer idle)                           |
+| `DISCORD_TEST_CHANNEL_ID`               | PUBLIC VALUE (opcjonalnie)                                                                     |
+| `DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`    | PUBLIC VALUE (P4.5; comma-separated extra guilds; home = `DISCORD_TEST_GUILD_ID`)              |
+| `DISCORD_ACTIVITY_RABBITMQ_URL`         | SECRET/INTERNAL (P4.5; empty = HTTP-only consumer idle)                                        |
 
 ---
 
@@ -201,15 +201,15 @@ Bez publicznego API origin Admin/WWW wołają zły host.
 
 ## `api-gateway`
 
-| Klucz                               | Tag                                                                |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                                       |
-| `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                           |
-| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL → `http://service-<activity-service-id>:8080` |
+| Klucz                               | Tag                                                                  |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                                         |
+| `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                             |
+| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL → `http://service-<activity-service-id>:8080`               |
 | `IDENTITY_SERVICE_BASE_URL`         | INTERNAL → `http://service-<identity-service-id>:8080` (WWW session) |
-| `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                              |
-| `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor)           |
-| `DISCORD_GATEWAY_BASE_URL`          | INTERNAL (discord-gateway origin for operator Discord diagnostics) |
+| `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                                |
+| `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor)             |
+| `DISCORD_GATEWAY_BASE_URL`          | INTERNAL (discord-gateway origin for operator Discord diagnostics)   |
 
 ---
 

@@ -11,7 +11,17 @@ const API = 'https://v2-api.zeabur.app';
 function listVars(serviceID: string): Map<string, string> {
   const listed = spawnSync(
     'npx',
-    ['zeabur@latest', '-i=false', 'variable', 'list', '--id', serviceID, '--env-id', environmentID, '--json'],
+    [
+      'zeabur@latest',
+      '-i=false',
+      'variable',
+      'list',
+      '--id',
+      serviceID,
+      '--env-id',
+      environmentID,
+      '--json',
+    ],
     { encoding: 'utf8', shell: true },
   );
   const start = listed.stdout.indexOf('{');
@@ -78,7 +88,9 @@ const idRes = await fetch(`${API}/identity/v1/internal/character/resolve`, {
   }),
 });
 const idBody = await idRes.text();
-console.log(`ACTIVITY_TO_IDENTITY_S2S: ${idRes.status} ${verdict(idRes.status)} ${idBody.slice(0, 100)}`);
+console.log(
+  `ACTIVITY_TO_IDENTITY_S2S: ${idRes.status} ${verdict(idRes.status)} ${idBody.slice(0, 100)}`,
+);
 if (verdict(idRes.status) === 'FAIL_AUTH' || verdict(idRes.status) === 'FAIL_OTHER') pass = false;
 
 const azAssert = await sign({
@@ -99,11 +111,14 @@ const azRes = await fetch(`${API}/authorization/v1/authorize`, {
   }),
 });
 const azBody = await azRes.text();
-console.log(`ACTIVITY_TO_AUTHORIZATION_S2S: ${azRes.status} ${verdict(azRes.status)} ${azBody.slice(0, 100)}`);
+console.log(
+  `ACTIVITY_TO_AUTHORIZATION_S2S: ${azRes.status} ${verdict(azRes.status)} ${azBody.slice(0, 100)}`,
+);
 if (verdict(azRes.status) === 'FAIL_AUTH') pass = false;
 if (azRes.status === 404) pass = false;
 
-const operatorId = (dg.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
+const operatorId =
+  (dg.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
 const profAssert = await sign({
   clientId: dg.get('DISCORD_TO_IDENTITY_CLIENT_ID') ?? 'v2.discord-gateway',
   kid: dg.get('DISCORD_TO_IDENTITY_ACTIVE_KID') ?? '',
@@ -116,7 +131,9 @@ const profRes = await fetch(`${API}/identity/v1/internal/profile`, {
   headers: { 'identity-client-assertion': profAssert },
 });
 const profBody = await profRes.text();
-console.log(`DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${verdict(profRes.status)} ${profBody.slice(0, 120)}`);
+console.log(
+  `DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${verdict(profRes.status)} ${profBody.slice(0, 120)}`,
+);
 if (verdict(profRes.status) === 'FAIL_AUTH') pass = false;
 
 console.log('SUMMARY:', pass ? 'PASS' : 'FAIL');

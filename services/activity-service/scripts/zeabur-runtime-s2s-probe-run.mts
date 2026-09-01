@@ -11,7 +11,17 @@ const API = 'https://v2-api.zeabur.app';
 function listVars(serviceID: string): Map<string, string> {
   const listed = spawnSync(
     'npx',
-    ['zeabur@latest', '-i=false', 'variable', 'list', '--id', serviceID, '--env-id', environmentID, '--json'],
+    [
+      'zeabur@latest',
+      '-i=false',
+      'variable',
+      'list',
+      '--id',
+      serviceID,
+      '--env-id',
+      environmentID,
+      '--json',
+    ],
     { encoding: 'utf8', shell: true },
   );
   const start = listed.stdout.indexOf('{');
@@ -113,11 +123,14 @@ if (azVerdict === 'SKIP_PUBLIC') {
     Boolean(act.get('ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM')) &&
     Boolean(act.get('ACTIVITY_AUTHORIZATION_ASSERTION_AUD')) &&
     act.get('ACTIVITY_ENABLED') === 'true';
-  console.log(`ACTIVITY_TO_AUTHORIZATION_S2S: internal-only path keys=${keysOk ? 'ok' : 'missing'}`);
+  console.log(
+    `ACTIVITY_TO_AUTHORIZATION_S2S: internal-only path keys=${keysOk ? 'ok' : 'missing'}`,
+  );
   if (!keysOk) pass = false;
 }
 
-const operatorId = (dg.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
+const operatorId =
+  (dg.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
 const profAssert = await sign({
   clientId: dg.get('DISCORD_TO_IDENTITY_CLIENT_ID') ?? 'v2.discord-gateway',
   kid: dg.get('DISCORD_TO_IDENTITY_ACTIVE_KID') ?? '',
@@ -131,7 +144,9 @@ const profRes = await fetch(`${API}/identity/v1/internal/profile`, {
 });
 const profBody = await profRes.text();
 const profVerdict = verdict(profRes.status, profBody);
-console.log(`DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${profVerdict} ${profBody.slice(0, 120)}`);
+console.log(
+  `DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${profVerdict} ${profBody.slice(0, 120)}`,
+);
 if (profVerdict === 'FAIL_AUTH' || profVerdict === 'FAIL_OTHER') pass = false;
 
 console.log('SUMMARY:', pass ? 'PASS' : 'FAIL');
