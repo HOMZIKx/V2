@@ -38,8 +38,8 @@ Mixed implementation landed in `2af092f` before 005 Owner review. History **not*
 | Marker                                       | SHA                                             | Note                       |
 | -------------------------------------------- | ----------------------------------------------- | -------------------------- |
 | `PLAYER_TOOLKIT_CORE_V1_SHA`                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2`      | historical — not rewritten |
-| `ADMIN_CONTROL_CENTER_UX_V1_SHA`             | prior `0834a5b` — updated by remediation commit | see HEAD after push        |
-| `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` | pending remediation commit                      | additive                   |
+| `ADMIN_CONTROL_CENTER_UX_V1_SHA`             | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98`      |
+| `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98`      |
 
 ## Task 004
 
