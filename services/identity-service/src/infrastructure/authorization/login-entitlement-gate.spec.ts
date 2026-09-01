@@ -1,6 +1,7 @@
 import { APIError } from 'better-auth';
 import { describe, expect, it, vi } from 'vitest';
 
+import { IdentityError } from '../../domain/errors.js';
 import type { AuthorizationClient } from './authorization-client.js';
 import { enforceLoginEntitlement } from './login-entitlement-gate.js';
 
@@ -74,5 +75,27 @@ describe('enforceLoginEntitlement', () => {
         userId: 'user-1',
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('maps Authorization outage to SERVICE_UNAVAILABLE', async () => {
+    const pool = {
+      query: vi.fn().mockResolvedValue({ rows: [{ accountId: 'discord-1' }] }),
+    };
+    const authorizationClient: AuthorizationClient = {
+      upsertIdentityLink: vi
+        .fn()
+        .mockRejectedValue(new IdentityError('AUTHORIZATION_UNAVAILABLE', 'down')),
+      authorizeWwwLogin: vi.fn(),
+    };
+
+    await expect(
+      enforceLoginEntitlement({
+        pool: pool as never,
+        authorizationClient,
+        userId: 'user-1',
+      }),
+    ).rejects.toMatchObject({
+      body: expect.objectContaining({ code: 'AUTHORIZATION_UNAVAILABLE' }),
+    });
   });
 });
