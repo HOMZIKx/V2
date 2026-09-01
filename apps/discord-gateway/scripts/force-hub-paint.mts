@@ -34,9 +34,7 @@ const args = process.argv.slice(2).filter((arg) => arg.length > 0);
 const recreate = args.includes('--recreate') || args.includes('--fresh');
 const channelArg = args.find((arg) => !arg.startsWith('--'));
 const channelId =
-  channelArg?.trim() ||
-  config.DISCORD_TEST_CHANNEL_ID.trim() ||
-  '1534228693449179146';
+  channelArg?.trim() || config.DISCORD_TEST_CHANNEL_ID.trim() || '1534228693449179146';
 
 function opaqueFromUuid(id: string): string {
   return id.replace(/-/g, '').toLowerCase().slice(0, 12);
@@ -76,7 +74,9 @@ for (const message of messages) {
     candidates.push({ messageId: message.id, opaquePanelId: opaque, score });
   }
 }
-candidates.sort((a, b) => b.score - a.score || (BigInt(b.messageId) > BigInt(a.messageId) ? 1 : -1));
+candidates.sort(
+  (a, b) => b.score - a.score || (BigInt(b.messageId) > BigInt(a.messageId) ? 1 : -1),
+);
 
 const best = candidates[0];
 const opaquePanelId = best?.opaquePanelId ?? opaqueFromUuid(randomUUID());
@@ -88,12 +88,11 @@ const rendered = renderActivityHubMessage({
 const attachmentBuilders = buildActivityHubMessageAttachmentFiles();
 const rawFiles = attachmentBuilders.map((file) => {
   const name = file.name ?? 'unknown.png';
-  const key =
-    name.startsWith('centrum-')
-      ? 'activityHub'
-      : name.startsWith('v2-activity-banner')
-        ? 'activityBanner'
-        : null;
+  const key = name.startsWith('centrum-')
+    ? 'activityHub'
+    : name.startsWith('v2-activity-banner')
+      ? 'activityBanner'
+      : null;
   const diskPath = key !== null ? tryResolveActivityHubAssetPath(key) : null;
   if (diskPath === null) {
     throw new Error(`Missing asset file for ${name}`);

@@ -5,7 +5,7 @@
 | Flag                  | Value                                                              |
 | --------------------- | ------------------------------------------------------------------ |
 | **Product direction** | Issue **#20** (Owner-delegated discovery closure 2026-08-22)       |
-| **Implementation**    | **`READY_FOR_CHATGPT_AUDIT`**                                         |
+| **Implementation**    | **`READY_FOR_CHATGPT_AUDIT`**                                      |
 | **Governance**        | Issue #26 amendment — continuous resume does not replace discovery |
 
 Owner Issue #20 closure comment (2026-08-22): **DISCOVERY STATUS: CLOSED FOR DUNGEON LFG v1. IMPLEMENTATION AUTHORIZED.**

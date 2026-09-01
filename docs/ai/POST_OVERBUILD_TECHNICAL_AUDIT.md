@@ -187,9 +187,9 @@ stub explicitly documents incomplete role fill data.
 
 ## Checkpoint ledger
 
-| Marker                                     | SHA                     |
-| ------------------------------------------ | ----------------------- |
-| `DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA` | `90fc384…` (historical) |
+| Marker                                     | SHA                                        |
+| ------------------------------------------ | ------------------------------------------ |
+| `DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA` | `90fc384…` (historical)                    |
 | `POST_OVERBUILD_TECHNICAL_AUDIT_SHA`       | `25552dc75a5551f7185d77a8c02bbca5999bee89` |
 
 ---

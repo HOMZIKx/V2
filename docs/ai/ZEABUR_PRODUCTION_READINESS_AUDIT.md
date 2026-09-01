@@ -355,8 +355,8 @@ JWKS: inbound registries via `*_INBOUND_CLIENTS_JSON`; TTL/skew via `*_CLIENT_AS
 
 ## Checkpoint
 
-| Marker                                  | SHA                       |
-| --------------------------------------- | ------------------------- |
-| `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` | _(recorded after commit)_ |
+| Marker                                  | SHA                                        |
+| --------------------------------------- | ------------------------------------------ |
+| `ZEABUR_PRODUCTION_READINESS_AUDIT_SHA` | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` |
 
 Prior LFG markers unchanged. No Reservations/Marketplace product work started.

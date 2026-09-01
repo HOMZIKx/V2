@@ -191,6 +191,24 @@ describe('parseIdentityEnv — authorization gate', () => {
     expect(config.IDENTITY_AUTHORIZATION_ENABLED).toBe(true);
     expect(config.IDENTITY_TO_AUTHZ_CLIENT_ID).toBe('v2.identity-service');
   });
+
+  it('allows Zeabur internal mesh http URLs in production', () => {
+    const config = parseIdentityEnv({
+      ...enabledEnv(),
+      NODE_ENV: 'production',
+      IDENTITY_AUTH_BASE_URL: 'https://identity.example',
+      IDENTITY_TRUSTED_ORIGINS: 'https://app.example',
+      IDENTITY_AUTHORIZATION_ENABLED: 'true',
+      IDENTITY_AUTHORIZATION_BASE_URL: 'http://service-6a8211d5a21454a2cf6ad783:8080',
+      IDENTITY_AUTHORIZATION_ASSERTION_AUD:
+        'https://v2-api.zeabur.app/authorization/v1/authorize',
+      IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.privatePem,
+      IDENTITY_TO_AUTHZ_ACTIVE_KID: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.kid,
+    });
+    expect(config.IDENTITY_AUTHORIZATION_BASE_URL).toBe(
+      'http://service-6a8211d5a21454a2cf6ad783:8080',
+    );
+  });
 });
 
 describe('redactSecrets', () => {

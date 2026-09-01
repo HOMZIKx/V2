@@ -176,6 +176,15 @@ export class IdentityConfigError extends Error {
 
 const MIN_SECRET_LENGTH = 32;
 
+function isZeaburInternalServiceUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' && /^service-[a-f0-9]+$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function assertValidOriginUrl(
   value: string,
   path: string,
@@ -358,11 +367,15 @@ function assertAuthorizationRequirements(
 
   const isProduction = config.NODE_ENV === 'production';
   if (config.IDENTITY_AUTHORIZATION_BASE_URL !== undefined) {
+    const isInternalMesh = isZeaburInternalServiceUrl(config.IDENTITY_AUTHORIZATION_BASE_URL);
     assertValidOriginUrl(
       config.IDENTITY_AUTHORIZATION_BASE_URL,
       'IDENTITY_AUTHORIZATION_BASE_URL',
       addIssue,
-      { requireHttps: isProduction, rejectLocalhost: isProduction },
+      {
+        requireHttps: isProduction && !isInternalMesh,
+        rejectLocalhost: isProduction && !isInternalMesh,
+      },
     );
   }
 }
