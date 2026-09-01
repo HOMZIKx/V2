@@ -80,7 +80,11 @@ export class IdentityHttpClient {
   }
 
   public async getProfile(actor: IdentityActorContext): Promise<IdentityProfile> {
-    const parsed = await this.request('GET', '/identity/v1/profile', profileSchema, { actor });
+    const path =
+      this.deps.config.mode === 'assertion'
+        ? '/identity/v1/internal/profile'
+        : '/identity/v1/profile';
+    const parsed = await this.request('GET', path, profileSchema, { actor });
     return parsed.profile;
   }
 
@@ -99,9 +103,13 @@ export class IdentityHttpClient {
         throw new IdentityHttpError('Invalid party role in payload', 'VALIDATION');
       }
     }
+    const path =
+      this.deps.config.mode === 'assertion'
+        ? '/identity/v1/internal/profile/characters'
+        : '/identity/v1/profile/characters';
     const parsed = await this.request(
       'POST',
-      '/identity/v1/profile/characters',
+      path,
       z
         .object({
           characterId: z.string().min(1),
@@ -129,9 +137,13 @@ export class IdentityHttpClient {
         throw new IdentityHttpError('Invalid party role in payload', 'VALIDATION');
       }
     }
+    const path =
+      this.deps.config.mode === 'assertion'
+        ? `/identity/v1/internal/profile/characters/${encodeURIComponent(characterId)}`
+        : `/identity/v1/profile/characters/${encodeURIComponent(characterId)}`;
     const parsed = await this.request(
       'PUT',
-      `/identity/v1/profile/characters/${encodeURIComponent(characterId)}`,
+      path,
       z
         .object({
           characterId: z.string().min(1),
@@ -177,7 +189,8 @@ export class IdentityHttpClient {
         headers['X-Actor-V2-User-Id'] = options.actor.v2UserId;
       }
     } else {
-      headers[ASSERTION_HEADER] = await this.buildAssertion(options.actor);
+      const audience = this.deps.config.audience;
+      headers[ASSERTION_HEADER] = await this.buildAssertion(options.actor, audience ?? `${this.baseUrl}${path}`);
     }
 
     const init: RequestInit = {
@@ -246,13 +259,13 @@ export class IdentityHttpClient {
     return parsed.data;
   }
 
-  private async buildAssertion(actor: IdentityActorContext): Promise<string> {
-    const { clientId, privateKeyPem, activeKid, audience, ttlSeconds = 60 } = this.deps.config;
+  private async buildAssertion(actor: IdentityActorContext, audience: string): Promise<string> {
+    const { clientId, privateKeyPem, activeKid, ttlSeconds = 60 } = this.deps.config;
     if (
       clientId === undefined ||
       privateKeyPem === undefined ||
       activeKid === undefined ||
-      audience === undefined
+      audience.trim().length === 0
     ) {
       throw new IdentityHttpError(
         'Identity assertion mode is incompletely configured',

@@ -93,6 +93,10 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_TO_ACTIVITY_ACTIVE_KID: z.string().optional(),
     ACTIVITY_ASSERTION_AUD: z.string().optional(),
     IDENTITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4200'),
+    DISCORD_TO_IDENTITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
+    DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM: z.string().optional(),
+    DISCORD_TO_IDENTITY_ACTIVE_KID: z.string().optional(),
+    IDENTITY_ASSERTION_AUD: z.string().optional(),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
   })
@@ -152,6 +156,36 @@ export const DiscordGatewayConfigSchema = z
             code: 'custom',
             path: ['ACTIVITY_ASSERTION_AUD'],
             message: 'ACTIVITY_ASSERTION_AUD is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        const identityPem = config.DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM ?? '';
+        if (!identityPem.includes('BEGIN PRIVATE KEY')) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM'],
+            message:
+              'DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.DISCORD_TO_IDENTITY_ACTIVE_KID === undefined ||
+          config.DISCORD_TO_IDENTITY_ACTIVE_KID.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_IDENTITY_ACTIVE_KID'],
+            message:
+              'DISCORD_TO_IDENTITY_ACTIVE_KID is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.IDENTITY_ASSERTION_AUD === undefined ||
+          config.IDENTITY_ASSERTION_AUD.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['IDENTITY_ASSERTION_AUD'],
+            message: 'IDENTITY_ASSERTION_AUD is required when ACTIVITY_CLIENT_MODE=assertion.',
           });
         }
       }
