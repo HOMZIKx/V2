@@ -200,8 +200,7 @@ describe('parseIdentityEnv — authorization gate', () => {
       IDENTITY_TRUSTED_ORIGINS: 'https://app.example',
       IDENTITY_AUTHORIZATION_ENABLED: 'true',
       IDENTITY_AUTHORIZATION_BASE_URL: 'http://service-6a8211d5a21454a2cf6ad783:8080',
-      IDENTITY_AUTHORIZATION_ASSERTION_AUD:
-        'https://v2-api.zeabur.app/authorization/v1/authorize',
+      IDENTITY_AUTHORIZATION_ASSERTION_AUD: 'https://v2-api.zeabur.app/authorization/v1/authorize',
       IDENTITY_TO_AUTHZ_PRIVATE_KEY_PEM: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.privatePem,
       IDENTITY_TO_AUTHZ_ACTIVE_KID: fixtures.TEST_SERVICE_GATEWAY_ACTIVE.kid,
     });
