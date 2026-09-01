@@ -111,7 +111,7 @@ Gdy `ACTIVITY_ENABLED=true` (pełny authz + JWT inbound):
 | `DISCORD_ACTIVITY_ENABLED`              | PUBLIC VALUE = `true`                                                             |
 | `ACTIVITY_ORGANIZATION_ID`              | PUBLIC VALUE (wymagane gdy `DISCORD_ACTIVITY_ENABLED=true`)                       |
 | `ACTIVITY_PROJECTION_SHARED_SECRET`     | SECRET (ten sam co activity)                                                      |
-| `ACTIVITY_SERVICE_BASE_URL`             | INTERNAL → `http://activity-service:4400` (dostosuj do DNS Zeabur)                |
+| `ACTIVITY_SERVICE_BASE_URL`             | INTERNAL → `http://service-<activity-service-id>:8080` (Zeabur **listen port 8080**, nie 4400) |
 | `DISCORD_TEST_CHANNEL_ID`               | PUBLIC VALUE (opcjonalnie)                                                        |
 | `DISCORD_ACTIVITY_ALLOWED_GUILD_IDS`    | PUBLIC VALUE (P4.5; comma-separated extra guilds; home = `DISCORD_TEST_GUILD_ID`) |
 | `DISCORD_ACTIVITY_RABBITMQ_URL`         | SECRET/INTERNAL (P4.5; empty = HTTP-only consumer idle)                           |
@@ -205,8 +205,8 @@ Bez publicznego API origin Admin/WWW wołają zły host.
 | ----------------------------------- | ------------------------------------------------------------------ |
 | `ZBPACK_DOCKERFILE_NAME`            | PUBLIC VALUE = `api-gateway`                                       |
 | `API_GATEWAY_HOST`                  | PUBLIC VALUE = `0.0.0.0`                                           |
-| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL                                                           |
-| `IDENTITY_SERVICE_BASE_URL`         | INTERNAL (WWW session)                                             |
+| `ACTIVITY_SERVICE_BASE_URL`         | INTERNAL → `http://service-<activity-service-id>:8080` |
+| `IDENTITY_SERVICE_BASE_URL`         | INTERNAL → `http://service-<identity-service-id>:8080` (WWW session) |
 | `API_GATEWAY_CORS_ORIGINS`          | PUBLIC VALUE (domeny `web` + `admin`)                              |
 | `API_GATEWAY_FORWARD_ACTOR_HEADERS` | PUBLIC VALUE = `false` na production WWW (session→actor)           |
 | `DISCORD_GATEWAY_BASE_URL`          | INTERNAL (discord-gateway origin for operator Discord diagnostics) |

@@ -33,15 +33,15 @@ Removed production fail-open / bypass paths that blocked honest product enableme
 | Security CRITICAL / HIGH | **0 / 0** |
 | `LOCAL_VALIDATE` | **PASS** |
 
-### Runtime (honest)
+### Runtime (2026-09-01)
 
 | Field | Value |
 | ----- | ----- |
-| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — Hub @ tip OK; activity+identity unhealthy |
-| discord-gateway live SHA | `8306f3e…` **MATCH tip** (2026-09-01) |
-| Hub Centrum UI | **PASS** (Owner screenshot; PNG, single panel) |
-| api-gateway ready | **503** — activity + identity unhealthy |
-| Next | Restore identity+activity health → `ACTIVITY_ENABLED=true` only after S2S proof → LFG/profile smoke |
+| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` |
+| discord-gateway | `8306f3e` — Hub **PASS** |
+| activity / identity | Zeabur **RUNNING**, boot clean, **`ACTIVITY_ENABLED=true`**, port **8080** |
+| api-gateway ready | **503** — applied `zeabur-fix-api-gateway-upstream.mjs` (:8080 URLs); still unhealthy → inspect upstream `/health/ready` checks |
+| Next | Owner Zeabur console: activity/identity ready bodies; then LFG/profile smoke |
 
 ## STOP
 

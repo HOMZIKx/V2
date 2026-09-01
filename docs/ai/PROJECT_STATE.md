@@ -29,7 +29,7 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 | RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
 | ZEABUR_LIVE_DISCORD_SHA | `8306f3e17591622922510804b1098b713b76b8d6` (**MATCH** docs tip, 2026-09-01) |
 | ZEABUR_LIVE_API_SHA     | stale risk remains                                                          |
-| ZEABUR_DEPLOY           | Redeploy identity+activity+discord @ remediation SHA; enable ACTIVITY after Identity S2S healthy |
+| ZEABUR_DEPLOY           | api-gateway upstream URLs fixed :8080; ready still 503 — upstream ready checks TBD |
 | PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |
 | REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                         |
 
