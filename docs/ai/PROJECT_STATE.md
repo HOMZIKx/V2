@@ -6,6 +6,27 @@
 
 Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
 
+## Owner directive — WWW product (2026-09-02)
+
+- Decision: **D-037 ACCEPTED**.
+- Cursor keeps existing Web/Admin code, but it is **not** a visual or product
+  reference for the new interface.
+- Cursor must not independently design or extend Web/Admin layout, information
+  architecture, graphics, copy, animations or user-facing page content until an
+  approved frontend slice exists.
+- The previous Sites demo and legacy UI are not requirements or default visual
+  direction.
+- Backend, API, database, Discord, Identity, Authorization, tests and
+  infrastructure may continue only without inventing Web/Admin UX assumptions.
+- Any technical choice that changes user-facing behavior is
+  `OWNER_DECISION_REQUIRED`.
+- First next Web/Admin step: repository/product inventory according to
+  [WEB_PRODUCT_DESIGN_AND_DELIVERY](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md).
+  No page design starts before the product map and information architecture are
+  owner-approved.
+- This directive does not cancel approved Discord-specific P4 contracts; it
+  freezes independent Web/Admin product design.
+
 ## Active phase
 
 P4 Centrum Aktywności — final specification closure (docs only).

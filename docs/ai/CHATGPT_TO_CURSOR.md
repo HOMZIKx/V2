@@ -1,5 +1,32 @@
 # ChatGPT → Cursor
 
+## Current owner directive — Web/Admin
+
+**Status:** `HOLD_CURSOR_WEB_PRODUCT_UI`  
+**Decision:** D-037 (2026-09-02)
+
+Until an approved frontend slice is handed off:
+
+- preserve the existing Web/Admin implementation; do not delete it;
+- do not use the existing Web/Admin UI, previous Sites demo or legacy project as
+  the design reference;
+- do not independently create or redesign page layout, navigation, graphics,
+  copy, animations or user-facing content;
+- continue only technical work that does not assume Web/Admin UX;
+- raise `OWNER_DECISION_REQUIRED` when a technical choice changes user-facing
+  behavior.
+
+The production frontend will be designed and implemented in the V2 repository
+by ChatGPT with the owner, using the repository's approved stacks. Cursor will
+then connect the approved frontend to real API, Identity, Authorization,
+Discord, databases and Zeabur deployment without independently rebuilding its
+product design.
+
+Mandatory workflow:
+[WEB_PRODUCT_DESIGN_AND_DELIVERY.md](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md).
+
+This directive does not start a new implementation task.
+
 ## Status
 
 `READY_FOR_CURSOR` (historical brief)
