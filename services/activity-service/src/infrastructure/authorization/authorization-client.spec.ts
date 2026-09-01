@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import type { AuthorizeRequest } from '../../application/ports/activity.ports.js';
@@ -6,6 +7,7 @@ import {
   AllowAllAuthorizationClient,
   createAuthorizePort,
   DenyAllAuthorizationClient,
+  HttpAuthorizationClient,
 } from './authorization-client.js';
 
 const request: AuthorizeRequest = {
@@ -63,6 +65,36 @@ describe('createAuthorizePort', () => {
     await expect(port.authorize(request)).resolves.toMatchObject({
       allowed: true,
       decision: 'allow',
+    });
+  });
+});
+
+describe('HttpAuthorizationClient', () => {
+  it('treats identity pair CONFLICT as deny instead of upstream failure', async () => {
+    const { privateKey } = generateKeyPairSync('ed25519');
+    const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    const client = new HttpAuthorizationClient({
+      baseUrl: 'http://127.0.0.1:4300',
+      assertionAud: 'http://127.0.0.1:4300/authorization/v1/authorize',
+      clientId: 'v2.activity-service',
+      kid: 'test-kid',
+      privateKeyPem,
+      maxTtlSeconds: 60,
+      fetchImpl: async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'CONFLICT',
+              message: 'Discord and V2 identity pair does not match',
+            },
+          }),
+          { status: 409, headers: { 'content-type': 'application/json' } },
+        ),
+    });
+
+    await expect(client.authorize(request)).resolves.toMatchObject({
+      allowed: false,
+      decision: 'deny',
     });
   });
 });

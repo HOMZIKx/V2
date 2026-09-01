@@ -81,6 +81,13 @@ export class HttpAuthorizationClient implements AuthorizePort {
     }
 
     if (!response.ok) {
+      if (response.status === 409) {
+        return {
+          allowed: false,
+          permissionId: request.permissionId,
+          decision: 'deny',
+        };
+      }
       throw new ActivityError(
         'AUTHORIZATION_UNAVAILABLE',
         `Authorization authorize failed with status ${response.status}`,
