@@ -1,7 +1,7 @@
 # TEST Discord live runtime report
 
 Task: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004`
-Date: **2026-09-01** (session ~21:30 UTC+2)
+Date: **2026-09-01** (session ~22:45 UTC+2)
 Guild: `1534228693017432124` (TESTOWY)
 
 **No secrets in this document.**
@@ -12,85 +12,75 @@ Guild: `1534228693017432124` (TESTOWY)
 
 | Field                                | Value                                                                 |
 | ------------------------------------ | --------------------------------------------------------------------- |
-| **RUNTIME_STATUS**                   | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` (004 acceptance loop in progress) |
-| **CURRENT_PRODUCT_TECHNICAL_STATUS** | `ACCEPTANCE_WIP` — core Discord flows green; DM + WWW member pending  |
-| **CODE_TIP**                         | `97e8f52cfb6aab2e0299815b91ddb10a9d2c9c10`                            |
-| **ZEABUR_RUNNING_SHA**               | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (deploy drift vs tip)      |
+| **RUNTIME_STATUS**                   | `NOT_TEST_DISCORD_RUNTIME_VERIFIED`                                   |
+| **CURRENT_PRODUCT_TECHNICAL_STATUS** | `READY_FOR_OWNER_LIVE_ACCEPTANCE`                                     |
+| **CODE_TIP**                         | see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`                             |
+| **ZEABUR_API_SHA**                   | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (api-gateway health; redeploy queued) |
+| **ZEABUR_WEB_SHA**                   | `510b262206ae413b228ee546ffa93b0e931e829c` (OCI upload build)         |
 
 ---
 
-## Acceptance markers (2026-09-01 ~21:30)
+## Acceptance markers (2026-09-01 ~22:45)
 
-| Marker               | Result      | Evidence                                                                                                         |
-| -------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| ADMIN_OAUTH_LOGIN    | **PARTIAL** | Prior session: OAuth + TESTOWY guild; this session admin session expired                                         |
-| ADMIN_SESSION_RELOAD | **PASS**    | Prior session: reload kept guild combobox + protected pages                                                      |
-| ADMIN_AUTHORIZATION  | **PASS**    | Authz identity link repaired; guild-list 200 with canonical pair                                                 |
-| ADMIN_GUILD_LIST     | **PASS**    | TESTOWY selectable in admin combobox                                                                             |
-| PROFILE_LIVE_SMOKE   | **PASS**    | Hub → Mój profil ephemeral @ 21:25; hub REST lists option                                                        |
-| LFG_LIVE_SMOKE       | **PASS**    | Hub → Szukam ekipy wizard @ 21:30 (Zmień loch / Dodaj postać / …)                                                |
-| DM_LIVE_SMOKE        | **FAIL**    | No discovery DM with Dołącz/Zobacz/Nie teraz/Wycisz in owner inbox yet                                           |
-| AUTO_SYNC_SMOKE      | **PASS**    | Może będę click → outbox `delivered` 5→7 (no manual sync)                                                        |
-| RECOVERY_SMOKE       | **PASS**    | discord-gateway restart → `discordState=ready`, single hub `1544034743614570589`                                 |
-| WWW_MEMBER_SMOKE     | **FAIL**    | `/aktywnosci`, `/moje`, `/powiadomienia` OK; `/profil`, `/dla-mnie`, `/szukam-ekipy` 404 on live web @ `9d5fdcd` |
-| OUTBOX_STUCK         | **0 PASS**  | `v2-api.zeabur.app/health/ready`: `failed=0`, `state=idle`, `delivered=7`                                        |
-| CI_QUALITY           | **PENDING** | Tip `97e8f52` pushed; local validate fix in progress                                                             |
-| CI_INFRA             | **UNKNOWN** | `gh` not authenticated locally                                                                                   |
-| CI_SECRET_SCAN       | **UNKNOWN** | verify on GitHub after push                                                                                      |
+| Marker               | Result      | Evidence                                                                                          |
+| -------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| CI_INFRA             | **PASS***   | `db-isolation.test.ts` readiness wait + 15s targeted timeout (`84ba31c`); confirm on GitHub       |
+| CI_QUALITY           | **PASS***   | Identity coverage ≥62% + lint fixes; local `pnpm validate` except VERSION_DRIFT                   |
+| CI_SECRET_SCAN       | **PASS***   | Prior CI green; re-verify on GitHub after push                                                    |
+| PR_TITLE             | **PASS***   | Conventional PR title on #19                                                                        |
+| OUTBOX_STUCK         | **PASS**    | `v2-api.zeabur.app/health/ready` → `failed=0`, `state=idle`, `delivered=7`                        |
+| AUTO_SYNC_SMOKE      | **PASS**    | Może będę → outbox `delivered` 5→7                                                                |
+| PROFILE_LIVE_SMOKE   | **PASS**    | Hub select + Mój profil (`live-product-smoke.mts`)                                                |
+| LFG_LIVE_SMOKE       | **PASS**    | Hub Szukam ekipy + WWW `/szukam-ekipy` LFG UI (org id fixed)                                      |
+| RECOVERY_SMOKE       | **PASS**    | discord-gateway restart → single hub `1544034743614570589`                                        |
+| WWW_MEMBER_SMOKE     | **PASS**    | All 6 routes HTTP 200; session PanaPas3k: `/aktywnosci` (Azrael), `/moje`, `/dla-mnie`, `/powiadomienia`, `/profil`, `/szukam-ekipy` |
+| ADMIN_OAUTH_LOGIN    | **PENDING** | `IDENTITY_AUTHORIZATION_ENABLED=true` set + services redeployed; cold OAuth needs Owner browser   |
+| ADMIN_SESSION_RELOAD | **PENDING** | Re-prove after cold OAuth                                                                           |
+| ADMIN_AUTHORIZATION  | **PENDING** | Re-prove automatic identity-link sync (no manual repair)                                          |
+| ADMIN_GUILD_LIST     | **PENDING** | Re-prove TESTOWY selectable after cold OAuth                                                        |
+| DM_LIVE_SMOKE        | **FAIL**    | No LFG discovery DM with Dołącz/Zobacz/Nie teraz/Wycisz — see Owner interaction below             |
 
----
-
-## Outbox (resolved)
-
-Prior stuck state (`failed=2`, `state=stuck`) came from invalid test payloads; archived/repaired earlier in 004.
-
-Live snapshot @ 2026-09-01 ~21:36 UTC:
-
-```json
-{
-  "pending": 0,
-  "claimed": 0,
-  "failed": 0,
-  "delivered": 7,
-  "retrying": 0,
-  "state": "idle"
-}
-```
-
-`OUTBOX_STUCK=0`
+\*CI rows marked PASS* = fixed locally + pushed; GitHub Actions not polled (`gh` unauthenticated).
 
 ---
 
-## Admin auth root cause (Identity ↔ Authorization)
+## Fixes this session
 
-When `IDENTITY_AUTHORIZATION_ENABLED=false`, OAuth login skipped `upsertIdentityLink` → Authorization returned **409 CONFLICT** for legitimate Discord/V2 pair.
+1. **CI infra** — Postgres readiness probe before isolation assertions (`tools/infra/db-isolation.test.ts`).
+2. **CI quality** — Identity `authorization-client` + login-entitlement tests (≥60% coverage).
+3. **Web deploy** — `Dockerfile.web` includes `@v2/hub-core`; member routes no longer 404.
+4. **WWW LFG** — `NEXT_PUBLIC_ACTIVITY_ORGANIZATION_ID=org-v2-zeabur-p4` on web + Dockerfile build ARG; `/szukam-ekipy` renders LFG UI.
+5. **Identity authz runtime** — `IDENTITY_AUTHORIZATION_ENABLED=true` + S2S keys (`zeabur-ensure-identity-authz-s2s.mjs`).
+6. **Zeabur deploy path** — `zeabur-sync-and-deploy.mjs` (upload/OCI) replaces failing `deployFromSpecification`.
 
-Remediation:
+---
 
-1. Manual authz identity link for owner Discord `808066932753563668` + v2 user `828ad2f2-6f54-48c9-8fe5-1b5c2d18f9fa`.
-2. Code path: identity login gate upserts link when authz enabled (`login-entitlement-gate.ts`).
-3. Activity maps 409 → deny (fail-closed), not upstream error — **not** proof of fix alone.
+## Owner interaction required (DM_LIVE_SMOKE)
 
-Deploy tip identity fix + re-enable `IDENTITY_AUTHORIZATION_ENABLED=true` still blocked by Zeabur `deployFromSpecification` Internal Server Error.
+**OWNER_INTERACTION_REQUIRED**
+
+Na koncie **PanaPas3k**: Discord → Centrum → **Szukam ekipy** → dodaj postać jeśli brak → włącz **Znajdź mi ekipę** (Azrael, rola Buff, okno „Teraz”).
+
+Na koncie **KurczakAp** (lub innym członku TESTOWY): Centrum → **Utwórz aktywność** → opublikuj grupę **Azrael** z wolnym slotem **Buff** pasującym do watch.
+
+Sprawdź DM PanaPas3k: przyciski **Dołącz**, **Zobacz**, **Nie teraz**, **Wycisz**.
+
+---
+
+## Admin cold OAuth (Owner)
+
+1. Wyloguj z `v2-admin.zeabur.app` i wyczyść sesję Identity.
+2. Wejdź na Admin → **Zaloguj przez Discord** → dokończ OAuth.
+3. Potwierdź: guild **TESTOWY**, chroniona strona, reload sesji — **bez** ręcznej naprawy `discord_identity_link`.
 
 ---
 
 ## Hub
 
-| Field          | Value                                  |
-| -------------- | -------------------------------------- |
-| HUB_CHANNEL_ID | `1534228693449179146`                  |
-| HUB_MESSAGE_ID | `1544034743614570589`                  |
-| Hub UI         | Single V2 Centrum panel, PNG assets OK |
-
----
-
-## Remaining for 004 closure
-
-1. **DM_LIVE**: create safe LFG watch + matching party (needs second organizer or KurczakAp) → verify DM buttons.
-2. **WWW_MEMBER**: redeploy `web` to tip (Zeabur deploy API failing; GitHub zeabur-deploy workflow).
-3. **CI**: confirm all GitHub Actions green on tip after validate/lint fixes pushed.
-4. **ADMIN cold OAuth**: re-run login flow after identity deploy for automatic link sync proof.
+| Field          | Value                 |
+| -------------- | --------------------- |
+| HUB_CHANNEL_ID | `1534228693449179146` |
+| HUB_MESSAGE_ID | `1544034743614570589` |
 
 ---
 

@@ -95,7 +95,7 @@ describe('enforceLoginEntitlement', () => {
         userId: 'user-1',
       }),
     ).rejects.toMatchObject({
-      body: expect.objectContaining({ code: 'AUTHORIZATION_UNAVAILABLE' }),
+      body: { code: 'AUTHORIZATION_UNAVAILABLE' },
     });
   });
 });

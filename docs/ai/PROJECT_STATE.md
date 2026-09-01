@@ -2,11 +2,11 @@
 
 ## Status
 
-`V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — **acceptance loop in progress** (Discord core PASS; DM + WWW member + CI checkpoint pending)
+`V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — **`READY_FOR_OWNER_LIVE_ACCEPTANCE`** (DM + cold Admin OAuth need Owner)
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
 
-LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Discord partial (see runtime report).
+LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Discord partial (DM pending Owner).
 
 **STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
 
@@ -14,17 +14,17 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Di
 
 | Field                   | Value                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (WIP)                       |
-| REVIEW_POSTURE          | Task 004 acceptance — prove live product, not source-only                       |
-| CODE_STATUS             | `ACCEPTANCE_WIP` — tip `97e8f52` on PR #19                                      |
-| CURRENT_PRODUCT_STATUS  | `ACCEPTANCE_WIP` — PROFILE/LFG/AUTO_SYNC/OUTBOX/RECOVERY green; DM/WWW pending  |
-| CURRENT_HEAD / PR_HEAD  | `97e8f52cfb6aab2e0299815b91ddb10a9d2c9c10`                                      |
-| CI_STATUS               | Quality gates fix in flight (authorization-client.spec lint/typecheck)          |
-| LOCAL_VALIDATE          | Re-run after spec fix (2026-09-01)                                              |
+| CURRENT_TASK            | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (Owner acceptance gate)     |
+| REVIEW_POSTURE          | Task 004 — prove live product; Owner clicks for DM + Admin cold OAuth           |
+| CODE_STATUS             | `READY_FOR_OWNER_LIVE_ACCEPTANCE` — see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`   |
+| CURRENT_PRODUCT_STATUS  | WWW member PASS; Discord core PASS; DM FAIL; Admin cold OAuth pending           |
+| CURRENT_HEAD / PR_HEAD  | see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`                                       |
+| CI_STATUS               | Infra + quality fixes pushed (`84ba31c`+); confirm GitHub green                   |
+| LOCAL_VALIDATE          | PASS except VERSION_DRIFT (api-gateway SHA lag)                                   |
 | RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
-| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MISMATCH** vs tip `97e8f52`)      |
-| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script       |
-| PR_TITLE_STATUS         | WIP conventional title on PR #19                                                |
+| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (redeploy in flight)                  |
+| ZEABUR_DEPLOY           | `zeabur-sync-and-deploy.mjs` + web LFG org script                               |
+| PR_TITLE_STATUS         | Conventional on PR #19                                                            |
 | REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                             |
 
 ## Governance

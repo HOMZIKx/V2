@@ -13,6 +13,29 @@ function pemString(): string {
   return exported;
 }
 
+function parseRequestBody(body: RequestInit['body']): unknown {
+  if (typeof body === 'string') {
+    return JSON.parse(body) as unknown;
+  }
+  if (body === undefined || body === null) {
+    return undefined;
+  }
+  throw new Error('unsupported request body in test');
+}
+
+function headerRecord(init: RequestInit): Record<string, string> {
+  if (init.headers === undefined) {
+    return {};
+  }
+  if (init.headers instanceof Headers) {
+    return Object.fromEntries(init.headers.entries());
+  }
+  if (Array.isArray(init.headers)) {
+    return Object.fromEntries(init.headers);
+  }
+  return init.headers as Record<string, string>;
+}
+
 const baseConfig = () => ({
   IDENTITY_AUTHORIZATION_BASE_URL: 'http://127.0.0.1:4300',
   IDENTITY_AUTHORIZATION_ASSERTION_AUD: 'http://127.0.0.1:4300/authorization/v1',
@@ -35,13 +58,10 @@ describe('HttpAuthorizationClient', () => {
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:4300/authorization/v1/identity-links');
     expect(init.method).toBe('POST');
-    expect(init.headers).toEqual(
-      expect.objectContaining({
-        'content-type': 'application/json',
-        'authorization-client-assertion': expect.any(String),
-      }),
-    );
-    expect(JSON.parse(String(init.body))).toEqual({
+    const headers = headerRecord(init);
+    expect(headers['content-type']).toBe('application/json');
+    expect(typeof headers['authorization-client-assertion']).toBe('string');
+    expect(parseRequestBody(init.body)).toEqual({
       discordUserId: '808066932753563668',
       v2UserId: 'user-1',
     });
@@ -61,15 +81,19 @@ describe('HttpAuthorizationClient', () => {
 
   it('returns allow/deny from authorizeWwwLogin', async () => {
     const client = new HttpAuthorizationClient(baseConfig(), (_url, init) => {
-      const body = JSON.parse(String(init?.body));
+      const parsed = parseRequestBody(init?.body);
+      const v2UserId =
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'subject' in parsed &&
+        typeof (parsed as { subject?: { v2UserId?: unknown } }).subject?.v2UserId === 'string'
+          ? (parsed as { subject: { v2UserId: string } }).subject.v2UserId
+          : '';
       return Promise.resolve(
-        new Response(
-          JSON.stringify({ decision: body.subject.v2UserId === 'allowed' ? 'allow' : 'deny' }),
-          {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          },
-        ),
+        new Response(JSON.stringify({ decision: v2UserId === 'allowed' ? 'allow' : 'deny' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
       );
     });
 
