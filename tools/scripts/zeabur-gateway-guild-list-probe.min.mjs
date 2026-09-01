@@ -14,11 +14,13 @@ const activityBase = (process.env.ACTIVITY_SERVICE_BASE_URL ?? 'http://127.0.0.1
 );
 
 const actorDiscord = '808066932753563668';
+const actorV2 = '828ad2f2-6f54-48c9-8fe5-1b5c2d18f9fa';
 
 const key = await importPKCS8(pem, 'EdDSA');
 const assertion = await new SignJWT({
   jti: randomUUID(),
   actor_discord_user_id: actorDiscord,
+  actor_v2_user_id: actorV2,
 })
   .setProtectedHeader({ alg: 'EdDSA', kid })
   .setIssuer(clientId)
@@ -32,6 +34,7 @@ const response = await fetch(`${activityBase}/activity/v1/admin/guilds`, {
   headers: {
     accept: 'application/json',
     'x-actor-discord-user-id': actorDiscord,
+    'x-actor-v2-user-id': actorV2,
     'activity-client-assertion': assertion,
   },
   signal: AbortSignal.timeout(10000),

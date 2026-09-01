@@ -73,6 +73,9 @@ describe('HttpAuthorizationClient', () => {
   it('treats identity pair CONFLICT as deny instead of upstream failure', async () => {
     const { privateKey } = generateKeyPairSync('ed25519');
     const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' });
+    if (typeof privateKeyPem !== 'string') {
+      throw new Error('expected PEM string');
+    }
     const client = new HttpAuthorizationClient({
       baseUrl: 'http://127.0.0.1:4300',
       assertionAud: 'http://127.0.0.1:4300/authorization/v1/authorize',
@@ -80,15 +83,17 @@ describe('HttpAuthorizationClient', () => {
       kid: 'test-kid',
       privateKeyPem,
       maxTtlSeconds: 60,
-      fetchImpl: async () =>
-        new Response(
-          JSON.stringify({
-            error: {
-              code: 'CONFLICT',
-              message: 'Discord and V2 identity pair does not match',
-            },
-          }),
-          { status: 409, headers: { 'content-type': 'application/json' } },
+      fetchImpl: () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: 'CONFLICT',
+                message: 'Discord and V2 identity pair does not match',
+              },
+            }),
+            { status: 409, headers: { 'content-type': 'application/json' } },
+          ),
         ),
     });
 

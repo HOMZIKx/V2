@@ -2,36 +2,30 @@
 
 ## Status
 
-`V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` — code **`LOCAL_VALIDATE PASS`** · security CRITICAL/HIGH = **0** · runtime **partial** (deploy tip pending)
+`V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — **acceptance loop in progress** (Discord core PASS; DM + WWW member + CI checkpoint pending)
 
-Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT CI GREEN** · **NOT RUNTIME VERIFIED AT HEAD**
+Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
 
-LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`) — **runtime on test Discord is a separate task**.
+LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Discord partial (see runtime report).
 
 **STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
 
 ## Current execution
 
-| Field                   | Value                                                                                                       |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003` (infra + S2S green; UI smoke pending)                                 |
-| REVIEW_POSTURE          | Stage 5 runtime closure — fail-closed Authz/Identity; narrow hub projection S2S                             |
-| CODE_STATUS             | `STAGE5_RUNTIME_WIP` — tip `ac35d6a` on PR #19                                                              |
-| CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                                                              |
-| LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)                                              |
-| CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                                                               |
-| CURRENT_HEAD / PR_HEAD  | `ac35d6a…` (Stage 5 runtime closure WIP)                                                                    |
-| PR                      | #19 — **do not merge**                                                                                      |
-| PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                                                            |
-| CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                                                |
-| LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31)                                   |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — all services ready @ `9d5fdcd`; S2S PASS; LFG/DM/auto-sync UI pending |
-| RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                                                               |
-| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MATCH** tip deploy, 2026-09-01)                               |
-| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4`                                                                  |
-| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script                                   |
-| PR_TITLE_STATUS         | WIP conventional title on PR #19                                                                            |
-| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                                                         |
+| Field                   | Value                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| CURRENT_TASK            | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (WIP)                       |
+| REVIEW_POSTURE          | Task 004 acceptance — prove live product, not source-only                       |
+| CODE_STATUS             | `ACCEPTANCE_WIP` — tip `97e8f52` on PR #19                                      |
+| CURRENT_PRODUCT_STATUS  | `ACCEPTANCE_WIP` — PROFILE/LFG/AUTO_SYNC/OUTBOX/RECOVERY green; DM/WWW pending  |
+| CURRENT_HEAD / PR_HEAD  | `97e8f52cfb6aab2e0299815b91ddb10a9d2c9c10`                                      |
+| CI_STATUS               | Quality gates fix in flight (authorization-client.spec lint/typecheck)          |
+| LOCAL_VALIDATE          | Re-run after spec fix (2026-09-01)                                              |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
+| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MISMATCH** vs tip `97e8f52`)      |
+| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script       |
+| PR_TITLE_STATUS         | WIP conventional title on PR #19                                                |
+| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                             |
 
 ## Governance
 

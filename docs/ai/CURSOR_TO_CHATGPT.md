@@ -2,45 +2,53 @@
 
 ## Status
 
-**MODE:** Stage 5 runtime final closure (checkpoint pending UI smoke)
+**MODE:** Task 004 live acceptance loop (WIP — not checkpoint)
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003`
+Task: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004`
 Branch: `cursor/p4-1-activity-domain`
 PR: **#19** — do not merge
-
-Checkpoint baseline: **`RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA`** = `04881cbefe015813e2ae0655757e32a37a73f9ab`
-Tip: **`ac35d6a…`** (runtime closure WIP)
+Tip: **`97e8f52cfb6aab2e0299815b91ddb10a9d2c9c10`**
 
 ---
 
-## Runtime progress (2026-09-01)
+## This session (2026-09-01 ~21:30 UTC+2)
 
-| Area                              | Result                                                                                    |
-| --------------------------------- | ----------------------------------------------------------------------------------------- |
-| All services ready                | **PASS** @ `9d5fdcd` — identity, activity (`ACTIVITY_ENABLED=true`), api-gateway, discord |
-| S2S Activity→Identity             | **PASS** (signed probe, assertion accepted)                                               |
-| S2S Activity→Authorization        | **PASS** (internal path; keys + enabled)                                                  |
-| S2S Discord→Identity profile      | **PASS** (HTTP 200 test operator profile)                                                 |
-| Hub auto-reconcile                | **PASS** — single Centrum `1544034743614570589`                                           |
-| LFG / profile / DM / auto-sync UI | **NOT VERIFIED** — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                              |
+### Green
 
-### Code fixes this session
+| Gate               | Evidence                                                       |
+| ------------------ | -------------------------------------------------------------- |
+| OUTBOX_STUCK=0     | `v2-api.zeabur.app/health/ready` → failed=0, idle, delivered=7 |
+| AUTO_SYNC_SMOKE    | Participation Może będę → delivered 5→7                        |
+| PROFILE_LIVE_SMOKE | Discord hub Mój profil ephemeral                               |
+| LFG_LIVE_SMOKE     | Discord hub Szukam ekipy wizard                                |
+| RECOVERY_SMOKE     | discord-gateway restart → ready, single hub                    |
+| ADMIN_* (prior)    | TESTOWY guild, authz link repaired, protected pages            |
 
-1. Identity **internal profile S2S** (`afdaa1e`) for discord-gateway assertion mode.
-2. **api-gateway** forwards `identity-client-assertion` (`9d5fdcd`).
-3. **zeabur-ensure-discord-identity-s2s.mjs** — sync SPKI when PEM exists (`ac35d6a`).
+### Red / pending
 
-### Validation
+| Gate                    | Blocker                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| DM_LIVE_SMOKE           | No LFG discovery DM yet — needs watch + matching party (KurczakAp or 2nd user)              |
+| WWW_MEMBER_SMOKE        | Live web @ `9d5fdcd` — `/profil`, `/dla-mnie`, `/szukam-ekipy` 404; Zeabur deploy API error |
+| CI all green            | Local validate fix for `authorization-client.spec.ts`; gh not authed locally                |
+| Identity link auto-sync | Tip identity not deployed; `IDENTITY_AUTHORIZATION_ENABLED` still off on live               |
 
-Prior full `pnpm validate` **PASS** (2026-08-31). Targeted api-gateway tests **PASS** after proxy fix. Full validate not re-run (deploy/env + narrow code delta).
+### Code delta (unpushed at session start)
 
-### Blockers for `TEST_DISCORD_RUNTIME_VERIFIED`
+- `authorization-client.spec.ts` — lint (require-await), typecheck (PEM string), prettier
+- `live-product-smoke.mts` — prettier (untracked acceptance script)
 
-- Manual Discord LFG + profile ephemeral flows
-- DM match smoke
-- Outbox stuck (`failed: 2`) — auto-sync / recovery proof
+---
+
+## Next
+
+1. Push validate/CI fix → confirm GitHub Actions green.
+2. Seed LFG watch + party → DM_LIVE with button proof.
+3. Redeploy web (GitHub zeabur-deploy or Zeabur API recovery).
+4. Full admin OAuth cold start after identity deploy.
+5. When all markers PASS → `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA` + STOP.
 
 ## STOP
 
-No Guild Control · No merge of PR #19 · Await ChatGPT final Stage 5 audit after Owner UI smoke.
+No Guild Control · No merge of PR #19
