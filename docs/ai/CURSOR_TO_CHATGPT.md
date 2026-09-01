@@ -2,47 +2,45 @@
 
 ## Status
 
-**MODE:** Runtime security boundary remediation
+**MODE:** Stage 5 runtime final closure (checkpoint pending UI smoke)
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002`
+Task: `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003`
 Branch: `cursor/p4-1-activity-domain`
 PR: **#19** — do not merge
 
-Checkpoint: **`RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA`** = `04881cbefe015813e2ae0655757e32a37a73f9ab`
-Prior: **`GUILD_CONTROL_DISCOVERY_PREP_SHA`** = `e0e4401f547d577305b8675fed1859f142dfe01d`
+Checkpoint baseline: **`RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA`** = `04881cbefe015813e2ae0655757e32a37a73f9ab`
+Tip: **`ac35d6a…`** (runtime closure WIP)
 
 ---
 
-## Security remediation summary
+## Runtime progress (2026-09-01)
 
-Removed production fail-open / bypass paths that blocked honest product enablement:
+| Area | Result |
+| ---- | ------ |
+| All services ready | **PASS** @ `9d5fdcd` — identity, activity (`ACTIVITY_ENABLED=true`), api-gateway, discord |
+| S2S Activity→Identity | **PASS** (signed probe, assertion accepted) |
+| S2S Activity→Authorization | **PASS** (internal path; keys + enabled) |
+| S2S Discord→Identity profile | **PASS** (HTTP 200 test operator profile) |
+| Hub auto-reconcile | **PASS** — single Centrum `1544034743614570589` |
+| LFG / profile / DM / auto-sync UI | **NOT VERIFIED** — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
 
-1. **Authorization client** — production no longer falls back to AllowAll; fail-closed when Authz unavailable.
-2. **Identity character client** — production no longer uses PassThrough; requires real Identity S2S.
-3. **Hub projection S2S** — dedicated `activity_hub_projection` inbound op + Activity use-cases/controller endpoints; Discord gateway calls narrowed projection instead of product authorize paths for Centrum paint/reconcile.
-4. **Guards / tests** — `production-stub-guard`, identity client specs, hub-projection-boundary specs.
-5. **Owner vars** — `docs/deploy/ZEABUR_OWNER_VARIABLES.md` + `.env.example` note Identity S2S + fail-closed product/LFG.
-6. **Ops helper** — `tools/scripts/zeabur-ensure-hub-projection-op.mjs` ensures inbound clients JSON includes hub projection op (no secrets printed).
+### Code fixes this session
+
+1. Identity **internal profile S2S** (`afdaa1e`) for discord-gateway assertion mode.
+2. **api-gateway** forwards `identity-client-assertion` (`9d5fdcd`).
+3. **zeabur-ensure-discord-identity-s2s.mjs** — sync SPKI when PEM exists (`ac35d6a`).
 
 ### Validation
 
-| Check | Result |
-| ----- | ------ |
-| `corepack pnpm validate` | **PASS** (2026-08-31) |
-| Security CRITICAL / HIGH | **0 / 0** |
-| `LOCAL_VALIDATE` | **PASS** |
+Prior full `pnpm validate` **PASS** (2026-08-31). Targeted api-gateway tests **PASS** after proxy fix. Full validate not re-run (deploy/env + narrow code delta).
 
-### Runtime (2026-09-01)
+### Blockers for `TEST_DISCORD_RUNTIME_VERIFIED`
 
-| Field | Value |
-| ----- | ----- |
-| `RUNTIME_STATUS` | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` |
-| discord-gateway | `8306f3e` — Hub **PASS** |
-| activity / identity | Zeabur **RUNNING**, boot clean, **`ACTIVITY_ENABLED=true`**, port **8080** |
-| api-gateway ready | **503** — applied `zeabur-fix-api-gateway-upstream.mjs` (:8080 URLs); still unhealthy → inspect upstream `/health/ready` checks |
-| Next | Owner Zeabur console: activity/identity ready bodies; then LFG/profile smoke |
+- Manual Discord LFG + profile ephemeral flows
+- DM match smoke
+- Outbox stuck (`failed: 2`) — auto-sync / recovery proof
 
 ## STOP
 
-No Guild Control · No merge of PR #19 · No force push.
+No Guild Control · No merge of PR #19 · Await ChatGPT final Stage 5 audit after Owner UI smoke.

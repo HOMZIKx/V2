@@ -14,22 +14,22 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATU
 
 | Field                   | Value                                                                       |
 | ----------------------- | --------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-RUNTIME-SECURITY-BOUNDARY-REMEDIATION-002` (code done; runtime partial) |
-| REVIEW_POSTURE          | Security boundary remediation — fail-closed Authz/Identity; narrow hub projection S2S |
-| CODE_STATUS             | `SECURITY_REMEDIATION_COMMITTED` — RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA pinned |
+| CURRENT_TASK            | `V2-STAGE5-RUNTIME-FINAL-CLOSURE-003` (infra + S2S green; UI smoke pending) |
+| REVIEW_POSTURE          | Stage 5 runtime closure — fail-closed Authz/Identity; narrow hub projection S2S |
+| CODE_STATUS             | `STAGE5_RUNTIME_WIP` — tip `ac35d6a` on PR #19 |
 | CURRENT_PRODUCT_STATUS  | `CORE_FOUNDATION_WIP_OWNER_DISCOVERY_REQUIRED`                              |
 | LFG_CODE_STATUS         | `READY_FOR_CHATGPT_APPROVAL` (source audits; runtime separate)              |
 | CURRENT_BRANCH          | `cursor/p4-1-activity-domain`                                               |
-| CURRENT_HEAD / PR_HEAD  | `8306f3e17591622922510804b1098b713b76b8d6` (docs tip; remediation code `04881cb`) |
+| CURRENT_HEAD / PR_HEAD  | `ac35d6a…` (Stage 5 runtime closure WIP) |
 | PR                      | #19 — **do not merge**                                                      |
 | PR_REVIEW_PACKAGE       | `docs/ai/PR19_REVIEW_PACKAGE.md`                                            |
 | CI_STATUS               | `BLOCKED_GITHUB_BILLING_SPENDING_LIMIT` (jobs never started)                |
 | LOCAL_VALIDATE          | `PASS` — format/lint/typecheck/coverage/arch/build/e2e/smoke (2026-08-31) |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — Hub shell @ tip; activity+identity unhealthy |
+| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — all services ready @ `9d5fdcd`; S2S PASS; LFG/DM/auto-sync UI pending |
 | RUNTIME_REPORT          | `docs/ai/TEST_DISCORD_LIVE_RUNTIME_REPORT.md`                               |
-| ZEABUR_LIVE_DISCORD_SHA | `8306f3e17591622922510804b1098b713b76b8d6` (**MATCH** docs tip, 2026-09-01) |
-| ZEABUR_LIVE_API_SHA     | stale risk remains                                                          |
-| ZEABUR_DEPLOY           | api-gateway upstream URLs fixed :8080; ready still 503 — upstream ready checks TBD |
+| ZEABUR_LIVE_DISCORD_SHA | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (**MATCH** tip deploy, 2026-09-01) |
+| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` |
+| ZEABUR_DEPLOY           | api-gateway identity assertion forward; discord identity SPKI sync script |
 | PR_TITLE_STATUS         | WIP conventional title on PR #19                                            |
 | REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                         |
 
