@@ -20,7 +20,7 @@ type DiscordChannelsMeta =
   | { readonly kind: 'ready'; readonly channels: readonly DiscordChannelOption[] }
   | { readonly kind: 'error' };
 
-export function ChannelsPage() {
+export function ChannelsPage({ embedded = false }: { embedded?: boolean }) {
   const loader = useCallback(async (guildId: string) => {
     const [channels, hub] = await Promise.all([getChannels(guildId), getHub(guildId)]);
     let discord: DiscordChannelsMeta;
@@ -148,11 +148,13 @@ export function ChannelsPage() {
   }
 
   return (
-    <section>
-      <PageHeader
-        title="Kanały i panel"
-        description="Wybierz kanały Discord po nazwie. Panel Centrum publikujesz stąd — bez slash command."
-      />
+    <section className={embedded ? 'stack embedded-section' : undefined}>
+      {embedded ? null : (
+        <PageHeader
+          title="Kanały i panel"
+          description="Wybierz kanały Discord po nazwie. Panel Centrum publikujesz stąd — bez slash command."
+        />
+      )}
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? (
         <Flash tone="error" detail={errorDetail}>

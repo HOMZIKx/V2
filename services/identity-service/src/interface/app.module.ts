@@ -26,6 +26,7 @@ import { InternalCharacterController } from './internal-character.controller.js'
 import { InternalJwtLifecycleService } from './internal-jwt-lifecycle.service.js';
 import { InternalProfileController } from './internal-profile.controller.js';
 import { InternalTokenController } from './internal-token.controller.js';
+import { PlayerAccountsController } from './player-accounts.controller.js';
 import { PlayerProfileController } from './player-profile.controller.js';
 import { ProofUiController } from './proof-ui.controller.js';
 import { SystemRevokeController } from './system-revoke.controller.js';
@@ -93,6 +94,7 @@ const providers: Provider[] = [
     HealthController,
     IdentityController,
     PlayerProfileController,
+    PlayerAccountsController,
     InternalTokenController,
     InternalCharacterController,
     InternalProfileController,

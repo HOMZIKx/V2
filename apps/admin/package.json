@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@v2/design-system": "workspace:*",
+    "@v2/hub-core": "workspace:*",
     "@vitejs/plugin-react": "^5.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -71,11 +71,11 @@ describe('Admin product UX', () => {
     );
 
     const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/activity/channels']}>
+      <MemoryRouter initialEntries={['/discord/centrum']}>
         <App />
       </MemoryRouter>,
     );
-    expect(markup).toContain('Kanały i panel');
+    expect(markup).toContain('Centrum V2');
     expect(markup).not.toContain('Channel IDs (one per line');
   });
 
@@ -101,7 +101,7 @@ describe('Admin product UX', () => {
     );
 
     const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/activity/notifications']}>
+      <MemoryRouter initialEntries={['/activities/settings/notifications']}>
         <App />
       </MemoryRouter>,
     );
@@ -134,7 +134,7 @@ describe('Admin product UX', () => {
       }),
     );
     const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/activity/types']}>
+      <MemoryRouter initialEntries={['/activities/types']}>
         <App />
       </MemoryRouter>,
     );
@@ -159,11 +159,28 @@ describe('Admin product UX', () => {
       }),
     );
     const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/activity/pings']}>
+      <MemoryRouter initialEntries={['/activities/settings/pings']}>
         <App />
       </MemoryRouter>,
     );
     expect(markup).toContain('Role i pingi');
     expect(markup).not.toContain('Role IDs');
+  });
+
+  it('renders product-first navigation sections', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => json({})),
+    );
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(markup).toContain('Discord Bot');
+    expect(markup).toContain('Centrum V2');
+    expect(markup).toContain('Aktywności');
+    expect(markup).toContain('System');
+    expect(markup).not.toContain('Centrum Aktywności');
   });
 });

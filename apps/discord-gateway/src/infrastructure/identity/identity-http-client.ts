@@ -34,6 +34,16 @@ export class IdentityHttpError extends Error {
   }
 }
 
+const gameAccountSchema = z
+  .object({
+    id: z.string().min(1),
+    displayName: z.string(),
+    description: z.string().nullable().optional(),
+    displayOrder: z.number().optional(),
+    characterCount: z.number().optional(),
+  })
+  .passthrough();
+
 const characterSchema = z
   .object({
     id: z.string().min(1),
@@ -42,6 +52,7 @@ const characterSchema = z
     classSpecLabel: z.string().optional(),
     level: z.number().nullable().optional(),
     isDefault: z.boolean().optional(),
+    gameAccountId: z.string().nullable().optional(),
     partyRoles: z.array(z.enum(['TANK', 'BUFF', 'DPS', 'FLEX'])),
   })
   .passthrough();
@@ -53,6 +64,7 @@ const profileSchema = z
         userId: z.string(),
         displayName: z.string().nullable().optional(),
         activeCharacterId: z.string().nullable().optional(),
+        gameAccounts: z.array(gameAccountSchema).default([]),
         characters: z.array(characterSchema).default([]),
         interestKeys: z.array(z.string()).default([]),
       })
@@ -95,6 +107,7 @@ export class IdentityHttpClient {
       partyRoles: readonly PartyRoleKey[];
       isDefault?: boolean;
       level?: number | null;
+      gameAccountId?: string;
     },
     actor: IdentityActorContext,
   ): Promise<{ characterId: string; profile: IdentityProfile }> {
@@ -129,6 +142,7 @@ export class IdentityHttpClient {
       partyRoles: readonly PartyRoleKey[];
       isDefault?: boolean;
       level?: number | null;
+      gameAccountId?: string;
     },
     actor: IdentityActorContext,
   ): Promise<{ characterId: string; profile: IdentityProfile }> {

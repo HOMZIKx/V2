@@ -1,5 +1,5 @@
-import { ProfileFoundationPage } from '../../../src/components/ProfileFoundationPage';
+import { ProfileOverviewPage } from '../../../src/components/profile/ProfileOverviewPage';
 
-export default function ProfilRoute() {
-  return <ProfileFoundationPage />;
+export default function ProfilOverviewRoute() {
+  return <ProfileOverviewPage />;
 }

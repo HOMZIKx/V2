@@ -103,6 +103,9 @@ importers:
       '@v2/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@v2/hub-core':
+        specifier: workspace:*
+        version: link:../../packages/hub-core
       '@vitejs/plugin-react':
         specifier: ^5.0.2
         version: 5.2.0(vite@8.2.0(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.6.1)(tsx@4.23.5)(yaml@2.9.0))

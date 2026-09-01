@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from './api';
-import { createLfgWatch, listLfgWatches, searchLfg } from './lfg-api';
+import {
+  createGameAccount,
+  createLfgWatch,
+  getIdentityProfile,
+  listGameAccounts,
+  listLfgWatches,
+  searchLfg,
+} from './lfg-api';
 
 describe('lfg-api', () => {
   afterEach(() => {
@@ -119,5 +126,90 @@ describe('lfg-api', () => {
         windowEndAt: new Date(Date.now() + 3_600_000).toISOString(),
       }),
     ).rejects.toBeInstanceOf(ApiClientError);
+  });
+
+  it('loads identity profile with game accounts from identity service', async () => {
+    vi.stubEnv('NEXT_PUBLIC_IDENTITY_PUBLIC_URL', 'http://127.0.0.1:4200');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            profile: {
+              userId: 'u1',
+              gameAccounts: [
+                { id: 'acc-1', displayName: 'MAIN', displayOrder: 0, characterCount: 1 },
+              ],
+              characters: [
+                {
+                  id: 'c1',
+                  nickname: 'Yodasz',
+                  classSpecKey: 'warrior_body',
+                  gameAccountId: 'acc-1',
+                  partyRoles: ['DPS'],
+                },
+              ],
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const profile = await getIdentityProfile();
+    expect(profile.gameAccounts).toHaveLength(1);
+    expect(profile.characters[0]?.gameAccountId).toBe('acc-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:4200/identity/v1/profile',
+      expect.objectContaining({ credentials: 'include' }),
+    );
+  });
+
+  it('creates game account via player accounts API', async () => {
+    vi.stubEnv('NEXT_PUBLIC_IDENTITY_PUBLIC_URL', 'http://127.0.0.1:4200');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            account: { id: 'acc-2', displayName: 'DROP', displayOrder: 1, characterCount: 0 },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const account = await createGameAccount({ displayName: 'DROP' });
+    expect(account.displayName).toBe('DROP');
+    const call = fetchMock.mock.calls.at(0) as unknown as [string, RequestInit | undefined];
+    expect(call[0]).toContain('/identity/v1/player/accounts');
+    expect(call[1]?.method).toBe('POST');
+  });
+
+  it('lists game accounts', async () => {
+    vi.stubEnv('NEXT_PUBLIC_IDENTITY_PUBLIC_URL', 'http://127.0.0.1:4200');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              accounts: [{ id: 'acc-1', displayName: 'MAIN', displayOrder: 0, characterCount: 2 }],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+
+    const accounts = await listGameAccounts();
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]?.displayName).toBe('MAIN');
   });
 });

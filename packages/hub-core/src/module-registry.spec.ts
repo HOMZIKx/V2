@@ -45,7 +45,7 @@ describe('class/spec catalog — Polish player labels', () => {
     expect(labels).toEqual([...PLAYER_FACING_CLASS_SPEC_LABELS]);
   });
 
-  it('does not offer Lycan/Likan or English profession fragments as selectable', () => {
+  it('does not offer Lycan/Likan or legacy long Polish labels as selectable', () => {
     const labels = listEnabledClassSpecs().map((entry) => entry.label);
     for (const forbidden of FORBIDDEN_PLAYER_CLASS_SPEC_LABELS) {
       expect(labels).not.toContain(forbidden);

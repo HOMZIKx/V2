@@ -97,6 +97,7 @@ const providers: Provider[] = [
       characterVerify: LfgCharacterVerifyPort,
       clock: Clock,
       config: ActivityEnv,
+      discordGuildMetadata: DiscordGuildMetadataPort | null,
     ): ActivityUseCases =>
       new ActivityUseCases({
         repository,
@@ -105,6 +106,7 @@ const providers: Provider[] = [
         clock,
         allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
         nodeEnv: config.NODE_ENV,
+        discordGuildMetadata,
       }),
     inject: [
       ACTIVITY_REPOSITORY,
@@ -112,6 +114,7 @@ const providers: Provider[] = [
       CHARACTER_VERIFY_PORT,
       ACTIVITY_CLOCK,
       ACTIVITY_CONFIG,
+      DISCORD_GUILD_METADATA,
     ],
   },
   {

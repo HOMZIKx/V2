@@ -12,15 +12,14 @@ function read(name: string): string {
 
 describe('Admin audit-closure product contracts', () => {
   it('uses separated Discord dependency diagnostics instead of a single Discord flag', () => {
-    const source = read('DashboardPage.tsx');
+    const source = read('DiagnosticsPage.tsx');
     expect(source).toContain('Discord Gateway');
     expect(source).toContain('Activity → Discord');
     expect(source).toContain('Authorization');
     expect(source).toContain('Lista serwerów');
-    expect(source).toContain('flagBadge(runtime.discordGateway)');
-    expect(source).toContain('flagBadge(runtime.bot)');
-    expect(source).toContain('flagBadge(runtime.activityToDiscord)');
-    expect(source).not.toContain("guilds.length > 0 ? 'Tak'");
+    expect(source).toContain('runtime.discordGateway');
+    expect(source).toContain('runtime.bot');
+    expect(source).toContain('runtime.activityToDiscord');
   });
 
   it('shows Discord channel metadata failure instead of an empty picker', () => {

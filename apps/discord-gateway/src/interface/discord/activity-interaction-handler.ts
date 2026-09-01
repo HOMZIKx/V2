@@ -304,6 +304,27 @@ export class ActivityInteractionHandler {
     }
   }
 
+  private memberWwwOrigin(): string | undefined {
+    const origin = this.deps.config.DISCORD_MEMBER_WWW_ORIGIN.trim();
+    return origin.length > 0 ? origin : undefined;
+  }
+
+  private hubProfilePayload(
+    opaquePanelId: string,
+    profile: Awaited<ReturnType<ActivityInteractionHandler['loadProfile']>>,
+    options?: { statusLine?: string; view?: 'home' | 'characters' },
+  ): InteractionReplyOptions {
+    const origin = this.memberWwwOrigin();
+    return renderHubProfileWorkspace({
+      opaquePanelId,
+      signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      profile,
+      ...(origin !== undefined ? { memberWwwOrigin: origin } : {}),
+      ...(options?.statusLine !== undefined ? { statusLine: options.statusLine } : {}),
+      ...(options?.view !== undefined ? { view: options.view } : {}),
+    });
+  }
+
   private renderLfgView(input: {
     opaquePanelId: string;
     state: LfgWizardState;
@@ -400,6 +421,22 @@ export class ActivityInteractionHandler {
 
     if (parsed.scope === 'panel' && parsed.action === 'profile_set') {
       await this.handleProfileSetActive(interaction, parsed);
+      return true;
+    }
+
+    if (
+      parsed.scope === 'panel' &&
+      (parsed.action === 'profile_chars' || parsed.action === 'profile')
+    ) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const profile = await this.loadProfile(interaction.user.id);
+      await interaction.editReply(
+        asEditPayload(
+          this.hubProfilePayload(parsed.opaqueId, profile, {
+            view: parsed.action === 'profile_chars' ? 'characters' : 'home',
+          }),
+        ),
+      );
       return true;
     }
 
@@ -848,10 +885,7 @@ export class ActivityInteractionHandler {
       if (this.identityClient === null) {
         await interaction.editReply(
           asEditPayload(
-            renderHubProfileWorkspace({
-              opaquePanelId: parsed.opaqueId,
-              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-              profile: null,
+            this.hubProfilePayload(parsed.opaqueId, null, {
               statusLine: 'Profil niedostępny — spróbuj ponownie później.',
             }),
           ),
@@ -863,10 +897,7 @@ export class ActivityInteractionHandler {
       if (profile === null || character === undefined) {
         await interaction.editReply(
           asEditPayload(
-            renderHubProfileWorkspace({
-              opaquePanelId: parsed.opaqueId,
-              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-              profile,
+            this.hubProfilePayload(parsed.opaqueId, profile, {
               statusLine: 'Nie znaleziono tej postaci.',
             }),
           ),
@@ -881,15 +912,15 @@ export class ActivityInteractionHandler {
           partyRoles: character.partyRoles.filter(isPartyRoleKey),
           isDefault: true,
           level: character.level ?? null,
+          ...(character.gameAccountId !== undefined && character.gameAccountId !== null
+            ? { gameAccountId: character.gameAccountId }
+            : {}),
         },
         actorOf(interaction.user.id),
       );
       await interaction.editReply(
         asEditPayload(
-          renderHubProfileWorkspace({
-            opaquePanelId: parsed.opaqueId,
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            profile: updated.profile,
+          this.hubProfilePayload(parsed.opaqueId, updated.profile, {
             statusLine: `Aktywna postać: **${character.nickname}**.`,
           }),
         ),
@@ -1624,15 +1655,7 @@ export class ActivityInteractionHandler {
     if (selected === 'profile') {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const profile = await this.loadProfile(interaction.user.id);
-      await interaction.editReply(
-        asEditPayload(
-          renderHubProfileWorkspace({
-            opaquePanelId: parsed.opaqueId,
-            signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
-            profile,
-          }),
-        ),
-      );
+      await interaction.editReply(asEditPayload(this.hubProfilePayload(parsed.opaqueId, profile)));
       return;
     }
 

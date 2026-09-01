@@ -99,6 +99,8 @@ export const DiscordGatewayConfigSchema = z
     IDENTITY_ASSERTION_AUD: z.string().optional(),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
+    /** Public Member WWW origin for profile deep links (no trailing slash). */
+    DISCORD_MEMBER_WWW_ORIGIN: z.string().optional().default(''),
   })
   .superRefine((config, ctx) => {
     if (config.DISCORD_ACTIVITY_ENABLED) {

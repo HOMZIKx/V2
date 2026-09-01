@@ -51,6 +51,7 @@ describe('lfg-hub-ephemeral', () => {
         },
       ],
       interestKeys: [],
+      gameAccounts: [],
     } satisfies IdentityProfile;
     expect(resolveActiveCharacter(profile)?.id).toBe('char-2');
     const state = applyProfileCharacter(createDefaultLfgWizardState(), profile);
@@ -73,6 +74,7 @@ describe('lfg-hub-ephemeral', () => {
         },
       ],
       interestKeys: [],
+      gameAccounts: [],
     });
     state = toggleSessionRole(state, 'TANK');
     expect(state.sessionRoles).toEqual(['DPS']);
@@ -90,16 +92,17 @@ describe('lfg-hub-ephemeral', () => {
           id: 'char-a',
           nickname: 'KuzynBuff',
           classSpecKey: 'shaman_dragon',
-          classSpecLabel: 'Szaman Smok',
+          classSpecLabel: 'Dragon',
           partyRoles: ['BUFF', 'DPS'] as ('BUFF' | 'DPS')[],
           isDefault: true,
         },
       ],
       interestKeys: [],
+      gameAccounts: [],
     } satisfies IdentityProfile;
     let state = applyProfileCharacter(createDefaultLfgWizardState(), profile, 'char-a');
     expect(state.characterId).toBe('char-a');
-    expect(state.classSpecLabel).toBe('Szaman Smok');
+    expect(state.classSpecLabel).toBe('Dragon');
     expect(state.sessionRoles).toEqual(['BUFF', 'DPS']);
     expect(isWizardReady({ ...state, dungeonKey: 'azrael', timePreset: 'evening' })).toBe(true);
 
@@ -129,6 +132,7 @@ describe('lfg-hub-ephemeral', () => {
         },
       ],
       interestKeys: [],
+      gameAccounts: [],
     } satisfies IdentityProfile;
     const state = applyProfileCharacter(before, profile, 'new');
     expect(state.characterId).toBe('new');
@@ -136,7 +140,7 @@ describe('lfg-hub-ephemeral', () => {
     expect(state.pendingQuickAdd).toBeNull();
   });
 
-  it('add_character screen lists only enabled Polish professions', () => {
+  it('add_character screen lists only enabled Metin2 professions', () => {
     const view = renderLfgHubEphemeral({
       opaquePanelId: opaquePanel,
       signingSecret: secret,
@@ -149,7 +153,7 @@ describe('lfg-hub-ephemeral', () => {
     expect(serialized).toContain('Szaman Leczenie');
     expect(serialized).not.toContain('Lycan');
     expect(serialized).not.toContain('Likan');
-    expect(serialized).not.toContain('Wojownik Body');
+    expect(serialized).not.toContain('Body');
   });
 
   it('main wizard is a summary without permanent profession dropdown', () => {
@@ -162,7 +166,7 @@ describe('lfg-hub-ephemeral', () => {
         characterId: 'c1',
         characterLabel: 'KuzynBuff',
         classSpecKey: 'shaman_dragon',
-        classSpecLabel: 'Szaman Smok',
+        classSpecLabel: 'Dragon',
         characterSupportedRoles: ['BUFF', 'DPS'],
         sessionRoles: ['BUFF'],
         timePreset: 'evening',
@@ -176,19 +180,20 @@ describe('lfg-hub-ephemeral', () => {
             id: 'c1',
             nickname: 'KuzynBuff',
             classSpecKey: 'shaman_dragon',
-            classSpecLabel: 'Szaman Smok',
+            classSpecLabel: 'Dragon',
             partyRoles: ['BUFF', 'DPS'],
             isDefault: true,
           },
         ],
         interestKeys: [],
+        gameAccounts: [],
       },
     });
     const serialized = JSON.stringify(view.components);
     expect(serialized).toContain('Szukam ekipy');
     expect(serialized).toContain('Znajdź ekipę');
     expect(serialized).toContain('Zmień loch');
-    expect(serialized).toContain('KuzynBuff · Szaman Smok');
+    expect(serialized).toContain('KuzynBuff · Dragon');
     expect(serialized).not.toContain('Szybkie dodanie postaci');
   });
 

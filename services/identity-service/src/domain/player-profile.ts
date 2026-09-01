@@ -5,6 +5,8 @@ import {
   type PartyRoleKey,
 } from '@v2/hub-core';
 
+import type { GameAccountView } from './game-account.js';
+
 export type PlayerCharacterView = {
   readonly id: string;
   readonly nickname: string;
@@ -12,6 +14,7 @@ export type PlayerCharacterView = {
   readonly classSpecLabel: string;
   readonly level: number | null;
   readonly isDefault: boolean;
+  readonly gameAccountId: string | null;
   readonly partyRoles: readonly PartyRoleKey[];
 };
 
@@ -19,6 +22,7 @@ export type PlayerProfileView = {
   readonly userId: string;
   readonly displayName: string | null;
   readonly activeCharacterId: string | null;
+  readonly gameAccounts: readonly GameAccountView[];
   readonly characters: readonly PlayerCharacterView[];
   readonly interestKeys: readonly string[];
 };

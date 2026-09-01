@@ -2,30 +2,26 @@
 
 ## Status
 
-`V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — **`READY_FOR_OWNER_LIVE_ACCEPTANCE`** (DM + cold Admin OAuth need Owner)
+`V2-PLAYER-TOOLKIT-CORE-FOUNDATION-006` — **`PLAYER_TOOLKIT_CORE_V1`** (code checkpoint; Zeabur deploy + Owner UX review pending)
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
 
-LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Discord partial (DM pending Owner).
+Prior: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — Owner acceptance gate still open for DM/Admin OAuth.
 
 **STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
+
+Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of this foundation.
 
 ## Current execution
 
 | Field                  | Value                                                                           |
 | ---------------------- | ------------------------------------------------------------------------------- |
-| CURRENT_TASK           | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (Owner acceptance gate)     |
-| REVIEW_POSTURE         | Task 004 — prove live product; Owner clicks for DM + Admin cold OAuth           |
-| CODE_STATUS            | `READY_FOR_OWNER_LIVE_ACCEPTANCE` — see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`   |
-| CURRENT_PRODUCT_STATUS | WWW member PASS; Discord core PASS; DM FAIL; Admin cold OAuth pending           |
-| CURRENT_HEAD / PR_HEAD | see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`                                       |
-| CI_STATUS              | Infra + quality fixes pushed (`84ba31c`+); confirm GitHub green                 |
-| LOCAL_VALIDATE         | PASS except VERSION_DRIFT (api-gateway SHA lag)                                 |
-| RUNTIME_STATUS         | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
-| ZEABUR_LIVE_API_SHA    | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (redeploy in flight)                 |
-| ZEABUR_DEPLOY          | `zeabur-sync-and-deploy.mjs` + web LFG org script                               |
-| PR_TITLE_STATUS        | Conventional on PR #19                                                          |
-| REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                                             |
+| CURRENT_TASK           | `V2-PLAYER-TOOLKIT-CORE-FOUNDATION-006`                                         |
+| REVIEW_POSTURE         | Player Toolkit core — GameAccount + Character; WWW primary; Discord parity      |
+| CODE_STATUS            | `PLAYER_TOOLKIT_CORE_V1` — see `PLAYER_TOOLKIT_CORE_V1_SHA`                     |
+| CURRENT_PRODUCT_STATUS | WWW profile/postacie implemented; Discord profile context; LFG same character ID  |
+| LOCAL_VALIDATE         | PASS except VERSION_DRIFT (deploy lag)                                          |
+| RUNTIME_STATUS         | Live smoke pending identity migration 003 + web/discord deploy                  |
 
 ## Governance
 
@@ -76,6 +72,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **PERFORMANCE_SCALABILITY_AUDIT_SHA**         | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff                           |
 | **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks                     |
 | **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                              |
+| **PLAYER_TOOLKIT_CORE_V1_SHA**                | see `PLAYER_TOOLKIT_CORE_V1_SHA`           | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity  |
 
 ## Module discovery status (summary)
 

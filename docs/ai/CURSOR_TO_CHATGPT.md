@@ -2,47 +2,49 @@
 
 ## Status
 
-**MODE:** Task 004 checkpoint — `READY_FOR_OWNER_LIVE_ACCEPTANCE`
+**MODE:** Task 006 checkpoint — `PLAYER_TOOLKIT_CORE_V1` (code complete; deploy pending)
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004`
+Task: `V2-PLAYER-TOOLKIT-CORE-FOUNDATION-006`
 Branch: `cursor/p4-1-activity-domain`
 PR: **#19** — do not merge
-Tip: see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`
+Tip: see `PLAYER_TOOLKIT_CORE_V1_SHA`
 
 ---
 
-## This session (2026-09-01 ~22:45 UTC+2)
+## Delivered (006)
 
-### Delivered
+| Gate | Result |
+|------|--------|
+| PLAYER_CORE_ACCOUNT_MODEL | PASS (migration `003`, API `identity/v1/player/accounts`) |
+| PLAYER_CORE_CHARACTER_MODEL | PASS (canonical `player_characters` + `gameAccountId`) |
+| PLAYER_CORE_EXISTING_MIGRATION | PASS (idempotent default **Moje konto** backfill) |
+| PLAYER_CORE_WWW | PASS (Profil IA: Przegląd / Postacie / …; account-grouped UX) |
+| PLAYER_CORE_DISCORD | PASS (profile home + Postacie view, WWW deep links) |
+| PLAYER_CORE_LFG_REGRESSION | PASS (same character IDs; class labels PL) |
+| PLAYER_CORE_AUTHZ_ISOLATION | PASS (unit + integration spec; owner-scoped repo) |
+| `corepack pnpm validate` | PASS except **VERSION_DRIFT** (Zeabur tip lag; needs identity+web deploy) |
 
-| Area         | Result                                                  |
-| ------------ | ------------------------------------------------------- |
-| CI infra     | DB isolation readiness + timeout (`84ba31c`)            |
-| CI quality   | Identity authz tests + coverage ≥62% + eslint fixes     |
-| Web deploy   | hub-core in Docker; all member routes 200               |
-| WWW LFG      | `NEXT_PUBLIC_ACTIVITY_ORGANIZATION_ID` + Dockerfile ARG |
-| Runtime core | OUTBOX=0, AUTO_SYNC, PROFILE, LFG hub, RECOVERY PASS    |
-| WWW member   | Session smoke all 6 routes with data/empty states       |
-| Zeabur       | Full stack redeploy via `zeabur-sync-and-deploy.mjs`    |
+### Key changes
 
-### Owner-only remaining
+- **Identity:** `player_game_accounts`, `player_private_audit`, `game_account_id` on characters; `PlayerAccountsController`; profile payloads include `gameAccounts`.
+- **WWW:** `/profil`, `/profil/postacie`, subnav; create/edit/move character + create/rename account.
+- **Discord:** Mój profil shows Postacie/Konta/Aktywna; `profile_chars` navigation; `DISCORD_MEMBER_WWW_ORIGIN` deep links.
+- **hub-core:** Polish class labels; `v2://profile/me?action=characters` → `/profil/postacie`.
 
-| Gate             | Action                                                                     |
-| ---------------- | -------------------------------------------------------------------------- |
-| DM_LIVE_SMOKE    | PanaPas3k LFG watch + KurczakAp published Azrael party → verify DM buttons |
-| ADMIN cold OAuth | Fresh Discord login → auto authz link (no manual repair)                   |
+### Not in scope (deferred)
 
-### Validate
+Trackers, elixirs, EQ Board, sharing — per task 006.
 
-Local `corepack pnpm validate` — **all gates PASS except `VERSION_DRIFT`** (api-gateway health SHA `9d5fdcd` vs repo tip until api-gateway image rebuild completes).
+### Owner / deploy next
 
-### Zeabur GitHub deploy
-
-`.github/workflows/zeabur-deploy.yml` is **blocked by external configuration**: GitHub Actions secret `ZEABUR_TOKEN` is empty/missing. No insecure workarounds; local `zeabur-sync-and-deploy.mjs` remains the supported manual path until Owner adds the secret in repo settings.
+1. Deploy **identity-service** (migration 003) + **web** + **discord-gateway**.
+2. Set `DISCORD_MEMBER_WWW_ORIGIN` on discord-gateway.
+3. Live smoke: WWW_ACCOUNT_CREATE, WWW_CHARACTER_CREATE/EDIT/MOVE, DISCORD_PROFILE_ACCOUNT_CONTEXT, LFG_CANONICAL_CHARACTER.
+4. Owner + ChatGPT review WWW + Discord UX before Trackers.
 
 ---
 
 ## STOP
 
-No Guild Control · No merge of PR #19
+No Tracker implementation. No merge to `main`.

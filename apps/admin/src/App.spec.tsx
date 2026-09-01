@@ -61,12 +61,12 @@ describe('Admin App', () => {
     );
 
     const markup = renderToStaticMarkup(
-      <MemoryRouter initialEntries={['/activity']}>
+      <MemoryRouter initialEntries={['/activities/overview']}>
         <App />
       </MemoryRouter>,
     );
 
-    expect(markup).toContain('Konfiguracja Centrum');
+    expect(markup).toContain('Przegląd aktywności');
     expect(markup).toContain('Ładowanie');
   });
 });

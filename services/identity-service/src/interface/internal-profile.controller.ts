@@ -32,6 +32,7 @@ const characterSchema = z.object({
   classSpecKey: z.string().min(1).max(64),
   level: z.number().int().min(1).max(999).nullable().optional(),
   isDefault: z.boolean().optional(),
+  gameAccountId: z.string().uuid().optional(),
   partyRoles: z.array(z.enum(PARTY_ROLE_KEYS)).min(1).max(4),
 });
 
@@ -159,6 +160,9 @@ export class InternalProfileController {
         level: parsed.data.level ?? null,
         isDefault: parsed.data.isDefault ?? false,
         partyRoles: parsed.data.partyRoles,
+        ...(parsed.data.gameAccountId !== undefined
+          ? { gameAccountId: parsed.data.gameAccountId }
+          : {}),
       });
       const profile = await profiles.getProfile(userId);
       return { characterId, profile };
@@ -203,6 +207,9 @@ export class InternalProfileController {
           level: parsed.data.level ?? null,
           isDefault: parsed.data.isDefault ?? false,
           partyRoles: parsed.data.partyRoles,
+          ...(parsed.data.gameAccountId !== undefined
+            ? { gameAccountId: parsed.data.gameAccountId }
+            : {}),
         },
         characterId.trim(),
       );

@@ -503,8 +503,8 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await page.getByRole('button', { name: 'Zapisz' }).click();
     await expect(page.getByText('Pole dodane.')).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
-    await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
+    await nav.getByRole('link', { name: 'Centrum V2' }).click();
+    await expect(page.getByRole('heading', { name: 'Centrum V2' })).toBeVisible();
     await page.getByRole('checkbox', { name: '#centrum-aktywnosci' }).check();
     await page.getByRole('checkbox', { name: '#ogloszenia' }).check();
     await page.getByRole('checkbox', { name: '#eventy' }).check();
@@ -598,7 +598,7 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     await nav.getByRole('link', { name: 'Typy aktywności' }).click();
     await expect(page.getByText('Raid night')).toBeVisible();
 
-    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
+    await nav.getByRole('link', { name: 'Centrum V2' }).click();
     const storeA = stores.get(GUILD_A)!;
     storeA.forceChannelsConflict = true;
     await page.getByRole('checkbox', { name: '#handel' }).uncheck();
@@ -613,7 +613,7 @@ test.describe('Centrum admin config flow (mocked API)', () => {
 
     await nav.getByRole('link', { name: 'Audyt' }).click();
     await expect(page.getByRole('heading', { name: 'Audyt' })).toBeVisible();
-    await expect(page.getByText('admin.type.create')).toBeVisible();
+    await expect(page.getByText('admin · type · create')).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
@@ -623,8 +623,8 @@ test.describe('Centrum admin config flow (mocked API)', () => {
     );
     expect(overflow).toBe(false);
     await page.getByRole('button', { name: 'Menu' }).click();
-    await nav.getByRole('link', { name: 'Kanały i panel' }).click();
-    await expect(page.getByRole('heading', { name: 'Kanały i panel' })).toBeVisible();
+    await nav.getByRole('link', { name: 'Centrum V2' }).click();
+    await expect(page.getByRole('heading', { name: 'Centrum V2' })).toBeVisible();
   });
 
   test('Discord channel metadata failure is visible', async ({ page }) => {

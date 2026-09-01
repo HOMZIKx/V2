@@ -6,7 +6,15 @@ export const ACTIVITY_CUSTOM_ID_VERSION = 'v1';
 export type ActivityCustomScope = 'panel' | 'event' | 'draft' | 'modal';
 
 export type ActivityPanelAction =
-  'create' | 'lfg' | 'lfg_add' | 'mine' | 'inbox' | 'module' | 'profile_set';
+  | 'create'
+  | 'lfg'
+  | 'lfg_add'
+  | 'mine'
+  | 'inbox'
+  | 'module'
+  | 'profile'
+  | 'profile_set'
+  | 'profile_chars';
 
 export type ActivityEventAction =
   | 'rsvp'
@@ -82,7 +90,9 @@ const PANEL_ACTIONS = new Set<ActivityPanelAction>([
   'mine',
   'inbox',
   'module',
+  'profile',
   'profile_set',
+  'profile_chars',
 ]);
 const EVENT_ACTIONS = new Set<ActivityEventAction>([
   'rsvp',

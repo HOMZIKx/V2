@@ -13,7 +13,7 @@ import {
 import { Flash, LoadGate, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 
-export function HubModulesPage() {
+export function HubModulesPage({ embedded = false }: { embedded?: boolean }) {
   const loader = useCallback(async (guildId: string) => {
     const [modules, channels] = await Promise.all([
       listHubModules(guildId),
@@ -82,11 +82,13 @@ export function HubModulesPage() {
   }
 
   return (
-    <section>
-      <PageHeader
-        title="Moduły V2 Hub"
-        description="Rejestr modułów Centrum oraz model emerytury kanałów strukturalnych. Usuwanie kanałów Discord pozostaje decyzją Ownera."
-      />
+    <section className={embedded ? 'stack embedded-section' : undefined}>
+      {embedded ? null : (
+        <PageHeader
+          title="Moduły V2 Hub"
+          description="Rejestr modułów Centrum oraz model emerytury kanałów strukturalnych. Usuwanie kanałów Discord pozostaje decyzją Ownera."
+        />
+      )}
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
       <LoadGate state={state} emptyMessage="Brak danych Huba.">

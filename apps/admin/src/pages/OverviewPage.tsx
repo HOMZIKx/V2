@@ -27,7 +27,7 @@ export function OverviewPage() {
       {
         label: 'Typy aktywności',
         ok: !hasIssue(issues, ['NO_ENABLED_ACTIVITY_TYPES', 'NO_TYPES']),
-        to: '/activity/types',
+        to: '/activities/types',
       },
       {
         label: 'Statusy',
@@ -39,27 +39,27 @@ export function OverviewPage() {
           'WAITLIST_PROMOTION_MISSING',
           'NO_WAITLIST_DEFAULT',
         ]),
-        to: '/activity/statuses',
+        to: '/activities/settings/statuses',
       },
       {
         label: 'Kanał publikacji',
         ok: !hasIssue(issues, ['NO_ALLOWED_PUBLISH_CHANNELS', 'NO_CHANNELS']),
-        to: '/activity/channels',
+        to: '/discord/centrum',
       },
       {
         label: 'Role i pingi',
         ok: true,
-        to: '/activity/pings',
+        to: '/activities/settings/pings',
       },
       {
         label: 'Panel Centrum',
         ok: !hasIssue(issues, ['HUB_CHANNEL_MISSING']) && Boolean(state.data.hub.channelId),
-        to: '/activity/channels',
+        to: '/discord/centrum',
       },
       {
         label: 'Powiadomienia',
         ok: true,
-        to: '/activity/notifications',
+        to: '/discord/notifications',
       },
     ];
   }, [state]);
@@ -69,8 +69,8 @@ export function OverviewPage() {
   return (
     <section>
       <PageHeader
-        title="Konfiguracja Centrum"
-        description="Sprawdź, co jest gotowe, a czego jeszcze brakuje."
+        title="Przegląd aktywności"
+        description="Sprawdź, co jest gotowe, a czego jeszcze brakuje w module Aktywności."
       />
       {guildId === null ? <p className="state-empty">Wybierz serwer, aby kontynuować.</p> : null}
 

@@ -7,31 +7,8 @@ import { getApiBaseUrl } from '../api/http.js';
 import { buildAdminDiscordLoginUrl, shouldOfferIdentityLogin } from '../auth/login.js';
 import { isDevActorMode, readAdminSession } from '../auth/session.js';
 import { Flash } from '../components/ui.js';
+import { ADMIN_NAV_SECTIONS, PULPIT_NAV } from '../navigation.js';
 import { GuildProvider, useGuildContext } from './GuildContext.js';
-
-const PULPIT = { to: '/', label: 'Pulpit' } as const;
-
-const CENTRUM_NAV: readonly { readonly to: string; readonly label: string }[] = [
-  { to: '/activity', label: 'Przegląd' },
-  { to: '/activity/channels', label: 'Kanały i panel' },
-  { to: '/activity/hub-modules', label: 'Moduły Hub' },
-  { to: '/activity/types', label: 'Typy aktywności' },
-  { to: '/activity/lfg-composition', label: 'Skład LFG' },
-  { to: '/activity/statuses', label: 'Statusy zapisów' },
-  { to: '/activity/fields', label: 'Formularz uczestnika' },
-  { to: '/activity/pings', label: 'Role i pingi' },
-  { to: '/activity/limits', label: 'Limity' },
-  { to: '/activity/notifications', label: 'Powiadomienia' },
-  { to: '/activity/reports', label: 'Zgłoszenia' },
-  { to: '/activity/report-reasons', label: 'Powody zgłoszeń' },
-  { to: '/activity/events', label: 'Wydarzenia' },
-];
-
-const ADVANCED_NAV: readonly { readonly to: string; readonly label: string }[] = [
-  { to: '/activity/projections', label: 'Projekcje' },
-  { to: '/activity/audit', label: 'Audyt' },
-  { to: '/activity/hub', label: 'Diagnostyka' },
-];
 
 function IdentityLoginActions() {
   const loginUrl = buildAdminDiscordLoginUrl(
@@ -120,7 +97,10 @@ function ShellChrome() {
   const { guildId, devFallbackActive } = useGuildContext();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
-  const onActivity = location.pathname.startsWith('/activity');
+  const needsGuild =
+    location.pathname.startsWith('/activities') ||
+    location.pathname.startsWith('/discord') ||
+    location.pathname.startsWith('/system');
 
   return (
     <div className="admin-shell">
@@ -153,40 +133,33 @@ function ShellChrome() {
           <div className="nav-brand">V2 Control Center</div>
           <nav id="admin-nav-links" className="nav-links" aria-label="V2 Control Center">
             <NavLink
-              to={PULPIT.to}
-              end
+              to={PULPIT_NAV.to}
+              end={PULPIT_NAV.end === true}
               className={({ isActive }) => (isActive ? 'active' : undefined)}
-              aria-current={location.pathname === '/' ? 'page' : undefined}
             >
-              {PULPIT.label}
+              {PULPIT_NAV.label}
             </NavLink>
-            <div className="nav-section">Centrum Aktywności</div>
-            {CENTRUM_NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/activity'}
-                className={({ isActive }) => (isActive ? 'active' : undefined)}
-              >
-                {item.label}
-              </NavLink>
-            ))}
-            <div className="nav-section">Zaawansowane</div>
-            {ADVANCED_NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => (isActive ? 'active' : undefined)}
-              >
-                {item.label}
-              </NavLink>
+            {ADMIN_NAV_SECTIONS.map((section) => (
+              <div key={section.title}>
+                <div className="nav-section">{section.title}</div>
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end === true}
+                    className={({ isActive }) => (isActive ? 'active' : undefined)}
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
         </aside>
 
         <div className="admin-main">
           <GuildSelector />
-          <div key={onActivity ? (guildId ?? 'no-guild') : 'pulpit'} className="admin-outlet">
+          <div key={needsGuild ? (guildId ?? 'no-guild') : 'pulpit'} className="admin-outlet">
             <Outlet />
           </div>
         </div>

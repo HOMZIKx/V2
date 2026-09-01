@@ -563,7 +563,8 @@ export function LfgPage() {
         <Panel title="Postać">
           {characters.length === 0 ? (
             <p className="muted">
-              Brak postaci w profilu. Dodaj postać w Discordzie (/profil) lub przez Identity API.
+              Brak postaci w profilu. Dodaj postać w zakładce Profil lub w Discordzie (Centrum → Mój
+              profil).
             </p>
           ) : (
             <Select

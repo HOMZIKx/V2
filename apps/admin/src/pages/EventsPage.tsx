@@ -96,7 +96,15 @@ export function EventsPage() {
 
   return (
     <section>
-      <PageHeader title="Wydarzenia" description="Zarządzanie aktywnościami serwera." />
+      <PageHeader
+        title="Wydarzenia"
+        description="Lista aktywności serwera — kliknij wydarzenie, aby edytować."
+      />
+      <div className="row">
+        <Link to="/activities/events/new" className="v2-btn v2-btn-primary">
+          Utwórz wydarzenie
+        </Link>
+      </div>
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? (
         <Flash tone="error" detail={errorDetail}>
@@ -131,7 +139,7 @@ export function EventsPage() {
         typeLabels: Map<string, string>;
       }>
         state={state}
-        emptyMessage="Brak wydarzeń."
+        emptyMessage="Nie masz jeszcze żadnych wydarzeń."
       >
         {(data) => (
           <Panel>
@@ -151,7 +159,7 @@ export function EventsPage() {
                 {data.items.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <Link to={`/activity/events/${item.id}`}>{item.name}</Link>
+                      <Link to={`/activities/events/${item.id}`}>{item.name}</Link>
                     </td>
                     <td>
                       {item.typeId !== undefined && item.typeId !== null
@@ -167,7 +175,7 @@ export function EventsPage() {
                     <td>{item.status}</td>
                     <td>{item.participantCount ?? '—'}</td>
                     <td className="row">
-                      <Link to={`/activity/events/${item.id}`}>Szczegóły</Link>
+                      <Link to={`/activities/events/${item.id}`}>Edytuj</Link>
                       <Button
                         variant="danger"
                         disabled={busy || item.status === 'cancelled'}

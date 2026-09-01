@@ -866,3 +866,75 @@ export async function resolveMemberDisplays(
     ['members', 'items'],
   );
 }
+
+export type UpdateEventPayload = {
+  readonly name?: string;
+  readonly description?: string;
+  readonly participantLimit?: number | null;
+  readonly locationText?: string | null;
+  readonly publicationChannelId?: string | null;
+};
+
+export async function updateEvent(eventId: string, body: UpdateEventPayload): Promise<unknown> {
+  return apiRequest(`/activity/v1/activities/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    body,
+    idempotent: true,
+  });
+}
+
+export async function rescheduleEvent(
+  eventId: string,
+  body: { readonly startAt: string; readonly endAt?: string | null },
+): Promise<unknown> {
+  return apiRequest(`/activity/v1/activities/${encodeURIComponent(eventId)}/reschedule`, {
+    method: 'POST',
+    body,
+    idempotent: true,
+  });
+}
+
+export async function openEventEnrollment(eventId: string): Promise<unknown> {
+  return apiRequest(`/activity/v1/activities/${encodeURIComponent(eventId)}/enrollment/open`, {
+    method: 'POST',
+    idempotent: true,
+  });
+}
+
+export async function closeEventEnrollment(eventId: string): Promise<unknown> {
+  return apiRequest(`/activity/v1/activities/${encodeURIComponent(eventId)}/enrollment/close`, {
+    method: 'POST',
+    idempotent: true,
+  });
+}
+
+export async function createActivityDraft(guildId: string): Promise<{ id: string }> {
+  return asObject<{ id: string }>(
+    await apiRequest('/activity/v1/drafts', {
+      method: 'POST',
+      body: { guildId },
+      idempotent: true,
+    }),
+  );
+}
+
+export type PublishEventPayload = {
+  readonly organizationId: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly startAt: string;
+  readonly participantLimit?: number | null;
+  readonly publicationChannelId?: string;
+  readonly typeId?: string | null;
+};
+
+export async function publishActivityDraft(
+  draftId: string,
+  body: PublishEventPayload,
+): Promise<unknown> {
+  return apiRequest(`/activity/v1/drafts/${encodeURIComponent(draftId)}/publish`, {
+    method: 'POST',
+    body,
+    idempotent: true,
+  });
+}

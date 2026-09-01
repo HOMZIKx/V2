@@ -88,6 +88,9 @@ export function wwwPathForDeepLink(link: DeepLink): string {
     case 'activities':
       return `/aktywnosci/${encodeURIComponent(parsed.objectId)}`;
     case 'profile':
+      if (parsed.action === 'characters' || parsed.action === 'postacie') {
+        return '/profil/postacie';
+      }
       return '/profil';
     case 'for_me':
       return '/dla-mnie';

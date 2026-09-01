@@ -2,7 +2,7 @@
  * Character class/spec catalog — NOT party roles.
  * Configurable; do not hardcode only inside Discord/WWW renderers.
  *
- * Internal keys are stable. Player-facing labels are Polish product names.
+ * Internal keys are stable. Player-facing labels use accepted Polish names.
  * Lycan/Likan is not newly selectable on this V2 server catalog.
  */
 
@@ -43,15 +43,21 @@ export const FORBIDDEN_PLAYER_CLASS_SPEC_LABELS = [
   'Likan',
   'Body',
   'Mental',
-  'Dagger',
-  'Archer',
-  'Weapon',
-  'Black Magic',
+  'Blade',
+  'Bow',
+  'WP',
+  'BM',
+  'Dragon',
+  'Heal',
   'Wojownik Body',
   'Wojownik Mental',
   'Ninja Sztylet',
   'Sura Magia',
   'Szaman Uzdrawianie',
+  'Dagger',
+  'Archer',
+  'Weapon',
+  'Black Magic',
 ] as const;
 
 export function listEnabledClassSpecs(

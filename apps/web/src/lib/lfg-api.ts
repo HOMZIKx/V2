@@ -42,14 +42,25 @@ export interface IdentityProfileCharacterDto {
   readonly nickname: string;
   readonly classSpecKey: string;
   readonly classSpecLabel?: string;
+  readonly level?: number | null;
   readonly isDefault?: boolean;
+  readonly gameAccountId?: string | null;
   readonly partyRoles: readonly LfgPartyRoleKey[];
+}
+
+export interface GameAccountDto {
+  readonly id: string;
+  readonly displayName: string;
+  readonly description?: string | null;
+  readonly displayOrder: number;
+  readonly characterCount: number;
 }
 
 export interface IdentityProfileDto {
   readonly userId: string;
   readonly displayName?: string | null;
   readonly activeCharacterId?: string | null;
+  readonly gameAccounts?: readonly GameAccountDto[];
   readonly characters: readonly IdentityProfileCharacterDto[];
 }
 
@@ -160,13 +171,34 @@ function asMatchArray(value: unknown): LfgMatchDto[] {
   return Array.isArray(matches) ? (matches as LfgMatchDto[]) : [];
 }
 
-export async function getIdentityProfile(signal?: AbortSignal): Promise<IdentityProfileDto> {
+export type UpsertIdentityCharacterPayload = {
+  readonly nickname: string;
+  readonly classSpecKey: string;
+  readonly level?: number | null;
+  readonly isDefault?: boolean;
+  readonly gameAccountId?: string;
+  readonly partyRoles: readonly LfgPartyRoleKey[];
+};
+
+async function identityProfileRequest<T>(
+  path: string,
+  options: {
+    method: 'GET' | 'POST' | 'PUT';
+    body?: unknown;
+    signal?: AbortSignal;
+  },
+): Promise<T> {
   const base = getIdentityPublicUrl().replace(/\/$/, '');
-  const response = await fetch(`${base}/identity/v1/profile`, {
-    method: 'GET',
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const response = await fetch(`${base}${path}`, {
+    method: options.method,
     credentials: 'include',
-    headers: { Accept: 'application/json' },
-    ...(signal !== undefined ? { signal } : {}),
+    headers,
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
   });
   const text = await response.text();
   let parsed: unknown = null;
@@ -185,6 +217,10 @@ export async function getIdentityProfile(signal?: AbortSignal): Promise<Identity
       fields: err.fields,
     });
   }
+  return parsed as T;
+}
+
+function normalizeProfileResponse(parsed: unknown): IdentityProfileDto {
   if (typeof parsed !== 'object' || parsed === null || !('profile' in parsed)) {
     throw new ApiClientError('Invalid profile response', { status: 502, code: 'INVALID_RESPONSE' });
   }
@@ -192,7 +228,92 @@ export async function getIdentityProfile(signal?: AbortSignal): Promise<Identity
   return {
     ...profile,
     characters: Array.isArray(profile.characters) ? profile.characters : [],
+    gameAccounts: Array.isArray(profile.gameAccounts) ? profile.gameAccounts : [],
   };
+}
+
+export async function getIdentityProfile(signal?: AbortSignal): Promise<IdentityProfileDto> {
+  const parsed = await identityProfileRequest<unknown>('/identity/v1/profile', {
+    method: 'GET',
+    ...(signal !== undefined ? { signal } : {}),
+  });
+  return normalizeProfileResponse(parsed);
+}
+
+export async function createIdentityCharacter(
+  body: UpsertIdentityCharacterPayload,
+  signal?: AbortSignal,
+): Promise<IdentityProfileDto> {
+  const parsed = await identityProfileRequest<unknown>('/identity/v1/profile/characters', {
+    method: 'POST',
+    body,
+    ...(signal !== undefined ? { signal } : {}),
+  });
+  return normalizeProfileResponse(parsed);
+}
+
+export async function updateIdentityCharacter(
+  characterId: string,
+  body: UpsertIdentityCharacterPayload,
+  signal?: AbortSignal,
+): Promise<IdentityProfileDto> {
+  const parsed = await identityProfileRequest<unknown>(
+    `/identity/v1/profile/characters/${encodeURIComponent(characterId)}`,
+    {
+      method: 'PUT',
+      body,
+      ...(signal !== undefined ? { signal } : {}),
+    },
+  );
+  return normalizeProfileResponse(parsed);
+}
+
+export async function listGameAccounts(signal?: AbortSignal): Promise<readonly GameAccountDto[]> {
+  const parsed = await identityProfileRequest<{ accounts?: GameAccountDto[] }>(
+    '/identity/v1/player/accounts',
+    {
+      method: 'GET',
+      ...(signal !== undefined ? { signal } : {}),
+    },
+  );
+  return Array.isArray(parsed.accounts) ? parsed.accounts : [];
+}
+
+export async function createGameAccount(
+  body: { displayName: string; description?: string | null },
+  signal?: AbortSignal,
+): Promise<GameAccountDto> {
+  const parsed = await identityProfileRequest<{ account?: GameAccountDto }>(
+    '/identity/v1/player/accounts',
+    {
+      method: 'POST',
+      body,
+      ...(signal !== undefined ? { signal } : {}),
+    },
+  );
+  if (parsed.account === undefined) {
+    throw new ApiClientError('Invalid account response', { status: 502, code: 'INVALID_RESPONSE' });
+  }
+  return parsed.account;
+}
+
+export async function updateGameAccount(
+  accountId: string,
+  body: { displayName?: string; description?: string | null; displayOrder?: number },
+  signal?: AbortSignal,
+): Promise<GameAccountDto> {
+  const parsed = await identityProfileRequest<{ account?: GameAccountDto }>(
+    `/identity/v1/player/accounts/${encodeURIComponent(accountId)}`,
+    {
+      method: 'PUT',
+      body,
+      ...(signal !== undefined ? { signal } : {}),
+    },
+  );
+  if (parsed.account === undefined) {
+    throw new ApiClientError('Invalid account response', { status: 502, code: 'INVALID_RESPONSE' });
+  }
+  return parsed.account;
 }
 
 export async function searchLfg(

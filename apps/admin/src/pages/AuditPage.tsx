@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { listAudit, type AuditEntryDto } from '../api/activity-admin.js';
 import { Flash, LoadGate, PageHeader, errorFromUnknown, type LoadState } from '../components/ui.js';
 import { useRequiredGuildId } from '../layout/GuildContext.js';
+import { formatAuditAction, formatAuditObject, formatAuditWhen } from '../lib/audit-labels.js';
 
 export function AuditPage() {
   const guildId = useRequiredGuildId();
@@ -58,31 +59,26 @@ export function AuditPage() {
       <PageHeader title="Audyt" description="Historia zmian konfiguracji i działań." />
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
-      <LoadGate<AuditEntryDto[]> state={state} emptyMessage="No audit entries.">
+      <LoadGate<AuditEntryDto[]> state={state} emptyMessage="Brak wpisów audytu.">
         {(items) => (
           <div className="stack">
             <div className="panel">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>When</th>
-                    <th>Action</th>
-                    <th>Actor</th>
-                    <th>Entity</th>
+                    <th>Kto</th>
+                    <th>Co</th>
+                    <th>Obiekt</th>
+                    <th>Kiedy</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id}>
-                      <td>{item.createdAt}</td>
-                      <td>{item.action ?? '—'}</td>
-                      <td>
-                        <code>{item.actorDiscordUserId ?? '—'}</code>
-                      </td>
-                      <td>
-                        {item.entityType ?? '—'}{' '}
-                        {item.entityId !== undefined ? <code>{item.entityId}</code> : null}
-                      </td>
+                      <td>{item.actorDiscordUserId ?? '—'}</td>
+                      <td>{formatAuditAction(item.action)}</td>
+                      <td>{formatAuditObject(item)}</td>
+                      <td>{formatAuditWhen(item.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
