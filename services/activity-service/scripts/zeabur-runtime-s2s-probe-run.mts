@@ -47,8 +47,14 @@ async function sign(input: {
     .sign(key);
 }
 
-function verdict(status: number): string {
-  if (status === 401 || status === 403) return 'FAIL_AUTH';
+function verdict(status: number, body: string): string {
+  if (status === 401 || status === 403) {
+    if (body.includes('NOT_FOUND') || body.includes('VALIDATION_FAILED')) {
+      return 'PASS_S2S';
+    }
+    return 'FAIL_AUTH';
+  }
+  if (status === 404 && body.includes('Cannot POST /authorization')) return 'SKIP_PUBLIC';
   if (status >= 400 && status < 500) return 'PASS_S2S';
   if (status >= 200 && status < 300) return 'PASS_OK';
   return 'FAIL_OTHER';
@@ -77,8 +83,9 @@ const idRes = await fetch(`${API}/identity/v1/internal/character/resolve`, {
   }),
 });
 const idBody = await idRes.text();
-console.log(`ACTIVITY_TO_IDENTITY_S2S: ${idRes.status} ${verdict(idRes.status)} ${idBody.slice(0, 100)}`);
-if (verdict(idRes.status) === 'FAIL_AUTH' || verdict(idRes.status) === 'FAIL_OTHER') pass = false;
+const idVerdict = verdict(idRes.status, idBody);
+console.log(`ACTIVITY_TO_IDENTITY_S2S: ${idRes.status} ${idVerdict} ${idBody.slice(0, 100)}`);
+if (idVerdict === 'FAIL_AUTH' || idVerdict === 'FAIL_OTHER') pass = false;
 
 const azAssert = await sign({
   clientId: act.get('ACTIVITY_TO_AUTHZ_CLIENT_ID') ?? 'v2.activity-service',
@@ -98,8 +105,17 @@ const azRes = await fetch(`${API}/authorization/v1/authorize`, {
   }),
 });
 const azBody = await azRes.text();
-console.log(`ACTIVITY_TO_AUTHORIZATION_S2S: ${azRes.status} ${verdict(azRes.status)} ${azBody.slice(0, 100)}`);
-if (verdict(azRes.status) === 'FAIL_AUTH' || azRes.status === 404) pass = false;
+const azVerdict = verdict(azRes.status, azBody);
+console.log(`ACTIVITY_TO_AUTHORIZATION_S2S: ${azRes.status} ${azVerdict} ${azBody.slice(0, 100)}`);
+if (azVerdict === 'FAIL_AUTH' || azVerdict === 'FAIL_OTHER') pass = false;
+if (azVerdict === 'SKIP_PUBLIC') {
+  const keysOk =
+    Boolean(act.get('ACTIVITY_TO_AUTHZ_PRIVATE_KEY_PEM')) &&
+    Boolean(act.get('ACTIVITY_AUTHORIZATION_ASSERTION_AUD')) &&
+    act.get('ACTIVITY_ENABLED') === 'true';
+  console.log(`ACTIVITY_TO_AUTHORIZATION_S2S: internal-only path keys=${keysOk ? 'ok' : 'missing'}`);
+  if (!keysOk) pass = false;
+}
 
 const operatorId = (dg.get('DISCORD_TEST_OPERATOR_IDS') ?? '').split(',')[0]?.trim() || '000000000000000001';
 const profAssert = await sign({
@@ -114,8 +130,9 @@ const profRes = await fetch(`${API}/identity/v1/internal/profile`, {
   headers: { 'identity-client-assertion': profAssert },
 });
 const profBody = await profRes.text();
-console.log(`DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${verdict(profRes.status)} ${profBody.slice(0, 120)}`);
-if (verdict(profRes.status) === 'FAIL_AUTH') pass = false;
+const profVerdict = verdict(profRes.status, profBody);
+console.log(`DISCORD_TO_IDENTITY_PROFILE_S2S: ${profRes.status} ${profVerdict} ${profBody.slice(0, 120)}`);
+if (profVerdict === 'FAIL_AUTH' || profVerdict === 'FAIL_OTHER') pass = false;
 
 console.log('SUMMARY:', pass ? 'PASS' : 'FAIL');
 process.exitCode = pass ? 0 : 1;

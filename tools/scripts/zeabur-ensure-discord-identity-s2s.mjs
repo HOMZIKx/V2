@@ -3,7 +3,7 @@
  * Ensure discord-gateway has Identity S2S profile assertion env and Identity registers the client.
  * Does not print secrets.
  */
-import { generateKeyPairSync } from 'node:crypto';
+import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -71,6 +71,10 @@ async function setVar(token, serviceID, key, value) {
   }
 }
 
+function normalizePem(value) {
+  return String(value).replace(/\\n/g, '\n').trim();
+}
+
 const token = readToken();
 if (!token) {
   console.error('No Zeabur token');
@@ -78,7 +82,9 @@ if (!token) {
 }
 
 const discordVars = await listVars(discordServiceID);
-const hasIdentityPem = discordVars.some((v) => v.key === 'DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM' && v.value?.includes('BEGIN PRIVATE KEY'));
+const existingPemEntry = discordVars.find((v) => v.key === 'DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM');
+const hasIdentityPem =
+  existingPemEntry?.value !== undefined && existingPemEntry.value.includes('BEGIN PRIVATE KEY');
 
 let privatePem;
 let publicPem;
@@ -89,6 +95,11 @@ if (!hasIdentityPem) {
   console.log('generated new Ed25519 keypair for discord→identity');
 } else {
   console.log('DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM: already present');
+  privatePem = normalizePem(existingPemEntry.value);
+  publicPem = createPublicKey({ key: privatePem, format: 'pem', type: 'pkcs8' }).export({
+    type: 'spki',
+    format: 'pem',
+  });
 }
 
 const identityVars = await listVars(identityServiceID);
@@ -109,17 +120,21 @@ client.allowed_audiences = [...audiences];
 
 if (publicPem !== undefined) {
   const keys = Array.isArray(client.keys) ? client.keys : [];
-  if (!keys.some((k) => k.kid === KID)) {
+  const existing = keys.find((k) => k.kid === KID);
+  if (existing === undefined) {
     keys.push({ kid: KID, status: 'active', public_key_pem: publicPem });
-    client.keys = keys;
+  } else {
+    existing.public_key_pem = publicPem;
+    existing.status = 'active';
   }
+  client.keys = keys;
 }
 
 await setVar(token, identityServiceID, 'IDENTITY_SERVICE_CLIENTS_JSON', JSON.stringify(clients));
 await setVar(token, identityServiceID, 'IDENTITY_INTERNAL_PROFILE_READ_URL', PROFILE_ASSERTION_AUD);
 console.log('identity: clients JSON + profile assertion aud updated');
 
-if (privatePem !== undefined) {
+if (!hasIdentityPem && privatePem !== undefined) {
   await setVar(token, discordServiceID, 'DISCORD_TO_IDENTITY_CLIENT_ID', CLIENT_ID);
   await setVar(token, discordServiceID, 'DISCORD_TO_IDENTITY_ACTIVE_KID', KID);
   await setVar(token, discordServiceID, 'DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM', privatePem);
