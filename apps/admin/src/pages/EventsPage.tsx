@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 
-import { Button, DataTable, Panel } from '@v2/design-system';
+import { Button, DataTable, Panel, Select } from '@v2/design-system';
 
 import {
   cancelEvent,
@@ -18,6 +18,7 @@ import {
   errorFromUnknown,
 } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
+import { EVENT_STATUS_FILTER_OPTIONS, eventStatusLabel } from '../lib/event-status.js';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -116,12 +117,11 @@ export function EventsPage() {
         <div className="row">
           <label htmlFor="event-status-filter">
             Status
-            <input
+            <Select
               id="event-status-filter"
-              className="v2-input"
               value={statusFilter}
               disabled={busy}
-              placeholder="np. published"
+              options={EVENT_STATUS_FILTER_OPTIONS}
               onChange={(event) => {
                 setStatusFilter(event.target.value);
               }}
@@ -172,7 +172,7 @@ export function EventsPage() {
                         ? (data.names.get(item.organizerDiscordUserId) ?? 'Organizator')
                         : '—'}
                     </td>
-                    <td>{item.status}</td>
+                    <td>{eventStatusLabel(item.status)}</td>
                     <td>{item.participantCount ?? '—'}</td>
                     <td className="row">
                       <Link to={`/activities/events/${item.id}`}>Edytuj</Link>

@@ -165,7 +165,7 @@ describe('decideGuildInventory', () => {
     expect(source).toContain('Brak serwerów, którymi możesz zarządzać.');
     expect(source).toContain('Spróbuj ponownie');
     expect(source).not.toContain('ustaw listę deweloperską');
-    expect(source).toContain('DEV_FALLBACK_ONLY');
+    expect(source).toContain('zapasową listę serwerów testowych');
     expect(source).not.toContain('VITE_ADMIN_DEV_GUILDS');
   });
 });

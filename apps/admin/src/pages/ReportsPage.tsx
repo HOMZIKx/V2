@@ -21,7 +21,7 @@ export function ReportsPage() {
     if (guildId === null) {
       return;
     }
-    if (!confirmDestructive(`Resolve report ${item.id}?`)) {
+    if (!confirmDestructive(`Oznaczyć zgłoszenie jako rozwiązane?`)) {
       return;
     }
     setBusyId(item.id);
@@ -29,7 +29,7 @@ export function ReportsPage() {
     setFlash(null);
     try {
       await resolveReport(guildId, item.id);
-      setFlash('Report resolved.');
+      setFlash('Zgłoszenie oznaczone jako rozwiązane.');
       reload();
     } catch (err) {
       setError(errorFromUnknown(err).message);
@@ -40,24 +40,24 @@ export function ReportsPage() {
 
   return (
     <section>
-      <PageHeader title="Zgłoszenia" description="Zgłoszenia wymagające decyzji." />
+      <PageHeader title="Zgłoszenia" description="Zgłoszenia wymagające decyzji moderatora." />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
-      <LoadGate<ReportDto[]> state={state} emptyMessage="No reports.">
+      <LoadGate<ReportDto[]> state={state} emptyMessage="Brak zgłoszeń do rozpatrzenia.">
         {(items) =>
           items.length === 0 ? (
-            <p className="state-empty">No reports.</p>
+            <p className="state-empty">Brak zgłoszeń do rozpatrzenia.</p>
           ) : (
             <div className="panel">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Created</th>
-                    <th>Activity</th>
-                    <th>Reason</th>
+                    <th>Utworzono</th>
+                    <th>Wydarzenie</th>
+                    <th>Powód</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th>Akcje</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -78,10 +78,10 @@ export function ReportsPage() {
                         <button
                           type="button"
                           className="primary"
-                          disabled={busyId !== null || item.status === 'resolved'}
+                          disabled={busyId !== null}
                           onClick={() => void onResolve(item)}
                         >
-                          {busyId === item.id ? 'Resolving…' : 'Resolve'}
+                          {busyId === item.id ? 'Zapisywanie…' : 'Rozwiąż'}
                         </button>
                       </td>
                     </tr>

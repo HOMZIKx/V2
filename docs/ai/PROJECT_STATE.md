@@ -2,13 +2,14 @@
 
 ## Status
 
-`V2-ADMIN-CONTROL-CENTER-UX-005` — **`ADMIN_CONTROL_CENTER_UX_V1`** (code + E2E checkpoint; live smoke on TESTOWY)
+`V2-005-006-INTEGRATION-RECOVERY` — remediation checkpoint (additive; no history rewrite)
 
-`V2-PLAYER-TOOLKIT-CORE-FOUNDATION-006` — **`PLAYER_TOOLKIT_CORE_V1`** (code checkpoint; deploy + Owner UX review pending)
+**Task 005:** `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` → `CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW` after remediation
+**Task 006:** `TASK_006_CODE_IMPLEMENTED_PREMATURELY_AND_NOT_ACCEPTED` — see `PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
 
-Prior: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — Owner acceptance gate still open for DM/Admin OAuth.
+Prior: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — Admin OAuth **OWNER_PASS**; DM live smoke **OWNER_ACCEPTANCE_PENDING**
 
 **STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
 
@@ -18,10 +19,10 @@ Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of th
 
 | Field                 | Value                                                                       |
 | --------------------- | --------------------------------------------------------------------------- |
-| CURRENT_TASK          | `V2-ADMIN-CONTROL-CENTER-UX-005` checkpoint closed; 006 deploy pending      |
-| REVIEW_POSTURE        | Admin Control Center IA (Pulpit, Discord/Aktywności/System); events CRUD UX |
+| CURRENT_TASK          | `V2-005-006-INTEGRATION-RECOVERY`                                           |
+| REVIEW_POSTURE        | 005 ready for Owner visual review; 006 blocked pending 005 acceptance gate    |
 | CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — see `ADMIN_CONTROL_CENTER_UX_V1_SHA`         |
-| PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` — see `PLAYER_TOOLKIT_CORE_V1_SHA`                 |
+| PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` historical + `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` |
 | LOCAL_VALIDATE        | see checkpoint handoff                                                      |
 | RUNTIME_STATUS        | Admin live smoke on TESTOWY — see `CURSOR_TO_CHATGPT.md`                    |
 
@@ -75,7 +76,8 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks                      |
 | **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                               |
 | **PLAYER_TOOLKIT_CORE_V1_SHA**                | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity  |
-| **ADMIN_CONTROL_CENTER_UX_V1_SHA**            | `0834a5bddd71fe1503f5f2da2494f2de7a2f5e87` | Admin IA v1: Pulpit, Centrum V2, events CRUD, settings tabs, audit/diagnostics |
+| **ADMIN_CONTROL_CENTER_UX_V1_SHA**            | `0834a5bddd71fe1503f5f2da2494f2de7a2f5e87` | Admin IA v1 base; remediation updates copy/CI in later SHA |
+| **PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA** | _pending remediation commit_                | CI fix, admin copy, architecture boundary doc              |
 
 ## Module discovery status (summary)
 

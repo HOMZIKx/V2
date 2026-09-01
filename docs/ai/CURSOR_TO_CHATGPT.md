@@ -2,56 +2,50 @@
 
 ## Status
 
-**MODE:** Task 005 checkpoint — `ADMIN_CONTROL_CENTER_UX_V1`
+**MODE:** `V2-005-006-INTEGRATION-RECOVERY-AND-CURRENT-HEAD-CLOSURE` — remediation in progress
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Task: `V2-ADMIN-CONTROL-CENTER-UX-005`
-Branch: `cursor/p4-1-activity-domain`
-PR: **#19** — do not merge
-`ADMIN_CONTROL_CENTER_UX_V1_SHA` = `0834a5bddd71fe1503f5f2da2494f2de7a2f5e87`
-`HEAD_SHA` = `854d5d9b72f2a7fdfec22e145424f5595ed6a960`
+Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge
 
-Task 006 (`PLAYER_TOOLKIT_CORE_V1`) unchanged at `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2`.
+## Process truth
 
----
+| Task                            | Status                                                                                                           |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **005 Admin Control Center UX** | `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` — `CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW` after remediation commit |
+| **006 Player Toolkit Core**     | `TASK_006_CODE_IMPLEMENTED_PREMATURELY_AND_NOT_ACCEPTED` — architecture boundary documented                      |
 
-## Git classification (005 continuation)
+Mixed implementation landed in `2af092f` before 005 Owner review. History **not** rewritten.
 
-| Class        | Scope                                                | Action                                                    |
-| ------------ | ---------------------------------------------------- | --------------------------------------------------------- |
-| A — task 004 | In `a36718c` + organizer DI in `2af092f`             | No uncommitted 004 diff; separate 004 commit not required |
-| B — task 005 | Admin IA in `2af092f`; E2E + checkpoint in `0834a5b` | Committed                                                 |
-| C — unclear  | Identity migration manifest regen                    | Included in `0834a5b` (health spec count=3)               |
+## Delta classification (`81e5d49` → `4237d15` + remediation)
 
----
+| Class                        | Scope                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| **A — TASK_005_ADMIN**       | `apps/admin/**` (IA, events, Centrum V2, diagnostics, E2E)                           |
+| **B — TASK_006_PLAYER_CORE** | identity migration 003, game accounts, WWW profil/postacie, Discord profile          |
+| **C — SHARED**               | `packages/hub-core` class labels, `activity-service` app.module DI, `pnpm-lock.yaml` |
+| **D — UNRELATED**            | discord-gateway debug scripts (`inspect-hub-*`, `scan-hub-now`) — operational only   |
 
-## Delivered (005)
+## Remediation (this pass)
 
-| Gate                            | Result                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------ |
-| Admin unit tests                | **PASS** (64/64)                                                               |
-| Admin E2E (Playwright chromium) | **PASS** (6/6)                                                                 |
-| `corepack pnpm validate`        | **FAIL** — `VERSION_DRIFT` only (tip `854d5d9` vs live admin `8babc897`)       |
-| Admin deploy TESTOWY            | **FAIL** — Zeabur `updateDockerfile` / `redeployService` Internal Server Error |
-| GitHub CI                       | **PENDING** — `gh` not authed locally; push should trigger `zeabur-deploy.yml` |
-| Live smoke (v2-admin)           | **BLOCKED** — tip not deployed; OAuth guild session required for full gates    |
+- CI infra: `migration-inventory.test.ts` expects identity **3** migrations (003).
+- Admin copy: removed env var names / engineering banners from owner-facing UI.
+- Events: Polish status labels + filter select; improved create copy.
+- Architecture: `docs/ai/PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md` — Identity keeps small ownership foundation; gameplay state blocked.
+- Bot nav: **no** Discord Bot → Profil (no meaningful Owner config); LFG stays under Aktywności.
 
-### Key changes (005)
+## Checkpoints (immutable)
 
-- **IA:** Pulpit `/`, Discord Bot, Aktywności, System; legacy `/activity/*` redirects.
-- **Pages:** Dashboard, Centrum V2 + HubPreview, Diagnostics, Event create/edit, settings tabs.
-- **E2E:** Selectors updated for Pulpit heading and nested settings tabs.
+| Marker                                       | SHA                                             | Note                       |
+| -------------------------------------------- | ----------------------------------------------- | -------------------------- |
+| `PLAYER_TOOLKIT_CORE_V1_SHA`                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2`      | historical — not rewritten |
+| `ADMIN_CONTROL_CENTER_UX_V1_SHA`             | prior `0834a5b` — updated by remediation commit | see HEAD after push        |
+| `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` | pending remediation commit                      | additive                   |
 
----
+## Task 004
 
-## Deploy / runtime
-
-- Live admin `/health` → `gitCommitSha=8babc89784820c6fab9b627ce8425049abf52819` (pre-005 UX bundle).
-- Target tip: `854d5d9` (includes `0834a5b` checkpoint).
-- Zeabur admin deploy attempts: `deployFromSpecification` ISE; `updateDockerfile failed` on retry.
-
----
+- `ADMIN_OAUTH` = **OWNER_PASS** (prior successful Owner test)
+- `DM_LIVE_SMOKE` = **OWNER_ACCEPTANCE_PENDING** (needs second real participant)
 
 ## STOP
 
-No task 006 expansion. No merge to `main`.
+No task 007. No Trackers/Biolog/Elixirs/EQ/Marketplace/Guild Control.

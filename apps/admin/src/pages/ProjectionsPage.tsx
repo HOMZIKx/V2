@@ -25,7 +25,7 @@ export function ProjectionsPage() {
     if (guildId === null) {
       return;
     }
-    if (!confirmDestructive(`Repair projection for activity ${item.activityId}?`)) {
+    if (!confirmDestructive(`Naprawić publikację Discord dla tej aktywności?`)) {
       return;
     }
     setBusyId(item.activityId);
@@ -33,7 +33,7 @@ export function ProjectionsPage() {
     setFlash(null);
     try {
       await repairProjection(guildId, item.activityId);
-      setFlash(`Repair requested for ${item.activityId}.`);
+      setFlash('Zlecono naprawę publikacji na Discordzie.');
       reload();
     } catch (err) {
       setError(errorFromUnknown(err).message);
@@ -44,24 +44,30 @@ export function ProjectionsPage() {
 
   return (
     <section>
-      <PageHeader title="Projekcje" description="Stan techniczny publikacji na Discordzie." />
+      <PageHeader
+        title="Projekcje Discord"
+        description="Zaawansowane: problemy synchronizacji wiadomości bota z aktywnościami."
+      />
       {flash !== null ? <Flash tone="success">{flash}</Flash> : null}
       {error !== null ? <Flash tone="error">{error}</Flash> : null}
 
-      <LoadGate<ProjectionProblemDto[]> state={state} emptyMessage="No projection problems.">
+      <LoadGate<ProjectionProblemDto[]>
+        state={state}
+        emptyMessage="Brak problemów z publikacją na Discordzie."
+      >
         {(items) =>
           items.length === 0 ? (
-            <p className="state-empty">No projection problems.</p>
+            <p className="state-empty">Brak problemów z publikacją na Discordzie.</p>
           ) : (
             <div className="panel">
               <table className="data">
                 <thead>
                   <tr>
-                    <th>Activity</th>
+                    <th>Aktywność</th>
                     <th>Status</th>
-                    <th>Error</th>
-                    <th>Retries</th>
-                    <th>Actions</th>
+                    <th>Błąd</th>
+                    <th>Ponowienia</th>
+                    <th>Akcje</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -80,7 +86,7 @@ export function ProjectionsPage() {
                           disabled={busyId !== null}
                           onClick={() => void onRepair(item)}
                         >
-                          {busyId === item.activityId ? 'Repairing…' : 'Repair'}
+                          {busyId === item.activityId ? 'Naprawianie…' : 'Napraw'}
                         </button>
                       </td>
                     </tr>

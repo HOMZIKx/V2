@@ -29,6 +29,7 @@ import {
 } from '../components/ui.js';
 import { useGuildResource } from '../hooks/useGuildResource.js';
 import { useUnsavedChangesBlocker } from '../hooks/useUnsavedChangesBlocker.js';
+import { eventStatusLabel } from '../lib/event-status.js';
 
 function toIsoLocalInput(iso: string): string {
   const date = new Date(iso);
@@ -48,16 +49,7 @@ function parseLocalInput(value: string): string | null {
 }
 
 function statusLabel(status: string): string {
-  const map: Record<string, string> = {
-    published: 'Opublikowane',
-    registrations_open: 'Zapisy otwarte',
-    registrations_closed: 'Zapisy zamknięte',
-    in_progress: 'W trakcie',
-    completed: 'Zakończone',
-    cancelled: 'Anulowane',
-    draft: 'Szkic',
-  };
-  return map[status] ?? status;
+  return eventStatusLabel(status);
 }
 
 export function EventDetailPage() {
@@ -212,7 +204,7 @@ export function EventDetailPage() {
   }
 
   if (eventId === '') {
-    return <p className="state-error">Brak identyfikatora wydarzenia.</p>;
+    return <p className="state-error">Nie znaleziono wydarzenia.</p>;
   }
 
   return (

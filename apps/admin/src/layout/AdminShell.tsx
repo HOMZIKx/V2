@@ -106,13 +106,14 @@ function ShellChrome() {
     <div className="admin-shell">
       {isDevActorMode(session) ? (
         <div className="dev-banner" role="status">
-          Tryb deweloperski — aktor Discord ustawiony lokalnie. Produkcja używa sesji Identity.
+          Tryb deweloperski — lokalne logowanie testowe. Na produkcji używasz logowania przez
+          Discord.
         </div>
       ) : null}
       {devFallbackActive ? (
         <div className="dev-banner dev-banner-warning" role="alert">
-          DEV_FALLBACK_ONLY — lokalna lista serwerów. Backend Centrum Aktywności jest niedostępny;
-          to nie jest dowód połączenia z Discordem ani activity-service.
+          Pokazuję zapasową listę serwerów testowych. Połączenie z usługą konfiguracji jest
+          niedostępne — to nie potwierdza działania bota na Discordzie.
         </div>
       ) : null}
 

@@ -14,7 +14,7 @@ describe('migration inventory (static)', () => {
       encoding: 'utf8',
     });
     expect(output).toContain('Inventory OK');
-    expect(output).toContain('identity: 2 migrations');
+    expect(output).toContain('identity: 3 migrations');
     expect(output).toContain('authorization: 5 migrations');
     expect(output).toContain('activity: 19 migrations');
   });

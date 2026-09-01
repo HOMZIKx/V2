@@ -96,7 +96,9 @@ export function EventCreatePage() {
       return;
     }
     if (orgId === null) {
-      setError('Brak identyfikatora organizacji (VITE_ADMIN_ORG_ID).');
+      setError(
+        'Nie udało się ustalić konfiguracji tego serwera. Sprawdź diagnostykę V2 lub skontaktuj się z administratorem platformy.',
+      );
       return;
     }
     const errors: Record<string, string> = {};
@@ -158,7 +160,7 @@ export function EventCreatePage() {
     <section className="stack form-page">
       <PageHeader
         title="Utwórz wydarzenie"
-        description="Publikacja przez istniejący flow Activity."
+        description="Uzupełnij szczegóły i opublikuj wydarzenie na wybranym kanale Discord."
       />
       <p>
         <Link to="/activities/events">← Wróć do listy</Link>
@@ -189,7 +191,7 @@ export function EventCreatePage() {
               }}
             />
           </FormField>
-          <FormField label="Termin (lokalnie)" htmlFor="event-start" error={fieldErrors.startAt}>
+          <FormField label="Termin" htmlFor="event-start" error={fieldErrors.startAt}>
             <input
               id="event-start"
               className="v2-input"

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button, FormField, Panel, Select } from '@v2/design-system';
 
+import { resolveAdminOrgId } from '../admin-org.js';
 import { listTypes, type ActivityTypeDto } from '../api/activity-admin.js';
 import {
   listLfgCompositionTemplates,
   upsertLfgCompositionTemplates,
   type LfgCompositionRoleKey,
 } from '../api/lfg-composition.js';
-import { readAdminSession } from '../auth/session.js';
 import { Flash, PageHeader, errorFromUnknown } from '../components/ui.js';
 import { useRequiredGuildId } from '../layout/GuildContext.js';
 
@@ -30,20 +30,6 @@ const DEFAULT_PREFERRED: Record<LfgCompositionRoleKey, boolean> = {
   DPS: false,
   FLEX: false,
 };
-
-function resolveAdminOrgId(): string | null {
-  const session = readAdminSession();
-  if (session.orgId !== null && session.orgId.trim() !== '') {
-    return session.orgId.trim();
-  }
-  for (const key of ['VITE_ADMIN_ORG_ID', 'VITE_ADMIN_DEV_ORG_ID'] as const) {
-    const raw: unknown = import.meta.env[key];
-    if (typeof raw === 'string' && raw.trim() !== '') {
-      return raw.trim();
-    }
-  }
-  return null;
-}
 
 const ROLE_LABELS: Record<LfgCompositionRoleKey, string> = {
   TANK: 'Tank',
@@ -174,7 +160,8 @@ export function LfgCompositionPage() {
           description="Domyślne wymagania ról dla dungeonów LFG v1 (z katalogu typów aktywności)."
         />
         <Flash tone="error">
-          Brak identyfikatora organizacji. Ustaw VITE_ADMIN_DEV_ORG_ID (dev) lub VITE_ADMIN_ORG_ID.
+          Nie udało się ustalić konfiguracji tego serwera. Sprawdź diagnostykę V2 lub skontaktuj się
+          z administratorem platformy.
         </Flash>
       </>
     );
@@ -193,8 +180,8 @@ export function LfgCompositionPage() {
       <Panel title="Typ aktywności (dungeon LFG v1)">
         {dungeonTypes.length === 0 ? (
           <p className="muted">
-            Brak włączonych typów dungeonów LFG v1 w katalogu serwera. Skonfiguruj typy aktywności
-            (np. azrael, smok).
+            Brak włączonych typów dungeonów LFG w katalogu serwera. Dodaj i włącz odpowiednie typy
+            aktywności w sekcji Typy aktywności.
           </p>
         ) : (
           <Select

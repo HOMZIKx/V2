@@ -13,9 +13,9 @@ function read(name: string): string {
 describe('Admin audit-closure product contracts', () => {
   it('uses separated Discord dependency diagnostics instead of a single Discord flag', () => {
     const source = read('DiagnosticsPage.tsx');
-    expect(source).toContain('Discord Gateway');
-    expect(source).toContain('Activity → Discord');
-    expect(source).toContain('Authorization');
+    expect(source).toContain('label="Discord"');
+    expect(source).toContain('Aktywności → Discord');
+    expect(source).toContain('Uprawnienia');
     expect(source).toContain('Lista serwerów');
     expect(source).toContain('runtime.discordGateway');
     expect(source).toContain('runtime.bot');

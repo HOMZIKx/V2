@@ -65,13 +65,13 @@ export function DiagnosticsPage() {
         ) : (
           <div className="stack">
             <ServiceRow label="API" flag={runtime.api} />
-            <ServiceRow label="Identity" flag={runtime.identity} />
-            <ServiceRow label="Authorization" flag={runtime.authorization} />
-            <ServiceRow label="Activity" flag={runtime.activity} />
-            <ServiceRow label="Discord Gateway" flag={runtime.discordGateway} />
+            <ServiceRow label="Logowanie" flag={runtime.identity} />
+            <ServiceRow label="Uprawnienia" flag={runtime.authorization} />
+            <ServiceRow label="Aktywności" flag={runtime.activity} />
+            <ServiceRow label="Discord" flag={runtime.discordGateway} />
             <ServiceRow label="Bot" flag={runtime.bot} />
             <ServiceRow
-              label="Activity → Discord"
+              label="Aktywności → Discord"
               flag={runtime.activityToDiscord}
               detail={runtime.activityToDiscordDetail}
             />
