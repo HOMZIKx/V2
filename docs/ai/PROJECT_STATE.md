@@ -12,20 +12,20 @@ LFG v1 code path: prior audits **`READY_FOR_CHATGPT_APPROVAL`** — live TEST Di
 
 ## Current execution
 
-| Field                   | Value                                                                           |
-| ----------------------- | ------------------------------------------------------------------------------- |
-| CURRENT_TASK            | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (Owner acceptance gate)     |
-| REVIEW_POSTURE          | Task 004 — prove live product; Owner clicks for DM + Admin cold OAuth           |
-| CODE_STATUS             | `READY_FOR_OWNER_LIVE_ACCEPTANCE` — see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`   |
-| CURRENT_PRODUCT_STATUS  | WWW member PASS; Discord core PASS; DM FAIL; Admin cold OAuth pending           |
-| CURRENT_HEAD / PR_HEAD  | see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`                                       |
-| CI_STATUS               | Infra + quality fixes pushed (`84ba31c`+); confirm GitHub green                   |
-| LOCAL_VALIDATE          | PASS except VERSION_DRIFT (api-gateway SHA lag)                                   |
-| RUNTIME_STATUS          | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
-| ZEABUR_LIVE_API_SHA     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (redeploy in flight)                  |
-| ZEABUR_DEPLOY           | `zeabur-sync-and-deploy.mjs` + web LFG org script                               |
-| PR_TITLE_STATUS         | Conventional on PR #19                                                            |
-| REPOSITORY_VISIBILITY   | `PRIVATE_CONFIRMED`                                                             |
+| Field                  | Value                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| CURRENT_TASK           | `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` (Owner acceptance gate)     |
+| REVIEW_POSTURE         | Task 004 — prove live product; Owner clicks for DM + Admin cold OAuth           |
+| CODE_STATUS            | `READY_FOR_OWNER_LIVE_ACCEPTANCE` — see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`   |
+| CURRENT_PRODUCT_STATUS | WWW member PASS; Discord core PASS; DM FAIL; Admin cold OAuth pending           |
+| CURRENT_HEAD / PR_HEAD | see `CURRENT_PRODUCT_LIVE_ACCEPTANCE_SHA`                                       |
+| CI_STATUS              | Infra + quality fixes pushed (`84ba31c`+); confirm GitHub green                 |
+| LOCAL_VALIDATE         | PASS except VERSION_DRIFT (api-gateway SHA lag)                                 |
+| RUNTIME_STATUS         | `NOT_TEST_DISCORD_RUNTIME_VERIFIED` — see `TEST_DISCORD_LIVE_RUNTIME_REPORT.md` |
+| ZEABUR_LIVE_API_SHA    | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` (redeploy in flight)                 |
+| ZEABUR_DEPLOY          | `zeabur-sync-and-deploy.mjs` + web LFG org script                               |
+| PR_TITLE_STATUS        | Conventional on PR #19                                                          |
+| REPOSITORY_VISIBILITY  | `PRIVATE_CONFIRMED`                                                             |
 
 ## Governance
 
