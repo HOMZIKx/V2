@@ -7,6 +7,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system/package.json ./packages/design-system/package.json
+COPY packages/hub-core/package.json ./packages/hub-core/package.json
 COPY apps/web/package.json ./apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter @v2/web...
 
@@ -14,6 +15,7 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/design-system ./packages/design-system
+COPY packages/hub-core ./packages/hub-core
 COPY apps/web ./apps/web
 COPY tools/runtime/public-origin.mjs ./tools/runtime/public-origin.mjs
 # Zeabur injects service variables into the build environment. Do not declare
