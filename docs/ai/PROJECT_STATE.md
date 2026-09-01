@@ -75,7 +75,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **OPERABILITY_INCIDENT_READINESS_SHA**        | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks                      |
 | **PR19_FINAL_STABILIZATION_SHA**              | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                               |
 | **PLAYER_TOOLKIT_CORE_V1_SHA**                | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity  |
-| **ADMIN_CONTROL_CENTER_UX_V1_SHA**            | _pending checkpoint commit_                | Admin IA v1: Pulpit, Centrum V2, events CRUD, settings tabs, audit/diagnostics |
+| **ADMIN_CONTROL_CENTER_UX_V1_SHA**            | `0834a5bddd71fe1503f5f2da2494f2de7a2f5e87` | Admin IA v1: Pulpit, Centrum V2, events CRUD, settings tabs, audit/diagnostics |
 
 ## Module discovery status (summary)
 
