@@ -103,6 +103,7 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
           <a href="#characters">Postacie</a>
           <a href="#tasks">Akcje i timery</a>
           <a href="#notes">Notatki</a>
+          <a href="/teams/asteria/members">Członkowie</a>
           <button disabled type="button">
             Historia
           </button>
@@ -298,14 +299,13 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
                   <span className="section-kicker">Dostęp</span>
                   <h2>Członkowie</h2>
                 </div>
-                <button
+                <a
                   aria-label="Zarządzaj członkami"
                   className="quiet-icon-button"
-                  disabled
-                  type="button"
+                  href="/teams/asteria/members"
                 >
                   <Icon name="settings" size={16} />
-                </button>
+                </a>
               </header>
               <div className="workspace-member-list">
                 {initialSnapshot.members.map((member) => (

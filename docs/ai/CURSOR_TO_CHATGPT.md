@@ -1,5 +1,45 @@
 # Cursor / implementation → ChatGPT
 
+## Phase 5 Team membership and invitations
+
+- **Status:** `AWAITING_OWNER_REVIEW`
+- **Branch:** `codex/phase5-team-membership`
+- **Draft PR:** #34 (stacked on `codex/phase5-character-equipment`)
+- **Frontend HEAD:** `1ca85fdaa59fa638f24a60c3e9f74cca9165194c`
+
+### Delivered
+
+- owner-only team-membership route linked from the workspace;
+- exact Discord ID resolution before an invitation can be confirmed;
+- pending invitations that grant no private-team access;
+- authenticated recipient accept/decline screen;
+- explicit accepted, declined, expired and cancelled states;
+- typed adapter commands with expected revisions and operation IDs;
+- responsive member and invitation flows in the accepted DESTILED shell;
+- unit and E2E scenarios for resolution, deduplication and consent.
+
+### Local evidence
+
+- targeted Prettier check: PASS;
+- Web TypeScript `tsc --noEmit`: PASS;
+- Web ESLint for `app` and `src`: PASS;
+- Vitest: PASS, 17 tests;
+- Next production build: PASS, including
+  `/teams/[teamId]/members` and `/invitations/[invitationId]`;
+- Playwright scenarios are present, but local execution could not start because
+  Chromium was absent and its CDN download returned timeout/502. CI remains the
+  authoritative E2E gate.
+
+### Integration contract
+
+Team invitation acceptance is separate from platform admission. It grants no
+Leader, Technician or guild administration capability. Cursor may connect
+Discord identity resolution, persistence and realtime after owner acceptance,
+but it must preserve the pending-without-access boundary, expected revisions,
+operation IDs and immediate subscription revoke after removal.
+
+---
+
 ## Phase 5 Character equipment card
 
 - **Status:** `AWAITING_OWNER_REVIEW`

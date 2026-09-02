@@ -65,3 +65,30 @@ test('separates planned equipment, confirmed location and character timers', asy
   await page.getByRole('button', { name: /Oznacz wykonane/ }).click();
   await expect(page.getByText('odliczanie rozpoczęte')).toBeVisible();
 });
+
+test('resolves a Discord identity before creating a team invitation', async ({ page }) => {
+  await page.goto('/teams/asteria');
+  await page.getByRole('link', { name: 'Zarządzaj członkami' }).click();
+
+  await expect(page).toHaveURL(/\/teams\/asteria\/members$/);
+  await page.getByLabel('Discord ID osoby').fill('994001220033445566');
+  await page.getByRole('button', { name: 'Sprawdź konto Discord' }).click();
+  await expect(page.getByRole('heading', { name: 'Członkowie i zaproszenia' })).toBeVisible();
+  await expect(page.getByLabel('Rozpoznane konto Discord').getByText('MobbynZS Oak')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Wyślij zaproszenie' }).click();
+  await expect(page.getByText('MobbynZS Oak')).toBeVisible();
+  await expect(page.getByText(/Oczekuje na akceptację/).last()).toBeVisible();
+});
+
+test('grants team access only after the recipient accepts', async ({ page }) => {
+  await page.goto('/invitations/invitation-mobbynzs');
+
+  await expect(page.getByText('Zalogowano przez Discord jako')).toBeVisible();
+  await page.getByRole('button', { name: 'Akceptuję i dołączam' }).click();
+
+  await expect(
+    page.getByText('Dostęp do zespołu został przyznany po Twoim potwierdzeniu.'),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Otwórz przestrzeń zespołu' })).toBeVisible();
+});
