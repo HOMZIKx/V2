@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from '@playwright/test';
 
+import { E2E_API_BASE_URL } from './e2e/constants.js';
+
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const e2ePort = process.env.WEB_E2E_PORT?.trim() || '3000';
 const e2eOrigin = `http://127.0.0.1:${e2ePort}`;
@@ -30,7 +32,7 @@ export default defineConfig({
     env: {
       ...inheritedEnv,
       NODE_ENV: 'development',
-      NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:4000',
+      NEXT_PUBLIC_API_BASE_URL: E2E_API_BASE_URL,
       NEXT_PUBLIC_IDENTITY_URL: 'http://127.0.0.1:4200',
       NEXT_PUBLIC_WEB_ORIGIN: e2eOrigin,
       NEXT_PUBLIC_WEB_GUILDS: JSON.stringify([

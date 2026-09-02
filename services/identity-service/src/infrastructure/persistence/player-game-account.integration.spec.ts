@@ -10,7 +10,7 @@ import { PlayerProfileRepository } from '../persistence/player-profile.repositor
 
 const migrationsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../migrations',
+  '../../../migrations',
 );
 
 const runInfra = process.env.RUN_INFRA_TESTS === 'true' ? describe : describe.skip;

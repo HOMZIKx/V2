@@ -19,14 +19,14 @@ Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of th
 
 | Field                 | Value                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| CURRENT_HEAD          | `9306fcf6c6c4c36cf65cfc3ad86fff3005a590ea` (update after stabilization push)                |
+| CURRENT_HEAD          | tip after `CURRENT_HEAD_STABILIZATION_006A_SHA` (see ledger)                                |
 | CURRENT_TASK          | `V2-CURRENT-HEAD-STABILIZATION-006A`                                                        |
-| REVIEW_POSTURE        | 005 ready for Owner visual review; 006 blocked pending 005 acceptance gate                  |
+| REVIEW_POSTURE        | local/CI gates closed; Owner review + live deploy still required                            |
 | CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…`                  |
 | PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` + remediation; live deploy **BLOCKED**                             |
 | INFRA_DB_ISOLATION    | **PASS** on fresh Docker volume (CI-equivalent); stale local volume caused prior false FAIL |
-| LOCAL_VALIDATE        | rerun after stabilization commit                                                            |
-| RUNTIME_STATUS        | Deployed services behind HEAD — see `CURSOR_TO_CHATGPT.md`                                  |
+| LOCAL_VALIDATE        | **PASS** — `corepack pnpm validate` (Admin E2E 6/6, Member WWW E2E 14/14)                   |
+| RUNTIME_STATUS        | Deployed services behind tip — Zeabur legacy token blocks redeploy                          |
 
 ## Governance
 
@@ -80,7 +80,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **PLAYER_TOOLKIT_CORE_V1_SHA**                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity |
 | **ADMIN_CONTROL_CENTER_UX_V1_SHA**             | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | Admin IA + owner copy remediation; CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW     |
 | **PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA** | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | CI infra fix, architecture boundary, process truth                            |
-| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | _(pending push)_                           | E2E port env, Zeabur error surfacing, truthful handoff                        |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | _(tip after this commit)_                  | validate PASS, web E2E API mock port, identity migrations path, truthful docs |
 
 ## Module discovery status (summary)
 
@@ -119,4 +119,4 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 
 ## Last updated
 
-2026-09-02 — `V2-CURRENT-HEAD-STABILIZATION-006A`: infra db-isolation PASS on fresh volume; deploy/runtime proof BLOCKED (Zeabur legacy token + tip not deployed); validate rerun pending.
+2026-09-02 — `V2-CURRENT-HEAD-STABILIZATION-006A`: LOCAL_VALIDATE PASS; INFRA_DB_ISOLATION PASS (fresh volume); deploy/runtime proof BLOCKED (Zeabur `ERROR_INVALID_TOKEN` + tip not deployed).

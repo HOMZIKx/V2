@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
 
+import { E2E_API_BASE_URL } from './constants.js';
+
 const webOrigin = `http://127.0.0.1:${process.env.WEB_E2E_PORT?.trim() || '3000'}`;
 
 const GUILD_A = '1534228693017432124';
@@ -76,7 +78,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function mockMemberApi(page: Page): Promise<void> {
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
     if (url.pathname === '/session/me') {
@@ -231,7 +233,7 @@ test('login → member shell → activities → detail → RSVP → my → inbox
 });
 
 test('unauthorized recovery from member list', async ({ page }) => {
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/session/me') {
       await route.fulfill({
@@ -305,7 +307,7 @@ test('screenshot review set', async ({ page }) => {
 test('activities list does not fan-out participants', async ({ page }) => {
   let participantCalls = 0;
   await mockMemberApi(page);
-  await page.route('http://127.0.0.1:4000/**/participants', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**/participants`, async (route) => {
     participantCalls += 1;
     await route.continue();
   });
@@ -315,7 +317,7 @@ test('activities list does not fan-out participants', async ({ page }) => {
 });
 
 test('empty activities and inbox', async ({ page }) => {
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/session/me') {
       await route.fulfill({
@@ -351,7 +353,7 @@ test('empty activities and inbox', async ({ page }) => {
 });
 
 test('forbidden, not found, conflict RSVP and unavailable inbox', async ({ page }) => {
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
     if (url.pathname === '/session/me') {
@@ -416,7 +418,7 @@ test('waitlist and reconfirmation are readable', async ({ page }) => {
       waitlistPosition: null,
     },
   };
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/session/me') {
       await route.fulfill({
@@ -499,7 +501,7 @@ test('waitlist and reconfirmation are readable', async ({ page }) => {
 });
 
 test('stale guild response does not overwrite the new guild', async ({ page }) => {
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
     if (url.pathname === '/session/me') {
@@ -539,7 +541,7 @@ test('logout race does not keep the previous list', async ({ page }) => {
   await page.route('http://127.0.0.1:4200/**', async (route) => {
     await route.fulfill({ status: 200, json: { ok: true } });
   });
-  await page.route('http://127.0.0.1:4000/**', async (route) => {
+  await page.route(`${E2E_API_BASE_URL}/**`, async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/session/me') {
       await route.fulfill({
