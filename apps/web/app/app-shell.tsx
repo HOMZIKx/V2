@@ -81,7 +81,7 @@ const navigation = [
   { id: 'dashboard', label: 'Pulpit', icon: 'home', href: '/' },
   { id: 'teams', label: 'Moje zespoły', icon: 'team', href: '/teams/asteria' },
   { id: 'characters', label: 'Postacie', icon: 'character', href: '/characters' },
-  { id: 'maps', label: 'Mapy', icon: 'map', href: null },
+  { id: 'maps', label: 'Mapy', icon: 'map', href: '/maps' },
   { id: 'market', label: 'Targ', icon: 'market', href: null },
   { id: 'activity', label: 'Aktywność', icon: 'activity', href: null },
 ] as const satisfies ReadonlyArray<{
