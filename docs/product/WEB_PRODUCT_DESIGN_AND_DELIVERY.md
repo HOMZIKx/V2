@@ -229,10 +229,12 @@ This does not reorder or expand the active first slice.
 
 ## Immediate next step
 
-Complete an owner coherence review of the first player journey, including mobile,
-empty/error/access-denied and simultaneous-use states. After acceptance, proceed
-to **Phase 5 — production application shell** and implement this first slice in
-the repository frontend stack behind mock adapters.
+Review the completed
+[FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md)
+with the owner. It closes first-use, mobile, empty/error/access-denied,
+offline/conflict and simultaneous-use behavior. After acceptance, proceed to
+**Phase 5 — production application shell** and implement this first slice in the
+repository frontend stack behind mock adapters.
 
 Do not expand cooperative maps, market, AI import, dungeon analytics or bot
 administration until this slice's production interface and adapter boundary are
