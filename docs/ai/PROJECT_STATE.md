@@ -23,9 +23,10 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
 - Product/access/team inventory and the initial map are captured.
 - Active first slice: `Member dashboard -> My teams -> Team workspace ->
   Character board -> Equipment / timers / notes -> Change history`.
-- Current next Web/Admin step: owner coherence review of responsive, empty,
-  denied, unavailable and simultaneous-use states, then Phase 5 production shell
-  with mock adapters.
+- First-player coherence review is complete and covers first use, responsive,
+  loading/empty/denied/offline/conflict states and simultaneous use.
+- Current next Web/Admin gate: owner accepts the coherence checkpoint, then Phase
+  5 production shell begins with mock adapters.
 - Maps, market, AI import, dungeon analytics and bot-admin Web UI do not expand
   until the first player slice is stable.
 - Active game context is **Project Hard**. Game definitions are configurable,
@@ -49,6 +50,8 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
   substitutions.
 - First player slice and realtime/concurrency behavior:
   [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+- Complete first-player path and state review:
+  [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md).
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
 - Current previews validate the member dashboard, team workspace and
