@@ -112,3 +112,26 @@ test('shows append-only team history and resolves a revision conflict explicitly
   await expect(page.getByText('Konflikt obsłużony')).toBeVisible();
   await expect(page.getByText(/nie publikuje go automatycznie/i)).not.toBeVisible();
 });
+
+test('creates a character profile without inventing equipment', async ({ page }) => {
+  await page.goto('/teams/asteria');
+  await page.getByRole('link', { name: 'Dodaj postać' }).click();
+
+  await expect(page).toHaveURL(/\/teams\/asteria\/characters\/new$/);
+  await page.getByLabel('Nazwa postaci').fill('NowaSura');
+  await page.getByLabel('Poziom opcjonalnie').fill('42');
+  await page.getByRole('button', { name: 'Utwórz postać' }).click();
+
+  await expect(page.getByRole('heading', { name: 'NowaSura' })).toBeVisible();
+  await expect(page.getByText('Utworzono profil oraz pusty zestaw „Główny”.')).toBeVisible();
+});
+
+test('edits an existing character through a versioned profile form', async ({ page }) => {
+  await page.goto('/teams/asteria/characters/nerwnicht');
+  await page.getByRole('link', { name: 'Edytuj postać' }).click();
+
+  await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht\/edit$/);
+  await page.getByLabel('Notatka zespołu opcjonalnie').fill('Główna postać na wojnę.');
+  await page.getByRole('button', { name: 'Zapisz zmiany' }).click();
+  await expect(page.getByText('Profil zaktualizowany')).toBeVisible();
+});

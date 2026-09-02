@@ -119,23 +119,28 @@ export function CharacterEquipment({
               <strong>{initialSnapshot.responsibleMember}</strong>
             </p>
           </div>
-          <div className="set-switcher">
-            <label htmlFor="active-set">Aktywny widok setu</label>
-            <select
-              id="active-set"
-              onChange={(event) => {
-                setActiveSetId(event.target.value);
-                setSelectedItemId(null);
-              }}
-              value={activeSetId}
-            >
-              {initialSnapshot.sets.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.name}
-                </option>
-              ))}
-            </select>
-            <span>{activeSet.description}</span>
+          <div className="equipment-header-actions">
+            <a href="/teams/asteria/characters/nerwnicht/edit">
+              <Icon name="settings" size={14} /> Edytuj postać
+            </a>
+            <div className="set-switcher">
+              <label htmlFor="active-set">Aktywny widok setu</label>
+              <select
+                id="active-set"
+                onChange={(event) => {
+                  setActiveSetId(event.target.value);
+                  setSelectedItemId(null);
+                }}
+                value={activeSetId}
+              >
+                {initialSnapshot.sets.map((set) => (
+                  <option key={set.id} value={set.id}>
+                    {set.name}
+                  </option>
+                ))}
+              </select>
+              <span>{activeSet.description}</span>
+            </div>
           </div>
         </header>
 
