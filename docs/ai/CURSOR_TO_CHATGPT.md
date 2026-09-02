@@ -6,6 +6,7 @@
 - **Branch:** `codex/phase5-player-shell`
 - **Draft PR:** #31 (stacked on `codex/d037-web-product-workflow`)
 - **Implementation commit:** `81c33fc474f84d16455c7b38ce90aa9d3ee34abf`
+- **Validated frontend HEAD:** `bbb30b5e4f66ceada7c207880f80e097becaedf8`
 
 ### Delivered
 
@@ -16,12 +17,23 @@
 - authentic approved class renders and owner-provided brand direction;
 - Vitest view-model tests and Playwright smoke/interaction checks.
 
-### Local evidence
+### Validation evidence
 
 - TypeScript `tsc --noEmit`: PASS;
 - Next production build (webpack): PASS;
 - direct view-model behavior assertions: PASS;
-- GitHub Actions on final docs HEAD: pending at this checkpoint.
+- CI run `33622784079`: full `pnpm validate` PASS, including formatting,
+  lint, typechecks, coverage tests, builds, architecture, E2E and runtime smoke;
+- infrastructure integration job: PASS;
+- PR-title workflow run `33622784087`: PASS;
+- quality job remains red only at the independent dependency audit because the
+  inherited `vitest > vite > postcss > nanoid` path resolves a version below
+  `3.3.18` (`GHSA-2v37-7h3g-55p8`); this frontend slice did not introduce it;
+- secret-scan job is blocked by GitHub's
+  `Resource not accessible by integration` permission error; no secret finding
+  was reported.
+
+Do not lower the audit threshold or disable secret scanning to make the PR green.
 
 ### Explicit limits
 
