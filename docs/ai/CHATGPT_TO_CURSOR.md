@@ -51,8 +51,10 @@ Mandatory sources:
 1. [WEB_PRODUCT_DESIGN_AND_DELIVERY.md](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md)
 2. [PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md](../product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md)
 3. [PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md)
-4. [PROJECT_HARD_DUNGEON_RUN_ANALYZER.md](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md)
+4. [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md)
+5. [PROJECT_HARD_DUNGEON_RUN_ANALYZER.md](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md)
 
+The first-player coherence review is complete, but this remains a design gate.
 Current interactive previews are validation material, not a screenshot-only
 handoff. Cursor receives production code and adapters after owner acceptance.
 
