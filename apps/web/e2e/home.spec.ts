@@ -38,3 +38,30 @@ test('keeps team actions and notes explicit', async ({ page }) => {
   await page.getByRole('button', { name: 'Dodaj notatkę' }).click();
   await expect(page.getByText('Sprawdzić tarczę przed wojną.')).toBeVisible();
 });
+
+test('opens the character equipment card from the team workspace', async ({ page }) => {
+  await page.goto('/teams/asteria');
+  await page.getByRole('link', { name: 'Otwórz kartę EQ' }).click();
+
+  await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht$/);
+  await expect(page.getByRole('heading', { name: 'NerwNicht', exact: true })).toBeVisible();
+  await expect(page.getByText('Przedmioty', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Broń: Zatruty Miecz/ })).toBeVisible();
+});
+
+test('separates planned equipment, confirmed location and character timers', async ({ page }) => {
+  await page.goto('/teams/asteria/characters/nerwnicht');
+
+  await page.getByRole('button', { name: /Krótki Nóż/ }).click();
+  await page.getByRole('button', { name: /Broń: Zatruty Miecz/ }).click();
+  await expect(page.getByRole('button', { name: /Broń: Krótki Nóż/ })).toBeVisible();
+
+  await page.getByRole('button', { name: /Tarcza Bojowa/ }).click();
+  await page.getByRole('button', { name: /Potwierdź: jest na NerwNicht/ }).click();
+  await expect(page.getByText('Mateusz · teraz')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();
+  await expect(page.getByText('Postęp postaci')).toBeVisible();
+  await page.getByRole('button', { name: /Oznacz wykonane/ }).click();
+  await expect(page.getByText('odliczanie rozpoczęte')).toBeVisible();
+});
