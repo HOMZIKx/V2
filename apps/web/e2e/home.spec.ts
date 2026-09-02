@@ -56,7 +56,7 @@ test('separates planned equipment, confirmed location and character timers', asy
   await page.getByRole('button', { name: /Broń: Zatruty Miecz/ }).click();
   await expect(page.getByRole('button', { name: /Broń: Krótki Nóż/ })).toBeVisible();
 
-  await page.getByRole('button', { name: /Tarcza Bojowa/ }).click();
+  await page.locator('.catalog-item').filter({ hasText: 'Tarcza Bojowa +9' }).click();
   await page.getByRole('button', { name: /Potwierdź: jest na NerwNicht/ }).click();
   await expect(page.getByText('Mateusz · teraz')).toBeVisible();
 
