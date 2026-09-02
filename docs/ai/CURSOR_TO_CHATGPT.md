@@ -1,11 +1,49 @@
 # Cursor / implementation → ChatGPT
 
+## Zeabur Web preview readiness
+
+- **Status:** `READY_FOR_OWNER_ZEABUR_CONNECTION`
+- **Branch:** `codex/zeabur-preview-readiness`
+- **Draft PR:** #37 (stacked on `codex/phase5-character-profile`)
+- **Runtime HEAD:** `c3f8720c457636f8373bb278b6b5f4915ad5a64d`
+- **Deployment branch:** `preview/destiled-web`
+
+### Delivered
+
+- production Next.js start reads Zeabur's injected `PORT`;
+- production server binds to `0.0.0.0` while local start stays explicit;
+- existing `/health` route is documented as the HTTP readiness check;
+- a monorepo-aware deployment runbook defines branch, commands, watch paths,
+  secrets boundary, acceptance checks and rollback behavior;
+- the preview is explicitly separated from Discord OAuth, PostgreSQL, bot and
+  AI production integration.
+
+### Local evidence
+
+- targeted Prettier check: PASS;
+- Web TypeScript: PASS;
+- Web ESLint for `app`, `src` and the runner: PASS, with known local Nx cache
+  warnings only;
+- Vitest: PASS, 24 tests;
+- Next production build: PASS;
+- runtime smoke on injected `PORT=4317`: `/health` returned HTTP 200 and
+  `{ "status": "ok" }`.
+
+### Integration contract
+
+Zeabur must deploy only `preview/destiled-web`, not an in-progress feature
+branch. The initial service contains no production credentials. Cursor must not
+fold the bot, database or Discord gateway into the Web process; those remain
+separate services connected later through approved contracts.
+
+---
+
 ## Phase 5 Character profile create/edit
 
 - **Status:** `AWAITING_OWNER_REVIEW`
 - **Branch:** `codex/phase5-character-profile`
 - **Draft PR:** #36 (stacked on `codex/phase5-team-history`)
-- **Frontend HEAD:** `1a1adfe4de6888b34a778ba205d6c2182cac11e2`
+- **Frontend HEAD:** `3d114600da15107b1b925f945d9a926d1ac4a284`
 
 ### Delivered
 
