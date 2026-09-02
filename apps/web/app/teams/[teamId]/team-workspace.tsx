@@ -211,9 +211,7 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
                               Otwórz kartę EQ
                             </a>
                           ) : (
-                            <button disabled type="button">
-                              Karta w następnym kroku
-                            </button>
+                            <a href="/characters">Zobacz w module postaci</a>
                           )}
                         </div>
                       </div>
