@@ -2,7 +2,7 @@
 
 - **Status:** OWNER ACCEPTED
 - **Date:** 2026-09-02
-- **Decisions:** D-040, D-041
+- **Decisions:** D-040, D-041, D-042, D-043, D-044
 
 ## Two separate data domains
 
@@ -86,6 +86,66 @@ The product must not impose:
 The purpose is practical support: visual equipment notes, current and target
 builds, timers, tasks, goals and team coordination. Structure should guide the
 user without preventing free-form planning.
+
+## Lightweight character and equipment workspace
+
+This workspace is a loose aid for people playing together. It is not an
+authoritative inventory, ownership, lending or item-transfer system.
+
+### Equipment cards and location notes
+
+Users may create visual equipment cards and place them in current, target or
+custom character layouts. A card may contain a name, image, enhancement level,
+bonuses, tags and free-form notes.
+
+The current location is a practical note such as a character, storage, account
+or any user-entered label. Changing it means only “we noted where the item is
+now”. It does not model a transfer between people and does not require a
+recipient, acceptance, confirmation or proof of custody.
+
+If useful, a card may be marked “borrowed” with a free-form player nickname.
+This is only an optional annotation on the item card, not a separate lending
+workflow.
+
+The interface should make it easy to search cards and see their current noted
+location without turning this feature into formal stock control.
+
+### Timers
+
+The workspace provides configurable timers for repeated game actions, including
+book reading, horse medals and user-defined activities. A timer records the
+last completion, calculates the next available time and can be restarted with a
+simple “done now” action.
+
+Timer names and durations must remain configurable rather than hard-coded.
+Reminders may be shown in the product and, when integrated, sent through the
+approved Discord notification flow.
+
+### Notes and requests
+
+Players may add simple internal notes or requests connected to a character,
+equipment card or the team workspace. A request may optionally name a team
+member and have a lightweight status. This remains a coordination note, not a
+formal ticketing system.
+
+### Layouts and reusable templates
+
+Character boards support current, target and freely named equipment layouts.
+A team member may prepare a reusable character or build template, and another
+member may copy it as the starting point for their own character board.
+
+Copying a layout does not create or move real items. Hypothetical equipment may
+be used freely for planning.
+
+### Change history
+
+The product keeps a readable history of relevant edits, including equipment
+location-note changes, timer resets and board edits. Accidental changes should
+be reversible where practical, and deletion should prefer archive/recovery over
+irreversible removal.
+
+The history supports cooperation and correcting mistakes. It is not evidence of
+ownership, custody or an in-game transaction.
 
 ## Private team data
 
