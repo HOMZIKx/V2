@@ -104,9 +104,7 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
           <a href="#tasks">Akcje i timery</a>
           <a href="#notes">Notatki</a>
           <a href="/teams/asteria/members">Członkowie</a>
-          <button disabled type="button">
-            Historia
-          </button>
+          <a href="/teams/asteria/history">Historia</a>
         </nav>
 
         <section aria-label="Podsumowanie przestrzeni" className="workspace-metrics" id="overview">

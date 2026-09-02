@@ -92,3 +92,23 @@ test('grants team access only after the recipient accepts', async ({ page }) => 
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Otwórz przestrzeń zespołu' })).toBeVisible();
 });
+
+test('shows append-only team history and resolves a revision conflict explicitly', async ({
+  page,
+}) => {
+  await page.goto('/teams/asteria');
+  await page.getByRole('link', { name: 'Historia' }).click();
+
+  await expect(page).toHaveURL(/\/teams\/asteria\/history$/);
+  await expect(page.getByRole('heading', { name: 'Dziennik zmian' })).toBeVisible();
+  await expect(page.getByText('Potwierdzono lokalizację tarczy')).toBeVisible();
+
+  await page.getByLabel('Szukaj w historii').fill('księgi');
+  await expect(page.getByText('Rozpoczęto timer księgi')).toBeVisible();
+  await expect(page.getByText('Potwierdzono lokalizację tarczy')).not.toBeVisible();
+
+  await page.getByLabel('Szukaj w historii').fill('');
+  await page.getByRole('button', { name: 'Zachowaj mój szkic' }).click();
+  await expect(page.getByText('Konflikt obsłużony')).toBeVisible();
+  await expect(page.getByText(/nie publikuje go automatycznie/i)).not.toBeVisible();
+});
