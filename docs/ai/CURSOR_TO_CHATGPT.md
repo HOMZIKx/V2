@@ -32,13 +32,14 @@ Mixed implementation landed in `2af092f` before 005 Owner review. History **not*
 | `PLAYER_TOOLKIT_CORE_V1_SHA` (006)           | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` |
 | `ADMIN_CONTROL_CENTER_UX_V1_SHA` (005)       | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
 | `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
-| `CURRENT_HEAD_STABILIZATION_006A_SHA`        | _(set to tip after this commit)_           |
+| `CURRENT_HEAD_STABILIZATION_006A_SHA`        | `8a6afd6015d93466871801fa5c03a96080820277` |
+| `CURRENT_HEAD`                               | `8a6afd6015d93466871801fa5c03a96080820277` |
 
 ## Stabilization 006A results
 
 | Gate                    | Result                                                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CURRENT_HEAD**        | tip after this commit (see git `HEAD`)                                                                                                          |
+| **CURRENT_HEAD**        | `8a6afd6015d93466871801fa5c03a96080820277`                                                                                                      |
 | **INFRA_DB_ISOLATION**  | **PASS** locally on fresh Docker volume (`migration-inventory` + `db-isolation` 11/11). Prior local FAIL = stale `v2_pgdata`, not architecture. |
 | **CI (GitHub Actions)** | **UNVERIFIED locally** — `gh` not authenticated. Infra root cause (migration inventory drift) fixed in `4df7a94`.                               |
 | **VALIDATE**            | **PASS** — `corepack pnpm validate` (`WEB_E2E_PORT=3010`); Admin E2E 6/6; Member WWW E2E 14/14                                                  |

@@ -19,7 +19,7 @@ Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of th
 
 | Field                 | Value                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| CURRENT_HEAD          | tip after `CURRENT_HEAD_STABILIZATION_006A_SHA` (see ledger)                                |
+| CURRENT_HEAD          | `8a6afd6015d93466871801fa5c03a96080820277`                                                  |
 | CURRENT_TASK          | `V2-CURRENT-HEAD-STABILIZATION-006A`                                                        |
 | REVIEW_POSTURE        | local/CI gates closed; Owner review + live deploy still required                            |
 | CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…`                  |
@@ -80,7 +80,7 @@ Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **pr
 | **PLAYER_TOOLKIT_CORE_V1_SHA**                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity |
 | **ADMIN_CONTROL_CENTER_UX_V1_SHA**             | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | Admin IA + owner copy remediation; CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW     |
 | **PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA** | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | CI infra fix, architecture boundary, process truth                            |
-| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | _(tip after this commit)_                  | validate PASS, web E2E API mock port, identity migrations path, truthful docs |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | `8a6afd6015d93466871801fa5c03a96080820277` | validate PASS, web E2E API mock port, identity migrations path, truthful docs |
 
 ## Module discovery status (summary)
 
