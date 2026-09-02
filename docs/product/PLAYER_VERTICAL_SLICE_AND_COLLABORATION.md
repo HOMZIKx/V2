@@ -1,8 +1,8 @@
 # First player vertical slice and collaboration contract
 
-- **Status:** DESIGN BASELINE / OWNER REVIEW
+- **Status:** OWNER ACCEPTED / READY FOR PRODUCTION SHELL
 - **Date:** 2026-09-02
-- **Decisions:** D-049, D-050, D-051
+- **Decisions:** D-049, D-050, D-051, D-055, D-056, D-057, D-058, D-059
 - **Scope:** member Web, private player teams and Cursor integration contract
 
 ## Purpose
@@ -19,7 +19,8 @@ Member dashboard
   -> My teams
   -> Team workspace
   -> Character board
-  -> Equipment / timers / notes
+  -> Equipment / named sets
+  -> Progression timers / team actions / notes
   -> Change history
 ```
 
@@ -55,9 +56,11 @@ The first slice treats the following as separate resources:
 - `TeamMember`;
 - `CharacterBoard`;
 - `EquipmentItem`;
-- `EquipmentLayout`;
-- `EquipmentPlacement`;
-- `CharacterTimer`;
+- `EquipmentSet`;
+- `EquipmentPlacement` with last-confirmed location;
+- `CharacterProgressionTimer`;
+- lightweight `TeamAction`;
+- `ReminderPreference`;
 - `TeamNote`;
 - `ChangeEvent`;
 - ephemeral `WorkspacePresence`.
@@ -66,8 +69,10 @@ This separation is important for simultaneous use. Two people editing different
 items or timers must not lock the whole team or character board.
 
 An equipment item remains one stable team resource. Placing it on a character or
-returning it to the team library changes its placement note; it does not delete
-and recreate the item and does not represent a real in-game transfer.
+returning it to the team library changes its last-confirmed placement note; it
+does not delete and recreate the item, represent a verified in-game transfer or
+claim live client knowledge. Named sets reference exact items or planned
+requirements without duplicating them.
 
 ## Human interaction rules
 
@@ -254,7 +259,12 @@ slice consumes stable adapters with operations equivalent to:
 - `createEquipmentItem(...)`;
 - `updateEquipmentItem(itemId, expectedRevision, ...)`;
 - `moveEquipmentItem(itemId, destination, expectedRevision, operationId)`;
-- `resetTimer(timerId, expectedRevision, operationId)`;
+- `listEquipmentSets(characterId)`;
+- `saveEquipmentSet(setId, expectedRevision, ...)`;
+- `getSetReadiness(setId)`;
+- `resetProgressionTimer(timerId, expectedRevision, operationId)`;
+- `completeTeamAction(actionId, expectedRevision, operationId)`;
+- `updateReminderPreference(...)`;
 - `saveTeamNote(noteId, expectedRevision, ...)`;
 - `archiveResource(resourceId, expectedRevision)`;
 - `subscribeTeamWorkspace(teamId, cursor?)`.
@@ -284,7 +294,16 @@ The slice is not complete until automated and manual tests cover at least:
     the same result;
 11. reduced-motion mode preserves the complete equipment/timer workflow;
 12. loading, empty, denied, disconnected and server-error states remain
-    understandable.
+    understandable;
+13. a named set distinguishes exact ready items, items recorded elsewhere,
+    planned requirements, missing items and stale confirmations;
+14. one user's private item proposal cannot silently modify the global catalog;
+15. a Discord reminder changes shared state only after a human confirmation;
+16. no map boss/Metin SpawnTimer appears in or mutates character progression.
+
+The exact catalog layers, set readiness, Discord reminder flow and strict
+separation from cooperative-map SpawnTimers are defined in
+[TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 
 ## Ordered implementation checkpoint
 
