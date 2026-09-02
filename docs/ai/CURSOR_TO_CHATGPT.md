@@ -1,5 +1,42 @@
 # Cursor / implementation → ChatGPT
 
+## Phase 5 Character equipment card
+
+- **Status:** `AWAITING_OWNER_REVIEW`
+- **Branch:** `codex/phase5-character-equipment`
+- **Draft PR:** #33 (stacked on `codex/phase5-team-workspace`)
+- **Frontend HEAD:** `11c0e752af9022242e5f91a31f1f476120ed368f`
+
+### Delivered
+
+- Asteria workspace → NerwNicht character-card route;
+- authentic Sura render and Metin2-reference equipment-slot layout;
+- named sets and cross-device assignment interaction;
+- real reference item crops, catalog filters and bonus inspection;
+- strict separation between planned-set assignment and human-confirmed physical
+  item location;
+- flip-card timers for character progression only;
+- explicit timer restart and future Discord-reminder state;
+- pure view-model functions, unit tests and full-path E2E scenarios.
+
+### Local evidence
+
+- exact Prettier check: PASS;
+- TypeScript `tsc --noEmit`: PASS;
+- Next production build (webpack): PASS;
+- equipment planning, location confirmation, filtering and timer assertions:
+  PASS;
+- full monorepo and E2E gates: running in GitHub Actions.
+
+### Integration contract
+
+Cursor may connect persistence, realtime and Discord after owner approval. It
+must preserve the planned-vs-confirmed boundary. Dragging an item in the Web UI
+does not claim an in-game transfer. AI/OCR must create a reviewable proposal,
+not silently mutate the shared catalog.
+
+---
+
 ## Phase 5 Team workspace
 
 - **Status:** `AWAITING_OWNER_REVIEW`
