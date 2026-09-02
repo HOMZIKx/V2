@@ -225,16 +225,19 @@ application and are not yet production source.
 D-052 through D-054 add a later Project Hard dungeon analyzer and a hard secret
 storage boundary in
 [PROJECT_HARD_DUNGEON_RUN_ANALYZER](PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
-This does not reorder or expand the active first slice.
+D-055 through D-059 accept the first-player coherence gate and clarify named
+loadouts, catalog curation, team reminders and the separate map SpawnTimer
+domain in
+[TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 
 ## Immediate next step
 
-Review the completed
-[FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md)
-with the owner. It closes first-use, mobile, empty/error/access-denied,
-offline/conflict and simultaneous-use behavior. After acceptance, proceed to
-**Phase 5 — production application shell** and implement this first slice in the
-repository frontend stack behind mock adapters.
+The owner accepted
+[FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md).
+Proceed to **Phase 5 — production application shell** and implement the accepted
+first slice in the repository frontend stack behind mock adapters. Include named
+sets, last-confirmed item locations, progression timers, lightweight team
+actions and reminder-delivery states; do not implement the later map slice.
 
 Do not expand cooperative maps, market, AI import, dungeon analytics or bot
 administration until this slice's production interface and adapter boundary are
