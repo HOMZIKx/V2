@@ -2,38 +2,40 @@
 
 ## Status
 
-`V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001` — **IN PROGRESS → validation/deploy**
+`V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001` — **CODE + VALIDATE PASS**; **Zeabur runtime BLOCKED** (env/DB wiring)
 
-Prior audit `006C` — **COMPLETE** (Decisions **D-051** / **D-052** ACCEPTED)
+Prior audit `006C` — **COMPLETE** (**D-051** / **D-052**)
 
-Product / merge PR #19: **NOT APPROVED** · **NOT MERGED**
+PR #19: **NOT APPROVED** · **NOT MERGED**  
+Stacked PR: **NOT_CREATED_AUTH_UNAVAILABLE**
 
-## Model freeze (D-051 / D-052)
+## SHAs
 
-| Concept                      | Rule                                                      |
-| ---------------------------- | --------------------------------------------------------- |
-| GameAccount                  | **SOLO ONLY**                                             |
-| Team                         | **MULTI-USER COLLABORATION** (`player-workspace-service`) |
-| Canonical Identity Character | **PROFILE / LFG / ACTIVITY IDENTITY**                     |
-| Team Character Board         | **TEAM PLANNING RESOURCE** (own UUID)                     |
-| Optional link                | `linkedPlayerCharacterId` → Identity character            |
+| Marker | Value |
+| ------ | ----- |
+| BASE_SHA | `84716b3ca40a831a04580a5b2e0e943a4ebe4af8` |
+| CURRENT_HEAD | `461a766c6bbd94410800d9cbd32b5749fe5f6bdb` (+ docs follow-up) |
+| BRANCH | `cursor/player-workspace-team-character-board-foundation` |
+| Zeabur service | `player-workspace-service` `6a9885bb573ada8b3bbe5f1f` |
 
-## Current execution
+## Model freeze
 
-| Field          | Value                                                               |
-| -------------- | ------------------------------------------------------------------- |
-| CURRENT_TASK   | `V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001`           |
-| BASE_SHA       | `84716b3ca40a831a04580a5b2e0e943a4ebe4af8` (006C docs)              |
-| STACKED_BRANCH | `cursor/player-workspace-team-character-board-foundation`           |
-| STACKED_PR     | `NOT_CREATED_AUTH_UNAVAILABLE`                                      |
-| SERVICE        | `player-workspace-service` port 4500, advisory lock id 4            |
-| OUT_OF_SCOPE   | EQ, Sets, Trackers, Notifications, Discord Team reminders, Task 007 |
+| Concept | Rule |
+| ------- | ---- |
+| GameAccount | **SOLO ONLY** |
+| Team | **MULTI-USER COLLABORATION** (`player-workspace-service`) |
+| Canonical Identity Character | **PROFILE / LFG / ACTIVITY** |
+| Team Character Board | **TEAM PLANNING RESOURCE** |
+| Optional link | `linkedPlayerCharacterId` |
+
+## Blocker
+
+Zeabur: service created; Dockerfile content deploy built then **CRASHED** without `PLAYER_WORKSPACE_DATABASE_URL` (variable GraphQL list did not expose Activity DB URL for auto-wire). Manual Owner/ops: set DB URL + inbound JWT env, restart, prove health/ready.
 
 ## Owner acceptance
 
-- 005 Admin: **PENDING**
-- 006 Player Core: **PENDING**
+005/006: **PENDING**
 
-## Last updated
+## Out of scope
 
-2026-09-02 — foundation-001 implementation on stacked branch.
+EQ / Sets / Trackers / Notifications / Discord Team reminders / Task 007 — **NOT STARTED**

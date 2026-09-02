@@ -2,20 +2,14 @@
 
 ## Status
 
-`IN_PROGRESS` — `V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001`
+`READY_FOR_OWNER` — foundation-001 code on stacked branch; Zeabur service creation/deploy still required for runtime proof
 
-## Active task pointer
+## Active pointer
 
-Implement **only** Team + membership/invite + CharacterBoard foundation in `player-workspace-service`.
-
-## Accepted decisions
-
-- **D-051** Character model split + optional `linkedPlayerCharacterId`
-- **D-052** Player Workspace service ownership; GameAccount SOLO
+`cursor/player-workspace-team-character-board-foundation` @ `461a766c…`
 
 ## Hard stops
 
-- No EQ / Sets / Trackers / Notifications / Discord Team reminders / Task 007
+- No EQ / Sets / Trackers / Task 007
 - No PR #19 merge
-- No competing member WWW redesign (D-050)
-- 005/006 Owner acceptance remains **PENDING** (parallel; not a blocker for this isolated slice)
+- No competing WWW redesign
