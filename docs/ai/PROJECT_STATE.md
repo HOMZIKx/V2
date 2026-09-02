@@ -10,7 +10,7 @@ Web product track: `IN_PROGRESS_PHASE_5_PRODUCTION_SHELL_REVIEW`.
 
 ## Owner directive — WWW product (2026-09-02)
 
-- Decisions: **D-037–D-059**; D-050 remains an active collaboration baseline.
+- Decisions: **D-037–D-060**; D-050 remains an active collaboration baseline.
 - Cursor keeps existing Web/Admin code, but it is **not** a visual or product
   reference for the new interface.
 - Cursor must not independently design or extend Web/Admin layout, information
@@ -40,10 +40,14 @@ team actions / notes -> Change history`.
   `codex/phase5-character-equipment` in draft PR **#33**: named sets, authentic
   reference item icons, catalog/bonus filtering, cross-device assignment,
   flip-card progression timers and explicit physical-location confirmation.
-- Current next Web step after character-card review: refine slot geometry and
-  item-card detail from owner feedback, then complete team invitations and
-  persistence contracts. Do not start API/Discord integration before the
-  frontend contract is accepted.
+- Consent-based team membership is implemented on
+  `codex/phase5-team-membership` in draft PR **#34**: exact Discord identity
+  resolution, owner confirmation, pending invitation without access,
+  recipient accept/decline, revision/idempotency adapter contracts and explicit
+  separation from platform admission and guild roles.
+- Current next Web step: owner review of the complete first-player path,
+  followed by visible persistence/reconnect/conflict states and change history.
+  Do not start API/Discord integration before the frontend contract is accepted.
 - Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
   `pnpm validate`, infrastructure integration and PR-title checks PASS.
 - Two repository-level blockers remain outside the frontend slice: inherited
@@ -85,8 +89,9 @@ team actions / notes -> Change history`.
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
 - Earlier previews validate the wider member flow. The member dashboard is
-  production repository code in PR #31, team workspace in PR #32 and the
-  character/equipment/timer detail in PR #33.
+  production repository code in PR #31, team workspace in PR #32,
+  character/equipment/timer detail in PR #33 and consent-based team membership
+  in PR #34.
 - Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
   the production frontend code/adapters are explicitly handed off.
 - D-060 fixes the later Technician configurator as a real versioned bot-config
