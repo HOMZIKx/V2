@@ -8,7 +8,7 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
 
 ## Owner directive — WWW product (2026-09-02)
 
-- Decisions: **D-037–D-051**; D-050 remains a design baseline for owner review.
+- Decisions: **D-037–D-054**; D-050 remains a design baseline for owner review.
 - Cursor keeps existing Web/Admin code, but it is **not** a visual or product
   reference for the new interface.
 - Cursor must not independently design or extend Web/Admin layout, information
@@ -26,8 +26,17 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
 - Current next Web/Admin step: owner coherence review of responsive, empty,
   denied, unavailable and simultaneous-use states, then Phase 5 production shell
   with mock adapters.
-- Maps, market, AI import, analytics and bot-admin Web UI do not expand until the
-  first player slice is stable.
+- Maps, market, AI import, dungeon analytics and bot-admin Web UI do not expand
+  until the first player slice is stable.
+- Active game context is **Project Hard**. Game definitions are configurable,
+  sourced and effective-dated because server rules and drops change.
+- Later accepted slice: private-team Project Hard dungeon journal/analyzer with
+  participants, characters, duration, screenshot-assisted loot, prices, costs,
+  frozen value snapshots and team analytics.
+- AI/OCR proposes data for human review; it never silently commits game data and
+  the product never claims background observation of the game client.
+- DESTILED never stores Project Hard/email login secrets, passwords, PINs,
+  authorization/recovery codes, cookies or client tokens.
 - This directive does not cancel approved Discord-specific P4 contracts; it
   freezes independent Web/Admin product design.
 
@@ -40,6 +49,8 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
   substitutions.
 - First player slice and realtime/concurrency behavior:
   [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+- Later Project Hard dungeon analyzer contract:
+  [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
 - Current previews validate the member dashboard, team workspace and
   character/equipment/timer surface; they are not yet production repository
   code.
