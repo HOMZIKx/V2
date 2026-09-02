@@ -120,7 +120,7 @@ export function CharacterEquipment({
             </p>
           </div>
           <div className="equipment-header-actions">
-            <a href="/teams/asteria/characters/nerwnicht/edit">
+            <a href={`/teams/asteria/characters/${initialSnapshot.characterId}/edit`}>
               <Icon name="settings" size={14} /> Edytuj postać
             </a>
             <div className="set-switcher">
