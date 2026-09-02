@@ -22,8 +22,11 @@ const categoryOptions: ReadonlyArray<{ value: EquipmentSlot | 'all'; label: stri
   { value: 'all', label: 'Wszystkie' },
   { value: 'weapon', label: 'Broń' },
   { value: 'armor', label: 'Zbroje' },
+  { value: 'helmet', label: 'Hełmy' },
   { value: 'shield', label: 'Tarcze' },
-  { value: 'earrings', label: 'Biżuteria' },
+  { value: 'earrings', label: 'Kolczyki' },
+  { value: 'necklace', label: 'Naszyjniki' },
+  { value: 'bracelet', label: 'Bransolety' },
   { value: 'shoes', label: 'Buty' },
 ];
 
@@ -140,7 +143,11 @@ export function CharacterEquipment({
           <section className="character-card-panel" aria-label="Karta postaci i ekwipunek">
             <div className={`character-flip-card${flipped ? ' is-flipped' : ''}`}>
               <div className="character-flip-inner">
-                <article className="character-card-face character-card-front">
+                <article
+                  aria-hidden={flipped}
+                  className="character-card-face character-card-front"
+                  inert={flipped ? true : undefined}
+                >
                   <header>
                     <div>
                       <span>Set</span>
@@ -198,7 +205,11 @@ export function CharacterEquipment({
                   </footer>
                 </article>
 
-                <article className="character-card-face character-card-back">
+                <article
+                  aria-hidden={!flipped}
+                  className="character-card-face character-card-back"
+                  inert={!flipped ? true : undefined}
+                >
                   <header>
                     <div>
                       <span>Postęp postaci</span>
