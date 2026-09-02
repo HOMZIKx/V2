@@ -1,0 +1,24 @@
+{
+  "service": "identity",
+  "trackingTable": "identity_schema_migrations",
+  "count": 3,
+  "foundationId": "001_better_auth.sql",
+  "latestId": "003_player_game_accounts.sql",
+  "migrations": [
+    {
+      "id": "001_better_auth.sql",
+      "checksum": "353ca51869aa7cd23f6125d39e54dd16509b23969a6d0c918a9f2c8213d5e30e",
+      "flags": []
+    },
+    {
+      "id": "002_player_profile_foundation.sql",
+      "checksum": "39ac0f2aeff759c7da08ea0d0079b06cd6b5b79731fbeff0000e001cebb87897",
+      "flags": []
+    },
+    {
+      "id": "003_player_game_accounts.sql",
+      "checksum": "6de649988cd0d8314b9fbaffa4640ae8347d69a23237bcc2726a5b4afaedaa0e",
+      "flags": []
+    }
+  ]
+}

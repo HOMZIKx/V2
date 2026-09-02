@@ -11,6 +11,8 @@ function createStore(overrides: Partial<AuthorizationStorePort> = {}): Authoriza
   return {
     ensureOrganization: vi.fn(),
     ping: vi.fn(),
+    hasSchemaMigration: vi.fn().mockResolvedValue(true),
+    countSchemaMigrations: vi.fn().mockResolvedValue(5),
     bootstrapOwner: vi.fn(),
     upsertIdentityLink: vi.fn(),
     authorize: vi.fn(),

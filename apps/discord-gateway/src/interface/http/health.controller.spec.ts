@@ -27,7 +27,7 @@ function enabledConfig() {
 describe('HealthController', () => {
   it('reports live ok always', () => {
     const controller = new HealthController(disabledConfig(), null);
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
   });
 
   it('ready when discord disabled', () => {

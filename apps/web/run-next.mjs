@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
-const result = spawnSync('pnpm', ['exec', 'next', ...args], {
+const result = spawnSync('corepack', ['pnpm', 'exec', 'next', ...args], {
   cwd: appRoot,
   env: {
     ...process.env,

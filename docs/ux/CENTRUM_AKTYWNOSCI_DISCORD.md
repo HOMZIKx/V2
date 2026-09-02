@@ -2,7 +2,17 @@
 
 ## Status
 
-`INTERACTIVE_LAYOUT_CONTRACT — final P4 spec audit; assets OWNER_DECISION_REQUIRED (Issue #12)`
+`READY_FOR_OWNER_DISCORD_VISUAL_REVIEW`
+
+OWNER VISUAL CORRECTION: previous accent-only pass rejected as insufficient.
+
+CURRENT: Discord Activity visual layout redesigned (Hub groups DZIAŁAJ / TWOJE,
+event hierarchy, draft preview). Not a global design-system approval and not a
+Discord visual approval until the owner reviews the live panel.
+
+`INTERACTIVE_LAYOUT_CONTRACT` remains in force. Assets / iconography still
+`OWNER_DECISION_REQUIRED` (Issue #12). Issue #20 (dungeon LFG discovery)
+**NOT IMPLEMENTED**.
 
 Szkielet interakcji zgodny z decyzjami właściciela A–S oraz
 `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md` (D-023, D-024).
@@ -71,26 +81,24 @@ Jedna wiadomość, **jeden Container**, flaga `IS_COMPONENTS_V2`.
 
 ```
 Message [flags: IS_COMPONENTS_V2]
-└── Container (accent = OWNER_DECISION_REQUIRED / MODULE_ACCENT_PENDING)
-    ├── [opcjonalnie] Media Gallery — dekoracyjny banner
-    │     OR Text Display — nazwa panelu (copy OWNER_DECISION_REQUIRED)
-    ├── Text Display — krótki opis panelu (copy OWNER_DECISION_REQUIRED)
+└── Container (accent = `#D48632` / `0xD48632` — OWNER ACCEPTED module accent, D-038)
+    ├── Text Display — Centrum Aktywności + jedno zdanie intro
     ├── Separator
+    ├── Text Display — **DZIAŁAJ**
     ├── Section „Utwórz aktywność”
-    │     ├── Text Display — etykieta + krótki opis (opis = OWNER_DECISION_REQUIRED)
-    │     └── accessory Button — label: „Utwórz aktywność”
-    ├── Separator
+    │     ├── Text Display — etykieta + krótki opis
+    │     └── accessory Button — label: „Utwórz” (Secondary)
     ├── Section „Szukam ekipy”
     │     ├── Text Display — etykieta + krótki opis
-    │     └── accessory Button — label: „Szukam ekipy”
+    │     └── accessory Button — label: „Szukaj” (Secondary)
     ├── Separator
+    ├── Text Display — **TWOJE**
     ├── Section „Moje aktywności”
     │     ├── Text Display — etykieta + krótki opis
-    │     └── accessory Button — label: „Moje aktywności”
-    ├── Separator
+    │     └── accessory Button — label: „Otwórz” (Secondary)
     └── Section „Powiadomienia”
           ├── Text Display — etykieta + krótki opis
-          └── accessory Button — label: „Powiadomienia”
+          └── accessory Button — label: „Sprawdź” (Secondary)
 ```
 
 **Wymóg:** przyciski przy odpowiadających sekcjach (Section.accessory),
@@ -424,13 +432,29 @@ Bez łańcuchów publicznych wiadomości.
 
 ## M. Relacja do Issue #12 / P4-D8
 
+### OWNER VISUAL DECISION — CENTRUM AKTYWNOŚCI
+
+(`P4-DISCORD-VISUAL-CORRECTION-001` / D-038; powiązane z Issue #12)
+
+- **Activity module accent:** `#D48632` (`0xD48632`)
+- Kierunek: dark graphite / burnt amber / steel navy / parchment / small old gold
+  (Issue #12) — **zatwierdzony accent modułu**, nie pełny globalny design system V2
+- Centrum **nie** korzysta z V2 LAB `panel-theme.ts` / `#7C3AED`
+- Normalne przyciski Discord: `ButtonStyle.Secondary` (nie Primary/niebieski CTA)
+- Destructive: `Danger`; Success tylko gdy naprawdę success
+- Struktura Components V2 (one Container + Section accessories) **bez zmian**
+- Bannery / emoji / pełny design system: nadal mogą być rozwijane w Issue #12
+- **Szukam ekipy / dungeon LFG discovery:** przyszły etap = Issue #20 — **nie**
+  zaimplementowane w tym tasku; publiczne copy pozostaje neutralne
+
 | Warstwa                         | Status                                                  |
 | ------------------------------- | ------------------------------------------------------- |
 | Component tree / custom_id / UX | CONTRACT w tym dokumencie                               |
-| Accent Container, banner, emoji | OWNER_DECISION_REQUIRED — **prod visual sign-off**      |
+| Module accent Container         | **OWNER ACCEPTED** `#D48632` (D-038)                    |
+| Banner, emoji, global DS        | OWNER_DECISION_REQUIRED — Issue #12 (poza accentem)     |
 | P4.2a test guild                | **dozwolone** native V2 **bez** dekoracyjnego bannera   |
 | Screenshot visual contract      | `REFERENCE_IMAGE_REQUIRED` w sesji closure (brak pliku) |
-| Opisy / style Button            | OWNER_DECISION_REQUIRED                                 |
+| Style Button (Secondary/…)      | OWNER ACCEPTED dla Centrum (Secondary = normal)         |
 
 Wzór = **modułowość i panelowość**, nie klikalny obraz. Issue #12 **nie** blokuje test servera.
 
@@ -509,12 +533,18 @@ zniknęło** — obecnie nie. Nie jest blockerem P4.1 (domain-only).
 
 **Zakaz:** implementować „udawane V2” przez PNG + rząd przycisków jako obejście.
 
-## O. Jeden logiczny formularz (Accepted)
+## O. Jeden spójny formularz użytkownika (Owner Amendment)
 
-Discord modal ≤5 komponentów. Formularz = **prywatny panel** Components V2 ze
-szkicem 24h i sekcjami: podstawowe / termin / publikacja / uczestnicy-limity /
-opcje. Edytuj sekcję → modal ≤5 pól lub selecty w panelu. Nie kreator krokowy.
-Podgląd → Publikuj. Walidacja daty + timezone user/fallback guild; błędy bez
-utraty draftu; cancel; stale; mobile.
+**Owner Amendment (P4-CLOSURE-REMEDIATION-001)** — zastępuje model sekcyjnych
+przycisków edycji.
+
+Flow: **Utwórz aktywność → jeden formularz → Podgląd → Publikuj**.
+
+- Jeden prywatny ekran Components V2 ze wszystkimi wymaganymi informacjami.
+- Natywne selecty (rodzaj, kanał); jeden modal ≤5 pól na tekst/datę/opis.
+- **Zakaz** przycisków „Nazwa i opis”, „Data i godzina”, itd. jako osobnych
+  ścieżek.
+- Draft 24h; walidacja bez utraty danych; cancel; stale; mobile.
+- P4.4 WWW bez kreatora.
 
 Mapowanie pól: architecture §12. Permissions: `event.create` / `event.manage.self`.

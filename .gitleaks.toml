@@ -1,6 +1,8 @@
 # Gitleaks config for V2 (extends defaults).
 # Classic sequential Discord snowflake appears in early P1 unit-test history and
 # trips discord-client-id; it is not a real application client id.
+# Additional allowlisted snowflakes are documented public test/fixture IDs used
+# across Discord harness specs, Admin e2e, and docs (ADR-0007 test guild).
 
 title = "v2"
 
@@ -8,9 +10,15 @@ title = "v2"
 useDefault = true
 
 [allowlist]
-description = "Known non-secret fixtures used in unit tests"
+description = "Known non-secret fixtures used in unit/e2e tests and documented test Discord IDs"
 regexes = [
   '''123456789012345678''',
+  '''999888777666555444''',
+  '''987654321098765432''',
+  '''111111111111111111''',
+  '''222222222222222222''',
+  '''100000000000000001''',
+  '''1534228693017432124''',
 ]
 paths = [
   '''services/identity-service/src/infrastructure/config/identity-env\.spec\.ts''',

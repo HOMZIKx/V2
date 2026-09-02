@@ -1,0 +1,57 @@
+---
+description: Szybkie autonomiczne wykonanie zaakceptowanego zakresu bez zbędnych promptów i pełnych walidacji po każdej iteracji.
+alwaysApply: true
+---
+
+# Autonomous Fast Execution
+
+## Default
+
+Dla istniejącego, zaakceptowanego zakresu pracuj ciągle i autonomicznie.
+
+Nie pytaj Ownera:
+
+- czy uruchomić zwykłą komendę;
+- czy wykonać test;
+- czy commitować/pushować bezpieczny wynik;
+- czy przejść do następnej oczywistej części tego samego tasku;
+- czy naprawić jednoznaczny techniczny bug znaleziony po drodze.
+
+## FAST by default
+
+Jeżeli zmiana jest mała i jednoznaczna, użyj FAST:
+
+1. odczytaj tylko bieżący task/state + relevant SoT;
+2. implementuj;
+3. uruchom targeted/affected checks;
+4. commit + push;
+5. kontynuuj task.
+
+Nie rób pełnego repo research, pełnego planu, pełnego `pnpm validate`, runtime deploy ani rozbudowanej dokumentacji, jeśli nie wynika to z ryzyka lub definicji checkpointu.
+
+## Full validation only when justified
+
+Pełny `corepack pnpm validate` jest domyślnie wymagany na CHECKPOINT, przed merge/release/final audit, po szerokiej zmianie trust boundary albo gdy task jawnie tego wymaga.
+
+Nie uruchamiaj go wielokrotnie w tej samej iteracji bez nowej szerokiej zmiany.
+
+## Stop only for real blockers
+
+STOP tylko gdy:
+
+- nowa duża funkcja produktu nie ma zamkniętego Owner discovery;
+- CRITICAL/HIGH security lub data-isolation;
+- realne ryzyko utraty/korupcji danych;
+- wymagane jest destrukcyjne/nieodwracalne działanie;
+- brakuje credentials/access, których agent nie może bezpiecznie uzyskać;
+- Accepted SoT jest bezpośrednio sprzeczne i nie da się rozstrzygnąć konfliktu.
+
+Jeżeli blocker nie dotyczy całego tasku, kontynuuj niezależną bezpieczną część.
+
+## Product decisions
+
+Nie wymyślaj dużego zachowania produktu. Niskiego ryzyka szczegóły implementacyjne/UX zgodne z zaakceptowanym kierunkiem rozstrzygaj sam, bez serii mikro-pytań.
+
+## Documentation
+
+Aktualizuj `PROJECT_STATE.md` i pełny handoff przy checkpointach/status change/blocker/finalnym zakończeniu istotnego tasku. Nie generuj ciężkiego raportu po każdej małej poprawce.

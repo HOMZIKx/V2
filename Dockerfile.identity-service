@@ -1,25 +1,56 @@
+# Production image for @v2/identity-service
 FROM node:24-bookworm-slim AS base
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.base.json ./
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/configuration/package.json ./packages/configuration/package.json
 COPY packages/observability/package.json ./packages/observability/package.json
+COPY packages/hub-core/package.json ./packages/hub-core/package.json
 COPY services/identity-service/package.json ./services/identity-service/package.json
 RUN pnpm install --frozen-lockfile --filter @v2/identity-service...
 
-FROM deps AS runtime
+FROM deps AS build
+COPY packages/typescript-config ./packages/typescript-config
 COPY packages/configuration ./packages/configuration
 COPY packages/observability ./packages/observability
-COPY packages/typescript-config ./packages/typescript-config
+COPY packages/hub-core ./packages/hub-core
 COPY services/identity-service ./services/identity-service
+COPY infrastructure/docker/point-workspace-exports-to-dist.mjs ./infrastructure/docker/point-workspace-exports-to-dist.mjs
+RUN pnpm --filter @v2/configuration run build \
+  && pnpm --filter @v2/observability run build \
+  && pnpm --filter @v2/hub-core run build \
+  && node infrastructure/docker/point-workspace-exports-to-dist.mjs packages/configuration packages/observability packages/hub-core \
+  && rm -rf packages/configuration/src packages/observability/src packages/hub-core/src \
+  && pnpm --filter @v2/identity-service run build
+
+FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=4200
-EXPOSE 4200
+ENV IDENTITY_SERVICE_HOST=0.0.0.0
+ARG ZEABUR_GIT_COMMIT_SHA
+ENV V2_IMAGE_GIT_COMMIT_SHA=$ZEABUR_GIT_COMMIT_SHA
 WORKDIR /app
+COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=build /app/packages/typescript-config ./packages/typescript-config
+COPY --from=build /app/packages/configuration/package.json ./packages/configuration/package.json
+COPY --from=build /app/packages/configuration/dist ./packages/configuration/dist
+COPY --from=build /app/packages/observability/package.json ./packages/observability/package.json
+COPY --from=build /app/packages/observability/dist ./packages/observability/dist
+COPY --from=build /app/packages/hub-core/package.json ./packages/hub-core/package.json
+COPY --from=build /app/packages/hub-core/dist ./packages/hub-core/dist
+COPY --from=build /app/services/identity-service/package.json ./services/identity-service/package.json
+COPY --from=build /app/services/identity-service/dist ./services/identity-service/dist
+COPY --from=build /app/services/identity-service/migrations ./services/identity-service/migrations
+COPY --from=build /app/services/identity-service/scripts/migrate-prod.mjs ./services/identity-service/scripts/migrate-prod.mjs
+COPY --from=build /app/services/identity-service/scripts/docker-entrypoint.mjs ./services/identity-service/scripts/docker-entrypoint.mjs
+RUN pnpm install --frozen-lockfile --prod --filter @v2/identity-service...
+WORKDIR /app/services/identity-service
+EXPOSE 4200
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4200)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["pnpm", "--filter", "@v2/identity-service", "exec", "tsx", "src/main.ts"]
+CMD ["node", "scripts/docker-entrypoint.mjs", "dist/services/identity-service/src/main.js"]

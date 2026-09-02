@@ -1,0 +1,24 @@
+{
+  "name": "activity-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/activity-service/src",
+  "projectType": "application",
+  "tags": ["type:service", "scope:activity"],
+  "targets": {
+    "serve": {
+      "command": "corepack pnpm --dir services/activity-service dev"
+    },
+    "build": {
+      "command": "corepack pnpm --dir services/activity-service build"
+    },
+    "lint": {
+      "command": "corepack pnpm exec eslint services/activity-service/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p services/activity-service/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config services/activity-service/vitest.config.ts"
+    }
+  }
+}

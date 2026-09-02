@@ -62,7 +62,7 @@ export type PanelRenderInput = {
 export type PanelMessagePayload = MessageCreateOptions & MessageEditOptions;
 
 /**
- * Public /panel-test card as Discord Components V2 (single Container).
+ * Public operator test panel as Discord Components V2 (single Container).
  * No legacy embeds. Diagnostics belong in ephemeral /status.
  */
 export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload {

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
-    "migrate": "tsx scripts/migrate.mts"
+    "migrate": "tsx scripts/migrate.mts",
+    "migrate:prod": "node scripts/migrate-prod.mjs"
   },
   "dependencies": {
     "@better-auth/redis-storage": "1.6.25",
@@ -19,6 +20,7 @@
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-fastify": "^11.1.28",
     "@v2/configuration": "workspace:*",
+    "@v2/hub-core": "workspace:*",
     "@v2/observability": "workspace:*",
     "better-auth": "1.6.25",
     "fastify": "^5.5.0",

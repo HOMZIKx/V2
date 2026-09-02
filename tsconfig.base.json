@@ -28,11 +28,14 @@
     "baseUrl": ".",
     "paths": {
       "@v2/contracts": ["packages/contracts/src/index.ts"],
+      "@v2/hub-core": ["packages/hub-core/src/index.ts"],
+      "@v2/notification-core": ["packages/notification-core/src/index.ts"],
       "@v2/configuration": ["packages/configuration/src/index.ts"],
       "@v2/observability": ["packages/observability/src/index.ts"],
       "@v2/testing": ["packages/testing/src/index.ts"],
       "@v2/design-system": ["packages/design-system/src/index.ts"],
-      "@v2/internal-jwt": ["packages/internal-jwt/src/index.ts"]
+      "@v2/internal-jwt": ["packages/internal-jwt/src/index.ts"],
+      "@v2/messaging": ["packages/messaging/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp", "dist", "coverage"]

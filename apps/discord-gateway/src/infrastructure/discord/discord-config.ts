@@ -45,7 +45,7 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
     DISCORD_APPLICATION_ID: z.string().optional().default(''),
     DISCORD_TOKEN: z.string().optional().default(''),
-    DISCORD_TEST_GUILD_ID: z.string().optional().default('1534228693017432124'),
+    DISCORD_TEST_GUILD_ID: z.string().optional().default(''),
     DISCORD_TEST_OPERATOR_IDS: z.string().optional().default(''),
     DISCORD_COMPONENT_SIGNING_SECRET: z.string().optional().default(''),
     DISCORD_AUTO_REGISTER_GUILD_COMMANDS: z.preprocess(
@@ -70,10 +70,129 @@ export const DiscordGatewayConfigSchema = z
       .positive()
       .max(60)
       .default(60),
+    DISCORD_ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    DISCORD_AUTO_RECONCILE_HUB_ON_STARTUP: z.preprocess(
+      (value) => parseBoolean(value, true),
+      z.boolean(),
+    ),
+    /** Extra guild IDs allowed for multi-guild projections (comma-separated). Home = DISCORD_TEST_GUILD_ID. */
+    DISCORD_ACTIVITY_ALLOWED_GUILD_IDS: z.string().optional().default(''),
+    /** When set, discord-gateway consumes Activity projection envelopes from RabbitMQ. */
+    DISCORD_ACTIVITY_RABBITMQ_URL: z.string().optional().default(''),
+    ACTIVITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4400'),
+    ACTIVITY_CLIENT_MODE: z.enum(['headers', 'assertion']).optional().default('headers'),
+    ACTIVITY_ORGANIZATION_ID: z.string().optional().default(''),
+    /** Mirrors activity-service ACTIVITY_ENABLED for local projection guard path. */
+    ACTIVITY_ENABLED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    /** Mirrors activity-service ACTIVITY_ALLOW_TEST_SEED for /centrum-seed. */
+    ACTIVITY_ALLOW_TEST_SEED: z.preprocess((value) => parseBoolean(value, false), z.boolean()),
+    NODE_ENV: z.enum(['development', 'test', 'production']).optional().default('development'),
+    ACTIVITY_PROJECTION_SHARED_SECRET: z.string().optional().default(''),
+    DISCORD_TO_ACTIVITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
+    DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: z.string().optional(),
+    DISCORD_TO_ACTIVITY_ACTIVE_KID: z.string().optional(),
+    ACTIVITY_ASSERTION_AUD: z.string().optional(),
+    IDENTITY_SERVICE_BASE_URL: z.string().optional().default('http://127.0.0.1:4200'),
+    DISCORD_TO_IDENTITY_CLIENT_ID: z.string().optional().default('v2.discord-gateway'),
+    DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM: z.string().optional(),
+    DISCORD_TO_IDENTITY_ACTIVE_KID: z.string().optional(),
+    IDENTITY_ASSERTION_AUD: z.string().optional(),
     APP_VERSION: z.string().optional().default('0.0.0-dev'),
     GIT_COMMIT_SHA: z.string().optional().default('unknown'),
+    /** Public Member WWW origin for profile deep links (no trailing slash). */
+    DISCORD_MEMBER_WWW_ORIGIN: z.string().optional().default(''),
   })
   .superRefine((config, ctx) => {
+    if (config.DISCORD_ACTIVITY_ENABLED) {
+      try {
+        new URL(config.ACTIVITY_SERVICE_BASE_URL);
+      } catch {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_SERVICE_BASE_URL'],
+          message:
+            'ACTIVITY_SERVICE_BASE_URL must be a valid URL when Discord activity is enabled.',
+        });
+      }
+      if (config.ACTIVITY_ORGANIZATION_ID.trim().length === 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_ORGANIZATION_ID'],
+          message: 'ACTIVITY_ORGANIZATION_ID is required when Discord activity is enabled.',
+        });
+      }
+      if (config.ACTIVITY_PROJECTION_SHARED_SECRET.trim().length === 0) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ACTIVITY_PROJECTION_SHARED_SECRET'],
+          message:
+            'ACTIVITY_PROJECTION_SHARED_SECRET is required when Discord activity is enabled.',
+        });
+      }
+      if (config.ACTIVITY_CLIENT_MODE === 'assertion') {
+        const pem = config.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM ?? '';
+        if (!pem.includes('BEGIN PRIVATE KEY')) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM'],
+            message:
+              'DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.DISCORD_TO_ACTIVITY_ACTIVE_KID === undefined ||
+          config.DISCORD_TO_ACTIVITY_ACTIVE_KID.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_ACTIVITY_ACTIVE_KID'],
+            message:
+              'DISCORD_TO_ACTIVITY_ACTIVE_KID is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.ACTIVITY_ASSERTION_AUD === undefined ||
+          config.ACTIVITY_ASSERTION_AUD.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['ACTIVITY_ASSERTION_AUD'],
+            message: 'ACTIVITY_ASSERTION_AUD is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        const identityPem = config.DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM ?? '';
+        if (!identityPem.includes('BEGIN PRIVATE KEY')) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM'],
+            message:
+              'DISCORD_TO_IDENTITY_PRIVATE_KEY_PEM is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.DISCORD_TO_IDENTITY_ACTIVE_KID === undefined ||
+          config.DISCORD_TO_IDENTITY_ACTIVE_KID.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['DISCORD_TO_IDENTITY_ACTIVE_KID'],
+            message:
+              'DISCORD_TO_IDENTITY_ACTIVE_KID is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+        if (
+          config.IDENTITY_ASSERTION_AUD === undefined ||
+          config.IDENTITY_ASSERTION_AUD.trim().length === 0
+        ) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['IDENTITY_ASSERTION_AUD'],
+            message: 'IDENTITY_ASSERTION_AUD is required when ACTIVITY_CLIENT_MODE=assertion.',
+          });
+        }
+      }
+    }
+
     if (config.DISCORD_AUTHORIZATION_SYNC_ENABLED) {
       if (
         config.AUTHORIZATION_BASE_URL === undefined ||
@@ -177,13 +296,38 @@ export const DiscordGatewayConfigSchema = z
 export type DiscordGatewayConfigInput = z.input<typeof DiscordGatewayConfigSchema>;
 export type DiscordGatewayConfig = z.output<typeof DiscordGatewayConfigSchema> & {
   operatorIds: string[];
+  activityAllowedGuildIds: string[];
 };
 
 export function normalizeDiscordConfig(
   parsed: z.output<typeof DiscordGatewayConfigSchema>,
 ): DiscordGatewayConfig {
+  const privateKeyPem =
+    parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM !== undefined
+      ? parsed.DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM.replace(/\\n/g, '\n')
+      : undefined;
+  const activityAllowedGuildIds = parseAllowedGuildIds(
+    parsed.DISCORD_TEST_GUILD_ID,
+    parsed.DISCORD_ACTIVITY_ALLOWED_GUILD_IDS,
+  );
   return {
     ...parsed,
+    ...(privateKeyPem !== undefined ? { DISCORD_TO_ACTIVITY_PRIVATE_KEY_PEM: privateKeyPem } : {}),
     operatorIds: parseOperatorIds(parsed.DISCORD_TEST_OPERATOR_IDS),
+    activityAllowedGuildIds,
   };
+}
+
+function parseAllowedGuildIds(homeGuildId: string, extraCsv: string): string[] {
+  const ids = new Set<string>();
+  if (homeGuildId.trim().length > 0) {
+    ids.add(homeGuildId.trim());
+  }
+  for (const part of extraCsv.split(',')) {
+    const id = part.trim();
+    if (id.length > 0) {
+      ids.add(id);
+    }
+  }
+  return [...ids];
 }

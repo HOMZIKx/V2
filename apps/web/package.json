@@ -8,12 +8,14 @@
     "build": "node ./run-next.mjs build",
     "start": "node ./run-next.mjs start --hostname 0.0.0.0 --port 3000",
     "start:local": "node ./run-next.mjs start --hostname 127.0.0.1 --port 3000",
-    "lint": "eslint .",
+    "lint": "eslint app src middleware.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
+    "@v2/design-system": "workspace:*",
+    "@v2/hub-core": "workspace:*",
     "next": "15.5.22",
     "react": "19.2.8",
     "react-dom": "19.2.8"

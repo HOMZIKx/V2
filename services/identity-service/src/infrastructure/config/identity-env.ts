@@ -97,6 +97,42 @@ const baseSchema = z.object({
         ? 'http://127.0.0.1:4200/identity/v1/system/revoke-sessions'
         : trimmed;
     }),
+  IDENTITY_CHARACTER_RESOLVE_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/character/resolve'
+        : trimmed;
+    }),
+  IDENTITY_INTERNAL_PROFILE_READ_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/profile'
+        : trimmed;
+    }),
+  IDENTITY_INTERNAL_PROFILE_CHARACTERS_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/profile/characters'
+        : trimmed;
+    }),
+  IDENTITY_INTERNAL_PROFILE_CHARACTER_UPDATE_BASE_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/profile/characters'
+        : trimmed;
+    }),
   IDENTITY_SERVICE_CLIENTS_JSON: optionalTrimmed,
   IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS: z.coerce.number().int().positive().max(60).default(60),
   IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS: z.coerce
@@ -139,6 +175,15 @@ export class IdentityConfigError extends Error {
 }
 
 const MIN_SECRET_LENGTH = 32;
+
+function isZeaburInternalServiceUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' && /^service-[a-f0-9]+$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 function assertValidOriginUrl(
   value: string,
@@ -276,6 +321,12 @@ function assertInternalJwtRequirements(
     requireHttps: isProduction,
     rejectLocalhost: isProduction,
   });
+  assertValidOriginUrl(
+    config.IDENTITY_CHARACTER_RESOLVE_URL,
+    'IDENTITY_CHARACTER_RESOLVE_URL',
+    addIssue,
+    { requireHttps: isProduction, rejectLocalhost: isProduction },
+  );
 }
 
 function assertAuthorizationRequirements(
@@ -316,11 +367,15 @@ function assertAuthorizationRequirements(
 
   const isProduction = config.NODE_ENV === 'production';
   if (config.IDENTITY_AUTHORIZATION_BASE_URL !== undefined) {
+    const isInternalMesh = isZeaburInternalServiceUrl(config.IDENTITY_AUTHORIZATION_BASE_URL);
     assertValidOriginUrl(
       config.IDENTITY_AUTHORIZATION_BASE_URL,
       'IDENTITY_AUTHORIZATION_BASE_URL',
       addIssue,
-      { requireHttps: isProduction, rejectLocalhost: isProduction },
+      {
+        requireHttps: isProduction && !isInternalMesh,
+        rejectLocalhost: isProduction && !isInternalMesh,
+      },
     );
   }
 }

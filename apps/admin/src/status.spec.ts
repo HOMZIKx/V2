@@ -4,6 +4,6 @@ import { adminStatusMessage } from './status.js';
 
 describe('adminStatusMessage', () => {
   it('identifies the technical screen', () => {
-    expect(adminStatusMessage()).toBe('V2 Admin is running');
+    expect(adminStatusMessage()).toBe('V2 Control Center');
   });
 });

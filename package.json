@@ -26,6 +26,11 @@
     "test:coverage": "nx run-many -t test --parallel=1 -- --coverage",
     "build": "nx run-many -t build --parallel=4",
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
+    "runtime:doctor": "node ./tools/scripts/runtime-doctor.mjs",
+    "zeabur:redeploy": "node ./tools/scripts/zeabur-redeploy.mjs",
+    "zeabur:deploy": "node ./tools/scripts/zeabur-sync-and-deploy.mjs",
+    "zeabur:smoke": "node ./tools/scripts/zeabur-smoke-public.mjs",
+    "smoke:runtime": "node ./tools/scripts/runtime-smoke-deployed.mjs",
     "validate": "node ./tools/scripts/validate.mjs",
     "validate:quick": "node ./tools/scripts/validate.mjs --quick",
     "generate:service": "node ./tools/scripts/generate-service.mjs",
@@ -48,11 +53,13 @@
       "react-dom": "19.2.8",
       "react-router": "8.3.0",
       "postcss": "8.5.25",
+      "nanoid": "3.3.18",
       "brace-expansion@>=4": "5.0.9",
       "find-my-way": "9.7.0",
       "js-yaml": "5.2.3",
       "sharp": "0.35.3",
-      "undici": "6.28.0"
+      "undici": "6.28.0",
+      "@fastify/static": "10.1.1"
     }
   },
   "devDependencies": {

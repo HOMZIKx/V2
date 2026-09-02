@@ -16,6 +16,22 @@ export function isDependencyAllowed(
     return false;
   }
 
+  // Activity may call Identity/Authorization only over HTTP — never import their packages.
+  if (
+    source.has('scope:activity') &&
+    (target.has('scope:identity') || target.has('scope:authorization'))
+  ) {
+    return false;
+  }
+
+  if (source.has('scope:identity') && target.has('scope:activity')) {
+    return false;
+  }
+
+  if (source.has('scope:authorization') && target.has('scope:activity')) {
+    return false;
+  }
+
   if (source.has('type:app')) {
     return [...appTargetTypes].some((tag) => target.has(tag));
   }

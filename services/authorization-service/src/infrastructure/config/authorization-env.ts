@@ -193,6 +193,12 @@ export function parseAuthorizationEnv(env: NodeJS.ProcessEnv): AuthorizationEnv 
 
   const config = parsed.data;
 
+  if (config.NODE_ENV === 'production' && !config.AUTHORIZATION_ENABLED) {
+    throw new AuthorizationConfigError(
+      'AUTHORIZATION_ENABLED must be true when NODE_ENV=production',
+    );
+  }
+
   if (config.AUTHORIZATION_ENABLED) {
     const issues: string[] = [];
     assertEnabledRequirements(config, (path, message) => issues.push(`${path}: ${message}`));

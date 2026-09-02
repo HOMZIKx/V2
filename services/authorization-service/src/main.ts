@@ -3,7 +3,11 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { resolveHttpListen } from '@v2/configuration';
-import { createLogger } from '@v2/observability';
+import {
+  createLogger,
+  registerFastifyRequestCorrelation,
+  runBoundedShutdown,
+} from '@v2/observability';
 import type { Pool } from 'pg';
 
 import { serviceName } from './domain/service-name.js';
@@ -19,15 +23,20 @@ const logger = createLogger(serviceName);
 const bootstrap = async (): Promise<void> => {
   const config = parseAuthorizationEnv(process.env);
 
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 262_144 }),
+  );
+
+  registerFastifyRequestCorrelation(app.getHttpAdapter().getInstance());
 
   const pool = app.get<Pool>(AUTHORIZATION_POOL);
 
   const shutdown = async (signal: string): Promise<void> => {
-    logger.info('Shutting down Authorization Service.', { signal });
-    await app.close().catch(() => undefined);
-    await pool.end().catch(() => undefined);
-    process.exit(0);
+    await runBoundedShutdown(logger, signal, async () => {
+      await app.close().catch(() => undefined);
+      await pool.end().catch(() => undefined);
+    });
   };
 
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {

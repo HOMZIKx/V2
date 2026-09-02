@@ -43,6 +43,7 @@ export class InternalJwtProofService {
         'identity-client-assertion': assertion,
       },
       body: JSON.stringify({ audience }),
+      signal: AbortSignal.timeout(5_000),
     });
 
     if (!response.ok) {
@@ -50,7 +51,7 @@ export class InternalJwtProofService {
     }
 
     const body = (await response.json()) as { access_token: string };
-    const jwksResponse = await this.fetchImpl(jwksUrl);
+    const jwksResponse = await this.fetchImpl(jwksUrl, { signal: AbortSignal.timeout(5_000) });
     if (!jwksResponse.ok) {
       throw new Error(`JWKS fetch failed with status ${jwksResponse.status}`);
     }

@@ -164,7 +164,8 @@ Zdarzenia (porty; broker nie w P4.1):
 Cel: agregaty, migracje DB `activity`, OpenAPI, idempotency, outbox schema +
 claim/lease/retry + **testowy** handler; runtime worker **domyślnie wyłączony**
 do P4.2 realnego consumer projekcji. **Bez** UI Discord/WWW/Admin.
-Marker: `READY_FOR_AUDIT_P4_1_DOMAIN`.
+Marker dostarczenia: `READY_FOR_REVIEW_P4_1_ACTIVITY_DOMAIN` (implementacja na branchu P4.1).
+Historyczny marker planu: `READY_FOR_AUDIT_P4_1_DOMAIN`.
 
 ### P4.2 — Jednorazowe Discord (+ panel)
 
@@ -270,30 +271,32 @@ wersjonowanych `custom_id` (np. `activity:v1:panel:<panelId>:create`).
 
 Wymagane: concurrent integration tests dla create/RSVP/waitlist.
 
-## 12. Formularz Discord — jeden logiczny formularz (Accepted)
+## 12. Formularz Discord — jeden spójny formularz użytkownika
 
-Discord modal ≤ **5** głównych komponentów. **Nie** jeden ogromny modal na
-wszystkie pola. **Nie** kreator Dalej/Dalej/Dalej.
+### Owner Amendment (P4-CLOSURE-REMEDIATION-001)
 
-**Model:** prywatny panel Components V2 = jeden logiczny formularz ze
-**szkicem 24h** i sekcjami:
+**Zastępuje** wcześniejszy model „sekcji do edycji” (osobne przyciski
+Nazwa i opis / Data i godzina / …).
 
-1. podstawowe dane;
-2. termin;
-3. publikacja;
-4. uczestnicy/limity;
-5. opcje dodatkowe.
+**Docelowy UX (obowiązkowy):**
 
-Edytuj przy sekcji → modal ≤5 pól **lub** selecty w prywatnym panelu.
-Użytkownik edytuje sekcje w dowolnej kolejności; widzi podsumowanie draftu;
-kończy **Podgląd** → **Publikuj**.
+1. Utwórz aktywność → **jeden** prywatny ekran formularza Components V2.
+2. Wszystkie wymagane informacje na tym jednym ekranie (selecty natywne +
+   jeden modal na pola tekstowe/datę/opis w limicie Discord ≤5).
+3. **Zakaz** odbudowy zestawu przycisków sekcyjnych.
+4. Po uzupełnieniu: **Podgląd** → **Publikuj**.
+5. Walidacja nie kasuje danych; draft 24h pozostaje.
+6. P4.4 WWW **nie** ma kreatora; P4.5 multi-guild poza zakresem.
+
+Discord modal ≤ **5** głównych komponentów — ograniczenie platformy, nie
+powód do sekcyjnego UX.
 
 | Pole               | Komponent                                                         |
 | ------------------ | ----------------------------------------------------------------- |
-| nazwa              | Text Input                                                        |
-| rodzaj             | String Select                                                     |
+| nazwa              | Text Input (modal)                                                |
+| rodzaj             | String Select (ekran formularza)                                  |
 | data/godzina       | Text Input (jednoznaczny format) + timezone user / fallback guild |
-| serwer             | String Select                                                     |
+| serwer             | String Select (gdy multi — poza P4.4)                             |
 | kanał              | Channel Select (allowlist)                                        |
 | opis               | Text Input paragraph                                              |
 | limit              | Text Input lub Select                                             |

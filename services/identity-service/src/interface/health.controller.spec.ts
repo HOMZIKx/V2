@@ -15,6 +15,9 @@ function fakeRuntime(options: { dbOk: boolean; redisOk: boolean; migrated: boole
         if (!options.dbOk) {
           return Promise.reject(new Error('db down'));
         }
+        if (sql.includes('COUNT(*)')) {
+          return Promise.resolve({ rowCount: 1, rows: [{ n: options.migrated ? '3' : '0' }] });
+        }
         if (sql.includes('identity_schema_migrations')) {
           return Promise.resolve({ rowCount: options.migrated ? 1 : 0, rows: [] });
         }
@@ -30,7 +33,7 @@ function fakeRuntime(options: { dbOk: boolean; redisOk: boolean; migrated: boole
 describe('HealthController', () => {
   it('is always live', () => {
     const controller = new HealthController(disabledConfig, null);
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
   });
 
   it('reports authDisabled readiness when auth is off', async () => {

@@ -1,0 +1,197 @@
+import { Module, type Provider } from '@nestjs/common';
+import type { Pool } from 'pg';
+
+import type {
+  ActivityRepositoryPort,
+  AuthorizePort,
+  LfgCharacterVerifyPort,
+} from '../application/ports/activity.ports.js';
+import type { DiscordChannelValidationPort } from '../application/ports/discord-channel-validation.port.js';
+import type { DiscordGuildMetadataPort } from '../application/ports/discord-guild-metadata.port.js';
+import { ActivityAdminUseCases } from '../application/use-cases/activity-admin.use-cases.js';
+import { ActivityUseCases } from '../application/use-cases/activity.use-cases.js';
+import { type Clock, SystemClock } from '../domain/clock.js';
+import { createAuthorizePort } from '../infrastructure/authorization/authorization-client.js';
+import { type ActivityEnv, parseActivityEnv } from '../infrastructure/config/activity-env.js';
+import { createActivityPool } from '../infrastructure/db/pg-pool.js';
+import { createDiscordChannelValidationPort } from '../infrastructure/discord/discord-channel-validation-client.js';
+import { createDiscordGuildMetadataPort } from '../infrastructure/discord/discord-guild-metadata-client.js';
+import { createIdentityCharacterClient } from '../infrastructure/identity/identity-character-client.js';
+import {
+  type AssertionJtiStore,
+  createAssertionJtiStore,
+} from '../infrastructure/internal/assertion-jti-store.js';
+import {
+  type InboundClientRegistry,
+  loadInboundClientRegistry,
+} from '../infrastructure/internal/verify-inbound-assertion.js';
+import { ActivityOutboxDispatcher } from '../infrastructure/outbox/outbox-dispatcher.js';
+import { ActivityProjectionAutoRepair } from '../infrastructure/outbox/projection-auto-repair.js';
+import { ActivityRepository } from '../infrastructure/persistence/activity-repository.js';
+import { ActivityAdminController } from './activity-admin.controller.js';
+import { ActivityController } from './activity.controller.js';
+import {
+  ACTIVITY_ADMIN_USE_CASES,
+  ACTIVITY_CLOCK,
+  ACTIVITY_CONFIG,
+  ACTIVITY_POOL,
+  ACTIVITY_REPOSITORY,
+  ACTIVITY_USE_CASES,
+  ASSERTION_JTI_STORE,
+  AUTHORIZE_PORT,
+  CHARACTER_VERIFY_PORT,
+  DISCORD_CHANNEL_VALIDATION,
+  DISCORD_GUILD_METADATA,
+  INBOUND_CLIENT_REGISTRY,
+} from './activity.tokens.js';
+import { HealthController } from './health.controller.js';
+import { InboundAssertionGuard } from './inbound-assertion.guard.js';
+
+const providers: Provider[] = [
+  {
+    provide: ACTIVITY_CONFIG,
+    useFactory: (): ActivityEnv => parseActivityEnv(process.env),
+  },
+  {
+    provide: ACTIVITY_POOL,
+    useFactory: (config: ActivityEnv): Pool => createActivityPool(config.ACTIVITY_DATABASE_URL),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ACTIVITY_REPOSITORY,
+    useFactory: (pool: Pool): ActivityRepositoryPort => new ActivityRepository(pool),
+    inject: [ACTIVITY_POOL],
+  },
+  {
+    provide: AUTHORIZE_PORT,
+    useFactory: (config: ActivityEnv): AuthorizePort => createAuthorizePort(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: CHARACTER_VERIFY_PORT,
+    useFactory: (config: ActivityEnv): LfgCharacterVerifyPort =>
+      createIdentityCharacterClient(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ACTIVITY_CLOCK,
+    useFactory: (): Clock => new SystemClock(),
+  },
+  {
+    provide: DISCORD_CHANNEL_VALIDATION,
+    useFactory: (config: ActivityEnv): DiscordChannelValidationPort | null =>
+      createDiscordChannelValidationPort(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: DISCORD_GUILD_METADATA,
+    useFactory: (config: ActivityEnv): DiscordGuildMetadataPort | null =>
+      createDiscordGuildMetadataPort(config),
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ACTIVITY_USE_CASES,
+    useFactory: (
+      repository: ActivityRepositoryPort,
+      authorize: AuthorizePort,
+      characterVerify: LfgCharacterVerifyPort,
+      clock: Clock,
+      config: ActivityEnv,
+      discordGuildMetadata: DiscordGuildMetadataPort | null,
+    ): ActivityUseCases =>
+      new ActivityUseCases({
+        repository,
+        authorize,
+        characterVerify,
+        clock,
+        allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
+        nodeEnv: config.NODE_ENV,
+        discordGuildMetadata,
+      }),
+    inject: [
+      ACTIVITY_REPOSITORY,
+      AUTHORIZE_PORT,
+      CHARACTER_VERIFY_PORT,
+      ACTIVITY_CLOCK,
+      ACTIVITY_CONFIG,
+      DISCORD_GUILD_METADATA,
+    ],
+  },
+  {
+    provide: ACTIVITY_ADMIN_USE_CASES,
+    useFactory: (
+      repository: ActivityRepositoryPort,
+      authorize: AuthorizePort,
+      characterVerify: LfgCharacterVerifyPort,
+      clock: Clock,
+      config: ActivityEnv,
+      discordChannelValidation: DiscordChannelValidationPort | null,
+      discordGuildMetadata: DiscordGuildMetadataPort | null,
+    ): ActivityAdminUseCases =>
+      new ActivityAdminUseCases({
+        repository,
+        authorize,
+        characterVerify,
+        clock,
+        allowTestSeed: config.ACTIVITY_ALLOW_TEST_SEED,
+        nodeEnv: config.NODE_ENV,
+        discordChannelValidation,
+        discordGuildMetadata,
+      }),
+    inject: [
+      ACTIVITY_REPOSITORY,
+      AUTHORIZE_PORT,
+      CHARACTER_VERIFY_PORT,
+      ACTIVITY_CLOCK,
+      ACTIVITY_CONFIG,
+      DISCORD_CHANNEL_VALIDATION,
+      DISCORD_GUILD_METADATA,
+    ],
+  },
+  {
+    provide: INBOUND_CLIENT_REGISTRY,
+    useFactory: async (config: ActivityEnv): Promise<InboundClientRegistry | null> => {
+      const clientsJson = resolveInboundClientsJson(config);
+      if (clientsJson === undefined) {
+        return null;
+      }
+      return loadInboundClientRegistry(clientsJson);
+    },
+    inject: [ACTIVITY_CONFIG],
+  },
+  {
+    provide: ASSERTION_JTI_STORE,
+    useFactory: (config: ActivityEnv): AssertionJtiStore | null => {
+      if (
+        resolveInboundClientsJson(config) === undefined ||
+        config.ACTIVITY_REDIS_URL === undefined
+      ) {
+        return null;
+      }
+      return createAssertionJtiStore(
+        config.ACTIVITY_REDIS_URL,
+        config.ACTIVITY_ASSERTION_JTI_REDIS_PREFIX,
+      );
+    },
+    inject: [ACTIVITY_CONFIG],
+  },
+  InboundAssertionGuard,
+  ActivityOutboxDispatcher,
+  ActivityProjectionAutoRepair,
+];
+
+function resolveInboundClientsJson(config: ActivityEnv): string | undefined {
+  if (config.ACTIVITY_INBOUND_CLIENTS_JSON !== undefined) {
+    return config.ACTIVITY_INBOUND_CLIENTS_JSON;
+  }
+  if (config.ACTIVITY_INBOUND_CLIENTS_B64 === undefined) {
+    return undefined;
+  }
+  return Buffer.from(config.ACTIVITY_INBOUND_CLIENTS_B64, 'base64').toString('utf8');
+}
+
+@Module({
+  controllers: [HealthController, ActivityController, ActivityAdminController],
+  providers,
+})
+export class AppModule {}

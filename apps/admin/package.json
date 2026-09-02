@@ -7,14 +7,15 @@
     "dev": "vite --port 3001",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1 --port 3001",
-    "start": "vite preview --host 0.0.0.0 --port 3001",
-    "lint": "eslint .",
+    "start": "node ./scripts/serve-static.mjs",
+    "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.ts",
     "e2e": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "@v2/design-system": "workspace:*",
+    "@v2/hub-core": "workspace:*",
     "@vitejs/plugin-react": "^5.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

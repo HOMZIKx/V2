@@ -32,6 +32,8 @@ describe('discord cli contracts', () => {
     };
 
     expect(rest.listGlobalCommands).toBeTypeOf('function');
-    expect(guildCommandDefinitions.length).toBe(2);
+    expect(guildCommandDefinitions.length).toBe(6);
+    expect(guildCommandDefinitions.some((c) => c.name === 'status')).toBe(true);
+    expect(guildCommandDefinitions.some((c) => c.name === 'centrum-panel')).toBe(true);
   });
 });

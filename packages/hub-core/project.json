@@ -1,0 +1,13 @@
+{
+  "name": "hub-core",
+  "projectType": "library",
+  "root": "packages/hub-core",
+  "sourceRoot": "packages/hub-core/src",
+  "tags": ["type:util", "scope:shared"],
+  "targets": {
+    "lint": { "command": "eslint packages/hub-core/src" },
+    "typecheck": { "command": "tsc -p packages/hub-core/tsconfig.json --noEmit" },
+    "test": { "command": "vitest run --config packages/hub-core/vitest.config.ts" },
+    "build": { "command": "tsc -p packages/hub-core/tsconfig.json --noEmit" }
+  }
+}

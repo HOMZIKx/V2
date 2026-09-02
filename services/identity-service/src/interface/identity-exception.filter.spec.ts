@@ -13,28 +13,31 @@ function fakeHost(): {
   const status = vi.fn().mockReturnValue({ send });
   const reply = { status };
   const host = {
-    switchToHttp: () => ({ getResponse: () => reply }),
+    switchToHttp: () => ({
+      getResponse: () => reply,
+      getRequest: () => ({ headers: {} }),
+    }),
   } as unknown as ArgumentsHost;
   return { host, status, send };
 }
 
 describe('IdentityExceptionFilter', () => {
-  const cases: Array<[IdentityErrorCode, number]> = [
-    ['UNAUTHENTICATED', 401],
-    ['NOT_FOUND', 404],
-    ['CANNOT_UNLINK_LAST', 409],
-    ['ACCOUNT_ALREADY_LINKED', 409],
-    ['VALIDATION_FAILED', 400],
-    ['AUTH_DISABLED', 503],
+  const cases: Array<[IdentityErrorCode, number, string]> = [
+    ['UNAUTHENTICATED', 401, 'UNAUTHENTICATED'],
+    ['NOT_FOUND', 404, 'NOT_FOUND'],
+    ['CANNOT_UNLINK_LAST', 409, 'CONFLICT'],
+    ['ACCOUNT_ALREADY_LINKED', 409, 'CONFLICT'],
+    ['VALIDATION_FAILED', 400, 'VALIDATION'],
+    ['AUTH_DISABLED', 503, 'UPSTREAM_FAILURE'],
   ];
 
-  it.each(cases)('maps %s to HTTP %i', (code, expected) => {
+  it.each(cases)('maps %s to HTTP %i with category %s', (code, expected, category) => {
     const filter = new IdentityExceptionFilter();
     const { host, status, send } = fakeHost();
 
     filter.catch(new IdentityError(code), host);
 
     expect(status).toHaveBeenCalledWith(expected);
-    expect(send).toHaveBeenCalledWith({ error: { code, message: code } });
+    expect(send).toHaveBeenCalledWith({ error: { code, message: code, category } });
   });
 });

@@ -1,26 +1,56 @@
 import { Module } from '@nestjs/common';
 
 import {
+  createActivityHttpClientOrNull,
+  type ActivityHttpClient,
+} from '../infrastructure/activity/activity-http-client.js';
+import { ActivityProjectionDeliveryService } from '../infrastructure/messaging/activity-projection-delivery.service.js';
+import { ActivityProjectionRabbitConsumer } from '../infrastructure/messaging/activity-projection-rabbit-consumer.js';
+import { NotificationDmDeliveryService } from '../infrastructure/messaging/notification-dm-delivery.service.js';
+import {
   createDiscordGatewayOrNull,
   DiscordBootstrapService,
   loadDiscordConfig,
 } from './discord/discord-bootstrap.service.js';
-import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from './discord/discord.tokens.js';
+import {
+  DISCORD_ACTIVITY_CLIENT_TOKEN,
+  DISCORD_CONFIG_TOKEN,
+  DISCORD_GATEWAY_TOKEN,
+} from './discord/discord.tokens.js';
+import { ActivityChannelValidationController } from './http/activity-channel-validation.controller.js';
+import { ActivityGuildMetadataController } from './http/activity-guild-metadata.controller.js';
+import { ActivityProjectionController } from './http/activity-projection.controller.js';
 import { HealthController } from './http/health.controller.js';
+import { NotificationDeliveryController } from './http/notification-delivery.controller.js';
 
 @Module({
-  controllers: [HealthController],
+  controllers: [
+    HealthController,
+    ActivityProjectionController,
+    NotificationDeliveryController,
+    ActivityChannelValidationController,
+    ActivityGuildMetadataController,
+  ],
   providers: [
     {
       provide: DISCORD_CONFIG_TOKEN,
       useFactory: () => loadDiscordConfig(),
     },
     {
-      provide: DISCORD_GATEWAY_TOKEN,
-      useFactory: createDiscordGatewayOrNull,
+      provide: DISCORD_ACTIVITY_CLIENT_TOKEN,
+      useFactory: (config: ReturnType<typeof loadDiscordConfig>): ActivityHttpClient | null =>
+        createActivityHttpClientOrNull(config),
       inject: [DISCORD_CONFIG_TOKEN],
     },
+    {
+      provide: DISCORD_GATEWAY_TOKEN,
+      useFactory: createDiscordGatewayOrNull,
+      inject: [DISCORD_CONFIG_TOKEN, DISCORD_ACTIVITY_CLIENT_TOKEN],
+    },
     DiscordBootstrapService,
+    ActivityProjectionDeliveryService,
+    NotificationDmDeliveryService,
+    ActivityProjectionRabbitConsumer,
   ],
 })
 export class AppModule {}

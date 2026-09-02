@@ -1,0 +1,31 @@
+---
+description: Owner+ChatGPT own production member WWW; Cursor integrates only (D-050).
+alwaysApply: true
+---
+
+# Frontend ownership freeze (D-050)
+
+## Binding
+
+Owner + ChatGPT design and create production **member WWW** (`codex/phase5-*`, `preview/destiled-web`, PR #30 direction).
+
+Cursor **integrates** approved frontend to API, Identity, Authorization, Discord, data, Zeabur.
+
+Workflow SoT: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
+
+## Cursor must not
+
+- Redesign competing member WWW IA/navigation/layouts/visual identity.
+- Treat PR #19 `apps/web` UI or legacy guild app as final product design SoT.
+- Invent new member product screens from endpoints/tables without Owner-approved frontend slice.
+- Start Task 007 / Trackers / deferred product modules before 005/006 tip deploy + acceptance are ordered.
+
+## Cursor may
+
+- Backend, security, CI, migrations, Discord Gateway, Admin Control Center plumbing when not inventing competing member WWW design.
+- Wire approved frontend adapters to real services.
+- Preserve existing web/admin code as technical material (do not delete solely because design track supersedes visuals).
+
+## Decision ID note
+
+On this branch, frontend ownership is **D-050**. Frontend-track Decision Log used **D-037** for the same text; P4 Discord D-037 on this branch remains the Discord create-form amendment.

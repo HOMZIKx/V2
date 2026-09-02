@@ -2,40 +2,63 @@
 
 ## Status
 
-`READY_FOR_FINAL_P4_SPEC_REAUDIT`
+`V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001` — **IN PROGRESS**  
+Prior audit `006C` — **COMPLETE** (Decisions **D-051** / **D-052** ACCEPTED)
 
-Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
+Product / merge PR #19: **NOT APPROVED** · **NOT MERGED**
 
-## Active phase
+Canonical audit: `docs/ai/PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md`
 
-P4 Centrum Aktywności — final specification closure (docs only).
-P0–P3 completed. P4 implementation not started.
+## Ownership (binding)
 
-## Active task
+| Party               | Responsibility                                                                |
+| ------------------- | ----------------------------------------------------------------------------- |
+| **Cursor**          | Backend + integrations + Zeabur/runtime; integrate Owner-approved frontend    |
+| **Owner + ChatGPT** | Product, UX, production member WWW (`codex/phase5-*`, `preview/destiled-web`) |
 
-- Task ID: `P4-FINAL-SPEC-CLOSURE-001`
-- Branch: `cursor/p4-centrum-aktywnosci-spec-v2`
-- Draft PR: **#18**
-- Base: `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`
-- ADR-0014: **Accepted**
-- Service name: **`activity-service`** / DB **`activity`**
+SoT: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (**D-050**).
 
-## Closed blockers
+## Model freeze (D-051 / D-052)
 
-P4-D3, P4-D5, P4-D6 (nonce/adopt), P4-D7 permissions, RSVP confirmationState,
-transactional invariants, one logical Discord form, Issue #12 non-blocking for
-P4.2a test.
+| Concept | Rule |
+| ------- | ---- |
+| GameAccount | **SOLO ONLY** (no multi-user sharing / no GameAccountMember) |
+| Team | **MULTI-USER COLLABORATION BOUNDARY** (`player-workspace-service`) |
+| Canonical Identity Character | **PROFILE / LFG / ACTIVITY IDENTITY** |
+| Team Character Board | **TEAM PLANNING/COLLABORATION RESOURCE** |
+| Optional link | `TeamCharacterBoard.linkedPlayerCharacterId` → Identity character (nullable) |
 
-## Open
+## Current execution
 
-- P4-D8 assets = OWNER_DECISION_REQUIRED (prod visual sign-off)
-- Screenshot-based `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` blocked —
-  image file unavailable in agent environment
+| Field              | Value                                                                 |
+| ------------------ | --------------------------------------------------------------------- |
+| CURRENT_TASK       | `V2-PLAYER-WORKSPACE-TEAM-CHARACTER-BOARD-FOUNDATION-001`             |
+| BASE_LINEAGE       | `cursor/p4-1-activity-domain` / **#19**                               |
+| STACKED_BRANCH     | `cursor/player-workspace-team-character-board-foundation`             |
+| MERGED_MAIN        | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                            |
+| OUT_OF_SCOPE       | EQ, Sets, Trackers, Notifications, Discord Team reminders, Task 007  |
 
-## Out of scope
+## Owner acceptance
 
-Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
+- 005 Admin: **PENDING** (parallel; not blocking this isolated slice)
+- 006 Player Core: **PENDING** (parallel; not blocking this isolated slice)
+
+## Deferred — DO NOT TOUCH
+
+- Task 007 Trackers / Biolog / Elixirs / Marketplace / Reservations / G8 / Guild Control / finances / Community / Music
+- Competing redesign of member WWW
+- Merging PR #19
+
+## Checkpoint ledger (selected)
+
+| Marker                                  | SHA                                        | Class          |
+| --------------------------------------- | ------------------------------------------ | -------------- |
+| MERGED_MAIN                             | `8c1b0959ae51d131e62ed587d81be1aae5012d37` | main tip       |
+| **ADMIN_CONTROL_CENTER_UX_V1_SHA**      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | 005            |
+| **PLAYER_TOOLKIT_CORE_V1_SHA**          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | 006 foundation |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA** | `8a6afd6015d93466871801fa5c03a96080820277` | 006A           |
+| 006B migrate entrypoint tip             | `7c4382cbac25297c9c26f0b47cd00af7a778829b` | runtime safety |
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-FINAL-SPEC-CLOSURE-001`)
+2026-09-02 — D-051/D-052 recorded; foundation-001 implementation started.

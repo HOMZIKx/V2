@@ -1,0 +1,117 @@
+{
+  "$schema": "./service-registry.schema.json",
+  "version": 1,
+  "description": "Source of truth for currently deployable V2 P4 services. A future APPROVED deployable service must be registered here in the same stage that introduces it.",
+  "addons": [
+    {
+      "name": "postgresql",
+      "type": "ADDON",
+      "kind": "postgres",
+      "public": false,
+      "notes": "Current Zeabur test project has one Postgres addon. ADR-0004 still wants separate databases/accounts per service.",
+      "logicalAliases": ["postgres-authorization", "postgres-identity", "postgres-activity"]
+    },
+    {
+      "name": "redis",
+      "type": "ADDON",
+      "kind": "redis",
+      "public": false,
+      "logicalAliases": ["redis"]
+    }
+  ],
+  "services": [
+    {
+      "name": "authorization-service",
+      "type": "APP",
+      "dockerfile": "Dockerfile.authorization-service",
+      "zbpackDockerfileName": "authorization-service",
+      "rootDirectory": "/",
+      "health": { "live": "/health/live", "ready": "/health/ready" },
+      "public": false,
+      "dependencies": ["postgresql"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
+      "name": "identity-service",
+      "type": "APP",
+      "dockerfile": "Dockerfile.identity-service",
+      "zbpackDockerfileName": "identity-service",
+      "rootDirectory": "/",
+      "health": { "live": "/health/live", "ready": "/health/ready" },
+      "public": false,
+      "dependencies": ["postgresql", "redis"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
+      "name": "activity-service",
+      "type": "APP",
+      "dockerfile": "Dockerfile.activity-service",
+      "zbpackDockerfileName": "activity-service",
+      "rootDirectory": "/",
+      "health": { "live": "/health/live", "ready": "/health/ready" },
+      "public": false,
+      "dependencies": ["postgresql", "redis", "authorization-service"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
+      "name": "api-gateway",
+      "type": "APP",
+      "dockerfile": "Dockerfile.api-gateway",
+      "zbpackDockerfileName": "api-gateway",
+      "rootDirectory": "/",
+      "health": { "live": "/health/live", "ready": "/health/ready" },
+      "public": true,
+      "dependencies": ["identity-service", "activity-service", "discord-gateway"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
+      "name": "discord-gateway",
+      "type": "APP",
+      "dockerfile": "Dockerfile.discord-gateway",
+      "zbpackDockerfileName": "discord-gateway",
+      "rootDirectory": "/",
+      "health": {
+        "live": "/health/live",
+        "ready": "/health/ready",
+        "discord": "/health/discord"
+      },
+      "public": false,
+      "dependencies": ["activity-service"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
+      "name": "admin",
+      "type": "APP",
+      "dockerfile": "Dockerfile.admin",
+      "zbpackDockerfileName": "admin",
+      "rootDirectory": "/",
+      "health": { "live": "/health" },
+      "public": true,
+      "dependencies": ["api-gateway"],
+      "buildTimeVarNames": ["VITE_API_BASE_URL", "VITE_GIT_COMMIT_SHA"],
+      "revisionCapability": true
+    },
+    {
+      "name": "web",
+      "type": "APP",
+      "dockerfile": "Dockerfile.web",
+      "zbpackDockerfileName": "web",
+      "rootDirectory": "/",
+      "health": { "live": "/health" },
+      "public": true,
+      "dependencies": ["api-gateway"],
+      "buildTimeVarNames": [
+        "NEXT_PUBLIC_API_BASE_URL",
+        "NEXT_PUBLIC_IDENTITY_URL",
+        "NEXT_PUBLIC_WEB_ORIGIN",
+        "NEXT_PUBLIC_GIT_COMMIT_SHA"
+      ],
+      "revisionCapability": true
+    }
+  ]
+}

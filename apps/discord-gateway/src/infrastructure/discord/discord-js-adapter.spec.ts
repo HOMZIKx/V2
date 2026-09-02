@@ -5,6 +5,7 @@ import type {
   AuthorizationSyncPort,
   AuthzDiscordEventInput,
 } from '../../application/ports/authorization-sync.port.js';
+import { buildSafeAllowedMentions } from './allowed-mentions.js';
 import { DiscordGatewayConfigSchema, normalizeDiscordConfig } from './discord-config.js';
 import {
   assertAllowedGatewayIntents,
@@ -27,6 +28,100 @@ function makeConfig() {
 }
 
 describe('DiscordJsGatewayAdapter', () => {
+  it('buildSafeAllowedMentions disables everyone/here/users parse for Components V2 publish', async () => {
+    const mentions = buildSafeAllowedMentions();
+    expect(mentions).toEqual({ parse: [], users: [], roles: [] });
+
+    const send = vi.fn(() => Promise.resolve({ id: 'msg-1' }));
+    const channel = {
+      isTextBased: () => true,
+      isDMBased: () => false,
+      send,
+    };
+    const fetch = vi.fn(() => Promise.resolve(channel));
+    const adapter = new DiscordJsGatewayAdapter({
+      config: makeConfig(),
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      onInteraction: () => Promise.resolve(),
+    });
+    Object.defineProperty(adapter, 'client', {
+      value: { channels: { fetch } },
+    });
+
+    await adapter.publishComponentsV2Message('100000000000000099', {
+      components: [],
+      flags: 1 << 15,
+    });
+
+    expect(send).toHaveBeenCalledOnce();
+    const calls = send.mock.calls as unknown as Array<[Record<string, unknown>]>;
+    const payload = calls[0]?.[0];
+    expect(payload?.allowedMentions).toEqual({ parse: [], users: [], roles: [] });
+  });
+
+  it('forwards hub attachment files on publish and edit without adapter-specific asset logic', async () => {
+    const send = vi.fn(() => Promise.resolve({ id: 'msg-1' }));
+    const edit = vi.fn(() => Promise.resolve({ id: 'msg-1' }));
+    const channel = {
+      isTextBased: () => true,
+      isDMBased: () => false,
+      send,
+      messages: { edit },
+    };
+    const fetch = vi.fn(() => Promise.resolve(channel));
+    const adapter = new DiscordJsGatewayAdapter({
+      config: makeConfig(),
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      onInteraction: () => Promise.resolve(),
+    });
+    Object.defineProperty(adapter, 'client', {
+      value: { channels: { fetch } },
+    });
+
+    const files = [{ name: 'centrum-aktywnosci-icon.png' }, { name: 'utworz-wydarzenie-icon.png' }];
+    const payload = { components: [], flags: 1 << 15, files };
+
+    await adapter.publishComponentsV2Message('100000000000000099', payload);
+    expect(send).toHaveBeenCalledOnce();
+    const publishPayload = (send.mock.calls as unknown as Array<[Record<string, unknown>]>)[0]?.[0];
+    expect(publishPayload?.files).toEqual(files);
+
+    await adapter.editComponentsV2Message('100000000000000099', 'msg-1', payload);
+    expect(edit).toHaveBeenCalledOnce();
+    const editPayload = (
+      edit.mock.calls as unknown as Array<[string, Record<string, unknown>]>
+    )[0]?.[1];
+    expect(editPayload?.files).toEqual(files);
+    expect(editPayload?.attachments).toEqual([]);
+  });
+
+  it('does not clear attachments on edit when payload has no replacement files', async () => {
+    const edit = vi.fn(() => Promise.resolve({ id: 'msg-1' }));
+    const channel = {
+      isTextBased: () => true,
+      isDMBased: () => false,
+      messages: { edit },
+    };
+    const fetch = vi.fn(() => Promise.resolve(channel));
+    const adapter = new DiscordJsGatewayAdapter({
+      config: makeConfig(),
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      onInteraction: () => Promise.resolve(),
+    });
+    Object.defineProperty(adapter, 'client', {
+      value: { channels: { fetch } },
+    });
+
+    await adapter.editComponentsV2Message('100000000000000099', 'msg-1', {
+      components: [],
+      flags: 1 << 15,
+    });
+    const editPayload = (
+      edit.mock.calls as unknown as Array<[string, Record<string, unknown>]>
+    )[0]?.[1];
+    expect(editPayload?.attachments).toBeUndefined();
+  });
+
   it('permits Guilds-only when sync is off and Guilds+GuildMembers when sync is on', () => {
     expect(() => assertAllowedGatewayIntents([GatewayIntentBits.Guilds], false)).not.toThrow();
     expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).not.toThrow();

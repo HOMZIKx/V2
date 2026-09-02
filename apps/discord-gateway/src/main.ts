@@ -3,7 +3,11 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { resolveHttpListen } from '@v2/configuration';
-import { createLogger } from '@v2/observability';
+import {
+  createLogger,
+  registerFastifyRequestCorrelation,
+  runBoundedShutdown,
+} from '@v2/observability';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -15,6 +19,12 @@ loadEnvFile(path.resolve(process.cwd(), '.env'));
 loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
 
 function resolveGitCommitSha(): string {
+  // Prefer image-baked SHA (Zeabur build) over a stale manual GIT_COMMIT_SHA Variable.
+  const baked =
+    process.env.V2_IMAGE_GIT_COMMIT_SHA?.trim() || process.env.ZEABUR_GIT_COMMIT_SHA?.trim();
+  if (baked && baked !== 'unknown') {
+    return baked;
+  }
   if (process.env.GIT_COMMIT_SHA && process.env.GIT_COMMIT_SHA !== 'unknown') {
     return process.env.GIT_COMMIT_SHA;
   }
@@ -47,12 +57,17 @@ const config = loadDiscordConfig();
 const logger = createLogger('discord-gateway');
 
 const bootstrap = async (): Promise<void> => {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ bodyLimit: 262_144 }),
+  );
+
+  registerFastifyRequestCorrelation(app.getHttpAdapter().getInstance());
 
   const shutdown = async (signal: string): Promise<void> => {
-    logger.info(`Received ${signal}; shutting down Discord gateway.`);
-    await app.close();
-    process.exit(0);
+    await runBoundedShutdown(logger, signal, async () => {
+      await app.close();
+    });
   };
 
   process.once('SIGINT', () => {
@@ -73,9 +88,13 @@ const bootstrap = async (): Promise<void> => {
     discordEnabled: config.DISCORD_ENABLED,
     gitCommitSha: process.env.GIT_COMMIT_SHA ?? 'unknown',
     gitBranch: resolveGitBranch(),
-    buildMode: 'tsx-dev-source',
+    buildMode: 'production-node-dist',
     panelRenderer: 'components-v2-container',
   });
 };
 
-void bootstrap();
+bootstrap().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  logger.error('Discord gateway failed to bootstrap', { error: message });
+  process.exitCode = 1;
+});

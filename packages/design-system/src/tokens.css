@@ -1,0 +1,23 @@
+/* V2 Control Center tokens — Issue #12 foundation.
+   Global design system is OWNER_VISUAL_REVIEW_REQUIRED, not APPROVED. */
+:root {
+  --v2-bg: #141516;
+  --v2-surface: #1e2022;
+  --v2-surface-elevated: #292b2e;
+  --v2-border: #3a3834;
+  --v2-text: #f1e9dd;
+  --v2-text-secondary: #b8b1a7;
+  --v2-text-muted: #7e7a74;
+  --v2-steel: #53697a;
+  --v2-gold: #c3a25b;
+  --v2-success: #648565;
+  --v2-warning: #d19a46;
+  --v2-error: #b7534e;
+  --v2-info: #59788e;
+  --v2-centrum: #d48632;
+  --v2-centrum-hover: #e29a4b;
+  --v2-focus: #c3a25b;
+  --v2-radius: 10px;
+  --v2-touch: 44px;
+  --v2-font: 'Segoe UI', 'IBM Plex Sans', system-ui, sans-serif;
+}

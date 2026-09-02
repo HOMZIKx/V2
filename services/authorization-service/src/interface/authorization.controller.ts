@@ -121,7 +121,7 @@ const discordEventBodySchema = z.object({
 });
 
 const reconcileBodySchema = z.object({
-  members: z.array(memberSnapshotSchema),
+  members: z.array(memberSnapshotSchema).max(5000),
   roles: z.array(roleSnapshotSchema),
   eventKey: z.string().min(1).max(512).optional(),
 });

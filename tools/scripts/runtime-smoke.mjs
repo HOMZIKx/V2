@@ -63,15 +63,22 @@ function startApplication(application) {
     cwd: repositoryRoot,
     env: {
       ...process.env,
-      ...application.env,
       AUTHORIZATION_DATABASE_URL: dummyDatabaseUrl,
       IDENTITY_DATABASE_URL: dummyDatabaseUrl,
+      ACTIVITY_DATABASE_URL: dummyDatabaseUrl,
       AUTHORIZATION_ENABLED: 'false',
       IDENTITY_AUTH_ENABLED: 'false',
       IDENTITY_AUTHORIZATION_ENABLED: 'false',
+      ACTIVITY_ENABLED: 'false',
+      ACTIVITY_ALLOW_TEST_SEED: 'false',
+      ACTIVITY_TRUST_ACTOR_HEADERS: 'false',
+      ACTIVITY_INBOUND_CLIENTS_JSON: '',
+      ACTIVITY_INBOUND_CLIENTS_B64: '',
+      API_GATEWAY_FORWARD_ACTOR_HEADERS: 'false',
       DISCORD_AUTHORIZATION_SYNC_ENABLED: 'false',
       NODE_ENV: 'production',
       NEXT_TELEMETRY_DISABLED: '1',
+      ...application.env,
     },
     shell: application.shell ?? false,
     stdio: 'inherit',
@@ -143,6 +150,7 @@ const requiredArtifacts = [
   'apps/discord-gateway/dist/apps/discord-gateway/src/main.js',
   'services/identity-service/dist/services/identity-service/src/main.js',
   'services/authorization-service/dist/services/authorization-service/src/main.js',
+  'services/activity-service/dist/services/activity-service/src/main.js',
 ];
 
 for (const relativePath of requiredArtifacts) {
@@ -154,15 +162,23 @@ for (const relativePath of requiredArtifacts) {
   }
 }
 
-const [webPort, adminPort, apiGatewayPort, discordGatewayPort, identityPort, authorizationPort] =
-  await Promise.all([
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-  ]);
+const [
+  webPort,
+  adminPort,
+  apiGatewayPort,
+  discordGatewayPort,
+  identityPort,
+  authorizationPort,
+  activityPort,
+] = await Promise.all([
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+]);
 
 for (const port of [
   webPort,
@@ -171,6 +187,7 @@ for (const port of [
   discordGatewayPort,
   identityPort,
   authorizationPort,
+  activityPort,
 ]) {
   await assertPortAvailable(port);
 }
@@ -200,25 +217,14 @@ const applications = [
     url: `http://127.0.0.1:${webPort}/health`,
   },
   {
-    args: [
-      'pnpm',
-      '--dir',
-      'apps/admin',
-      'exec',
-      'vite',
-      'preview',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(adminPort),
-    ],
-    command: corepack,
+    args: ['./apps/admin/scripts/serve-static.mjs'],
+    command: process.execPath,
     env: {
-      ADMIN_PORT: String(adminPort),
+      HOST: '127.0.0.1',
+      PORT: String(adminPort),
     },
     name: 'admin',
-    shell: true,
-    url: `http://127.0.0.1:${adminPort}/`,
+    url: `http://127.0.0.1:${adminPort}/health`,
   },
   {
     args: ['--import', 'tsx', 'apps/api-gateway/dist/apps/api-gateway/src/main.js'],
@@ -264,9 +270,28 @@ const applications = [
     env: {
       AUTHORIZATION_SERVICE_HOST: '127.0.0.1',
       AUTHORIZATION_SERVICE_PORT: String(authorizationPort),
+      // Production Zeabur requires AUTHORIZATION_ENABLED=true; smoke uses disabled auth without live Postgres.
+      NODE_ENV: 'test',
     },
     name: 'authorization-service',
     url: `http://127.0.0.1:${authorizationPort}/health/live`,
+  },
+  {
+    args: [
+      '--import',
+      'tsx',
+      'services/activity-service/dist/services/activity-service/src/main.js',
+    ],
+    command: process.execPath,
+    env: {
+      ACTIVITY_SERVICE_HOST: '127.0.0.1',
+      ACTIVITY_SERVICE_PORT: String(activityPort),
+      ACTIVITY_ENABLED: 'false',
+      ACTIVITY_OUTBOX_WORKER_ENABLED: 'false',
+      ACTIVITY_DATABASE_URL: dummyDatabaseUrl,
+    },
+    name: 'activity-service',
+    url: `http://127.0.0.1:${activityPort}/health/live`,
   },
 ];
 
@@ -278,7 +303,7 @@ try {
     children.push(child);
     await waitForHealthy(application, child);
   }
-  console.log('Runtime smoke checks passed for all six applications and services.');
+  console.log('Runtime smoke checks passed for all seven applications and services.');
 } finally {
   for (const child of children) {
     try {

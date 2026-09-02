@@ -14,6 +14,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authorization') THEN
     CREATE ROLE "authorization" LOGIN PASSWORD 'authorization_dev_password';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'activity') THEN
+    CREATE ROLE activity LOGIN PASSWORD 'activity_dev_password';
+  END IF;
 END
 $$;
 EOSQL
@@ -28,9 +31,19 @@ if [[ "$(psql --username "$POSTGRES_USER" --dbname postgres -tAc "SELECT 1 FROM 
     -c 'CREATE DATABASE "authorization" OWNER "authorization"'
 fi
 
+if [[ "$(psql --username "$POSTGRES_USER" --dbname postgres -tAc "SELECT 1 FROM pg_database WHERE datname='activity'")" != "1" ]]; then
+  psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
+    -c 'CREATE DATABASE activity OWNER activity'
+fi
+
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<'EOSQL'
 REVOKE ALL PRIVILEGES ON DATABASE identity FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON DATABASE "authorization" FROM PUBLIC;
+REVOKE ALL PRIVILEGES ON DATABASE activity FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON DATABASE identity FROM "authorization";
+REVOKE ALL PRIVILEGES ON DATABASE identity FROM activity;
 REVOKE ALL PRIVILEGES ON DATABASE "authorization" FROM identity;
+REVOKE ALL PRIVILEGES ON DATABASE "authorization" FROM activity;
+REVOKE ALL PRIVILEGES ON DATABASE activity FROM identity;
+REVOKE ALL PRIVILEGES ON DATABASE activity FROM "authorization";
 EOSQL

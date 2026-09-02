@@ -1,0 +1,232 @@
+.v2-btn {
+  align-items: center;
+  background: var(--v2-surface-elevated);
+  border: 1px solid var(--v2-border);
+  border-radius: 8px;
+  color: var(--v2-text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 600;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: var(--v2-touch);
+  padding: 0.55rem 1rem;
+}
+
+.v2-btn:hover:not(:disabled),
+.v2-btn:focus,
+.v2-btn:focus-visible {
+  color: var(--v2-text);
+}
+
+.v2-btn:focus-visible {
+  outline: 2px solid var(--v2-focus);
+  outline-offset: 2px;
+}
+
+.v2-btn:disabled,
+a.v2-btn[aria-disabled='true'] {
+  color: var(--v2-text);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.v2-btn-primary {
+  background: var(--v2-centrum);
+  border-color: var(--v2-centrum);
+  color: #141516;
+}
+
+.v2-btn-primary:hover:not(:disabled),
+.v2-btn-primary:focus,
+.v2-btn-primary:focus-visible,
+a.v2-btn-primary:hover,
+a.v2-btn-primary:focus,
+a.v2-btn-primary:focus-visible {
+  background: var(--v2-centrum-hover);
+  color: #141516;
+}
+
+.v2-btn-primary:disabled,
+a.v2-btn-primary[aria-disabled='true'] {
+  color: #141516;
+}
+
+.v2-btn-danger {
+  background: var(--v2-error);
+  border-color: var(--v2-error);
+  color: #f1e9dd;
+}
+
+.v2-btn-danger:hover:not(:disabled),
+.v2-btn-danger:focus,
+.v2-btn-danger:focus-visible,
+a.v2-btn-danger:hover,
+a.v2-btn-danger:focus,
+a.v2-btn-danger:focus-visible {
+  color: #f1e9dd;
+}
+
+.v2-btn-ghost {
+  background: transparent;
+}
+
+.v2-panel {
+  background: var(--v2-surface);
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  padding: 1rem 1.1rem;
+}
+
+.v2-panel-title {
+  font-size: 1rem;
+  font-weight: 650;
+  margin: 0 0 0.65rem;
+}
+
+.v2-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v2-field-label {
+  color: var(--v2-text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.v2-field-hint {
+  color: var(--v2-text-muted);
+  font-size: 0.8rem;
+}
+
+.v2-field-error {
+  color: var(--v2-error);
+  font-size: 0.85rem;
+}
+
+.v2-input,
+.v2-select,
+.v2-textarea {
+  background: var(--v2-surface-elevated);
+  border: 1px solid var(--v2-border);
+  border-radius: 8px;
+  color: var(--v2-text);
+  font: inherit;
+  min-height: var(--v2-touch);
+  padding: 0.45rem 0.7rem;
+  width: 100%;
+}
+
+.v2-textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.v2-input:focus-visible,
+.v2-select:focus-visible,
+.v2-textarea:focus-visible {
+  outline: 2px solid var(--v2-focus);
+  outline-offset: 1px;
+}
+
+.v2-multiselect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.v2-check-row {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  min-height: var(--v2-touch);
+}
+
+.v2-toggle {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.7rem;
+  min-height: var(--v2-touch);
+}
+
+.v2-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.28rem 0.6rem;
+}
+
+.v2-badge-ok {
+  background: color-mix(in srgb, var(--v2-success) 22%, transparent);
+  color: var(--v2-text);
+}
+
+.v2-badge-warn {
+  background: color-mix(in srgb, var(--v2-warning) 22%, transparent);
+  color: var(--v2-text);
+}
+
+.v2-badge-error {
+  background: color-mix(in srgb, var(--v2-error) 22%, transparent);
+  color: var(--v2-text);
+}
+
+.v2-badge-info {
+  background: color-mix(in srgb, var(--v2-info) 22%, transparent);
+  color: var(--v2-text);
+}
+
+.v2-alert {
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius);
+  padding: 0.75rem 0.9rem;
+}
+
+.v2-alert-success {
+  border-color: var(--v2-success);
+}
+
+.v2-alert-error {
+  border-color: var(--v2-error);
+}
+
+.v2-alert-info {
+  border-color: var(--v2-info);
+}
+
+.v2-empty,
+.v2-loading {
+  color: var(--v2-text-secondary);
+  margin: 0;
+  padding: 1.25rem 0.25rem;
+}
+
+.v2-table-wrap {
+  overflow-x: auto;
+}
+
+.v2-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: 100%;
+}
+
+.v2-table th,
+.v2-table td {
+  border-bottom: 1px solid var(--v2-border);
+  padding: 0.7rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.v2-table th {
+  color: var(--v2-text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

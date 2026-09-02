@@ -35,6 +35,10 @@ describe('isAllowedCallbackUrl', () => {
 
     expect(isAllowedCallbackUrl('http://app.example/cb', production)).toBe(false);
     expect(isAllowedCallbackUrl('https://localhost/cb', production)).toBe(false);
+    expect(isAllowedCallbackUrl('https://127.0.0.1/cb', production)).toBe(false);
+    expect(isAllowedCallbackUrl('javascript:alert(1)', production)).toBe(false);
+    expect(isAllowedCallbackUrl('not a url', production)).toBe(false);
+    expect(isAllowedCallbackUrl('https://evil.example/cb', production)).toBe(false);
     expect(isAllowedCallbackUrl('https://app.example/cb', production)).toBe(true);
   });
 });

@@ -1,4 +1,6 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
   ChannelType,
   Client,
   Events,
@@ -10,11 +12,14 @@ import {
   type GuildBasedChannel,
   type GuildMember,
   type Interaction,
+  type MessageCreateOptions,
+  type MessageEditOptions,
 } from 'discord.js';
 import { createHash } from 'node:crypto';
 
 import type { AuthorizationSyncPort } from '../../application/ports/authorization-sync.port.js';
 import type {
+  ComponentsV2MessagePayload,
   GatewayClientPort,
   GatewayHealthSnapshot,
   GatewayRestPort,
@@ -24,7 +29,13 @@ import {
   createAuthorizationSyncClient,
   hashAuthzPayload,
 } from '../authorization/authorization-sync-client.js';
+import { buildSafeAllowedMentions } from '../discord/allowed-mentions.js';
 import type { DiscordGatewayConfig } from '../discord/discord-config.js';
+import {
+  filterBotPanelMatches,
+  PANEL_MESSAGE_SCAN_DEFAULT_LIMIT,
+  type ScannedChannelMessage,
+} from '../discord/panel-message-scan.js';
 import { redactSecrets, safeErrorMessage } from '../security/secret-redaction.js';
 
 export type DiscordClientLifecycleDeps = {
@@ -208,19 +219,89 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 
   public async checkChannelPermissions(guildId: string, channelId: string) {
-    const channel = await this.client.channels.fetch(channelId);
-    if (!channel || channel.type === ChannelType.DM) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
+    const detailed = await this.validateActivityPublishChannel(guildId, channelId);
+    return {
+      ok: detailed.ok,
+      missing: detailed.missing ?? (detailed.ok ? [] : [...REQUIRED_PERMISSION_NAMES]),
+    };
+  }
+
+  /**
+   * Narrow channel check for Activity publish/config: guild text-based channels only.
+   * Does not use activity-service; Discord SDK stays in this adapter.
+   */
+  public async validateActivityPublishChannel(
+    guildId: string,
+    channelId: string,
+  ): Promise<{
+    ok: boolean;
+    code:
+      | 'CHANNEL_MISSING'
+      | 'CHANNEL_WRONG_GUILD'
+      | 'CHANNEL_UNSUPPORTED'
+      | 'BOT_PERMISSION_MISSING'
+      | 'CHANNEL_OK';
+    detail?: string;
+    missing?: string[];
+  }> {
+    let channel;
+    try {
+      channel = await this.client.channels.fetch(channelId);
+    } catch {
+      return { ok: false, code: 'CHANNEL_MISSING', detail: 'Channel fetch failed' };
+    }
+
+    if (!channel) {
+      return { ok: false, code: 'CHANNEL_MISSING', detail: 'Channel not found' };
+    }
+
+    if (channel.type === ChannelType.DM || channel.type === ChannelType.GroupDM) {
+      return { ok: false, code: 'CHANNEL_UNSUPPORTED', detail: 'DM channels are not supported' };
+    }
+
+    const unsupportedTypes = new Set<number>([
+      ChannelType.GuildForum,
+      ChannelType.GuildMedia,
+      ChannelType.GuildCategory,
+      ChannelType.GuildDirectory,
+    ]);
+    if (unsupportedTypes.has(channel.type)) {
+      return {
+        ok: false,
+        code: 'CHANNEL_UNSUPPORTED',
+        detail: `Channel type ${String(channel.type)} is not supported for activity publish`,
+      };
+    }
+
+    if (!('guildId' in channel) || typeof channel.guildId !== 'string') {
+      return { ok: false, code: 'CHANNEL_UNSUPPORTED', detail: 'Not a guild channel' };
+    }
+
+    if (channel.guildId !== guildId) {
+      return {
+        ok: false,
+        code: 'CHANNEL_WRONG_GUILD',
+        detail: 'Channel does not belong to the requested guild',
+      };
+    }
+
+    if (!channel.isTextBased() || channel.isDMBased()) {
+      return {
+        ok: false,
+        code: 'CHANNEL_UNSUPPORTED',
+        detail: 'Channel must be guild text-based',
+      };
     }
 
     const guildChannel = channel as GuildBasedChannel;
-    if (guildChannel.guildId !== guildId) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
-    }
-
     const me = guildChannel.guild.members.me;
     if (!me) {
-      return { ok: false, missing: [...REQUIRED_PERMISSION_NAMES] };
+      return {
+        ok: false,
+        code: 'BOT_PERMISSION_MISSING',
+        detail: 'Bot member unavailable in guild',
+        missing: [...REQUIRED_PERMISSION_NAMES],
+      };
     }
 
     const permissions = guildChannel.permissionsFor(me);
@@ -230,7 +311,278 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
         missing.push(REQUIRED_PERMISSION_NAMES[index] ?? 'Unknown');
       }
     }
-    return { ok: missing.length === 0, missing };
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        code: 'BOT_PERMISSION_MISSING',
+        detail: `Missing permissions: ${missing.join(', ')}`,
+        missing,
+      };
+    }
+
+    return { ok: true, code: 'CHANNEL_OK' };
+  }
+
+  public listGuildPresentations(): readonly { id: string; name: string }[] {
+    return [...this.client.guilds.cache.values()].map((guild) => ({
+      id: guild.id,
+      name: guild.name,
+    }));
+  }
+
+  public async getGuildPresentation(guildId: string): Promise<{ id: string; name: string } | null> {
+    const cached = this.client.guilds.cache.get(guildId);
+    if (cached) {
+      return { id: cached.id, name: cached.name };
+    }
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+      return { id: guild.id, name: guild.name };
+    } catch {
+      return null;
+    }
+  }
+
+  public async listGuildChannelsForAdmin(guildId: string): Promise<
+    readonly {
+      id: string;
+      name: string;
+      type: number;
+      usable: boolean;
+      reason?: string;
+    }[]
+  > {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    await guild.channels.fetch();
+    const rows: Array<{
+      id: string;
+      name: string;
+      type: number;
+      usable: boolean;
+      reason?: string;
+    }> = [];
+    for (const channel of guild.channels.cache.values()) {
+      if (!('name' in channel) || typeof channel.name !== 'string') {
+        continue;
+      }
+      if (channel.type === ChannelType.GuildCategory) {
+        continue;
+      }
+      const validated = await this.validateActivityPublishChannel(guildId, channel.id);
+      rows.push({
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        usable: validated.ok,
+        ...(validated.ok ? {} : { reason: validated.detail ?? validated.code }),
+      });
+    }
+    return rows.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  }
+
+  public async listGuildRolesForAdmin(guildId: string): Promise<
+    readonly {
+      id: string;
+      name: string;
+      managed: boolean;
+      everyone: boolean;
+    }[]
+  > {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    await guild.roles.fetch();
+    return [...guild.roles.cache.values()]
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        managed: role.managed,
+        everyone: role.id === guild.id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  }
+
+  public async resolveMemberDisplays(
+    guildId: string,
+    userIds: readonly string[],
+  ): Promise<readonly { id: string; displayName: string }[]> {
+    const guild = await this.fetchGuildOrNull(guildId);
+    if (guild === null) {
+      return [];
+    }
+    const unique = [...new Set(userIds.filter((id) => id.trim().length > 0))].slice(0, 50);
+    const out: Array<{ id: string; displayName: string }> = [];
+    for (const userId of unique) {
+      try {
+        const member = await guild.members.fetch(userId);
+        out.push({ id: member.id, displayName: member.displayName });
+      } catch {
+        out.push({ id: userId, displayName: 'Organizator' });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * DM-first notification delivery. Public Hub channel must never receive these.
+   * DM closed/blocked → caller falls back to persistent Inbox.
+   */
+  public async sendDirectMessage(
+    discordUserId: string,
+    payload: { content: string; components?: ActionRowBuilder<ButtonBuilder>[] },
+  ): Promise<{
+    ok: boolean;
+    code?: 'DM_BLOCKED' | 'DM_CLOSED' | 'RATE_LIMITED' | 'UPSTREAM_ERROR';
+    detail?: string;
+    messageId?: string;
+  }> {
+    try {
+      const user = await this.client.users.fetch(discordUserId);
+      const dm = await user.createDM();
+      const message = await dm.send({
+        content: payload.content.slice(0, 2000),
+        ...(payload.components !== undefined ? { components: payload.components } : {}),
+      });
+      return { ok: true, messageId: message.id };
+    } catch (error) {
+      const status = readNumericProp(error, 'status');
+      const code = readNumericProp(error, 'code');
+      if (status === 429 || code === 429) {
+        return {
+          ok: false,
+          code: 'RATE_LIMITED',
+          detail: safeErrorMessage(error, this.secrets),
+        };
+      }
+      // Discord: 50007 cannot send messages to this user
+      if (code === 50007 || status === 403) {
+        return {
+          ok: false,
+          code: 'DM_BLOCKED',
+          detail: safeErrorMessage(error, this.secrets),
+        };
+      }
+      return {
+        ok: false,
+        code: 'UPSTREAM_ERROR',
+        detail: safeErrorMessage(error, this.secrets),
+      };
+    }
+  }
+
+  private async fetchGuildOrNull(guildId: string): Promise<Guild | null> {
+    const cached = this.client.guilds.cache.get(guildId);
+    if (cached) {
+      return cached;
+    }
+    try {
+      return await this.client.guilds.fetch(guildId);
+    } catch {
+      return null;
+    }
+  }
+
+  public async publishComponentsV2Message(
+    channelId: string,
+    payload: ComponentsV2MessagePayload,
+    options?: { nonce?: string },
+  ): Promise<{ messageId: string; channelId: string }> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for Components V2 publish.');
+    }
+
+    const createPayload = {
+      ...payload,
+      allowedMentions: buildSafeAllowedMentions(),
+      ...(options?.nonce !== undefined
+        ? { nonce: options.nonce, enforceNonce: true as const }
+        : {}),
+    } as MessageCreateOptions;
+
+    const message = await channel.send(createPayload);
+    return { messageId: message.id, channelId };
+  }
+
+  public async editComponentsV2Message(
+    channelId: string,
+    messageId: string,
+    payload: ComponentsV2MessagePayload,
+  ): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for Components V2 edit.');
+    }
+    const editPayload = {
+      ...payload,
+      allowedMentions: buildSafeAllowedMentions(),
+      ...(payload.files !== undefined && payload.files.length > 0 ? { attachments: [] } : {}),
+    } as MessageEditOptions;
+    await channel.messages.edit(messageId, editPayload);
+  }
+
+  public async fetchChannelMessage(
+    channelId: string,
+    messageId: string,
+  ): Promise<{ id: string; channelId: string; content: string | null }> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for message fetch.');
+    }
+    const message = await channel.messages.fetch(messageId);
+    return {
+      id: message.id,
+      channelId,
+      content: message.content.length > 0 ? message.content : null,
+    };
+  }
+
+  /**
+   * Scan recent channel messages for bot-authored hub panels containing opaquePanelId in custom_id.
+   */
+  public async findBotMessagesWithPanelOpaqueId(
+    channelId: string,
+    opaquePanelId: string,
+    options?: { limit?: number },
+  ): Promise<Array<{ messageId: string; channelId: string }>> {
+    const limit = options?.limit ?? PANEL_MESSAGE_SCAN_DEFAULT_LIMIT;
+    const scanned = await this.scanChannelMessages(channelId, { limit });
+    const botUserId = this.client.user?.id ?? (await this.fetchApplication()).botUserId;
+    return filterBotPanelMatches(scanned, opaquePanelId, botUserId).map((message) => ({
+      messageId: message.messageId,
+      channelId: message.channelId,
+    }));
+  }
+
+  public async scanChannelMessages(
+    channelId: string,
+    options?: { limit?: number },
+  ): Promise<ScannedChannelMessage[]> {
+    const limit = options?.limit ?? PANEL_MESSAGE_SCAN_DEFAULT_LIMIT;
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for panel message scan.');
+    }
+
+    const fetched = await channel.messages.fetch({ limit });
+    return [...fetched.values()].map((message) => ({
+      messageId: message.id,
+      channelId,
+      authorId: message.author.id,
+      components: message.components,
+    }));
+  }
+
+  public async deleteChannelMessage(channelId: string, messageId: string): Promise<void> {
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel unavailable for message delete.');
+    }
+    await channel.messages.delete(messageId);
   }
 
   private bindEvents(): void {
@@ -590,6 +942,17 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     process.exitCode = 1;
     await this.stop();
   }
+}
+
+function readNumericProp(error: unknown, key: 'status' | 'code'): number | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  if (!(key in error)) {
+    return undefined;
+  }
+  const value: unknown = (error as Record<'status' | 'code', unknown>)[key];
+  return typeof value === 'number' ? value : undefined;
 }
 
 /**

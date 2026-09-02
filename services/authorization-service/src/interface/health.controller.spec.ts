@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AuthorizationStorePort } from '../application/ports/authorization.ports.js';
@@ -14,7 +15,7 @@ describe('HealthController', () => {
     const store = { ping } as unknown as AuthorizationStorePort;
     const controller = new HealthController(config, store);
 
-    expect(controller.live()).toEqual({ status: 'ok' });
+    expect(controller.live()).toMatchObject({ status: 'ok' });
     expect(ping).not.toHaveBeenCalled();
   });
 
@@ -30,13 +31,42 @@ describe('HealthController', () => {
     expect(ping).not.toHaveBeenCalled();
   });
 
-  it('ready checks database with SELECT 1 when authorization is enabled', async () => {
+  it('ready checks database and migrations when authorization is enabled', async () => {
     const ping = vi.fn().mockResolvedValue(undefined);
-    const store = { ping } as unknown as AuthorizationStorePort;
-    const enabled = { AUTHORIZATION_ENABLED: true } as AuthorizationEnv;
+    const hasSchemaMigration = vi.fn().mockResolvedValue(true);
+    const countSchemaMigrations = vi.fn().mockResolvedValue(5);
+    const store = {
+      ping,
+      hasSchemaMigration,
+      countSchemaMigrations,
+    } as unknown as AuthorizationStorePort;
+    const enabled = {
+      AUTHORIZATION_ENABLED: true,
+      AUTHORIZATION_ASSERTION_REDIS_URL: undefined,
+    } as AuthorizationEnv;
     const controller = new HealthController(enabled, store);
 
-    await expect(controller.ready()).resolves.toEqual({ status: 'ok' });
+    await expect(controller.ready()).resolves.toMatchObject({
+      status: 'ok',
+      checks: { database: true, migrations: true, redis: 'not_configured' },
+    });
     expect(ping).toHaveBeenCalledTimes(1);
+    expect(hasSchemaMigration).toHaveBeenCalled();
+    expect(countSchemaMigrations).toHaveBeenCalledTimes(1);
+  });
+
+  it('ready fails when foundation migration is missing', async () => {
+    const store = {
+      ping: vi.fn().mockResolvedValue(undefined),
+      hasSchemaMigration: vi.fn().mockResolvedValue(false),
+      countSchemaMigrations: vi.fn().mockResolvedValue(0),
+    } as unknown as AuthorizationStorePort;
+    const enabled = {
+      AUTHORIZATION_ENABLED: true,
+      AUTHORIZATION_ASSERTION_REDIS_URL: undefined,
+    } as AuthorizationEnv;
+    const controller = new HealthController(enabled, store);
+
+    await expect(controller.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 });

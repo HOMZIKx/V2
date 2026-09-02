@@ -3,6 +3,8 @@ import { createLogger } from '@v2/observability';
 
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
+import { runStartupHubReconcile } from '../../application/interactions/hub-startup-reconcile.js';
+import type { ActivityHttpClient } from '../../infrastructure/activity/activity-http-client.js';
 import { InteractionRouter } from './interaction-router.js';
 
 import {
@@ -11,7 +13,11 @@ import {
   type DiscordGatewayConfig,
 } from '../../infrastructure/discord/discord-config.js';
 import { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
-import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from './discord.tokens.js';
+import {
+  DISCORD_ACTIVITY_CLIENT_TOKEN,
+  DISCORD_CONFIG_TOKEN,
+  DISCORD_GATEWAY_TOKEN,
+} from './discord.tokens.js';
 
 @Injectable()
 export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
@@ -21,6 +27,8 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
     @Inject(DISCORD_GATEWAY_TOKEN)
     private readonly gateway: DiscordJsGatewayAdapter | null,
+    @Inject(DISCORD_ACTIVITY_CLIENT_TOKEN)
+    private readonly activityClient: ActivityHttpClient | null,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -29,14 +37,32 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.gateway.start();
+    try {
+      await this.gateway.start();
 
-    if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
-      await this.gateway.putGuildCommands(
-        this.config.DISCORD_TEST_GUILD_ID,
-        guildCommandDefinitions,
+      if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
+        await this.gateway.putGuildCommands(
+          this.config.DISCORD_TEST_GUILD_ID,
+          guildCommandDefinitions,
+        );
+        this.nestLogger.log('Guild commands auto-registered for test guild.');
+      }
+
+      if (this.activityClient !== null) {
+        const logger = createLogger('discord-gateway');
+        await runStartupHubReconcile({
+          config: this.config,
+          gateway: this.gateway,
+          activityClient: this.activityClient,
+          logger,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.nestLogger.error(
+        'Discord client failed to start; HTTP listener stays up for diagnostics and projection APIs.',
+        message,
       );
-      this.nestLogger.log('Guild commands auto-registered for test guild.');
     }
   }
 
@@ -54,6 +80,7 @@ export function loadDiscordConfig(): DiscordGatewayConfig {
 
 export function createDiscordGatewayOrNull(
   config: DiscordGatewayConfig,
+  activityClient: ActivityHttpClient | null = null,
 ): DiscordJsGatewayAdapter | null {
   if (!config.DISCORD_ENABLED) {
     return null;
@@ -77,7 +104,11 @@ export function createDiscordGatewayOrNull(
     config,
     gateway,
     logger,
+    activityClient: config.DISCORD_ACTIVITY_ENABLED ? activityClient : null,
   });
 
   return gateway;
 }
+
+// Re-export token for Nest DI clarity (bootstrap factory injects activity client).
+export { DISCORD_ACTIVITY_CLIENT_TOKEN };

@@ -162,12 +162,12 @@ Użytkownik może wyciszyć: rodzaj aktywności i/lub konkretne wydarzenie.
 Główny panel: Utwórz aktywność | Szukam ekipy | Moje aktywności | Powiadomienia.
 
 - „Szukam ekipy” = uproszczona, szybka ścieżka tworzenia tej samej aktywności.
-- Formularz Discord: **jeden logiczny formularz** w prywatnym panelu Components V2
-  (nie kreator Dalej/Dalej; nie jeden modal na wszystkie pola — Discord ≤5 pól
-  na modal). Sekcje draftu edytowalne w dowolnej kolejności; Podgląd → Publikuj.
-  Mapowanie pól: architecture §12.
-- Niedokończony formularz → szkic **24 h**; błędy walidacji bez utraty draftu;
-  przed publikacją → podgląd.
+- Formularz Discord (**Owner Amendment P4-CLOSURE-REMEDIATION-001**):
+  **Utwórz aktywność → jeden spójny formularz użytkownika → Podgląd → Publikuj**.
+  Zakaz osobnych sekcji „Nazwa i opis” / „Data i godzina” jako osobnych
+  ekranów. Discord ≤5 pól na modal — selecty na ekranie formularza + jeden
+  modal na pola tekstowe/datę. Draft 24h; walidacja bez utraty danych.
+  P4.4 WWW bez kreatora. Mapowanie: architecture §12.
 - Główny post wydarzenia: kompaktowy; bot aktualizuje **ten sam** post.
 - Organizator wskazany; przycisk kontaktu z organizatorem; opcjonalny wątek.
 - Zarządzanie: przycisk **Więcej** → prywatne menu wg P3 + „Moje aktywności”
