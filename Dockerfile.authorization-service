@@ -42,9 +42,10 @@ COPY --from=build /app/services/authorization-service/package.json ./services/au
 COPY --from=build /app/services/authorization-service/dist ./services/authorization-service/dist
 COPY --from=build /app/services/authorization-service/migrations ./services/authorization-service/migrations
 COPY --from=build /app/services/authorization-service/scripts/migrate-prod.mjs ./services/authorization-service/scripts/migrate-prod.mjs
+COPY --from=build /app/services/authorization-service/scripts/docker-entrypoint.mjs ./services/authorization-service/scripts/docker-entrypoint.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/authorization-service...
 WORKDIR /app/services/authorization-service
 EXPOSE 4300
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4300)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/services/authorization-service/src/main.js"]
+CMD ["node", "scripts/docker-entrypoint.mjs", "dist/services/authorization-service/src/main.js"]

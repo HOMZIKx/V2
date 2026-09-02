@@ -5,7 +5,15 @@ import { shouldUseServerSessionGate } from './src/lib/session-cookie-host';
 const PROTECTED_PREFIXES = ['/aktywnosci', '/moje', '/powiadomienia'] as const;
 
 function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || 'http://127.0.0.1:4000';
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (configured !== undefined && configured.length > 0) {
+    return configured;
+  }
+  // Production images fail-closed at Docker build if this is missing; do not fall back to localhost.
+  if (process.env.NODE_ENV === 'production') {
+    return '';
+  }
+  return 'http://127.0.0.1:4000';
 }
 
 function isProtectedPath(pathname: string): boolean {

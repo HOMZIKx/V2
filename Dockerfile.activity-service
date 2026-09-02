@@ -68,9 +68,10 @@ COPY --from=build /app/services/activity-service/package.json ./services/activit
 COPY --from=build /app/services/activity-service/dist ./services/activity-service/dist
 COPY --from=build /app/services/activity-service/migrations ./services/activity-service/migrations
 COPY --from=build /app/services/activity-service/scripts/migrate-prod.mjs ./services/activity-service/scripts/migrate-prod.mjs
+COPY --from=build /app/services/activity-service/scripts/docker-entrypoint.mjs ./services/activity-service/scripts/docker-entrypoint.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/activity-service...
 WORKDIR /app/services/activity-service
 EXPOSE 4400
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4400)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/services/activity-service/src/main.js"]
+CMD ["node", "scripts/docker-entrypoint.mjs", "dist/services/activity-service/src/main.js"]

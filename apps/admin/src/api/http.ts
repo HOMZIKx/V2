@@ -31,7 +31,15 @@ export class ApiClientError extends Error {
 }
 
 export function getApiBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:4400';
+  const configured = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
+  if (configured.length > 0) {
+    return configured.replace(/\/$/, '');
+  }
+  // Vite DCE: import.meta.env.DEV is false in production builds — no active localhost fallback.
+  if (import.meta.env.DEV) {
+    return 'http://127.0.0.1:4400';
+  }
+  throw new Error('VITE_API_BASE_URL must be set for production admin builds');
 }
 
 function newIdempotencyKey(): string {

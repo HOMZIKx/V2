@@ -249,7 +249,12 @@ pnpm --dir services/identity-service migrate
 pnpm --dir services/authorization-service migrate
 ```
 
-Kolejność przy pełnym stosie: add-ony healthy → migrate identity/authz/activity → start app services.
+Od 006B: identity / authorization / activity stosują `docker-entrypoint.mjs`
+(auto `migrate-prod` przed listen). Ręczny migrate w kontenerze nie jest wymagany
+na tipie — zostaje tylko recovery / break-glass (`V2_SKIP_STARTUP_MIGRATE=1`).
+
+Kolejność przy pełnym stosie: add-ony healthy → redeploy DB-owning services
+(entrypoint migrates) → pozostałe APP.
 
 ---
 

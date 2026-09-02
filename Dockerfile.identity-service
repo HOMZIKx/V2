@@ -47,9 +47,10 @@ COPY --from=build /app/services/identity-service/package.json ./services/identit
 COPY --from=build /app/services/identity-service/dist ./services/identity-service/dist
 COPY --from=build /app/services/identity-service/migrations ./services/identity-service/migrations
 COPY --from=build /app/services/identity-service/scripts/migrate-prod.mjs ./services/identity-service/scripts/migrate-prod.mjs
+COPY --from=build /app/services/identity-service/scripts/docker-entrypoint.mjs ./services/identity-service/scripts/docker-entrypoint.mjs
 RUN pnpm install --frozen-lockfile --prod --filter @v2/identity-service...
 WORKDIR /app/services/identity-service
 EXPOSE 4200
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4200)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "dist/services/identity-service/src/main.js"]
+CMD ["node", "scripts/docker-entrypoint.mjs", "dist/services/identity-service/src/main.js"]

@@ -2,16 +2,20 @@ import { evaluatePublicOrigin, isProductionRuntime, readPublicOrigin } from './p
 
 export { evaluatePublicOrigin, readPublicOrigin } from './public-origin';
 
+const DEV_API_FALLBACK = process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:4000';
+const DEV_IDENTITY_FALLBACK = process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:4200';
+const DEV_WEB_FALLBACK = process.env.NODE_ENV === 'production' ? '' : 'http://127.0.0.1:3000';
+
 export function getApiBaseUrl(): string {
-  return readPublicOrigin(process.env.NEXT_PUBLIC_API_BASE_URL, 'http://127.0.0.1:4000');
+  return readPublicOrigin(process.env.NEXT_PUBLIC_API_BASE_URL, DEV_API_FALLBACK);
 }
 
 export function getIdentityPublicUrl(): string {
-  return readPublicOrigin(process.env.NEXT_PUBLIC_IDENTITY_URL, 'http://127.0.0.1:4200');
+  return readPublicOrigin(process.env.NEXT_PUBLIC_IDENTITY_URL, DEV_IDENTITY_FALLBACK);
 }
 
 export function getWebOrigin(): string {
-  return readPublicOrigin(process.env.NEXT_PUBLIC_WEB_ORIGIN, 'http://127.0.0.1:3000');
+  return readPublicOrigin(process.env.NEXT_PUBLIC_WEB_ORIGIN, DEV_WEB_FALLBACK);
 }
 
 export function buildDiscordLoginUrl(callbackPath = '/aktywnosci'): string {

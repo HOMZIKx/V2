@@ -113,15 +113,29 @@ No secret values in this file. Contain → identify → recover → verify.
 
 ## Migration failure
 
-1. **Contain:** service ready 503 with `checks.migrations: false`. Do not
-   serve traffic that assumes new schema.
-2. **Identify:** startup logs, `migration-readiness` manifest vs DB
-   `activity_schema_migrations` count. Which migration id is missing.
-3. **Recover:** fix migration SQL offline, redeploy with corrected forward
-   migration only. **Never** down-migrate production. Restore from backup
-   to a **new** database if data is corrupt (`BACKUP_RESTORE.md`).
-4. **Verify:** ready 200, `countSchemaMigrations` matches manifest,
-   smoke read path on affected tables.
+**Closed incident class:** `MISSING_PROD_MIGRATION_ON_DEPLOY` (Identity tip
+started with `003` in the image but DB only had `001`+`002` → ready FAIL →
+API 503). Permanent control (006B): Docker `docker-entrypoint.mjs` runs
+`migrate-prod` before listen for identity / authorization / activity.
+Normal deploys must **not** require shelling into the container.
+
+1. **Contain:** service crash-loops or ready 503 with `checks.migrations: false`.
+   Do not serve traffic that assumes new schema. Downstream API may show
+   upstream unhealthy.
+2. **Identify:** container startup logs for `Startup migration failed` /
+   checksum drift; compare manifest vs `*_schema_migrations` inventory;
+   confirm entrypoint was not skipped via `V2_SKIP_STARTUP_MIGRATE=1`.
+3. **Recover:**
+   - Prefer: fix forward migration SQL offline → redeploy same service
+     (entrypoint re-applies pending files).
+   - If image lacks entrypoint (pre-006B): one-shot
+     `node scripts/migrate-prod.mjs` inside the service container, then
+     restart — then upgrade image to tip with entrypoint.
+   - **Never** down-migrate production. Restore from backup to a **new**
+     database if data is corrupt (`BACKUP_RESTORE.md`).
+4. **Verify:** after deploy/restart alone (no manual migrate on tip images):
+   identity/authz/activity ready 200; API ready 200; inventory count matches
+   manifest; smoke read path on affected tables.
 
 ## Bad deploy
 

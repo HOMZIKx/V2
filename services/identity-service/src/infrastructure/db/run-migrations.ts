@@ -15,9 +15,11 @@ interface RunMigrationsOptions {
 }
 
 const TRACKING_TABLE = 'identity_schema_migrations';
+/** Session advisory lock class/id — serializes concurrent migrators (see MIGRATION_SAFETY.md). */
+const ADVISORY_LOCK_CLASS = 872_014;
+const ADVISORY_LOCK_ID = 1;
 
 function sha256(contents: string): string {
-  // Normalize line endings so the checksum is stable across OSes (CRLF vs LF).
   const normalized = contents.replace(/\r\n/g, '\n');
   return createHash('sha256').update(normalized, 'utf8').digest('hex');
 }
@@ -31,67 +33,70 @@ function listMigrationFiles(migrationsDir: string): string[] {
 /**
  * Idempotent SQL migration runner for the Identity Service.
  *
- * Applies every `*.sql` file in {@link RunMigrationsOptions.migrationsDir} that
- * has not been recorded in {@link TRACKING_TABLE}, storing the SHA-256 of each
- * file. Re-running is a no-op. A previously applied file whose contents changed
- * is treated as an error (checksum drift) rather than silently re-run.
- *
- * This is a standalone command; normal service start never calls it.
+ * Concurrent callers are serialized with `pg_advisory_lock`. Production Docker
+ * entrypoints invoke this before the HTTP listener starts.
  */
 export async function runMigrations(options: RunMigrationsOptions): Promise<MigrationResult[]> {
   const pool = new Pool({ connectionString: options.connectionString });
   const results: MigrationResult[] = [];
+  const client = await pool.connect();
 
   try {
-    await pool.query(
-      `CREATE TABLE IF NOT EXISTS ${TRACKING_TABLE} (
-         id TEXT PRIMARY KEY,
-         applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-         checksum TEXT NOT NULL
-       )`,
-    );
-
-    for (const file of listMigrationFiles(options.migrationsDir)) {
-      const contents = readFileSync(path.join(options.migrationsDir, file), 'utf8');
-      const checksum = sha256(contents);
-
-      const existing = await pool.query<{ checksum: string }>(
-        `SELECT checksum FROM ${TRACKING_TABLE} WHERE id = $1`,
-        [file],
+    await client.query('SELECT pg_advisory_lock($1, $2)', [ADVISORY_LOCK_CLASS, ADVISORY_LOCK_ID]);
+    try {
+      await client.query(
+        `CREATE TABLE IF NOT EXISTS ${TRACKING_TABLE} (
+           id TEXT PRIMARY KEY,
+           applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           checksum TEXT NOT NULL
+         )`,
       );
 
-      const recorded = existing.rows[0];
-      if (recorded !== undefined) {
-        if (recorded.checksum !== checksum) {
-          throw new Error(
-            `Migration ${file} checksum drift detected. Recorded ${recorded.checksum}, file is ${checksum}. Migrations are immutable once applied.`,
-          );
+      for (const file of listMigrationFiles(options.migrationsDir)) {
+        const contents = readFileSync(path.join(options.migrationsDir, file), 'utf8');
+        const checksum = sha256(contents);
+
+        const existing = await client.query<{ checksum: string }>(
+          `SELECT checksum FROM ${TRACKING_TABLE} WHERE id = $1`,
+          [file],
+        );
+
+        const recorded = existing.rows[0];
+        if (recorded !== undefined) {
+          if (recorded.checksum !== checksum) {
+            throw new Error(
+              `Migration ${file} checksum drift detected. Recorded ${recorded.checksum}, file is ${checksum}. Migrations are immutable once applied.`,
+            );
+          }
+          results.push({ id: file, checksum, status: 'skipped' });
+          continue;
         }
-        results.push({ id: file, checksum, status: 'skipped' });
-        continue;
+
+        try {
+          await client.query('BEGIN');
+          await client.query(contents);
+          await client.query(`INSERT INTO ${TRACKING_TABLE} (id, checksum) VALUES ($1, $2)`, [
+            file,
+            checksum,
+          ]);
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK').catch(() => undefined);
+          throw error;
+        }
+
+        results.push({ id: file, checksum, status: 'applied' });
       }
 
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        await client.query(contents);
-        await client.query(`INSERT INTO ${TRACKING_TABLE} (id, checksum) VALUES ($1, $2)`, [
-          file,
-          checksum,
-        ]);
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK').catch(() => undefined);
-        throw error;
-      } finally {
-        client.release();
-      }
-
-      results.push({ id: file, checksum, status: 'applied' });
+      return results;
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1, $2)', [
+        ADVISORY_LOCK_CLASS,
+        ADVISORY_LOCK_ID,
+      ]);
     }
-
-    return results;
   } finally {
+    client.release();
     await pool.end().catch(() => undefined);
   }
 }
