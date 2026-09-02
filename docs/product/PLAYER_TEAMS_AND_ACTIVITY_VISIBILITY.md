@@ -27,7 +27,10 @@ Its detailed human-interaction, realtime, conflict, responsive and adapter
 contract is defined in
 [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
 Additional modules do not expand this slice until its production frontend and
-integration boundary are accepted.
+integration boundary are accepted. Named equipment sets, last-confirmed item
+locations, character progression timers and lightweight assigned team actions
+are clarifications of this slice, defined in
+[TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 
 ## Private player teams
 
@@ -185,16 +188,20 @@ item categories, colors, resolutions and bonus layouts. Provider choice and
 processing design follow that test; insufficient accuracy is a reason to defer
 the feature without blocking manual equipment management.
 
-### Timers
+### Character progression timers and team actions
 
-The workspace provides configurable timers for repeated game actions, including
-book reading, horse medals and user-defined activities. A timer records the
-last completion, calculates the next available time and can be restarted with a
-simple “done now” action.
+The workspace provides configurable timers for repeated character actions,
+including book reading, horse medals, biologist actions and user-defined
+activities. A timer records the last human-confirmed completion, calculates the
+next available time and can be restarted with an idempotent **Done now** action.
 
-Timer names and durations must remain configurable rather than hard-coded.
-Reminders may be shown in the product and, when integrated, sent through the
-approved Discord notification flow.
+A lightweight TeamAction may assign war preparation, set movement or another
+planned action to a teammate. The bot may send Done/Snooze/Cannot do actions by
+private message; the shared team state changes only after human confirmation.
+Names, durations, assignees, quiet hours and reminder rules remain configurable.
+
+These private progression/action records never reuse the separate SpawnTimer
+records used by cooperative boss/Metin map sessions.
 
 ### Notes and requests
 
@@ -203,14 +210,18 @@ equipment card or the team workspace. A request may optionally name a team
 member and have a lightweight status. This remains a coordination note, not a
 formal ticketing system.
 
-### Layouts and reusable templates
+### Named sets, layouts and reusable templates
 
-Character boards support current, target and freely named equipment layouts.
+Character boards support current, target and freely named equipment sets for a
+dungeon, war/PvP, farming or another purpose. A slot may reference one exact
+tracked team item or a planned requirement. Set readiness shows ready, available
+elsewhere, missing, stale, conflict and planned states from the latest human
+confirmations.
+
 A team member may prepare a reusable character or build template, and another
-member may copy it as the starting point for their own character board.
-
-Copying a layout does not create or move real items. Hypothetical equipment may
-be used freely for planning.
+member may copy it as the starting point for their own board. Copying a layout
+does not create or move real items. Hypothetical equipment may be used freely
+for planning.
 
 ### Change history
 
