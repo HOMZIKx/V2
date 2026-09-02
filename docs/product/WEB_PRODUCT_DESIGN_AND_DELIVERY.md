@@ -222,6 +222,11 @@ Interactive design validation currently covers the member dashboard, team
 workspace and character/equipment/timer surface. These previews are not a second
 application and are not yet production source.
 
+D-052 through D-054 add a later Project Hard dungeon analyzer and a hard secret
+storage boundary in
+[PROJECT_HARD_DUNGEON_RUN_ANALYZER](PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
+This does not reorder or expand the active first slice.
+
 ## Immediate next step
 
 Complete an owner coherence review of the first player journey, including mobile,
@@ -229,6 +234,6 @@ empty/error/access-denied and simultaneous-use states. After acceptance, proceed
 to **Phase 5 — production application shell** and implement this first slice in
 the repository frontend stack behind mock adapters.
 
-Do not expand cooperative maps, market, AI import, analytics or bot
+Do not expand cooperative maps, market, AI import, dungeon analytics or bot
 administration until this slice's production interface and adapter boundary are
 stable.
