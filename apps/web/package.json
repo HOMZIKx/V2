@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node ./run-next.mjs dev --hostname 127.0.0.1 --port 3000",
     "build": "node ./run-next.mjs build",
-    "start": "node ./run-next.mjs start --hostname 0.0.0.0 --port 3000",
+    "start": "node ./run-next.mjs start",
     "start:local": "node ./run-next.mjs start --hostname 127.0.0.1 --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",

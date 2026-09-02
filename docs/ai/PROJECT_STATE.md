@@ -53,6 +53,11 @@ team actions / notes -> Change history`.
   `codex/phase5-character-profile` in draft PR **#36**: live card preview,
   flexible class/gender/level/responsible-member data, an empty named starting
   set, honest missing-render state and versioned/idempotent save commands.
+- Zeabur frontend-preview readiness is implemented on
+  `codex/zeabur-preview-readiness` in draft PR **#37**: injected-port handling,
+  `0.0.0.0` production binding, `/health` readiness verification and an explicit
+  monorepo deployment runbook. The stable deployment ref is
+  `preview/destiled-web`.
 - Current next Web step: owner review of the complete first-player path,
   followed by real create/edit flows for named sets, items and progression
   timers. Do not start API/Discord integration before the frontend contract is
@@ -101,7 +106,8 @@ team actions / notes -> Change history`.
   production repository code in PR #31, team workspace in PR #32,
   character/equipment/timer detail in PR #33 and consent-based team membership
   in PR #34. Team history, connection and conflict states are in PR #35.
-  Character create/edit flows are in PR #36.
+  Character create/edit flows are in PR #36. Zeabur Web-preview readiness is in
+  PR #37; it does not authorize production Discord/database/bot integration.
 - Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
   the production frontend code/adapters are explicitly handed off.
 - D-060 fixes the later Technician configurator as a real versioned bot-config
