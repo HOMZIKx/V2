@@ -61,6 +61,7 @@
 | D-057 | Warstwowy i moderowany katalog przedmiotów Projekt Hard             | DATA QUALITY BASELINE | Źródłowe i zatwierdzone definicje są wspólne, prywatne wpisy pozostają w zespole, a AI ani pojedynczy użytkownik nie zmieniają automatycznie globalnej bazy — [contract](product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md) |
 | D-058 | Timery progresji i akcje zespołu z potwierdzanymi przypomnieniami Discord | OWNER DIRECTION | Księgi, biolog, koń i przygotowania należą do prywatnej przestrzeni; bot wysyła przypisanej osobie akcje Done/Snooze/Cannot do, a zespół widzi dopiero potwierdzony stan — [contract](product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md) |
 | D-059 | Timery bossów/Metinów na mapach jako osobna domena                  | OWNER ACCEPTED       | Sesje polowania mają własne mapy, uczestników, markery, respawny, widoczność i powiadomienia; nie współdzielą konfiguracji ani rekordów z timerami postaci i zespołu — [contract](product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md) |
+| D-060 | Konfigurator Technika zmienia realną, wersjonowaną konfigurację bota   | OWNER ACCEPTED       | UI korzysta ze schematu możliwości backendu i prowadzi przez draft, walidację, podgląd skutków, zastosowanie, audyt oraz rollback; bot potwierdza aktywną rewizję, a dekoracyjne przełączniki bez efektu są zabronione |
 
 Szczegółowe decyzje architektoniczne są rozwijane jako ADR-y w `docs/architecture/decisions/`.
 
