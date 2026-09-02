@@ -56,6 +56,37 @@ There is no viewer/observer role or additional team hierarchy in the first
 scope. Guild Leader, Technician and platform access roles do not replace these
 explicit team roles.
 
+## Character boards are flexible planning notes
+
+A “character” in this product is a user-created workspace card, not an
+authoritative game-account entity.
+
+A character board may represent:
+
+- a character that already exists in the game;
+- a planned future character;
+- a hypothetical build used for theorycrafting;
+- an equipment target or alternative setup;
+- any other visual planning note useful to the player or team.
+
+The platform does not verify the character against the game and does not require
+proof of ownership. Character name, account ownership and in-game existence are
+not identity or access-control inputs.
+
+Users may create private character boards. Team members may create and
+collaborate on character boards inside their shared workspace.
+
+The product must not impose:
+
+- global character-name uniqueness;
+- a “one character belongs to one team” rule;
+- a requirement that the character exists in the game;
+- rigid account/character ownership semantics that do not help planning.
+
+The purpose is practical support: visual equipment notes, current and target
+builds, timers, tasks, goals and team coordination. Structure should guide the
+user without preventing free-form planning.
+
 ## Private team data
 
 Private by default:
@@ -130,7 +161,6 @@ not a searchable archive of what users wrote.
 
 ## Not decided here
 
-- whether a character may belong to more than one team;
 - edit versus read-only team permissions;
 - whether members see their own detailed analytics or own position outside TOP
   10;
