@@ -102,6 +102,26 @@ Jeśli jeden obszar jest zablokowany, kontynuuj niezależną bezpieczną pracę.
 - To nie dotyczy jednoznacznych bugfixów, CI, security, recovery, refactorów i niskiego ryzyka microdetails zgodnych z zaakceptowanym kierunkiem.
 - Nie zmieniaj samodzielnie granic usług, własności danych ani zaakceptowanych kontraktów domenowych.
 
+## Podział odpowiedzialności (Owner 2026-09-02) — D-050
+
+### Cursor
+
+- Backend, domeny, API, Identity, Authorization, Discord Gateway, integracje, storage, realtime, security, Zeabur/runtime.
+- Integruje **zaakceptowany** frontend Owner+ChatGPT z realnym API / Identity / Authz / Discord / danymi / Zeaburem.
+- **Nie** projektuje konkurencyjnego member WWW i **nie** traktuje legacy/`apps/web` UI na PR #19 jako docelowego produktu wizualnego.
+- **Nie** zaczyna Task 007 / deferred modules zanim 005/006 tip+acceptance będą uporządkowane.
+- Po domknięciu runtime/acceptance: Player Toolkit według Issue #29 i zaakceptowanego scope (nadal osobny prompt).
+
+### Owner + ChatGPT
+
+- Produkt, UX i produkcyjny frontend member WWW.
+- Track: `codex/phase5-*`, `preview/destiled-web`, kierunek PR #30.
+- Workflow: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
+
+### Deferred (nie tykać jako nowego produktu)
+
+Guild Control (pełny), finanse gildii, G8 / rozbudowany voice attendance, szeroki monitoring Discord, Marketplace, Reservations, szerokie Community, Music — chyba że istniejąca zależność kodu tego wymaga.
+
 ## Git i PR
 
 - Pracuj na gałęzi zadania; nie commituj bezpośrednio do `main`.
@@ -118,4 +138,4 @@ Jeśli jeden obszar jest zablokowany, kontynuuj niezależną bezpieczną pracę.
 
 ## Granice referencji
 
-Stary projekt jest wyłącznie referencją dla selektywnie ocenionych wzorów. Zakazane jest kopiowanie jego architektury, całego monorepo lub automatyczne powielanie jego decyzji.
+Stary projekt jest wyłącznie referencją techniczną. Zakazane jest kopiowanie jego architektury, całego starego monorepo lub traktowanie go jako SoT wizualnego member WWW.

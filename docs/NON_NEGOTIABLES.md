@@ -46,6 +46,8 @@ Poniższe zasady są nadrzędne. Agent nie może ich samodzielnie zmieniać ani 
 - `web`: Next.js App Router — część publiczna i panel użytkownika.
 - `admin`: React + Vite + React Router — panel administracyjny.
 - Wspólny design system, klient API, walidacja, autoryzacja, kontrakty i telemetryka.
+- **D-050:** produkcyjny member WWW projektuje i tworzy Owner + ChatGPT; Cursor integruje zaakceptowany frontend z backendem — bez konkurencyjnego redesignu (`docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`).
+- Istniejący kod `apps/web` / `apps/admin` jest materiałem technicznym do czasu akceptacji slice’ów z frontend tracku; nie wolno go usuwać tylko dlatego, że kierunek wizualny się zmienia.
 
 ## Tożsamość i bezpieczeństwo
 

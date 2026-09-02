@@ -2,41 +2,49 @@
 
 ## Status
 
-`READY_FOR_CURSOR` — active task brief
+`READY_FOR_CURSOR` — **SoT REALIGNMENT ACTIVE** (no new product feature)
 
-> Historical P2 Identity proof brief was previously stored in this file.
-> That content is obsolete as the _active_ task pointer. See git history /
-> `docs/ai/P2_IDENTITY_FOUNDATION_HANDOFF.md` for P2 history.
+> Previous active pointer `P4-CLOSURE-REMEDIATION-001` is **historical / superseded as task pointer**.
+> P4 work continues only as runtime/acceptance closure on PR #19, not as a license to redesign member WWW.
 
 ## Task ID
 
-`P4-CLOSURE-REMEDIATION-001`
+`V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001`
 
 ## Goal
 
-Combined closure remediation for P4.1–P4.4 on PR #19.
-Do **not** start P4.5 / P4.6 / RabbitMQ / Zeabur / merge.
+Align repository Source of Truth with Owner directive (2026-09-02):
 
-## Target marker
-
-`READY_FOR_REVIEW_P4_1_TO_P4_4_CLOSURE`
+1. Cursor owns backend, domains, API, Identity, Authorization, Discord Gateway, integrations, storage, realtime, security, Zeabur/runtime.
+2. Owner + ChatGPT own production **member WWW** (and approved frontend slices) — see D-050 / `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
+3. Cursor **integrates** approved frontend to real API / Identity / Authz / Discord / Zeabur — does **not** redesign competing WWW UI.
+4. Do **not** start Task 007 / Trackers / deferred modules until 005/006 runtime+acceptance is ordered.
+5. After current runtime/acceptance: next product priority = **Player Toolkit** (Issue #29) under approved scope — still **not** started in this realignment.
 
 ## Branch / PR
 
 - Repo: `HOMZIKx/V2`
-- Branch: `cursor/p4-1-activity-domain`
-- PR: #19
+- Cursor active branch: `cursor/p4-1-activity-domain`
+- Cursor PR: **#19** (do not merge without Owner)
+- Frontend track (Owner + ChatGPT): `codex/phase5-*`, `preview/destiled-web`, `codex/d037-web-product-workflow` (PR #30 direction)
+- Merged `main`: `8c1b0959ae51d131e62ed587d81be1aae5012d37`
 
-## Owner amendments in scope
+## Hard stops for Cursor
 
-1. Discord create: single cohesive form → preview → publish (no sectional
-   edit buttons).
-2. Security blockers 3.1–3.6 (actor headers, mentions, modal signing, jti
-   replay, projection auth, log redaction).
-3. Complete P4-D6 panel adopt/nonce/duplicate cleanup.
-4. Align SoT docs; CI green including `pnpm audit --audit-level=high`.
-5. Owner live gates remain for Discord / Admin / WWW OAuth.
+- No Task 007 / Trackers / Biolog product implementation yet.
+- No competing member WWW redesign; no treating legacy/`apps/web` UI as final product design.
+- No deferred modules: full Guild Control, guild finance, G8/voice attendance, broad Discord monitoring, Marketplace, Reservations, broad Community, Music — unless required as existing code dependency.
+- Do not delete premature 005/006 code; classify and prove runtime instead.
 
 ## Reading order
 
-See task body / AGENTS.md constitution list.
+1. `AGENTS.md`
+2. `docs/ai/PROJECT_STATE.md`
+3. `docs/ai/CURSOR_TO_CHATGPT.md`
+4. `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (D-050)
+5. `docs/ai/PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`
+6. Issue #29 (Player Toolkit) when starting that work later
+
+## Next safe task (do not start here)
+
+`V2-RUNTIME-005-006-TIP-DEPLOY-AND-ACCEPTANCE` — finish tip deploy (esp. web/admin + identity healthy), then Owner live acceptance for Admin 005 and Player Core 006. Only then Player Toolkit per #29.

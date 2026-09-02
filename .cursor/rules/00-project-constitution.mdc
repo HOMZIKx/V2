@@ -32,6 +32,8 @@ Nie czytaj wszystkich ADR-ów bez związku z zadaniem.
 - Nie używaj `any`; waliduj wejścia zewnętrzne w runtime.
 - Nie omijaj wymaganych testów, kontroli bezpieczeństwa ani granic architektury.
 - Nie kopiuj architektury starego projektu. Stary projekt jest wyłącznie referencją.
+- **D-050:** nie projektuj konkurencyjnego member WWW; integruj frontend Owner+ChatGPT (`docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`).
+- Nie zaczynaj Task 007 / deferred product modules zanim 005/006 tip+acceptance są uporządkowane.
 
 ## Planowanie proporcjonalne
 

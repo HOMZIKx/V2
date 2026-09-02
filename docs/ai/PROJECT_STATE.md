@@ -2,121 +2,75 @@
 
 ## Status
 
-`V2-CURRENT-HEAD-STABILIZATION-006A` — checkpoint repair (no new product features)
-
-**Task 005:** `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` — code checkpoint ready; **runtime proof blocked** (deploy lag)
-**Task 006:** `TASK_006_CODE_IMPLEMENTED_PREMATURELY_AND_NOT_ACCEPTED` — see `PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`
+`V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001` — Source of Truth realigned (no new product features)
 
 Product / merge: **NOT APPROVED** · **NOT MERGED** · **NOT FULLY RUNTIME VERIFIED**
 
-Prior: `V2-CURRENT-PRODUCT-LIVE-ACCEPTANCE-AND-REPAIR-004` — Admin OAuth **OWNER_PASS**; DM live smoke **OWNER_ACCEPTANCE_PENDING**
+**STOP Task 007 / Trackers / deferred modules.** First close 005/006 tip deploy + Owner acceptance. Then Player Toolkit per Issue #29 under approved scope.
 
-**STOP Stage 6/7 product expansion** until Owner Discovery closes (see `docs/ai/OWNER_DISCOVERY_GAPS.md`).
+## Ownership (binding)
 
-Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of this foundation.
+| Party               | Responsibility                                                                |
+| ------------------- | ----------------------------------------------------------------------------- |
+| **Cursor**          | Backend + integrations + Zeabur/runtime; integrate Owner-approved frontend    |
+| **Owner + ChatGPT** | Product, UX, production member WWW (`codex/phase5-*`, `preview/destiled-web`) |
+
+SoT: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (**D-050**).  
+`apps/web` on PR #19 is **technical material**, not accepted final member product design.
 
 ## Current execution
 
-| Field                 | Value                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| CURRENT_HEAD          | `0ac25442f26afe7abbfb49e778a6e9bcc276f62d`                                                  |
-| CURRENT_TASK          | `V2-CURRENT-HEAD-STABILIZATION-006A`                                                        |
-| REVIEW_POSTURE        | local/CI gates closed; Owner review + live deploy still required                            |
-| CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…`                  |
-| PLAYER_TOOLKIT_STATUS | `PLAYER_TOOLKIT_CORE_V1` + remediation; live deploy **BLOCKED**                             |
-| INFRA_DB_ISOLATION    | **PASS** on fresh Docker volume (CI-equivalent); stale local volume caused prior false FAIL |
-| LOCAL_VALIDATE        | **PASS** — `corepack pnpm validate` (Admin E2E 6/6, Member WWW E2E 14/14)                   |
-| RUNTIME_STATUS        | Deployed services behind tip — Zeabur legacy token blocks redeploy                          |
+| Field              | Value                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| CURRENT_HEAD       | `d098cc398f81104a6e4cc81467eadd799dc2fa03`                                              |
+| CURRENT_TASK       | `V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001`                                           |
+| ACTIVE_BRANCH / PR | `cursor/p4-1-activity-domain` / **#19**                                                 |
+| MERGED_MAIN        | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                                              |
+| REVIEW_POSTURE     | SoT realigned; runtime tip partial; Owner acceptance pending                            |
+| CODE_005           | Implemented — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…` — **not Owner-accepted**      |
+| CODE_006           | Implemented prematurely — `PLAYER_TOOLKIT_CORE_V1_SHA`=`2af092f…` — boundary doc exists |
+| LOCAL_VALIDATE     | PASS at 006A (`8a6afd6` lineage); tip includes Docker/web typecheck deploy fixes        |
+| RUNTIME_STATUS     | API tip live but **identity unhealthy** (503); web/admin **behind tip**                 |
+| NEXT_SAFE_TASK     | `V2-RUNTIME-005-006-TIP-DEPLOY-AND-ACCEPTANCE` (do not start 007)                       |
+
+## Contradictions fixed in this realignment
+
+1. Stale `CHATGPT_TO_CURSOR.md` still pointed at `P4-CLOSURE-REMEDIATION-001` as active task.
+2. Docs implied Cursor owns full WWW product design; Owner directive assigns production member WWW to Owner+ChatGPT (D-050).
+3. `CURSOR_TO_CHATGPT.md` / `PROJECT_STATE` still said Zeabur token blocked after token was restored — runtime narrative updated to identity unhealthy + web/admin lag.
+4. Task 007 risk: explicit **STOP** until 005/006 ordered.
+5. Decision Log ID collision: P4 Discord **D-037** vs frontend-track **D-037** → frontend ownership recorded as **D-050** on this branch.
+
+## Deferred — DO NOT TOUCH (product)
+
+- Full Guild Control / G8 / extended voice attendance / broad Discord monitoring
+- Guild finance
+- Marketplace
+- Reservations (beyond existing discovery packs)
+- Broad Community modules / Music
+- Task 007 Trackers / Biolog product expansion
+- Competing redesign of member WWW vs `preview/destiled-web` / `codex/phase5-*`
 
 ## Governance
 
-Fundamental rule (Owner decision): every **new product function** requires
-IDEA → Owner+ChatGPT Discovery → Options → Owner Decisions → Accepted SoT →
-implementation prompt. Continuous execution does **not** override this.
+Every **new product function** still requires IDEA → Owner+ChatGPT Discovery → Options → Owner Decisions → Accepted SoT → implementation prompt.
 
-SoT gap matrix: `docs/ai/OWNER_DISCOVERY_GAPS.md`.
+Frontend delivery gates: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
 
-Issue #20 Owner closure (2026-08-22): **DISCOVERY STATUS: CLOSED FOR DUNGEON LFG v1. IMPLEMENTATION AUTHORIZED.**
+Player Toolkit boundary: `docs/ai/PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`.
 
-Reservations: **`OWNER_DISCOVERY_READY`** — Owner pack `docs/ai/RESERVATIONS_OWNER_DECISIONS.md` (prep: `docs/ai/RESERVATIONS_DISCOVERY_PREP.md`).
+## Checkpoint ledger (selected)
 
-Guild Control / G8 / member monitoring: **`GUILD_CONTROL_DISCOVERY_PREP_READY`** — `docs/ai/GUILD_CONTROL_DISCOVERY_PREP.md` (no implementation).
-
-## Checkpoint ledger
-
-Historical markers remain immutable. Distinguish **Accepted** vs **WIP** vs **prototype**.
-
-| Marker                                         | SHA                                        | Class                                                                         |
-| ---------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| CI_SECURITY_CLOSURE_SHA                        | `f4577fb0e5860c34e269fa3183eef17d4d6106a7` | HISTORICAL / prior closure                                                    |
-| V2_HUB_CORE_CHECKPOINT_SHA                     | `178a37e1bf3fb83d0ef080453c96da17aa14e5e5` | ACCEPTED_STAGE_CHECKPOINT (Hub)                                               |
-| NOTIFICATIONS_CORE_CHECKPOINT_SHA              | `ea3e7b97719726aceb5226907a90ad270ca9783e` | IMPLEMENTATION_MARKER — principles #24; catalog details open                  |
-| ACTIVITY_2_LFG_IMPLEMENTATION_WIP_SHA          | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — superseded by v1 checkpoint                                  |
-| **DUNGEON_LFG_V1_IMPLEMENTATION_SHA**          | `976b89cf4740ef9b3948dd83a82e32659e4eeb07` | v1 implementation base                                                        |
-| **DUNGEON_LFG_V1_AUDIT_SHA**                   | `53e7d3ab8597f4a021abae96bdf3e6d1faad60a4` | Deep audit — CRITICAL/HIGH = 0 (pre-ChatGPT)                                  |
-| **DUNGEON_LFG_V1_CHATGPT_REMEDIATION_SHA**     | `3c3009991f656e4369d3f600fcb05266683ede50` | ChatGPT remediation pass 1                                                    |
-| **DUNGEON_LFG_V1_DURABLE_DM_CONTEXT_SHA**      | `d781c2b275ecb88275b7ab2e84ae468065163c7f` | Durable DM intent/watch context                                               |
-| **DUNGEON_LFG_V1_FINAL_HIGH_FIXES_SHA**        | `94e71fef5bcb8c541824a058dae37020c86516af` | Mute + watch fulfillment                                                      |
-| **DUNGEON_LFG_V1_FINAL_SOURCE_AUDIT_SHA**      | `d5862da470412343606c7283c827b036981a9cbe` | **READY_FOR_CHATGPT_APPROVAL** — final source reaudit + lifecycle             |
-| **FOUNDATION_ADVERSARIAL_SECURITY_AUDIT_SHA**  | `29f6934cc82399cd6a6ee825d1f03bb5d03c2bff` | Prior pass — HIGH closure **incomplete** (ChatGPT found residuals)            |
-| **CHATGPT_INTEGRATED_REVIEW_REMEDIATION_SHA**  | `24ca822dcb4af77569074dba955f790d80cf0836` | Rate-limit trust/memory + org scope hardening — **READY_FOR_CHATGPT_REAUDIT** |
-| **DISCORD_OWNER_UX_CORRECTION_PACK_SHA**       | `2a90a437a048cb7f59cb5dbc88f5e653d4bb7ecf` | Owner Discord UX correction pack 002                                          |
-| **GUILD_CONTROL_DISCOVERY_PREP_SHA**           | `e0e4401f547d577305b8675fed1859f142dfe01d` | Guild Control + member monitoring discovery prep 001                          |
-| **RUNTIME_SECURITY_BOUNDARY_REMEDIATION_SHA**  | `04881cbefe015813e2ae0655757e32a37a73f9ab` | Fail-closed Authz/Identity; narrow hub projection S2S                         |
-| RESERVATIONS_FOUNDATION_WIP_SHA                | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — Owner decision pack ready                                    |
-| MARKETPLACE_FOUNDATION_WIP_SHA                 | `24828b7ddee17212775e36be37d2d9edd24ca2d4` | FOUNDATION_WIP — #28 `NOT_ACCEPTED_FOR_PRODUCT_IMPLEMENTATION`                |
-| CORE_FOUNDATION_INTEGRATED_CHECKPOINT_SHA      | `24828b7…` (invalid as final)              | **REVOKED** as review readiness                                               |
-| CORE_STATE_AND_CI_RECOVERY_SHA                 | `cf15925248f24aad7ceca4c0715d10686dc0199e` | prior remediation                                                             |
-| DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA       | `90fc384…`                                 | historical auto-sync baseline                                                 |
-| OWNER_DISCOVERY_GOVERNANCE_REMEDIATION_SHA     | `9a6ab229544776f68ced8be6de4d6f4add3d496c` | governance remediation                                                        |
-| POST_OVERBUILD_TECHNICAL_AUDIT_SHA             | `25552dc75a5551f7185d77a8c02bbca5999bee89` | prior technical audit (base for LFG v1)                                       |
-| **ZEABUR_PRODUCTION_READINESS_AUDIT_SHA**      | `b4ce19fb066b7e44ef1322e236df4c730ccf7dce` | Zeabur deploy readiness audit + safe fixes                                    |
-| **CROSS_SERVICE_CONTRACT_AUDIT_SHA**           | `b7cf78fa258ac6e431a0510e21c13651271acb1b` | Cross-service DTO drift audit + shared LFG/admin transport                    |
-| **DURABILITY_RECOVERY_AUDIT_SHA**              | `be86063726947930a02c06eab38dad947a4243cc` | Durability/outbox/auto-recovery audit + safe CRITICAL/HIGH                    |
-| **DATA_RECOVERY_AUDIT_SHA**                    | `b76dcf556ab8007311aecab046c3ef2e2357aee4` | Migration/backup/recovery audit + full-chain ready probe                      |
-| **PERFORMANCE_SCALABILITY_AUDIT_SHA**          | `179be84ee645cf2a3709a403798349407a60db56` | LFG batching, indexes 019, timeouts, outbox backoff                           |
-| **OPERABILITY_INCIDENT_READINESS_SHA**         | `b64952fd107feb4a1e5bb45f58d315d501219614` | Correlation, error taxonomy, outbox diagnostics, runbooks                     |
-| **PR19_FINAL_STABILIZATION_SHA**               | `cc9eb88c27aa1037581428b94b896d0071a9f6e6` | PR #19 integrated review package                                              |
-| **PLAYER_TOOLKIT_CORE_V1_SHA**                 | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | GameAccount + Character foundation (#29); WWW Profil/Postacie; Discord parity |
-| **ADMIN_CONTROL_CENTER_UX_V1_SHA**             | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | Admin IA + owner copy remediation; CODE_CHECKPOINT_READY_FOR_OWNER_REVIEW     |
-| **PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA** | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | CI infra fix, architecture boundary, process truth                            |
-| **CURRENT_HEAD_STABILIZATION_006A_SHA**        | `8a6afd6015d93466871801fa5c03a96080820277` | validate PASS, web E2E API mock port, identity migrations path, truthful docs |
-
-## Module discovery status (summary)
-
-| Module        | Status                                                                 |
-| ------------- | ---------------------------------------------------------------------- |
-| Hub Core      | Accepted Stage 3 (+ implementation assumptions flagged)                |
-| Notifications | Principles Accepted #24; product catalog/timings open                  |
-| Activity P4   | Accepted P4 decisions                                                  |
-| LFG           | **`READY_FOR_CHATGPT_APPROVAL`** (`LFG_CODE_STATUS`; runtime separate) |
-| Reservations  | `OWNER_DISCOVERY_READY` — `RESERVATIONS_OWNER_DECISIONS.md`            |
-| Marketplace   | `OWNER_DISCOVERY_REQUIRED` (#28); prototype only                       |
-| Guild Control | `GUILD_CONTROL_DISCOVERY_PREP_READY` — bot-first ops; G8 #21 PLANNING  |
-
-## CRITICAL / HIGH
-
-| ID                              | Severity                | Item                                                                                  |
-| ------------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
-| **Security (this remediation)** | **0 CRITICAL / 0 HIGH** | Production Authz AllowAll + Identity PassThrough removed; hub projection S2S narrowed |
-| CI-BILLING-001                  | CRITICAL (CI green)     | GitHub Actions billing / spending limit — Owner must restore                          |
-| MARKETPLACE-DISC-001            | HIGH (scope)            | Issue #28 — do not treat Stage 7 as done                                              |
-| RESERVATIONS-DISC-001           | HIGH (scope)            | Discovery prep ready — do not expand Reservations product                             |
-| GOVERNANCE-001                  | HIGH (process)          | Owner Discovery gate — see `OWNER_DISCOVERY_GAPS.md`                                  |
-
-## LFG v1 delivery (summary)
-
-- Identity S2S character verify + server-side role authority
-- Actionable LFG match DMs with **durable intent/watch context** in signed buttons (≤100 chars)
-- Intent-based join: backend resolves `intentId` → stored character; ignores profile default
-- Full-group watch join: resolves watch opaque id → stored character
-- Nie teraz suppresses exact `intentId` (not actor-wide) when durable intent context present
-- Server `eligiblePartyRoles` rendered in DM; backend revalidates role at click
-- Multi-role join, custom time window, watch edit, full-group watch UX
-- Background notify membership revalidation (JOIN permission)
-- Admin composition from activity type catalog (FLEX + preferred explicit)
-- Migration `017`/`018`; Hub wizard + WWW `/szukam-ekipy` parity
+| Marker                                  | SHA                                        | Class                                      |
+| --------------------------------------- | ------------------------------------------ | ------------------------------------------ |
+| MERGED_MAIN                             | `8c1b0959ae51d131e62ed587d81be1aae5012d37` | main tip                                   |
+| **PLAYER_TOOLKIT_CORE_V1_SHA**          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | 006 foundation (premature vs acceptance)   |
+| **ADMIN_CONTROL_CENTER_UX_V1_SHA**      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | 005 code checkpoint                        |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA** | `8a6afd6015d93466871801fa5c03a96080820277` | local validate / infra isolation PASS      |
+| CURRENT_HEAD (PR #19)                   | `d098cc398f81104a6e4cc81467eadd799dc2fa03` | includes admin hub-core + web tsconfig fix |
+| preview/destiled-web                    | `b7271a07f12c4d772097b05f46d8e3ba01c13372` | Owner+ChatGPT frontend track               |
+| codex/phase5-player-shell               | `adbd4a03d925bd1973bfda9d00ade15e3d225a30` | Owner+ChatGPT frontend track               |
 
 ## Last updated
 
-2026-09-02 — `V2-CURRENT-HEAD-STABILIZATION-006A`: LOCAL_VALIDATE PASS; INFRA_DB_ISOLATION PASS (fresh volume); deploy/runtime proof BLOCKED (Zeabur `ERROR_INVALID_TOKEN` + tip not deployed).
+2026-09-02 — SoT realignment: Owner+ChatGPT member WWW track; Cursor backend/integration; STOP 007; next = tip deploy + 005/006 acceptance.

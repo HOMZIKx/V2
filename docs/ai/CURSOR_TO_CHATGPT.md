@@ -2,83 +2,68 @@
 
 ## Status
 
-**MODE:** `V2-CURRENT-HEAD-STABILIZATION-006A` — local/CI gates closed; **runtime deploy still blocked**
+**MODE:** `V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001` — documentation / audit only  
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge
+Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge  
+CURRENT_HEAD: `d098cc398f81104a6e4cc81467eadd799dc2fa03`
 
-## Process truth
+## Ownership split (Owner directive 2026-09-02) — ACCEPTED SoT
 
-| Task                            | Status                                                                                                          |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **005 Admin Control Center UX** | `TASK_005_CODE_IMPLEMENTED_BUT_NOT_ACCEPTED` — code at `ADMIN_CONTROL_CENTER_UX_V1_SHA`; live deploy behind tip |
-| **006 Player Toolkit Core**     | `TASK_006_CODE_IMPLEMENTED_PREMATURELY_AND_NOT_ACCEPTED` — live deploy missing tip (migration 003 / profil)     |
+| Role                | Owns                                                                                                                                                | Must not                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Cursor**          | Backend, domains, API, Identity, Authz, Discord Gateway, integrations, storage, realtime, security, Zeabur/runtime; **integrate** approved frontend | Redesign competing member WWW; invent product screens; start Task 007 / deferred modules |
+| **Owner + ChatGPT** | Product, UX, production member WWW frontend track (`codex/phase5-*`, `preview/destiled-web`)                                                        | Expect Cursor to invent replacement WWW visual product                                   |
 
-Mixed implementation landed in `2af092f` before 005 Owner review. History **not** rewritten.
+Canonical workflow: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (**D-050** on this branch; **D-037** ID on frontend-track Decision Log — ID collision documented in `DECISION_LOG.md`).
 
-## Delta classification (`81e5d49` → tip)
+## Process truth (005 / 006)
 
-| Class                        | Scope                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| **A — TASK_005_ADMIN**       | `apps/admin/**` (IA, events, Centrum V2, diagnostics, E2E)                           |
-| **B — TASK_006_PLAYER_CORE** | identity migration 003, game accounts, WWW profil/postacie, Discord profile          |
-| **C — SHARED**               | `packages/hub-core` class labels, `activity-service` app.module DI, `pnpm-lock.yaml` |
-| **D — UNRELATED**            | discord-gateway debug scripts — operational only; `.tmp-*` local artifacts           |
+| Task                            | Status                                                                                               |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **005 Admin Control Center UX** | Code at `ADMIN_CONTROL_CENTER_UX_V1_SHA`; **not Owner-accepted**; live admin still behind tip        |
+| **006 Player Toolkit Core**     | Code at `PLAYER_TOOLKIT_CORE_V1_SHA` (premature vs 005 acceptance); architecture boundary documented |
+| **007 Trackers**                | **NOT STARTED** — blocked until 005/006 ordered + Issue #29 / approved Player Toolkit scope          |
 
-## SHAs (immutable markers)
+History not rewritten. Premature code preserved.
 
-| Marker                                       | SHA                                        |
-| -------------------------------------------- | ------------------------------------------ |
-| `PLAYER_TOOLKIT_CORE_V1_SHA` (006)           | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` |
-| `ADMIN_CONTROL_CENTER_UX_V1_SHA` (005)       | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
-| `PLAYER_TOOLKIT_INTEGRATION_REMEDIATION_SHA` | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
-| `CURRENT_HEAD_STABILIZATION_006A_SHA`        | `8a6afd6015d93466871801fa5c03a96080820277` |
-| `CURRENT_HEAD`                               | `0ac25442f26afe7abbfb49e778a6e9bcc276f62d` |
+## SHAs
 
-## Stabilization 006A results
+| Marker                                | SHA                                        |
+| ------------------------------------- | ------------------------------------------ |
+| `main` (merged)                       | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
+| CURRENT_HEAD (PR #19 tip)             | `d098cc398f81104a6e4cc81467eadd799dc2fa03` |
+| `ADMIN_CONTROL_CENTER_UX_V1_SHA`      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
+| `PLAYER_TOOLKIT_CORE_V1_SHA`          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` |
+| `CURRENT_HEAD_STABILIZATION_006A_SHA` | `8a6afd6015d93466871801fa5c03a96080820277` |
+| `preview/destiled-web` tip            | `b7271a07f12c4d772097b05f46d8e3ba01c13372` |
+| `codex/phase5-player-shell` tip       | `adbd4a03d925bd1973bfda9d00ade15e3d225a30` |
 
-| Gate                    | Result                                                                                                                                          |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **CURRENT_HEAD**        | `0ac25442f26afe7abbfb49e778a6e9bcc276f62d` (marker code SHA `8a6afd6`)                                                                          |
-| **INFRA_DB_ISOLATION**  | **PASS** locally on fresh Docker volume (`migration-inventory` + `db-isolation` 11/11). Prior local FAIL = stale `v2_pgdata`, not architecture. |
-| **CI (GitHub Actions)** | **UNVERIFIED locally** — `gh` not authenticated. Infra root cause (migration inventory drift) fixed in `4df7a94`.                               |
-| **VALIDATE**            | **PASS** — `corepack pnpm validate` (`WEB_E2E_PORT=3010`); Admin E2E 6/6; Member WWW E2E 14/14                                                  |
-| **ADMIN_005_RUNTIME**   | **BLOCKED** — deployed admin SHA still pre-005; Zeabur API rejects legacy local token                                                           |
-| **PLAYER_006_RUNTIME**  | **BLOCKED** — deployed API/web behind tip; no LIVE profil/postacie proof without deploy                                                         |
+## Runtime snapshot (Zeabur TESTOWY, probed during realignment)
 
-### Deployed runtime (Zeabur TESTOWY)
-
-| Service | `/health` gitCommitSha                     | vs tip |
-| ------- | ------------------------------------------ | ------ |
-| API     | `9d5fdcd194517336eb55e97bc037cd1d2f6d91c4` | behind |
-| Web     | `510b262206ae413b228ee546ffa93b0e931e829c` | behind |
-| Admin   | `8babc89784820c6fab9b627ce8425049abf52819` | behind |
-
-### Code fixes (006A additive)
-
-- CI infra: identity migration inventory expects **3** migrations (`4df7a94`).
-- Web E2E: `WEB_E2E_PORT` + unrouted `E2E_API_BASE_URL` so middleware fails open and Playwright mocks work when local API occupies :4000.
-- Identity: fix `player-game-account.integration.spec.ts` migrations path (`../../../migrations`).
-- Zeabur deploy script: surface GraphQL `ERROR_INVALID_TOKEN` message.
-- Docs: truthful checkpoint status (no implied runtime closure).
+| Surface         | Evidence                                                      | Status                                                     |
+| --------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| API tip         | `/health/ready` shows `d098cc3…`                              | **503** — `identity=unhealthy`                             |
+| Backends deploy | Zeabur status RUNNING @ `d098cc3` for identity/activity/api/… | Tip image present; identity not healthy                    |
+| Web live        | `/health` → `510b262…`                                        | **behind tip** (build previously FAILED; redeploy RUNNING) |
+| Admin live      | `/health` → `8babc897…`                                       | **behind tip** (redeploy RUNNING)                          |
+| Local validate  | prior 006A `pnpm validate` PASS                               | code gate OK                                               |
+| Task 007        | —                                                             | **forbidden until 005/006 closure**                        |
 
 ## Known blockers
 
-1. **ZEABUR_TOKEN** — local CLI token is a disabled legacy API key (`ERROR_INVALID_TOKEN`). Need Personal Access Token + redeploy identity/web/admin/api to tip.
-2. **CI visibility** — `gh auth login` (or `GH_TOKEN`) required to confirm Actions on tip.
-3. **Runtime proof** — cannot record LIVE PASS for 005/006 until tip is deployed.
+1. Identity unhealthy on tip → API ready 503.
+2. Web/Admin tip not live yet (builds / prior Docker failures fixed in `0eec6af` / `d098cc3`).
+3. Owner live acceptance for Admin 005 + Player Core 006 still pending after tip is healthy.
+4. `gh` CLI often unauthenticated locally — Actions status may need Owner UI.
 
-## Owner interaction required
+## Owner action required
 
-1. Replace Zeabur token (Developer → Personal Access Token) in local CLI **and** GitHub `ZEABUR_TOKEN`; trigger deploy of tip.
-2. After deploy: **Admin OAuth** one login click for full 005 smoke (if no session).
-3. After deploy: **Discord session** for Member WWW `/profil` live 006 proof.
-
-## Task 004 (unchanged)
-
-- `ADMIN_OAUTH` = **OWNER_PASS** (prior Owner test on old admin build)
-- `DM_LIVE_SMOKE` = **OWNER_ACCEPTANCE_PENDING**
+1. After tip healthy: Admin OAuth smoke for 005 UX.
+2. After tip healthy: Discord-auth Member session for 006 `/profil` proof (or confirm integration against approved frontend track when wired).
+3. Treat `codex/phase5-*` / `preview/destiled-web` as the member WWW design track — do not ask Cursor to redesign it.
 
 ## STOP
 
-No task 007. No Trackers/Biolog/Elixirs/EQ/Marketplace/Guild Control.
+No Task 007. No Trackers/Biolog/Elixirs/EQ/Marketplace/Guild Control/Reservations/Music product expansion.
+No competing member WWW redesign by Cursor.

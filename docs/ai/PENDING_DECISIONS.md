@@ -2,6 +2,24 @@
 
 ## Aktywne
 
+### SOT-REALIGN-001 — Owner+ChatGPT member WWW vs Cursor backend (2026-09-02)
+
+- **Status:** `OWNER_ACCEPTED` as process SoT (D-050)
+- **Rule:** Cursor does not redesign competing member WWW; integrates approved
+  frontend from `codex/phase5-*` / `preview/destiled-web` (PR #30 direction).
+- **SoT:** `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`, `AGENTS.md`,
+  `.cursor/rules/80-frontend-ownership-d050.mdc`
+- **Cursor action:** finish 005/006 tip deploy + acceptance first; **no Task 007**;
+  then Player Toolkit per Issue #29 under approved scope only.
+
+### DEFERRED-PRODUCT-001 — Modules frozen unless existing code dependency
+
+- **Status:** `DEFERRED — DO NOT TOUCH` as new product work
+- **Includes:** full Guild Control; guild finance; G8 / extended voice attendance;
+  broad Discord monitoring; Marketplace (#28); Reservations product expansion;
+  broad Community modules; Music; Task 007 Trackers/Biolog product expansion.
+- **Cursor action:** no new implementation prompts for these until Owner opens them.
+
 ### GOVERNANCE-001 — Owner Discovery gate (all new product functions)
 
 - **Status:** `OWNER_PROCESS_ACCEPTED` (Issue #26 amendment + remediation task)

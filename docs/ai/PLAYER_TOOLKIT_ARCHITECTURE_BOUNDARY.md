@@ -26,6 +26,10 @@ Identity **must not**:
 - Expose guild-admin implicit access to member-private profile data.
 - Become a cross-service DB for Activity/LFG tables.
 
+Member WWW UI for Player Toolkit **must not** be redesigned by Cursor against the
+Owner+ChatGPT frontend track (D-050). Cursor wires approved screens/adapters to
+Identity character APIs; visual SoT is `codex/phase5-*` / `preview/destiled-web`.
+
 Consumers (**web**, **discord-gateway**, **activity-service** via S2S) **must**:
 
 - Use Identity HTTP APIs for character verification and profile facts.
