@@ -16,6 +16,19 @@ The product must not mix private player/team tools with guild Discord analytics.
 Leader access to guild analytics does not grant access to private player/team
 equipment, timers or notes.
 
+## First production player slice
+
+The first closed player journey is:
+
+`Member dashboard -> My teams -> Team workspace -> Character board ->
+Equipment / timers / notes -> Change history`.
+
+Its detailed human-interaction, realtime, conflict, responsive and adapter
+contract is defined in
+[PLAYER_VERTICAL_SLICE_AND_COLLABORATION](PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+Additional modules do not expand this slice until its production frontend and
+integration boundary are accepted.
+
 ## Private player teams
 
 The platform supports a team of several people jointly operating or developing
@@ -32,8 +45,9 @@ A team:
 - is invisible to other guild members unless the team explicitly shares a
   future public field.
 
-The exact invitation flow, team roles and character ownership/editing rules are
-not decided in this document.
+Team roles and editing rights are defined below. The remaining invitation UI
+details and revocation copy are resolved inside the first player slice without
+inferring access from a Discord guild rank.
 
 ## Team capability model
 
@@ -208,6 +222,18 @@ irreversible removal.
 The history supports cooperation and correcting mistakes. It is not evidence of
 ownership, custody or an in-game transaction.
 
+### Simultaneous team use
+
+Presence and persistent player data are separate. Members may work on different
+items, timers and notes at the same time without locking the whole character.
+Multi-field editing is protected per resource, mutations carry expected
+revisions and a stale write produces a visible conflict instead of silently
+overwriting another member.
+
+The precise behavior, connection states, idempotency rules and acceptance
+scenarios are specified in
+[PLAYER_VERTICAL_SLICE_AND_COLLABORATION](PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+
 ## Private team data
 
 Private by default:
@@ -282,9 +308,8 @@ not a searchable archive of what users wrote.
 
 ## Not decided here
 
-- edit versus read-only team permissions;
 - whether members see their own detailed analytics or own position outside TOP
   10;
 - exact ranking periods and metric catalog;
 - retention periods and anonymization after leaving the guild;
-- product screens, navigation and visual design.
+- final invitation wording and notification channels.
