@@ -8,7 +8,7 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
 
 ## Owner directive — WWW product (2026-09-02)
 
-- Decision: **D-037 ACCEPTED**.
+- Decisions: **D-037–D-051**; D-050 remains a design baseline for owner review.
 - Cursor keeps existing Web/Admin code, but it is **not** a visual or product
   reference for the new interface.
 - Cursor must not independently design or extend Web/Admin layout, information
@@ -20,12 +20,31 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
   infrastructure may continue only without inventing Web/Admin UX assumptions.
 - Any technical choice that changes user-facing behavior is
   `OWNER_DECISION_REQUIRED`.
-- First next Web/Admin step: repository/product inventory according to
-  [WEB_PRODUCT_DESIGN_AND_DELIVERY](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md).
-  No page design starts before the product map and information architecture are
-  owner-approved.
+- Product/access/team inventory and the initial map are captured.
+- Active first slice: `Member dashboard -> My teams -> Team workspace ->
+  Character board -> Equipment / timers / notes -> Change history`.
+- Current next Web/Admin step: owner coherence review of responsive, empty,
+  denied, unavailable and simultaneous-use states, then Phase 5 production shell
+  with mock adapters.
+- Maps, market, AI import, analytics and bot-admin Web UI do not expand until the
+  first player slice is stable.
 - This directive does not cancel approved Discord-specific P4 contracts; it
   freezes independent Web/Admin product design.
+
+## Web product design checkpoint
+
+- Draft PR: **#30** on `codex/d037-web-product-workflow`.
+- Active brand: DESTILED; owner-provided cracked metallic `D`; balanced deep
+  crimson/electric blue on black with metallic silver structure.
+- Authentic owner-approved Metin2 class/item references; no random AI character
+  substitutions.
+- First player slice and realtime/concurrency behavior:
+  [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+- Current previews validate the member dashboard, team workspace and
+  character/equipment/timer surface; they are not yet production repository
+  code.
+- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until production frontend code
+  and adapters are explicitly handed off.
 
 ## Active phase
 
@@ -59,4 +78,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-FINAL-SPEC-CLOSURE-001`)
+2026-09-02 — ChatGPT/owner Web product track; Cursor P4 status retained.
