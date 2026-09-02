@@ -111,8 +111,8 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
       id: 'maps',
       label: 'Mapy i metiny',
       description: 'Niezależne sesje polowania, markery i timery respawnu.',
-      href: null,
-      state: 'coming',
+      href: '/maps',
+      state: 'available',
     },
     {
       id: 'market',
@@ -125,8 +125,8 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
       id: 'activity',
       label: 'Aktywność',
       description: 'Eventy, obecność i statystyki widoczne dla Twojej roli.',
-      href: null,
-      state: 'coming',
+      href: '/activity',
+      state: 'available',
     },
   ],
 };
