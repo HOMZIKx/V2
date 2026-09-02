@@ -2,7 +2,7 @@
 
 - **Status:** OWNER ACCEPTED
 - **Date:** 2026-09-02
-- **Decisions:** D-040, D-041, D-042, D-043, D-044, D-045, D-046
+- **Decisions:** D-040, D-041, D-042, D-043, D-044, D-045, D-046, D-047
 
 ## Two separate data domains
 
@@ -92,17 +92,34 @@ user without preventing free-form planning.
 This workspace is a loose aid for people playing together. It is not an
 authoritative inventory, ownership, lending or item-transfer system.
 
-### Character presentation and direct equipment interaction
+### Two-sided fantasy character card
 
-The selected character has a deliberately designed presentation card with a
-fixed silhouette matching the chosen Metin2 character class. The silhouette
-does not change when individual armor or weapons are assigned.
+The selected character is presented as a designed fantasy trading-card-style
+surface aligned with Metin2, not as a generic profile form.
 
-Below the presentation card, the equipment area follows the familiar functional
-slot arrangement of Metin2 while using the product's own approved visual design.
+The card uses a fixed, source-accurate character silhouette for the selected
+Metin2 class. Generic AI-generated or merely similar fantasy characters are not
+acceptable. The asset source and capture/preparation pipeline will be decided
+before visual production, using owner-approved class references.
 
-A central team item library is the main working area. Manual item creation is
-the primary and always-available path. Users may define an item's image, name,
+The character may have a subtle idle presentation such as gentle breathing,
+small parallax, restrained light movement or an approved short loop. Motion must
+not alter the source character, distract from equipment work or block users who
+prefer reduced motion.
+
+The card has two functional faces:
+
+- **Front:** standing class character and the familiar functional Metin2-style
+  equipment-slot area below it.
+- **Back:** the character's configurable timers and their current states.
+
+The transition is a polished card flip. Equipment slot interaction and dragging
+must never trigger an accidental flip. The flip action is therefore attached to
+the character/art area or an explicit affordance, with an equivalent accessible
+control for keyboard and mobile use.
+
+A central team item library remains the main working area. Manual item creation
+is the primary and always-available path. Users may define an item's image, name,
 enhancement level, bonuses and notes freely.
 
 On desktop, equipment cards can be dragged between the central library, a
