@@ -1,39 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { buildMapRespawnRecords, getRespawnPhase, respawnKey, respawnMaps } from './respawn-timers.js';
 
-import {
-  confirmHuntMarker,
-  filterHuntMarkers,
-  getMapHuntingSummary,
-  mapHuntingFixture,
-} from './map-hunting.js';
-
-describe('map hunting domain', () => {
-  it('keeps map sessions independent from characters and teams', () => {
-    expect(getMapHuntingSummary(mapHuntingFixture)).toEqual({
-      sessionCount: 2,
-      readyMarkers: 1,
-      runningMarkers: 2,
-      participantCount: 8,
-    });
+describe('respawn timers imported from dobry-temat', () => {
+  it('keeps maps and channels separate from characters and equipment', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    expect(map.channels).toBe(8);
+    expect(respawnKey('metin', 'M1', 3, 'metin1')).toBe('metin-M1-ch3-metin1');
   });
-
-  it('filters map markers by their own respawn state', () => {
-    const session = mapHuntingFixture.sessions[0]!;
-
-    expect(filterHuntMarkers(session.markers, 'unknown')).toHaveLength(1);
-    expect(filterHuntMarkers(session.markers, 'ready')[0]?.name).toBe('Drzewiec');
+  it('creates timers for the selected map and channel', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    expect(buildMapRespawnRecords(map, 2).every((entry) => entry.channel === 2)).toBe(true);
   });
-
-  it('records a confirmation against the map marker rather than equipment or a character', () => {
-    const session = mapHuntingFixture.sessions[0]!;
-    const updated = confirmHuntMarker(session, 'red-forest-boss-1', 'Mateusz');
-    const marker = updated.markers.find((entry) => entry.id === 'red-forest-boss-1');
-
-    expect(marker).toMatchObject({
-      status: 'running',
-      lastConfirmedBy: 'Mateusz',
-      lastConfirmedLabel: 'teraz',
-    });
-    expect(session.markers.find((entry) => entry.id === 'red-forest-boss-1')?.status).toBe('ready');
+  it('marks freshly confirmed respawns as killed', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    const record = { ...buildMapRespawnRecords(map, 1)[0]!, confirmedAt: 1_000_000, confirmedBy: 'Mateusz' };
+    expect(getRespawnPhase(record, 1_000_000)).toBe('killed_recently');
   });
 });
