@@ -1,5 +1,82 @@
 # ChatGPT → Cursor
 
+## Current owner directive — Web/Admin
+
+**Status:** `HOLD_CURSOR_WEB_PRODUCT_UI`  
+**Decisions:** D-037–D-059 (2026-09-02)
+
+Until an approved production frontend slice is handed off:
+
+- preserve the existing Web/Admin implementation; do not delete it;
+- do not use the existing Web/Admin UI, previous Sites demo or legacy project as
+  the design reference;
+- do not independently create or redesign page layout, navigation, graphics,
+  copy, animations or user-facing content;
+- do not start maps, market, AI equipment import, dungeon analytics or bot-admin
+  Web UI ahead of the first player slice;
+- continue only technical work that does not assume Web/Admin UX;
+- raise `OWNER_DECISION_REQUIRED` when a technical choice changes user-facing
+  behavior.
+
+The production frontend will be designed and implemented in the V2 repository
+by ChatGPT with the owner, using the repository's approved stacks. Cursor will
+then connect the approved frontend to real API, Identity, Authorization,
+Discord, databases and Zeabur deployment without independently rebuilding its
+product design.
+
+The first handoff target is fixed to:
+
+```text
+Member dashboard
+  -> My teams
+  -> Team workspace
+  -> Character board
+  -> Equipment / named sets
+  -> Progression timers / team actions / notes
+  -> Change history
+```
+
+Cursor must preserve the collaboration semantics of this slice:
+
+- presence is ephemeral and separate from persistent data;
+- different resources may be edited at the same time;
+- a multi-field edit lease blocks only that resource, not a page or character;
+- shared mutations carry an expected revision;
+- stale writes produce a visible conflict and never silently overwrite data;
+- placement and timer commands are idempotent;
+- authorization applies to snapshots, mutations and realtime subscriptions;
+- mobile tap destination and keyboard paths are equivalent to desktop dragging.
+
+Mandatory sources:
+
+1. [WEB_PRODUCT_DESIGN_AND_DELIVERY.md](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md)
+2. [PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md](../product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md)
+3. [PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md)
+4. [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md)
+5. [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md)
+6. [PROJECT_HARD_DUNGEON_RUN_ANALYZER.md](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md)
+
+The owner accepted the first-player coherence gate. ChatGPT may now implement
+the Phase 5 production shell. Current interactive previews remain validation
+material, not a screenshot-only handoff. Cursor receives production code and
+adapters only after that shell/slice is reviewed and frozen.
+
+The active game context is Project Hard. D-055–D-059 require one private
+workspace model, accepted team invitations, named loadouts, moderated catalog
+layers and human-confirmed team reminders. Character/team progression timers
+and map-session SpawnTimers are separate domains and must never share records,
+configuration, membership or permissions.
+
+D-052 defines a later private-team analyzer, but it does not authorize its
+implementation now. When eventually
+implemented, it must use effective-dated game definitions, human-reviewed OCR,
+frozen price snapshots and the same no-silent-overwrite collaboration baseline.
+DESTILED must never become a credential vault: do not add fields, endpoints or
+bot modals for Project Hard/email logins, passwords, PINs, verification/recovery
+codes, cookies or tokens.
+
+This directive does not start a new Cursor implementation task.
+
 ## Status
 
 `READY_FOR_CURSOR` (historical brief)

@@ -6,6 +6,69 @@
 
 Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
 
+Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
+
+## Owner directive — WWW product (2026-09-02)
+
+- Decisions: **D-037–D-059**; D-050 remains an active collaboration baseline.
+- Cursor keeps existing Web/Admin code, but it is **not** a visual or product
+  reference for the new interface.
+- Cursor must not independently design or extend Web/Admin layout, information
+  architecture, graphics, copy, animations or user-facing page content until an
+  approved frontend slice exists.
+- The previous Sites demo and legacy UI are not requirements or default visual
+  direction.
+- Backend, API, database, Discord, Identity, Authorization, tests and
+  infrastructure may continue only without inventing Web/Admin UX assumptions.
+- Any technical choice that changes user-facing behavior is
+  `OWNER_DECISION_REQUIRED`.
+- Product/access/team inventory and the initial map are captured.
+- Active first slice: `Member dashboard -> My teams -> Team workspace ->
+  Character board -> Equipment / named sets / progression timers / lightweight
+  team actions / notes -> Change history`.
+- The owner accepted the first-player coherence review, one-member/shared
+  workspace model and invitation acceptance.
+- Current next Web/Admin step: **Phase 5 production application shell** in the V2
+  frontend stack with mock adapters.
+- Named sets, manual last-confirmed item locations, character progression
+  timers and lightweight assigned team actions clarify the active first slice.
+- Map hunt SpawnTimers are a separate later domain with their own maps,
+  participants, configuration, permissions and notification policies.
+- Maps, market, AI import, dungeon analytics and bot-admin Web UI do not expand
+  until the first player slice is stable.
+- Active game context is **Project Hard**. Game definitions are configurable,
+  sourced and effective-dated because server rules and drops change.
+- Later accepted slice: private-team Project Hard dungeon journal/analyzer with
+  participants, characters, duration, screenshot-assisted loot, prices, costs,
+  frozen value snapshots and team analytics.
+- AI/OCR proposes data for human review; it never silently commits game data and
+  the product never claims background observation of the game client.
+- DESTILED never stores Project Hard/email login secrets, passwords, PINs,
+  authorization/recovery codes, cookies or client tokens.
+- This directive does not cancel approved Discord-specific P4 contracts; it
+  freezes independent Web/Admin product design.
+
+## Web product design checkpoint
+
+- Draft PR: **#30** on `codex/d037-web-product-workflow`.
+- Active brand: DESTILED; owner-provided cracked metallic `D`; balanced deep
+  crimson/electric blue on black with metallic silver structure.
+- Authentic owner-approved Metin2 class/item references; no random AI character
+  substitutions.
+- First player slice and realtime/concurrency behavior:
+  [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+- Complete first-player path and accepted state review:
+  [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md).
+- Set, item-catalog, reminder and timer-domain contract:
+  [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
+- Later Project Hard dungeon analyzer contract:
+  [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
+- Current previews validate the member dashboard, team workspace and
+  character/equipment/timer surface; they are not yet production repository
+  code.
+- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until production frontend code
+  and adapters are explicitly handed off.
+
 ## Active phase
 
 P4 Centrum Aktywności — final specification closure (docs only).
@@ -38,4 +101,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-08-06 — Cursor (`P4-FINAL-SPEC-CLOSURE-001`)
+2026-09-02 — ChatGPT/owner Web product track; Cursor P4 status retained.
