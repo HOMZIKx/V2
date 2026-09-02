@@ -14,7 +14,7 @@ workspace rather than a collection of unrelated pages.
 
 The usable path is:
 
-`Discord entry → Member home → Workspace → Character → EQ / Timers / Notes → History`
+`Discord entry → Member home → Workspace → Character → EQ / Sets → Progression / Team actions / Notes → History`
 
 The next implementation must solve the complete path, including first use,
 mobile operation, conflicts and loss of access. A polished happy-path mock alone
