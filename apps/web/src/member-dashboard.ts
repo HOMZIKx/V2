@@ -1,215 +1,155 @@
+export type MembershipRole = 'owner' | 'member';
+
+// Warstwa pochodzenia pozostaje przy katalogu EQ. Nie opisuje dostępu do pulpitu
+// ani tożsamości gracza.
 export type CatalogLayer = 'project_hard_source' | 'destiled_curated' | 'team_private';
 
-export type QuickActionStatus = 'ready' | 'upcoming' | 'done' | 'snoozed' | 'unavailable';
-
-export type QuickActionOutcome = 'done' | 'snoozed' | 'unavailable';
-
-export interface QuickAction {
+export interface MemberWorkspaceSummary {
   readonly id: string;
-  readonly characterName: string;
-  readonly title: string;
+  readonly name: string;
   readonly description: string;
-  readonly dueLabel: string;
-  readonly status: QuickActionStatus;
-  readonly tone: 'red' | 'blue' | 'silver';
+  readonly role: MembershipRole;
+  readonly memberCount: number;
+  readonly onlineCount: number;
+  readonly updatedLabel: string;
 }
 
-export interface EquipmentSetSummary {
+export interface PendingWorkspaceInvitation {
   readonly id: string;
-  readonly characterName: string;
-  readonly name: string;
-  readonly equippedItems: number;
-  readonly requiredItems: number;
-  readonly missingItemLabel: string | null;
-  readonly catalogLayer: CatalogLayer;
+  readonly workspaceName: string;
+  readonly invitedBy: string;
+  readonly expiresLabel: string;
 }
 
-export interface CharacterSummary {
-  readonly id: string;
-  readonly name: string;
-  readonly classLabel: string;
-  readonly level: number;
-  readonly equipmentCount: number;
-  readonly equipmentCapacity: number;
-  readonly readyTimers: number;
-  readonly imagePath: string;
-}
-
-export interface TeamMemberSummary {
-  readonly id: string;
-  readonly displayName: string;
-  readonly state: 'online' | 'away' | 'offline';
-  readonly initials: string;
-}
-
-export interface HistoryEntry {
+export interface MemberNotice {
   readonly id: string;
   readonly title: string;
   readonly detail: string;
   readonly timeLabel: string;
-  readonly kind: 'equipment' | 'timer' | 'member';
+  readonly kind: 'team' | 'invitation' | 'system';
+  readonly unread: boolean;
+  readonly href: string | null;
+}
+
+export interface MemberModuleAccess {
+  readonly id: 'teams' | 'characters' | 'maps' | 'market' | 'activity';
+  readonly label: string;
+  readonly description: string;
+  readonly href: string | null;
+  readonly state: 'available' | 'coming';
 }
 
 export interface MemberDashboardSnapshot {
   readonly viewerName: string;
-  readonly teamName: string;
-  readonly teamMembers: readonly TeamMemberSummary[];
-  readonly quickActions: readonly QuickAction[];
-  readonly equipmentSets: readonly EquipmentSetSummary[];
-  readonly characters: readonly CharacterSummary[];
-  readonly history: readonly HistoryEntry[];
+  readonly discordDisplayName: string;
+  readonly discordConnected: boolean;
+  readonly workspaces: readonly MemberWorkspaceSummary[];
+  readonly pendingInvitations: readonly PendingWorkspaceInvitation[];
+  readonly notices: readonly MemberNotice[];
+  readonly modules: readonly MemberModuleAccess[];
 }
 
-export interface DashboardSummary {
-  readonly readyActions: number;
-  readonly onlineMembers: number;
-  readonly readyEquipmentSets: number;
-  readonly totalCharacters: number;
+export interface MemberDashboardSummary {
+  readonly workspaceCount: number;
+  readonly pendingInvitationCount: number;
+  readonly unreadNoticeCount: number;
+  readonly availableModuleCount: number;
 }
 
 export const memberDashboardFixture: MemberDashboardSnapshot = {
   viewerName: 'Mateusz',
-  teamName: 'Asteria',
-  teamMembers: [
-    { id: 'mateusz', displayName: 'Mateusz', state: 'online', initials: 'M' },
-    { id: 'xiaohu', displayName: 'XiaoHu', state: 'online', initials: 'X' },
-    { id: 'wicek', displayName: 'Wicek', state: 'away', initials: 'W' },
-    { id: 'aalpsik', displayName: 'Aalpsik', state: 'offline', initials: 'A' },
-  ],
-  quickActions: [
+  discordDisplayName: 'Mateusz',
+  discordConnected: true,
+  workspaces: [
     {
-      id: 'horse-medal-aalpsik',
-      characterName: 'Aalpsik',
-      title: 'Medal konny',
-      description: 'Można rozpocząć kolejną próbę.',
-      dueLabel: 'Gotowe teraz',
-      status: 'ready',
-      tone: 'red',
-    },
-    {
-      id: 'skill-book-nerwnicht',
-      characterName: 'NerwNicht',
-      title: 'Księga umiejętności',
-      description: 'Bot przypomni przypisanej osobie na Discordzie.',
-      dueLabel: 'za 24 min',
-      status: 'upcoming',
-      tone: 'blue',
-    },
-    {
-      id: 'war-set-nerwnicht',
-      characterName: 'NerwNicht',
-      title: 'Set: Wojna',
-      description: 'Brakuje ostatniego potwierdzenia lokalizacji tarczy.',
-      dueLabel: '7 / 8 elementów',
-      status: 'ready',
-      tone: 'silver',
+      id: 'asteria',
+      name: 'Asteria',
+      description: 'Prywatna przestrzeń zespołu do wspólnej organizacji gry.',
+      role: 'owner',
+      memberCount: 4,
+      onlineCount: 2,
+      updatedLabel: 'przed chwilą',
     },
   ],
-  equipmentSets: [
+  pendingInvitations: [],
+  notices: [
     {
-      id: 'war-nerwnicht',
-      characterName: 'NerwNicht',
-      name: 'Wojna',
-      equippedItems: 7,
-      requiredItems: 8,
-      missingItemLabel: 'Tarcza bojowa +9',
-      catalogLayer: 'destiled_curated',
+      id: 'notice-team-note',
+      title: 'Nowa notatka w Asteria',
+      detail: 'XiaoHu dodał informację dla zespołu.',
+      timeLabel: 'wczoraj 23:18',
+      kind: 'team',
+      unread: true,
+      href: '/teams/asteria#notes',
     },
     {
-      id: 'dungeon-aalpsik',
-      characterName: 'Aalpsik',
-      name: 'Dungeon',
-      equippedItems: 8,
-      requiredItems: 8,
-      missingItemLabel: null,
-      catalogLayer: 'team_private',
-    },
-  ],
-  characters: [
-    {
-      id: 'nerwnicht',
-      name: 'NerwNicht',
-      classLabel: 'Sura',
-      level: 75,
-      equipmentCount: 8,
-      equipmentCapacity: 8,
-      readyTimers: 1,
-      imagePath: '/game/classes/sura-male.png',
-    },
-    {
-      id: 'aalpsik',
-      name: 'Aalpsik',
-      classLabel: 'Ninja',
-      level: 55,
-      equipmentCount: 7,
-      equipmentCapacity: 8,
-      readyTimers: 1,
-      imagePath: '/game/classes/ninja-female.png',
-    },
-    {
-      id: 'kimmizic',
-      name: 'Kimmizic',
-      classLabel: 'Szaman',
-      level: 61,
-      equipmentCount: 6,
-      equipmentCapacity: 8,
-      readyTimers: 0,
-      imagePath: '/game/classes/shaman-male.png',
+      id: 'notice-discord-connected',
+      title: 'Konto Discord połączone',
+      detail: 'Dostęp do modułów będzie wynikał z ról i przyjętych zaproszeń.',
+      timeLabel: 'stan konta',
+      kind: 'system',
+      unread: false,
+      href: null,
     },
   ],
-  history: [
+  modules: [
     {
-      id: 'history-equipment',
-      title: 'Zatruty Miecz → NerwNicht',
-      detail: 'XiaoHu potwierdził nową lokalizację przedmiotu',
-      timeLabel: '22:41',
-      kind: 'equipment',
+      id: 'teams',
+      label: 'Zespoły',
+      description: 'Wspólne ustalenia, członkowie, historia i prywatne dane zespołu.',
+      href: '/teams/asteria',
+      state: 'available',
     },
     {
-      id: 'history-timer',
-      title: 'Księga oznaczona jako przeczytana',
-      detail: 'Mateusz · NerwNicht',
-      timeLabel: '21:12',
-      kind: 'timer',
+      id: 'characters',
+      label: 'Postacie',
+      description: 'Osobny obszar postaci, EQ, setów i timerów, jeśli masz do niego dostęp.',
+      href: '/characters',
+      state: 'available',
     },
     {
-      id: 'history-member',
-      title: 'Wicek dołączył do zespołu',
-      detail: 'Zaproszenie zaakceptowane przez Discord',
-      timeLabel: 'wczoraj',
-      kind: 'member',
+      id: 'maps',
+      label: 'Mapy i metiny',
+      description: 'Niezależne sesje polowania, markery i timery respawnu.',
+      href: null,
+      state: 'coming',
+    },
+    {
+      id: 'market',
+      label: 'Targ',
+      description: 'Ogłoszenia i przedmioty dostępne zgodnie z uprawnieniami.',
+      href: null,
+      state: 'coming',
+    },
+    {
+      id: 'activity',
+      label: 'Aktywność',
+      description: 'Eventy, obecność i statystyki widoczne dla Twojej roli.',
+      href: null,
+      state: 'coming',
     },
   ],
 };
 
-export function getDashboardSummary(snapshot: MemberDashboardSnapshot): DashboardSummary {
-  return {
-    readyActions: snapshot.quickActions.filter((action) => action.status === 'ready').length,
-    onlineMembers: snapshot.teamMembers.filter((member) => member.state === 'online').length,
-    readyEquipmentSets: snapshot.equipmentSets.filter(
-      (set) => set.equippedItems === set.requiredItems,
-    ).length,
-    totalCharacters: snapshot.characters.length,
-  };
-}
+export const emptyMemberDashboardFixture: MemberDashboardSnapshot = {
+  ...memberDashboardFixture,
+  workspaces: [],
+  pendingInvitations: [],
+  notices: [],
+  modules: memberDashboardFixture.modules.map((module) =>
+    module.id === 'teams' || module.id === 'characters'
+      ? { ...module, href: null, state: 'coming' as const }
+      : module,
+  ),
+};
 
-export function applyQuickActionOutcome(
-  actions: readonly QuickAction[],
-  actionId: string,
-  outcome: QuickActionOutcome,
-): readonly QuickAction[] {
-  return actions.map((action) =>
-    action.id === actionId
-      ? {
-          ...action,
-          status: outcome,
-          dueLabel:
-            outcome === 'done'
-              ? 'Zrobione'
-              : outcome === 'snoozed'
-                ? 'Przypomnij później'
-                : 'Nie mogę wykonać',
-        }
-      : action,
-  );
+export function getMemberDashboardSummary(
+  snapshot: MemberDashboardSnapshot,
+): MemberDashboardSummary {
+  return {
+    workspaceCount: snapshot.workspaces.length,
+    pendingInvitationCount: snapshot.pendingInvitations.length,
+    unreadNoticeCount: snapshot.notices.filter((notice) => notice.unread).length,
+    availableModuleCount: snapshot.modules.filter((module) => module.state === 'available').length,
+  };
 }
