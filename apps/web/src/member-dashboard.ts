@@ -1,13 +1,16 @@
-export type CatalogLayer = 'project_hard_source' | 'destiled_curated' | 'team_private';
+export type CatalogLayer =
+  | "project_hard_source"
+  | "destiled_curated"
+  | "team_private";
 
 export type QuickActionStatus =
-  | 'ready'
-  | 'upcoming'
-  | 'done'
-  | 'snoozed'
-  | 'unavailable';
+  | "ready"
+  | "upcoming"
+  | "done"
+  | "snoozed"
+  | "unavailable";
 
-export type QuickActionOutcome = 'done' | 'snoozed' | 'unavailable';
+export type QuickActionOutcome = "done" | "snoozed" | "unavailable";
 
 export interface QuickAction {
   readonly id: string;
@@ -16,7 +19,7 @@ export interface QuickAction {
   readonly description: string;
   readonly dueLabel: string;
   readonly status: QuickActionStatus;
-  readonly tone: 'red' | 'blue' | 'silver';
+  readonly tone: "red" | "blue" | "silver";
 }
 
 export interface EquipmentSetSummary {
@@ -43,7 +46,7 @@ export interface CharacterSummary {
 export interface TeamMemberSummary {
   readonly id: string;
   readonly displayName: string;
-  readonly state: 'online' | 'away' | 'offline';
+  readonly state: "online" | "away" | "offline";
   readonly initials: string;
 }
 
@@ -52,7 +55,7 @@ export interface HistoryEntry {
   readonly title: string;
   readonly detail: string;
   readonly timeLabel: string;
-  readonly kind: 'equipment' | 'timer' | 'member';
+  readonly kind: "equipment" | "timer" | "member";
 }
 
 export interface MemberDashboardSnapshot {
@@ -73,124 +76,130 @@ export interface DashboardSummary {
 }
 
 export const memberDashboardFixture: MemberDashboardSnapshot = {
-  viewerName: 'Mateusz',
-  teamName: 'Asteria',
+  viewerName: "Mateusz",
+  teamName: "Asteria",
   teamMembers: [
-    { id: 'mateusz', displayName: 'Mateusz', state: 'online', initials: 'M' },
-    { id: 'xiaohu', displayName: 'XiaoHu', state: 'online', initials: 'X' },
-    { id: 'wicek', displayName: 'Wicek', state: 'away', initials: 'W' },
-    { id: 'aalpsik', displayName: 'Aalpsik', state: 'offline', initials: 'A' },
+    { id: "mateusz", displayName: "Mateusz", state: "online", initials: "M" },
+    { id: "xiaohu", displayName: "XiaoHu", state: "online", initials: "X" },
+    { id: "wicek", displayName: "Wicek", state: "away", initials: "W" },
+    { id: "aalpsik", displayName: "Aalpsik", state: "offline", initials: "A" },
   ],
   quickActions: [
     {
-      id: 'horse-medal-aalpsik',
-      characterName: 'Aalpsik',
-      title: 'Medal konny',
-      description: 'Można rozpocząć kolejną próbę.',
-      dueLabel: 'Gotowe teraz',
-      status: 'ready',
-      tone: 'red',
+      id: "horse-medal-aalpsik",
+      characterName: "Aalpsik",
+      title: "Medal konny",
+      description: "Można rozpocząć kolejną próbę.",
+      dueLabel: "Gotowe teraz",
+      status: "ready",
+      tone: "red",
     },
     {
-      id: 'skill-book-nerwnicht',
-      characterName: 'NerwNicht',
-      title: 'Księga umiejętności',
-      description: 'Bot przypomni przypisanej osobie na Discordzie.',
-      dueLabel: 'za 24 min',
-      status: 'upcoming',
-      tone: 'blue',
+      id: "skill-book-nerwnicht",
+      characterName: "NerwNicht",
+      title: "Księga umiejętności",
+      description: "Bot przypomni przypisanej osobie na Discordzie.",
+      dueLabel: "za 24 min",
+      status: "upcoming",
+      tone: "blue",
     },
     {
-      id: 'war-set-nerwnicht',
-      characterName: 'NerwNicht',
-      title: 'Set: Wojna',
-      description: 'Brakuje ostatniego potwierdzenia lokalizacji tarczy.',
-      dueLabel: '7 / 8 elementów',
-      status: 'ready',
-      tone: 'silver',
+      id: "war-set-nerwnicht",
+      characterName: "NerwNicht",
+      title: "Set: Wojna",
+      description: "Brakuje ostatniego potwierdzenia lokalizacji tarczy.",
+      dueLabel: "7 / 8 elementów",
+      status: "ready",
+      tone: "silver",
     },
   ],
   equipmentSets: [
     {
-      id: 'war-nerwnicht',
-      characterName: 'NerwNicht',
-      name: 'Wojna',
+      id: "war-nerwnicht",
+      characterName: "NerwNicht",
+      name: "Wojna",
       equippedItems: 7,
       requiredItems: 8,
-      missingItemLabel: 'Tarcza bojowa +9',
-      catalogLayer: 'destiled_curated',
+      missingItemLabel: "Tarcza bojowa +9",
+      catalogLayer: "destiled_curated",
     },
     {
-      id: 'dungeon-aalpsik',
-      characterName: 'Aalpsik',
-      name: 'Dungeon',
+      id: "dungeon-aalpsik",
+      characterName: "Aalpsik",
+      name: "Dungeon",
       equippedItems: 8,
       requiredItems: 8,
       missingItemLabel: null,
-      catalogLayer: 'team_private',
+      catalogLayer: "team_private",
     },
   ],
   characters: [
     {
-      id: 'nerwnicht',
-      name: 'NerwNicht',
-      classLabel: 'Sura',
+      id: "nerwnicht",
+      name: "NerwNicht",
+      classLabel: "Sura",
       level: 75,
       equipmentCount: 8,
       equipmentCapacity: 8,
       readyTimers: 1,
-      imagePath: '/game/classes/sura-male.png',
+      imagePath: "/game/classes/sura-male.png",
     },
     {
-      id: 'aalpsik',
-      name: 'Aalpsik',
-      classLabel: 'Ninja',
+      id: "aalpsik",
+      name: "Aalpsik",
+      classLabel: "Ninja",
       level: 55,
       equipmentCount: 7,
       equipmentCapacity: 8,
       readyTimers: 1,
-      imagePath: '/game/classes/ninja-female.png',
+      imagePath: "/game/classes/ninja-female.png",
     },
     {
-      id: 'kimmizic',
-      name: 'Kimmizic',
-      classLabel: 'Szaman',
+      id: "kimmizic",
+      name: "Kimmizic",
+      classLabel: "Szaman",
       level: 61,
       equipmentCount: 6,
       equipmentCapacity: 8,
       readyTimers: 0,
-      imagePath: '/game/classes/shaman-male.png',
+      imagePath: "/game/classes/shaman-male.png",
     },
   ],
   history: [
     {
-      id: 'history-equipment',
-      title: 'Zatruty Miecz → NerwNicht',
-      detail: 'XiaoHu potwierdził nową lokalizację przedmiotu',
-      timeLabel: '22:41',
-      kind: 'equipment',
+      id: "history-equipment",
+      title: "Zatruty Miecz → NerwNicht",
+      detail: "XiaoHu potwierdził nową lokalizację przedmiotu",
+      timeLabel: "22:41",
+      kind: "equipment",
     },
     {
-      id: 'history-timer',
-      title: 'Księga oznaczona jako przeczytana',
-      detail: 'Mateusz · NerwNicht',
-      timeLabel: '21:12',
-      kind: 'timer',
+      id: "history-timer",
+      title: "Księga oznaczona jako przeczytana",
+      detail: "Mateusz · NerwNicht",
+      timeLabel: "21:12",
+      kind: "timer",
     },
     {
-      id: 'history-member',
-      title: 'Wicek dołączył do zespołu',
-      detail: 'Zaproszenie zaakceptowane przez Discord',
-      timeLabel: 'wczoraj',
-      kind: 'member',
+      id: "history-member",
+      title: "Wicek dołączył do zespołu",
+      detail: "Zaproszenie zaakceptowane przez Discord",
+      timeLabel: "wczoraj",
+      kind: "member",
     },
   ],
 };
 
-export function getDashboardSummary(snapshot: MemberDashboardSnapshot): DashboardSummary {
+export function getDashboardSummary(
+  snapshot: MemberDashboardSnapshot,
+): DashboardSummary {
   return {
-    readyActions: snapshot.quickActions.filter((action) => action.status === 'ready').length,
-    onlineMembers: snapshot.teamMembers.filter((member) => member.state === 'online').length,
+    readyActions: snapshot.quickActions.filter(
+      (action) => action.status === "ready",
+    ).length,
+    onlineMembers: snapshot.teamMembers.filter(
+      (member) => member.state === "online",
+    ).length,
     readyEquipmentSets: snapshot.equipmentSets.filter(
       (set) => set.equippedItems === set.requiredItems,
     ).length,
@@ -209,11 +218,11 @@ export function applyQuickActionOutcome(
           ...action,
           status: outcome,
           dueLabel:
-            outcome === 'done'
-              ? 'Zrobione'
-              : outcome === 'snoozed'
-                ? 'Przypomnij później'
-                : 'Nie mogę wykonać',
+            outcome === "done"
+              ? "Zrobione"
+              : outcome === "snoozed"
+                ? "Przypomnij później"
+                : "Nie mogę wykonać",
         }
       : action,
   );

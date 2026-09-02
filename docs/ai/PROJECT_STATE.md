@@ -24,8 +24,8 @@ Web product track: `IN_PROGRESS_PHASE_5_PRODUCTION_SHELL_REVIEW`.
   `OWNER_DECISION_REQUIRED`.
 - Product/access/team inventory and the initial map are captured.
 - Active first slice: `Member dashboard -> My teams -> Team workspace ->
-  Character board -> Equipment / named sets / progression timers / lightweight
-  team actions / notes -> Change history`.
+Character board -> Equipment / named sets / progression timers / lightweight
+team actions / notes -> Change history`.
 - The owner accepted the first-player coherence review, one-member/shared
   workspace model and invitation acceptance.
 - Phase 5 production shell is implemented on `codex/phase5-player-shell` in
