@@ -211,7 +211,24 @@ Necessary technical integration may change adapters, contracts and internal
 implementation. User-facing layout, behavior, copy and graphics change only
 after owner approval.
 
+## Current design checkpoint
+
+The initial product map and access/team boundaries are now captured by D-038
+through D-048. The active first player slice and collaboration contract are
+defined by D-049 through D-051 in
+[PLAYER_VERTICAL_SLICE_AND_COLLABORATION](PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
+
+Interactive design validation currently covers the member dashboard, team
+workspace and character/equipment/timer surface. These previews are not a second
+application and are not yet production source.
+
 ## Immediate next step
 
-After D-037 is merged, begin **Phase 1 — technical and product inventory**. Do
-not start with a dashboard, homepage, color palette or individual page.
+Complete an owner coherence review of the first player journey, including mobile,
+empty/error/access-denied and simultaneous-use states. After acceptance, proceed
+to **Phase 5 — production application shell** and implement this first slice in
+the repository frontend stack behind mock adapters.
+
+Do not expand cooperative maps, market, AI import, analytics or bot
+administration until this slice's production interface and adapter boundary are
+stable.
