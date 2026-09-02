@@ -644,6 +644,73 @@ importers:
         specifier: ^3.2.4
         version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(lightningcss@1.33.0)(tsx@4.23.5)(yaml@2.9.0)
 
+  services/player-workspace-service:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^11.1.28
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^11.1.28
+        version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-fastify':
+        specifier: ^11.1.28
+        version: 11.1.28(@fastify/static@10.1.1)(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@v2/configuration':
+        specifier: workspace:*
+        version: link:../../packages/configuration
+      '@v2/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@v2/hub-core':
+        specifier: workspace:*
+        version: link:../../packages/hub-core
+      '@v2/internal-jwt':
+        specifier: workspace:*
+        version: link:../../packages/internal-jwt
+      '@v2/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      fastify:
+        specifier: ^5.5.0
+        version: 5.11.2
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1
+      jose:
+        specifier: 6.2.8
+        version: 6.2.8
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.2
+        version: 7.8.2
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.2.0
+        version: 24.13.3
+      '@types/pg':
+        specifier: 8.15.5
+        version: 8.15.5
+      tsx:
+        specifier: ^4.20.3
+        version: 4.23.5
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@24.13.3)(jiti@2.6.1)(lightningcss@1.33.0)(tsx@4.23.5)(yaml@2.9.0)
+
 packages:
 
   '@ampproject/remapping@2.3.0':

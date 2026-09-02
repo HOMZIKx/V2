@@ -28,6 +28,8 @@ const config = createConfig(
       .transform((value) => value === 'true'),
     /** Upstream activity-service for Admin/WWW BFF proxy (`/activity/v1/*`). */
     ACTIVITY_SERVICE_BASE_URL: z.string().url().optional(),
+    /** Upstream player-workspace-service for Team/Board BFF proxy (`/player-workspace/v1/*`). */
+    PLAYER_WORKSPACE_SERVICE_BASE_URL: z.string().url().optional(),
     /** Identity base for session→actor resolution (WWW). */
     IDENTITY_SERVICE_BASE_URL: z.string().url().optional(),
     INTERNAL_JWT_IDENTITY_BASE_URL: z.string().url().optional(),

@@ -13,6 +13,13 @@ import {
 import { resolveForwardActorHeaders } from './forward-actor-headers.js';
 import { HealthController } from './health.controller.js';
 import { IdentityProxyController } from './identity-proxy.controller.js';
+import { readPlayerWorkspaceAssertionConfigFromEnv } from './player-workspace-assertion.js';
+import { PlayerWorkspaceProxyController } from './player-workspace-proxy.controller.js';
+import {
+  PLAYER_WORKSPACE_ASSERTION_CONFIG,
+  PLAYER_WORKSPACE_SERVICE_BASE_URL,
+  type PlayerWorkspaceAssertionConfig,
+} from './player-workspace-proxy.tokens.js';
 import { SessionController } from './session.controller.js';
 
 const providers: Provider[] = [
@@ -20,6 +27,13 @@ const providers: Provider[] = [
     provide: ACTIVITY_SERVICE_BASE_URL,
     useFactory: (): string | null => {
       const value = process.env.ACTIVITY_SERVICE_BASE_URL?.trim();
+      return value !== undefined && value.length > 0 ? value : null;
+    },
+  },
+  {
+    provide: PLAYER_WORKSPACE_SERVICE_BASE_URL,
+    useFactory: (): string | null => {
+      const value = process.env.PLAYER_WORKSPACE_SERVICE_BASE_URL?.trim();
       return value !== undefined && value.length > 0 ? value : null;
     },
   },
@@ -48,12 +62,18 @@ const providers: Provider[] = [
     useFactory: (): ActivityAssertionConfig | null =>
       readActivityAssertionConfigFromEnv(process.env),
   },
+  {
+    provide: PLAYER_WORKSPACE_ASSERTION_CONFIG,
+    useFactory: (): PlayerWorkspaceAssertionConfig | null =>
+      readPlayerWorkspaceAssertionConfigFromEnv(process.env),
+  },
 ];
 
 @Module({
   controllers: [
     HealthController,
     ActivityProxyController,
+    PlayerWorkspaceProxyController,
     IdentityProxyController,
     SessionController,
   ],

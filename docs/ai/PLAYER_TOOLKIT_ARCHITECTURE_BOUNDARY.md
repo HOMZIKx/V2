@@ -8,7 +8,7 @@ Gameplay state (trackers, elixirs, EQ board, sharing, guild-admin views of priva
 
 `PLAYER_TOOLKIT_CORE_V1_SHA` (`2af092f`) remains an immutable historical marker. This document records the enforced boundary after integration recovery.
 
-**006C contract freeze + D-051 / D-052:** Canonical Identity characters and DESTILED **Team Character Boards** are **different entities**. Ownership of Teams/boards is **`player-workspace-service`** (not Identity, not Activity). GameAccount remains **SOLO only**. Full matrix: [`PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md`](PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md).
+**006C contract freeze + D-051 / D-052:** Canonical Identity characters and DESTILED **Team Character Boards** are **different entities**. Ownership of Teams/boards is **`player-workspace-service`** (own DB `player_workspace`, advisory lock id **4**). GameAccount remains **SOLO only**. Optional link: `TeamCharacterBoard.linkedPlayerCharacterId`. LFG/Activity accept **only** Identity `player_characters.id`. Full matrix: [`PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md`](PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md). Frontend adapter map: [`PLAYER_WORKSPACE_FRONTEND_CONTRACT_MAP.md`](PLAYER_WORKSPACE_FRONTEND_CONTRACT_MAP.md).
 
 ## What Identity owns (accepted for #29 foundation)
 

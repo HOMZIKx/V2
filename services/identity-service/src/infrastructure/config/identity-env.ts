@@ -106,6 +106,15 @@ const baseSchema = z.object({
         ? 'http://127.0.0.1:4200/identity/v1/internal/character/resolve'
         : trimmed;
     }),
+  IDENTITY_CHARACTER_OWNERSHIP_URL: z
+    .string()
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed === undefined || trimmed === ''
+        ? 'http://127.0.0.1:4200/identity/v1/internal/character/ownership'
+        : trimmed;
+    }),
   IDENTITY_INTERNAL_PROFILE_READ_URL: z
     .string()
     .optional()
@@ -324,6 +333,12 @@ function assertInternalJwtRequirements(
   assertValidOriginUrl(
     config.IDENTITY_CHARACTER_RESOLVE_URL,
     'IDENTITY_CHARACTER_RESOLVE_URL',
+    addIssue,
+    { requireHttps: isProduction, rejectLocalhost: isProduction },
+  );
+  assertValidOriginUrl(
+    config.IDENTITY_CHARACTER_OWNERSHIP_URL,
+    'IDENTITY_CHARACTER_OWNERSHIP_URL',
     addIssue,
     { requireHttps: isProduction, rejectLocalhost: isProduction },
   );

@@ -9,7 +9,12 @@
       "kind": "postgres",
       "public": false,
       "notes": "Current Zeabur test project has one Postgres addon. ADR-0004 still wants separate databases/accounts per service.",
-      "logicalAliases": ["postgres-authorization", "postgres-identity", "postgres-activity"]
+      "logicalAliases": [
+        "postgres-authorization",
+        "postgres-identity",
+        "postgres-activity",
+        "postgres-player-workspace"
+      ]
     },
     {
       "name": "redis",
@@ -57,6 +62,18 @@
       "revisionCapability": true
     },
     {
+      "name": "player-workspace-service",
+      "type": "APP",
+      "dockerfile": "Dockerfile.player-workspace-service",
+      "zbpackDockerfileName": "player-workspace-service",
+      "rootDirectory": "/",
+      "health": { "live": "/health/live", "ready": "/health/ready" },
+      "public": false,
+      "dependencies": ["postgresql", "redis", "identity-service"],
+      "buildTimeVarNames": [],
+      "revisionCapability": true
+    },
+    {
       "name": "api-gateway",
       "type": "APP",
       "dockerfile": "Dockerfile.api-gateway",
@@ -64,7 +81,12 @@
       "rootDirectory": "/",
       "health": { "live": "/health/live", "ready": "/health/ready" },
       "public": true,
-      "dependencies": ["identity-service", "activity-service", "discord-gateway"],
+      "dependencies": [
+        "identity-service",
+        "activity-service",
+        "player-workspace-service",
+        "discord-gateway"
+      ],
       "buildTimeVarNames": [],
       "revisionCapability": true
     },

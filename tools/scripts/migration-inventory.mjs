@@ -30,6 +30,12 @@ const SERVICES = [
     trackingTable: 'activity_schema_migrations',
     foundationId: '001_activity_foundation.sql',
   },
+  {
+    key: 'player_workspace',
+    dir: path.join(repoRoot, 'services/player-workspace-service/migrations'),
+    trackingTable: 'player_workspace_schema_migrations',
+    foundationId: '001_player_workspace_foundation.sql',
+  },
 ];
 
 const DANGEROUS_PATTERNS = [

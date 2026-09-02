@@ -10,6 +10,9 @@ const authorizationDatabaseUrl =
 const activityDatabaseUrl =
   process.env.ACTIVITY_DATABASE_URL ??
   'postgresql://activity:activity_dev_password@127.0.0.1:5432/activity';
+const playerWorkspaceDatabaseUrl =
+  process.env.PLAYER_WORKSPACE_DATABASE_URL ??
+  'postgresql://player_workspace:player_workspace_dev_password@127.0.0.1:5432/player_workspace';
 const identityOnAuthorizationDatabaseUrl =
   process.env.IDENTITY_ON_AUTHORIZATION_DATABASE_URL ??
   'postgresql://identity:identity_dev_password@127.0.0.1:5432/authorization';
@@ -28,6 +31,18 @@ const activityOnIdentityDatabaseUrl =
 const activityOnAuthorizationDatabaseUrl =
   process.env.ACTIVITY_ON_AUTHORIZATION_DATABASE_URL ??
   'postgresql://activity:activity_dev_password@127.0.0.1:5432/authorization';
+const identityOnPlayerWorkspaceDatabaseUrl =
+  process.env.IDENTITY_ON_PLAYER_WORKSPACE_DATABASE_URL ??
+  'postgresql://identity:identity_dev_password@127.0.0.1:5432/player_workspace';
+const playerWorkspaceOnIdentityDatabaseUrl =
+  process.env.PLAYER_WORKSPACE_ON_IDENTITY_DATABASE_URL ??
+  'postgresql://player_workspace:player_workspace_dev_password@127.0.0.1:5432/identity';
+const activityOnPlayerWorkspaceDatabaseUrl =
+  process.env.ACTIVITY_ON_PLAYER_WORKSPACE_DATABASE_URL ??
+  'postgresql://activity:activity_dev_password@127.0.0.1:5432/player_workspace';
+const playerWorkspaceOnActivityDatabaseUrl =
+  process.env.PLAYER_WORKSPACE_ON_ACTIVITY_DATABASE_URL ??
+  'postgresql://player_workspace:player_workspace_dev_password@127.0.0.1:5432/activity';
 
 /** Fail fast in CI instead of hanging on the default pg / vitest timeouts. */
 const PG_CONNECT_TIMEOUT_MS = 3_000;
@@ -86,6 +101,10 @@ describeInfra('database isolation', () => {
     await expect(connectAndQuery(activityDatabaseUrl)).resolves.toBeUndefined();
   });
 
+  it('allows the player_workspace user to connect to the player_workspace database', async () => {
+    await expect(connectAndQuery(playerWorkspaceDatabaseUrl)).resolves.toBeUndefined();
+  });
+
   it('denies the identity user access to the authorization database', async () => {
     await expect(connectAndQuery(identityOnAuthorizationDatabaseUrl)).rejects.toThrow();
   });
@@ -108,5 +127,21 @@ describeInfra('database isolation', () => {
 
   it('denies the activity user access to the authorization database', async () => {
     await expect(connectAndQuery(activityOnAuthorizationDatabaseUrl)).rejects.toThrow();
+  });
+
+  it('denies the identity user access to the player_workspace database', async () => {
+    await expect(connectAndQuery(identityOnPlayerWorkspaceDatabaseUrl)).rejects.toThrow();
+  });
+
+  it('denies the player_workspace user access to the identity database', async () => {
+    await expect(connectAndQuery(playerWorkspaceOnIdentityDatabaseUrl)).rejects.toThrow();
+  });
+
+  it('denies the activity user access to the player_workspace database', async () => {
+    await expect(connectAndQuery(activityOnPlayerWorkspaceDatabaseUrl)).rejects.toThrow();
+  });
+
+  it('denies the player_workspace user access to the activity database', async () => {
+    await expect(connectAndQuery(playerWorkspaceOnActivityDatabaseUrl)).rejects.toThrow();
   });
 });

@@ -26,6 +26,11 @@ const resolveBodySchema = z.object({
   sessionRoles: z.array(z.enum(PARTY_ROLE_KEYS)).min(1).max(4),
 });
 
+const ownershipBodySchema = z.object({
+  v2UserId: z.string().min(1).max(128),
+  characterId: z.string().uuid(),
+});
+
 function readClientAssertion(request: FastifyRequest): string | undefined {
   const assertionHeader = request.headers['identity-client-assertion'];
   if (typeof assertionHeader === 'string') {
@@ -135,6 +140,65 @@ export class InternalCharacterController {
       classSpecLabel: resolveClassSpecLabel(character.classSpecKey),
       supportedPartyRoles,
       sessionRoles,
+    };
+  }
+
+  @Post('character/ownership')
+  @HttpCode(200)
+  public async assertCharacterOwnership(
+    @Req() request: FastifyRequest,
+    @Body() body: unknown,
+  ): Promise<{
+    owned: true;
+    characterId: string;
+    classSpecKey: string;
+    classSpecLabel: string;
+  }> {
+    const { profiles, assertionPort } = this.requireEnabled();
+    const parsed = ownershipBodySchema.safeParse(body);
+    if (!parsed.success) {
+      throw new IdentityError('VALIDATION_FAILED', 'Invalid character ownership payload');
+    }
+
+    const ownershipUrl = this.config.IDENTITY_CHARACTER_OWNERSHIP_URL;
+    if (ownershipUrl === undefined) {
+      throw new IdentityError('INTERNAL_JWT_DISABLED', 'Character ownership URL is not configured');
+    }
+
+    const assertion = readClientAssertion(request);
+    if (assertion === undefined || assertion.length === 0) {
+      throw new IdentityError(
+        'CLIENT_ASSERTION_INVALID',
+        'Missing Identity-Client-Assertion header',
+      );
+    }
+
+    const replayTtl =
+      this.config.IDENTITY_CLIENT_ASSERTION_MAX_TTL_SECONDS +
+      this.config.IDENTITY_CLIENT_ASSERTION_CLOCK_SKEW_SECONDS;
+
+    const verified = await assertionPort.verify(assertion, ownershipUrl);
+    await assertionPort.assertJtiOnce(verified.jti, replayTtl);
+
+    const character = await profiles.getCharacterForUser(
+      parsed.data.v2UserId,
+      parsed.data.characterId,
+    );
+    if (character === null) {
+      throw new IdentityError('NOT_FOUND', 'Character not found for user');
+    }
+
+    try {
+      assertValidClassSpecKey(character.classSpecKey);
+    } catch {
+      throw new IdentityError('VALIDATION_FAILED', 'Character class/spec is disabled or unknown');
+    }
+
+    return {
+      owned: true,
+      characterId: character.id,
+      classSpecKey: character.classSpecKey,
+      classSpecLabel: resolveClassSpecLabel(character.classSpecKey),
     };
   }
 }

@@ -1,0 +1,24 @@
+{
+  "name": "player-workspace-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/player-workspace-service/src",
+  "projectType": "application",
+  "tags": ["type:service", "scope:player-workspace"],
+  "targets": {
+    "serve": {
+      "command": "corepack pnpm --dir services/player-workspace-service dev"
+    },
+    "build": {
+      "command": "corepack pnpm --dir services/player-workspace-service build"
+    },
+    "lint": {
+      "command": "corepack pnpm exec eslint services/player-workspace-service/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p services/player-workspace-service/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config services/player-workspace-service/vitest.config.ts"
+    }
+  }
+}
