@@ -207,9 +207,15 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
                           >
                             <Icon name="clock" size={14} /> {character.nextTimerLabel}
                           </span>
-                          <button disabled type="button">
-                            Otwórz kartę EQ
-                          </button>
+                          {character.id === 'nerwnicht' ? (
+                            <a href={`/teams/asteria/characters/${character.id}`}>
+                              Otwórz kartę EQ
+                            </a>
+                          ) : (
+                            <button disabled type="button">
+                              Karta w następnym kroku
+                            </button>
+                          )}
                         </div>
                       </div>
                     </article>
