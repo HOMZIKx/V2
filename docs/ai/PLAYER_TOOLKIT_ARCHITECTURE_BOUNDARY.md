@@ -8,6 +8,8 @@ Gameplay state (trackers, elixirs, EQ board, sharing, guild-admin views of priva
 
 `PLAYER_TOOLKIT_CORE_V1_SHA` (`2af092f`) remains an immutable historical marker. This document records the enforced boundary after integration recovery.
 
+**006C contract freeze + D-051 / D-052:** Canonical Identity characters and DESTILED **Team Character Boards** are **different entities**. Ownership of Teams/boards is **`player-workspace-service`** (not Identity, not Activity). GameAccount remains **SOLO only**. Full matrix: [`PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md`](PLAYER_TOOLKIT_CONTRACT_AUDIT_006C.md).
+
 ## What Identity owns (accepted for #29 foundation)
 
 | Concern                                                  | Storage / API                                   | Rationale                                          |
@@ -30,10 +32,11 @@ Member WWW UI for Player Toolkit **must not** be redesigned by Cursor against th
 Owner+ChatGPT frontend track (D-050). Cursor wires approved screens/adapters to
 Identity character APIs; visual SoT is `codex/phase5-*` / `preview/destiled-web`.
 
-Consumers (**web**, **discord-gateway**, **activity-service** via S2S) **must**:
+Consumers (**web** profile/LFG, **discord-gateway** Hub profile, **activity-service** via S2S) **must**:
 
 - Use Identity HTTP APIs for character verification and profile facts.
-- Treat `player_characters.id` as the canonical character reference everywhere.
+- Treat `player_characters.id` as the canonical character reference for **Activity / LFG / Discord profile / WWW `/profil`**.
+- **Not** use Identity character rows as Team Character Boards (DESTILED planning cards live in a future Player Workspace domain).
 - Never read Identity Postgres from another service.
 
 ## Consumers of `player_characters`
