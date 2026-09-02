@@ -2,7 +2,7 @@
 
 - **Status:** OWNER ACCEPTED
 - **Date:** 2026-09-02
-- **Decisions:** D-040, D-041, D-042, D-043, D-044
+- **Decisions:** D-040, D-041, D-042, D-043, D-044, D-045, D-046
 
 ## Two separate data domains
 
@@ -92,6 +92,24 @@ user without preventing free-form planning.
 This workspace is a loose aid for people playing together. It is not an
 authoritative inventory, ownership, lending or item-transfer system.
 
+### Character presentation and direct equipment interaction
+
+The selected character has a deliberately designed presentation card with a
+fixed silhouette matching the chosen Metin2 character class. The silhouette
+does not change when individual armor or weapons are assigned.
+
+Below the presentation card, the equipment area follows the familiar functional
+slot arrangement of Metin2 while using the product's own approved visual design.
+
+A central team item library is the main working area. Manual item creation is
+the primary and always-available path. Users may define an item's image, name,
+enhancement level, bonuses and notes freely.
+
+On desktop, equipment cards can be dragged between the central library, a
+character's inventory and compatible equipment slots. The card persists after
+the move. Mobile must provide an equivalent tap-and-select destination flow
+rather than depend on precise drag-and-drop.
+
 ### Equipment cards and location notes
 
 Users may create visual equipment cards and place them in current, target or
@@ -109,6 +127,32 @@ workflow.
 
 The interface should make it easy to search cards and see their current noted
 location without turning this feature into formal stock control.
+
+### AI-assisted screenshot import — later phase
+
+AI-assisted import is an optional accelerator built after manual item creation
+and editing work reliably. It is not a dependency of the initial equipment
+workspace.
+
+A user may upload one or multiple screenshots with a visible item tooltip. The
+import process may extract the proposed item name, enhancement level, type,
+requirements, bonuses and values into the normal item-card structure. Private
+server terminology must remain editable and unknown lines may be preserved as
+free-form data.
+
+Every proposed item is shown in a review screen. The user can correct fields and
+must explicitly confirm before the item is added. AI output is never committed
+automatically as authoritative equipment data.
+
+The preferred onboarding flow supports batch upload and review, with one visible
+item tooltip per screenshot. A complete inventory screenshot without visible
+tooltips cannot be expected to recover hidden bonuses.
+
+Before implementation, the team must validate the approach on approximately
+10–20 representative screenshots from the actual server, covering different
+item categories, colors, resolutions and bonus layouts. Provider choice and
+processing design follow that test; insufficient accuracy is a reason to defer
+the feature without blocking manual equipment management.
 
 ### Timers
 
