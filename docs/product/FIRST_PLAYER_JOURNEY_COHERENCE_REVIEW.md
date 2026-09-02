@@ -1,15 +1,15 @@
 # First player journey coherence review
 
-- **Status:** COHERENCE REVIEW COMPLETE / READY FOR OWNER CHECKPOINT
+- **Status:** OWNER ACCEPTED / READY FOR PRODUCTION SHELL
 - **Date:** 2026-09-02
 - **Scope:** first member-Web production slice
-- **Depends on:** D-038–D-051
+- **Depends on:** D-038–D-059
 - **Does not start:** maps, market, AI import, dungeon analyzer, guild analytics or bot administration
 
 ## Review outcome
 
-The first player slice is coherent enough to move into the production application
-shell after one owner checkpoint. It must be experienced as one continuous
+The owner accepted the coherence checkpoint. The first player slice is ready to
+move into the production application shell. It must be experienced as one continuous
 workspace rather than a collection of unrelated pages.
 
 The usable path is:
@@ -331,6 +331,10 @@ Responsive behavior changes layout, not permissions or available outcomes.
 8. Reconnect never pretends an unsaved team mutation succeeded.
 9. Private data is cleared from active memory after access revocation.
 10. The first slice never handles Project Hard account secrets.
+11. A solo workspace and shared team use one ownership model; invitations require acceptance.
+12. Named equipment sets show exact, planned, missing and last-confirmed items.
+13. Character progression timers and lightweight assigned team actions share the private workspace.
+14. Map hunt SpawnTimers remain a separate later domain with independent configuration.
 
 ## Deliberately later
 
@@ -340,14 +344,14 @@ Responsive behavior changes layout, not permissions or available outcomes.
 - Discord-connected market;
 - detailed Discord analytics;
 - guild administration and bot configuration;
-- advanced task system;
+- advanced project/task management beyond lightweight team actions;
 - public character/build sharing;
 - automated Project Hard/client integration.
 
 ## Production-shell gate
 
-The slice may enter production frontend implementation after the owner accepts
-this coherence checkpoint.
+The owner accepted this coherence checkpoint. The slice may enter production
+frontend implementation.
 
 The production shell then implements, behind mock adapters:
 
@@ -356,11 +360,15 @@ The production shell then implements, behind mock adapters:
 3. member home;
 4. solo/shared workspace model;
 5. character board;
-6. equipment library and placement;
-7. timers;
-8. notes and history;
-9. all state-matrix outcomes;
-10. responsive and reduced-motion behavior.
+6. equipment library, placement and named set readiness;
+7. character progression timers and lightweight team actions;
+8. reminder preferences and mock Discord delivery states;
+9. notes and history;
+10. all state-matrix outcomes;
+11. responsive and reduced-motion behavior.
+
+The detailed loadout, reminder and timer-domain contract is defined in
+[TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 
 Cursor still does not implement or redesign this UI. Cursor receives the approved
 frontend code and adapters only after the production slice is reviewed and
