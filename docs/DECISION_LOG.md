@@ -49,6 +49,7 @@
 | D-045 | Stała sylwetka klasy i interaktywny układ EQ                      | ACCEPTED             | Karta pokazuje stałą sylwetkę wybranej klasy Metin2, pod nią funkcjonalny układ slotów; użytkownik ręcznie tworzy karty EQ i przeciąga je między centralną bazą, ekwipunkiem oraz slotami postaci — [model](product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md) |
 | D-046 | Opcjonalny import EQ ze screenshotów wspomagany przez AI           | ACCEPTED / LATER     | AI ma przyspieszać późniejsze uzupełnianie kart, lecz każda propozycja wymaga podglądu, poprawy i zatwierdzenia; ręczne dodawanie pozostaje podstawą, a wdrożenie poprzedzi test na realnych screenshotach — [model](product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md) |
 | D-047 | Dwustronna karta fantasy: EQ z przodu, timery z tyłu              | ACCEPTED             | Karta wykorzystuje zatwierdzoną, zgodną z klasą postać Metin2 bez losowego generowania AI; dopuszcza subtelny ruch, a kontrolowany obrót przełącza między wyposażeniem i timerami bez kolizji z obsługą slotów — [model](product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md) |
+| D-048 | Wspólne mapy Metinów i sesje polowania w czasie rzeczywistym      | ACCEPTED / DETAILS OPEN | Rozszerzamy istniejące listy map, timerów i Events: uprawnieni wgrywają mapy, gracze tworzą drużyny/sesje, współdzielą markery i statusy, a ubicie uruchamia widoczny na żywo timer — [model](product/COOPERATIVE_METIN_MAPS.md) |
 
 Szczegółowe decyzje architektoniczne są rozwijane jako ADR-y w `docs/architecture/decisions/`.
 
