@@ -2,8 +2,8 @@
 
 - **Status:** OWNER ACCEPTED / DETAILS OPEN
 - **Date:** 2026-09-02
-- **Decision:** D-048
-- **Scope:** member Web, shared timers/events contracts and approved realtime transport
+- **Decisions:** D-048, D-059
+- **Scope:** member Web, map-session SpawnTimers, events overlay and approved realtime transport
 
 ## Objective
 
@@ -11,9 +11,11 @@ The platform includes a practical companion for people hunting Metins together.
 Authorized maintainers upload and configure game maps. Players select a map,
 form or join a hunting party and share live map state while playing.
 
-This feature extends the map, timer and Events capabilities already present in
-the earlier application direction. It must not create duplicate map catalogs,
-timer models or a second independent event system.
+This feature extends the earlier map and Events direction, but its boss/Metin
+respawns use a dedicated map-session `SpawnTimer` domain. It must never reuse
+private character book/biologist timers or private team-action records. Shared
+infrastructure primitives are allowed; data ownership, configuration,
+membership and permissions remain separate.
 
 ## Core player flow
 
@@ -77,10 +79,11 @@ Clicking an existing marker opens concise actions instead of a large form.
 Repeated reports update the shared event history rather than silently erasing
 who reported what. Old or uncertain information visually expires.
 
-## Timers and phases
+## SpawnTimers and phases
 
-A killed target starts or updates the existing timer capability. Respawn timing
-is configuration-driven, not embedded in the map UI. The presentation may use
+A confirmed killed-target report starts or updates a session-scoped `SpawnTimer`.
+Respawn timing is configured per map/target/session, not embedded in the map UI
+and not inherited from a player's private team. The presentation may use
 the previously defined phases:
 
 - **Za wcześnie**;
@@ -90,8 +93,8 @@ the previously defined phases:
 - **Niepewne**.
 
 Where historical observations are later used to estimate respawns, the system
-may expose sample count, median/range and confidence. This must extend the
-existing timer records and remain editable by authorized maintainers.
+may expose sample count, median/range and confidence. Definitions and estimates
+remain editable by authorized map maintainers and are versioned for Project Hard.
 
 ## Events and calendar
 
@@ -99,9 +102,10 @@ A game event is an organizational overlay on an existing target/timer, not a
 separate event world. Organized hunts, guild events and non-game organizational
 events remain in the shared Events/calendar capability with common reminders.
 
-A timer can therefore remain informational, be attached to an organized party,
-or support an approved public guild event without duplicating the underlying
-map/target data.
+A SpawnTimer can remain informational, be attached to an organized hunt party
+or support an approved public guild event without duplicating map/target data.
+The calendar/reminder delivery service may be shared, but the record remains a
+map-session SpawnTimer.
 
 ## Realtime and concurrency
 
@@ -113,6 +117,15 @@ map/target data.
   timer.
 - Conflicting reports remain understandable through timestamps, authorship and
   history instead of last-write ambiguity.
+
+## Boundary from private player teams
+
+- A player may join a hunt without joining another person's equipment team.
+- Starting a hunt from a private team creates a separate participant/access list.
+- Map notification settings do not change book/biologist/team-action reminders.
+- Team removal does not automatically rewrite unrelated hunt history.
+- The complete boundary is defined in
+  [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 
 ## Permissions and privacy
 
