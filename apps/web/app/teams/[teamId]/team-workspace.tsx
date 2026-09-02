@@ -150,9 +150,9 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
                   <span className="section-kicker">Wspólne postacie</span>
                   <h2>Stan postaci i zestawów</h2>
                 </div>
-                <button className="secondary-button" disabled type="button">
+                <a className="secondary-button" href="/teams/asteria/characters/new">
                   <Icon name="plus" size={15} /> Dodaj postać
-                </button>
+                </a>
               </header>
               <div className="workspace-character-list">
                 {initialSnapshot.characters.map((character) => {

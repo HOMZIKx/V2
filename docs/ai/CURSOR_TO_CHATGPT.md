@@ -1,5 +1,40 @@
 # Cursor / implementation → ChatGPT
 
+## Phase 5 Character profile create/edit
+
+- **Status:** `AWAITING_OWNER_REVIEW`
+- **Branch:** `codex/phase5-character-profile`
+- **Draft PR:** #36 (stacked on `codex/phase5-team-history`)
+- **Frontend HEAD:** `1a1adfe4de6888b34a778ba205d6c2182cac11e2`
+
+### Delivered
+
+- working team-workspace action for creating a character;
+- responsive create and edit routes in the accepted DESTILED shell;
+- live card preview for name, class, gender, optional level and responsible member;
+- first named set created empty rather than populated with invented equipment;
+- team note and explicit human ownership/responsibility fields;
+- honest no-render state instead of substituting another class image;
+- typed save command with expected team/character revisions and operation ID;
+- validation plus unit and E2E coverage for create/edit behavior.
+
+### Local evidence
+
+- targeted Prettier check: PASS;
+- Web TypeScript `tsc --noEmit`: PASS;
+- Web ESLint for `app` and `src`: PASS;
+- Vitest: PASS, 24 tests;
+- Next production build: PASS, including create and edit routes.
+
+### Integration contract
+
+Cursor may replace the profile adapter after owner acceptance. The API must
+retain optional level, explicit responsible-member assignment, empty starting
+set, expected revisions and operation IDs. Missing approved class art remains
+missing; integration must not substitute a different class or generated render.
+
+---
+
 ## Phase 5 Team history and collaboration safety
 
 - **Status:** `AWAITING_OWNER_REVIEW`

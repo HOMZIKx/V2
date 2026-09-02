@@ -49,10 +49,14 @@ team actions / notes -> Change history`.
   `codex/phase5-team-history` in draft PR **#35**: human-readable actor/resource/
   character filtering, visible connection and edit-lease state, expected-revision
   conflict comparison, preserved drafts and explicit resolution commands.
+- Character profile creation and editing are implemented on
+  `codex/phase5-character-profile` in draft PR **#36**: live card preview,
+  flexible class/gender/level/responsible-member data, an empty named starting
+  set, honest missing-render state and versioned/idempotent save commands.
 - Current next Web step: owner review of the complete first-player path,
-  followed by real create/edit flows for characters, items, named sets and
-  progression timers. Do not start API/Discord integration before the frontend
-  contract is accepted.
+  followed by real create/edit flows for named sets, items and progression
+  timers. Do not start API/Discord integration before the frontend contract is
+  accepted.
 - Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
   `pnpm validate`, infrastructure integration and PR-title checks PASS.
 - Two repository-level blockers remain outside the frontend slice: inherited
@@ -97,6 +101,7 @@ team actions / notes -> Change history`.
   production repository code in PR #31, team workspace in PR #32,
   character/equipment/timer detail in PR #33 and consent-based team membership
   in PR #34. Team history, connection and conflict states are in PR #35.
+  Character create/edit flows are in PR #36.
 - Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
   the production frontend code/adapters are explicitly handed off.
 - D-060 fixes the later Technician configurator as a real versioned bot-config
