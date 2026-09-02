@@ -3,7 +3,7 @@
 ## Current owner directive — Web/Admin
 
 **Status:** `HOLD_CURSOR_WEB_PRODUCT_UI`  
-**Decisions:** D-037–D-051 (2026-09-02)
+**Decisions:** D-037–D-054 (2026-09-02)
 
 Until an approved production frontend slice is handed off:
 
@@ -12,8 +12,8 @@ Until an approved production frontend slice is handed off:
   the design reference;
 - do not independently create or redesign page layout, navigation, graphics,
   copy, animations or user-facing content;
-- do not start maps, market, AI equipment import, analytics or bot-admin Web UI
-  ahead of the first player slice;
+- do not start maps, market, AI equipment import, dungeon analytics or bot-admin
+  Web UI ahead of the first player slice;
 - continue only technical work that does not assume Web/Admin UX;
 - raise `OWNER_DECISION_REQUIRED` when a technical choice changes user-facing
   behavior.
@@ -51,9 +51,18 @@ Mandatory sources:
 1. [WEB_PRODUCT_DESIGN_AND_DELIVERY.md](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md)
 2. [PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md](../product/PLAYER_TEAMS_AND_ACTIVITY_VISIBILITY.md)
 3. [PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md)
+4. [PROJECT_HARD_DUNGEON_RUN_ANALYZER.md](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md)
 
 Current interactive previews are validation material, not a screenshot-only
 handoff. Cursor receives production code and adapters after owner acceptance.
+
+The active game context is Project Hard. D-052 defines a later private-team
+analyzer, but it does not authorize its implementation now. When eventually
+implemented, it must use effective-dated game definitions, human-reviewed OCR,
+frozen price snapshots and the same no-silent-overwrite collaboration baseline.
+DESTILED must never become a credential vault: do not add fields, endpoints or
+bot modals for Project Hard/email logins, passwords, PINs, verification/recovery
+codes, cookies or tokens.
 
 This directive does not start a new Cursor implementation task.
 
