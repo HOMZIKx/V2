@@ -1,293 +1,274 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-
 import {
-  applyQuickActionOutcome,
-  getDashboardSummary,
+  getMemberDashboardSummary,
   type MemberDashboardSnapshot,
-  type QuickAction,
-  type QuickActionOutcome,
+  type MemberModuleAccess,
+  type MemberNotice,
 } from '../src/member-dashboard';
 
-import { AppShell, Icon } from './app-shell';
+import { AppShell, Icon, type IconName } from './app-shell';
 
-function StatusPill({ action }: { action: QuickAction }) {
-  const labels: Record<QuickAction['status'], string> = {
-    ready: action.dueLabel,
-    upcoming: action.dueLabel,
-    done: 'Zrobione',
-    snoozed: 'Później',
-    unavailable: 'Nie mogę',
-  };
+const moduleIcons: Record<MemberModuleAccess['id'], IconName> = {
+  teams: 'team',
+  characters: 'character',
+  maps: 'map',
+  market: 'market',
+  activity: 'activity',
+};
 
-  return <span className={`status-pill is-${action.status}`}>{labels[action.status]}</span>;
-}
+const noticeIcons: Record<MemberNotice['kind'], IconName> = {
+  team: 'team',
+  invitation: 'bell',
+  system: 'settings',
+};
 
 export function MemberDashboard({ initialSnapshot }: { initialSnapshot: MemberDashboardSnapshot }) {
-  const [actions, setActions] = useState(initialSnapshot.quickActions);
-  const [announcement, setAnnouncement] = useState('');
-  const snapshot = useMemo(
-    () => ({ ...initialSnapshot, quickActions: actions }),
-    [actions, initialSnapshot],
-  );
-  const summary = useMemo(() => getDashboardSummary(snapshot), [snapshot]);
-
-  const handleAction = (action: QuickAction, outcome: QuickActionOutcome) => {
-    setActions((current) => applyQuickActionOutcome(current, action.id, outcome));
-    const messages: Record<QuickActionOutcome, string> = {
-      done: `${action.title} dla ${action.characterName}: oznaczono jako zrobione.`,
-      snoozed: `${action.title} dla ${action.characterName}: przypomnienie odłożone.`,
-      unavailable: `${action.title} dla ${action.characterName}: zgłoszono brak możliwości wykonania.`,
-    };
-    setAnnouncement(messages[outcome]);
-  };
+  const summary = getMemberDashboardSummary(initialSnapshot);
 
   return (
     <AppShell activeSection="dashboard" viewerName={initialSnapshot.viewerName}>
-      <main className="dashboard" id="main-content">
-        <section className="welcome-panel">
-          <div className="welcome-art" />
-          <div className="welcome-content">
-            <span className="eyebrow">Pulpit członka</span>
-            <h1>Witaj ponownie, {initialSnapshot.viewerName}</h1>
+      <main className="account-dashboard" id="main-content">
+        <section className="account-hero">
+          <div className="account-hero-copy">
+            <span className="eyebrow">Centrum gracza</span>
+            <h1>Witaj, {initialSnapshot.viewerName}</h1>
             <p>
-              Najważniejsze informacje Twojego zespołu w jednym miejscu — bez szukania po Discordzie
-              i bez zgadywania, kto ostatnio coś zrobił.
+              Wybierz obszar, do którego masz dostęp. Konto nie musi należeć do zespołu ani mieć
+              przypisanej postaci.
             </p>
-            <div className="welcome-meta">
-              <span className="live-dot" />
-              <strong>{initialSnapshot.teamName}</strong>
-              <span>{summary.onlineMembers} osoby online</span>
-            </div>
           </div>
-          <div className="welcome-stat">
-            <span>Do zrobienia</span>
-            <strong>{summary.readyActions}</strong>
-            <small>potwierdzenia</small>
+          <div className="account-identity-card">
+            <span className="profile-avatar">
+              {initialSnapshot.discordDisplayName.slice(0, 1).toUpperCase()}
+            </span>
+            <div>
+              <small>Konto Discord</small>
+              <strong>{initialSnapshot.discordDisplayName}</strong>
+              <span className={initialSnapshot.discordConnected ? 'is-connected' : ''}>
+                <span className="live-dot" />
+                {initialSnapshot.discordConnected ? 'Połączone' : 'Wymaga połączenia'}
+              </span>
+            </div>
           </div>
         </section>
 
-        <section aria-label="Szybkie podsumowanie" className="metric-grid">
-          <article className="metric-card is-red">
-            <span className="metric-icon">
-              <Icon name="clock" />
-            </span>
-            <div>
-              <strong>{summary.readyActions}</strong>
-              <span>gotowe akcje</span>
-            </div>
-            <small>wymagają decyzji</small>
-          </article>
-          <article className="metric-card is-blue">
-            <span className="metric-icon">
+        <section aria-label="Podsumowanie dostępu" className="account-metrics">
+          <article>
+            <span className="metric-icon is-blue">
               <Icon name="team" />
             </span>
             <div>
-              <strong>{summary.onlineMembers}</strong>
-              <span>osoby online</span>
+              <strong>{summary.workspaceCount}</strong>
+              <span>{summary.workspaceCount === 1 ? 'przestrzeń' : 'przestrzenie'}</span>
             </div>
-            <small>w zespole {initialSnapshot.teamName}</small>
+            <small>przyjęte członkostwa</small>
           </article>
-          <article className="metric-card is-silver">
-            <span className="metric-icon">
-              <Icon name="equipment" />
+          <article>
+            <span className="metric-icon is-red">
+              <Icon name="bell" />
             </span>
             <div>
-              <strong>{summary.readyEquipmentSets}</strong>
-              <span>gotowy set</span>
+              <strong>{summary.pendingInvitationCount}</strong>
+              <span>zaproszenia</span>
             </div>
-            <small>sprawdzony układ EQ</small>
+            <small>czekają na decyzję</small>
           </article>
-          <article className="metric-card is-violet">
-            <span className="metric-icon">
-              <Icon name="character" />
+          <article>
+            <span className="metric-icon is-silver">
+              <Icon name="activity" />
             </span>
             <div>
-              <strong>{summary.totalCharacters}</strong>
-              <span>postacie</span>
+              <strong>{summary.unreadNoticeCount}</strong>
+              <span>nowe informacje</span>
             </div>
-            <small>w tej przestrzeni</small>
+            <small>bez mieszania z timerami postaci</small>
+          </article>
+          <article>
+            <span className="metric-icon is-violet">
+              <Icon name="check" />
+            </span>
+            <div>
+              <strong>{summary.availableModuleCount}</strong>
+              <span>dostępne moduły</span>
+            </div>
+            <small>wynik Twoich uprawnień</small>
           </article>
         </section>
 
-        <div className="dashboard-grid">
-          <section className="panel attention-panel">
+        <div className="account-dashboard-grid">
+          <section className="panel account-workspaces-panel">
             <header className="panel-header">
               <div>
-                <span className="section-kicker">Twoja kolejka</span>
-                <h2>Do zrobienia teraz</h2>
+                <span className="section-kicker">Prywatne przestrzenie</span>
+                <h2>Moje zespoły</h2>
               </div>
-              <span className="count-badge">{summary.readyActions}</span>
+              <span className="count-badge">{summary.workspaceCount}</span>
             </header>
-            <div className="action-list">
-              {actions.map((action) => {
-                const canRespond = action.status === 'ready';
-                return (
-                  <article className={`action-card tone-${action.tone}`} key={action.id}>
-                    <span className="action-rail" />
-                    <div className="action-icon">
-                      <Icon name={action.title.startsWith('Set') ? 'equipment' : 'clock'} />
+
+            {initialSnapshot.workspaces.length > 0 ? (
+              <div className="account-workspace-list">
+                {initialSnapshot.workspaces.map((workspace) => (
+                  <article className="account-workspace-card" key={workspace.id}>
+                    <div className="account-workspace-mark">
+                      <Icon name="team" size={22} />
                     </div>
-                    <div className="action-copy">
-                      <div className="action-title-row">
-                        <div>
-                          <strong>{action.title}</strong>
-                          <span>{action.characterName}</span>
-                        </div>
-                        <StatusPill action={action} />
+                    <div className="account-workspace-copy">
+                      <div>
+                        <span>{workspace.role === 'owner' ? 'Właściciel' : 'Członek'}</span>
+                        <h3>{workspace.name}</h3>
                       </div>
-                      <p>{action.description}</p>
-                      {canRespond && (
-                        <div className="action-controls">
-                          <button
-                            className="text-button is-confirm"
-                            onClick={() => handleAction(action, 'done')}
-                            type="button"
-                          >
-                            <Icon name="check" size={15} /> Zrobione
-                          </button>
-                          <button
-                            className="text-button"
-                            onClick={() => handleAction(action, 'snoozed')}
-                            type="button"
-                          >
-                            <Icon name="clock" size={15} /> Później
-                          </button>
-                          <button
-                            className="text-button"
-                            onClick={() => handleAction(action, 'unavailable')}
-                            type="button"
-                          >
-                            Nie mogę
-                          </button>
-                        </div>
-                      )}
+                      <p>{workspace.description}</p>
+                      <div className="account-workspace-meta">
+                        <span>
+                          <span className="live-dot" /> {workspace.onlineCount} online
+                        </span>
+                        <span>{workspace.memberCount} członków</span>
+                        <span>Aktualizacja {workspace.updatedLabel}</span>
+                      </div>
                     </div>
+                    <a href={`/teams/${workspace.id}`}>
+                      Otwórz zespół <Icon name="chevron" size={14} />
+                    </a>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="account-empty-state">
+                <span>
+                  <Icon name="team" size={24} />
+                </span>
+                <div>
+                  <h3>Nie należysz jeszcze do zespołu</h3>
+                  <p>
+                    To prawidłowy stan konta. Dostęp pojawi się dopiero po świadomym przyjęciu
+                    zaproszenia.
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <aside className="panel account-invitations-panel">
+            <header className="panel-header">
+              <div>
+                <span className="section-kicker">Dostęp</span>
+                <h2>Zaproszenia</h2>
+              </div>
+              <Icon name="bell" size={17} />
+            </header>
+            {initialSnapshot.pendingInvitations.length > 0 ? (
+              <div className="account-invitation-list">
+                {initialSnapshot.pendingInvitations.map((invitation) => (
+                  <article key={invitation.id}>
+                    <strong>{invitation.workspaceName}</strong>
+                    <span>Zaprasza: {invitation.invitedBy}</span>
+                    <small>{invitation.expiresLabel}</small>
+                    <a href={`/invitations/${invitation.id}`}>Podejmij decyzję</a>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="account-compact-empty">
+                <Icon name="check" size={18} />
+                <div>
+                  <strong>Brak oczekujących zaproszeń</strong>
+                  <span>Nie musisz niczego zatwierdzać.</span>
+                </div>
+              </div>
+            )}
+          </aside>
+
+          <section className="panel account-modules-panel">
+            <header className="panel-header">
+              <div>
+                <span className="section-kicker">Nawigacja według uprawnień</span>
+                <h2>Dostępne obszary</h2>
+              </div>
+            </header>
+            <div className="account-module-grid">
+              {initialSnapshot.modules.map((module) => {
+                const content = (
+                  <>
+                    <span className="account-module-icon">
+                      <Icon name={moduleIcons[module.id]} size={20} />
+                    </span>
+                    <div>
+                      <strong>{module.label}</strong>
+                      <p>{module.description}</p>
+                    </div>
+                    <span className="account-module-state">
+                      {module.state === 'available' ? 'Dostępny' : 'W przygotowaniu'}
+                    </span>
+                  </>
+                );
+
+                return module.href ? (
+                  <a
+                    className="account-module-card is-available"
+                    href={module.href}
+                    key={module.id}
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <article className="account-module-card" key={module.id}>
+                    {content}
                   </article>
                 );
               })}
             </div>
           </section>
 
-          <aside className="panel team-panel" id="team-overview">
+          <aside className="panel account-notices-panel">
             <header className="panel-header">
               <div>
-                <span className="section-kicker">Aktywna przestrzeń</span>
-                <h2>{initialSnapshot.teamName}</h2>
+                <span className="section-kicker">Konto i dostęp</span>
+                <h2>Powiadomienia</h2>
               </div>
-              <button
-                aria-label="Ustawienia zespołu"
-                className="quiet-icon-button"
-                disabled
-                type="button"
-              >
-                <Icon name="settings" size={17} />
-              </button>
+              <span className="count-badge">{summary.unreadNoticeCount}</span>
             </header>
-            <div className="member-stack" aria-label="Członkowie zespołu">
-              {initialSnapshot.teamMembers.map((member) => (
-                <div className="member-row" key={member.id}>
-                  <span className={`member-avatar is-${member.state}`}>{member.initials}</span>
-                  <span className="member-name">{member.displayName}</span>
-                  <span className={`presence is-${member.state}`}>
-                    {member.state === 'online'
-                      ? 'online'
-                      : member.state === 'away'
-                        ? 'zaraz wracam'
-                        : 'offline'}
-                  </span>
+            {initialSnapshot.notices.length > 0 ? (
+              <div className="account-notice-list">
+                {initialSnapshot.notices.map((notice) => {
+                  const body = (
+                    <>
+                      <span className={`account-notice-icon is-${notice.kind}`}>
+                        <Icon name={noticeIcons[notice.kind]} size={15} />
+                      </span>
+                      <div>
+                        <strong>{notice.title}</strong>
+                        <p>{notice.detail}</p>
+                        <small>{notice.timeLabel}</small>
+                      </div>
+                      {notice.unread && <span className="notice-unread-dot" />}
+                    </>
+                  );
+
+                  return notice.href ? (
+                    <a href={notice.href} key={notice.id}>
+                      {body}
+                    </a>
+                  ) : (
+                    <article key={notice.id}>{body}</article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="account-compact-empty">
+                <Icon name="bell" size={18} />
+                <div>
+                  <strong>Brak nowych informacji</strong>
+                  <span>Najważniejsze zmiany pojawią się tutaj.</span>
                 </div>
-              ))}
-            </div>
-            <a className="primary-button" href="/teams/asteria">
-              Otwórz przestrzeń zespołu
-              <span>Przejdź</span>
-            </a>
-          </aside>
-
-          <section className="panel characters-panel">
-            <header className="panel-header">
-              <div>
-                <span className="section-kicker">Zespół {initialSnapshot.teamName}</span>
-                <h2>Postacie</h2>
               </div>
-              <button className="quiet-link" disabled type="button">
-                Zobacz wszystkie
-              </button>
-            </header>
-            <div className="character-grid">
-              {initialSnapshot.characters.map((character, index) => (
-                <article className={`character-card accent-${index % 3}`} key={character.id}>
-                  <div className="character-figure">
-                    <img
-                      alt={`${character.classLabel} — ${character.name}`}
-                      src={character.imagePath}
-                    />
-                  </div>
-                  <div className="character-body">
-                    <div>
-                      <span>
-                        {character.classLabel} · poziom {character.level}
-                      </span>
-                      <h3>{character.name}</h3>
-                    </div>
-                    <div className="character-tags">
-                      <span>
-                        {character.equipmentCount}/{character.equipmentCapacity} EQ
-                      </span>
-                      <span className={character.readyTimers > 0 ? 'is-ready' : ''}>
-                        {character.readyTimers > 0
-                          ? `${character.readyTimers} timer gotowy`
-                          : 'timery w toku'}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <aside className="panel history-panel">
-            <header className="panel-header">
-              <div>
-                <span className="section-kicker">Ostatnie potwierdzenia</span>
-                <h2>Historia zmian</h2>
-              </div>
-              <Icon name="history" size={18} />
-            </header>
-            <div className="history-list">
-              {initialSnapshot.history.map((entry) => (
-                <article className="history-row" key={entry.id}>
-                  <span className={`history-icon is-${entry.kind}`}>
-                    <Icon
-                      name={
-                        entry.kind === 'equipment'
-                          ? 'equipment'
-                          : entry.kind === 'timer'
-                            ? 'clock'
-                            : 'team'
-                      }
-                      size={15}
-                    />
-                  </span>
-                  <div>
-                    <strong>{entry.title}</strong>
-                    <span>{entry.detail}</span>
-                  </div>
-                  <time>{entry.timeLabel}</time>
-                </article>
-              ))}
-            </div>
+            )}
           </aside>
         </div>
 
-        <p aria-live="polite" className="sr-only">
-          {announcement}
-        </p>
         <div className="mock-notice">
-          Interfejs produkcyjny · dane demonstracyjne z adaptera. Zapis do API i Discorda zostanie
-          podłączony bez zmiany tego widoku.
+          Podgląd frontendowy · dostęp do zespołów i modułów pochodzi obecnie z adaptera
+          demonstracyjnego. Docelowo określi go Discord Auth oraz RBAC.
         </div>
       </main>
     </AppShell>

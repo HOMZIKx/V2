@@ -79,8 +79,8 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 
 const navigation = [
   { id: 'dashboard', label: 'Pulpit', icon: 'home', href: '/' },
-  { id: 'teams', label: 'Zespoły', icon: 'team', href: '/teams/asteria' },
-  { id: 'characters', label: 'Postacie', icon: 'character', href: null },
+  { id: 'teams', label: 'Moje zespoły', icon: 'team', href: '/teams/asteria' },
+  { id: 'characters', label: 'Postacie', icon: 'character', href: '/characters' },
   { id: 'maps', label: 'Mapy', icon: 'map', href: null },
   { id: 'market', label: 'Targ', icon: 'market', href: null },
   { id: 'activity', label: 'Aktywność', icon: 'activity', href: null },
