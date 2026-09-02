@@ -83,7 +83,7 @@ const navigation = [
   { id: 'characters', label: 'Postacie', icon: 'character', href: '/characters' },
   { id: 'maps', label: 'Mapy', icon: 'map', href: '/maps' },
   { id: 'market', label: 'Targ', icon: 'market', href: null },
-  { id: 'activity', label: 'Aktywność', icon: 'activity', href: null },
+  { id: 'activity', label: 'Aktywność', icon: 'activity', href: '/activity' },
 ] as const satisfies ReadonlyArray<{
   id: AppSection;
   label: string;

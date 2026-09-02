@@ -12,7 +12,7 @@ describe('member dashboard view model', () => {
       workspaceCount: 1,
       pendingInvitationCount: 0,
       unreadNoticeCount: 1,
-      availableModuleCount: 2,
+      availableModuleCount: 4,
     });
   });
 
@@ -21,7 +21,7 @@ describe('member dashboard view model', () => {
       workspaceCount: 0,
       pendingInvitationCount: 0,
       unreadNoticeCount: 0,
-      availableModuleCount: 0,
+      availableModuleCount: 2,
     });
   });
 
