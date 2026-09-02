@@ -35,6 +35,27 @@ A team:
 The exact invitation flow, team roles and character ownership/editing rules are
 not decided in this document.
 
+## Team capability model
+
+The first product scope has exactly two team roles:
+
+### Team Owner
+
+- creates the team;
+- invites and removes team members;
+- adds and removes characters from the team;
+- manages the team itself.
+
+### Team Member
+
+- views every character shared with that team;
+- edits shared character data, equipment, timers, tasks and notes;
+- cannot manage team membership or delete/manage the team itself.
+
+There is no viewer/observer role or additional team hierarchy in the first
+scope. Guild Leader, Technician and platform access roles do not replace these
+explicit team roles.
+
 ## Private team data
 
 Private by default:
@@ -109,7 +130,6 @@ not a searchable archive of what users wrote.
 
 ## Not decided here
 
-- team owner/manager/member roles;
 - whether a character may belong to more than one team;
 - edit versus read-only team permissions;
 - whether members see their own detailed analytics or own position outside TOP
