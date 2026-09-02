@@ -6,7 +6,7 @@
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
 Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge  
-CURRENT_HEAD: `d098cc398f81104a6e4cc81467eadd799dc2fa03`
+CURRENT_HEAD: `b6153335e8de256bcda74054ca9a2086596845f7`
 
 ## Ownership split (Owner directive 2026-09-02) — ACCEPTED SoT
 
@@ -32,7 +32,7 @@ History not rewritten. Premature code preserved.
 | Marker                                | SHA                                        |
 | ------------------------------------- | ------------------------------------------ |
 | `main` (merged)                       | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| CURRENT_HEAD (PR #19 tip)             | `d098cc398f81104a6e4cc81467eadd799dc2fa03` |
+| CURRENT_HEAD (PR #19 tip)             | `b6153335e8de256bcda74054ca9a2086596845f7` |
 | `ADMIN_CONTROL_CENTER_UX_V1_SHA`      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
 | `PLAYER_TOOLKIT_CORE_V1_SHA`          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` |
 | `CURRENT_HEAD_STABILIZATION_006A_SHA` | `8a6afd6015d93466871801fa5c03a96080820277` |

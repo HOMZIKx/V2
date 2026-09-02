@@ -22,7 +22,7 @@ SoT: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (**D-050**).
 
 | Field              | Value                                                                                   |
 | ------------------ | --------------------------------------------------------------------------------------- |
-| CURRENT_HEAD       | `d098cc398f81104a6e4cc81467eadd799dc2fa03`                                              |
+| CURRENT_HEAD       | `b6153335e8de256bcda74054ca9a2086596845f7`                                              |
 | CURRENT_TASK       | `V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001`                                           |
 | ACTIVE_BRANCH / PR | `cursor/p4-1-activity-domain` / **#19**                                                 |
 | MERGED_MAIN        | `8c1b0959ae51d131e62ed587d81be1aae5012d37`                                              |
@@ -61,15 +61,15 @@ Player Toolkit boundary: `docs/ai/PLAYER_TOOLKIT_ARCHITECTURE_BOUNDARY.md`.
 
 ## Checkpoint ledger (selected)
 
-| Marker                                  | SHA                                        | Class                                      |
-| --------------------------------------- | ------------------------------------------ | ------------------------------------------ |
-| MERGED_MAIN                             | `8c1b0959ae51d131e62ed587d81be1aae5012d37` | main tip                                   |
-| **PLAYER_TOOLKIT_CORE_V1_SHA**          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | 006 foundation (premature vs acceptance)   |
-| **ADMIN_CONTROL_CENTER_UX_V1_SHA**      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | 005 code checkpoint                        |
-| **CURRENT_HEAD_STABILIZATION_006A_SHA** | `8a6afd6015d93466871801fa5c03a96080820277` | local validate / infra isolation PASS      |
-| CURRENT_HEAD (PR #19)                   | `d098cc398f81104a6e4cc81467eadd799dc2fa03` | includes admin hub-core + web tsconfig fix |
-| preview/destiled-web                    | `b7271a07f12c4d772097b05f46d8e3ba01c13372` | Owner+ChatGPT frontend track               |
-| codex/phase5-player-shell               | `adbd4a03d925bd1973bfda9d00ade15e3d225a30` | Owner+ChatGPT frontend track               |
+| Marker                                  | SHA                                        | Class                                    |
+| --------------------------------------- | ------------------------------------------ | ---------------------------------------- |
+| MERGED_MAIN                             | `8c1b0959ae51d131e62ed587d81be1aae5012d37` | main tip                                 |
+| **PLAYER_TOOLKIT_CORE_V1_SHA**          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` | 006 foundation (premature vs acceptance) |
+| **ADMIN_CONTROL_CENTER_UX_V1_SHA**      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` | 005 code checkpoint                      |
+| **CURRENT_HEAD_STABILIZATION_006A_SHA** | `8a6afd6015d93466871801fa5c03a96080820277` | local validate / infra isolation PASS    |
+| CURRENT_HEAD (PR #19)                   | `b6153335e8de256bcda74054ca9a2086596845f7` | SoT realignment (D-050)                  |
+| preview/destiled-web                    | `b7271a07f12c4d772097b05f46d8e3ba01c13372` | Owner+ChatGPT frontend track             |
+| codex/phase5-player-shell               | `adbd4a03d925bd1973bfda9d00ade15e3d225a30` | Owner+ChatGPT frontend track             |
 
 ## Last updated
 
