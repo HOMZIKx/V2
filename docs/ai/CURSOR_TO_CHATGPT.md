@@ -1,5 +1,42 @@
 # Cursor / implementation → ChatGPT
 
+## Phase 5 Team history and collaboration safety
+
+- **Status:** `AWAITING_OWNER_REVIEW`
+- **Branch:** `codex/phase5-team-history`
+- **Draft PR:** #35 (stacked on `codex/phase5-team-membership`)
+- **Frontend HEAD:** `37cbf0f121cd783d64378ebb4f48e35b5f67f7a2`
+
+### Delivered
+
+- linked `/teams/[teamId]/history` route in the accepted DESTILED team shell;
+- append-only, human-readable actor/resource/character change history;
+- search and resource, actor and character filters with an explicit empty state;
+- visible connected/reconnecting/offline/access-revoked copy contract;
+- resource-level edit-lease indicator for concurrent work;
+- expected-revision conflict comparison without silent overwrite;
+- preserved local draft or explicit latest-server-version resolution;
+- typed adapter command with `expectedServerRevision` and `operationId`;
+- unit and E2E coverage for filtering and conflict handling.
+
+### Local evidence
+
+- targeted Prettier check: PASS;
+- Web TypeScript `tsc --noEmit`: PASS;
+- Web ESLint for `app` and `src`: PASS;
+- Vitest: PASS, 21 tests;
+- Next production build: PASS, including `/teams/[teamId]/history`.
+
+### Integration contract
+
+Cursor may connect persistence and realtime only after owner acceptance. It must
+preserve append-only history, expected revisions, idempotent operation IDs,
+local drafts during reconnect/offline states, immediate subscription shutdown
+after access revocation and explicit human conflict resolution. A lease is a
+collaboration signal, not permission to overwrite a newer revision.
+
+---
+
 ## Phase 5 Team membership and invitations
 
 - **Status:** `AWAITING_OWNER_REVIEW`
