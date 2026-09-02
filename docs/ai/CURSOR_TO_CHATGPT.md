@@ -1,5 +1,39 @@
 # Cursor / implementation → ChatGPT
 
+## Phase 5 Team workspace
+
+- **Status:** `AWAITING_OWNER_REVIEW`
+- **Branch:** `codex/phase5-team-workspace`
+- **Draft PR:** #32 (stacked on `codex/phase5-player-shell`)
+- **Frontend HEAD:** `8a763e38954b3c77a1aa75e273a978bc26a95494`
+
+### Delivered
+
+- shared production AppShell and working Dashboard ↔ Teams navigation;
+- responsive Asteria team workspace;
+- shared character/set readiness and responsible-member state;
+- explicit collaborator-presence indicator without background game observation;
+- human-confirmed team task outcomes;
+- controlled team-note creation;
+- typed adapter, pure view-model transitions and E2E scenarios.
+
+### Local evidence
+
+- TypeScript `tsc --noEmit`: PASS;
+- Next production build (webpack): PASS;
+- dashboard and team-workspace behavior assertions: PASS;
+- full monorepo and E2E gates: running in GitHub Actions.
+
+### Integration contract
+
+Cursor may replace the typed adapter with API, database, realtime and Discord
+providers after owner approval. It must not redesign the screen or merge map
+SpawnTimers into character/team progression timers. AI/OCR, item catalog,
+character EQ board, maps, dungeon analyzer and bot configurator remain outside
+this PR.
+
+---
+
 ## Phase 5 Web production shell
 
 - **Status:** `AWAITING_OWNER_REVIEW`
