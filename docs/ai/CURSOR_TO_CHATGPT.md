@@ -2,68 +2,83 @@
 
 ## Status
 
-**MODE:** `V2-SOT-REALIGNMENT-OWNER-FRONTEND-SPLIT-001` — documentation / audit only  
+**MODE:** `V2-RUNTIME-005-006-TIP-DEPLOY-AND-ACCEPTANCE`  
+**RESULT:** `OWNER_ACCEPTANCE_REQUIRED`  
 Product / merge: **`NOT_APPROVED`** · **`NOT_MERGED`**
 
-Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge  
-CURRENT_HEAD: `b6153335e8de256bcda74054ca9a2086596845f7`
+Branch: `cursor/p4-1-activity-domain` · PR **#19** — do not merge
 
-## Ownership split (Owner directive 2026-09-02) — ACCEPTED SoT
+## Ownership split (unchanged — D-050)
 
-| Role                | Owns                                                                                                                                                | Must not                                                                                 |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Cursor**          | Backend, domains, API, Identity, Authz, Discord Gateway, integrations, storage, realtime, security, Zeabur/runtime; **integrate** approved frontend | Redesign competing member WWW; invent product screens; start Task 007 / deferred modules |
-| **Owner + ChatGPT** | Product, UX, production member WWW frontend track (`codex/phase5-*`, `preview/destiled-web`)                                                        | Expect Cursor to invent replacement WWW visual product                                   |
+| Role                | Owns                                                                                         | Must not                                              |
+| ------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Cursor**          | Backend / Identity / Authz / Discord / API / Zeabur; integrate approved frontend             | Redesign competing member WWW; start Task 007         |
+| **Owner + ChatGPT** | Product, UX, production member WWW (`codex/phase5-*`, `preview/destiled-web`)                | Expect Cursor to invent replacement WWW visual product |
 
-Canonical workflow: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (**D-050** on this branch; **D-037** ID on frontend-track Decision Log — ID collision documented in `DECISION_LOG.md`).
+## Root cause (closed)
+
+API `/health/ready` returned **503** with `identity=unhealthy` because Identity readiness check **`migrations: false`**.
+
+- DB: OK · Redis: OK · Migrations: only `001` + `002` applied on prod Identity DB
+- Tip image already contained `003_player_game_accounts.sql` but **Dockerfile does not auto-migrate**
+- Controlled fix: `node scripts/migrate-prod.mjs` inside Identity container → applied `003` only (no DB reset)
+
+After migrate: Identity ready **200**; API ready **200** with `identity=ok`.
+
+## Runtime (Zeabur TESTOWY) — tip `e00185e…`
+
+| Service                 | Deployed SHA   | Health / readiness                                      |
+| ----------------------- | -------------- | ------------------------------------------------------- |
+| identity-service        | `e00185e…`     | ready **PASS** (db+redis+migrations)                    |
+| authorization-service   | `e00185e…`     | ready **PASS**                                          |
+| activity-service        | `e00185e…`     | ok via API checks                                       |
+| api-gateway             | `e00185e…`     | `/health/ready` **200** `activity=ok identity=ok`       |
+| discord-gateway         | `e00185e…`     | bot ready                                               |
+| web                     | `e00185e…`     | `/health` **200**                                       |
+| admin                   | `e00185e…`     | `/health` **200**                                       |
+
+Identity migrations inventory: `001_better_auth.sql`, `002_player_profile_foundation.sql`, `003_player_game_accounts.sql`.
 
 ## Process truth (005 / 006)
 
-| Task                            | Status                                                                                               |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **005 Admin Control Center UX** | Code at `ADMIN_CONTROL_CENTER_UX_V1_SHA`; **not Owner-accepted**; live admin still behind tip        |
-| **006 Player Toolkit Core**     | Code at `PLAYER_TOOLKIT_CORE_V1_SHA` (premature vs 005 acceptance); architecture boundary documented |
-| **007 Trackers**                | **NOT STARTED** — blocked until 005/006 ordered + Issue #29 / approved Player Toolkit scope          |
+| Task                            | Code | Runtime | Owner acceptance |
+| ------------------------------- | ---- | ------- | ---------------- |
+| **005 Admin Control Center UX** | PASS (`4df7a94…`) | PASS tip | **PENDING** |
+| **006 Player Toolkit Core**     | PASS (`2af092f…`) | PASS tip | **PENDING** |
+| **007 Trackers**                | — | — | **NOT STARTED** |
 
-History not rewritten. Premature code preserved.
+## Local / CI
 
-## SHAs
+| Gate                         | Result                                      |
+| ---------------------------- | ------------------------------------------- |
+| `pnpm validate --quick`      | **PASS** at tip lineage                     |
+| Full `pnpm validate` (e2e+)  | Prior 006A PASS; not re-run this closure    |
+| GitHub Actions               | **UNVERIFIED** (`gh` not authenticated)     |
 
-| Marker                                | SHA                                        |
-| ------------------------------------- | ------------------------------------------ |
-| `main` (merged)                       | `8c1b0959ae51d131e62ed587d81be1aae5012d37` |
-| CURRENT_HEAD (PR #19 tip)             | `b6153335e8de256bcda74054ca9a2086596845f7` |
-| `ADMIN_CONTROL_CENTER_UX_V1_SHA`      | `4df7a948876a0ff3a2959ea8140aff3e02e1ab98` |
-| `PLAYER_TOOLKIT_CORE_V1_SHA`          | `2af092ff4b326c3c4b47d39a2ddad75847ee8ed2` |
-| `CURRENT_HEAD_STABILIZATION_006A_SHA` | `8a6afd6015d93466871801fa5c03a96080820277` |
-| `preview/destiled-web` tip            | `b7271a07f12c4d772097b05f46d8e3ba01c13372` |
-| `codex/phase5-player-shell` tip       | `adbd4a03d925bd1973bfda9d00ade15e3d225a30` |
+## Owner action required — minimal live tests
 
-## Runtime snapshot (Zeabur TESTOWY, probed during realignment)
+### OWNER TEST 005 — Admin
 
-| Surface         | Evidence                                                      | Status                                                     |
-| --------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
-| API tip         | `/health/ready` shows `d098cc3…`                              | **503** — `identity=unhealthy`                             |
-| Backends deploy | Zeabur status RUNNING @ `d098cc3` for identity/activity/api/… | Tip image present; identity not healthy                    |
-| Web live        | `/health` → `510b262…`                                        | **behind tip** (build previously FAILED; redeploy RUNNING) |
-| Admin live      | `/health` → `8babc897…`                                       | **behind tip** (redeploy RUNNING)                          |
-| Local validate  | prior 006A `pnpm validate` PASS                               | code gate OK                                               |
-| Task 007        | —                                                             | **forbidden until 005/006 closure**                        |
+1. Open `https://v2-admin.zeabur.app/`
+2. Click **Zaloguj przez Discord** (if shown) and complete Discord OAuth
+3. Confirm guild selector loads at least one manageable guild (not a permanent API error)
+4. Open **Pulpit** (`/`) — dashboard renders without Identity/API 503
+5. Open **Discord → Centrum** (`/discord/centrum`) — page loads (config may be empty; no crash)
 
-## Known blockers
+Expected: authenticated Admin shell on tip; no “identity unhealthy” / blank hard failure from API readiness.
 
-1. Identity unhealthy on tip → API ready 503.
-2. Web/Admin tip not live yet (builds / prior Docker failures fixed in `0eec6af` / `d098cc3`).
-3. Owner live acceptance for Admin 005 + Player Core 006 still pending after tip is healthy.
-4. `gh` CLI often unauthenticated locally — Actions status may need Owner UI.
+### OWNER TEST 006 — Member
 
-## Owner action required
+1. Open `https://v2-web.zeabur.app/profil`
+2. Sign in with Discord if prompted (same V2 Discord app / test guild as existing runtime)
+3. Confirm `/profil` shows signed-in member profile surface (not permanent UNAUTHENTICATED error after login)
 
-1. After tip healthy: Admin OAuth smoke for 005 UX.
-2. After tip healthy: Discord-auth Member session for 006 `/profil` proof (or confirm integration against approved frontend track when wired).
-3. Treat `codex/phase5-*` / `preview/destiled-web` as the member WWW design track — do not ask Cursor to redesign it.
+Expected: session cookie path works WWW→API; profile route usable for acceptance of existing 006 surface.
+
+### Discord live smoke (only if login fails)
+
+Confirm Discord Developer Portal redirect includes `https://v2-api.zeabur.app/api/auth/callback/discord` and bot is online on the test guild. Do not redesign WWW.
 
 ## STOP
 
-No Task 007. No Trackers/Biolog/Elixirs/EQ/Marketplace/Guild Control/Reservations/Music product expansion.
-No competing member WWW redesign by Cursor.
+No Task 007. No Player Toolkit implementation start. No PR #19 merge. No competing member WWW redesign.
