@@ -32,8 +32,12 @@ team actions / notes -> Change history`.
   draft PR **#31**. Current checkpoint: responsive member dashboard with typed
   mock adapter, human-confirmed reminder actions, team summary, authentic class
   renders and change history.
-- Current next Web step after owner review: team workspace and character board;
-  do not start API/Discord integration before the first visual checkpoint is
+- The owner accepted continuation after the member-dashboard checkpoint.
+- Team workspace is implemented on `codex/phase5-team-workspace` in draft PR
+  **#32**: shared AppShell/navigation, responsive team overview, character/set
+  readiness, collaborator presence, explicit task outcomes and team notes.
+- Current next Web step after workspace review: character card and Metin2 EQ
+  board; do not start API/Discord integration before the frontend contract is
   accepted.
 - Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
   `pnpm validate`, infrastructure integration and PR-title checks PASS.
@@ -75,9 +79,10 @@ team actions / notes -> Change history`.
   [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
-- Earlier previews validate the wider member flow. The member dashboard is now
-  production repository code in PR #31; team workspace and
-  character/equipment/timer screens remain the next owner-reviewed slices.
+- Earlier previews validate the wider member flow. The member dashboard is
+  production repository code in PR #31 and team workspace is production
+  repository code in PR #32. Character/equipment/timer detail remains the next
+  owner-reviewed slice.
 - Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
   the production frontend code/adapters are explicitly handed off.
 - D-060 fixes the later Technician configurator as a real versioned bot-config
@@ -115,4 +120,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-09-02 — Phase 5 member dashboard production shell and validation evidence recorded in draft PR #31; Cursor P4 status retained.
+2026-09-02 — Phase 5 member dashboard in draft PR #31 and team workspace in draft PR #32; Cursor P4 status retained.
