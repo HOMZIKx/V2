@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import {
   buildSaveCharacterProfileCommand,
@@ -31,6 +31,13 @@ export function CharacterProfileForm({
     initialSnapshot.members.find((member) => member.id === draft.responsibleMemberId)
       ?.displayName ?? 'Nie wybrano';
 
+  useEffect(() => {
+    if (!editing) return;
+    const saved = window.localStorage.getItem(`destiled:character-profile:${initialSnapshot.characterId}`);
+    if (!saved) return;
+    try { setDraft(JSON.parse(saved) as CharacterProfileDraft); } catch { window.localStorage.removeItem(`destiled:character-profile:${initialSnapshot.characterId}`); }
+  }, [editing, initialSnapshot.characterId]);
+
   const updateDraft = <Key extends keyof CharacterProfileDraft>(
     key: Key,
     value: CharacterProfileDraft[Key],
@@ -50,6 +57,7 @@ export function CharacterProfileForm({
       `local-character-${editing ? initialSnapshot.characterId : 'new'}`,
     );
     setDraft(command.profile);
+    if (editing) window.localStorage.setItem(`destiled:character-profile:${initialSnapshot.characterId}`, JSON.stringify(command.profile));
     setSubmitted(true);
     setAnnouncement(
       editing
