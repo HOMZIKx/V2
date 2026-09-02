@@ -19,7 +19,7 @@ Trackers / Elixirs / EQ Board: **NOT STARTED** — blocked on Owner review of th
 
 | Field                 | Value                                                                                       |
 | --------------------- | ------------------------------------------------------------------------------------------- |
-| CURRENT_HEAD          | `8905a613ee30c22332470dc9dc7eee0aec14bd84`                                                  |
+| CURRENT_HEAD          | `0ac25442f26afe7abbfb49e778a6e9bcc276f62d`                                                  |
 | CURRENT_TASK          | `V2-CURRENT-HEAD-STABILIZATION-006A`                                                        |
 | REVIEW_POSTURE        | local/CI gates closed; Owner review + live deploy still required                            |
 | CODE_STATUS           | `ADMIN_CONTROL_CENTER_UX_V1` — `ADMIN_CONTROL_CENTER_UX_V1_SHA`=`4df7a94…`                  |
