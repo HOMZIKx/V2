@@ -6,9 +6,11 @@
 
 Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
 
+Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
+
 ## Owner directive — WWW product (2026-09-02)
 
-- Decisions: **D-037–D-054**; D-050 remains a design baseline for owner review.
+- Decisions: **D-037–D-059**; D-050 remains an active collaboration baseline.
 - Cursor keeps existing Web/Admin code, but it is **not** a visual or product
   reference for the new interface.
 - Cursor must not independently design or extend Web/Admin layout, information
@@ -22,11 +24,16 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
   `OWNER_DECISION_REQUIRED`.
 - Product/access/team inventory and the initial map are captured.
 - Active first slice: `Member dashboard -> My teams -> Team workspace ->
-  Character board -> Equipment / timers / notes -> Change history`.
-- First-player coherence review is complete and covers first use, responsive,
-  loading/empty/denied/offline/conflict states and simultaneous use.
-- Current next Web/Admin gate: owner accepts the coherence checkpoint, then Phase
-  5 production shell begins with mock adapters.
+  Character board -> Equipment / named sets / progression timers / lightweight
+  team actions / notes -> Change history`.
+- The owner accepted the first-player coherence review, one-member/shared
+  workspace model and invitation acceptance.
+- Current next Web/Admin step: **Phase 5 production application shell** in the V2
+  frontend stack with mock adapters.
+- Named sets, manual last-confirmed item locations, character progression
+  timers and lightweight assigned team actions clarify the active first slice.
+- Map hunt SpawnTimers are a separate later domain with their own maps,
+  participants, configuration, permissions and notification policies.
 - Maps, market, AI import, dungeon analytics and bot-admin Web UI do not expand
   until the first player slice is stable.
 - Active game context is **Project Hard**. Game definitions are configurable,
@@ -50,8 +57,10 @@ Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory
   substitutions.
 - First player slice and realtime/concurrency behavior:
   [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
-- Complete first-player path and state review:
+- Complete first-player path and accepted state review:
   [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md).
+- Set, item-catalog, reminder and timer-domain contract:
+  [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
 - Current previews validate the member dashboard, team workspace and
