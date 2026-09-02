@@ -235,17 +235,17 @@ correction creates a new entry.
 
 ## Screen-state matrix
 
-| Surface | Loading | Empty | Reconnecting/offline | Denied/revoked | Conflict/error |
-| --- | --- | --- | --- | --- | --- |
-| Entry | progress and cancel path | not applicable | retry Discord, preserve destination | private-tool explanation | stable error code and retry |
-| Member home | skeleton of known regions | create workspace / accept invite | cached labels may remain; no false live state | return to entry/allowed area | retry each failed region |
-| Workspace list | stable card skeletons | first-use path | show last snapshot as stale | remove inaccessible card | per-card retry |
-| Workspace | retain context header | add first character | data visible as stale; shared writes disabled | clear private data and redirect | failed region does not blank all |
-| Character board | card/toolbar skeleton | add first item/timer/note | drafts copyable; no false saved state | remove board and redirect | rollback atomic action or preserve form draft |
-| Equipment library | stable grid/list skeleton | explain and add item | search snapshot allowed; moves disabled | clear private items | source/destination restored after rejection |
-| Timer side | skeleton with labels | add timer | countdown may display from last snapshot but marked stale; reset disabled | clear timers | duplicate reset returns prior result |
-| Notes | preserve local draft | helpful prompt | copy draft; save disabled | clear draft on revoke | compare current and draft |
-| History | ordered skeleton | no changes yet | last snapshot marked stale | clear private entries | retry pagination/filter |
+| Surface           | Loading                   | Empty                            | Reconnecting/offline                                                      | Denied/revoked                  | Conflict/error                                |
+| ----------------- | ------------------------- | -------------------------------- | ------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------- |
+| Entry             | progress and cancel path  | not applicable                   | retry Discord, preserve destination                                       | private-tool explanation        | stable error code and retry                   |
+| Member home       | skeleton of known regions | create workspace / accept invite | cached labels may remain; no false live state                             | return to entry/allowed area    | retry each failed region                      |
+| Workspace list    | stable card skeletons     | first-use path                   | show last snapshot as stale                                               | remove inaccessible card        | per-card retry                                |
+| Workspace         | retain context header     | add first character              | data visible as stale; shared writes disabled                             | clear private data and redirect | failed region does not blank all              |
+| Character board   | card/toolbar skeleton     | add first item/timer/note        | drafts copyable; no false saved state                                     | remove board and redirect       | rollback atomic action or preserve form draft |
+| Equipment library | stable grid/list skeleton | explain and add item             | search snapshot allowed; moves disabled                                   | clear private items             | source/destination restored after rejection   |
+| Timer side        | skeleton with labels      | add timer                        | countdown may display from last snapshot but marked stale; reset disabled | clear timers                    | duplicate reset returns prior result          |
+| Notes             | preserve local draft      | helpful prompt                   | copy draft; save disabled                                                 | clear draft on revoke           | compare current and draft                     |
+| History           | ordered skeleton          | no changes yet                   | last snapshot marked stale                                                | clear private entries           | retry pagination/filter                       |
 
 ## Simultaneous-use review
 

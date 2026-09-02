@@ -1,3 +1,6 @@
+import { memberDashboardFixture } from '../src/member-dashboard';
+import { MemberDashboard } from './member-dashboard';
+
 export default function HomePage() {
-  return <main>V2 Web is running</main>;
+  return <MemberDashboard initialSnapshot={memberDashboardFixture} />;
 }

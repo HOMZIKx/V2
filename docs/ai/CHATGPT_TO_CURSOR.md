@@ -3,7 +3,7 @@
 ## Current owner directive — Web/Admin
 
 **Status:** `HOLD_CURSOR_WEB_PRODUCT_UI`  
-**Decisions:** D-037–D-059 (2026-09-02)
+**Decisions:** D-037–D-060 (2026-09-02)
 
 Until an approved production frontend slice is handed off:
 
@@ -59,13 +59,17 @@ Mandatory sources:
 The owner accepted the first-player coherence gate. ChatGPT may now implement
 the Phase 5 production shell. Current interactive previews remain validation
 material, not a screenshot-only handoff. Cursor receives production code and
-adapters only after that shell/slice is reviewed and frozen.
+adapters only after that shell/slice is reviewed and frozen. Draft PR #31 is the
+first production checkpoint and is not yet an integration authorization.
 
 The active game context is Project Hard. D-055–D-059 require one private
 workspace model, accepted team invitations, named loadouts, moderated catalog
 layers and human-confirmed team reminders. Character/team progression timers
 and map-session SpawnTimers are separate domains and must never share records,
-configuration, membership or permissions.
+configuration, membership or permissions. The later Technician bot configurator
+must operate on a backend-owned versioned schema with validation, impact preview,
+apply, audit and rollback; a control without a verified runtime effect is not a
+completed feature.
 
 D-052 defines a later private-team analyzer, but it does not authorize its
 implementation now. When eventually

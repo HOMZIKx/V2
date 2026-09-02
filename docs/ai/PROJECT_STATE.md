@@ -6,7 +6,7 @@
 
 Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
 
-Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
+Web product track: `IN_PROGRESS_PHASE_5_PRODUCTION_SHELL_REVIEW`.
 
 ## Owner directive — WWW product (2026-09-02)
 
@@ -24,12 +24,24 @@ Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
   `OWNER_DECISION_REQUIRED`.
 - Product/access/team inventory and the initial map are captured.
 - Active first slice: `Member dashboard -> My teams -> Team workspace ->
-  Character board -> Equipment / named sets / progression timers / lightweight
-  team actions / notes -> Change history`.
+Character board -> Equipment / named sets / progression timers / lightweight
+team actions / notes -> Change history`.
 - The owner accepted the first-player coherence review, one-member/shared
   workspace model and invitation acceptance.
-- Current next Web/Admin step: **Phase 5 production application shell** in the V2
-  frontend stack with mock adapters.
+- Phase 5 production shell is implemented on `codex/phase5-player-shell` in
+  draft PR **#31**. Current checkpoint: responsive member dashboard with typed
+  mock adapter, human-confirmed reminder actions, team summary, authentic class
+  renders and change history.
+- Current next Web step after owner review: team workspace and character board;
+  do not start API/Discord integration before the first visual checkpoint is
+  accepted.
+- Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
+  `pnpm validate`, infrastructure integration and PR-title checks PASS.
+- Two repository-level blockers remain outside the frontend slice: inherited
+  transitive `nanoid <3.3.18` audit advisory
+  (`GHSA-2v37-7h3g-55p8`) and GitHub's
+  `Resource not accessible by integration` error in the secret-scan job. Do
+  not bypass either control; no secret finding was reported.
 - Named sets, manual last-confirmed item locations, character progression
   timers and lightweight assigned team actions clarify the active first slice.
 - Map hunt SpawnTimers are a separate later domain with their own maps,
@@ -63,11 +75,13 @@ Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
   [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
-- Current previews validate the member dashboard, team workspace and
-  character/equipment/timer surface; they are not yet production repository
-  code.
-- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until production frontend code
-  and adapters are explicitly handed off.
+- Earlier previews validate the wider member flow. The member dashboard is now
+  production repository code in PR #31; team workspace and
+  character/equipment/timer screens remain the next owner-reviewed slices.
+- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
+  the production frontend code/adapters are explicitly handed off.
+- D-060 fixes the later Technician configurator as a real versioned bot-config
+  command surface (validate/apply/audit/rollback), never decorative toggles.
 
 ## Active phase
 
@@ -101,4 +115,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-09-02 — ChatGPT/owner Web product track; Cursor P4 status retained.
+2026-09-02 — Phase 5 member dashboard production shell and validation evidence recorded in draft PR #31; Cursor P4 status retained.
