@@ -35,6 +35,13 @@ team actions / notes -> Change history`.
 - Current next Web step after owner review: team workspace and character board;
   do not start API/Discord integration before the first visual checkpoint is
   accepted.
+- Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
+  `pnpm validate`, infrastructure integration and PR-title checks PASS.
+- Two repository-level blockers remain outside the frontend slice: inherited
+  transitive `nanoid <3.3.18` audit advisory
+  (`GHSA-2v37-7h3g-55p8`) and GitHub's
+  `Resource not accessible by integration` error in the secret-scan job. Do
+  not bypass either control; no secret finding was reported.
 - Named sets, manual last-confirmed item locations, character progression
   timers and lightweight assigned team actions clarify the active first slice.
 - Map hunt SpawnTimers are a separate later domain with their own maps,
@@ -68,9 +75,9 @@ team actions / notes -> Change history`.
   [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
 - Later Project Hard dungeon analyzer contract:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
-- Current previews validate the member dashboard, team workspace and
-  character/equipment/timer surface; they are not yet production repository
-  code.
+- Earlier previews validate the wider member flow. The member dashboard is now
+  production repository code in PR #31; team workspace and
+  character/equipment/timer screens remain the next owner-reviewed slices.
 - Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
   the production frontend code/adapters are explicitly handed off.
 - D-060 fixes the later Technician configurator as a real versioned bot-config
@@ -108,4 +115,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-09-02 — Phase 5 member dashboard production shell pushed to draft PR #31; Cursor P4 status retained.
+2026-09-02 — Phase 5 member dashboard production shell and validation evidence recorded in draft PR #31; Cursor P4 status retained.
