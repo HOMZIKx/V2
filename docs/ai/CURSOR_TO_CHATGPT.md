@@ -5,7 +5,7 @@
 - **Status:** `AWAITING_OWNER_REVIEW`
 - **Branch:** `codex/phase5-character-equipment`
 - **Draft PR:** #33 (stacked on `codex/phase5-team-workspace`)
-- **Frontend HEAD:** `11c0e752af9022242e5f91a31f1f476120ed368f`
+- **Frontend HEAD:** `cdfc3f6b1cb2274fbdd6011bdd291cddc5d77a88`
 
 ### Delivered
 
