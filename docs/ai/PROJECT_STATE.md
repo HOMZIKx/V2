@@ -6,7 +6,7 @@
 
 Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
 
-Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
+Web product track: `IN_PROGRESS_PHASE_5_PRODUCTION_SHELL_REVIEW`.
 
 ## Owner directive — WWW product (2026-09-02)
 
@@ -28,8 +28,13 @@ Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
   team actions / notes -> Change history`.
 - The owner accepted the first-player coherence review, one-member/shared
   workspace model and invitation acceptance.
-- Current next Web/Admin step: **Phase 5 production application shell** in the V2
-  frontend stack with mock adapters.
+- Phase 5 production shell is implemented on `codex/phase5-player-shell` in
+  draft PR **#31**. Current checkpoint: responsive member dashboard with typed
+  mock adapter, human-confirmed reminder actions, team summary, authentic class
+  renders and change history.
+- Current next Web step after owner review: team workspace and character board;
+  do not start API/Discord integration before the first visual checkpoint is
+  accepted.
 - Named sets, manual last-confirmed item locations, character progression
   timers and lightweight assigned team actions clarify the active first slice.
 - Map hunt SpawnTimers are a separate later domain with their own maps,
@@ -66,8 +71,10 @@ Web product track: `READY_FOR_PHASE_5_PRODUCTION_SHELL`.
 - Current previews validate the member dashboard, team workspace and
   character/equipment/timer surface; they are not yet production repository
   code.
-- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until production frontend code
-  and adapters are explicitly handed off.
+- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
+  the production frontend code/adapters are explicitly handed off.
+- D-060 fixes the later Technician configurator as a real versioned bot-config
+  command surface (validate/apply/audit/rollback), never decorative toggles.
 
 ## Active phase
 
@@ -101,4 +108,4 @@ Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
 
 ## Last updated
 
-2026-09-02 — ChatGPT/owner Web product track; Cursor P4 status retained.
+2026-09-02 — Phase 5 member dashboard production shell pushed to draft PR #31; Cursor P4 status retained.
