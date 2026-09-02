@@ -2982,3 +2982,542 @@ button:disabled {
     transition-duration: 0.01ms !important;
   }
 }
+
+.membership-page {
+  width: min(1340px, 100%);
+  margin: 0 auto;
+  padding: 20px 24px 42px;
+}
+
+.membership-hero {
+  display: flex;
+  min-height: 148px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 0 45%, rgba(177, 30, 56, 0.13), transparent 34%),
+    radial-gradient(circle at 100% 35%, rgba(49, 113, 232, 0.15), transparent 38%),
+    linear-gradient(135deg, rgba(17, 20, 29, 0.97), rgba(8, 10, 15, 0.97));
+  box-shadow: var(--shadow);
+}
+
+.membership-hero h1 {
+  margin: 6px 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(29px, 4vw, 42px);
+  font-weight: 500;
+}
+
+.membership-hero p {
+  max-width: 680px;
+  margin: 0;
+  color: #8d96a7;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.connection-badge {
+  display: inline-flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid rgba(82, 211, 156, 0.2);
+  border-radius: 999px;
+  background: rgba(82, 211, 156, 0.07);
+  color: #7ddfb7;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.membership-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.65fr);
+  align-items: start;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.membership-main {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.membership-member-list,
+.membership-invitation-list {
+  display: grid;
+}
+
+.membership-member,
+.membership-invitation {
+  display: grid;
+  min-height: 78px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.membership-member:first-child,
+.membership-invitation:first-child {
+  border-top: 0;
+}
+
+.membership-member > div,
+.membership-invitation > div {
+  min-width: 0;
+}
+
+.membership-member > div strong,
+.membership-member > div span,
+.membership-member > div small,
+.membership-invitation > div strong,
+.membership-invitation > div span,
+.membership-invitation > div small {
+  display: block;
+}
+
+.membership-member > div strong,
+.membership-invitation > div strong {
+  color: #e1e4ea;
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.membership-member > div span,
+.membership-invitation > div span {
+  margin-top: 3px;
+  color: #758092;
+  font-size: 8px;
+}
+
+.membership-member > div small,
+.membership-invitation > div small {
+  margin-top: 6px;
+  color: #596375;
+  font-size: 7px;
+}
+
+.role-badge {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid rgba(146, 158, 182, 0.16);
+  border-radius: 999px;
+  color: #8a94a5;
+  font-size: 7px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.role-badge.is-owner {
+  border-color: rgba(65, 132, 255, 0.26);
+  background: rgba(50, 107, 214, 0.08);
+  color: #89b3ff;
+}
+
+.membership-invitation.is-cancelled,
+.membership-invitation.is-declined,
+.membership-invitation.is-expired {
+  opacity: 0.6;
+}
+
+.invite-panel {
+  position: sticky;
+  top: 82px;
+  overflow: hidden;
+}
+
+.invite-flow {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.invite-explanation {
+  margin: 0;
+  color: #7e8899;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+.invite-flow form {
+  display: grid;
+  gap: 8px;
+}
+
+.invite-flow label {
+  color: #8a94a6;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.invite-flow input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(157, 169, 193, 0.18);
+  border-radius: 9px;
+  outline: 0;
+  background: rgba(7, 9, 13, 0.72);
+  color: #e0e3e9;
+  font-size: 11px;
+}
+
+.invite-flow input:focus {
+  border-color: rgba(67, 137, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(57, 136, 255, 0.08);
+}
+
+.invite-flow .secondary-button {
+  min-height: 42px;
+  justify-content: center;
+}
+
+.form-error {
+  margin: 0;
+  color: #ff8ba0;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.resolved-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid rgba(76, 137, 249, 0.27);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(48, 110, 224, 0.14), transparent 46%),
+    rgba(9, 12, 18, 0.78);
+}
+
+.resolved-identity > div span,
+.resolved-identity > div strong,
+.resolved-identity > div small {
+  display: block;
+}
+
+.resolved-identity > div span {
+  color: #71809a;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.resolved-identity > div strong {
+  margin-top: 4px;
+  color: #e3e6ec;
+  font-size: 11px;
+}
+
+.resolved-identity > div small {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #6f788a;
+  font-size: 7px;
+  text-overflow: ellipsis;
+}
+
+.resolved-identity > .icon {
+  color: #72dbae;
+}
+
+.resolved-identity p {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: #778294;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.resolved-identity button,
+.primary-invitation-button {
+  min-height: 40px;
+  border: 1px solid rgba(67, 137, 255, 0.36);
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(151, 31, 58, 0.88), rgba(39, 103, 217, 0.9));
+  color: #fff;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.resolved-identity button {
+  grid-column: 1 / -1;
+}
+
+.membership-boundary-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  padding: 11px;
+  border: 1px solid rgba(161, 172, 196, 0.11);
+  border-radius: 9px;
+  background: rgba(159, 170, 194, 0.035);
+  color: #697384;
+}
+
+.membership-boundary-note p {
+  margin: 0;
+  font-size: 8px;
+  line-height: 1.55;
+}
+
+.quiet-icon-button {
+  text-decoration: none;
+}
+
+.invitation-page {
+  display: grid;
+  min-height: calc(100vh - 68px);
+  place-items: center;
+  padding: 28px 18px;
+}
+
+.invitation-card {
+  position: relative;
+  width: min(590px, 100%);
+  overflow: hidden;
+  padding: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 0 0, rgba(181, 31, 57, 0.16), transparent 36%),
+    radial-gradient(circle at 100% 0, rgba(45, 110, 229, 0.18), transparent 38%),
+    linear-gradient(145deg, rgba(19, 22, 31, 0.98), rgba(7, 9, 14, 0.99));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48);
+}
+
+.invitation-card::before {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(182, 191, 211, 0.08);
+  border-radius: 16px;
+  content: '';
+  pointer-events: none;
+}
+
+.invitation-emblem {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  margin-bottom: 22px;
+  border: 1px solid rgba(126, 153, 211, 0.25);
+  border-radius: 17px;
+  background: linear-gradient(135deg, rgba(164, 31, 56, 0.24), rgba(50, 111, 219, 0.25));
+  color: #dce4f5;
+  box-shadow:
+    -10px 0 28px rgba(218, 36, 67, 0.13),
+    10px 0 28px rgba(47, 119, 255, 0.15);
+}
+
+.invitation-card h1 {
+  margin: 7px 0 8px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 42px;
+  font-weight: 500;
+}
+
+.invitation-lead {
+  max-width: 470px;
+  margin: 0;
+  color: #8b94a5;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.invitation-lead strong {
+  color: #cfd4de;
+}
+
+.invitation-identity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 13px;
+  border: 1px solid rgba(155, 167, 191, 0.14);
+  border-radius: 11px;
+  background: rgba(6, 8, 12, 0.44);
+}
+
+.invitation-identity div span,
+.invitation-identity div strong,
+.invitation-identity div small {
+  display: block;
+}
+
+.invitation-identity div span {
+  color: #697487;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.invitation-identity div strong {
+  margin-top: 4px;
+  color: #e1e4ea;
+  font-size: 10px;
+}
+
+.invitation-identity div small {
+  margin-top: 3px;
+  color: #687284;
+  font-size: 7px;
+}
+
+.invitation-access-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 22px 0;
+  list-style: none;
+}
+
+.invitation-access-list li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #9aa3b3;
+  font-size: 9px;
+}
+
+.invitation-access-list li .icon {
+  color: #72dbae;
+}
+
+.invitation-access-list li:last-child .icon {
+  color: #ef6e86;
+}
+
+.invitation-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+}
+
+.invitation-actions .secondary-button {
+  min-height: 44px;
+}
+
+.invitation-expiry {
+  display: block;
+  margin-top: 12px;
+  color: #626c7e;
+  font-size: 7px;
+  text-align: center;
+}
+
+.invitation-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid rgba(82, 211, 156, 0.2);
+  border-radius: 12px;
+  background: rgba(82, 211, 156, 0.06);
+  color: #74deb2;
+}
+
+.invitation-result div strong {
+  color: #dce4e0;
+  font-size: 10px;
+}
+
+.invitation-result div p {
+  margin: 4px 0 0;
+  color: #7b8d86;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.invitation-result a {
+  grid-column: 1 / -1;
+  min-height: 40px;
+  padding: 12px;
+  border-radius: 9px;
+  background: rgba(82, 211, 156, 0.1);
+  color: #8be6c0;
+  font-size: 9px;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: none;
+}
+
+.invitation-result.is-declined {
+  border-color: rgba(227, 60, 87, 0.2);
+  background: rgba(227, 60, 87, 0.06);
+  color: #f0798e;
+}
+
+@media (max-width: 900px) {
+  .membership-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invite-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .membership-page {
+    padding: 10px 10px 28px;
+  }
+
+  .membership-hero {
+    display: grid;
+    gap: 18px;
+    padding: 21px 19px;
+  }
+
+  .membership-member,
+  .membership-invitation {
+    min-height: 86px;
+    padding: 13px 12px;
+  }
+
+  .membership-member > div small,
+  .membership-invitation > div small {
+    line-height: 1.45;
+  }
+
+  .role-badge {
+    padding: 0 6px;
+    font-size: 6px;
+  }
+
+  .invitation-card {
+    padding: 27px 20px;
+  }
+
+  .invitation-card h1 {
+    font-size: 34px;
+  }
+
+  .invitation-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-invitation-button,
+  .invitation-actions .secondary-button {
+    min-height: 46px;
+  }
+}
