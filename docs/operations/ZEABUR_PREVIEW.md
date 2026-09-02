@@ -20,12 +20,11 @@ point Zeabur at a feature branch that is still being edited.
 1. In Zeabur create a project and select **Deploy your source code**.
 2. Authorize the Zeabur GitHub App for `HOMZIKx/V2`.
 3. Import the repository and select branch `preview/destiled-web`.
-4. Keep the repository root as the build root. The Web application depends on
-   the root pnpm workspace and shared packages outside `apps/web`.
-5. Confirm that the detected application is the Next.js service in `apps/web`.
-   If Zeabur asks for explicit commands, use:
-   - Build: `pnpm --filter @v2/web build`
-   - Start: `pnpm --filter @v2/web start`
+4. Keep the repository root as the build root. The preview branch contains a
+   root Dockerfile that installs the workspace but builds and starts only
+   `@v2/web`.
+5. Leave Zeabur's Startup Command overrides empty. The checked-in Dockerfile is
+   the deployment contract and already defines the start command.
 6. Set the custom HTTP health-check path to `/health`.
 7. Generate a temporary `*.zeabur.app` domain for the preview.
 
