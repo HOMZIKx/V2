@@ -29,6 +29,8 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
   wybierasz subset bonusów z katalogu (klik) i zapisane linie są traktowane jako
   „explicit” (nie nadpisujemy ich pełną drabinką); **DEC-068** — pełne drabinki
   po dostarczeniu nieuciętego eksportu ze starego dobry-temat.
+- Źródło drabinek: `wiki-item-bonus-overrides.json` z publicznego API pl-wiki
+  Metin2 (`action=parse`/`wikitext`) jako nadrzędne dane nad uciętym dumpem.
 
 ## Plan Web (SoT z gita)
 

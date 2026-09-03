@@ -18,6 +18,9 @@ D-061 immediate next). Bot Discord odłożony do akceptacji Web.
 - **EQ (bonusy):** przy dodawaniu przedmiotu wybierasz subset bonusów z katalogu
   (w UI „kliknij”), a zapisane bonusy są traktowane jako „explicit” (nie nadpisujemy
   ich pełną drabinką z katalogu).
+- **EQ (źródło bonusów):** dołączony `wiki-item-bonus-overrides.json` (pobrany z
+  API pl-wiki Metin2, bez zgadywania) i podpięty jako nadrzędne źródło drabinek
+  bonusów dla kart EQ.
 - **DEC-068:** pełne drabinki bonusów wymagają nieuciętego dumpa / starego app.
 
 ## Marker

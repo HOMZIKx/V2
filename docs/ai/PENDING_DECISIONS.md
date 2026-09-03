@@ -13,6 +13,10 @@
   wyłącznie z dumpa (`knownCatalogBonusNames`); ręczna edycja obserwowanych
   bonusów na karcie (D-055); przycisk „Wczytaj z katalogu” gdy drabinka jest;
   przy dodawaniu przedmiotu do EQ wybór subsetu bonusów z katalogu (bonusy traktowane jako „explicit” i nie nadpisywane drabinką).
+- **Uzupełnienie z Internetu (bez zgadywania):** `wiki-item-bonus-overrides.json`
+  wygenerowany z publicznego API pl-wiki Metin2 (`action=parse` + `wikitext`) i
+  używany jako źródło nadrzędne dla drabinek bonusów (93 przedmioty z
+  pełniejszymi danymi niż dump 201 znaków).
 - **Potrzeba od właściciela:** pełny (nieucięty) eksport wiki_upgrade / pliki
   bonusów ze starego dobry-temat, albo dostęp do referencyjnego folderu lokalnego
   w agencie — wtedy podmienimy dump 1:1.
