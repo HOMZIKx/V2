@@ -9,7 +9,9 @@
 `DESTILED-CURSOR-HANDOFF-001` — documentation handoff only
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
+- Draft PR: **#48**
 - Base: `preview/destiled-web`
+- Commit: `6e1deab6945a5af571098ff9a8cdb71279614ba2`
 - No application code changes in this commit
 
 ## 3. Owner decision recorded

@@ -12,7 +12,7 @@ P4 Discord Centrum Aktywności: `READY_FOR_FINAL_P4_SPEC_REAUDIT`
 - **Decision:** **D-061** — OWNER ACCEPTED.
 - **Reason:** ChatGPT cost; further DESTILED application work moves to Cursor.
 - **Working / deploy ref:** `preview/destiled-web`.
-- **Handoff branch (docs):** `cursor/destiled-cursor-handoff-dfe5`.
+- **Handoff branch (docs):** `cursor/destiled-cursor-handoff-dfe5` — draft PR **#48**.
 - `HOLD_CURSOR_WEB_PRODUCT_UI` is **lifted**.
 - Product contracts **D-038–D-060** remain in force (access, teams, EQ, timers,
   brand DESTILED, Project Hard secret boundary, map domain separation, etc.).
@@ -69,6 +69,7 @@ team actions / notes -> Change history`.
 
 - Task ID: `DESTILED-CURSOR-HANDOFF-001`
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
+- Draft PR: **#48**
 - Base: `preview/destiled-web`
 - Scope of this commit: documentation / decision handoff only (no app code).
 
