@@ -1,0 +1,25 @@
+{
+  "name": "player-team-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/player-team-service/src",
+  "projectType": "application",
+  "tags": ["type:service", "scope:player-team"],
+  "targets": {
+    "serve": {
+      "command": "corepack pnpm --dir services/player-team-service dev"
+    },
+    "build": {
+      "command": "corepack pnpm --dir services/player-team-service build"
+    },
+    "lint": {
+      "command": "corepack pnpm exec eslint services/player-team-service/src"
+    },
+    "typecheck": {
+      "command": "corepack pnpm exec tsc -p services/player-team-service/tsconfig.json --noEmit"
+    },
+    "test": {
+      "command": "corepack pnpm exec vitest run --config services/player-team-service/vitest.config.ts"
+    }
+  }
+}
+

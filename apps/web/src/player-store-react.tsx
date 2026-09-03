@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -46,6 +47,8 @@ import {
   type ProgressionKind,
   type TaskOutcome,
 } from './player-store';
+
+import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
@@ -145,6 +148,14 @@ const PlayerStoreContext = createContext<PlayerStoreApi | null>(null);
 export function PlayerStoreProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<PlayerStoreState>(() => createInitialPlayerStore());
   const [hydrated, setHydrated] = useState(false);
+  const onlineEnabled =
+    process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED === 'true' ||
+    (process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED !== 'false');
+
+  const serverHydratedViewerIdRef = useRef<string | null>(null);
+  const serverHydratedRef = useRef(false);
+  const serverRevisionRef = useRef<number | null>(null);
+  const pendingSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(PLAYER_STORE_KEY);
@@ -154,6 +165,75 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     }
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!onlineEnabled) return;
+    if (!hydrated) return;
+    if (state.authStatus !== 'authenticated') return;
+    if (!state.viewer) return;
+    const viewerId = state.viewer.id;
+
+    // Avoid repeated fetch after we already loaded for this viewer.
+    if (serverHydratedViewerIdRef.current === viewerId && serverHydratedRef.current) return;
+
+    serverHydratedRef.current = false;
+
+    void (async () => {
+      try {
+        const response = await getMyPlayerTeamState({ viewerId });
+        serverRevisionRef.current = response.revision;
+
+        if (response.state !== null) {
+          const parsed = parsePlayerStore(JSON.stringify(response.state));
+          if (parsed) {
+            // Replace local snapshot with server snapshot once.
+            setState(parsed);
+          }
+        }
+      } catch (e) {
+        // Keep local state as source of truth when server fails.
+        console.error('player-team: sync-from-server failed', e);
+      } finally {
+        serverHydratedViewerIdRef.current = viewerId;
+        serverHydratedRef.current = true;
+      }
+    })();
+  }, [hydrated, onlineEnabled, state.authStatus, state.viewer]);
+
+  useEffect(() => {
+    if (!onlineEnabled) return;
+    if (!hydrated) return;
+    if (state.authStatus !== 'authenticated') return;
+    if (!state.viewer) return;
+    if (!serverHydratedRef.current) return;
+
+    if (pendingSyncTimerRef.current) {
+      clearTimeout(pendingSyncTimerRef.current);
+      pendingSyncTimerRef.current = null;
+    }
+
+    pendingSyncTimerRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await putMyPlayerTeamState({
+            viewerId: state.viewer!.id,
+            state,
+            expectedRevision: serverRevisionRef.current,
+          });
+          if (response.revision !== null) serverRevisionRef.current = response.revision;
+        } catch (e) {
+          console.error('player-team: sync-to-server failed', e);
+        }
+      })();
+    }, 400);
+
+    return () => {
+      if (pendingSyncTimerRef.current) {
+        clearTimeout(pendingSyncTimerRef.current);
+        pendingSyncTimerRef.current = null;
+      }
+    };
+  }, [hydrated, onlineEnabled, state, state.authStatus, state.viewer]);
 
   const apply = useCallback((updater: (current: PlayerStoreState) => PlayerStoreState) => {
     let snapshot: PlayerStoreState | null = null;
