@@ -6,6 +6,7 @@ import {
   getRespawnPhase,
   respawnKey,
   respawnMaps,
+  respawnWindowMinutes,
 } from './respawn-timers.js';
 
 describe('respawn timers imported from dobry-temat', () => {
@@ -14,22 +15,43 @@ describe('respawn timers imported from dobry-temat', () => {
     expect(map.channels).toBe(8);
     expect(respawnKey('metin', 'M1', 3, 'metin1')).toBe('metin-M1-ch3-metin1');
   });
+
   it('creates timers for the selected map and channel', () => {
     const map = respawnMaps.find((entry) => entry.key === 'M1')!;
     expect(buildMapRespawnRecords(map, 2).every((entry) => entry.channel === 2)).toBe(true);
   });
-  it('keeps a confirmed respawn blocked through countdown, window and map marker', () => {
-    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
-    const record = {
-      ...buildMapRespawnRecords(map, 1)[0]!,
-      confirmedAt: 1_000_000,
-      confirmedBy: 'Mateusz',
-    };
-    expect(getRespawnPhase(record, 1_000_000)).toBe('countdown');
-    expect(getRespawnClock(record, 1_000_000)).not.toBe('--:--');
-    expect(canConfirmRespawn(record, 1_000_000)).toBe(false);
+
+  it('treats catalog 20–30 as a 10 minute spawn window', () => {
+    expect(
+      respawnWindowMinutes({
+        id: 'sample',
+        name: 'Sample',
+        respawnTimeMin: 20,
+        respawnTimeMax: 30,
+      }),
+    ).toBe(10);
   });
-  it('unblocks a timer only after the old map-marker lifetime finishes', () => {
+
+  it('blocks Zbite during countdown and unlocks when the spawn window opens', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    const ranged = map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5)!;
+    const record = {
+      ...buildMapRespawnRecords(map, 1).find((entry) => entry.entity.id === ranged.id)!,
+      confirmedAt: 0,
+      confirmedBy: 'Mateusz',
+      location: { x: 40, y: 55 },
+    };
+    const midCountdown = (ranged.respawnTimeMin * 60_000) / 2;
+    expect(getRespawnPhase(record, midCountdown)).toBe('countdown');
+    expect(canConfirmRespawn(record, midCountdown)).toBe(false);
+    expect(getRespawnClock(record, midCountdown)).not.toBe('--:--');
+
+    const inWindow = ranged.respawnTimeMin * 60_000 + 60_000;
+    expect(getRespawnPhase(record, inWindow)).toBe('window');
+    expect(canConfirmRespawn(record, inWindow)).toBe(true);
+  });
+
+  it('allows a new kill after the previous cycle expires', () => {
     const map = respawnMaps.find((entry) => entry.key === 'M1')!;
     const fixedBoss = map.bosses.find((entry) => entry.respawnTimeMin === entry.respawnTimeMax)!;
     const record = {
@@ -37,8 +59,6 @@ describe('respawn timers imported from dobry-temat', () => {
       confirmedAt: 0,
       confirmedBy: 'Mateusz',
     };
-    expect(getRespawnPhase(record, fixedBoss.respawnTimeMax * 60_000 + 60_000)).toBe('on_map');
-    expect(canConfirmRespawn(record, fixedBoss.respawnTimeMax * 60_000 + 60_000)).toBe(false);
     expect(getRespawnPhase(record, fixedBoss.respawnTimeMax * 60_000 + 5 * 60_000 + 60_001)).toBe(
       'expired',
     );

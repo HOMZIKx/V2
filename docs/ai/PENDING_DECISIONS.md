@@ -2,6 +2,21 @@
 
 ## Aktywne
 
+### DEC-066 — Timery metinów/bossów: cykl mapy, bez party
+
+- **Status:** OWNER_DIRECTED (2026-09-03)
+- **Kontekst:** D-048 opisywał sesję party. Właściciel doprecyzował: Timery
+  metinów/bossów to **osobny system** — korzysta z map i czasów respawnu z
+  katalogu, **nie ma nic wspólnego z party**, EQ ani Postępem PH.
+- **Cykl:** gracz znajduje cel w grze → zbija → w app **Zbite** (+ opcjonalnie
+  pinezka na atlasie) → timer rusza → nie można kliknąć drugi raz w trakcie
+  odliczania → gdy otworzy się **okno** (np. katalog 20–30 = 10 min okna) można
+  znów oznaczyć zbicie. Pinezka = ostatnia znana lokalizacja tego celu.
+- **Implikacja UI:** `/timers` + atlas mapy; party panel usunięty z tej
+  powierzchni. Współdzielone party (D-048) pozostaje osobną, późniejszą decyzją —
+  nie mieszać z SpawnTimer cycle.
+- **Domena:** nadal SpawnTimer / mapa / kanał (D-059), nie CharacterProgressionTimer.
+
 ### DEC-064 — Mapy w nawigacji (owner: wygląd finalny teraz)
 
 - **Status:** OWNER_DIRECTED → UX doprecyzowany (2026-09-03)

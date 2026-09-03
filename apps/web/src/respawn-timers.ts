@@ -119,7 +119,7 @@ export function getRespawnDisplay(record: RespawnRecord, now: number): RespawnDi
     return {
       phase: 'countdown',
       label: 'Odliczanie',
-      clock: formatDuration(configuredMaxAt - now),
+      clock: formatDuration(minAt - now),
       minAt,
       windowEndsAt,
       clearsAt,
@@ -128,7 +128,7 @@ export function getRespawnDisplay(record: RespawnRecord, now: number): RespawnDi
     return {
       phase: 'window',
       label: 'Okno respawnu',
-      clock: now < configuredMaxAt ? formatDuration(configuredMaxAt - now) : '00:00',
+      clock: formatDuration(windowEndsAt - now),
       minAt,
       windowEndsAt,
       clearsAt,
@@ -160,7 +160,16 @@ export function phaseLabel(phase: RespawnPhase): string {
 export function getRespawnClock(record: RespawnRecord, now: number): string {
   return getRespawnDisplay(record, now).clock;
 }
+
+/**
+ * Owner cycle: after kill, block until the spawn window opens.
+ * 20–30 min in catalog ⇒ 10 min window; during countdown „Zbite” stays locked.
+ */
 export function canConfirmRespawn(record: RespawnRecord, now: number): boolean {
-  const phase = getRespawnPhase(record, now);
-  return phase === 'no_data' || phase === 'expired';
+  return getRespawnPhase(record, now) !== 'countdown';
+}
+
+/** Catalog range max−min (e.g. 20–30 → 10 min spawn window). */
+export function respawnWindowMinutes(entity: RespawnEntity): number {
+  return Math.max(0, entity.respawnTimeMax - entity.respawnTimeMin);
 }

@@ -4,23 +4,11 @@ import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } fro
 
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
-  claimsForPartyScope,
-  createMapParty,
-  requestPartyJoin,
-  resolvePartyRequest,
-  setPartyChannel,
-  setPartyMap,
-  togglePartyVisibility,
-  upsertSpawnClaim,
-  type MapParty,
-  type MapSpawnClaim,
-  type PartyVisibility,
-} from '../../src/map-party';
-import {
   buildMapRespawnRecords,
   canConfirmRespawn,
   getRespawnDisplay,
   respawnMaps,
+  respawnWindowMinutes,
   type RespawnKind,
   type RespawnLocation,
   type RespawnRecord,
@@ -31,10 +19,6 @@ import styles from './map-hunting.module.css';
 type Filter = 'all' | RespawnKind | 'active';
 type View = 'timers' | 'map';
 type RecordStore = Record<string, readonly RespawnRecord[]>;
-interface LocalPartyState {
-  readonly party: MapParty | null;
-  readonly claims: readonly MapSpawnClaim[];
-}
 
 const filters: ReadonlyArray<{ readonly id: Filter; readonly label: string }> = [
   { id: 'all', label: 'Wszystkie' },
@@ -65,10 +49,16 @@ const mapFiles: Readonly<Record<string, string>> = {
 };
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
 const mapImage = (mapKey: string) => (mapFiles[mapKey] ? `/game/maps/${mapFiles[mapKey]}` : null);
-const formatWindow = (record: RespawnRecord) =>
-  record.entity.respawnTimeMin === record.entity.respawnTimeMax
-    ? `${record.entity.respawnTimeMin} min`
-    : `${record.entity.respawnTimeMin}–${record.entity.respawnTimeMax} min`;
+const formatWindow = (record: RespawnRecord) => {
+  const span = respawnWindowMinutes(record.entity);
+  if (record.entity.respawnTimeMin === record.entity.respawnTimeMax) {
+    return `${record.entity.respawnTimeMin} min`;
+  }
+  return `${record.entity.respawnTimeMin}–${record.entity.respawnTimeMax} min${
+    span > 0 ? ` · okno ${span} min` : ''
+  }`;
+};
+
 function initialStore(): RecordStore {
   const first = respawnMaps[0];
   return first ? { [scopeKey(first.key, 1)]: buildMapRespawnRecords(first, 1) } : {};
@@ -91,10 +81,6 @@ export function MapHunting({
   const [placingKey, setPlacingKey] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
-  const [party, setParty] = useState<MapParty | null>(null);
-  const [claims, setClaims] = useState<readonly MapSpawnClaim[]>([]);
-  const [partyLoaded, setPartyLoaded] = useState(false);
-  const [requestName, setRequestName] = useState('');
   const scope = scopeKey(map?.key ?? '', channel);
   const records = store[scope] ?? (map ? buildMapRespawnRecords(map, channel) : []);
 
@@ -113,32 +99,6 @@ export function MapHunting({
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem('destiled:map-party:v1');
-      if (raw) {
-        const saved = JSON.parse(raw) as LocalPartyState;
-        if (
-          (saved.party === null || typeof saved.party === 'object') &&
-          Array.isArray(saved.claims)
-        ) {
-          setParty(saved.party);
-          setClaims(saved.claims);
-        }
-      }
-    } catch {
-      /* keep empty party */
-    } finally {
-      setPartyLoaded(true);
-    }
-  }, []);
-  useEffect(() => {
-    if (partyLoaded)
-      window.localStorage.setItem(
-        'destiled:map-party:v1',
-        JSON.stringify({ party, claims } satisfies LocalPartyState),
-      );
-  }, [claims, party, partyLoaded]);
 
   const visibleRecords = useMemo(
     () =>
@@ -159,19 +119,9 @@ export function MapHunting({
       ).length,
     [now, records],
   );
+  const mapPins = useMemo(() => records.filter((record) => record.location !== null), [records]);
   const currentMapImage = mapImage(map?.key ?? '');
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(map?.key ?? '');
-  // A marker belongs to the party scope, but it must disappear together with the
-  // respawn cycle. Keeping the historical claim in storage lets the next update
-  // replace it, without leaving a stale boss/metin marker on the map.
-  const partyClaims = useMemo(
-    () =>
-      claimsForPartyScope(claims, party, map?.key ?? '', channel).filter((claim) => {
-        const record = records.find((item) => item.key === claim.timerKey);
-        return Boolean(record && getRespawnDisplay(record, now).phase !== 'expired');
-      }),
-    [claims, channel, map?.key, now, party, records],
-  );
 
   const updateCurrentScope = (
     updater: (current: readonly RespawnRecord[]) => readonly RespawnRecord[],
@@ -186,61 +136,45 @@ export function MapHunting({
     setMapKey(nextMapKey);
     setChannel(1);
     setPlacingKey(null);
-    setParty((current) => (current ? setPartyMap(current, nextMapKey) : null));
   };
   const changeChannel = (nextChannel: number) => {
     setChannel(nextChannel);
     setPlacingKey(null);
-    setParty((current) => (current ? setPartyChannel(current, nextChannel) : null));
   };
   const confirmKilled = (recordKey: string, location: RespawnLocation | null) => {
     const target = records.find((record) => record.key === recordKey);
     if (!target || !canConfirmRespawn(target, Date.now())) {
-      setNotice('Ten punkt ma aktywny timer. Kolejne zbicie odblokuje się po pełnym cyklu.');
+      setNotice(
+        'Ten punkt jest w odliczaniu. Kolejne zbicie odblokuje się dopiero w oknie respawnu.',
+      );
       return;
     }
     const confirmedAt = Date.now();
     updateCurrentScope((current) =>
       current.map((record) =>
         record.key === recordKey
-          ? { ...record, confirmedAt, confirmedBy: initialSnapshot.viewerName, location }
+          ? {
+              ...record,
+              confirmedAt,
+              confirmedBy: initialSnapshot.viewerName,
+              location: location ?? record.location,
+            }
           : record,
       ),
     );
-    if (location && party)
-      setClaims((current) =>
-        upsertSpawnClaim(current, {
-          id: `claim-${recordKey}-${confirmedAt}`,
-          partyId: party.id,
-          mapKey: target.mapKey,
-          channel: target.channel,
-          timerKey: recordKey,
-          entityName: target.entity.name,
-          kind: target.kind,
-          location,
-          claimedAt: confirmedAt,
-          claimedBy: initialSnapshot.viewerName,
-        }),
-      );
     setPlacingKey(null);
     setNotice(
       location
-        ? 'Zbicie zapisane i oznaczone dla tego party.'
-        : 'Zbicie zapisane bez znacznika party.',
+        ? 'Zbicie zapisane. Pinezka = ostatnia znana lokalizacja. Timer ruszył.'
+        : 'Zbicie zapisane. Timer ruszył (bez nowej pinezki).',
     );
   };
   const beginPlacement = (recordKey: string) => {
     const target = records.find((record) => record.key === recordKey);
     if (!target || !canConfirmRespawn(target, now)) return;
     setView('map');
-    if (!party) {
-      setNotice(
-        'Timery działają bez party (przycisk Zbite). Żeby oznaczyć punkt na atlasie, utwórz party obok.',
-      );
-      return;
-    }
     setPlacingKey(recordKey);
-    setNotice('Kliknij punkt — znacznik zobaczy wyłącznie to party na bieżącym kanale.');
+    setNotice('Kliknij mapę — pinezka pokaże, gdzie ostatnio zbito ten metin/bossa.');
   };
   const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!placingKey) return;
@@ -256,34 +190,6 @@ export function MapHunting({
       ),
     });
   };
-  const createParty = (visibility: PartyVisibility) => {
-    const next = createMapParty({
-      leader: { id: 'mateusz', displayName: initialSnapshot.viewerName },
-      mapKey: map?.key ?? 'M1',
-      activeChannel: channel,
-      visibility,
-      now: Date.now(),
-    });
-    setParty(next);
-    setClaims([]);
-    setNotice(
-      `${visibility === 'open' ? 'Otwarte' : 'Zamknięte'} party utworzone na ${next.mapKey}, CH${next.activeChannel}.`,
-    );
-  };
-  const addRequest = () => {
-    const name = requestName.trim();
-    if (!party || !name) return;
-    setParty((current) =>
-      current
-        ? requestPartyJoin(current, {
-            id: `guest-${name.toLocaleLowerCase('pl').replace(/\s+/g, '-')}`,
-            displayName: name,
-          })
-        : null,
-    );
-    setRequestName('');
-    setNotice(`${name} czeka na decyzję lidera party.`);
-  };
 
   return (
     <AppShell activeSection="timers" viewerName={initialSnapshot.viewerName}>
@@ -293,8 +199,9 @@ export function MapHunting({
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Timery</h1>
             <p>
-              Katalog z dobry-temat: te same mapy, bossy, metiny, kanały i okna respawnu. Zbicie
-              startuje odliczanie jak w starej aplikacji.
+              Osobny system od party i EQ: mapa + czasy respawnu z katalogu. Zbijasz w grze →
+              zaznaczasz zbicie → opcjonalnie pinezka na atlasie → timer rusza. Ponowne zbicie
+              dopiero gdy otworzy się okno (np. 20–30 min = 10 min okna).
             </p>
           </div>
           <div className="respawn-header-actions" role="tablist" aria-label="Widok wyprawy">
@@ -317,7 +224,7 @@ export function MapHunting({
               role="tab"
               type="button"
             >
-              Atlas mapy + party
+              Atlas mapy
             </button>
           </div>
         </header>
@@ -368,7 +275,7 @@ export function MapHunting({
                 <span className="section-kicker">
                   {map?.key} · CH{channel}
                 </span>
-                <h2>{view === 'map' ? 'Mapa wyprawy' : 'Lista timerów'}</h2>
+                <h2>{view === 'map' ? 'Atlas i pinezki' : 'Lista timerów'}</h2>
                 {view === 'timers' ? (
                   <p className="respawn-list-lead">
                     {map?.bosses.length ?? 0} bossów · {map?.metins.length ?? 0} metinów ·{' '}
@@ -394,7 +301,7 @@ export function MapHunting({
               <div className="respawn-map-stage-wrap">
                 <div
                   aria-label={
-                    placingKey ? 'Kliknij pozycję znacznika' : 'Mapa z zaznaczeniami party'
+                    placingKey ? 'Kliknij pozycję pinezki' : 'Mapa z ostatnimi lokalizacjami'
                   }
                   className={`respawn-map-stage ${placingKey ? 'is-placing' : ''}`}
                   onClick={placeOnMap}
@@ -436,10 +343,7 @@ export function MapHunting({
                   <div className="respawn-map-caption">
                     <strong>{map?.key}</strong>
                     <span>
-                      CH{channel} ·{' '}
-                      {party
-                        ? `${party.visibility === 'open' ? 'otwarte' : 'zamknięte'} party`
-                        : 'bez party'}
+                      CH{channel} · {mapPins.length} pinezek
                     </span>
                   </div>
                   {placingKey && (
@@ -448,30 +352,34 @@ export function MapHunting({
                       {records.find((record) => record.key === placingKey)?.entity.name}
                     </div>
                   )}
-                  {partyClaims.map((claim) => (
-                    <button
-                      className={`respawn-map-marker is-${claim.kind}`}
-                      key={claim.id}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setNotice(
-                          `${claim.entityName}: oznaczył ${claim.claimedBy} dla tego party.`,
-                        );
-                      }}
-                      style={{ left: `${claim.location.x}%`, top: `${claim.location.y}%` }}
-                      type="button"
-                    >
-                      <Icon name={claim.kind === 'boss' ? 'activity' : 'map'} size={15} />
-                      <span>{claim.entityName}</span>
-                    </button>
-                  ))}
+                  {mapPins.map((record) => {
+                    const pin = record.location!;
+                    const phase = getRespawnDisplay(record, now).phase;
+                    return (
+                      <button
+                        className={`respawn-map-marker is-${record.kind} is-${phase}`}
+                        key={record.key}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setNotice(
+                            `${record.entity.name}: ostatnie zbicie${
+                              record.confirmedBy ? ` · ${record.confirmedBy}` : ''
+                            } · ${getRespawnDisplay(record, now).label}`,
+                          );
+                        }}
+                        style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                        type="button"
+                      >
+                        <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={15} />
+                        <span>{record.entity.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <p className="respawn-map-help">
                   {placingKey
-                    ? 'Kliknij na mapie, aby zatwierdzić zbicie i punkt dla party.'
-                    : party
-                      ? 'Wybierz „Zbite + mapa” przy timerze. Znacznik zobaczy wyłącznie Twoje party na bieżącym kanale.'
-                      : 'Timery możesz prowadzić bez party. Party utwórz dopiero, gdy chcecie wspólnie latać mapę.'}
+                    ? 'Kliknij na mapie: zbicie + pinezka ostatniej znanej lokalizacji.'
+                    : '„Zbite + mapa” ustawia pinezkę. Nie wymaga party — Timery to osobny system.'}
                 </p>
               </div>
             )}
@@ -491,7 +399,11 @@ export function MapHunting({
                       <strong>{record.entity.name}</strong>
                       <span>
                         {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)}{' '}
-                        · {record.confirmedBy ? `zgłosił ${record.confirmedBy}` : 'brak zgłoszenia'}
+                        ·{' '}
+                        {record.location
+                          ? `pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
+                          : 'bez pinezki'}
+                        {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
                       </span>
                     </div>
                     <div className="respawn-record-time">
@@ -504,7 +416,7 @@ export function MapHunting({
                         onClick={() => confirmKilled(record.key, null)}
                         type="button"
                       >
-                        {canConfirm ? 'Zbite' : 'Timer aktywny'}
+                        {canConfirm ? 'Zbite' : 'Odliczanie'}
                       </button>
                       <button
                         disabled={!canConfirm}
@@ -522,142 +434,37 @@ export function MapHunting({
               )}
             </div>
           </div>
-          {view === 'map' ? (
-            <aside className="panel respawn-party-panel">
-              {!party ? (
-                <>
-                  <header>
-                    <span className="section-kicker">Party wyprawy</span>
-                    <h2>Nie latasz jeszcze w party</h2>
-                    <p>
-                      Wybierz otwarte party dla każdego albo zamknięte z kodem i decyzją lidera.
-                    </p>
-                  </header>
-                  <button
-                    className="respawn-party-toggle is-on"
-                    onClick={() => createParty('open')}
-                    type="button"
-                  >
-                    <span /> Utwórz otwarte party
-                  </button>
-                  <button
-                    className="respawn-party-toggle"
-                    onClick={() => createParty('closed')}
-                    type="button"
-                  >
-                    <span /> Utwórz zamknięte party
-                  </button>
-                </>
-              ) : (
-                <>
-                  <header>
-                    <span className="section-kicker">Party wyprawy</span>
-                    <h2>{party.name}</h2>
-                    <p>
-                      {party.visibility === 'open'
-                        ? 'Otwarte: każdy może wysłać prośbę o wejście.'
-                        : `Zamknięte: kod ${party.joinCode}, lider zatwierdza wejście.`}
-                    </p>
-                  </header>
-                  <button
-                    className={`respawn-party-toggle ${party.visibility === 'open' ? 'is-on' : ''}`}
-                    onClick={() =>
-                      setParty((current) => (current ? togglePartyVisibility(current) : null))
-                    }
-                    type="button"
-                  >
-                    <span />
-                    {party.visibility === 'open'
-                      ? 'Party otwarte · zamknij'
-                      : 'Party zamknięte · otwórz'}
-                  </button>
-                  <div className="respawn-party-members">
-                    {party.members.map((member) => (
-                      <div key={member.id}>
-                        <span className="respawn-member-dot is-online" />
-                        <strong>{member.displayName}</strong>
-                        <small>{member.role === 'leader' ? 'lider' : 'uczestnik'}</small>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="respawn-party-feed">
-                    <span>Dołączenie do party</span>
-                    <p>
-                      Kod: <b>{party.joinCode}</b> · {party.mapKey} · CH{party.activeChannel}
-                    </p>
-                    <label className="catalog-search">
-                      <span className="sr-only">Nazwa osoby proszącej o wejście</span>
-                      <input
-                        onChange={(event) => setRequestName(event.target.value)}
-                        placeholder="Nazwa osoby do party"
-                        value={requestName}
-                      />
-                    </label>
-                    <button
-                      className="respawn-party-toggle"
-                      disabled={!requestName.trim()}
-                      onClick={addRequest}
-                      type="button"
-                    >
-                      <span /> Dodaj prośbę
-                    </button>
-                    {party.requests
-                      .filter((request) => request.status === 'pending')
-                      .map((request) => (
-                        <p key={request.id}>
-                          <b>{request.displayName}</b> prosi o wejście{' '}
-                          <button
-                            onClick={() =>
-                              setParty((current) =>
-                                current ? resolvePartyRequest(current, request.id, true) : null,
-                              )
-                            }
-                            type="button"
-                          >
-                            Przyjmij
-                          </button>{' '}
-                          <button
-                            onClick={() =>
-                              setParty((current) =>
-                                current ? resolvePartyRequest(current, request.id, false) : null,
-                              )
-                            }
-                            type="button"
-                          >
-                            Odrzuć
-                          </button>
-                        </p>
-                      ))}
-                  </div>
-                </>
-              )}
-            </aside>
-          ) : (
-            <aside className="panel respawn-timers-hint">
-              <header>
-                <span className="section-kicker">Jak w starej appce</span>
-                <h2>Zbite → odliczanie → okno</h2>
-                <p>
-                  Wybierz mapę i CH, filtruj bossy/metiny, kliknij <b>Zbite</b>. Atlas i party są w
-                  drugiej zakładce — nie są potrzebne do samych timerów.
-                </p>
-              </header>
+          <aside className="panel respawn-timers-hint">
+            <header>
+              <span className="section-kicker">Cykl</span>
+              <h2>Zbite → timer → okno → znowu</h2>
+              <p>
+                W grze znajdujesz metina/bossa, zbijaasz, tu klikasz <b>Zbite</b> (lub{' '}
+                <b>Zbite + mapa</b> i pinezka). Jedziesz dalej. Dopóki trwa odliczanie, nie
+                klikniesz drugi raz. Gdy otworzy się okno respawnu — możesz oznaczyć kolejne zbicie.
+              </p>
+            </header>
+            {view !== 'map' ? (
               <button
                 className="respawn-party-toggle is-on"
                 onClick={() => setView('map')}
                 type="button"
               >
-                <span /> Otwórz atlas mapy + party
+                <span /> Otwórz atlas mapy
               </button>
-            </aside>
-          )}
+            ) : (
+              <p className="respawn-list-lead">
+                Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez party.
+              </p>
+            )}
+          </aside>
         </section>
         <p aria-live="polite" className="respawn-notice">
           {notice}
         </p>
         <p className="respawn-data-note">
-          Timery: dump respawnów dobry-temat (19 map, te same czasy). Party/atlas to osobna warstwa
-          znaczników. Ten podgląd zapisuje dane lokalnie; wspólna wersja wymaga API i bota Discord.
+          Timery metinów/bossów ≠ party, ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
+          Dane lokalnie w przeglądarce.
         </p>
       </main>
     </AppShell>
