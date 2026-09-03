@@ -14,9 +14,12 @@ export function MarketCatalog() {
       <main className="market-page" id="main-content">
         <header className="market-header">
           <div>
-            <span className="eyebrow">Wspólna baza przedmiotów</span>
-            <h1>Targ</h1>
-            <p>{gameItemCatalog.length} przedmiotów z katalogu gry — od ulepszaczy po ekwipunek.</p>
+            <span className="eyebrow">Podgląd katalogu (nie Targ)</span>
+            <h1>Katalog referencyjny</h1>
+            <p>
+              To nie jest Targ. Targ = ogłoszenia i ceny. Ten ekran jest tylko podglądem nazw z
+              katalogu gry; karty EQ z ulepszeniem 0–9 dodajesz przy postaci.
+            </p>
           </div>
         </header>
         <section className="market-layout">

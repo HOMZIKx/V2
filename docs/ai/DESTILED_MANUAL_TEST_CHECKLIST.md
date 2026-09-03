@@ -14,7 +14,9 @@ Cel: przejść ścieżkę bez wkłócania się. Dane lokalne w przeglądarce.
 | #   | Co                                           | Oczekiwane                                                                                    |
 | --- | -------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | 1   | Pulpit                                       | „Wymaga uwagi” pokazuje **Jazda konna** + opcjonalnie zaproszenie demo                        |
-| 2   | Asteria → karta NerwNicht                    | Sloty EQ, **Bojowa Tarcza**, readiness Na postaci / Poza postacią                             |
+| 2   | Asteria → karta NerwNicht                    | EQ Surą: **Demoniczne Ostrze**, **Mglista Zbroja**, tarcza; bez sztyletów Ninji               |
+| 2b  | Dodaj kartę                                  | Wybór ulepszenia **0–9**; amulet/ulepszacz odrzucony; klasa sprawdzana                        |
+| 2c  | Aalpsik                                      | **Krótki Nóż** + hełm Ninja; zbroja pusta (brak w katalogu wiki)                              |
 | 3   | Odwróć kartę Aalpsik                         | **Jazda konna** · Medal Konny ×5 · 23 h · u Stajennego                                        |
 | 4   | Oznacz wykonane                              | Tylko gdy timer **Gotowe**; po kliknięciu restart cyklu; na pulpicie „Brak gotowych timerów…” |
 | 5   | Biolog Kimmizic                              | **Pamiątka Po Demonie · 6/15**, reset o północy                                               |
@@ -32,4 +34,5 @@ Cel: przejść ścieżkę bez wkłócania się. Dane lokalne w przeglądarce.
 
 ## Poza zakresem
 
-Mapy / Targ / Aktywność, prawdziwy OAuth, API, bot.
+Mapy / Targ (ogłoszenia) / Aktywność, prawdziwy OAuth, API, bot.
+Targ ≠ baza EQ — karty przedmiotów są przy postaci.

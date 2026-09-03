@@ -16,7 +16,16 @@ import {
   type CharacterClass,
   type CharacterGender,
 } from './character-profile';
-import { findGameItemByCardName, resolveItemIconPath } from './item-catalog';
+import {
+  clampEnhancement,
+  equipmentSlotForCategory,
+  findGameItemByCardName,
+  formatEnhancedItemName,
+  isItemCompatibleWithClass,
+  parseEnhancementFromName,
+  resolveItemIconPath,
+  stripEnhancementFromName,
+} from './item-catalog';
 import type { CatalogLayer } from './member-dashboard';
 import {
   biologistProgressLabel,
@@ -69,6 +78,8 @@ export interface EquipmentItem {
   readonly name: string;
   readonly iconPath: string;
   readonly category: EquipmentSlot;
+  /** Enhancement level shown on the card (+0 … +9). */
+  readonly enhancement: number;
   readonly levelLabel: string;
   readonly bonuses: readonly string[];
   readonly catalogLayer: CatalogLayer;
@@ -268,11 +279,29 @@ function historyEntry(
 }
 
 function demoEquipmentItem(
-  partial: Omit<EquipmentItem, 'iconPath'> & { readonly iconPath?: string },
+  partial: Omit<EquipmentItem, 'iconPath' | 'name' | 'enhancement'> & {
+    readonly baseName: string;
+    readonly enhancement: number;
+    readonly iconPath?: string;
+  },
 ): EquipmentItem {
+  const enhancement = clampEnhancement(partial.enhancement);
+  const name = formatEnhancedItemName(partial.baseName, enhancement);
   return {
-    ...partial,
-    iconPath: partial.iconPath ?? resolveItemIconPath(partial.name),
+    id: partial.id,
+    name,
+    enhancement,
+    category: partial.category,
+    levelLabel: partial.levelLabel,
+    bonuses: partial.bonuses,
+    catalogLayer: partial.catalogLayer,
+    lastConfirmedLocation: partial.lastConfirmedLocation,
+    lastConfirmedBy: partial.lastConfirmedBy,
+    lastConfirmedAt: partial.lastConfirmedAt,
+    archived: partial.archived,
+    planned: partial.planned,
+    revision: partial.revision,
+    iconPath: partial.iconPath ?? resolveItemIconPath(name),
   };
 }
 
@@ -280,14 +309,17 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
   const demonQuest = biologistQuestById('demon-keepsake')!;
   const midnight = nextMidnightLabel();
 
+  // Class-correct cards from wiki/PH categories. Unique IDs per character so shared
+  // readiness conflicts are intentional only when the team truly shares one card.
   const items: EquipmentItem[] = [
     demoEquipmentItem({
-      id: 'zodiac-sword',
-      name: 'Zatruty Miecz +9',
+      id: 'sura-sword',
+      baseName: 'Demoniczne Ostrze',
+      enhancement: 9,
       category: 'weapon',
-      levelLabel: 'od poziomu 75',
-      bonuses: ['Średnie obrażenia +37%', 'Silny przeciwko ludziom +10%', 'Witalność +12'],
-      catalogLayer: 'team_private',
+      levelLabel: 'katalog: Sura — broń jednoręczna',
+      bonuses: ['Wartość ataku', 'Silny przeciwko ludziom'],
+      catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'XiaoHu',
       lastConfirmedAt: 'dzisiaj 22:41',
@@ -296,26 +328,28 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 3,
     }),
     demoEquipmentItem({
-      id: 'short-knife',
-      name: 'Krótki Nóż +9',
+      id: 'sura-sword-dungeon',
+      baseName: 'Lwi Miecz',
+      enhancement: 6,
       category: 'weapon',
-      levelLabel: 'od poziomu 1',
-      bonuses: ['Szybkość ataku +15%', 'Wartość ataku +18'],
+      levelLabel: 'katalog: Sura — broń jednoręczna',
+      bonuses: ['Wartość ataku'],
       catalogLayer: 'project_hard_source',
-      lastConfirmedLocation: 'Aalpsik',
-      lastConfirmedBy: 'Aalpsik',
-      lastConfirmedAt: 'wczoraj 19:20',
+      lastConfirmedLocation: 'NerwNicht',
+      lastConfirmedBy: 'Mateusz',
+      lastConfirmedAt: 'dzisiaj 12:00',
       archived: false,
       planned: false,
-      revision: 2,
+      revision: 1,
     }),
     demoEquipmentItem({
-      id: 'ivory-suit',
-      name: 'Mglista Zbroja Płytowa +1',
+      id: 'sura-armor',
+      baseName: 'Mglista Zbroja Płytowa',
+      enhancement: 9,
       category: 'armor',
-      levelLabel: 'od poziomu 48',
+      levelLabel: 'katalog: Sura — zbroje',
       bonuses: ['Max PŻ +800', 'Odporność na magię 10%', 'Wartość ataku +50'],
-      catalogLayer: 'team_private',
+      catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
       lastConfirmedAt: 'dzisiaj 18:05',
@@ -324,24 +358,40 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 2,
     }),
     demoEquipmentItem({
-      id: 'battle-shield',
-      name: 'Bojowa Tarcza +9',
+      id: 'sura-helmet',
+      baseName: 'Krwawy Hełm',
+      enhancement: 9,
+      category: 'helmet',
+      levelLabel: 'katalog: Sura — hełmy',
+      bonuses: ['Obrona'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'NerwNicht',
+      lastConfirmedBy: 'Mateusz',
+      lastConfirmedAt: 'dzisiaj 18:05',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'sura-shield',
+      baseName: 'Bojowa Tarcza',
+      enhancement: 9,
       category: 'shield',
-      levelLabel: 'od poziomu 21',
+      levelLabel: 'katalog: Tarcze (wszystkie klasy)',
       bonuses: ['Odporność na omdlenie', 'Szansa na blok ciosu +10%'],
       catalogLayer: 'project_hard_source',
-      lastConfirmedLocation: 'Aalpsik',
-      lastConfirmedBy: 'Wicek',
-      lastConfirmedAt: '2 dni temu',
+      lastConfirmedLocation: 'NerwNicht',
+      lastConfirmedBy: 'Mateusz',
+      lastConfirmedAt: 'dzisiaj 18:10',
       archived: false,
       planned: false,
       revision: 4,
     }),
     demoEquipmentItem({
-      id: 'ebony-earrings',
-      name: 'Ebonitowe Kolczyki +9',
+      id: 'sura-earrings',
+      baseName: 'Ebonitowe Kolczyki',
+      enhancement: 9,
       category: 'earrings',
-      // Project Hard presentation: Ebony Earrings +9, req 33
       levelLabel: 'od poziomu 33',
       bonuses: ['Siła +12', 'Max PŻ +1650'],
       catalogLayer: 'project_hard_source',
@@ -353,10 +403,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 1,
     }),
     demoEquipmentItem({
-      id: 'jade-necklace',
-      name: 'Jadeitowy Naszyjnik +9',
+      id: 'sura-necklace',
+      baseName: 'Jadeitowy Naszyjnik',
+      enhancement: 9,
       category: 'necklace',
-      // Project Hard presentation: Jade Necklace +9, req 42
       levelLabel: 'od poziomu 42',
       bonuses: ['Szybkość zaklęcia +22%', 'Zręczność +4'],
       catalogLayer: 'project_hard_source',
@@ -368,24 +418,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 1,
     }),
     demoEquipmentItem({
-      id: 'wooden-necklace',
-      name: 'Drewniany Naszyjnik +9',
-      category: 'necklace',
-      levelLabel: 'od poziomu 1',
-      bonuses: ['Szybkość zaklęcia +10%'],
-      catalogLayer: 'project_hard_source',
-      lastConfirmedLocation: null,
-      lastConfirmedBy: null,
-      lastConfirmedAt: null,
-      archived: false,
-      planned: true,
-      revision: 1,
-    }),
-    demoEquipmentItem({
-      id: 'wooden-bracelet',
-      name: 'Drewniana Bransoleta +9',
+      id: 'sura-bracelet',
+      baseName: 'Drewniana Bransoleta',
+      enhancement: 9,
       category: 'bracelet',
-      // Project Hard presentation: Wooden Bracelet +9
       levelLabel: 'od poziomu 0',
       bonuses: ['Szybkość ataku +5%', 'Czas trwania umiejętności +20 s'],
       catalogLayer: 'project_hard_source',
@@ -397,10 +433,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 1,
     }),
     demoEquipmentItem({
-      id: 'leather-boots',
-      name: 'Skórzane Kozaki +9',
+      id: 'sura-boots',
+      baseName: 'Skórzane Kozaki',
+      enhancement: 9,
       category: 'shoes',
-      // Project Hard presentation: Leather Boots +9, req 29
       levelLabel: 'od poziomu 29',
       bonuses: ['Szybkość ruchu +20%', 'Odporność na strzały +20%'],
       catalogLayer: 'project_hard_source',
@@ -411,17 +447,137 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       planned: false,
       revision: 1,
     }),
+    demoEquipmentItem({
+      id: 'ninja-knife',
+      baseName: 'Krótki Nóż',
+      enhancement: 9,
+      category: 'weapon',
+      levelLabel: 'katalog: Ninja — sztylety',
+      bonuses: ['Szybkość ataku +15%', 'Wartość ataku +18'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Aalpsik',
+      lastConfirmedBy: 'Aalpsik',
+      lastConfirmedAt: 'wczoraj 19:20',
+      archived: false,
+      planned: false,
+      revision: 2,
+    }),
+    demoEquipmentItem({
+      id: 'ninja-helmet',
+      baseName: 'Pajęczy Kaptur',
+      enhancement: 7,
+      category: 'helmet',
+      levelLabel: 'katalog: Ninja — hełmy',
+      bonuses: ['Obrona'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Aalpsik',
+      lastConfirmedBy: 'Aalpsik',
+      lastConfirmedAt: 'wczoraj 19:21',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'ninja-earrings',
+      baseName: 'Drewniane Kolczyki',
+      enhancement: 6,
+      category: 'earrings',
+      levelLabel: 'katalog: Kolczyki',
+      bonuses: ['Zręczność'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Aalpsik',
+      lastConfirmedBy: 'Aalpsik',
+      lastConfirmedAt: 'wczoraj 19:22',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'ninja-boots',
+      baseName: 'Bambusowe Buty',
+      enhancement: 5,
+      category: 'shoes',
+      levelLabel: 'katalog: Buty',
+      bonuses: ['Szybkość ruchu'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Aalpsik',
+      lastConfirmedBy: 'Aalpsik',
+      lastConfirmedAt: 'wczoraj 19:23',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'shaman-bell',
+      baseName: 'Antyczny Dzwon',
+      enhancement: 9,
+      category: 'weapon',
+      levelLabel: 'katalog: Szaman — dzwony',
+      bonuses: ['Siła magii'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Kimmizic',
+      lastConfirmedBy: 'Wicek',
+      lastConfirmedAt: 'wczoraj 20:00',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'shaman-robe',
+      baseName: 'Błękitna Szata',
+      enhancement: 8,
+      category: 'armor',
+      levelLabel: 'katalog: Szaman — zbroje',
+      bonuses: ['Max SP', 'Obrona'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Kimmizic',
+      lastConfirmedBy: 'Wicek',
+      lastConfirmedAt: 'wczoraj 20:01',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'shaman-hat',
+      baseName: 'Czapka Feniksa',
+      enhancement: 4,
+      category: 'helmet',
+      levelLabel: 'katalog: Szaman — hełmy',
+      bonuses: ['Obrona'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Kimmizic',
+      lastConfirmedBy: 'Wicek',
+      lastConfirmedAt: 'wczoraj 20:02',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'shaman-necklace',
+      baseName: 'Drewniany Naszyjnik',
+      enhancement: 3,
+      category: 'necklace',
+      levelLabel: 'katalog: Naszyjniki',
+      bonuses: ['Szybkość zaklęcia +10%'],
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'Kimmizic',
+      lastConfirmedBy: 'Wicek',
+      lastConfirmedAt: 'wczoraj 20:03',
+      archived: false,
+      planned: true,
+      revision: 1,
+    }),
   ];
 
   const warAssignments: EquipmentAssignments = {
-    weapon: 'zodiac-sword',
-    armor: 'ivory-suit',
-    helmet: null,
-    shield: 'battle-shield',
-    earrings: 'ebony-earrings',
-    necklace: 'jade-necklace',
-    bracelet: 'wooden-bracelet',
-    shoes: 'leather-boots',
+    weapon: 'sura-sword',
+    armor: 'sura-armor',
+    helmet: 'sura-helmet',
+    shield: 'sura-shield',
+    earrings: 'sura-earrings',
+    necklace: 'sura-necklace',
+    bracelet: 'sura-bracelet',
+    shoes: 'sura-boots',
   };
 
   const characters: CharacterRecord[] = [
@@ -447,13 +603,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         {
           id: 'dungeon',
           name: 'Dungeon',
-          description: 'Roboczy układ pod PvM',
+          description: 'Roboczy układ pod PvM (bez sztyletów — to broń Ninji)',
           assignments: {
             ...emptyAssignments(),
-            weapon: 'short-knife',
-            armor: 'ivory-suit',
-            necklace: 'wooden-necklace',
-            shoes: 'leather-boots',
+            weapon: 'sura-sword-dungeon',
           },
         },
         {
@@ -471,7 +624,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       gender: 'female',
       level: 55,
       responsibleMemberId: 'aalpsik',
-      note: 'Postać zespołowa do dungeonów.',
+      note: 'Postać zespołowa do dungeonów. Zbroja Ninja nie ma wpisu w obecnym katalogu wiki — slot zostawiony pusty.',
       imagePath: '/game/classes/ninja-female.png',
       activeSetId: 'dungeon',
       revision: 4,
@@ -480,13 +633,13 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         {
           id: 'dungeon',
           name: 'Dungeon',
-          description: 'Układ dungeonowy',
+          description: 'Układ dungeonowy (sztylet + hełm Ninja)',
           assignments: {
             ...emptyAssignments(),
-            weapon: 'short-knife',
-            armor: 'ivory-suit',
-            shield: 'battle-shield',
-            shoes: 'leather-boots',
+            weapon: 'ninja-knife',
+            helmet: 'ninja-helmet',
+            earrings: 'ninja-earrings',
+            shoes: 'ninja-boots',
           },
         },
       ],
@@ -507,12 +660,13 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         {
           id: 'support',
           name: 'Wsparcie',
-          description: 'Układ wsparcia',
+          description: 'Układ wsparcia (dzwon + szata Szamana)',
           assignments: {
             ...emptyAssignments(),
-            necklace: 'jade-necklace',
-            bracelet: 'wooden-bracelet',
-            shoes: 'leather-boots',
+            weapon: 'shaman-bell',
+            armor: 'shaman-robe',
+            helmet: 'shaman-hat',
+            necklace: 'shaman-necklace',
           },
         },
       ],
@@ -621,7 +775,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         scope: 'workspace',
         characterId: null,
         authorName: 'Mateusz',
-        body: 'Na wojnę: set pod ludzi. Bojowa Tarcza musi wrócić na NerwNicht.',
+        body: 'Na wojnę: set Surą. Bojowa Tarcza zostaje na NerwNicht.',
         createdAtLabel: 'dzisiaj 09:42',
         revision: 1,
         pinned: true,
@@ -644,7 +798,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         characterName: 'NerwNicht',
         resource: 'equipment',
         title: 'Potwierdzono lokalizację tarczy',
-        detail: 'Bojowa Tarcza +9 · poprzednio Aalpsik → obecnie Aalpsik (wymaga re-check)',
+        detail: 'Bojowa Tarcza +9 · potwierdzona na NerwNicht',
         revision: 19,
       }),
       {
@@ -1130,10 +1284,21 @@ export function assignItemToSet(
 ): PlayerStoreState {
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const item = workspace.items.find((entry) => entry.id === itemId);
-    if (!item || item.category !== slot) return workspace;
-    const characters = workspace.characters.map((character) => {
-      if (character.id !== characterId) return character;
-      const sets = character.sets.map((set) => {
+    const character = workspace.characters.find((entry) => entry.id === characterId);
+    if (!item || !character || item.category !== slot) return workspace;
+
+    const catalogHit = findGameItemByCardName(item.name);
+    if (catalogHit) {
+      const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+      if (catalogSlot === null || catalogSlot !== slot) return workspace;
+      if (!isItemCompatibleWithClass(catalogHit.category, character.characterClass)) {
+        return workspace;
+      }
+    }
+
+    const characters = workspace.characters.map((entry) => {
+      if (entry.id !== characterId) return entry;
+      const sets = entry.sets.map((set) => {
         if (set.id !== setId) return set;
         const assignments = { ...set.assignments };
         for (const key of equipmentSlots) {
@@ -1142,7 +1307,7 @@ export function assignItemToSet(
         assignments[slot] = itemId;
         return { ...set, assignments };
       });
-      return { ...character, sets, revision: character.revision + 1 };
+      return { ...entry, sets, revision: entry.revision + 1 };
     });
     return {
       ...workspace,
@@ -1151,7 +1316,7 @@ export function assignItemToSet(
       history: [
         historyEntry(workspace.id, viewer, {
           characterId,
-          characterName: characters.find((character) => character.id === characterId)?.name ?? null,
+          characterName: characters.find((entry) => entry.id === characterId)?.name ?? null,
           resource: 'equipment',
           title: `Zaplanowano ${item.name} na ${slotLabels[slot]}`,
           detail: 'Zmiana planu setu — to nie jest potwierdzenie lokalizacji w grze.',
@@ -1294,19 +1459,39 @@ export function createEquipmentItem(
   input: {
     readonly name: string;
     readonly category: EquipmentSlot;
+    readonly enhancement?: number;
     readonly bonuses: readonly string[];
     readonly planned?: boolean;
+    /** When set, reject catalog items incompatible with this class. */
+    readonly forCharacterClass?: CharacterClass;
   },
 ): PlayerStoreState {
-  const name = input.name.trim();
-  if (name.length < 2) return state;
+  const baseName = stripEnhancementFromName(input.name);
+  if (baseName.length < 2) return state;
+  const enhancement = clampEnhancement(input.enhancement ?? parseEnhancementFromName(input.name));
+  const name = formatEnhancedItemName(baseName, enhancement);
+  const catalogHit = findGameItemByCardName(baseName) ?? findGameItemByCardName(name);
+
+  let category = input.category;
+  if (catalogHit) {
+    const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+    if (catalogSlot === null) return state;
+    if (
+      input.forCharacterClass &&
+      !isItemCompatibleWithClass(catalogHit.category, input.forCharacterClass)
+    ) {
+      return state;
+    }
+    category = catalogSlot;
+  }
+
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
-    const catalogHit = findGameItemByCardName(name);
     const item: EquipmentItem = {
       id: createId('item'),
       name,
+      enhancement,
       iconPath: resolveItemIconPath(name),
-      category: input.category,
+      category,
       levelLabel: catalogHit ? `katalog: ${catalogHit.category}` : 'własny wpis zespołu',
       bonuses: input.bonuses,
       catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
@@ -1501,7 +1686,23 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
   try {
     const parsed = JSON.parse(raw) as PlayerStoreState;
     if (!parsed || typeof parsed !== 'object' || !parsed.authStatus) return null;
-    return parsed;
+    return {
+      ...parsed,
+      workspaces: (parsed.workspaces ?? []).map((workspace) => ({
+        ...workspace,
+        items: (workspace.items ?? []).map((item) => {
+          const enhancement =
+            typeof item.enhancement === 'number'
+              ? clampEnhancement(item.enhancement)
+              : parseEnhancementFromName(item.name);
+          return {
+            ...item,
+            enhancement,
+            name: formatEnhancedItemName(item.name, enhancement),
+          };
+        }),
+      })),
+    };
   } catch {
     return null;
   }

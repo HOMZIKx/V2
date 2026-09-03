@@ -119,7 +119,7 @@ export const teamHistoryFixture: TeamHistorySnapshot = {
       characterName: 'NerwNicht',
       resource: 'equipment',
       title: 'Zmieniono plan zestawu Wojna',
-      detail: 'Broń: Zatruty Miecz +6 → Krótki Nóż +9. Lokalizacja fizyczna bez zmian.',
+            detail: 'Broń: Demoniczne Ostrze +9 → Lwi Miecz +6. Lokalizacja fizyczna bez zmian.',
       occurredAtLabel: 'dzisiaj 11:54',
       revision: 18,
     },

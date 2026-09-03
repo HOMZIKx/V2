@@ -97,8 +97,10 @@ interface PlayerStoreApi {
     input: {
       readonly name: string;
       readonly category: EquipmentSlot;
+      readonly enhancement?: number;
       readonly bonuses: readonly string[];
       readonly planned?: boolean;
+      readonly forCharacterClass?: CharacterClass;
     },
   ) => void;
   sendInvitation: (

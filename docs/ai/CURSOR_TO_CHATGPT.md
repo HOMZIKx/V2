@@ -2,36 +2,34 @@
 
 ## 1. Status
 
-`DESTILED_MANUAL_TEST_READY`
+`DESTILED_EQ_CLASS_AND_ENHANCEMENT`
 
 ## 2. Task
 
-Owner: make first-slice ready for real manual tests without friction;
-keep prior logic/requests; verify only against truth (Project Hard).
+Owner: fix wrong item assignments (amulet/armor, daggers on Sura); Targ is not
+an item DB; characters need items with enhancement **0–9**.
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- SHA: `c3d392c`
 
 ## 3. Delivered
 
-- Friction fixes: merge demo seed, session reset, persistent invite links,
-  accept/decline outcome, dashboard feedback, mobile EQ labels/breadcrumbs
-- Checklist: `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
-- PH naming/logic unchanged (no alchemy/sashes; jazda 23h; biolog midnight)
+- Class/slot rules from wiki/PH category labels on assign + create
+- `enhancement` 0–9 on team EQ cards + picker in UI
+- Demo loadouts corrected (Sura / Ninja / Shaman); no shared wrong-class pieces
+- Targ later text: listings/prices only; EQ cards live under character **Baza EQ zespołu**
+- Honest gap: Ninja armor absent from current catalog dump → empty slot
 
 ## 4. Validation
 
 - `pnpm typecheck`: PASS
-- `pnpm test`: PASS (46)
+- `pnpm test`: PASS (50)
 - `pnpm e2e`: PASS (14)
 
-## 5. How to test manually
+## 5. Manual note
 
-1. `pnpm --filter @v2/web dev` → `http://127.0.0.1:3000`
-2. Follow `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
-3. Dirty session → **Wyczyść sesję lokalną**
+Wyczyść sesję lokalną / wczytaj demo ponownie — stare localStorage ma złe karty.
 
 ## 6. Marker
 

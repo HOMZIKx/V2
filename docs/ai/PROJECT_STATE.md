@@ -2,36 +2,32 @@
 
 ## Status
 
-Web / DESTILED track: `DESTILED_MANUAL_TEST_READY` (D-061).
+Web / DESTILED track: `DESTILED_EQ_CLASS_AND_ENHANCEMENT` (D-061).
 
-First-slice gotowy do ręcznych testów lokalnych (localStorage mock).
 Branch `cursor/destiled-cursor-handoff-dfe5` (PR **#48**). Awaiting owner review.
 
 ## Active task
 
-- Task ID: `DESTILED-MANUAL-TEST-READY-001`
+- Task ID: `DESTILED-EQ-CLASS-ENHANCEMENT-001`
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- Focus: frictionless manual testing of agreed first-slice; keep PH logic honest.
+- Focus: class/slot-correct EQ assignment, enhancement 0–9, Targ ≠ item DB
 - Checklist: `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
-- Analysis: `docs/ai/DESTILED_HUMAN_UX_AND_GAME_LOGIC_2026-09-03.md`
 
-## Manual-test readiness (this pass)
+## EQ truth (this pass)
 
-- Demo seed merges by default (does not wipe other workspaces)
-- Session reset on entry + dashboard
-- Outgoing invites persist with openable `/invitations/{id}` links
-- Accept/decline keeps outcome; unknown invite no longer reseeds destructively
-- Create-space + demo load feedback; pending invites under „Wymaga uwagi”
-- Mobile: EQ slot labels + flip hint + breadcrumbs visible
-- History conflict simulator in `<details>`
+- Catalog class tags gate assign/create (no Ninja dagger on Sura, no amulet on armor)
+- Enhancement field + UI picker **0–9**
+- Demo: Sura / Ninja / Shaman class-correct loadouts; Ninja armor empty (missing in wiki dump)
+- Panel renamed **Baza EQ zespołu**; Targ later-copy clarifies listings ≠ catalog
 
 ## Still blocked on owner assets
 
 - Map PNGs from local `dobry-temat/frontend/public`
 - Remaining class renders
 - Verified weapon/armor sprites (no guessed vnums)
+- Ninja armor entries if PH wiki has them beyond current dump
 
 ## Open
 

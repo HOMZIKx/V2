@@ -1,319 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function seedAuthenticatedDemo(page: Page) {
-  await page.addInitScript(() => {
-    if (window.localStorage.getItem('destiled:player-store:v1')) return;
-    const viewer = {
-      id: 'mateusz',
-      displayName: 'Mateusz',
-      discordDisplayName: 'Mateusz',
-      initials: 'M',
-    };
-    const now = Date.now();
-    const state = {
-      authStatus: 'authenticated',
-      connection: 'connected',
-      viewer,
-      seededDemo: true,
-      lastOpenedWorkspaceId: 'asteria',
-      lastOpenedCharacterId: 'nerwnicht',
-      intendedDestination: null,
-      pendingIncomingInvitations: [
-        {
-          id: 'invitation-mobbynzs',
-          teamId: 'asteria',
-          teamName: 'Asteria',
-          inviterName: 'Mateusz',
-          recipientDiscordId: '994001220033445566',
-          recipientDisplayName: 'MobbynZS Oak',
-          status: 'pending',
-          createdLabel: 'dzisiaj',
-          expiresLabel: 'za 3 dni',
-          revision: 1,
-        },
-      ],
-      workspaces: [
-        {
-          id: 'asteria',
-          name: 'Asteria',
-          description: 'Wspólna przestrzeń postaci, ekwipunku i codziennych potwierdzeń zespołu.',
-          revision: 19,
-          updatedLabel: 'przed chwilą',
-          members: [
-            {
-              id: 'mateusz',
-              displayName: 'Mateusz',
-              initials: 'M',
-              role: 'owner',
-              state: 'unknown',
-            },
-            {
-              id: 'xiaohu',
-              displayName: 'XiaoHu',
-              initials: 'X',
-              role: 'member',
-              state: 'unknown',
-            },
-            { id: 'wicek', displayName: 'Wicek', initials: 'W', role: 'member', state: 'unknown' },
-            {
-              id: 'aalpsik',
-              displayName: 'Aalpsik',
-              initials: 'A',
-              role: 'member',
-              state: 'unknown',
-            },
-          ],
-          characters: [
-            {
-              id: 'nerwnicht',
-              name: 'NerwNicht',
-              characterClass: 'sura',
-              gender: 'male',
-              level: 75,
-              responsibleMemberId: 'mateusz',
-              note: 'Główna postać',
-              imagePath: '/game/classes/sura-male.png',
-              activeSetId: 'war',
-              revision: 7,
-              archived: false,
-              sets: [
-                {
-                  id: 'war',
-                  name: 'Wojna',
-                  description: 'Układ pod walkę z graczami',
-                  assignments: {
-                    weapon: 'zodiac-sword',
-                    armor: 'ivory-suit',
-                    helmet: null,
-                    shield: 'battle-shield',
-                    earrings: 'ebony-earrings',
-                    necklace: 'jade-necklace',
-                    bracelet: 'wooden-bracelet',
-                    shoes: 'leather-boots',
-                  },
-                },
-              ],
-            },
-            {
-              id: 'aalpsik',
-              name: 'Aalpsik',
-              characterClass: 'ninja',
-              gender: 'female',
-              level: 55,
-              responsibleMemberId: 'aalpsik',
-              note: '',
-              imagePath: '/game/classes/ninja-female.png',
-              activeSetId: 'dungeon',
-              revision: 4,
-              archived: false,
-              sets: [
-                {
-                  id: 'dungeon',
-                  name: 'Dungeon',
-                  description: 'Układ dungeonowy',
-                  assignments: {
-                    weapon: 'short-knife',
-                    armor: null,
-                    helmet: null,
-                    shield: null,
-                    earrings: null,
-                    necklace: null,
-                    bracelet: null,
-                    shoes: null,
-                  },
-                },
-              ],
-            },
-          ],
-          items: [
-            {
-              id: 'zodiac-sword',
-              name: 'Zatruty Miecz +9',
-              iconPath: '/game/items/zodiac-sword.svg',
-              category: 'weapon',
-              levelLabel: 'od poziomu 75',
-              bonuses: ['Średnie obrażenia +37%'],
-              catalogLayer: 'team_private',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'short-knife',
-              name: 'Krótki Nóż +9',
-              iconPath: '/game/items/short-knife.svg',
-              category: 'weapon',
-              levelLabel: 'od poziomu 1',
-              bonuses: ['Szybkość ataku +15%'],
-              catalogLayer: 'project_hard_source',
-              lastConfirmedLocation: 'Aalpsik',
-              lastConfirmedBy: 'Aalpsik',
-              lastConfirmedAt: 'wczoraj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'battle-shield',
-              name: 'Bojowa Tarcza +9',
-              iconPath: '/game/items/wiki/wiki_a2205fd93e6b34d6.png',
-              category: 'shield',
-              levelLabel: 'od poziomu 21',
-              bonuses: ['Szansa na blok ciosu +10%'],
-              catalogLayer: 'destiled_curated',
-              lastConfirmedLocation: 'Aalpsik',
-              lastConfirmedBy: 'Wicek',
-              lastConfirmedAt: '2 dni temu',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'ivory-suit',
-              name: 'Mglista Zbroja Płyt. +1',
-              iconPath: '/game/items/ivory-suit.svg',
-              category: 'armor',
-              levelLabel: 'od poziomu 48',
-              bonuses: ['Max PŻ +800'],
-              catalogLayer: 'team_private',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'ebony-earrings',
-              name: 'Ebonitowe Kolczyki +9',
-              iconPath: '/game/items/ebony-earrings.svg',
-              category: 'earrings',
-              levelLabel: 'od poziomu 33',
-              bonuses: ['Siła +12'],
-              catalogLayer: 'project_hard_source',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'jade-necklace',
-              name: 'Jadeitowy Naszyjnik +9',
-              iconPath: '/game/items/jade-necklace.svg',
-              category: 'necklace',
-              levelLabel: 'od poziomu 28',
-              bonuses: ['Zręczność +12'],
-              catalogLayer: 'project_hard_source',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'wooden-bracelet',
-              name: 'Drewniana Bransoleta +9',
-              iconPath: '/game/items/wooden-bracelet.svg',
-              category: 'bracelet',
-              levelLabel: 'od poziomu 1',
-              bonuses: ['Max PŻ +500'],
-              catalogLayer: 'project_hard_source',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-            {
-              id: 'leather-boots',
-              name: 'Skórzane Kozaki +8',
-              iconPath: '/game/items/leather-boots.svg',
-              category: 'shoes',
-              levelLabel: 'od poziomu 29',
-              bonuses: ['Szybkość ruchu +17%'],
-              catalogLayer: 'team_private',
-              lastConfirmedLocation: 'NerwNicht',
-              lastConfirmedBy: 'Mateusz',
-              lastConfirmedAt: 'dzisiaj',
-              archived: false,
-              planned: false,
-              revision: 1,
-            },
-          ],
-          timers: [
-            {
-              id: 'horse-medal-aalpsik',
-              characterId: 'aalpsik',
-              label: 'Jazda konna',
-              detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h',
-              status: 'ready',
-              readyAtIso: new Date(now).toISOString(),
-              remainingLabel: 'gotowe teraz',
-              progressPercent: 100,
-              lastActorName: 'Aalpsik',
-              lastConfirmedAt: 'dzisiaj',
-              discordReminder: true,
-              reminderState: 'unavailable',
-              operationId: null,
-            },
-          ],
-          tasks: [
-            {
-              id: 'task-shield-location',
-              title: 'Potwierdź lokalizację tarczy',
-              detail: 'Sprawdź w grze i potwierdź ręcznie.',
-              characterId: 'nerwnicht',
-              characterName: 'NerwNicht',
-              assigneeName: 'Mateusz',
-              dueLabel: 'teraz',
-              status: 'ready',
-              source: 'equipment',
-            },
-          ],
-          notes: [],
-          invitations: [],
-          history: [
-            {
-              id: 'hist-shield',
-              teamId: 'asteria',
-              actorId: 'mateusz',
-              actorName: 'Mateusz',
-              actorInitials: 'M',
-              characterId: 'nerwnicht',
-              characterName: 'NerwNicht',
-              resource: 'equipment',
-              title: 'Potwierdzono lokalizację tarczy',
-              detail: 'Bojowa Tarcza +9',
-              occurredAtLabel: 'wczoraj',
-              revision: 19,
-            },
-            {
-              id: 'hist-book',
-              teamId: 'asteria',
-              actorId: 'mateusz',
-              actorName: 'Mateusz',
-              actorInitials: 'M',
-              characterId: 'nerwnicht',
-              characterName: 'NerwNicht',
-              resource: 'timer',
-              title: 'Rozpoczęto timer księgi',
-              detail: 'Smoczy Wir',
-              occurredAtLabel: 'wczoraj',
-              revision: 18,
-            },
-          ],
-        },
-      ],
-    };
-    window.localStorage.setItem('destiled:player-store:v1', JSON.stringify(state));
-  });
+  await page.goto('/');
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
+  await page.getByRole('button', { name: /Kontynuuj z Discord/i }).click();
+  await page.getByRole('button', { name: /Wczytaj przykładowe Asteria/i }).click();
+  await expect(page.getByRole('heading', { name: /Witaj/ })).toBeVisible({ timeout: 10_000 });
 }
 
 test('shows Discord entry before access', async ({ page }) => {
@@ -385,19 +78,28 @@ test('opens the character equipment card from the team workspace', async ({ page
   await page.getByRole('link', { name: 'Otwórz kartę EQ' }).first().click();
   await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht$/);
   await expect(page.getByRole('heading', { name: 'NerwNicht', exact: true })).toBeVisible();
-  await expect(page.getByText('Przedmioty', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Broń: Zatruty Miecz/ })).toBeVisible();
+  await expect(page.getByText('Baza EQ zespołu', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Broń: Demoniczne Ostrze/ })).toBeVisible();
 });
 
 test('separates planned equipment, confirmed location and character timers', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/teams/asteria/characters/nerwnicht');
-  await page.getByRole('button', { name: /Krótki Nóż/ }).click();
-  await page.getByRole('button', { name: /Broń: Zatruty Miecz/ }).click();
-  await expect(page.getByRole('button', { name: /Broń: Krótki Nóż/ })).toBeVisible();
+  await page.getByLabel('Pokaż też karty innych klas').check();
+  await page.locator('.catalog-item').filter({ hasText: 'Krótki Nóż +9' }).click();
+  await page.getByRole('button', { name: /Broń: Demoniczne Ostrze/ }).click();
+  await expect(
+    page.locator('.entry-status').filter({ hasText: /nie pasuje do klasy Sura/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /Broń: Demoniczne Ostrze/ })).toBeVisible();
   await page.locator('.catalog-item').filter({ hasText: 'Bojowa Tarcza +9' }).click();
   await page.getByRole('button', { name: /Potwierdź: jest na NerwNicht/ }).click();
   await expect(page.getByText(/Mateusz · teraz/)).toBeVisible();
+  await page.getByLabel('Nazwa nowego przedmiotu').fill('Lwi Miecz');
+  await page.getByLabel('Ulepszenie').selectOption('4');
+  await page.getByRole('button', { name: 'Dodaj kartę' }).click();
+  await expect(page.locator('.entry-status').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
+  await expect(page.locator('.catalog-item').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
   await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();
   await expect(page.getByText('Postęp postaci')).toBeVisible();
 });

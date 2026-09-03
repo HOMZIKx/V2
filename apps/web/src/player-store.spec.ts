@@ -57,7 +57,15 @@ describe('player store first-slice', () => {
     const character = workspace.characters.find((entry) => entry.id === 'nerwnicht')!;
     const set = character.sets.find((entry) => entry.id === 'war')!;
     expect(getSlotReadiness(workspace, character, set, 'weapon')).toBe('ready');
-    expect(getSlotReadiness(workspace, character, set, 'shield')).toBe('available_elsewhere');
+    expect(getSlotReadiness(workspace, character, set, 'shield')).toBe('ready');
+    expect(workspace.items.every((item) => item.enhancement >= 0 && item.enhancement <= 9)).toBe(
+      true,
+    );
+    const ninja = workspace.characters.find((entry) => entry.id === 'aalpsik')!;
+    expect(ninja.sets[0]!.assignments.weapon).toBe('ninja-knife');
+    expect(ninja.sets[0]!.assignments.armor).toBeNull();
+    expect(workspace.items.some((item) => item.id === 'sura-sword')).toBe(true);
+    expect(workspace.items.some((item) => /Zatruty Miecz/u.test(item.name))).toBe(false);
   });
 
   it('seeds demo without wiping an existing workspace when merge is requested', () => {

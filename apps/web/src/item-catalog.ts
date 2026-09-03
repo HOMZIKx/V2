@@ -1,6 +1,10 @@
+import type { CharacterClass } from './character-profile';
 import catalogDocument from './data/dobry-temat-item-catalog.json';
 import phItemIconMap from './data/ph-item-icon-map.json';
 import wikiImageMap from './data/wiki-item-image-map.json';
+
+export type EquipmentSlotId =
+  'weapon' | 'armor' | 'helmet' | 'shield' | 'earrings' | 'necklace' | 'bracelet' | 'shoes';
 
 export interface GameItem {
   readonly id: string;
@@ -11,6 +15,10 @@ export interface GameItem {
   readonly wikiUrl: string | null;
   readonly upgradeDescription: string | null;
 }
+
+export const ENHANCEMENT_MIN = 0;
+export const ENHANCEMENT_MAX = 9;
+export const ENHANCEMENT_LEVELS: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 interface LegacyCatalogItem {
   readonly id: string;
@@ -80,11 +88,19 @@ export function resolveItemIconPath(
 }
 
 /** Map dobry-temat / wiki categories onto EQ board slots. */
-export function equipmentSlotForCategory(
-  category: string,
-):
-  'weapon' | 'armor' | 'helmet' | 'shield' | 'earrings' | 'necklace' | 'bracelet' | 'shoes' | null {
+export function equipmentSlotForCategory(category: string): EquipmentSlotId | null {
   const value = category.toLocaleLowerCase('pl');
+  // Ulepszacze (Amulet Orka itd.) nie są slotami EQ.
+  if (
+    value.includes('ulepsz') ||
+    value.startsWith('amulet') ||
+    value.includes('talizman') ||
+    value.includes('kamień duszy') ||
+    value.includes('kamien duszy') ||
+    value.includes('pozostałe')
+  ) {
+    return null;
+  }
   if (value.includes('tarcze')) return 'shield';
   if (value.includes('buty')) return 'shoes';
   if (value.includes('kolczy')) return 'earrings';
@@ -119,6 +135,71 @@ export function equipmentSlotForCategory(
   return null;
 }
 
-export function equipmentCatalogItems(): readonly GameItem[] {
-  return gameItemCatalog.filter((item) => equipmentSlotForCategory(item.category) !== null);
+/**
+ * Class restriction from wiki/PH category labels.
+ * Jewelry, boots and shields have no class tag → any class (official Metin2 wiki).
+ * Class-tagged weapons/armor/helmets bind to that class only.
+ */
+export function compatibleClassesForCategory(
+  category: string,
+): readonly CharacterClass[] | 'any' | 'none' {
+  if (equipmentSlotForCategory(category) === null) return 'none';
+  const value = category.toLocaleLowerCase('pl');
+  if (value.includes('wojownik')) return ['warrior'];
+  if (value.includes('ninja')) return ['ninja'];
+  if (value.includes('sura')) return ['sura'];
+  if (value.includes('szaman')) return ['shaman'];
+  return 'any';
+}
+
+export function isItemCompatibleWithClass(
+  category: string,
+  characterClass: CharacterClass,
+): boolean {
+  const allowed = compatibleClassesForCategory(category);
+  if (allowed === 'none') return false;
+  if (allowed === 'any') return true;
+  return allowed.includes(characterClass);
+}
+
+export function clampEnhancement(value: number): number {
+  if (!Number.isFinite(value)) return ENHANCEMENT_MIN;
+  return Math.min(ENHANCEMENT_MAX, Math.max(ENHANCEMENT_MIN, Math.trunc(value)));
+}
+
+export function parseEnhancementFromName(name: string): number {
+  const match = name.trim().match(/\+(\d+)\s*$/u);
+  if (!match) return ENHANCEMENT_MIN;
+  return clampEnhancement(Number(match[1]));
+}
+
+export function stripEnhancementFromName(name: string): string {
+  return name
+    .trim()
+    .replace(/\s*\+\d+\s*$/u, '')
+    .trim();
+}
+
+export function formatEnhancedItemName(baseName: string, enhancement: number): string {
+  const base = stripEnhancementFromName(baseName);
+  const level = clampEnhancement(enhancement);
+  return `${base} +${level}`;
+}
+
+export function equipmentCatalogItems(options?: {
+  readonly characterClass?: CharacterClass;
+  readonly slot?: EquipmentSlotId | 'all';
+}): readonly GameItem[] {
+  return gameItemCatalog.filter((item) => {
+    const slot = equipmentSlotForCategory(item.category);
+    if (slot === null) return false;
+    if (options?.slot && options.slot !== 'all' && slot !== options.slot) return false;
+    if (
+      options?.characterClass &&
+      !isItemCompatibleWithClass(item.category, options.characterClass)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }

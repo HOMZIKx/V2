@@ -47,7 +47,7 @@ export function MarketLaterPage() {
   return (
     <LaterModulePage
       title="Targ"
-      summary="Ogłoszenia i ceny wrócą później. Katalog przedmiotów z ikonami działa już przy dodawaniu kart EQ w przestrzeni zespołu."
+      summary="Targ to ogłoszenia kupna/sprzedaży i ceny między graczami — nie baza przedmiotów. Karty EQ z ulepszeniem 0–9 dodajesz przy postaci w przestrzeni zespołu."
     />
   );
 }

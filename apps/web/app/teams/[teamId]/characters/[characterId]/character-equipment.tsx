@@ -5,9 +5,14 @@ import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 're
 
 import { characterClassLabels } from '../../../../../src/character-profile';
 import {
+  ENHANCEMENT_LEVELS,
   equipmentCatalogItems,
   equipmentSlotForCategory,
   findGameItemByCardName,
+  formatEnhancedItemName,
+  isItemCompatibleWithClass,
+  parseEnhancementFromName,
+  stripEnhancementFromName,
 } from '../../../../../src/item-catalog';
 import {
   equipmentSlots,
@@ -54,6 +59,8 @@ export function CharacterEquipment() {
   const [announcement, setAnnouncement] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
+  const [newItemEnhancement, setNewItemEnhancement] = useState(9);
+  const [showIncompatible, setShowIncompatible] = useState(false);
   const [moveTarget, setMoveTarget] = useState('');
 
   useEffect(() => {
@@ -63,7 +70,7 @@ export function CharacterEquipment() {
   }, [workspace, character, openWorkspace]);
 
   const filteredCatalog = useMemo(() => {
-    if (!workspace) return [];
+    if (!workspace || !character) return [];
     const normalized = query.trim().toLocaleLowerCase('pl');
     return workspace.items.filter((item) => {
       if (item.archived) return false;
@@ -72,21 +79,25 @@ export function CharacterEquipment() {
         normalized.length === 0 ||
         item.name.toLocaleLowerCase('pl').includes(normalized) ||
         item.bonuses.some((bonus) => bonus.toLocaleLowerCase('pl').includes(normalized));
-      return categoryMatches && queryMatches;
+      if (!categoryMatches || !queryMatches) return false;
+      if (showIncompatible) return true;
+      const catalogHit = findGameItemByCardName(item.name);
+      if (!catalogHit) return true;
+      return isItemCompatibleWithClass(catalogHit.category, character.characterClass);
     });
-  }, [workspace, query, category]);
+  }, [workspace, character, query, category, showIncompatible]);
 
   const catalogSuggestions = useMemo(() => {
-    const normalized = newItemName.trim().toLocaleLowerCase('pl');
+    if (!character) return [];
+    const normalized = stripEnhancementFromName(newItemName).toLocaleLowerCase('pl');
     if (normalized.length < 2) return [];
-    return equipmentCatalogItems()
-      .filter((item) => {
-        const slot = equipmentSlotForCategory(item.category);
-        if (!slot || slot !== newItemSlot) return false;
-        return item.title.toLocaleLowerCase('pl').includes(normalized);
-      })
-      .slice(0, 6);
-  }, [newItemName, newItemSlot]);
+    return equipmentCatalogItems({
+      characterClass: character.characterClass,
+      slot: newItemSlot,
+    })
+      .filter((item) => item.title.toLocaleLowerCase('pl').includes(normalized))
+      .slice(0, 8);
+  }, [character, newItemName, newItemSlot]);
 
   const matchedDefinition = findGameItemByCardName(newItemName);
 
@@ -125,8 +136,26 @@ export function CharacterEquipment() {
     if (!writesEnabled || !activeSet) return;
     const item = workspace.items.find((entry) => entry.id === itemId);
     if (!item || item.category !== slot) {
-      setAnnouncement('Przedmiot nie pasuje do slotu.');
+      setAnnouncement('Przedmiot nie pasuje do tego slotu.');
       return;
+    }
+    const catalogHit = findGameItemByCardName(item.name);
+    if (catalogHit) {
+      const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+      if (catalogSlot === null) {
+        setAnnouncement('To nie jest przedmiot EQ (np. ulepszacz / amulet).');
+        return;
+      }
+      if (catalogSlot !== slot) {
+        setAnnouncement(`Ten przedmiot należy do slotu: ${slotLabels[catalogSlot]}.`);
+        return;
+      }
+      if (!isItemCompatibleWithClass(catalogHit.category, character.characterClass)) {
+        setAnnouncement(
+          `${item.name} nie pasuje do klasy ${characterClassLabels[character.characterClass]}.`,
+        );
+        return;
+      }
     }
     assignItem(workspace.id, character.id, activeSet.id, itemId, slot);
     setSelectedItemId(itemId);
@@ -140,15 +169,34 @@ export function CharacterEquipment() {
 
   const handleCreateItem = (event: FormEvent) => {
     event.preventDefault();
-    if (!writesEnabled || newItemName.trim().length < 2) return;
+    if (!writesEnabled) return;
+    const baseName = stripEnhancementFromName(newItemName);
+    if (baseName.length < 2) return;
+    const catalogHit = findGameItemByCardName(baseName);
+    if (catalogHit) {
+      const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+      if (catalogSlot === null) {
+        setAnnouncement('Amuletów i ulepszaczy nie dodaje się do slotów EQ.');
+        return;
+      }
+      if (!isItemCompatibleWithClass(catalogHit.category, character.characterClass)) {
+        setAnnouncement(
+          `${catalogHit.title} nie jest dla klasy ${characterClassLabels[character.characterClass]}.`,
+        );
+        return;
+      }
+    }
+    const cardName = formatEnhancedItemName(baseName, newItemEnhancement);
     createItem(workspace.id, {
-      name: newItemName,
+      name: cardName,
       category: newItemSlot,
+      enhancement: newItemEnhancement,
       bonuses: [],
       planned: true,
+      forCharacterClass: character.characterClass,
     });
     setNewItemName('');
-    setAnnouncement('Utworzono kartę przedmiotu w bazie zespołu.');
+    setAnnouncement(`Utworzono kartę ${cardName} w bazie EQ zespołu.`);
   };
 
   return (
@@ -337,8 +385,12 @@ export function CharacterEquipment() {
 
           <section className="panel catalog-panel">
             <header>
-              <h2>Przedmioty</h2>
+              <h2>Baza EQ zespołu</h2>
             </header>
+            <p className="empty-copy">
+              To nie jest Targ. Tu trzymacie karty ekwipunku pod sety postaci (
+              {characterClassLabels[character.characterClass]}).
+            </p>
             <label className="market-search">
               <Icon name="search" size={16} />
               <input
@@ -366,6 +418,14 @@ export function CharacterEquipment() {
                 </button>
               ))}
             </div>
+            <label className="field" style={{ marginTop: 8 }}>
+              <input
+                checked={showIncompatible}
+                onChange={(event) => setShowIncompatible(event.target.checked)}
+                type="checkbox"
+              />{' '}
+              Pokaż też karty innych klas
+            </label>
             <p className="empty-copy">Przeciągnij przedmiot na slot albo wybierz i kliknij slot.</p>
             <div className="catalog-grid">
               {filteredCatalog.map((item) => (
@@ -381,6 +441,7 @@ export function CharacterEquipment() {
                   <img alt="" src={item.iconPath} />
                   <strong>{item.name}</strong>
                   <small>
+                    +{item.enhancement} ·{' '}
                     {item.lastConfirmedLocation
                       ? `Lokalizacja: ${item.lastConfirmedLocation}`
                       : 'Brak potwierdzonej lokalizacji'}
@@ -395,12 +456,16 @@ export function CharacterEquipment() {
                 list="eq-catalog-suggestions"
                 onChange={(event) => {
                   const value = event.target.value;
-                  setNewItemName(value);
+                  setNewItemName(stripEnhancementFromName(value));
+                  const fromName = parseEnhancementFromName(value);
+                  if (/\+\d+\s*$/u.test(value.trim())) {
+                    setNewItemEnhancement(fromName);
+                  }
                   const hit = findGameItemByCardName(value);
                   const slot = hit ? equipmentSlotForCategory(hit.category) : null;
                   if (slot) setNewItemSlot(slot);
                 }}
-                placeholder="Nazwa z gry, np. Bojowa Tarcza +9"
+                placeholder="Nazwa z gry, np. Bojowa Tarcza"
                 value={newItemName}
               />
               <datalist id="eq-catalog-suggestions">
@@ -408,6 +473,17 @@ export function CharacterEquipment() {
                   <option key={item.id} value={item.title} />
                 ))}
               </datalist>
+              <select
+                aria-label="Ulepszenie"
+                onChange={(event) => setNewItemEnhancement(Number(event.target.value))}
+                value={newItemEnhancement}
+              >
+                {ENHANCEMENT_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    +{level}
+                  </option>
+                ))}
+              </select>
               <select
                 aria-label="Slot nowego przedmiotu"
                 onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
@@ -425,7 +501,7 @@ export function CharacterEquipment() {
             </form>
             {matchedDefinition ? (
               <p className="empty-copy">
-                Ikona z katalogu: <strong>{matchedDefinition.title}</strong>
+                Katalog: <strong>{matchedDefinition.title}</strong> · {matchedDefinition.category}
                 {matchedDefinition.sourceImageUrl ? '' : ' · bez grafiki'}
               </p>
             ) : newItemName.trim().length >= 2 ? (
@@ -440,7 +516,9 @@ export function CharacterEquipment() {
             {selectedItem ? (
               <>
                 <h3>{selectedItem.name}</h3>
-                <p>{selectedItem.levelLabel}</p>
+                <p>
+                  Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
+                </p>
                 <ul>
                   {selectedItem.bonuses.map((bonus) => (
                     <li key={bonus}>{bonus}</li>
@@ -506,7 +584,7 @@ export function CharacterEquipment() {
                   : null}
               </>
             ) : (
-              <p>Wybierz przedmiot z bazy.</p>
+              <p>Wybierz kartę z bazy EQ zespołu.</p>
             )}
           </aside>
         </div>
