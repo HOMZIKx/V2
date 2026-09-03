@@ -73,18 +73,33 @@ export function togglePartyVisibility(party: MapParty): MapParty {
   return { ...party, visibility: party.visibility === 'open' ? 'closed' : 'open' };
 }
 
-export function requestPartyJoin(party: MapParty, request: Omit<MapPartyRequest, 'status'>): MapParty {
-  if (party.members.some((member) => member.id === request.id) || party.requests.some((item) => item.id === request.id)) return party;
+export function requestPartyJoin(
+  party: MapParty,
+  request: Omit<MapPartyRequest, 'status'>,
+): MapParty {
+  if (
+    party.members.some((member) => member.id === request.id) ||
+    party.requests.some((item) => item.id === request.id)
+  )
+    return party;
   return { ...party, requests: [...party.requests, { ...request, status: 'pending' }] };
 }
 
-export function resolvePartyRequest(party: MapParty, requestId: string, accepted: boolean): MapParty {
+export function resolvePartyRequest(
+  party: MapParty,
+  requestId: string,
+  accepted: boolean,
+): MapParty {
   const request = party.requests.find((item) => item.id === requestId);
   if (!request || request.status !== 'pending') return party;
   return {
     ...party,
-    members: accepted ? [...party.members, { id: request.id, displayName: request.displayName, role: 'member' }] : party.members,
-    requests: party.requests.map((item) => item.id === requestId ? { ...item, status: accepted ? 'accepted' : 'rejected' } : item),
+    members: accepted
+      ? [...party.members, { id: request.id, displayName: request.displayName, role: 'member' }]
+      : party.members,
+    requests: party.requests.map((item) =>
+      item.id === requestId ? { ...item, status: accepted ? 'accepted' : 'rejected' } : item,
+    ),
   };
 }
 
@@ -95,12 +110,17 @@ export function claimsForPartyScope(
   channel: number,
 ): readonly MapSpawnClaim[] {
   if (!party) return [];
-  return claims.filter((claim) => claim.partyId === party.id && claim.mapKey === mapKey && claim.channel === channel);
+  return claims.filter(
+    (claim) => claim.partyId === party.id && claim.mapKey === mapKey && claim.channel === channel,
+  );
 }
 
 export function upsertSpawnClaim(
   claims: readonly MapSpawnClaim[],
   claim: MapSpawnClaim,
 ): readonly MapSpawnClaim[] {
-  return [...claims.filter((item) => item.timerKey !== claim.timerKey || item.partyId !== claim.partyId), claim];
+  return [
+    ...claims.filter((item) => item.timerKey !== claim.timerKey || item.partyId !== claim.partyId),
+    claim,
+  ];
 }

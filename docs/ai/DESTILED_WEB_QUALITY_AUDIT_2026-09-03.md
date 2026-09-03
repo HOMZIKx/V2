@@ -22,17 +22,17 @@ rdzenia.
 
 ## Krytyczne luki vs zamówiony first slice
 
-| Kontrakt | Stan w UI |
-| -------- | --------- |
+| Kontrakt                                                              | Stan w UI                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------ |
 | Discord entry (eligible / cancel / unavailable / ineligible / revoke) | **Brak** — start od razu jako zalogowany Mateusz |
-| First-use: Create workspace + Accept invite | **Brak w UI** — empty fixtures tylko w testach |
-| Home: ready timers, last workspace/character, create | **Nie** — metryki „moduły”, hub maps/activity |
-| Create character → pojawia się w workspace | **Nie** — lokalny sukces bez listy |
-| EQ: create/edit item, readiness 6 stanów, Mark as moved | **Częściowo / brak** |
-| Timery: duration, next-ready, Discord delivery states | **Uproszczone** |
-| History append-only od mutacji | **Nie** — fixture; mutacje nie logują |
-| Connection matrix (offline/reconnect/denied) | **Prawie zawsze „Połączono” / online** |
-| Routes respektują `teamId` / `invitationId` | **Hardcode Asteria / fixture** |
+| First-use: Create workspace + Accept invite                           | **Brak w UI** — empty fixtures tylko w testach   |
+| Home: ready timers, last workspace/character, create                  | **Nie** — metryki „moduły”, hub maps/activity    |
+| Create character → pojawia się w workspace                            | **Nie** — lokalny sukces bez listy               |
+| EQ: create/edit item, readiness 6 stanów, Mark as moved               | **Częściowo / brak**                             |
+| Timery: duration, next-ready, Discord delivery states                 | **Uproszczone**                                  |
+| History append-only od mutacji                                        | **Nie** — fixture; mutacje nie logują            |
+| Connection matrix (offline/reconnect/denied)                          | **Prawie zawsze „Połączono” / online**           |
+| Routes respektują `teamId` / `invitationId`                           | **Hardcode Asteria / fixture**                   |
 
 ## Fake / niespójna honesty
 

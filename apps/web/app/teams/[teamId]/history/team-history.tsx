@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
-import type { TeamHistoryResource } from '../../../../src/team-history';
 import { usePlayerStore } from '../../../../src/player-store-react';
+import type { TeamHistoryResource } from '../../../../src/team-history';
 import { AppShell, Icon } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
 
@@ -66,18 +66,13 @@ export function TeamHistory() {
         <header>
           <span className="eyebrow">Historia przestrzeni</span>
           <h1>Dziennik zmian</h1>
-          <p>
-            Kto co zmienił w EQ, timerach, notatkach i członkach — bez cofania wpisów.
-          </p>
+          <p>Kto co zmienił w EQ, timerach, notatkach i członkach — bez cofania wpisów.</p>
         </header>
 
         <section className="panel">
           <label>
             Szukaj w historii
-            <input
-              onChange={(event) => setQuery(event.target.value)}
-              value={query}
-            />
+            <input onChange={(event) => setQuery(event.target.value)} value={query} />
           </label>
           <label>
             Zasób
@@ -99,8 +94,8 @@ export function TeamHistory() {
           <details className="panel conflict-panel">
             <summary>Symulator konfliktu rewizji (opcjonalny)</summary>
             <p>
-              Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych —
-              tylko podgląd zachowania na produkcję.
+              Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych
+              — tylko podgląd zachowania na produkcję.
             </p>
             <button onClick={() => setConflictResolved(true)} type="button">
               Zachowaj mój szkic
@@ -121,8 +116,8 @@ export function TeamHistory() {
                 <strong>{entry.title}</strong>
                 <p>{entry.detail}</p>
                 <small>
-                  {entry.actorName} · {entry.characterName ?? 'przestrzeń'} · {entry.occurredAtLabel} ·
-                  rev {entry.revision}
+                  {entry.actorName} · {entry.characterName ?? 'przestrzeń'} ·{' '}
+                  {entry.occurredAtLabel} · rev {entry.revision}
                 </small>
               </li>
             ))

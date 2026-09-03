@@ -3,12 +3,12 @@
 import { useParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
+import { usePlayerStore } from '../../../../src/player-store-react';
 import {
   discordDirectoryFixture,
   resolveDiscordIdentity,
   type DiscordIdentity,
 } from '../../../../src/team-membership';
-import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell, Icon } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
 
@@ -72,8 +72,8 @@ export function TeamMembershipManagement() {
         <header>
           <h1>Członkowie i zaproszenia</h1>
           <p>
-            Najpierw rozpoznaj Discord ID, potem wyślij. Odbiorca musi otworzyć link i zaakceptować —
-            samo wysłanie nie daje dostępu.
+            Najpierw rozpoznaj Discord ID, potem wyślij. Odbiorca musi otworzyć link i zaakceptować
+            — samo wysłanie nie daje dostępu.
           </p>
         </header>
 
@@ -94,10 +94,7 @@ export function TeamMembershipManagement() {
             <h2>Wyślij zaproszenie</h2>
             <label className="field">
               <span>Discord ID osoby</span>
-              <input
-                onChange={(event) => setDiscordId(event.target.value)}
-                value={discordId}
-              />
+              <input onChange={(event) => setDiscordId(event.target.value)} value={discordId} />
             </label>
             <button
               disabled={!writesEnabled}

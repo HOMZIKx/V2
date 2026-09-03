@@ -103,7 +103,8 @@ export const activityCenterFixture: ActivityCenterSnapshot = {
         { id: 'mateusz', displayName: 'Mateusz', status: 'confirmed', isViewer: true },
         { id: 'nerwnicht', displayName: 'NerwNicht', status: 'confirmed', isViewer: false },
       ],
-      description: 'Wydarzenie opublikowane na Discordzie. Lista i limity są wspólne dla WWW i bota.',
+      description:
+        'Wydarzenie opublikowane na Discordzie. Lista i limity są wspólne dla WWW i bota.',
       requiresReconfirmation: true,
       viewerCanManage: true,
     },
@@ -150,7 +151,9 @@ export function getActivityCenterSummary(snapshot: ActivityCenterSnapshot): Acti
   return {
     upcomingCount: snapshot.activities.length,
     joinedCount: snapshot.activities.filter((activity) =>
-      activity.participants.some((participant) => participant.isViewer && participant.status !== 'declined'),
+      activity.participants.some(
+        (participant) => participant.isViewer && participant.status !== 'declined',
+      ),
     ).length,
     organizedCount: snapshot.activities.filter(
       (activity) => activity.organizer === snapshot.viewerName,

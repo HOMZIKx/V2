@@ -1,6 +1,6 @@
 import catalogDocument from './data/dobry-temat-item-catalog.json';
-import wikiImageMap from './data/wiki-item-image-map.json';
 import phItemIconMap from './data/ph-item-icon-map.json';
+import wikiImageMap from './data/wiki-item-image-map.json';
 
 export interface GameItem {
   readonly id: string;
@@ -39,9 +39,9 @@ export const gameItemCatalog: readonly GameItem[] = legacy.map((item) => {
   };
 });
 
-export const gameItemCategories = [
-  ...new Set(gameItemCatalog.map((item) => item.category)),
-].sort((a, b) => a.localeCompare(b, 'pl'));
+export const gameItemCategories = [...new Set(gameItemCatalog.map((item) => item.category))].sort(
+  (a, b) => a.localeCompare(b, 'pl'),
+);
 
 export function searchGameItems(query: string, category = 'all'): readonly GameItem[] {
   const normalized = query.trim().toLocaleLowerCase('pl');
@@ -57,9 +57,7 @@ export function searchGameItems(query: string, category = 'all'): readonly GameI
 
 export function findGameItemByTitle(title: string): GameItem | null {
   const normalized = title.trim().toLocaleLowerCase('pl');
-  return (
-    gameItemCatalog.find((item) => item.title.toLocaleLowerCase('pl') === normalized) ?? null
-  );
+  return gameItemCatalog.find((item) => item.title.toLocaleLowerCase('pl') === normalized) ?? null;
 }
 
 /** Resolve catalog definition from a team card name like "Zatruty Miecz +9". */
@@ -74,21 +72,32 @@ export function findGameItemByCardName(cardName: string): GameItem | null {
   return null;
 }
 
-export function resolveItemIconPath(cardName: string, fallback = '/game/items/short-knife.svg'): string {
+export function resolveItemIconPath(
+  cardName: string,
+  fallback = '/game/items/short-knife.svg',
+): string {
   return findGameItemByCardName(cardName)?.sourceImageUrl ?? fallback;
 }
 
 /** Map dobry-temat / wiki categories onto EQ board slots. */
 export function equipmentSlotForCategory(
   category: string,
-): 'weapon' | 'armor' | 'helmet' | 'shield' | 'earrings' | 'necklace' | 'bracelet' | 'shoes' | null {
+):
+  'weapon' | 'armor' | 'helmet' | 'shield' | 'earrings' | 'necklace' | 'bracelet' | 'shoes' | null {
   const value = category.toLocaleLowerCase('pl');
   if (value.includes('tarcze')) return 'shield';
   if (value.includes('buty')) return 'shoes';
   if (value.includes('kolczy')) return 'earrings';
   if (value.includes('naszyjn')) return 'necklace';
   if (value.includes('bransol')) return 'bracelet';
-  if (value.includes('hełm') || value.includes('helm') || value.includes('czapka') || value.includes('maska') || value.includes('kaptur') || value.includes('kapelusz')) {
+  if (
+    value.includes('hełm') ||
+    value.includes('helm') ||
+    value.includes('czapka') ||
+    value.includes('maska') ||
+    value.includes('kaptur') ||
+    value.includes('kapelusz')
+  ) {
     return 'helmet';
   }
   if (value.includes('zbroj') || value.includes('szata')) return 'armor';

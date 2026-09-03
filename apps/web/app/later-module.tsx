@@ -4,13 +4,7 @@ import { usePlayerStore } from '../src/player-store-react';
 import { AppShell } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
 
-function LaterModulePage({
-  title,
-  summary,
-}: {
-  readonly title: string;
-  readonly summary: string;
-}) {
+function LaterModulePage({ title, summary }: { readonly title: string; readonly summary: string }) {
   const { state, hydrated } = usePlayerStore();
   if (!hydrated) {
     return (

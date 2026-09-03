@@ -4,7 +4,8 @@ import { useState, type ReactNode } from 'react';
 
 import { usePlayerStore } from '../src/player-store-react';
 
-export type AppSection = 'dashboard' | 'teams' | 'characters' | 'maps' | 'market' | 'activity' | 'later';
+export type AppSection =
+  'dashboard' | 'teams' | 'characters' | 'maps' | 'market' | 'activity' | 'later';
 
 export type IconName =
   | 'activity'
@@ -90,8 +91,7 @@ export function AppShell({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { state } = usePlayerStore();
-  const primaryWorkspaceId =
-    state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? null;
+  const primaryWorkspaceId = state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? null;
   const teamsHref = primaryWorkspaceId ? `/teams/${primaryWorkspaceId}` : '/#first-use';
   const readyCount = state.workspaces.reduce(
     (count, workspace) =>
@@ -102,7 +102,12 @@ export function AppShell({
   const navigation = [
     { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
     { id: 'teams' as const, label: 'Moje przestrzenie', icon: 'team' as const, href: teamsHref },
-    { id: 'characters' as const, label: 'Postacie', icon: 'character' as const, href: '/characters' },
+    {
+      id: 'characters' as const,
+      label: 'Postacie',
+      icon: 'character' as const,
+      href: '/characters',
+    },
   ];
 
   return (

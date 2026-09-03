@@ -170,18 +170,38 @@ export const editCharacterProfileFixture: CharacterProfileSnapshot = {
   },
 };
 
-export function getEditCharacterProfileFixture(characterId: string): CharacterProfileSnapshot | null {
+export function getEditCharacterProfileFixture(
+  characterId: string,
+): CharacterProfileSnapshot | null {
   const profiles: Readonly<Record<string, CharacterProfileSnapshot>> = {
     nerwnicht: editCharacterProfileFixture,
     aalpsik: {
       ...editCharacterProfileFixture,
-      characterId: 'aalpsik', characterRevision: 4,
-      draft: { name: 'Aalpsik', characterClass: 'ninja', gender: 'female', level: 55, responsibleMemberId: 'aalpsik', startingSetName: 'Dungeon', teamNote: 'Postać zespołowa do dungeonów.' },
+      characterId: 'aalpsik',
+      characterRevision: 4,
+      draft: {
+        name: 'Aalpsik',
+        characterClass: 'ninja',
+        gender: 'female',
+        level: 55,
+        responsibleMemberId: 'aalpsik',
+        startingSetName: 'Dungeon',
+        teamNote: 'Postać zespołowa do dungeonów.',
+      },
     },
     kimmizic: {
       ...editCharacterProfileFixture,
-      characterId: 'kimmizic', characterRevision: 3,
-      draft: { name: 'Kimmizic', characterClass: 'shaman', gender: 'male', level: 61, responsibleMemberId: 'wicek', startingSetName: 'Wsparcie', teamNote: 'Postać wsparcia zespołu.' },
+      characterId: 'kimmizic',
+      characterRevision: 3,
+      draft: {
+        name: 'Kimmizic',
+        characterClass: 'shaman',
+        gender: 'male',
+        level: 61,
+        responsibleMemberId: 'wicek',
+        startingSetName: 'Wsparcie',
+        teamNote: 'Postać wsparcia zespołu.',
+      },
     },
   };
   return profiles[characterId] ?? null;

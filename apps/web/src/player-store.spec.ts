@@ -42,9 +42,9 @@ describe('player store first-slice', () => {
     expect(workspace.characters).toHaveLength(1);
     expect(workspace.characters[0]!.name).toBe('NowaSura');
     expect(workspace.characters[0]!.sets[0]!.name).toBe('Główny');
-    expect(Object.values(workspace.characters[0]!.sets[0]!.assignments).every((v) => v === null)).toBe(
-      true,
-    );
+    expect(
+      Object.values(workspace.characters[0]!.sets[0]!.assignments).every((v) => v === null),
+    ).toBe(true);
     expect(workspace.history[0]!.title).toContain('Utworzono postać');
   });
 

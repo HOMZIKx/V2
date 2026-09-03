@@ -31,7 +31,8 @@ export function InvitationResponse() {
   }
 
   // Keep local outcome even if invitation moves off the pending list after accept.
-  const alreadyHandled = outcome !== null || (invitation !== null && invitation.status !== 'pending');
+  const alreadyHandled =
+    outcome !== null || (invitation !== null && invitation.status !== 'pending');
 
   if (!invitation && outcome === null) {
     return (

@@ -20,14 +20,14 @@ To jest czytelne. Nawigacja nie obiecuje Map / Targu / Aktywności.
 
 ## Co bolało w copy / UX (naprawione w tej iteracji)
 
-| Było | Dlaczego źle | Jest |
-| --- | --- | --- |
-| „Indziej” na slocie | niepełne PL, nie mówi o lokalizacji | „Poza postacią” / „Na postaci” |
-| Eligible / Cancelled | angielski w PL UI | Dostęp OK / Anulowano… |
-| „Append-only”, „first-slice”, „udawania syncu” | żargon deweloperski | normalny język gracza |
-| „1 gotowych timerów” | zła liczba | odmiana |
-| Timery sklejone w jeden blok tekstu | ciężko czytać reguły PH | meta w osobnych liniach |
-| Alchemia w notatce | PH nie ma alchemii | depo / Medale Konne |
+| Było                                           | Dlaczego źle                        | Jest                           |
+| ---------------------------------------------- | ----------------------------------- | ------------------------------ |
+| „Indziej” na slocie                            | niepełne PL, nie mówi o lokalizacji | „Poza postacią” / „Na postaci” |
+| Eligible / Cancelled                           | angielski w PL UI                   | Dostęp OK / Anulowano…         |
+| „Append-only”, „first-slice”, „udawania syncu” | żargon deweloperski                 | normalny język gracza          |
+| „1 gotowych timerów”                           | zła liczba                          | odmiana                        |
+| Timery sklejone w jeden blok tekstu            | ciężko czytać reguły PH             | meta w osobnych liniach        |
+| Alchemia w notatce                             | PH nie ma alchemii                  | depo / Medale Konne            |
 
 ## Logika gry (tylko to, co w źródłach)
 

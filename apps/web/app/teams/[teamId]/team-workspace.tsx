@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { characterClassLabels } from '../../../src/character-profile';
-import { getSlotReadiness, equipmentSlots } from '../../../src/player-store';
+import { equipmentSlots, getSlotReadiness } from '../../../src/player-store';
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell, Icon } from '../../app-shell';
 import { DiscordEntryScreen } from '../../discord-entry';
@@ -104,9 +104,7 @@ export function TeamWorkspace() {
               <strong>
                 {workspace.members.length} {workspace.members.length === 1 ? 'osoba' : 'osób'}
               </strong>
-              <span>
-                Zapis lokalny · {workspace.updatedLabel}
-              </span>
+              <span>Zapis lokalny · {workspace.updatedLabel}</span>
             </div>
           </div>
           <div className="workspace-member-fan" aria-label="Członkowie przestrzeni">
@@ -206,7 +204,7 @@ export function TeamWorkspace() {
                               : readyTimers < 5
                                 ? `${readyTimers} timery gotowe`
                                 : `${readyTimers} timerów gotowych`
-                            : nextTimer?.remainingLabel ?? 'Brak timerów'}
+                            : (nextTimer?.remainingLabel ?? 'Brak timerów')}
                         </small>
                         <a href={`/teams/${workspace.id}/characters/${character.id}`}>
                           Otwórz kartę EQ

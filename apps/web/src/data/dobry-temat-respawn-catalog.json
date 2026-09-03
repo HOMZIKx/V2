@@ -478,10 +478,7 @@
       "color": "#ff4500"
     },
     "Las Duchów": {
-      "widgetModules": [
-        "support",
-        "spot_reservations"
-      ],
+      "widgetModules": ["support", "spot_reservations"],
       "bosses": [
         {
           "id": "duch_generala",
@@ -565,10 +562,7 @@
       "color": "#8B0000"
     },
     "Czerwony Las": {
-      "widgetModules": [
-        "support",
-        "spot_reservations"
-      ],
+      "widgetModules": ["support", "spot_reservations"],
       "bosses": [],
       "metins": [
         {
@@ -602,11 +596,7 @@
       "color": "#c0392b"
     },
     "Atlantyda V1": {
-      "widgetModules": [
-        "support",
-        "spot_reservations",
-        "timers"
-      ],
+      "widgetModules": ["support", "spot_reservations", "timers"],
       "bosses": [
         {
           "id": "krol_morz",
@@ -629,11 +619,7 @@
       "color": "#00CED1"
     },
     "Atlantyda V2": {
-      "widgetModules": [
-        "support",
-        "spot_reservations",
-        "timers"
-      ],
+      "widgetModules": ["support", "spot_reservations", "timers"],
       "bosses": [
         {
           "id": "boss_1771353163748",
@@ -1428,4 +1414,3 @@
     }
   }
 }
-

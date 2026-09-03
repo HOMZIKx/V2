@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 
-import { usePlayerStore } from '../src/player-store-react';
 import type { AuthStatus } from '../src/player-store';
+import { usePlayerStore } from '../src/player-store-react';
 
 export function DiscordEntryScreen() {
   const { state, startAuth, finishAuth, cancelAuth, returnToEntry, resetStore } = usePlayerStore();
@@ -36,13 +36,17 @@ export function DiscordEntryScreen() {
         <span className="eyebrow">DESTILED</span>
         <h1>Wejdź przez Discord</h1>
         <p>
-          Prywatne narzędzie zespołu na Project Hard. Logujesz się Discordem — bez wpisywania Discord
-          ID jako hasła.
+          Prywatne narzędzie zespołu na Project Hard. Logujesz się Discordem — bez wpisywania
+          Discord ID jako hasła.
         </p>
 
         {state.authStatus === 'unauthenticated' || state.authStatus === 'cancelled' ? (
           <>
-            <button className="primary-button entry-primary" onClick={() => startAuth()} type="button">
+            <button
+              className="primary-button entry-primary"
+              onClick={() => startAuth()}
+              type="button"
+            >
               Kontynuuj z Discord
             </button>
             {state.authStatus === 'cancelled' && (

@@ -23,23 +23,35 @@ const scopes: ReadonlyArray<{ id: ActivityScope; label: string }> = [
 
 function participationLabel(activity: GuildActivity) {
   const confirmedCount = getConfirmedParticipantCount(activity);
-  return activity.capacity ? `${confirmedCount}/${activity.capacity} potwierdzonych` : `${confirmedCount} potwierdzonych`;
+  return activity.capacity
+    ? `${confirmedCount}/${activity.capacity} potwierdzonych`
+    : `${confirmedCount} potwierdzonych`;
 }
 
 export function ActivityCenter({ initialSnapshot }: { initialSnapshot: ActivityCenterSnapshot }) {
-  const [activities, setActivities] = useState<readonly GuildActivity[]>(initialSnapshot.activities);
+  const [activities, setActivities] = useState<readonly GuildActivity[]>(
+    initialSnapshot.activities,
+  );
   const [scope, setScope] = useState<ActivityScope>('all');
-  const [selectedActivityId, setSelectedActivityId] = useState(initialSnapshot.activities[0]?.id ?? '');
+  const [selectedActivityId, setSelectedActivityId] = useState(
+    initialSnapshot.activities[0]?.id ?? '',
+  );
   const [notice, setNotice] = useState('');
-  const snapshot = useMemo(() => ({ ...initialSnapshot, activities }), [activities, initialSnapshot]);
+  const snapshot = useMemo(
+    () => ({ ...initialSnapshot, activities }),
+    [activities, initialSnapshot],
+  );
   const summary = useMemo(() => getActivityCenterSummary(snapshot), [snapshot]);
   const visibleActivities = filterActivities(activities, scope);
-  const selectedActivity = activities.find((activity) => activity.id === selectedActivityId) ?? visibleActivities[0];
+  const selectedActivity =
+    activities.find((activity) => activity.id === selectedActivityId) ?? visibleActivities[0];
 
   const updateRsvp = (activityId: string, status: 'confirmed' | 'tentative' | 'declined') => {
     setActivities((current) =>
       current.map((activity) =>
-        activity.id === activityId ? updateViewerRsvp(activity, status, initialSnapshot.viewerName) : activity,
+        activity.id === activityId
+          ? updateViewerRsvp(activity, status, initialSnapshot.viewerName)
+          : activity,
       ),
     );
     setNotice('Status uczestnictwa został zmieniony w tym widoku demonstracyjnym.');
@@ -64,10 +76,22 @@ export function ActivityCenter({ initialSnapshot }: { initialSnapshot: ActivityC
         </header>
 
         <section aria-label="Podsumowanie aktywności" className="activity-metrics">
-          <article><strong>{summary.upcomingCount}</strong><span>nadchodzące aktywności</span></article>
-          <article><strong>{summary.joinedCount}</strong><span>Twoje zapisy</span></article>
-          <article><strong>{summary.organizedCount}</strong><span>organizowane przez Ciebie</span></article>
-          <article><strong>{summary.unreadNotificationCount}</strong><span>nowe powiadomienia</span></article>
+          <article>
+            <strong>{summary.upcomingCount}</strong>
+            <span>nadchodzące aktywności</span>
+          </article>
+          <article>
+            <strong>{summary.joinedCount}</strong>
+            <span>Twoje zapisy</span>
+          </article>
+          <article>
+            <strong>{summary.organizedCount}</strong>
+            <span>organizowane przez Ciebie</span>
+          </article>
+          <article>
+            <strong>{summary.unreadNotificationCount}</strong>
+            <span>nowe powiadomienia</span>
+          </article>
         </section>
 
         <div className="activity-center-grid">
@@ -102,20 +126,31 @@ export function ActivityCenter({ initialSnapshot }: { initialSnapshot: ActivityC
                     onClick={() => setSelectedActivityId(activity.id)}
                     type="button"
                   >
-                    <span className="activity-list-icon"><Icon name="activity" size={17} /></span>
+                    <span className="activity-list-icon">
+                      <Icon name="activity" size={17} />
+                    </span>
                     <span className="activity-list-copy">
-                      <small>{activity.typeName} · {activity.serverName}</small>
+                      <small>
+                        {activity.typeName} · {activity.serverName}
+                      </small>
                       <strong>{activity.title}</strong>
-                      <em>{activity.startsLabel} · {participationLabel(activity)}</em>
+                      <em>
+                        {activity.startsLabel} · {participationLabel(activity)}
+                      </em>
                     </span>
                     <span className={`activity-rsvp-mark is-${currentRsvp ?? 'none'}`}>
-                      {currentRsvp ? initialSnapshot.statuses.find((status) => status.id === currentRsvp)?.label : 'Brak RSVP'}
+                      {currentRsvp
+                        ? initialSnapshot.statuses.find((status) => status.id === currentRsvp)
+                            ?.label
+                        : 'Brak RSVP'}
                     </span>
                     <Icon name="chevron" size={15} />
                   </button>
                 );
               })}
-              {visibleActivities.length === 0 && <div className="activity-empty">Brak aktywności w tym zakresie.</div>}
+              {visibleActivities.length === 0 && (
+                <div className="activity-empty">Brak aktywności w tym zakresie.</div>
+              )}
             </div>
           </section>
 
@@ -127,15 +162,36 @@ export function ActivityCenter({ initialSnapshot }: { initialSnapshot: ActivityC
                 <p>{selectedActivity.description}</p>
               </header>
               <dl className="activity-detail-meta">
-                <div><dt>Rodzaj</dt><dd>{selectedActivity.typeName}</dd></div>
-                <div><dt>Termin</dt><dd>{selectedActivity.startsLabel}{selectedActivity.durationLabel ? ` · ${selectedActivity.durationLabel}` : ''}</dd></div>
-                <div><dt>Publikacja</dt><dd>{selectedActivity.channelName}</dd></div>
-                <div><dt>Organizator</dt><dd>{selectedActivity.organizer}{selectedActivity.coOrganizer ? ` · współorganizator: ${selectedActivity.coOrganizer}` : ''}</dd></div>
+                <div>
+                  <dt>Rodzaj</dt>
+                  <dd>{selectedActivity.typeName}</dd>
+                </div>
+                <div>
+                  <dt>Termin</dt>
+                  <dd>
+                    {selectedActivity.startsLabel}
+                    {selectedActivity.durationLabel ? ` · ${selectedActivity.durationLabel}` : ''}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Publikacja</dt>
+                  <dd>{selectedActivity.channelName}</dd>
+                </div>
+                <div>
+                  <dt>Organizator</dt>
+                  <dd>
+                    {selectedActivity.organizer}
+                    {selectedActivity.coOrganizer
+                      ? ` · współorganizator: ${selectedActivity.coOrganizer}`
+                      : ''}
+                  </dd>
+                </div>
               </dl>
               {selectedActivity.requiresReconfirmation && (
                 <div className="activity-reconfirmation">
                   <Icon name="clock" size={15} />
-                  Termin został zmieniony — potwierdź udział ponownie przed {selectedActivity.signupClosesLabel}.
+                  Termin został zmieniony — potwierdź udział ponownie przed{' '}
+                  {selectedActivity.signupClosesLabel}.
                 </div>
               )}
               <div className="activity-rsvp-actions" aria-label="Twój status uczestnictwa">
@@ -155,35 +211,62 @@ export function ActivityCenter({ initialSnapshot }: { initialSnapshot: ActivityC
                 </div>
               </div>
               <div className="activity-participants">
-                <div><span>Uczestnicy</span><strong>{participationLabel(selectedActivity)}</strong></div>
+                <div>
+                  <span>Uczestnicy</span>
+                  <strong>{participationLabel(selectedActivity)}</strong>
+                </div>
                 {selectedActivity.participants.map((participant) => (
                   <p key={participant.id}>
                     <span className={`activity-person-dot is-${participant.status}`} />
                     {participant.displayName}
-                    <small>{initialSnapshot.statuses.find((status) => status.id === participant.status)?.label}</small>
+                    <small>
+                      {
+                        initialSnapshot.statuses.find((status) => status.id === participant.status)
+                          ?.label
+                      }
+                    </small>
                   </p>
                 ))}
-                {selectedActivity.waitlistCount > 0 && <p className="activity-waitlist">Lista rezerwowa: {selectedActivity.waitlistCount}</p>}
+                {selectedActivity.waitlistCount > 0 && (
+                  <p className="activity-waitlist">
+                    Lista rezerwowa: {selectedActivity.waitlistCount}
+                  </p>
+                )}
               </div>
             </aside>
           )}
 
           <aside className="panel activity-notifications-panel">
-            <header className="panel-header"><div><span className="section-kicker">Skrzynka panelu</span><h2>Powiadomienia</h2></div><Icon name="bell" size={17} /></header>
+            <header className="panel-header">
+              <div>
+                <span className="section-kicker">Skrzynka panelu</span>
+                <h2>Powiadomienia</h2>
+              </div>
+              <Icon name="bell" size={17} />
+            </header>
             <div className="activity-notification-list">
               {initialSnapshot.notifications.map((notification) => (
                 <article key={notification.id}>
-                  <span><Icon name="bell" size={15} /></span>
-                  <div><strong>{notification.title}</strong><p>{notification.detail}</p><small>{notification.timeLabel}</small></div>
+                  <span>
+                    <Icon name="bell" size={15} />
+                  </span>
+                  <div>
+                    <strong>{notification.title}</strong>
+                    <p>{notification.detail}</p>
+                    <small>{notification.timeLabel}</small>
+                  </div>
                   {notification.unread && <i aria-label="Nieprzeczytane" />}
                 </article>
               ))}
             </div>
           </aside>
         </div>
-        <p aria-live="polite" className="sr-only">{notice}</p>
+        <p aria-live="polite" className="sr-only">
+          {notice}
+        </p>
         <p className="mock-notice">
-          RSVP działa lokalnie w demonstracji. Trwały zapis, limity, lista rezerwowa i powiadomienia Discord wymagają wspólnego API oraz audytu zmian.
+          RSVP działa lokalnie w demonstracji. Trwały zapis, limity, lista rezerwowa i powiadomienia
+          Discord wymagają wspólnego API oraz audytu zmian.
         </p>
       </main>
     </AppShell>

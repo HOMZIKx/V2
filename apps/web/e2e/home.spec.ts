@@ -40,10 +40,28 @@ async function seedAuthenticatedDemo(page: Page) {
           revision: 19,
           updatedLabel: 'przed chwilą',
           members: [
-            { id: 'mateusz', displayName: 'Mateusz', initials: 'M', role: 'owner', state: 'unknown' },
-            { id: 'xiaohu', displayName: 'XiaoHu', initials: 'X', role: 'member', state: 'unknown' },
+            {
+              id: 'mateusz',
+              displayName: 'Mateusz',
+              initials: 'M',
+              role: 'owner',
+              state: 'unknown',
+            },
+            {
+              id: 'xiaohu',
+              displayName: 'XiaoHu',
+              initials: 'X',
+              role: 'member',
+              state: 'unknown',
+            },
             { id: 'wicek', displayName: 'Wicek', initials: 'W', role: 'member', state: 'unknown' },
-            { id: 'aalpsik', displayName: 'Aalpsik', initials: 'A', role: 'member', state: 'unknown' },
+            {
+              id: 'aalpsik',
+              displayName: 'Aalpsik',
+              initials: 'A',
+              role: 'member',
+              state: 'unknown',
+            },
           ],
           characters: [
             {
@@ -335,13 +353,18 @@ test('opens seeded team workspace from the member dashboard', async ({ page }) =
 test('opens the separate character module from global navigation', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/');
-  await page.getByRole('navigation', { name: 'Główna nawigacja' }).getByRole('link', { name: 'Postacie' }).click();
+  await page
+    .getByRole('navigation', { name: 'Główna nawigacja' })
+    .getByRole('link', { name: 'Postacie' })
+    .click();
   await expect(page).toHaveURL(/\/characters$/);
   await expect(page.getByRole('heading', { name: 'Postacie', exact: true })).toBeVisible();
   await expect(
-    page.getByText('Lista postaci z Twoich przestrzeni', {
-      exact: false,
-    }).first(),
+    page
+      .getByText('Lista postaci z Twoich przestrzeni', {
+        exact: false,
+      })
+      .first(),
   ).toBeVisible();
 });
 
@@ -442,7 +465,9 @@ test('marks a ready horse timer done and clears attention', async ({ page }) => 
   await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();
   await expect(page.getByText('Jazda konna')).toBeVisible();
   await page.getByRole('button', { name: 'Oznacz wykonane' }).click();
-  await expect(page.locator('.entry-status').filter({ hasText: 'Oznaczono: Jazda konna' })).toBeVisible();
+  await expect(
+    page.locator('.entry-status').filter({ hasText: 'Oznaczono: Jazda konna' }),
+  ).toBeVisible();
   await page.goto('/');
   await expect(page.getByText('Brak gotowych timerów do oddania.')).toBeVisible();
 });

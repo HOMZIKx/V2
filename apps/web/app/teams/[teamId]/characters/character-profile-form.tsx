@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import {
   characterClassLabels,
@@ -29,7 +29,7 @@ export function CharacterProfileForm({
   const workspace = state.workspaces.find((entry) => entry.id === teamId) ?? null;
   const existing =
     mode === 'edit' && characterId
-      ? workspace?.characters.find((character) => character.id === characterId) ?? null
+      ? (workspace?.characters.find((character) => character.id === characterId) ?? null)
       : null;
 
   const [draft, setDraft] = useState<CharacterProfileDraft>({
@@ -178,7 +178,9 @@ export function CharacterProfileForm({
             <span className="save-result-icon">
               <Icon name="check" size={26} />
             </span>
-            <span className="eyebrow">{mode === 'edit' ? 'Profil zaktualizowany' : 'Postać utworzona'}</span>
+            <span className="eyebrow">
+              {mode === 'edit' ? 'Profil zaktualizowany' : 'Postać utworzona'}
+            </span>
             <h1>{draft.name.trim()}</h1>
             <p>
               {mode === 'edit'
@@ -323,7 +325,9 @@ export function CharacterProfileForm({
               {renderPath ? (
                 <img alt="" src={renderPath} />
               ) : (
-                <span className="missing-render">Brak zatwierdzonego renderu dla tej kombinacji</span>
+                <span className="missing-render">
+                  Brak zatwierdzonego renderu dla tej kombinacji
+                </span>
               )}
             </div>
             <h2>{draft.name.trim() || 'Nowa postać'}</h2>

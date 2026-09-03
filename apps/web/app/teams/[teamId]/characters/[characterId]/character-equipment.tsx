@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
 import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
 
 import { characterClassLabels } from '../../../../../src/character-profile';
+import {
+  equipmentCatalogItems,
+  equipmentSlotForCategory,
+  findGameItemByCardName,
+} from '../../../../../src/item-catalog';
 import {
   equipmentSlots,
   getSlotReadiness,
@@ -12,11 +17,6 @@ import {
   type SetReadiness,
 } from '../../../../../src/player-store';
 import { usePlayerStore } from '../../../../../src/player-store-react';
-import {
-  equipmentCatalogItems,
-  equipmentSlotForCategory,
-  findGameItemByCardName,
-} from '../../../../../src/item-catalog';
 import { AppShell, Icon } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
 
@@ -44,8 +44,7 @@ export function CharacterEquipment() {
   } = usePlayerStore();
 
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
-  const character =
-    workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
+  const character = workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
 
   const [activeSetId, setActiveSetId] = useState<string>('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -169,7 +168,8 @@ export function CharacterEquipment() {
             <h1>{character.name}</h1>
             <p>
               {characterClassLabels[character.characterClass]}
-              {character.level ? ` · poziom ${character.level}` : ' · poziom nieustalony'} · prowadzi{' '}
+              {character.level ? ` · poziom ${character.level}` : ' · poziom nieustalony'} ·
+              prowadzi{' '}
               <strong>
                 {workspace.members.find((member) => member.id === character.responsibleMemberId)
                   ?.displayName ?? '—'}
@@ -255,7 +255,11 @@ export function CharacterEquipment() {
                               onDrop={(event) => handleDrop(event, slot)}
                               type="button"
                             >
-                              {item ? <img alt="" src={item.iconPath} /> : <span>{slotLabels[slot]}</span>}
+                              {item ? (
+                                <img alt="" src={item.iconPath} />
+                              ) : (
+                                <span>{slotLabels[slot]}</span>
+                              )}
                               <small>
                                 {slotLabels[slot]} · {readinessLabels[readiness]}
                               </small>

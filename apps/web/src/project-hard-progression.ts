@@ -242,10 +242,7 @@ export function biologistQuestById(id: string): BiologistQuestDef | null {
   return projectHardBiologistQuests.find((quest) => quest.id === id) ?? null;
 }
 
-export function biologistProgressLabel(
-  quest: BiologistQuestDef,
-  delivered: number,
-): string {
+export function biologistProgressLabel(quest: BiologistQuestDef, delivered: number): string {
   return `${quest.itemName} · ${delivered}/${quest.deliveriesRequired}`;
 }
 

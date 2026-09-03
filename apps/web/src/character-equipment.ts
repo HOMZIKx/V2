@@ -271,18 +271,79 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
  * Tymczasowy adapter danych widoku. Docelowo rekord pochodzi z API zespołu;
  * już teraz każda udostępniona postać ma własną, pełną kartę, zamiast martwego linku.
  */
-export function getCharacterEquipmentFixture(characterId: string): CharacterEquipmentSnapshot | null {
-  const variants: Readonly<Record<string, Pick<CharacterEquipmentSnapshot, 'characterName' | 'classLabel' | 'level' | 'imagePath' | 'responsibleMember' | 'timers'>>> = {
+export function getCharacterEquipmentFixture(
+  characterId: string,
+): CharacterEquipmentSnapshot | null {
+  const variants: Readonly<
+    Record<
+      string,
+      Pick<
+        CharacterEquipmentSnapshot,
+        'characterName' | 'classLabel' | 'level' | 'imagePath' | 'responsibleMember' | 'timers'
+      >
+    >
+  > = {
     nerwnicht: {
-      characterName: 'NerwNicht', classLabel: 'Sura', level: 75, imagePath: '/game/classes/sura-male.png', responsibleMember: 'Mateusz', timers: characterEquipmentFixture.timers,
+      characterName: 'NerwNicht',
+      classLabel: 'Sura',
+      level: 75,
+      imagePath: '/game/classes/sura-male.png',
+      responsibleMember: 'Mateusz',
+      timers: characterEquipmentFixture.timers,
     },
     aalpsik: {
-      characterName: 'Aalpsik', classLabel: 'Ninja', level: 55, imagePath: '/game/classes/ninja-female.png', responsibleMember: 'Aalpsik',
-      timers: [{ id: 'horse-medal', label: 'Jazda konna', detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h', readyLabel: 'gotowe teraz', status: 'ready', progressPercent: 100, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Ostrze Duszy', readyLabel: 'za 42 min', status: 'running', progressPercent: 58, discordReminder: true }],
+      characterName: 'Aalpsik',
+      classLabel: 'Ninja',
+      level: 55,
+      imagePath: '/game/classes/ninja-female.png',
+      responsibleMember: 'Aalpsik',
+      timers: [
+        {
+          id: 'horse-medal',
+          label: 'Jazda konna',
+          detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h',
+          readyLabel: 'gotowe teraz',
+          status: 'ready',
+          progressPercent: 100,
+          discordReminder: true,
+        },
+        {
+          id: 'skill-book',
+          label: 'Księga umiejętności',
+          detail: 'Ostrze Duszy',
+          readyLabel: 'za 42 min',
+          status: 'running',
+          progressPercent: 58,
+          discordReminder: true,
+        },
+      ],
     },
     kimmizic: {
-      characterName: 'Kimmizic', classLabel: 'Szaman', level: 61, imagePath: '/game/classes/shaman-male.png', responsibleMember: 'Wicek',
-      timers: [{ id: 'biologist', label: 'Biolog', detail: 'Pamiątka Po Demonie · 6/15', readyLabel: 'jutro 08:10', status: 'running', progressPercent: 41, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Błogosławieństwo', readyLabel: 'za 1 h 18 min', status: 'running', progressPercent: 20, discordReminder: false }],
+      characterName: 'Kimmizic',
+      classLabel: 'Szaman',
+      level: 61,
+      imagePath: '/game/classes/shaman-male.png',
+      responsibleMember: 'Wicek',
+      timers: [
+        {
+          id: 'biologist',
+          label: 'Biolog',
+          detail: 'Pamiątka Po Demonie · 6/15',
+          readyLabel: 'jutro 08:10',
+          status: 'running',
+          progressPercent: 41,
+          discordReminder: true,
+        },
+        {
+          id: 'skill-book',
+          label: 'Księga umiejętności',
+          detail: 'Błogosławieństwo',
+          readyLabel: 'za 1 h 18 min',
+          status: 'running',
+          progressPercent: 20,
+          discordReminder: false,
+        },
+      ],
     },
   };
   const variant = variants[characterId];

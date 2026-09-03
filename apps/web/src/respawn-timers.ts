@@ -21,7 +21,10 @@ export interface RespawnMap {
   readonly metins: readonly RespawnEntity[];
 }
 
-export interface RespawnLocation { readonly x: number; readonly y: number; }
+export interface RespawnLocation {
+  readonly x: number;
+  readonly y: number;
+}
 
 export interface RespawnRecord {
   readonly key: string;
@@ -57,7 +60,12 @@ export const respawnMaps: readonly RespawnMap[] = Object.entries(rawConfig)
     ...(entry.color ? { color: entry.color } : {}),
   }));
 
-export function respawnKey(kind: RespawnKind, mapKey: string, channel: number, entityId: string): string {
+export function respawnKey(
+  kind: RespawnKind,
+  mapKey: string,
+  channel: number,
+  entityId: string,
+): string {
   return `${kind}-${mapKey}-ch${channel}-${entityId}`;
 }
 
@@ -86,24 +94,73 @@ function formatDuration(milliseconds: number): string {
 /** Mirrors the old Wyprawa lifecycle: stable timer, respawn window, 5-minute map marker, then reset. */
 export function getRespawnDisplay(record: RespawnRecord, now: number): RespawnDisplay {
   if (record.confirmedAt === null) {
-    return { phase: 'no_data', label: 'Brak danych', clock: '--:--', minAt: null, windowEndsAt: null, clearsAt: null };
+    return {
+      phase: 'no_data',
+      label: 'Brak danych',
+      clock: '--:--',
+      minAt: null,
+      windowEndsAt: null,
+      clearsAt: null,
+    };
   }
 
   const minAt = record.confirmedAt + record.entity.respawnTimeMin * MINUTE;
   const configuredMaxAt = record.confirmedAt + record.entity.respawnTimeMax * MINUTE;
-  const configuredWindow = Math.max(0, record.entity.respawnTimeMax - record.entity.respawnTimeMin) * MINUTE;
-  const explicitWindow = record.entity.hasWindow ? Math.max(0, record.entity.windowTime ?? 0) * MINUTE : 0;
+  const configuredWindow =
+    Math.max(0, record.entity.respawnTimeMax - record.entity.respawnTimeMin) * MINUTE;
+  const explicitWindow = record.entity.hasWindow
+    ? Math.max(0, record.entity.windowTime ?? 0) * MINUTE
+    : 0;
   const metinGrace = record.kind === 'metin' && configuredWindow === 0 ? 5 * MINUTE : 0;
   const windowEndsAt = Math.max(configuredMaxAt, minAt + explicitWindow, minAt + metinGrace);
   const clearsAt = windowEndsAt + MAP_MARKER_LIFETIME;
 
-  if (now < minAt) return { phase: 'countdown', label: 'Odliczanie', clock: formatDuration(configuredMaxAt - now), minAt, windowEndsAt, clearsAt };
-  if (now <= windowEndsAt) return { phase: 'window', label: 'Okno respawnu', clock: now < configuredMaxAt ? formatDuration(configuredMaxAt - now) : '00:00', minAt, windowEndsAt, clearsAt };
-  if (now <= clearsAt) return { phase: 'on_map', label: 'Na mapie', clock: 'NA MAPIE', minAt, windowEndsAt, clearsAt };
-  return { phase: 'expired', label: 'Nieaktualne', clock: 'PO OKNIE', minAt, windowEndsAt, clearsAt };
+  if (now < minAt)
+    return {
+      phase: 'countdown',
+      label: 'Odliczanie',
+      clock: formatDuration(configuredMaxAt - now),
+      minAt,
+      windowEndsAt,
+      clearsAt,
+    };
+  if (now <= windowEndsAt)
+    return {
+      phase: 'window',
+      label: 'Okno respawnu',
+      clock: now < configuredMaxAt ? formatDuration(configuredMaxAt - now) : '00:00',
+      minAt,
+      windowEndsAt,
+      clearsAt,
+    };
+  if (now <= clearsAt)
+    return { phase: 'on_map', label: 'Na mapie', clock: 'NA MAPIE', minAt, windowEndsAt, clearsAt };
+  return {
+    phase: 'expired',
+    label: 'Nieaktualne',
+    clock: 'PO OKNIE',
+    minAt,
+    windowEndsAt,
+    clearsAt,
+  };
 }
 
-export function getRespawnPhase(record: RespawnRecord, now: number): RespawnPhase { return getRespawnDisplay(record, now).phase; }
-export function phaseLabel(phase: RespawnPhase): string { return { no_data: 'Brak danych', countdown: 'Odliczanie', window: 'Okno respawnu', on_map: 'Na mapie', expired: 'Nieaktualne' }[phase]; }
-export function getRespawnClock(record: RespawnRecord, now: number): string { return getRespawnDisplay(record, now).clock; }
-export function canConfirmRespawn(record: RespawnRecord, now: number): boolean { const phase = getRespawnPhase(record, now); return phase === 'no_data' || phase === 'expired'; }
+export function getRespawnPhase(record: RespawnRecord, now: number): RespawnPhase {
+  return getRespawnDisplay(record, now).phase;
+}
+export function phaseLabel(phase: RespawnPhase): string {
+  return {
+    no_data: 'Brak danych',
+    countdown: 'Odliczanie',
+    window: 'Okno respawnu',
+    on_map: 'Na mapie',
+    expired: 'Nieaktualne',
+  }[phase];
+}
+export function getRespawnClock(record: RespawnRecord, now: number): string {
+  return getRespawnDisplay(record, now).clock;
+}
+export function canConfirmRespawn(record: RespawnRecord, now: number): boolean {
+  const phase = getRespawnPhase(record, now);
+  return phase === 'no_data' || phase === 'expired';
+}

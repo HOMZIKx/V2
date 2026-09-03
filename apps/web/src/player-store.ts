@@ -5,18 +5,19 @@
  */
 
 import {
-  characterClassLabels,
-  getApprovedCharacterRender,
-  type CharacterClass,
-  type CharacterGender,
-} from './character-profile';
-import {
   equipmentSlots,
   slotLabels,
   type EquipmentAssignments,
   type EquipmentSlot,
 } from './character-equipment';
+import {
+  characterClassLabels,
+  getApprovedCharacterRender,
+  type CharacterClass,
+  type CharacterGender,
+} from './character-profile';
 import { findGameItemByCardName, resolveItemIconPath } from './item-catalog';
+import type { CatalogLayer } from './member-dashboard';
 import {
   biologistProgressLabel,
   biologistQuestById,
@@ -24,7 +25,6 @@ import {
   nextMidnightLabel,
   projectHardHorseRules,
 } from './project-hard-progression';
-import type { CatalogLayer } from './member-dashboard';
 import type { TeamHistoryResource } from './team-history';
 
 export type { CharacterClass, CharacterGender, EquipmentSlot };
@@ -47,12 +47,7 @@ export type TaskStatus = 'ready' | 'upcoming' | 'done' | 'snoozed' | 'unavailabl
 export type TaskOutcome = 'done' | 'snoozed' | 'unavailable';
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
 export type SetReadiness =
-  | 'ready'
-  | 'available_elsewhere'
-  | 'missing'
-  | 'stale'
-  | 'conflict'
-  | 'planned';
+  'ready' | 'available_elsewhere' | 'missing' | 'stale' | 'conflict' | 'planned';
 
 export interface PlayerIdentity {
   readonly id: string;
@@ -254,7 +249,10 @@ export function createInitialPlayerStore(): PlayerStoreState {
 function historyEntry(
   teamId: string,
   actor: PlayerIdentity,
-  partial: Omit<HistoryEntry, 'id' | 'teamId' | 'actorId' | 'actorName' | 'actorInitials' | 'occurredAtLabel' | 'revision'> & {
+  partial: Omit<
+    HistoryEntry,
+    'id' | 'teamId' | 'actorId' | 'actorName' | 'actorInitials' | 'occurredAtLabel' | 'revision'
+  > & {
     readonly revision: number;
   },
 ): HistoryEntry {
@@ -440,14 +438,30 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       revision: 7,
       archived: false,
       sets: [
-        { id: 'war', name: 'Wojna', description: 'Układ pod walkę z graczami', assignments: warAssignments },
+        {
+          id: 'war',
+          name: 'Wojna',
+          description: 'Układ pod walkę z graczami',
+          assignments: warAssignments,
+        },
         {
           id: 'dungeon',
           name: 'Dungeon',
           description: 'Roboczy układ pod PvM',
-          assignments: { ...emptyAssignments(), weapon: 'short-knife', armor: 'ivory-suit', necklace: 'wooden-necklace', shoes: 'leather-boots' },
+          assignments: {
+            ...emptyAssignments(),
+            weapon: 'short-knife',
+            armor: 'ivory-suit',
+            necklace: 'wooden-necklace',
+            shoes: 'leather-boots',
+          },
         },
-        { id: 'empty', name: 'Nowy set', description: 'Pusty szablon do skopiowania', assignments: emptyAssignments() },
+        {
+          id: 'empty',
+          name: 'Nowy set',
+          description: 'Pusty szablon do skopiowania',
+          assignments: emptyAssignments(),
+        },
       ],
     },
     {
@@ -494,7 +508,12 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
           id: 'support',
           name: 'Wsparcie',
           description: 'Układ wsparcia',
-          assignments: { ...emptyAssignments(), necklace: 'jade-necklace', bracelet: 'wooden-bracelet', shoes: 'leather-boots' },
+          assignments: {
+            ...emptyAssignments(),
+            necklace: 'jade-necklace',
+            bracelet: 'wooden-bracelet',
+            shoes: 'leather-boots',
+          },
         },
       ],
     },
@@ -727,7 +746,10 @@ export function seedDemoData(
     lastOpenedWorkspaceId: demo.id,
     lastOpenedCharacterId: 'nerwnicht',
     pendingIncomingInvitations: replace
-      ? [demoInvite, ...state.pendingIncomingInvitations.filter((entry) => entry.id !== demoInvite.id)]
+      ? [
+          demoInvite,
+          ...state.pendingIncomingInvitations.filter((entry) => entry.id !== demoInvite.id),
+        ]
       : pendingIncomingInvitations,
   };
 }
@@ -746,8 +768,7 @@ export function createOutgoingInvitation(
   if (!workspace) return state;
 
   const existing = workspace.invitations.find(
-    (entry) =>
-      entry.recipientDiscordId === recipient.discordUserId && entry.status === 'pending',
+    (entry) => entry.recipientDiscordId === recipient.discordUserId && entry.status === 'pending',
   );
   if (existing) return state;
 
@@ -1023,7 +1044,11 @@ export function applyTaskOutcome(
             ...task,
             status: outcome,
             dueLabel:
-              outcome === 'done' ? 'potwierdzone' : outcome === 'snoozed' ? 'odłożone' : 'brak możliwości',
+              outcome === 'done'
+                ? 'potwierdzone'
+                : outcome === 'snoozed'
+                  ? 'odłożone'
+                  : 'brak możliwości',
           }
         : task,
     );
@@ -1037,7 +1062,12 @@ export function applyTaskOutcome(
             historyEntry(workspace.id, viewer, {
               characterId: task.characterId,
               characterName: task.characterName,
-              resource: task.source === 'timer' ? 'timer' : task.source === 'equipment' ? 'equipment' : 'note',
+              resource:
+                task.source === 'timer'
+                  ? 'timer'
+                  : task.source === 'equipment'
+                    ? 'equipment'
+                    : 'note',
               title: `Akcja: ${task.title}`,
               detail:
                 outcome === 'done' ? 'Zrobione' : outcome === 'snoozed' ? 'Później' : 'Nie mogę',
@@ -1077,7 +1107,7 @@ export function addWorkspaceNote(
         historyEntry(workspace.id, viewer, {
           characterId,
           characterName: characterId
-            ? workspace.characters.find((character) => character.id === characterId)?.name ?? null
+            ? (workspace.characters.find((character) => character.id === characterId)?.name ?? null)
             : null,
           resource: 'note',
           title: characterId ? 'Zapisano notatkę postaci' : 'Zapisano notatkę przestrzeni',
@@ -1216,7 +1246,11 @@ export function markTimerDone(
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const existing = workspace.timers.find((timer) => timer.id === timerId);
     if (!existing) return workspace;
-    if (existing.operationId === operationId && existing.status === 'running' && existing.progressPercent === 0) {
+    if (
+      existing.operationId === operationId &&
+      existing.status === 'running' &&
+      existing.progressPercent === 0
+    ) {
       return workspace;
     }
     const timers = workspace.timers.map((timer) =>
@@ -1273,9 +1307,7 @@ export function createEquipmentItem(
       name,
       iconPath: resolveItemIconPath(name),
       category: input.category,
-      levelLabel: catalogHit
-        ? `katalog: ${catalogHit.category}`
-        : 'własny wpis zespołu',
+      levelLabel: catalogHit ? `katalog: ${catalogHit.category}` : 'własny wpis zespołu',
       bonuses: input.bonuses,
       catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
       lastConfirmedLocation: null,
@@ -1407,10 +1439,7 @@ export function acceptIncomingInvitation(
   return state;
 }
 
-export function getWorkspace(
-  state: PlayerStoreState,
-  workspaceId: string,
-): WorkspaceRecord | null {
+export function getWorkspace(state: PlayerStoreState, workspaceId: string): WorkspaceRecord | null {
   return state.workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
 }
 
@@ -1478,4 +1507,4 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
   }
 }
 
-export { characterClassLabels, slotLabels, equipmentSlots };
+export { characterClassLabels, equipmentSlots, slotLabels };

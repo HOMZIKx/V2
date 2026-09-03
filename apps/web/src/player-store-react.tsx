@@ -34,11 +34,11 @@ import {
   touchLastOpened,
   updateCharacter,
   type AuthStatus,
-  type PlayerStoreState,
-  type TaskOutcome,
-  type EquipmentSlot,
   type CharacterClass,
   type CharacterGender,
+  type EquipmentSlot,
+  type PlayerStoreState,
+  type TaskOutcome,
 } from './player-store';
 
 interface PlayerStoreApi {
@@ -198,9 +198,7 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         apply((current) => addWorkspaceNote(current, workspaceId, body, characterId));
       },
       assignItem: (workspaceId, characterId, setId, itemId, slot) => {
-        apply((current) =>
-          assignItemToSet(current, workspaceId, characterId, setId, itemId, slot),
-        );
+        apply((current) => assignItemToSet(current, workspaceId, characterId, setId, itemId, slot));
       },
       removeItem: (workspaceId, characterId, setId, slot) => {
         apply((current) => removeItemFromSet(current, workspaceId, characterId, setId, slot));

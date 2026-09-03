@@ -51,9 +51,8 @@ export function MemberDashboard() {
     (workspace) => workspace.id === state.lastOpenedWorkspaceId,
   );
   const lastCharacter =
-    lastWorkspace?.characters.find(
-      (character) => character.id === state.lastOpenedCharacterId,
-    ) ?? null;
+    lastWorkspace?.characters.find((character) => character.id === state.lastOpenedCharacterId) ??
+    null;
   const isFirstUse = state.workspaces.length === 0;
   const pendingInvites = state.pendingIncomingInvitations.filter(
     (entry) => entry.status === 'pending',
@@ -124,8 +123,7 @@ export function MemberDashboard() {
 
         {createdId ? (
           <p className="entry-status" role="status">
-            Utworzono przestrzeń.{' '}
-            <a href={`/teams/${createdId}`}>Otwórz i dodaj pierwszą postać</a>
+            Utworzono przestrzeń. <a href={`/teams/${createdId}`}>Otwórz i dodaj pierwszą postać</a>
           </p>
         ) : null}
         {sessionNotice ? (
@@ -232,8 +230,10 @@ export function MemberDashboard() {
                   <p>
                     <strong>{lastWorkspace.name}</strong>
                     <small>
-                      {lastWorkspace.members.length === 1 ? 'Moja przestrzeń' : 'Przestrzeń zespołu'} ·{' '}
-                      {lastWorkspace.characters.length} postaci
+                      {lastWorkspace.members.length === 1
+                        ? 'Moja przestrzeń'
+                        : 'Przestrzeń zespołu'}{' '}
+                      · {lastWorkspace.characters.length} postaci
                     </small>
                   </p>
                   {lastCharacter ? (
@@ -317,8 +317,8 @@ export function MemberDashboard() {
         )}
 
         <div className="mock-notice">
-          Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą później.
-          Mapy, Targ i Aktywność są celowo schowane.{' '}
+          Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą
+          później. Mapy, Targ i Aktywność są celowo schowane.{' '}
           <button className="text-button" onClick={onResetSession} type="button">
             Wyczyść sesję lokalną
           </button>
