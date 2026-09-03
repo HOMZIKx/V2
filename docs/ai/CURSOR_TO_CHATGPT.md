@@ -24,6 +24,15 @@ naprawione dodawanie kolejnych setów EQ. Branch `cursor/destiled-cursor-handoff
 4. Minimapy lochów małp z lokalnego dumpa (owner asset)
 5. Live Discord OAuth / eligibility (obecnie mock entry)
 
+## Deploy / przegląd
+
+- Feature branch + PR #48: `cursor/destiled-cursor-handoff-dfe5` @ `033e473`
+- **Preview Zeabur branch** `preview/destiled-web` zaktualizowany do tego samego tipu
+  (push `c73de3b..033e473`) — to odpala rebuild serwisu web-preview wg
+  `docs/operations/ZEABUR_PREVIEW.md`
+- Agent nie ma panelu Zeabur; status buildu sprawdź w dashboardzie projektu
+  `DESTILED Preview` / serwis `web-preview` + `/health`
+
 ## Marker
 
 `READY_FOR_OWNER_REVIEW`
