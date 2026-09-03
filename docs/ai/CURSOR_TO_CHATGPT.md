@@ -14,6 +14,8 @@ ogarnięte w tym torze.
 - Create character: unikalne ID + startowe timery PH
 - Aktywny set zapisuje się; notatka na karcie EQ; puste sloty ≠ „Brak”
 - Rozróżnienie: **Timery** (metiny) vs **Postęp Projekt Hard** (Biolog/jazda/księgi)
+- **Postacie:** jedna seria Desert Warrior (8/8) — spójne pozy i styl (DEC-065)
+- **Cykle PH na postaci:** księga (północ), jazda 23 h, biolog od 30 (północ)
 
 ## Nadal open
 

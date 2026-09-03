@@ -244,6 +244,19 @@ export function nextMidnightIso(now = new Date()): string {
   return next.toISOString();
 }
 
+/** Horse upgrades unlock at character level 20 (Stableman). */
+export const projectHardHorseUnlockLevel = 20;
+
+/** Biologist quests start at level 30. */
+export const projectHardBiologistUnlockLevel = 30;
+
+export function progressionKindsForLevel(level: number | null): readonly ProgressionKind[] {
+  const kinds: ProgressionKind[] = ['skill_book'];
+  if (level === null || level >= projectHardHorseUnlockLevel) kinds.push('horse');
+  if (level !== null && level >= projectHardBiologistUnlockLevel) kinds.push('biologist');
+  return kinds;
+}
+
 export function biologistQuestById(id: string): BiologistQuestDef | null {
   return projectHardBiologistQuests.find((quest) => quest.id === id) ?? null;
 }

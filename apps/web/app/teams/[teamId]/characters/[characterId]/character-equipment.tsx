@@ -46,6 +46,7 @@ export function CharacterEquipment() {
     setActiveSet,
     confirmLocation,
     completeTimer,
+    ensureProgressionTimers,
     createItem,
     writesEnabled,
   } = usePlayerStore();
@@ -69,7 +70,10 @@ export function CharacterEquipment() {
     if (!workspace || !character) return;
     openWorkspace(workspace.id, character.id);
     setActiveSetId(character.activeSetId || character.sets[0]?.id || '');
-  }, [workspace, character, openWorkspace]);
+    if (writesEnabled) {
+      ensureProgressionTimers(workspace.id, character.id);
+    }
+  }, [workspace, character, openWorkspace, writesEnabled, ensureProgressionTimers]);
 
   const filteredCatalog = useMemo(() => {
     if (!workspace || !character) return [];
@@ -352,7 +356,8 @@ export function CharacterEquipment() {
                   <div className="character-timer-list timer-list">
                     {timers.length === 0 ? (
                       <p className="empty-copy">
-                        Brak timerów Biolog / jazda / księgi dla tej postaci.
+                        Brak cykli PH. Otwórz kartę ponownie albo wczytaj demo — dopinamy Biolog /
+                        jazdę / księgi według poziomu.
                       </p>
                     ) : (
                       timers.map((timer) => (

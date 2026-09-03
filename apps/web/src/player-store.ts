@@ -36,6 +36,7 @@ import {
   inferProgressionKind,
   nextMidnightIso,
   nextMidnightLabel,
+  progressionKindsForLevel,
   projectHardHorseRules,
   projectHardProductFacts,
   restartAfterDone,
@@ -256,21 +257,21 @@ function uniqueSlug(base: string, taken: ReadonlySet<string>): string {
   return `${root}-${index}`;
 }
 
-function defaultProgressionTimers(
+function buildProgressionTimer(
   characterId: string,
+  kind: ProgressionKind,
   level: number | null,
-): readonly ProgressTimer[] {
+): ProgressTimer {
   const midnight = nextMidnightLabel();
-  const quest = level !== null ? biologistQuestForLevel(level) : null;
-  const timers: ProgressTimer[] = [
-    {
+  if (kind === 'horse') {
+    return {
       id: createId('timer-horse'),
       characterId,
       label: 'Jazda konna',
-      detail: `${horseAdvanceDetail(1, 2)} · u Stajennego`,
+      detail: `${horseAdvanceDetail(1, 2)} · oddanie u Stajennego · cooldown 23 h`,
       status: 'ready',
       readyAtIso: new Date().toISOString(),
-      remainingLabel: 'gotowe teraz',
+      remainingLabel: 'gotowe do oddania',
       progressPercent: 100,
       lastActorName: null,
       lastConfirmedAt: null,
@@ -278,37 +279,24 @@ function defaultProgressionTimers(
       reminderState: 'unavailable',
       operationId: null,
       kind: 'horse',
-    },
-    {
-      id: createId('timer-book'),
-      characterId,
-      label: 'Księga umiejętności',
-      detail: `Czytanie dostępne · limit resetuje się o północy · do ${midnight}`,
-      status: 'running',
-      readyAtIso: nextMidnightIso(),
-      remainingLabel: `do ${midnight}`,
-      progressPercent: 10,
-      lastActorName: null,
-      lastConfirmedAt: null,
-      discordReminder: true,
-      reminderState: 'unavailable',
-      operationId: null,
-      kind: 'skill_book',
-    },
-  ];
-  if (quest) {
-    timers.unshift({
+    };
+  }
+  if (kind === 'biologist') {
+    const quest = level !== null ? biologistQuestForLevel(level) : null;
+    return {
       id: createId('timer-bio'),
       characterId,
       label: 'Biolog',
-      detail: `${biologistProgressLabel(quest, 0)} · ${
-        quest.cooldownOnlyOnSuccess
-          ? 'cooldown tylko po udanym oddaniu'
-          : 'cooldown po każdej próbie'
-      } · reset o północy`,
+      detail: quest
+        ? `${biologistProgressLabel(quest, 0)} · ${
+            quest.cooldownOnlyOnSuccess
+              ? 'cooldown tylko po udanym oddaniu'
+              : 'cooldown po każdej próbie'
+          } · reset o północy`
+        : 'Oddawanie u biologa · reset o północy',
       status: 'ready',
       readyAtIso: new Date().toISOString(),
-      remainingLabel: 'gotowe teraz',
+      remainingLabel: 'gotowe do oddania',
       progressPercent: 100,
       lastActorName: null,
       lastConfirmedAt: null,
@@ -316,9 +304,34 @@ function defaultProgressionTimers(
       reminderState: 'unavailable',
       operationId: null,
       kind: 'biologist',
-    });
+    };
   }
-  return timers;
+  return {
+    id: createId('timer-book'),
+    characterId,
+    label: 'Księga umiejętności',
+    detail: `Czytanie dostępne cały dzień · limit czytań resetuje się o północy · do ${midnight}`,
+    status: 'ready',
+    readyAtIso: new Date().toISOString(),
+    remainingLabel: 'gotowe do czytania',
+    progressPercent: 100,
+    lastActorName: null,
+    lastConfirmedAt: null,
+    discordReminder: true,
+    reminderState: 'unavailable',
+    operationId: null,
+    kind: 'skill_book',
+  };
+}
+
+/** Project Hard cyclical character timers: skill book + horse (+ biologist from lvl 30). */
+export function defaultProgressionTimers(
+  characterId: string,
+  level: number | null,
+): readonly ProgressTimer[] {
+  return progressionKindsForLevel(level).map((kind) =>
+    buildProgressionTimer(characterId, kind, level),
+  );
 }
 
 export function createInitialPlayerStore(): PlayerStoreState {
@@ -798,56 +811,93 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
     ],
     characters,
     items,
-    timers: [
-      {
-        id: 'skill-book-nerwnicht',
-        characterId: 'nerwnicht',
-        label: 'Księga umiejętności',
-        detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
-        status: 'running',
-        readyAtIso: nextMidnightIso(),
-        remainingLabel: `do ${midnight}`,
-        progressPercent: 82,
-        lastActorName: 'Mateusz',
-        lastConfirmedAt: 'wczoraj 21:10',
-        discordReminder: true,
-        reminderState: 'unavailable',
-        operationId: null,
-        kind: 'skill_book',
-      },
-      {
-        id: 'horse-medal-aalpsik',
-        characterId: 'aalpsik',
-        label: 'Jazda konna',
-        detail: `${horseAdvanceDetail(12, 13)} · u Stajennego`,
-        status: 'ready',
-        readyAtIso: new Date().toISOString(),
-        remainingLabel: 'gotowe teraz',
-        progressPercent: 100,
-        lastActorName: 'Aalpsik',
-        lastConfirmedAt: 'dzisiaj 07:00',
-        discordReminder: true,
-        reminderState: 'unavailable',
-        operationId: null,
-        kind: 'horse',
-      },
-      {
-        id: 'biologist-kimmizic',
-        characterId: 'kimmizic',
-        label: 'Biolog',
-        detail: `${biologistProgressLabel(iceQuest, 4)} · cooldown po każdej próbie · reset o północy`,
-        status: 'running',
-        readyAtIso: nextMidnightIso(),
-        remainingLabel: `do ${midnight}`,
-        progressPercent: 41,
-        lastActorName: 'Wicek',
-        lastConfirmedAt: 'wczoraj 08:10',
-        discordReminder: false,
-        reminderState: 'off',
-        operationId: null,
-        kind: 'biologist',
-      },
-    ],
+    timers: characters.flatMap((character) => {
+      const base = defaultProgressionTimers(character.id, character.level);
+      // Keep a couple of lived-in demo states so the board is not all "ready".
+      if (character.id === 'nerwnicht') {
+        return base.map((timer) =>
+          timer.kind === 'skill_book'
+            ? {
+                ...timer,
+                id: 'skill-book-nerwnicht',
+                detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
+                status: 'running' as const,
+                readyAtIso: nextMidnightIso(),
+                remainingLabel: `do ${midnight}`,
+                progressPercent: 82,
+                lastActorName: 'Mateusz',
+                lastConfirmedAt: 'wczoraj 21:10',
+              }
+            : timer.kind === 'biologist'
+              ? {
+                  ...timer,
+                  id: 'biologist-nerwnicht',
+                  detail: `${biologistProgressLabel(biologistQuestForLevel(75)!, 12)} · cooldown po każdej próbie · reset o północy`,
+                  status: 'running' as const,
+                  readyAtIso: nextMidnightIso(),
+                  remainingLabel: `do ${midnight}`,
+                  progressPercent: 55,
+                  lastActorName: 'Mateusz',
+                  lastConfirmedAt: 'wczoraj 22:40',
+                }
+              : {
+                  ...timer,
+                  id: 'horse-nerwnicht',
+                  detail: `${horseAdvanceDetail(20, 21)} · u Stajennego`,
+                },
+        );
+      }
+      if (character.id === 'aalpsik') {
+        return base.map((timer) =>
+          timer.kind === 'horse'
+            ? {
+                ...timer,
+                id: 'horse-medal-aalpsik',
+                detail: `${horseAdvanceDetail(12, 13)} · u Stajennego`,
+                status: 'ready' as const,
+                remainingLabel: 'gotowe do oddania',
+                progressPercent: 100,
+                lastActorName: 'Aalpsik',
+                lastConfirmedAt: 'dzisiaj 07:00',
+              }
+            : timer.kind === 'biologist'
+              ? {
+                  ...timer,
+                  id: 'biologist-aalpsik',
+                  detail: `${biologistProgressLabel(biologistQuestById('demon-keepsake')!, 9)} · cooldown tylko po udanym oddaniu · reset o północy`,
+                }
+              : { ...timer, id: 'skill-book-aalpsik' },
+        );
+      }
+      if (character.id === 'kimmizic') {
+        return base.map((timer) =>
+          timer.kind === 'biologist'
+            ? {
+                ...timer,
+                id: 'biologist-kimmizic',
+                detail: `${biologistProgressLabel(iceQuest, 4)} · cooldown po każdej próbie · reset o północy`,
+                status: 'running' as const,
+                readyAtIso: nextMidnightIso(),
+                remainingLabel: `do ${midnight}`,
+                progressPercent: 41,
+                lastActorName: 'Wicek',
+                lastConfirmedAt: 'wczoraj 08:10',
+                discordReminder: false,
+                reminderState: 'off' as const,
+              }
+            : timer.kind === 'horse'
+              ? { ...timer, id: 'horse-kimmizic' }
+              : { ...timer, id: 'skill-book-kimmizic' },
+        );
+      }
+      return base.map((timer) =>
+        timer.kind === 'horse'
+          ? { ...timer, id: 'horse-xiaohu' }
+          : timer.kind === 'biologist'
+            ? { ...timer, id: 'biologist-xiaohu' }
+            : { ...timer, id: 'skill-book-xiaohu' },
+      );
+    }),
     tasks: [
       {
         id: 'task-shield-location',
@@ -1185,6 +1235,45 @@ function updateWorkspace(
         : workspace,
     ),
   };
+}
+
+export function ensureCharacterProgressionTimers(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+): PlayerStoreState {
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace) return state;
+  const character = workspace.characters.find((entry) => entry.id === characterId);
+  if (!character) return state;
+  const existingKinds = new Set(
+    workspace.timers
+      .filter((timer) => timer.characterId === characterId)
+      .map((timer) => timer.kind ?? inferProgressionKind(timer.label))
+      .filter((kind): kind is ProgressionKind => kind !== null),
+  );
+  const missing = progressionKindsForLevel(character.level).filter(
+    (kind) => !existingKinds.has(kind),
+  );
+  if (missing.length === 0) return state;
+
+  const added = missing.map((kind) => buildProgressionTimer(characterId, kind, character.level));
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    timers: [...added, ...current.timers],
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId,
+        characterName: character.name,
+        resource: 'timer',
+        title: 'Uzupełniono cykle Projekt Hard',
+        detail: added.map((timer) => timer.label).join(' · '),
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
 }
 
 export function createCharacter(

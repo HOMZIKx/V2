@@ -4,6 +4,7 @@ import {
   biologistProgressLabel,
   biologistQuestById,
   horseAdvanceDetail,
+  progressionKindsForLevel,
   projectHardBiologistQuests,
   projectHardHorseRules,
   projectHardProductFacts,
@@ -31,7 +32,10 @@ describe('project hard progression config', () => {
     expect(horseAdvanceDetail(12, 13)).toContain('23 h');
   });
 
-  it('keeps skill-book midnight reset and no-alchemy product facts', () => {
+  it('encodes unlock levels for cyclical PH timers', () => {
+    expect(progressionKindsForLevel(19)).toEqual(['skill_book']);
+    expect(progressionKindsForLevel(20)).toEqual(['skill_book', 'horse']);
+    expect(progressionKindsForLevel(30)).toEqual(['skill_book', 'horse', 'biologist']);
     expect(projectHardSkillBookRules.dailyReset).toBe('midnight');
     expect(projectHardProductFacts.hasAlchemy).toBe(false);
     expect(projectHardProductFacts.hasSashes).toBe(false);

@@ -139,8 +139,25 @@ describe('player store first-slice', () => {
       'duplikat',
       'duplikat-2',
     ]);
-    expect(
-      workspace.timers.filter((timer) => timer.characterId === 'duplikat').length,
-    ).toBeGreaterThan(0);
+    const kinds = workspace.timers
+      .filter((timer) => timer.characterId === 'duplikat')
+      .map((timer) => timer.kind)
+      .sort();
+    expect(kinds).toEqual(['biologist', 'horse', 'skill_book']);
+  });
+
+  it('gives every demo character the Project Hard cyclical timers', () => {
+    const state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
+    const workspace = state.workspaces[0]!;
+    for (const character of workspace.characters) {
+      const kinds = new Set(
+        workspace.timers
+          .filter((timer) => timer.characterId === character.id)
+          .map((timer) => timer.kind),
+      );
+      expect(kinds.has('skill_book')).toBe(true);
+      expect(kinds.has('horse')).toBe(true);
+      if ((character.level ?? 0) >= 30) expect(kinds.has('biologist')).toBe(true);
+    }
   });
 });

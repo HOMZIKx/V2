@@ -25,6 +25,7 @@ import {
   createOutgoingInvitation,
   createWorkspace,
   declineIncomingInvitation,
+  ensureCharacterProgressionTimers,
   markTimerDone,
   parsePlayerStore,
   removeItemFromSet,
@@ -94,6 +95,7 @@ interface PlayerStoreApi {
   setActiveSet: (workspaceId: string, characterId: string, setId: string) => void;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
+  ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
   createItem: (
     workspaceId: string,
     input: {
@@ -215,6 +217,9 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       },
       completeTimer: (workspaceId, timerId, operationId) => {
         apply((current) => markTimerDone(current, workspaceId, timerId, operationId));
+      },
+      ensureProgressionTimers: (workspaceId, characterId) => {
+        apply((current) => ensureCharacterProgressionTimers(current, workspaceId, characterId));
       },
       createItem: (workspaceId, input) => {
         apply((current) => createEquipmentItem(current, workspaceId, input));
