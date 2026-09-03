@@ -301,9 +301,9 @@ export function CharacterEquipment({
                 <span className="section-kicker">Wspólna baza</span>
                 <h2>Przedmioty</h2>
               </div>
-              <button className="secondary-button" disabled type="button">
-                <Icon name="plus" size={15} /> Dodaj / skanuj
-              </button>
+              <a className="secondary-button" href="/market">
+                <Icon name="search" size={15} /> Otwórz bazę przedmiotów
+              </a>
             </header>
             <div className="catalog-controls">
               <label className="catalog-search">
