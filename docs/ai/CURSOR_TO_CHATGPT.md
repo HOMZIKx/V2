@@ -40,6 +40,10 @@ Dalej wg `WEB_PRODUCT_DESIGN_AND_DELIVERY.md` / D-061: stabilizacja first-player
   bota, dopóki Web nie będzie zaakceptowany.
 - Włączone dev-safe online persistence MVP (snapshot `PlayerStoreState` przez `player-team-service`)
   — login dalej wyłączony; używany demo header.
+- SQL schema: tabele relacyjne (workspaces, characters, EQ items/sets/slots, timers, notes, history, viewer snapshots); migracje zarządzane przez `scripts/migrate.mts`.
+- OpenAPI v1 kontrakt: `services/player-team-service/openapi/player-team-v1.yaml`.
+- ADR-0015: player-team-service boundary (właściciel danych, bot-web, dev-safe auth bridge).
+- Web: 409 conflict → blind retry; CORS przez `app.enableCors`.
 
 ## Marker
 

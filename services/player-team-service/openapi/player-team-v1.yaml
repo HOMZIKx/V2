@@ -1,0 +1,206 @@
+openapi: "3.1.0"
+info:
+  title: player-team-service
+  version: "1.0.0"
+  description: |
+    Stores and manages per-user team/player state for DESTILED Web and Discord bot.
+    Auth: dev-safe demo header `x-demo-viewer-id` (temporary until Identity JWT wiring).
+
+servers:
+  - url: http://127.0.0.1:4400
+    description: local dev
+
+tags:
+  - name: viewer-state
+    description: Full PlayerStoreState snapshot sync (dev-sync bridge, temporary)
+  - name: health
+    description: Service health checks
+
+paths:
+  /health/live:
+    get:
+      tags: [health]
+      summary: Liveness probe
+      operationId: getLive
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+
+  /health/ready:
+    get:
+      tags: [health]
+      summary: Readiness probe
+      operationId: getReady
+      responses:
+        "200":
+          description: Service is ready to handle requests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+
+  /player-team/v1/me/state:
+    get:
+      tags: [viewer-state]
+      summary: Get the viewer's last saved PlayerStoreState snapshot
+      operationId: getMyState
+      description: |
+        Returns the viewer's last persisted state. Returns `{ state: null }` when no
+        snapshot exists yet. The viewer identity is resolved from the demo header
+        (dev mode) or internal JWT (production, future).
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+      responses:
+        "200":
+          description: Current snapshot (or null when empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetViewerStateResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      tags: [viewer-state]
+      summary: Save the viewer's PlayerStoreState snapshot
+      operationId: putMyState
+      description: |
+        Persists the full `PlayerStoreState` snapshot. Optionally uses
+        optimistic concurrency control via `expectedRevision`. On conflict (409)
+        the caller should re-fetch, merge if needed, and retry.
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutViewerStateRequest"
+      responses:
+        "200":
+          description: Snapshot saved, returns new revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PutViewerStateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+
+components:
+  parameters:
+    DemoViewerIdHeader:
+      name: x-demo-viewer-id
+      in: header
+      description: |
+        Dev-safe demo viewer identity. Will be replaced by internal JWT in production.
+        Value is the viewer's stable user ID (e.g. discord user ID or internal UUID).
+      required: false
+      schema:
+        type: string
+        minLength: 1
+
+  schemas:
+    GetViewerStateResponse:
+      type: object
+      required: [state]
+      properties:
+        state:
+          description: The last saved PlayerStoreState JSON, or null when empty.
+          oneOf:
+            - type: "null"
+            - type: object
+              additionalProperties: true
+        revision:
+          type: integer
+          minimum: 0
+          description: Current snapshot revision (absent when state is null).
+        updatedAtIso:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the last update (absent when state is null).
+
+    PutViewerStateRequest:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: object
+          additionalProperties: true
+          description: Full serialized PlayerStoreState.
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: |
+            When provided, the save only succeeds if the current revision matches.
+            Omit for a blind (unconditional) upsert.
+
+    PutViewerStateResponse:
+      type: object
+      required: [revision]
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+          description: New revision after a successful save.
+
+    ErrorResponse:
+      type: object
+      required: [message, statusCode]
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        error:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Unauthorized:
+      description: Missing or invalid viewer identity header
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: Demo persistence disabled (PLAYER_TEAM_ALLOW_DEMO_WRITE=false)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    RevisionConflict:
+      description: Optimistic concurrency conflict — expected revision does not match actual
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

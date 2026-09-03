@@ -1,11 +1,12 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   Headers,
+  HttpCode,
   Inject,
-  Param,
   Put,
 } from '@nestjs/common';
 import { z } from 'zod';
@@ -14,12 +15,12 @@ import { PlayerTeamStateService } from '../application/player-team-state.service
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from './player-team.tokens.js';
 
-const putWorkspaceStateBodySchema = z.object({
-  state: z.unknown(),
+const putViewerStateBodySchema = z.object({
+  state: z.record(z.string(), z.unknown()),
   expectedRevision: z.number().int().nonnegative().optional(),
 });
 
-type PutWorkspaceStateBody = z.infer<typeof putWorkspaceStateBodySchema>;
+type PutViewerStateBody = z.infer<typeof putViewerStateBodySchema>;
 
 @Controller('player-team/v1')
 export class PlayerTeamController {
@@ -28,38 +29,33 @@ export class PlayerTeamController {
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
   ) {}
 
-  private demoHeaderValueFromHeaders(headers: Record<string, string | string[] | undefined>): string | undefined {
+  private demoViewerIdFromHeaders(
+    headers: Record<string, string | string[] | undefined>,
+  ): string | undefined {
     const headerName = this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER.toLowerCase();
     const value = headers[headerName];
     if (Array.isArray(value)) return value[0];
     return value;
   }
 
-  @Get('me/workspaces')
-  public async listMyWorkspaces(@Headers() headers: Record<string, string | string[] | undefined>) {
-    const demoHeaderValue = this.demoHeaderValueFromHeaders(headers);
-    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue });
-    const workspaces = await this.service.listWorkspacesForOwner(ownerUserId);
-
-    return {
-      workspaces: workspaces.map((w) => ({
-        workspaceId: w.workspaceId,
-        state: w.state,
-        revision: w.revision,
-        updatedAtIso: w.updatedAtIso,
-      })),
-    };
-  }
-
+  /**
+   * GET /player-team/v1/me/state
+   * Returns the viewer's last saved PlayerStoreState snapshot plus its revision.
+   * Returns { state: null } when no snapshot exists yet.
+   */
   @Get('me/state')
-  public async getMyState(@Headers() headers: Record<string, string | string[] | undefined>) {
-    const demoHeaderValue = this.demoHeaderValueFromHeaders(headers);
-    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue });
+  public async getMyState(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ): Promise<{
+    state: Record<string, unknown> | null;
+    revision?: number;
+    updatedAtIso?: string;
+  }> {
+    const demoViewerId = this.demoViewerIdFromHeaders(headers);
+    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue: demoViewerId });
 
-    const record = await this.service.getViewerStateOrNull({ ownerUserId });
-    if (record === null) {
-      return { state: null };
-    }
+    const record = await this.service.getViewerSnapshotOrNull({ ownerUserId });
+    if (record === null) return { state: null };
 
     return {
       state: record.state,
@@ -68,71 +64,50 @@ export class PlayerTeamController {
     };
   }
 
-  @Get('workspaces/:workspaceId/state')
-  public async getWorkspaceState(
-    @Param('workspaceId') workspaceId: string,
-    @Headers() headers: Record<string, string | string[] | undefined>,
-  ) {
-    const demoHeaderValue = this.demoHeaderValueFromHeaders(headers);
-    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue });
-
-    const record = await this.service.getWorkspaceStateOrThrow({ ownerUserId, workspaceId });
-    return {
-      workspaceId: record.workspaceId,
-      state: record.state,
-      revision: record.revision,
-      updatedAtIso: record.updatedAtIso,
-    };
-  }
-
-  @Put('workspaces/:workspaceId/state')
-  public async putWorkspaceState(
-    @Param('workspaceId') workspaceId: string,
-    @Headers() headers: Record<string, string | string[] | undefined>,
-    @Body() rawBody: unknown,
-  ) {
-    const demoHeaderValue = this.demoHeaderValueFromHeaders(headers);
-    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue });
-
-    const parsed = putWorkspaceStateBodySchema.safeParse(rawBody);
-    if (!parsed.success) {
-      throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
-    }
-
-    const body: PutWorkspaceStateBody = parsed.data;
-
-    const { revision } = await this.service.upsertWorkspaceState({
-      ownerUserId,
-      workspaceId,
-      state: body.state,
-      expectedRevision: body.expectedRevision ?? null,
-    });
-
-    return { workspaceId, revision };
-  }
-
+  /**
+   * PUT /player-team/v1/me/state
+   * Body: { state: PlayerStoreState, expectedRevision?: number }
+   * Saves the viewer's PlayerStoreState snapshot. Uses optimistic concurrency
+   * when expectedRevision is provided.
+   */
   @Put('me/state')
+  @HttpCode(200)
   public async putMyState(
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() rawBody: unknown,
-  ) {
-    const demoHeaderValue = this.demoHeaderValueFromHeaders(headers);
-    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue });
+  ): Promise<{ revision: number }> {
+    const demoViewerId = this.demoViewerIdFromHeaders(headers);
+    const ownerUserId = this.service.assertDemoAccessOrThrow({ demoHeaderValue: demoViewerId });
 
-    const parsed = putWorkspaceStateBodySchema.safeParse(rawBody);
+    const parsed = putViewerStateBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
     }
 
-    const body: PutWorkspaceStateBody = parsed.data;
+    const body: PutViewerStateBody = parsed.data;
 
-    const { revision } = await this.service.upsertViewerState({
-      ownerUserId,
-      state: body.state,
-      expectedRevision: body.expectedRevision ?? null,
-    });
+    try {
+      const { revision } = await this.service.upsertViewerSnapshot({
+        ownerUserId,
+        state: body.state,
+        expectedRevision: body.expectedRevision ?? null,
+      });
 
-    return { revision };
+      return { revision };
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'code' in err &&
+        'actual' in err &&
+        (err as Record<string, unknown>)['code'] === 'REVISION_CONFLICT'
+      ) {
+        const actual = (err as Record<string, unknown>)['actual'] as number | null;
+        throw new ConflictException(
+          `snapshot revision conflict: expected ${body.expectedRevision}, actual ${actual}`,
+        );
+      }
+      throw err;
+    }
   }
 }
-

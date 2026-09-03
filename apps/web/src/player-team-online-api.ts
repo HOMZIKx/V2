@@ -4,13 +4,17 @@ export type PlayerTeamOnlineStateResponse = {
   readonly updatedAtIso?: string | null;
 };
 
-const baseUrl =
-  process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL?.trim() ?? 'http://127.0.0.1:4400';
+export type PlayerTeamPutResult =
+  | { readonly ok: true; readonly revision: number | null }
+  | { readonly ok: false; readonly conflict: true; readonly actualRevision: number | null }
+  | { readonly ok: false; readonly conflict: false; readonly error: string };
 
-const demoHeaderName =
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER?.trim() ??
-    'x-demo-viewer-id')
-    .toLowerCase();
+const baseUrl =
+  (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim() || 'http://127.0.0.1:4400';
+
+const demoHeaderName = (
+  (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
+).toLowerCase();
 
 export async function getMyPlayerTeamState(input: {
   readonly viewerId: string;
@@ -28,7 +32,8 @@ export async function getMyPlayerTeamState(input: {
   }
 
   if (!res.ok) {
-    throw new Error(`player-team getMyState failed: ${res.status} ${await res.text().catch(() => '')}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`player-team getMyState failed: ${res.status} ${body}`);
   }
 
   const body = (await res.json()) as {
@@ -48,25 +53,49 @@ export async function putMyPlayerTeamState(input: {
   readonly viewerId: string;
   readonly state: Record<string, unknown>;
   readonly expectedRevision: number | null;
-}): Promise<{ readonly revision: number | null }> {
-  const res = await fetch(`${baseUrl}/player-team/v1/me/state`, {
-    method: 'PUT',
-    headers: {
-      'content-type': 'application/json',
-      [demoHeaderName]: input.viewerId,
-    },
-    body: JSON.stringify({
-      state: input.state,
-      expectedRevision: input.expectedRevision ?? undefined,
-    }),
-  });
+}): Promise<PlayerTeamPutResult> {
+  let res: Response;
+
+  try {
+    res = await fetch(`${baseUrl}/player-team/v1/me/state`, {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        [demoHeaderName]: input.viewerId,
+      },
+      body: JSON.stringify({
+        state: input.state,
+        expectedRevision: input.expectedRevision ?? undefined,
+      }),
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      conflict: false,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  if (res.status === 409) {
+    let actualRevision: number | null = null;
+    try {
+      const body = (await res.json()) as { actualRevision?: number };
+      actualRevision = typeof body.actualRevision === 'number' ? body.actualRevision : null;
+    } catch {
+      // ignored
+    }
+    return { ok: false, conflict: true, actualRevision };
+  }
 
   if (!res.ok) {
-    throw new Error(`player-team putMyState failed: ${res.status} ${await res.text().catch(() => '')}`);
+    const body = await res.text().catch(() => '');
+    return { ok: false, conflict: false, error: `${res.status} ${body}` };
   }
 
   const body = (await res.json()) as { readonly revision?: number };
 
-  return { revision: typeof body.revision === 'number' ? body.revision : null };
+  return {
+    ok: true,
+    revision: typeof body.revision === 'number' ? body.revision : null,
+  };
 }
-

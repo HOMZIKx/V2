@@ -214,16 +214,36 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
 
     pendingSyncTimerRef.current = setTimeout(() => {
       void (async () => {
-        try {
-          const response = await putMyPlayerTeamState({
-            viewerId: state.viewer!.id,
-            state,
-            expectedRevision: serverRevisionRef.current,
-          });
-          if (response.revision !== null) serverRevisionRef.current = response.revision;
-        } catch (e) {
-          console.error('player-team: sync-to-server failed', e);
+        const viewerId = state.viewer!.id;
+        const stateSnapshot = state as unknown as Record<string, unknown>;
+
+        const result = await putMyPlayerTeamState({
+          viewerId,
+          state: stateSnapshot,
+          expectedRevision: serverRevisionRef.current,
+        });
+
+        if (result.ok) {
+          if (result.revision !== null) serverRevisionRef.current = result.revision;
+          return;
         }
+
+        if (result.conflict) {
+          // Revision conflict: retry with blind upsert (expectedRevision = null).
+          const retry = await putMyPlayerTeamState({
+            viewerId,
+            state: stateSnapshot,
+            expectedRevision: null,
+          });
+          if (retry.ok && retry.revision !== null) {
+            serverRevisionRef.current = retry.revision;
+          } else if (!retry.ok && !retry.conflict) {
+            console.error('player-team: blind-retry sync-to-server failed', retry.error);
+          }
+          return;
+        }
+
+        console.error('player-team: sync-to-server failed', result.error);
       })();
     }, 400);
 

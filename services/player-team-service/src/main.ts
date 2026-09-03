@@ -17,6 +17,14 @@ const bootstrap = async (): Promise<void> => {
 
   const env = app.get<PlayerTeamEnv>(PLAYER_TEAM_ENV, { strict: false });
 
+  // Allow any origin in dev-safe mode. In production, restrict via env config.
+  app.enableCors({
+    origin: env.NODE_ENV === 'production' ? false : true,
+    methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['content-type', env.PLAYER_TEAM_DEMO_VIEWER_HEADER],
+    credentials: false,
+  });
+
   const shutdown = async (signal: string): Promise<void> => {
     logger.info('Shutting down player-team service.', { signal });
     await app.close().catch(() => undefined);
@@ -39,4 +47,3 @@ const bootstrap = async (): Promise<void> => {
 };
 
 void bootstrap();
-

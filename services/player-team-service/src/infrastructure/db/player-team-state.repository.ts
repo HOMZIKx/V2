@@ -1,15 +1,20 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Pool } from 'pg';
+
 import { createLogger } from '@v2/observability';
 
 import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
 
-export type PlayerTeamWorkspaceStateRecord = {
-  readonly workspaceId: string;
-  readonly state: unknown;
+export type ViewerSnapshotRecord = {
+  readonly ownerUserId: string;
+  readonly state: Record<string, unknown>;
   readonly revision: number;
   readonly updatedAtIso: string;
+};
+
+export type ViewerSnapshotUpsertResult = {
+  readonly revision: number;
 };
 
 @Injectable()
@@ -19,161 +24,113 @@ export class PlayerTeamStateRepository implements OnModuleInit {
 
   public constructor(@Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv) {}
 
-  public onModuleInit(): void | Promise<void> {
+  public onModuleInit(): void {
     this.pool = new Pool({
       connectionString: this.env.PLAYER_TEAM_DATABASE_URL,
       max: 10,
     });
-
-    // Ensure schema (safe for dev; real prod should rely on migrations).
-    // JSONB stores the full workspace snapshot for MVP online persistence.
-    return this.ensureSchema();
+    this.logger.info('player-team database pool created.');
   }
 
-  public async ensureSchema(): Promise<void> {
-    if (this.pool === null) return;
-
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS player_team_workspaces (
-        owner_user_id TEXT NOT NULL,
-        workspace_id TEXT NOT NULL,
-        state JSONB NOT NULL,
-        revision INTEGER NOT NULL DEFAULT 0,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (owner_user_id, workspace_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_player_team_workspaces_owner_updated
-        ON player_team_workspaces (owner_user_id, updated_at DESC);
-    `);
-    this.logger.info('player-team schema ensured.');
-  }
-
-  public async listWorkspacesForOwner(ownerUserId: string): Promise<PlayerTeamWorkspaceStateRecord[]> {
+  private get db(): Pool {
     if (this.pool === null) throw new Error('player-team pool not initialized');
+    return this.pool;
+  }
 
-    const result = await this.pool.query<{
-      workspace_id: string;
-      state: unknown;
+  // -------------------------------------------------------------------------
+  // Viewer snapshot — stores the full PlayerStoreState as JSONB per viewer.
+  // Used by the Web dev-sync adapter until per-mutation endpoints are live.
+  // Table: player_team_viewer_snapshots (created by migration 001_initial_schema.sql)
+  // -------------------------------------------------------------------------
+
+  public async getViewerSnapshot(ownerUserId: string): Promise<ViewerSnapshotRecord | null> {
+    const result = await this.db.query<{
+      owner_user_id: string;
+      state: Record<string, unknown>;
       revision: number;
       updated_at: string;
     }>(
-      `
-      SELECT workspace_id, state, revision, updated_at
-      FROM player_team_workspaces
-      WHERE owner_user_id = $1
-      ORDER BY updated_at DESC
-      `,
+      `SELECT owner_user_id, state, revision, updated_at
+       FROM player_team_viewer_snapshots
+       WHERE owner_user_id = $1`,
       [ownerUserId],
     );
 
-    return result.rows.map((r) => ({
-      workspaceId: r.workspace_id,
-      state: r.state,
-      revision: Number(r.revision),
-      updatedAtIso: new Date(r.updated_at).toISOString(),
-    }));
-  }
+    const row = result.rows[0];
+    if (row === undefined) return null;
 
-  public async getWorkspaceState(
-    ownerUserId: string,
-    workspaceId: string,
-  ): Promise<PlayerTeamWorkspaceStateRecord | null> {
-    if (this.pool === null) throw new Error('player-team pool not initialized');
-
-    const result = await this.pool.query<{
-      workspace_id: string;
-      state: unknown;
-      revision: number;
-      updated_at: string;
-    }>(
-      `
-      SELECT workspace_id, state, revision, updated_at
-      FROM player_team_workspaces
-      WHERE owner_user_id = $1 AND workspace_id = $2
-      `,
-      [ownerUserId, workspaceId],
-    );
-
-    if (result.rowCount === 0) return null;
-
-    const r = result.rows[0];
-    if (r === undefined) return null;
     return {
-      workspaceId: r.workspace_id,
-      state: r.state,
-      revision: Number(r.revision),
-      updatedAtIso: new Date(r.updated_at).toISOString(),
+      ownerUserId: row.owner_user_id,
+      state: row.state,
+      revision: Number(row.revision),
+      updatedAtIso: new Date(row.updated_at).toISOString(),
     };
   }
 
-  public async upsertWorkspaceState(input: {
+  public async upsertViewerSnapshot(input: {
     readonly ownerUserId: string;
-    readonly workspaceId: string;
-    readonly state: unknown;
+    readonly state: Record<string, unknown>;
     readonly expectedRevision: number | null;
-  }): Promise<{ readonly revision: number }> {
-    if (this.pool === null) throw new Error('player-team pool not initialized');
-
-    const stateJson = JSON.stringify(input.state ?? null);
+  }): Promise<ViewerSnapshotUpsertResult> {
+    const stateJson = JSON.stringify(input.state);
 
     if (input.expectedRevision === null) {
-      const result = await this.pool.query<{ revision: number }>(
-        `
-        INSERT INTO player_team_workspaces (owner_user_id, workspace_id, state, revision, updated_at)
-        VALUES ($1, $2, $3::jsonb, COALESCE($4, 0), NOW())
-        ON CONFLICT (owner_user_id, workspace_id)
-        DO UPDATE SET
-          state = $3::jsonb,
-          revision = player_team_workspaces.revision + 1,
-          updated_at = NOW()
-        RETURNING revision
-        `,
-        [input.ownerUserId, input.workspaceId, stateJson, 0],
+      // Blind upsert — no optimistic concurrency check.
+      const result = await this.db.query<{ revision: number }>(
+        `INSERT INTO player_team_viewer_snapshots (owner_user_id, state, revision, updated_at)
+         VALUES ($1, $2::jsonb, 0, NOW())
+         ON CONFLICT (owner_user_id)
+         DO UPDATE SET
+           state      = EXCLUDED.state,
+           revision   = player_team_viewer_snapshots.revision + 1,
+           updated_at = NOW()
+         RETURNING revision`,
+        [input.ownerUserId, stateJson],
       );
 
       return { revision: Number(result.rows[0]?.revision ?? 0) };
     }
 
-    // Revision check: update only if current revision matches.
-    const result = await this.pool.query<{ revision: number }>(
-      `
-      WITH existing AS (
-        SELECT revision
-        FROM player_team_workspaces
-        WHERE owner_user_id = $1 AND workspace_id = $2
-      ),
-      updated AS (
-        UPDATE player_team_workspaces
-        SET state = $3::jsonb,
-            revision = revision + 1,
-            updated_at = NOW()
-        WHERE owner_user_id = $1
-          AND workspace_id = $2
-          AND revision = $4
-        RETURNING revision
-      )
-      INSERT INTO player_team_workspaces (owner_user_id, workspace_id, state, revision, updated_at)
-      SELECT $1, $2, $3::jsonb, 0, NOW()
-      WHERE NOT EXISTS (SELECT 1 FROM existing)
-        AND $4 = 0
-      RETURNING revision
-      `,
-      [input.ownerUserId, input.workspaceId, stateJson, input.expectedRevision],
+    // Optimistic concurrency: update only if current revision matches.
+    const result = await this.db.query<{ revision: number }>(
+      `UPDATE player_team_viewer_snapshots
+       SET state      = $2::jsonb,
+           revision   = revision + 1,
+           updated_at = NOW()
+       WHERE owner_user_id = $1
+         AND revision = $3
+       RETURNING revision`,
+      [input.ownerUserId, stateJson, input.expectedRevision],
     );
 
-    // If nothing updated/inserted, we need to distinguish between:
-    // - missing workspace with non-zero expected revision
-    // - revision mismatch
-    if (result.rowCount === 0) {
-      const current = await this.getWorkspaceState(input.ownerUserId, input.workspaceId);
-      if (current === null) {
-        throw new Error('expected revision but workspace does not exist');
-      }
-      throw new Error(`revision mismatch: expected ${input.expectedRevision}, got ${current.revision}`);
+    if ((result.rowCount ?? 0) > 0) {
+      return { revision: Number(result.rows[0]?.revision ?? 0) };
     }
 
-    return { revision: Number(result.rows[0]?.revision ?? 0) };
+    // Rows affected = 0 — either doesn't exist or revision mismatch.
+    // If doesn't exist and expectedRevision == 0, do an insert.
+    if (input.expectedRevision === 0) {
+      const insertResult = await this.db.query<{ revision: number }>(
+        `INSERT INTO player_team_viewer_snapshots (owner_user_id, state, revision, updated_at)
+         VALUES ($1, $2::jsonb, 0, NOW())
+         ON CONFLICT DO NOTHING
+         RETURNING revision`,
+        [input.ownerUserId, stateJson],
+      );
+
+      if ((insertResult.rowCount ?? 0) > 0) {
+        return { revision: Number(insertResult.rows[0]?.revision ?? 0) };
+      }
+    }
+
+    // Fetch current to report the actual revision in the conflict message.
+    const current = await this.getViewerSnapshot(input.ownerUserId);
+    const actual = current?.revision ?? null;
+    throw Object.assign(
+      new Error(
+        `viewer snapshot revision mismatch: expected ${input.expectedRevision}, actual ${actual}`,
+      ),
+      { code: 'REVISION_CONFLICT', actual },
+    );
   }
 }
-
