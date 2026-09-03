@@ -12,12 +12,19 @@ import {
   restartProgressTimer,
   slotLabels,
   type CatalogItem,
+  type CharacterProgressTimer,
   type CharacterEquipmentSnapshot,
   type EquipmentAssignments,
   type EquipmentSlot,
 } from '../../../../../src/character-equipment';
 import { characterClassLabels, type CharacterProfileDraft } from '../../../../../src/character-profile';
 import { AppShell, Icon } from '../../../../app-shell';
+
+interface LocalEquipmentState {
+  readonly assignmentsBySet: Readonly<Record<string, EquipmentAssignments>>;
+  readonly catalog: readonly CatalogItem[];
+  readonly timers: readonly CharacterProgressTimer[];
+}
 
 const categoryOptions: ReadonlyArray<{ value: EquipmentSlot | 'all'; label: string }> = [
   { value: 'all', label: 'Wszystkie' },
@@ -54,6 +61,7 @@ export function CharacterEquipment({
   const [flipped, setFlipped] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [profileOverride, setProfileOverride] = useState<CharacterProfileDraft | null>(null);
+  const [equipmentLoaded, setEquipmentLoaded] = useState(false);
 
   useEffect(() => {
     try {
@@ -63,6 +71,38 @@ export function CharacterEquipment({
       setProfileOverride(null);
     }
   }, [initialSnapshot.characterId]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(
+        `destiled:character-equipment:${initialSnapshot.characterId}`,
+      );
+      if (saved) {
+        const state = JSON.parse(saved) as LocalEquipmentState;
+        if (
+          state.assignmentsBySet &&
+          Array.isArray(state.catalog) &&
+          Array.isArray(state.timers)
+        ) {
+          setAssignmentsBySet(state.assignmentsBySet);
+          setCatalog(state.catalog);
+          setTimers(state.timers);
+        }
+      }
+    } catch {
+      // Nie blokujemy karty, gdy stary podgląd lokalny ma nieprawidłowy format.
+    } finally {
+      setEquipmentLoaded(true);
+    }
+  }, [initialSnapshot.characterId]);
+
+  useEffect(() => {
+    if (!equipmentLoaded) return;
+    window.localStorage.setItem(
+      `destiled:character-equipment:${initialSnapshot.characterId}`,
+      JSON.stringify({ assignmentsBySet, catalog, timers } satisfies LocalEquipmentState),
+    );
+  }, [assignmentsBySet, catalog, equipmentLoaded, initialSnapshot.characterId, timers]);
 
   const activeSet = initialSnapshot.sets.find((set) => set.id === activeSetId)!;
   const assignments = assignmentsBySet[activeSetId] ?? activeSet.assignments;
@@ -446,8 +486,9 @@ export function CharacterEquipment({
           {announcement}
         </p>
         <div className="mock-notice">
-          Interfejs produkcyjny · plan setu i fizyczna lokalizacja itemu są celowo osobnymi danymi.
-          AI/skaner później doda propozycję do zatwierdzenia, nie zapis automatyczny.
+          Plan setu, potwierdzona lokalizacja i timery są celowo osobnymi danymi; ten podgląd
+          zapamiętuje je lokalnie po odświeżeniu. API zapisze je dla zespołu, a AI/skaner będzie
+          tylko proponował zmianę do zatwierdzenia.
         </div>
       </main>
     </AppShell>
