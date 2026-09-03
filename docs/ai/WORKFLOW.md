@@ -1,18 +1,25 @@
 # Workflow ChatGPT ↔ Cursor ↔ GitHub
 
-## Role ChatGPT
+## Aktualizacja D-061 (2026-09-03)
 
-- prowadzi dialog produktowy i architektoniczny z właścicielem;
-- zapisuje zatwierdzone ustalenia w repozytorium;
-- przygotowuje precyzyjne zadania i kryteria akceptacji;
-- audytuje kod, dokumentację, testy, commity i Pull Requesty;
-- przygotowuje poprawki lub kolejny etap.
+Dla toru **DESTILED Web** (`preview/destiled-web`) Cursor jest **głównym**
+agentem dostawy. ChatGPT jest opcjonalny (koszt). Właściciel pozostaje
+autorytetem produktu. Pozostałe tory (np. Discord P4) mogą nadal używać
+obiegów poniżej, jeśli właściciel tak zdecyduje.
+
+## Role ChatGPT (opcjonalne po D-061)
+
+- może prowadzić dialog produktowy i architektoniczny z właścicielem;
+- może zapisywać zatwierdzone ustalenia w repozytorium;
+- może przygotowywać zadania i kryteria akceptacji;
+- może audytować kod, dokumentację, testy, commity i Pull Requesty;
+- nie blokuje Cursora w pracach DESTILED Web zleconych przez właściciela.
 
 ## Role Cursora
 
 - czyta konstytucję, ADR-y i aktualny stan projektu;
 - przygotowuje plan przed implementacją;
-- implementuje wyłącznie zatwierdzony zakres;
+- implementuje zatwierdzony / właścicielski zakres (w tym DESTILED Web);
 - wykonuje testy i kontrole jakości;
 - aktualizuje dokumentację i raportuje wynik;
 - nie podejmuje samodzielnie decyzji zastrzeżonych dla właściciela.

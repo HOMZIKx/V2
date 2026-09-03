@@ -2,6 +2,17 @@
 
 ## Aktywne
 
+### DEC-061 — Przeniesienie prac DESTILED Web do Cursora
+
+- **Status:** OWNER_ACCEPTED (2026-09-03)
+- **Decyzja:** Ze względu na koszt ChatGPT dalszy rozwój aplikacji DESTILED Web
+  prowadzi Cursor. Ref: `preview/destiled-web`. Hold UI zdjęty. D-038–D-060 bez
+  zmian zakresu produktu. ChatGPT opcjonalny.
+- **SoT:** D-061 w `docs/DECISION_LOG.md`,
+  `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
+- **Otwarte (nie blokuje handoffu):** właściciel wskazuje następne konkretne
+  zadanie kodowe (fix / dopięcie first-slice / inny priorytet).
+
 ### DEC-001 — Deploy V2 na Zeabur (zakres i moment)
 
 - **Status:** DEFERRED

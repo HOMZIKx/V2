@@ -1,28 +1,24 @@
 # ChatGPT → Cursor
 
-## Current owner directive — Web/Admin
+## Current owner directive — Web/Admin (D-061)
 
-**Status:** `HOLD_CURSOR_WEB_PRODUCT_UI`  
-**Decisions:** D-037–D-060 (2026-09-02)
+**Status:** `CURSOR_PRIMARY_DESTILED_WEB`  
+**Decisions:** D-037–D-061 (updated 2026-09-03)
 
-Until an approved production frontend slice is handed off:
+Owner decision (2026-09-03): because of ChatGPT cost, further DESTILED Web work
+moves to **Cursor**. `HOLD_CURSOR_WEB_PRODUCT_UI` is lifted.
 
-- preserve the existing Web/Admin implementation; do not delete it;
-- do not use the existing Web/Admin UI, previous Sites demo or legacy project as
-  the design reference;
-- do not independently create or redesign page layout, navigation, graphics,
-  copy, animations or user-facing content;
-- do not start maps, market, AI equipment import, dungeon analytics or bot-admin
-  Web UI ahead of the first player slice;
-- continue only technical work that does not assume Web/Admin UX;
-- raise `OWNER_DECISION_REQUIRED` when a technical choice changes user-facing
-  behavior.
+- continue from `preview/destiled-web`; do not discard the DESTILED frontend;
+- keep product contracts D-038–D-060 (brand, teams, EQ, timers, secrets, maps);
+- do not use the previous Sites demo or legacy project as the design reference;
+- do not expand market, AI equipment import, dungeon analytics or bot-admin Web
+  UI unless the owner explicitly prioritizes that work;
+- raise `OWNER_DECISION_REQUIRED` / `PENDING_DECISIONS.md` when a technical
+  choice would change architecture, security, data ownership or accepted UX;
+- API / Discord / database production integration starts only when the owner
+  asks.
 
-The production frontend will be designed and implemented in the V2 repository
-by ChatGPT with the owner, using the repository's approved stacks. Cursor will
-then connect the approved frontend to real API, Identity, Authorization,
-Discord, databases and Zeabur deployment without independently rebuilding its
-product design.
+ChatGPT is optional. Cursor is the primary delivery agent for DESTILED Web.
 
 The first handoff target is fixed to:
 

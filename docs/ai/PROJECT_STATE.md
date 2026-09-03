@@ -2,147 +2,85 @@
 
 ## Status
 
-`READY_FOR_FINAL_P4_SPEC_REAUDIT`
+Web / DESTILED track: `CURSOR_PRIMARY_HANDOFF_ACCEPTED` (D-061, 2026-09-03).
 
-Visual screenshot contract: `REFERENCE_IMAGE_REQUIRED` (not designed from memory).
+P4 Discord Centrum Aktywności: `READY_FOR_FINAL_P4_SPEC_REAUDIT`
+(visual screenshot contract still `REFERENCE_IMAGE_REQUIRED`).
 
-Web product track: `IN_PROGRESS_PHASE_5_PRODUCTION_SHELL_REVIEW`.
+## Owner decision — Cursor takes DESTILED Web (2026-09-03)
 
-## Owner directive — WWW product (2026-09-02)
+- **Decision:** **D-061** — OWNER ACCEPTED.
+- **Reason:** ChatGPT cost; further DESTILED application work moves to Cursor.
+- **Working / deploy ref:** `preview/destiled-web`.
+- **Handoff branch (docs):** `cursor/destiled-cursor-handoff-dfe5`.
+- `HOLD_CURSOR_WEB_PRODUCT_UI` is **lifted**.
+- Product contracts **D-038–D-060** remain in force (access, teams, EQ, timers,
+  brand DESTILED, Project Hard secret boundary, map domain separation, etc.).
+- D-037 / D-022 are **SCOPE REVISED**: owner remains product authority; Cursor
+  is the primary implementation agent for DESTILED Web; ChatGPT is optional.
+- Cursor must not invent architecture/security/data-ownership changes; conflicts
+  go to `docs/ai/PENDING_DECISIONS.md`.
+- Next concrete coding task: **awaiting owner priority** (stabilize first-player
+  path, sets/items/timer edit flows, or other named fix).
 
-- Decisions: **D-037–D-060**; D-050 remains an active collaboration baseline.
-- Cursor keeps existing Web/Admin code, but it is **not** a visual or product
-  reference for the new interface.
-- Cursor must not independently design or extend Web/Admin layout, information
-  architecture, graphics, copy, animations or user-facing page content until an
-  approved frontend slice exists.
-- The previous Sites demo and legacy UI are not requirements or default visual
-  direction.
-- Backend, API, database, Discord, Identity, Authorization, tests and
-  infrastructure may continue only without inventing Web/Admin UX assumptions.
-- Any technical choice that changes user-facing behavior is
-  `OWNER_DECISION_REQUIRED`.
-- Product/access/team inventory and the initial map are captured.
+## Owner directive — WWW product (2026-09-02, revised by D-061)
+
+- Decisions: **D-037–D-061**; D-050 remains an active collaboration baseline.
+- Active brand: DESTILED (D-051) — crimson / electric blue / silver on black;
+  authentic Metin2 class and item references only.
 - Active first slice: `Member dashboard -> My teams -> Team workspace ->
 Character board -> Equipment / named sets / progression timers / lightweight
 team actions / notes -> Change history`.
-- The owner accepted the first-player coherence review, one-member/shared
-  workspace model and invitation acceptance.
-- Phase 5 production shell is implemented on `codex/phase5-player-shell` in
-  draft PR **#31**. Current checkpoint: responsive member dashboard with typed
-  mock adapter, human-confirmed reminder actions, team summary, authentic class
-  renders and change history.
-- The owner accepted continuation after the member-dashboard checkpoint.
-- Team workspace is implemented on `codex/phase5-team-workspace` in draft PR
-  **#32**: shared AppShell/navigation, responsive team overview, character/set
-  readiness, collaborator presence, explicit task outcomes and team notes.
-- Character card and Metin2-reference EQ board are implemented on
-  `codex/phase5-character-equipment` in draft PR **#33**: named sets, authentic
-  reference item icons, catalog/bonus filtering, cross-device assignment,
-  flip-card progression timers and explicit physical-location confirmation.
-- Consent-based team membership is implemented on
-  `codex/phase5-team-membership` in draft PR **#34**: exact Discord identity
-  resolution, owner confirmation, pending invitation without access,
-  recipient accept/decline, revision/idempotency adapter contracts and explicit
-  separation from platform admission and guild roles.
-- Append-only team history and collaboration safety are implemented on
-  `codex/phase5-team-history` in draft PR **#35**: human-readable actor/resource/
-  character filtering, visible connection and edit-lease state, expected-revision
-  conflict comparison, preserved drafts and explicit resolution commands.
-- Character profile creation and editing are implemented on
-  `codex/phase5-character-profile` in draft PR **#36**: live card preview,
-  flexible class/gender/level/responsible-member data, an empty named starting
-  set, honest missing-render state and versioned/idempotent save commands.
-- Zeabur frontend-preview readiness is implemented on
-  `codex/zeabur-preview-readiness` in draft PR **#37**: injected-port handling,
-  `0.0.0.0` production binding, `/health` readiness verification and an explicit
-  monorepo deployment runbook. The stable deployment ref is
-  `preview/destiled-web`.
-- Current next Web step: owner review of the complete first-player path,
-  followed by real create/edit flows for named sets, items and progression
-  timers. Do not start API/Discord integration before the frontend contract is
-  accepted.
-- Phase 5 CI evidence at validated frontend HEAD `bbb30b5`: full
-  `pnpm validate`, infrastructure integration and PR-title checks PASS.
-- Two repository-level blockers remain outside the frontend slice: inherited
-  transitive `nanoid <3.3.18` audit advisory
-  (`GHSA-2v37-7h3g-55p8`) and GitHub's
-  `Resource not accessible by integration` error in the secret-scan job. Do
-  not bypass either control; no secret finding was reported.
-- Named sets, manual last-confirmed item locations, character progression
-  timers and lightweight assigned team actions clarify the active first slice.
-- Map hunt SpawnTimers are a separate later domain with their own maps,
-  participants, configuration, permissions and notification policies.
-- Maps, market, AI import, dungeon analytics and bot-admin Web UI do not expand
-  until the first player slice is stable.
-- Active game context is **Project Hard**. Game definitions are configurable,
-  sourced and effective-dated because server rules and drops change.
-- Later accepted slice: private-team Project Hard dungeon journal/analyzer with
-  participants, characters, duration, screenshot-assisted loot, prices, costs,
-  frozen value snapshots and team analytics.
-- AI/OCR proposes data for human review; it never silently commits game data and
-  the product never claims background observation of the game client.
-- DESTILED never stores Project Hard/email login secrets, passwords, PINs,
-  authorization/recovery codes, cookies or client tokens.
-- This directive does not cancel approved Discord-specific P4 contracts; it
-  freezes independent Web/Admin product design.
+- Codex/ChatGPT delivered stacked frontend work (draft PRs **#30–#37**) and
+  later merges into `preview/destiled-web` (PRs **#38–#47**, including
+  account-first dashboard, map hunt sessions, Centrum preview, respawn catalog,
+  Wyprawa map/timers/party and review fixes).
+- Zeabur frontend-preview readiness exists; stable deployment ref remains
+  `preview/destiled-web`. Preview is not authorization for production
+  Discord/database/bot integration.
+- Do not start API/Discord integration until the owner asks.
+- Maps, market, AI import, dungeon analytics and bot-admin Web UI expand only
+  when the owner prioritizes them.
+- Active game context is **Project Hard**. DESTILED never stores Project Hard
+  login secrets (D-054).
+- This does not cancel approved Discord-specific P4 contracts.
 
 ## Web product design checkpoint
 
-- Draft PR: **#30** on `codex/d037-web-product-workflow`.
-- Active brand: DESTILED; owner-provided cracked metallic `D`; balanced deep
-  crimson/electric blue on black with metallic silver structure.
-- Authentic owner-approved Metin2 class/item references; no random AI character
-  substitutions.
-- First player slice and realtime/concurrency behavior:
+- Workflow SoT: [WEB_PRODUCT_DESIGN_AND_DELIVERY](../product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md)
+  (updated for D-061).
+- First player slice:
   [PLAYER_VERTICAL_SLICE_AND_COLLABORATION](../product/PLAYER_VERTICAL_SLICE_AND_COLLABORATION.md).
-- Complete first-player path and accepted state review:
+- Coherence review:
   [FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW](../product/FIRST_PLAYER_JOURNEY_COHERENCE_REVIEW.md).
-- Set, item-catalog, reminder and timer-domain contract:
+- Loadouts / timers:
   [TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES](../product/TEAM_LOADOUTS_PROGRESSION_AND_TIMER_BOUNDARIES.md).
-- Later Project Hard dungeon analyzer contract:
+- Later dungeon analyzer:
   [PROJECT_HARD_DUNGEON_RUN_ANALYZER](../product/PROJECT_HARD_DUNGEON_RUN_ANALYZER.md).
-- Earlier previews validate the wider member flow. The member dashboard is
-  production repository code in PR #31, team workspace in PR #32,
-  character/equipment/timer detail in PR #33 and consent-based team membership
-  in PR #34. Team history, connection and conflict states are in PR #35.
-  Character create/edit flows are in PR #36. Zeabur Web-preview readiness is in
-  PR #37; it does not authorize production Discord/database/bot integration.
-- Cursor remains on `HOLD_CURSOR_WEB_PRODUCT_UI` until PR #31 is reviewed and
-  the production frontend code/adapters are explicitly handed off.
-- D-060 fixes the later Technician configurator as a real versioned bot-config
-  command surface (validate/apply/audit/rollback), never decorative toggles.
 
 ## Active phase
 
-P4 Centrum Aktywności — final specification closure (docs only).
-P0–P3 completed. P4 implementation not started.
+1. **DESTILED Web (primary):** Cursor-owned delivery on `preview/destiled-web`
+   under D-061; next task from owner.
+2. **P4 Centrum Aktywności (Discord):** docs closure retained; implementation
+   still gated by prior P4 readiness rules.
 
 ## Active task
 
-- Task ID: `P4-FINAL-SPEC-CLOSURE-001`
-- Branch: `cursor/p4-centrum-aktywnosci-spec-v2`
-- Draft PR: **#18**
-- Base: `main` @ `1f23635c64ba1c0c4369cdaca9b043ea39f15e4e`
-- ADR-0014: **Accepted**
-- Service name: **`activity-service`** / DB **`activity`**
-
-## Closed blockers
-
-P4-D3, P4-D5, P4-D6 (nonce/adopt), P4-D7 permissions, RSVP confirmationState,
-transactional invariants, one logical Discord form, Issue #12 non-blocking for
-P4.2a test.
+- Task ID: `DESTILED-CURSOR-HANDOFF-001`
+- Branch: `cursor/destiled-cursor-handoff-dfe5`
+- Base: `preview/destiled-web`
+- Scope of this commit: documentation / decision handoff only (no app code).
 
 ## Open
 
-- P4-D8 assets = OWNER_DECISION_REQUIRED (prod visual sign-off)
-- Screenshot-based `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` blocked —
-  image file unavailable in agent environment
-
-## Out of scope
-
-Code, migrations, Discord publish, merge, Actions, new PR, reopen #17.
+- Owner names the next DESTILED coding priority.
+- P4-D8 assets = OWNER_DECISION_REQUIRED (prod visual sign-off for Discord).
+- Screenshot-based `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` still
+  blocked without the reference image.
+- Inherited transitive `nanoid` audit advisory and GitHub secret-scan permission
+  limits remain repository-level; do not bypass.
 
 ## Last updated
 
-2026-09-02 — Phase 5 member dashboard in PR #31, team workspace in PR #32 and character equipment card in PR #33; Cursor P4 status retained.
+2026-09-03 — Owner D-061: Cursor takes over DESTILED Web from ChatGPT.
