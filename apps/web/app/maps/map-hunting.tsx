@@ -69,7 +69,6 @@ export function MapHunting({
   const [filter, setFilter] = useState<Filter>('all');
   const [store, setStore] = useState<RecordStore>(initialStore);
   const [now, setNow] = useState(() => Date.now());
-  const [placingKey, setPlacingKey] = useState<string | null>(null);
   const [pinModalKey, setPinModalKey] = useState<string | null>(null);
   const [modalDraftLocation, setModalDraftLocation] = useState<RespawnLocation | null>(null);
   const [notice, setNotice] = useState('');
@@ -112,10 +111,21 @@ export function MapHunting({
     () => records.filter((record) => matchesFilter(record, filter, now)),
     [filter, now, records],
   );
-  const { available, counting } = useMemo(
-    () => partitionRespawnRecords(filtered, now),
-    [filtered, now],
-  );
+  const { available, counting } = useMemo(() => {
+    const parts = partitionRespawnRecords(filtered, now);
+    const rank = (record: RespawnRecord) => {
+      const phase = getRespawnDisplay(record, now).phase;
+      if (isWindowLatePhase(record, now)) return 0;
+      if (phase === 'window') return 1;
+      if (phase === 'on_map') return 2;
+      if (phase === 'expired') return 3;
+      return 4;
+    };
+    return {
+      available: [...parts.available].sort((left, right) => rank(left) - rank(right)),
+      counting: parts.counting,
+    };
+  }, [filtered, now]);
   const activeTimerCount = useMemo(
     () =>
       records.filter((record) =>
@@ -140,13 +150,11 @@ export function MapHunting({
   const changeMap = (nextMapKey: string) => {
     setMapKey(nextMapKey);
     setChannel(1);
-    setPlacingKey(null);
     setPinModalKey(null);
     setModalDraftLocation(null);
   };
   const changeChannel = (nextChannel: number) => {
     setChannel(nextChannel);
-    setPlacingKey(null);
     setPinModalKey(null);
     setModalDraftLocation(null);
   };
@@ -171,7 +179,6 @@ export function MapHunting({
           : record,
       ),
     );
-    setPlacingKey(null);
     setPinModalKey(null);
     setModalDraftLocation(null);
     setNotice(
@@ -185,30 +192,7 @@ export function MapHunting({
     if (!target || !canConfirmRespawn(target, now)) return;
     setPinModalKey(recordKey);
     setModalDraftLocation(null);
-    setPlacingKey(null);
     setNotice('Zaznacz pinezkę na mini-mapie albo zapisz zbicie bez pinezki.');
-  };
-  const beginPlacement = (recordKey: string) => {
-    const target = records.find((record) => record.key === recordKey);
-    if (!target || !canConfirmRespawn(target, now)) return;
-    setView('map');
-    setPlacingKey(recordKey);
-    setPinModalKey(null);
-    setNotice('Kliknij mapę — pinezka pokaże, gdzie ostatnio zbito ten metin/bossa.');
-  };
-  const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
-    if (!placingKey) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    confirmKilled(placingKey, {
-      x: Math.max(
-        0,
-        Math.min(100, Math.round(((event.clientX - bounds.left) / bounds.width) * 1_000) / 10),
-      ),
-      y: Math.max(
-        0,
-        Math.min(100, Math.round(((event.clientY - bounds.top) / bounds.height) * 1_000) / 10),
-      ),
-    });
   };
   const placeOnModalMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!pinModalKey) return;
@@ -229,11 +213,12 @@ export function MapHunting({
     const display = getRespawnDisplay(record, now);
     const canConfirm = canConfirmRespawn(record, now);
     const late = isWindowLatePhase(record, now);
+    const inWindow = display.phase === 'window';
     return (
       <article
         className={`respawn-record is-${display.phase}${countingDown ? ' is-counting' : ''}${
-          late ? ' is-late-window' : ''
-        }`}
+          inWindow ? ' is-window-active' : ''
+        }${late ? ' is-late-window' : ''}`}
         key={record.key}
       >
         <span className="respawn-record-icon" style={{ color: record.entity.color ?? undefined }}>
@@ -246,24 +231,28 @@ export function MapHunting({
         <div className="respawn-record-copy">
           <strong>{record.entity.name}</strong>
           <span>
-            {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)} ·{' '}
+            {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)} · CH
+            {record.channel}
             {record.location
-              ? `pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
-              : 'bez pinezki'}
+              ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
+              : ' · bez pinezki'}
             {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
-            {late ? ' · ostatnie 20% okna' : ''}
+            {late ? ' · ostatnie 20% okna' : inWindow ? ' · w oknie' : ''}
           </span>
         </div>
         <div className="respawn-record-time">
           <b>{display.clock}</b>
-          <span>{display.label}</span>
+          <span>
+            {countingDown
+              ? `Do okna · ${display.label}`
+              : late
+                ? `Końcówka okna · ${display.clock}`
+                : display.label}
+          </span>
         </div>
         <div className="respawn-record-actions">
           <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
             {canConfirm ? 'Zbite' : 'Odliczanie'}
-          </button>
-          <button disabled={!canConfirm} onClick={() => beginPlacement(record.key)} type="button">
-            Atlas
           </button>
         </div>
       </article>
@@ -288,10 +277,7 @@ export function MapHunting({
               <button
                 aria-selected={view === 'timers'}
                 className={view === 'timers' ? 'is-active' : ''}
-                onClick={() => {
-                  setView('timers');
-                  setPlacingKey(null);
-                }}
+                onClick={() => setView('timers')}
                 role="tab"
                 type="button"
               >
@@ -397,15 +383,7 @@ export function MapHunting({
             </header>
             {view === 'map' && (
               <div className="respawn-map-stage-wrap">
-                <div
-                  aria-label={
-                    placingKey ? 'Kliknij pozycję pinezki' : 'Mapa z ostatnimi lokalizacjami'
-                  }
-                  className={`respawn-map-stage ${placingKey ? 'is-placing' : ''}`}
-                  onClick={placeOnMap}
-                  role={placingKey ? 'button' : undefined}
-                  tabIndex={placingKey ? 0 : undefined}
-                >
+                <div aria-label="Mapa z ostatnimi lokalizacjami" className="respawn-map-stage">
                   {canShowMapImage ? (
                     <img
                       alt={`Mapa ${map?.key ?? ''}`}
@@ -444,12 +422,6 @@ export function MapHunting({
                       CH{channel} · {mapPins.length} pinezek
                     </span>
                   </div>
-                  {placingKey && (
-                    <div className="respawn-placement-callout">
-                      <Icon name="plus" size={16} /> Kliknij pozycję:{' '}
-                      {records.find((record) => record.key === placingKey)?.entity.name}
-                    </div>
-                  )}
                   {mapPins.map((record) => {
                     const pin = record.location!;
                     const phase = getRespawnDisplay(record, now).phase;
@@ -457,8 +429,7 @@ export function MapHunting({
                       <button
                         className={`respawn-map-marker is-${record.kind} is-${phase}`}
                         key={record.key}
-                        onClick={(event) => {
-                          event.stopPropagation();
+                        onClick={() => {
                           setNotice(
                             `${record.entity.name}: ostatnie zbicie${
                               record.confirmedBy ? ` · ${record.confirmedBy}` : ''
@@ -483,9 +454,7 @@ export function MapHunting({
                   })}
                 </div>
                 <p className="respawn-map-help">
-                  {placingKey
-                    ? 'Kliknij na mapie: zbicie + pinezka ostatniej znanej lokalizacji.'
-                    : 'Pinezki Timerów = ostatnie zbicie. Party skauta jest na /maps.'}
+                  Pinezki = ostatnie zbicie z mini-okna po <b>Zbite</b>. Party skauta jest na /maps.
                 </p>
               </div>
             )}
@@ -496,7 +465,10 @@ export function MapHunting({
                   <header>
                     <span className="section-kicker">Po zbiciu</span>
                     <h3>Odliczanie — cel nie znika</h3>
-                    <p>Widać pozostały czas do okna. Ponowne Zbite dopiero w oknie respawnu.</p>
+                    <p>
+                      Zbite cele zjeżdżają tu z zegarem do okna respawnu. Ponowne <b>Zbite</b>{' '}
+                      dopiero gdy otworzy się okno.
+                    </p>
                   </header>
                   {counting.map((record) => renderRecord(record, true))}
                 </div>

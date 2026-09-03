@@ -8289,14 +8289,32 @@ button:disabled {
   box-shadow: 0 0 0 1px rgba(240, 189, 100, 0.28);
   animation: respawn-channel-pulse 1.6s ease-in-out infinite;
 }
+.respawn-record.is-window-active {
+  border-radius: 10px;
+  background: rgba(82, 211, 156, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(82, 211, 156, 0.28);
+}
+.respawn-record.is-window-active .respawn-record-time b {
+  color: #7ee3b0 !important;
+}
 .respawn-record.is-late-window {
   border-radius: 10px;
-  background: rgba(240, 189, 100, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(240, 189, 100, 0.22);
+  background: rgba(240, 189, 100, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(240, 189, 100, 0.4);
+  animation: respawn-late-glow 1.8s ease-in-out infinite;
+}
+.respawn-record.is-late-window .respawn-record-time b {
+  color: #ffd89a !important;
 }
 .respawn-record.is-counting {
-  opacity: 0.96;
-  background: rgba(12, 22, 36, 0.55);
+  opacity: 1;
+  background: rgba(28, 40, 58, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(110, 168, 255, 0.18);
+}
+.respawn-record.is-counting .respawn-record-time b {
+  color: #b7d2ff !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px !important;
 }
 .respawn-counting-block {
   margin-top: 10px;
@@ -8326,6 +8344,15 @@ button:disabled {
   background: rgba(240, 189, 100, 0.1);
   color: #ffd89a;
   font-size: 13px;
+}
+@keyframes respawn-late-glow {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(240, 189, 100, 0.28);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(240, 189, 100, 0.55);
+  }
 }
 .respawn-pin-modal {
   position: fixed;
