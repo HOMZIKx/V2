@@ -2201,10 +2201,12 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
             typeof item.enhancement === 'number'
               ? clampEnhancement(item.enhancement)
               : parseEnhancementFromName(item.name);
+          const name = formatEnhancedItemName(item.name, enhancement);
           return {
             ...item,
             enhancement,
-            name: formatEnhancedItemName(item.name, enhancement),
+            name,
+            iconPath: resolveItemIconPath(name, item.iconPath),
           };
         }),
       })),

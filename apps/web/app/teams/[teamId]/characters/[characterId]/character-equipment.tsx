@@ -95,6 +95,255 @@ function assignedItemIds(workspace: WorkspaceRecord): Map<string, string> {
   return map;
 }
 
+function ItemIcon({
+  item,
+  className,
+}: {
+  readonly item: EquipmentItem;
+  readonly className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className={`eq-item-fallback${className ? ` ${className}` : ''}`} aria-hidden>
+        <Icon name="equipment" size={18} />
+      </span>
+    );
+  }
+  return <img alt="" className={className} onError={() => setFailed(true)} src={item.iconPath} />;
+}
+
+function CharacterCard(props: {
+  readonly entry: CharacterRecord;
+  readonly workspace: WorkspaceRecord;
+  readonly boardMode: BoardMode;
+  readonly focusId: string;
+  readonly dropTargetId: string | null;
+  readonly selectedItemId: string | null;
+  readonly writesEnabled: boolean;
+  readonly addTimerKind: ProgressionKind | 'custom';
+  readonly customTimerLabel: string;
+  readonly onFocus: (characterId: string, setId: string) => void;
+  readonly onSelectItem: (itemId: string) => void;
+  readonly onAssign: (target: CharacterRecord, itemId: string, slot?: EquipmentSlot) => void;
+  readonly onDropTarget: (id: string | null) => void;
+  readonly onCharacterDrop: (event: DragEvent<HTMLElement>, target: CharacterRecord) => void;
+  readonly onRemove: (characterId: string, setId: string, slot: EquipmentSlot) => void;
+  readonly onCompleteTimer: (timerId: string, label: string, characterName: string) => void;
+  readonly onAddTimer: (characterId: string) => void;
+  readonly onAddTimerKind: (value: ProgressionKind | 'custom') => void;
+  readonly onCustomTimerLabel: (value: string) => void;
+  readonly missingKinds: readonly ProgressionKind[];
+}) {
+  const {
+    entry,
+    workspace,
+    boardMode,
+    focusId,
+    dropTargetId,
+    selectedItemId,
+    writesEnabled,
+    addTimerKind,
+    customTimerLabel,
+    onFocus,
+    onSelectItem,
+    onAssign,
+    onDropTarget,
+    onCharacterDrop,
+    onRemove,
+    onCompleteTimer,
+    onAddTimer,
+    onAddTimerKind,
+    onCustomTimerLabel,
+    missingKinds,
+  } = props;
+  const set =
+    entry.sets.find((candidate) => candidate.id === entry.activeSetId) ?? entry.sets[0] ?? null;
+  const timers = sortProgressionTimers(
+    workspace.timers.filter((timer) => timer.characterId === entry.id),
+  );
+
+  return (
+    <article
+      className={`eq-char-card${focusId === entry.id ? ' is-focus' : ''}${
+        dropTargetId === entry.id ? ' is-drop-target' : ''
+      }${selectedItemId && boardMode === 'eq' ? ' is-assignable' : ''}`}
+      onDragLeave={() => onDropTarget(null)}
+      onDragOver={(event) => {
+        if (boardMode !== 'eq') return;
+        event.preventDefault();
+        onDropTarget(entry.id);
+      }}
+      onDrop={(event) => {
+        if (boardMode !== 'eq') return;
+        onCharacterDrop(event, entry);
+      }}
+    >
+      <div className="eq-char-card-top">
+        <div className="eq-char-portrait">
+          {entry.imagePath ? (
+            <img
+              alt={`${characterClassLabels[entry.characterClass]} — ${entry.name}`}
+              src={entry.imagePath}
+            />
+          ) : (
+            <span className="missing-render">Brak renderu</span>
+          )}
+        </div>
+        <div>
+          <strong>{entry.name}</strong>
+          <span>
+            {characterClassLabels[entry.characterClass]}
+            {entry.level ? ` · lv ${entry.level}` : ''} · {set?.name ?? 'brak setu'}
+          </span>
+          {boardMode === 'eq' && selectedItemId ? (
+            <button
+              className="eq-assign-cta"
+              onClick={() => onAssign(entry, selectedItemId)}
+              type="button"
+            >
+              Załóż wybrany przedmiot
+            </button>
+          ) : null}
+          <button
+            onClick={() => onFocus(entry.id, entry.activeSetId || entry.sets[0]?.id || '')}
+            type="button"
+          >
+            Ustaw fokus
+          </button>
+        </div>
+      </div>
+
+      {boardMode === 'eq' && set ? (
+        <div className="eq-char-slots">
+          {equipmentSlots.map((slot) => {
+            const itemId = set.assignments[slot];
+            const item = workspace.items.find((candidate) => candidate.id === itemId);
+            const readiness = getSlotReadiness(workspace, entry, set, slot);
+            return (
+              <button
+                className={`eq-char-slot${item ? ' has-item' : ''}`}
+                key={slot}
+                onClick={() => {
+                  if (selectedItemId) {
+                    onAssign(entry, selectedItemId, slot);
+                    return;
+                  }
+                  if (item) {
+                    onFocus(entry.id, set.id);
+                    onSelectItem(item.id);
+                  }
+                }}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const itemIdDrop = event.dataTransfer.getData('text/item-id') || selectedItemId;
+                  if (itemIdDrop) onAssign(entry, itemIdDrop, slot);
+                }}
+                title={item ? `${item.name} · ${readinessLabels[readiness]}` : slotLabels[slot]}
+                type="button"
+              >
+                {item ? <ItemIcon item={item} /> : <span>{slotLabels[slot]}</span>}
+                <small>{slotLabels[slot]}</small>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {boardMode === 'timers' ? (
+        <div className="eq-char-timers">
+          {timers.length === 0 ? (
+            <p className="empty-copy">Brak timerów — dodaj poniżej.</p>
+          ) : (
+            timers.map((timer) => {
+              const iconPath = timerIconPath(timer);
+              const running = timer.status !== 'ready';
+              return (
+                <article
+                  className={`eq-char-timer${running ? ' is-running' : ' is-ready'}`}
+                  key={timer.id}
+                >
+                  <div className="eq-char-timer-row">
+                    <span>
+                      {iconPath ? <img alt="" src={iconPath} /> : <Icon name="clock" size={18} />}
+                    </span>
+                    <div>
+                      <strong>{timer.label}</strong>
+                      <span>
+                        {running ? 'Odliczanie' : 'Gotowe'}
+                        {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
+                      </span>
+                    </div>
+                    <button
+                      disabled={!writesEnabled || running}
+                      onClick={() => {
+                        if (running) return;
+                        onCompleteTimer(timer.id, timer.label, entry.name);
+                      }}
+                      title={
+                        running ? 'Timer w toku — edycja zablokowana' : 'Jeden klik uruchamia cykl'
+                      }
+                      type="button"
+                    >
+                      {running ? 'Zablokowany' : 'Start'}
+                    </button>
+                  </div>
+                  <div className="timer-progress-track" aria-hidden="true">
+                    <span style={{ width: `${timer.progressPercent}%` }} />
+                  </div>
+                </article>
+              );
+            })
+          )}
+          <div className="eq-add-timer">
+            <span className="section-kicker">Dodaj timer</span>
+            <select
+              aria-label="Rodzaj timera"
+              onChange={(event) => onAddTimerKind(event.target.value as ProgressionKind | 'custom')}
+              value={addTimerKind}
+            >
+              {missingKinds.map((kind) => (
+                <option key={kind} value={kind}>
+                  {progressionTimerLabels[kind]}
+                </option>
+              ))}
+              <option value="custom">Własny opis…</option>
+            </select>
+            {addTimerKind === 'custom' ? (
+              <input
+                aria-label="Nazwa własnego timera"
+                onChange={(event) => onCustomTimerLabel(event.target.value)}
+                placeholder="np. Codzienne zadanie"
+                value={customTimerLabel}
+              />
+            ) : null}
+            <button disabled={!writesEnabled} onClick={() => onAddTimer(entry.id)} type="button">
+              Dodaj timer
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {boardMode === 'eq' && set
+        ? equipmentSlots
+            .filter((slot) => selectedItemId && set.assignments[slot] === selectedItemId)
+            .map((slot) => (
+              <button
+                disabled={!writesEnabled}
+                key={`rm-${slot}`}
+                onClick={() => onRemove(entry.id, set.id, slot)}
+                type="button"
+              >
+                Zdejmij z {slotLabels[slot]}
+              </button>
+            ))
+        : null}
+    </article>
+  );
+}
+
 export function CharacterEquipment() {
   const params = useParams<{ teamId: string; characterId: string }>();
   const {
@@ -129,7 +378,7 @@ export function CharacterEquipment() {
   const [newItemName, setNewItemName] = useState('');
   const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
-  const [showAssigned, setShowAssigned] = useState(true);
+  const [showAssigned, setShowAssigned] = useState(false);
   const [moveTarget, setMoveTarget] = useState('');
   const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('skill_book');
   const [customTimerLabel, setCustomTimerLabel] = useState('');
@@ -457,313 +706,237 @@ export function CharacterEquipment() {
 
         <div className="eq-camp-layout">
           <section className={`eq-camp ${boardMode === 'timers' ? 'is-timers' : 'is-eq'}`}>
-            <div className="eq-camp-center">
-              {boardMode === 'eq' ? (
-                <>
-                  <div className="eq-pool-header">
-                    <div>
-                      <span className="section-kicker">Centrum obozu</span>
-                      <h2>Ekwipunek (inventory)</h2>
-                      <p className="empty-copy">
-                        Siatka jak w Metin2 — tu mieści się dowolna liczba kart. Na postać zakładysz
-                        max 8 slotów EQ.
-                      </p>
-                    </div>
-                    <label className="field">
-                      <input
-                        checked={showAssigned}
-                        onChange={(event) => setShowAssigned(event.target.checked)}
-                        type="checkbox"
-                      />{' '}
-                      Pokaż też założone
-                    </label>
-                  </div>
-                  <label className="market-search">
-                    <Icon name="search" size={16} />
-                    <input
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="Szukaj przedmiotu…"
-                      value={query}
+            <div className="eq-camp-ring">
+              <div className="eq-camp-side-col eq-camp-side-left">
+                {livingCharacters
+                  .filter((_, index) => index % 2 === 0)
+                  .map((entry) => (
+                    <CharacterCard
+                      addTimerKind={addTimerKind}
+                      boardMode={boardMode}
+                      customTimerLabel={customTimerLabel}
+                      dropTargetId={dropTargetId}
+                      entry={entry}
+                      focusId={focusCharacter.id}
+                      key={entry.id}
+                      missingKinds={missingKindsFor(entry)}
+                      selectedItemId={selectedItemId}
+                      workspace={workspace}
+                      writesEnabled={writesEnabled}
+                      onAddTimer={(characterId) => {
+                        if (addTimerKind === 'custom') {
+                          addTimer(workspace.id, characterId, { label: customTimerLabel });
+                          setCustomTimerLabel('');
+                          setAnnouncement(`Dodano timer na ${entry.name}.`);
+                          return;
+                        }
+                        addTimer(workspace.id, characterId, { kind: addTimerKind });
+                        setAnnouncement(
+                          `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
+                        );
+                      }}
+                      onAddTimerKind={setAddTimerKind}
+                      onAssign={assignToCharacter}
+                      onCharacterDrop={onCharacterDrop}
+                      onCompleteTimer={(timerId, label, characterName) => {
+                        const operationId = `timer-${timerId}-${Date.now()}`;
+                        completeTimer(workspace.id, timerId, operationId);
+                        const timer = workspace.timers.find((item) => item.id === timerId);
+                        setAnnouncement(
+                          `${characterName}: ${label} — czas ruszył.${
+                            timer ? ` ${completionHint(timer)}` : ''
+                          }`,
+                        );
+                      }}
+                      onCustomTimerLabel={setCustomTimerLabel}
+                      onDropTarget={setDropTargetId}
+                      onFocus={(characterId, setId) => {
+                        setFocusCharacterId(characterId);
+                        setActiveSetId(setId);
+                      }}
+                      onRemove={(characterId, setId, slot) => {
+                        removeItem(workspace.id, characterId, setId, slot);
+                        setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
+                      }}
+                      onSelectItem={setSelectedItemId}
                     />
-                  </label>
-                  <div className="catalog-filters" style={{ marginTop: 10, marginBottom: 10 }}>
-                    <button
-                      className={category === 'all' ? 'is-active' : ''}
-                      onClick={() => setCategory('all')}
-                      type="button"
-                    >
-                      Wszystkie
-                    </button>
-                    {equipmentSlots.map((slot) => (
+                  ))}
+              </div>
+
+              <div className="eq-camp-center">
+                {boardMode === 'eq' ? (
+                  <>
+                    <div className="eq-pool-header">
+                      <div>
+                        <span className="section-kicker">Centrum obozu</span>
+                        <h2>Ekwipunek (inventory)</h2>
+                        <p className="empty-copy">
+                          Niezałożone karty zespołu. Przeciągnij na postać (desktop) albo wybierz i
+                          kliknij „Załóż” (mobile).
+                        </p>
+                      </div>
+                      <label className="field">
+                        <input
+                          checked={showAssigned}
+                          onChange={(event) => setShowAssigned(event.target.checked)}
+                          type="checkbox"
+                        />{' '}
+                        Pokaż też założone
+                      </label>
+                    </div>
+                    <label className="market-search">
+                      <Icon name="search" size={16} />
+                      <input
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="Szukaj przedmiotu…"
+                        value={query}
+                      />
+                    </label>
+                    <div className="catalog-filters" style={{ marginTop: 10, marginBottom: 10 }}>
                       <button
-                        className={category === slot ? 'is-active' : ''}
-                        key={slot}
-                        onClick={() => setCategory(slot)}
+                        className={category === 'all' ? 'is-active' : ''}
+                        onClick={() => setCategory('all')}
                         type="button"
                       >
-                        {slotLabels[slot]}
+                        Wszystkie
                       </button>
-                    ))}
-                  </div>
-                  <div className="eq-inventory-grid" aria-label="Inventory zespołu">
-                    {poolItems.map((item) => {
-                      const owner = ownership.get(item.id);
-                      return (
+                      {equipmentSlots.map((slot) => (
                         <button
-                          aria-label={item.name}
-                          aria-pressed={item.id === selectedItemId}
-                          className={`eq-inventory-slot${owner ? ' is-assigned' : ''}`}
-                          draggable
-                          key={item.id}
-                          onClick={() =>
-                            setSelectedItemId((current) => (current === item.id ? null : item.id))
-                          }
-                          onDragStart={(event) => onPoolDragStart(event, item.id)}
-                          title={owner ? `${item.name} · na ${owner}` : item.name}
+                          className={category === slot ? 'is-active' : ''}
+                          key={slot}
+                          onClick={() => setCategory(slot)}
                           type="button"
                         >
-                          <img alt="" src={item.iconPath} />
-                          <em>+{item.enhancement}</em>
+                          {slotLabels[slot]}
                         </button>
-                      );
-                    })}
-                    {Array.from({
-                      length: Math.max(0, 30 - poolItems.length),
-                    }).map((_, index) => (
-                      <div
-                        aria-hidden
-                        className="eq-inventory-slot is-empty"
-                        key={`empty-${index}`}
-                      />
-                    ))}
-                  </div>
-                  {poolItems.length === 0 ? (
-                    <p className="empty-copy">Brak kart — dodaj po prawej do inventory.</p>
-                  ) : null}
-                </>
-              ) : (
-                <div className="eq-campfire" aria-hidden={false}>
-                  <div className="eq-campfire-flame" />
-                  <strong>Ognisko</strong>
-                  <span>Karty postaci pokazują cykle PH · jeden klik uruchamia odliczanie</span>
-                </div>
-              )}
-            </div>
-
-            <div className="eq-camp-characters">
-              {livingCharacters.map((entry) => {
-                const set =
-                  entry.sets.find((candidate) => candidate.id === entry.activeSetId) ??
-                  entry.sets[0] ??
-                  null;
-                const timers = sortProgressionTimers(
-                  workspace.timers.filter((timer) => timer.characterId === entry.id),
-                );
-                const missing = missingKindsFor(entry);
-                return (
-                  <article
-                    className={`eq-char-card${focusCharacter.id === entry.id ? ' is-focus' : ''}${
-                      dropTargetId === entry.id ? ' is-drop-target' : ''
-                    }`}
-                    key={entry.id}
-                    onDragLeave={() => setDropTargetId(null)}
-                    onDragOver={(event) => {
-                      if (boardMode !== 'eq') return;
-                      event.preventDefault();
-                      setDropTargetId(entry.id);
-                    }}
-                    onDrop={(event) => {
-                      if (boardMode !== 'eq') return;
-                      onCharacterDrop(event, entry);
-                    }}
-                  >
-                    <div className="eq-char-card-top">
-                      <div className="eq-char-portrait">
-                        {entry.imagePath ? (
-                          <img
-                            alt={`${characterClassLabels[entry.characterClass]} — ${entry.name}`}
-                            src={entry.imagePath}
-                          />
-                        ) : (
-                          <span className="missing-render">Brak renderu</span>
-                        )}
-                      </div>
-                      <div>
-                        <strong>{entry.name}</strong>
-                        <span>
-                          {characterClassLabels[entry.characterClass]}
-                          {entry.level ? ` · lv ${entry.level}` : ''} · {set?.name ?? 'brak setu'}
-                        </span>
-                        {boardMode === 'eq' && selectedItemId ? (
-                          <button
-                            onClick={() => assignToCharacter(entry, selectedItemId)}
-                            style={{ marginTop: 8 }}
-                            type="button"
-                          >
-                            Przypisz wybrany przedmiot
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={() => {
-                            setFocusCharacterId(entry.id);
-                            setActiveSetId(entry.activeSetId || entry.sets[0]?.id || '');
-                          }}
-                          style={{ marginTop: 6 }}
-                          type="button"
-                        >
-                          Ustaw fokus
-                        </button>
-                      </div>
+                      ))}
                     </div>
-
-                    {boardMode === 'eq' && set ? (
-                      <div className="eq-char-slots">
-                        {equipmentSlots.map((slot) => {
-                          const itemId = set.assignments[slot];
-                          const item = workspace.items.find((candidate) => candidate.id === itemId);
-                          const readiness = getSlotReadiness(workspace, entry, set, slot);
-                          return (
-                            <button
-                              className={`eq-char-slot${item ? ' has-item' : ''}`}
-                              key={slot}
-                              onClick={() => {
-                                if (selectedItemId) {
-                                  assignToCharacter(entry, selectedItemId, slot);
-                                  return;
-                                }
-                                if (item) {
-                                  setSelectedItemId(item.id);
-                                  setFocusCharacterId(entry.id);
-                                  setAnnouncement(`${item.name} · ${readinessLabels[readiness]}`);
-                                }
-                              }}
-                              onDragOver={(event) => event.preventDefault()}
-                              onDrop={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                const itemIdDrop =
-                                  event.dataTransfer.getData('text/item-id') || selectedItemId;
-                                if (itemIdDrop) assignToCharacter(entry, itemIdDrop, slot);
-                              }}
-                              type="button"
-                            >
-                              {item ? (
-                                <img alt="" src={item.iconPath} />
-                              ) : (
-                                <span>{slotLabels[slot]}</span>
-                              )}
-                              <small>{slotLabels[slot]}</small>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-
-                    {boardMode === 'timers' ? (
-                      <div className="eq-char-timers">
-                        {timers.length === 0 ? (
-                          <p className="empty-copy">Brak timerów — dodaj poniżej.</p>
-                        ) : (
-                          timers.map((timer) => {
-                            const iconPath = timerIconPath(timer);
-                            const running = timer.status !== 'ready';
-                            return (
-                              <article
-                                className={`eq-char-timer${running ? ' is-running' : ' is-ready'}`}
-                                key={timer.id}
-                              >
-                                <div className="eq-char-timer-row">
-                                  <span>
-                                    {iconPath ? (
-                                      <img alt="" src={iconPath} />
-                                    ) : (
-                                      <Icon name="clock" size={18} />
-                                    )}
-                                  </span>
-                                  <div>
-                                    <strong>{timer.label}</strong>
-                                    <span>
-                                      {running ? 'Odliczanie' : 'Gotowe'}
-                                      {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
-                                    </span>
-                                  </div>
-                                  <button
-                                    disabled={!writesEnabled || running}
-                                    onClick={() => {
-                                      if (running) return;
-                                      const operationId = `timer-${timer.id}-${Date.now()}`;
-                                      completeTimer(workspace.id, timer.id, operationId);
-                                      setAnnouncement(
-                                        `${entry.name}: ${timer.label} — czas ruszył. ${completionHint(timer)}`,
-                                      );
-                                    }}
-                                    title={
-                                      running
-                                        ? 'Timer w toku — edycja zablokowana'
-                                        : 'Jeden klik uruchamia cykl'
-                                    }
-                                    type="button"
-                                  >
-                                    {running ? 'Zablokowany' : 'Start'}
-                                  </button>
-                                </div>
-                                <div className="timer-progress-track" aria-hidden="true">
-                                  <span style={{ width: `${timer.progressPercent}%` }} />
-                                </div>
-                              </article>
-                            );
-                          })
-                        )}
-                        <div className="eq-add-timer">
-                          <span className="section-kicker">Dodaj timer</span>
-                          <select
-                            aria-label="Rodzaj timera"
-                            onChange={(event) =>
-                              setAddTimerKind(event.target.value as ProgressionKind | 'custom')
-                            }
-                            value={addTimerKind}
-                          >
-                            {missing.map((kind) => (
-                              <option key={kind} value={kind}>
-                                {progressionTimerLabels[kind]}
-                              </option>
-                            ))}
-                            <option value="custom">Własny opis…</option>
-                          </select>
-                          {addTimerKind === 'custom' ? (
-                            <input
-                              aria-label="Nazwa własnego timera"
-                              onChange={(event) => setCustomTimerLabel(event.target.value)}
-                              placeholder="np. Codzienne zadanie"
-                              value={customTimerLabel}
-                            />
-                          ) : null}
+                    <div className="eq-inventory-grid" aria-label="Inventory zespołu">
+                      {poolItems.map((item) => {
+                        const owner = ownership.get(item.id);
+                        return (
                           <button
-                            disabled={!writesEnabled}
-                            onClick={() => {
-                              if (addTimerKind === 'custom') {
-                                addTimer(workspace.id, entry.id, { label: customTimerLabel });
-                                setCustomTimerLabel('');
-                                setAnnouncement(`Dodano timer na ${entry.name}.`);
-                                return;
-                              }
-                              addTimer(workspace.id, entry.id, { kind: addTimerKind });
-                              setAnnouncement(
-                                `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
-                              );
-                            }}
+                            aria-label={item.name}
+                            aria-pressed={item.id === selectedItemId}
+                            className={`eq-inventory-slot${owner ? ' is-assigned' : ''}`}
+                            draggable
+                            key={item.id}
+                            onClick={() =>
+                              setSelectedItemId((current) => (current === item.id ? null : item.id))
+                            }
+                            onDragStart={(event) => onPoolDragStart(event, item.id)}
+                            title={owner ? `${item.name} · na ${owner}` : item.name}
                             type="button"
                           >
-                            Dodaj timer
+                            <ItemIcon item={item} />
+                            <em>+{item.enhancement}</em>
                           </button>
-                        </div>
-                      </div>
+                        );
+                      })}
+                      {Array.from({
+                        length: Math.max(0, 30 - poolItems.length),
+                      }).map((_, index) => (
+                        <div
+                          aria-hidden
+                          className="eq-inventory-slot is-empty"
+                          key={`empty-${index}`}
+                        />
+                      ))}
+                    </div>
+                    {poolItems.length === 0 ? (
+                      <p className="empty-copy">Brak kart — dodaj po prawej do inventory.</p>
                     ) : null}
-                  </article>
-                );
-              })}
+                  </>
+                ) : (
+                  <div className="eq-campfire" aria-hidden={false}>
+                    <div className="eq-campfire-flame" />
+                    <strong>Ognisko</strong>
+                    <span>Karty postaci pokazują cykle PH · jeden klik uruchamia odliczanie</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="eq-camp-side-col eq-camp-side-right">
+                {livingCharacters
+                  .filter((_, index) => index % 2 === 1)
+                  .map((entry) => (
+                    <CharacterCard
+                      addTimerKind={addTimerKind}
+                      boardMode={boardMode}
+                      customTimerLabel={customTimerLabel}
+                      dropTargetId={dropTargetId}
+                      entry={entry}
+                      focusId={focusCharacter.id}
+                      key={entry.id}
+                      missingKinds={missingKindsFor(entry)}
+                      selectedItemId={selectedItemId}
+                      workspace={workspace}
+                      writesEnabled={writesEnabled}
+                      onAddTimer={(characterId) => {
+                        if (addTimerKind === 'custom') {
+                          addTimer(workspace.id, characterId, { label: customTimerLabel });
+                          setCustomTimerLabel('');
+                          setAnnouncement(`Dodano timer na ${entry.name}.`);
+                          return;
+                        }
+                        addTimer(workspace.id, characterId, { kind: addTimerKind });
+                        setAnnouncement(
+                          `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
+                        );
+                      }}
+                      onAddTimerKind={setAddTimerKind}
+                      onAssign={assignToCharacter}
+                      onCharacterDrop={onCharacterDrop}
+                      onCompleteTimer={(timerId, label, characterName) => {
+                        const operationId = `timer-${timerId}-${Date.now()}`;
+                        completeTimer(workspace.id, timerId, operationId);
+                        const timer = workspace.timers.find((item) => item.id === timerId);
+                        setAnnouncement(
+                          `${characterName}: ${label} — czas ruszył.${
+                            timer ? ` ${completionHint(timer)}` : ''
+                          }`,
+                        );
+                      }}
+                      onCustomTimerLabel={setCustomTimerLabel}
+                      onDropTarget={setDropTargetId}
+                      onFocus={(characterId, setId) => {
+                        setFocusCharacterId(characterId);
+                        setActiveSetId(setId);
+                      }}
+                      onRemove={(characterId, setId, slot) => {
+                        removeItem(workspace.id, characterId, setId, slot);
+                        setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
+                      }}
+                      onSelectItem={setSelectedItemId}
+                    />
+                  ))}
+              </div>
             </div>
           </section>
+
+          {selectedItem && boardMode === 'eq' ? (
+            <div className="eq-mobile-assign" role="region" aria-label="Przypisz na mobile">
+              <ItemIcon item={selectedItem} />
+              <div>
+                <strong>{selectedItem.name}</strong>
+                <span>Wybierz postać poniżej</span>
+              </div>
+              <div className="eq-mobile-assign-targets">
+                {livingCharacters.map((entry) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => assignToCharacter(entry, selectedItem.id)}
+                    type="button"
+                  >
+                    {entry.name}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setSelectedItemId(null)} type="button">
+                Anuluj
+              </button>
+            </div>
+          ) : null}
 
           <aside className="eq-camp-side">
             <section className="panel catalog-panel">
@@ -771,7 +944,7 @@ export function CharacterEquipment() {
                 <h2>Dodaj kartę EQ</h2>
               </header>
               <p className="empty-copy">
-                Trafia do puli w centrum. Grafika z katalogu gry, gdy nazwa pasuje.
+                Trafia do inventory w centrum. Grafika z katalogu gry, gdy nazwa pasuje.
               </p>
               <form className="inline-create" onSubmit={handleCreateItem}>
                 <input
