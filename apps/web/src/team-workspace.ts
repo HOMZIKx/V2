@@ -214,3 +214,4 @@ export function appendTeamNote(notes: readonly TeamNote[], note: TeamNote): read
   const normalizedBody = note.body.trim();
   return normalizedBody.length === 0 ? notes : [{ ...note, body: normalizedBody }, ...notes];
 }
+

@@ -82,7 +82,7 @@ const navigation = [
   { id: 'teams', label: 'Moje zespoły', icon: 'team', href: '/teams/asteria' },
   { id: 'characters', label: 'Postacie', icon: 'character', href: '/characters' },
   { id: 'maps', label: 'Mapy', icon: 'map', href: '/maps' },
-  { id: 'market', label: 'Targ', icon: 'market', href: null },
+  { id: 'market', label: 'Targ', icon: 'market', href: '/market' },
   { id: 'activity', label: 'Aktywność', icon: 'activity', href: '/activity' },
 ] as const satisfies ReadonlyArray<{
   id: AppSection;
@@ -122,7 +122,7 @@ export function AppShell({
 
         <nav aria-label="Główna nawigacja" className="global-nav">
           {navigation.map((item) =>
-            item.href ? (
+            (
               <a
                 aria-current={item.id === activeSection ? 'page' : undefined}
                 className="global-nav-item"
@@ -132,47 +132,36 @@ export function AppShell({
                 <Icon name={item.icon} size={16} />
                 {item.label}
               </a>
-            ) : (
-              <button
-                className="global-nav-item"
-                disabled
-                key={item.id}
-                title="Ten obszar powstanie w kolejnym etapie"
-                type="button"
-              >
-                <Icon name={item.icon} size={16} />
-                {item.label}
-              </button>
             ),
           )}
         </nav>
 
         <div className="topbar-actions">
-          <button aria-label="Szukaj" className="icon-button" disabled type="button">
+          <a aria-label="Szukaj w Targu" className="icon-button" href="/market">
             <Icon name="search" />
-          </button>
-          <button
-            aria-label="Powiadomienia"
+          </a>
+          <a
+            aria-label="Przejdź do aktywności"
             className="icon-button notification-button"
-            type="button"
+            href="/activity"
           >
             <Icon name="bell" />
             <span className="notification-dot" />
-          </button>
-          <button aria-label="Ustawienia konta" className="profile-button" type="button">
+          </a>
+          <a aria-label="Otwórz przestrzeń zespołu" className="profile-button" href="/teams/asteria">
             <span className="profile-avatar">{viewerName.slice(0, 1).toUpperCase()}</span>
             <span className="profile-copy">
               <strong>{viewerName}</strong>
               <small>Członek</small>
             </span>
             <Icon name="chevron" size={15} />
-          </button>
+          </a>
         </div>
       </header>
 
       <aside className={`mobile-drawer${mobileMenuOpen ? ' is-open' : ''}`}>
         {navigation.map((item) =>
-          item.href ? (
+          (
             <a
               aria-current={item.id === activeSection ? 'page' : undefined}
               className="drawer-item"
@@ -182,12 +171,6 @@ export function AppShell({
               <Icon name={item.icon} />
               {item.label}
             </a>
-          ) : (
-            <button className="drawer-item" disabled key={item.id} type="button">
-              <Icon name={item.icon} />
-              {item.label}
-              <small>później</small>
-            </button>
           ),
         )}
       </aside>
