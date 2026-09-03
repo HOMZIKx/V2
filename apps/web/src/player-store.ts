@@ -1968,7 +1968,12 @@ export function createEquipmentItem(
       iconPath: resolveItemIconPath(name),
       category,
       levelLabel: catalogHit ? `katalog: ${catalogHit.category}` : 'własny wpis zespołu',
-      bonuses: resolveItemBonuses(name, enhancement, input.bonuses),
+      // Caller-provided bonuses are considered "explicit" (user picked them).
+      // When explicit bonuses exist, do not overwrite with full catalog ladders.
+      bonuses:
+        input.bonuses.length > 0
+          ? input.bonuses.map((line) => line.trim()).filter((line) => line.length > 0)
+          : resolveItemBonuses(name, enhancement, []),
       catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
       lastConfirmedLocation: null,
       lastConfirmedBy: null,

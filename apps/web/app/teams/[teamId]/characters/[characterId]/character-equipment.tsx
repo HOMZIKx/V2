@@ -379,6 +379,8 @@ export function CharacterEquipment() {
   const [newItemName, setNewItemName] = useState('');
   const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
+  const [newItemSelectedBonuses, setNewItemSelectedBonuses] = useState<readonly string[]>([]);
+  const [newItemManualBonusDraft, setNewItemManualBonusDraft] = useState('');
   const [showAssigned, setShowAssigned] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState('');
@@ -442,6 +444,18 @@ export function CharacterEquipment() {
   }, [character, newItemName, newItemSlot]);
 
   const matchedDefinition = findGameItemByCardName(newItemName);
+  const createCatalogBonusEntries = useMemo(() => {
+    if (!createOpen) return [];
+    const normalized = newItemName.trim();
+    if (normalized.length < 2) return [];
+    return catalogBonusEntriesForItem(normalized, newItemEnhancement);
+  }, [catalogBonusEntriesForItem, createOpen, newItemName, newItemEnhancement]);
+
+  useEffect(() => {
+    if (!createOpen) return;
+    setNewItemManualBonusDraft('');
+    setNewItemSelectedBonuses(createCatalogBonusEntries.map((entry) => entry.line));
+  }, [createOpen, createCatalogBonusEntries]);
   const livingCharacters = useMemo(
     () => workspace?.characters.filter((entry) => !entry.archived) ?? [],
     [workspace],
@@ -553,7 +567,7 @@ export function CharacterEquipment() {
       }
     }
     const cardName = formatEnhancedItemName(baseName, newItemEnhancement);
-    const bonuses = resolveItemBonuses(cardName, newItemEnhancement, []);
+    const bonuses = newItemSelectedBonuses;
     const createdId = createItem(workspace.id, {
       name: cardName,
       category: newItemSlot,
@@ -563,11 +577,13 @@ export function CharacterEquipment() {
       forCharacterClass: focusCharacter.characterClass,
     });
     setNewItemName('');
+    setNewItemSelectedBonuses([]);
+    setNewItemManualBonusDraft('');
     setCreateOpen(false);
     if (createdId) setSelectedItemId(createdId);
     setAnnouncement(
       bonuses.length > 0
-        ? `Dodano do inventory: ${cardName} (${bonuses.length} bonusów z katalogu).`
+        ? `Dodano do inventory: ${cardName} (${bonuses.length} bonusów).`
         : `Dodano do inventory: ${cardName} — uzupełnij bonusy w szczegółach.`,
     );
   };
@@ -871,6 +887,76 @@ export function CharacterEquipment() {
                             {matchedDefinition.sourceImageUrl ? ' · z grafiką' : ''}
                           </p>
                         ) : null}
+
+                        <div className="eq-create-bonus-section" aria-label="Wybór bonusów">
+                          <span className="section-kicker">Bonusy (z katalogu) — kliknij</span>
+                          {createCatalogBonusEntries.length > 0 ? (
+                            <div className="eq-bonus-toggle-list" role="list">
+                              {createCatalogBonusEntries.map((entry) => {
+                                const isSelected = newItemSelectedBonuses.includes(entry.line);
+                                return (
+                                  <button
+                                    className={`eq-bonus-toggle-entry${
+                                      isSelected ? ' is-selected' : ''
+                                    }`}
+                                    key={entry.name}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      setNewItemSelectedBonuses((current) => {
+                                        if (current.includes(entry.line)) {
+                                          return current.filter((line) => line !== entry.line);
+                                        }
+                                        return [...current, entry.line];
+                                      });
+                                    }}
+                                    type="button"
+                                  >
+                                    <span>{entry.name}</span>
+                                    <em>{entry.valueAtLevel ?? '?'}</em>
+                                    {isSelected ? (
+                                      <span className="eq-bonus-check">✓</span>
+                                    ) : (
+                                      <span className="eq-bonus-plus">+</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="eq-catalog-hint">
+                              Brak drabinki w katalogu — dodaj ręcznie.
+                            </p>
+                          )}
+
+                          <div className="eq-create-bonus-manual">
+                            <input
+                              aria-label="Ręczna linia bonusu"
+                              onChange={(event) => setNewItemManualBonusDraft(event.target.value)}
+                              placeholder="np. Obrona +57 albo własna obserwacja"
+                              value={newItemManualBonusDraft}
+                            />
+                            <button
+                              disabled={!writesEnabled || newItemManualBonusDraft.trim().length < 2}
+                              onClick={() => {
+                                const line = newItemManualBonusDraft.trim();
+                                if (line.length < 2) return;
+                                setNewItemSelectedBonuses((current) => {
+                                  if (current.includes(line)) return current;
+                                  return [...current, line];
+                                });
+                                setNewItemManualBonusDraft('');
+                              }}
+                              type="button"
+                            >
+                              Dodaj linię
+                            </button>
+                          </div>
+                          {newItemSelectedBonuses.length > 0 ? (
+                            <p className="eq-create-bonus-selected">
+                              Wybrane: {newItemSelectedBonuses.length}
+                            </p>
+                          ) : null}
+                        </div>
                       </form>
                     ) : null}
 

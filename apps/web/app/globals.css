@@ -9117,6 +9117,68 @@ button:disabled {
   list-style: none;
   padding: 6px 0;
 }
+
+/* Create-form bonus picker (toggle subset) */
+.eq-create-bonus-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+.eq-bonus-toggle-list {
+  display: grid;
+  gap: 6px;
+}
+.eq-bonus-toggle-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(100, 170, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(20, 32, 52, 0.75);
+  color: #c8d8f0;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.eq-bonus-toggle-entry span:first-child {
+  flex: 1;
+}
+.eq-bonus-toggle-entry em {
+  font-style: normal;
+  font-weight: 700;
+  color: #f0c27a;
+  font-size: 12px;
+  min-width: 36px;
+  text-align: right;
+}
+.eq-bonus-toggle-entry:hover {
+  background: rgba(40, 80, 130, 0.55);
+  border-color: rgba(110, 168, 255, 0.55);
+}
+.eq-bonus-toggle-entry.is-selected {
+  border-color: rgba(82, 211, 156, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(82, 211, 156, 0.2);
+  background: rgba(52, 160, 110, 0.22);
+}
+
+.eq-create-bonus-manual {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.eq-create-bonus-manual input {
+  flex: 1;
+}
+.eq-create-bonus-selected {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0;
+}
 .eq-bonus-editor select,
 .eq-bonus-editor input {
   min-height: 34px;
