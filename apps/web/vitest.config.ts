@@ -1,10 +1,20 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
 import { createProjectTestConfig } from '../../tools/vitest.shared.js';
 
-export default defineConfig(
-  createProjectTestConfig({
-    testInclude: ['src/**/*.spec.ts'],
-    coverageInclude: ['src/**/*.{ts,tsx}'],
-  }),
-);
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+
+const base = createProjectTestConfig({
+  testInclude: ['apps/web/src/**/*.spec.ts'],
+  coverageInclude: ['apps/web/src/**/*.{ts,tsx}'],
+});
+
+export default defineConfig({
+  root: repositoryRoot,
+  test: {
+    ...base.test,
+  },
+});
