@@ -1,5 +1,6 @@
 import catalogDocument from './data/dobry-temat-item-catalog.json';
 import wikiImageMap from './data/wiki-item-image-map.json';
+import phItemIconMap from './data/ph-item-icon-map.json';
 
 export interface GameItem {
   readonly id: string;
@@ -22,9 +23,11 @@ interface LegacyCatalogItem {
 
 const legacy = catalogDocument.items as readonly LegacyCatalogItem[];
 const localImages = wikiImageMap as Record<string, string>;
+const phIcons = phItemIconMap as Record<string, string>;
 
 export const gameItemCatalog: readonly GameItem[] = legacy.map((item) => {
-  const local = localImages[item.id] ?? null;
+  const ph = phIcons[item.title] ?? null;
+  const local = ph ?? localImages[item.id] ?? null;
   return {
     id: item.id,
     title: item.title,

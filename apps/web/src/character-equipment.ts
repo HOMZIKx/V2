@@ -130,7 +130,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'zodiac-sword',
       name: 'Zatruty Miecz +9',
-      iconPath: '/game/items/wiki/wiki_99029de35c7b8aaf.jpg',
+      iconPath: '/game/items/zodiac-sword.svg',
       category: 'weapon',
       levelLabel: 'od poziomu 75',
       bonuses: ['Średnie obrażenia +37%', 'Silny przeciwko ludziom +10%', 'Witalność +12'],
@@ -142,7 +142,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'short-knife',
       name: 'Krótki Nóż +9',
-      iconPath: '/game/items/wiki/wiki_d4f9e07aa1bf2e10.jpg',
+      iconPath: '/game/items/short-knife.svg',
       category: 'weapon',
       levelLabel: 'od poziomu 1',
       bonuses: ['Szybkość ataku +15%', 'Wartość ataku +18'],
@@ -178,7 +178,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'ebony-earrings',
       name: 'Ebonitowe Kolczyki +9',
-      iconPath: '/game/items/wiki/wiki_9ed3702c5f233ff1.png',
+      iconPath: '/game/items/ph/17100.webp',
       category: 'earrings',
       levelLabel: 'od poziomu 33',
       bonuses: ['Siła +12', 'Max PŻ +1650'],
@@ -190,7 +190,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'jade-necklace',
       name: 'Jadeitowy Naszyjnik +9',
-      iconPath: '/game/items/wiki/wiki_3ebff6bb7c279bef.png',
+      iconPath: '/game/items/ph/16080.webp',
       category: 'necklace',
       levelLabel: 'od poziomu 42',
       bonuses: ['Szybkość zaklęcia +22%', 'Zręczność +4'],
@@ -214,7 +214,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'wooden-bracelet',
       name: 'Drewniana Bransoleta +9',
-      iconPath: '/game/items/wiki/wiki_74d0f69b4b506d81.png',
+      iconPath: '/game/items/ph/14000.webp',
       category: 'bracelet',
       levelLabel: 'od poziomu 0',
       bonuses: ['Szybkość ataku +5%', 'Czas trwania umiejętności +20 s'],
@@ -226,7 +226,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'leather-boots',
       name: 'Skórzane Kozaki +9',
-      iconPath: '/game/items/wiki/wiki_8442ee8613037c74.png',
+      iconPath: '/game/items/ph/15080.webp',
       category: 'shoes',
       levelLabel: 'od poziomu 29',
       bonuses: ['Szybkość ruchu +20%', 'Odporność na strzały +20%', 'Max PŻ +800'],

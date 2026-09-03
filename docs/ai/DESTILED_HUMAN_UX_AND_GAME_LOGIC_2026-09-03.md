@@ -41,8 +41,17 @@ PL prezentacja wymaga logowania — nazwy PL dla Biologa/EQ bierzemy z katalogu 
 - Targ: celowo później; katalog ikon żyje przy EQ, nie jako fałszywy marketplace.
 - Klasy: tylko 3 zatwierdzone rendery (`sura-male`, `ninja-female`, `shaman-male`) — reszta musi zostać „brak renderu”, bez AI-generowanych postaci.
 
+## Grafiki
+
+- Ikony biżuterii/butów z oficjalnego CDN prezentacji PH (`/assets/icon/*.webp`,
+  ścieżki jak w HTML prezentacji EN).
+- Ikony z wiki: tylko małe sprite PNG; odrzucamy showcase JPG i placeholder 32×32.
+- Broń bez pewnego sprite’a zostaje na lokalnym SVG — lepiej niż fałszywy vnum.
+- Mapy PNG nadal do skopiowania z lokalnego `dobry-temat`.
+
 ## Nadal brakuje (właściciel / lokalne assety)
 
 1. Pełny dump grafik map i brakujących class renderów ze starego frontu.
-2. Większy lokalny zestaw wiki PNG (dziś ~90 zmapowanych ikon na 678 pozycji katalogu).
+2. Większy lokalny zestaw pewnych ikon przedmiotów (broń/zbroje) — bez zgadywania vnumów.
 3. Prawdziwy Discord OAuth / API / bot — poza first-slice mock store.
+
