@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import {
   appendTeamNote,
@@ -12,6 +12,11 @@ import {
   type TeamWorkspaceSnapshot,
 } from '../../../src/team-workspace';
 import { AppShell, Icon } from '../../app-shell';
+
+interface LocalTeamWorkspaceState {
+  readonly tasks: readonly TeamTask[];
+  readonly notes: readonly TeamNote[];
+}
 
 function taskStatusLabel(task: TeamTask): string {
   const labels: Record<TeamTask['status'], string> = {
@@ -29,6 +34,32 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
   const [notes, setNotes] = useState(initialSnapshot.notes);
   const [noteDraft, setNoteDraft] = useState('');
   const [announcement, setAnnouncement] = useState('');
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(`destiled:team-workspace:${initialSnapshot.teamId}`);
+      if (saved) {
+        const state = JSON.parse(saved) as LocalTeamWorkspaceState;
+        if (Array.isArray(state.tasks) && Array.isArray(state.notes)) {
+          setTasks(state.tasks);
+          setNotes(state.notes);
+        }
+      }
+    } catch {
+      // Nie blokujemy zespołu przez nieaktualny lokalny podgląd.
+    } finally {
+      setWorkspaceLoaded(true);
+    }
+  }, [initialSnapshot.teamId]);
+
+  useEffect(() => {
+    if (!workspaceLoaded) return;
+    window.localStorage.setItem(
+      `destiled:team-workspace:${initialSnapshot.teamId}`,
+      JSON.stringify({ tasks, notes } satisfies LocalTeamWorkspaceState),
+    );
+  }, [initialSnapshot.teamId, notes, tasks, workspaceLoaded]);
   const snapshot = useMemo(
     () => ({ ...initialSnapshot, tasks, notes }),
     [initialSnapshot, notes, tasks],
@@ -80,7 +111,7 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
             <div className="workspace-sync">
               <span className="live-dot" />
               <strong>{summary.onlineMembers} osoby online</strong>
-              <span>Stan zespołu odświeżony {initialSnapshot.lastSynchronizedLabel}</span>
+              <span>Stan lokalnego podglądu · {initialSnapshot.lastSynchronizedLabel}</span>
             </div>
           </div>
           <div className="workspace-member-fan" aria-label="Członkowie przestrzeni">
@@ -138,7 +169,7 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
               <strong>{summary.onlineMembers}</strong>
               <span>osoby online</span>
             </div>
-            <small>na Discordzie</small>
+            <small>w tym podglądzie</small>
           </article>
         </section>
 
@@ -206,13 +237,9 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
                           >
                             <Icon name="clock" size={14} /> {character.nextTimerLabel}
                           </span>
-                          {character.id === 'nerwnicht' ? (
-                            <a href={`/teams/asteria/characters/${character.id}`}>
-                              Otwórz kartę EQ
-                            </a>
-                          ) : (
-                            <a href="/characters">Zobacz w module postaci</a>
-                          )}
+                          <a href={`/teams/asteria/characters/${character.id}`}>
+                            Otwórz kartę postaci
+                          </a>
                         </div>
                       </div>
                     </article>
@@ -371,8 +398,8 @@ export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorksp
           {announcement}
         </p>
         <div className="mock-notice">
-          Interfejs produkcyjny · dane demonstracyjne z adaptera. API, realtime i Discord zastąpią
-          adapter bez zmiany logiki tego widoku.
+          Podgląd funkcji · notatki i decyzje są zachowywane lokalnie. Wspólny zapis, realtime i
+          Discord wymagają API/Postgresa oraz integracji z botem.
         </div>
       </main>
     </AppShell>

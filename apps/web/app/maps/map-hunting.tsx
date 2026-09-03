@@ -42,7 +42,7 @@ const mapFiles: Readonly<Record<string, string>> = {
 
 function mapImage(mapKey: string): string | null {
   const file = mapFiles[mapKey];
-  return file ? `https://raw.githubusercontent.com/HOMZIKx/dobry-temat/main/frontend/public/${file}` : null;
+  return file ? `/game/maps/${file}` : null;
 }
 
 function scopeKey(mapKey: string, channel: number): string { return `${mapKey}:ch${channel}`; }
