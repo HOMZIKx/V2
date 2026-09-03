@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CharacterClass } from './character-profile.js';
 import {
   clampEnhancement,
   compatibleClassesForCategory,
@@ -31,7 +30,7 @@ describe('item catalog class and enhancement rules', () => {
     expect(isItemCompatibleWithClass('Ekwipunek — Wojownik — Bronie jednoręczne', 'sura')).toBe(
       false,
     );
-    expect(isItemCompatibleWithClass('Ekwipunek — Kolczyki', 'shaman' as CharacterClass)).toBe(
+    expect(isItemCompatibleWithClass('Ekwipunek — Kolczyki', 'shaman')).toBe(
       true,
     );
   });
