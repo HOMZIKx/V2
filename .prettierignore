@@ -10,3 +10,5 @@ test-results
 apps/web/next-env.d.ts
 .tmp-*
 .tmp*
+
+tools/scripts/zeabur-*.mjs

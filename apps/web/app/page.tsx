@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { HomePageClient } from './home-page-client';
 
 export default function HomePage() {
-  redirect('/aktywnosci');
+  return <HomePageClient />;
 }

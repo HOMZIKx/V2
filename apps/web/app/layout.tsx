@@ -1,31 +1,18 @@
-import { Manrope, Sora } from 'next/font/google';
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import '@v2/design-system/primitives.css';
-import '@v2/design-system/tokens.css';
 import { SessionProvider } from '../src/components/SessionProvider';
-import './web.css';
 
-const sora = Sora({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--font-sora',
-  display: 'swap',
-});
+import './globals.css';
 
-const manrope = Manrope({
-  subsets: ['latin', 'latin-ext'],
-  variable: '--font-manrope',
-  display: 'swap',
-});
-
-export const metadata = {
-  title: 'V2 — Aktywności',
-  description: 'Portal członka V2 — aktywności, zapisy i powiadomienia',
+export const metadata: Metadata = {
+  title: 'DESTILED — centrum zespołu',
+  description: 'Prywatna przestrzeń graczy i administracji gildii DESTILED.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pl" className={`${sora.variable} ${manrope.variable}`}>
+    <html lang="pl">
       <body>
         <SessionProvider>{children}</SessionProvider>
       </body>

@@ -99,4 +99,10 @@ export interface PlayerWorkspaceRepository {
     readonly level: number | null;
     readonly linkedPlayerCharacterId: string | null;
   }): Promise<CharacterBoardRecord>;
+
+  listPendingInvitationsForUser(userId: string): Promise<
+    readonly (TeamInvitationRecord & {
+      readonly teamName: string;
+    })[]
+  >;
 }

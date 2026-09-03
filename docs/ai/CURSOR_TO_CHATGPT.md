@@ -10,12 +10,12 @@ Stacked PR: **NOT_CREATED_AUTH_UNAVAILABLE** (`gh` needs `GH_TOKEN`)
 
 ## SHAs
 
-| Marker | SHA |
-| ------ | --- |
-| BASE (006C docs) | `84716b3ca40a831a04580a5b2e0e943a4ebe4af8` |
-| CURRENT_HEAD | `d28fe7c7877a5136adc5a3ef3f84bbbc50c6e832` |
-| Feature tip | `461a766c6bbd94410800d9cbd32b5749fe5f6bdb` |
-| BRANCH | `cursor/player-workspace-team-character-board-foundation` |
+| Marker           | SHA                                                       |
+| ---------------- | --------------------------------------------------------- |
+| BASE (006C docs) | `84716b3ca40a831a04580a5b2e0e943a4ebe4af8`                |
+| CURRENT_HEAD     | `d28fe7c7877a5136adc5a3ef3f84bbbc50c6e832`                |
+| Feature tip      | `461a766c6bbd94410800d9cbd32b5749fe5f6bdb`                |
+| BRANCH           | `cursor/player-workspace-team-character-board-foundation` |
 
 ## Decisions
 
@@ -24,11 +24,11 @@ Stacked PR: **NOT_CREATED_AUTH_UNAVAILABLE** (`gh` needs `GH_TOKEN`)
 
 ## Zeabur TEST
 
-| Service | SHA | Notes |
-| ------- | --- | ----- |
+| Service                  | SHA        | Notes                               |
+| ------------------------ | ---------- | ----------------------------------- |
 | player-workspace-service | `461a766c` | RUNNING; auto-migrate; restart NOOP |
-| api-gateway | `d28fe7c` | proxy live; unauth teams → 401 |
-| identity-service | `d28fe7c` | ownership S2S AUD https |
+| api-gateway              | `d28fe7c`  | proxy live; unauth teams → 401      |
+| identity-service         | `d28fe7c`  | ownership S2S AUD https             |
 
 ## Out of scope confirmed
 

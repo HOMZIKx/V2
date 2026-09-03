@@ -219,6 +219,20 @@ class MemoryRepo implements PlayerWorkspaceRepository {
     return this.getTeamDetail(input.teamId, input.actorUserId);
   }
 
+  public listPendingInvitationsForUser(userId: string): Promise<
+    readonly (TeamInvitationRecord & {
+      readonly teamName: string;
+    })[]
+  > {
+    const pending = [...this.invitations.values()]
+      .filter((invitation) => invitation.targetUserId === userId && invitation.status === 'PENDING')
+      .map((invitation) => ({
+        ...invitation,
+        teamName: this.teams.get(invitation.teamId)?.name ?? invitation.teamId,
+      }));
+    return Promise.resolve(pending);
+  }
+
   public async listCharacterBoards(
     teamId: string,
     actorUserId: string,

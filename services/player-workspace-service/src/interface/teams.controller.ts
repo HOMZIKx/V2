@@ -75,6 +75,13 @@ export class TeamsController {
     return { teams };
   }
 
+  @Get('invitations/pending')
+  public async listPendingInvitations(@Req() request: AuthenticatedRequest) {
+    const actor = requireActor(request);
+    const invitations = await this.repo.listPendingInvitationsForUser(actor);
+    return { invitations };
+  }
+
   @Post('teams')
   @HttpCode(201)
   public async createTeam(@Req() request: AuthenticatedRequest, @Body() body: unknown) {

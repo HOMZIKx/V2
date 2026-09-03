@@ -244,6 +244,52 @@ export class PlayerProfileRepository {
     return result.rows[0]?.userId ?? null;
   }
 
+  public async resolveDiscordDirectoryEntry(discordUserId: string): Promise<{
+    readonly v2UserId: string;
+    readonly discordUserId: string;
+    readonly displayName: string;
+    readonly username: string;
+    readonly initials: string;
+  } | null> {
+    const userId = await this.resolveUserIdByDiscordAccountId(discordUserId);
+    if (userId === null) {
+      return null;
+    }
+
+    const userResult = await this.pool.query<{ name: string }>(
+      `SELECT name FROM "user" WHERE id = $1 LIMIT 1`,
+      [userId],
+    );
+    const profileResult = await this.pool.query<{ display_name: string | null }>(
+      `SELECT display_name FROM player_profiles WHERE user_id = $1 LIMIT 1`,
+      [userId],
+    );
+
+    const authName = userResult.rows[0]?.name?.trim() ?? '';
+    const profileName = profileResult.rows[0]?.display_name?.trim() ?? '';
+    const displayName =
+      profileName.length > 0 ? profileName : authName.length > 0 ? authName : 'Użytkownik';
+    const username =
+      authName.length > 0
+        ? authName.toLowerCase().replace(/\s+/g, '_').slice(0, 32)
+        : userId.slice(0, 8);
+    const initials =
+      displayName
+        .split(/\s+/)
+        .filter((part) => part.length > 0)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? '')
+        .join('') || displayName.slice(0, 2).toUpperCase();
+
+    return {
+      v2UserId: userId,
+      discordUserId,
+      displayName,
+      username,
+      initials,
+    };
+  }
+
   public async getCharacterForUser(
     userId: string,
     characterId: string,
