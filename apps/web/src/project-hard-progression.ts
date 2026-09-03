@@ -238,8 +238,20 @@ export function nextMidnightLabel(now = new Date()): string {
   });
 }
 
+export function nextMidnightIso(now = new Date()): string {
+  const next = new Date(now);
+  next.setHours(24, 0, 0, 0);
+  return next.toISOString();
+}
+
 export function biologistQuestById(id: string): BiologistQuestDef | null {
   return projectHardBiologistQuests.find((quest) => quest.id === id) ?? null;
+}
+
+/** Highest biologist quest whose minLevel the character already meets. */
+export function biologistQuestForLevel(level: number): BiologistQuestDef | null {
+  const eligible = projectHardBiologistQuests.filter((quest) => level >= quest.minLevel);
+  return eligible.at(-1) ?? null;
 }
 
 export function biologistProgressLabel(quest: BiologistQuestDef, delivered: number): string {
@@ -264,4 +276,47 @@ export function horseAdvanceDetail(fromLevel: number, toLevel: number): string {
       ? `${rank.materialName} ×${rank.materialCount}`
       : 'bez materiału (misja awansu)';
   return `Jazda ${fromLevel} → ${toLevel} · ${material} · cooldown ${projectHardHorseRules.advancementCooldownHours} h`;
+}
+
+export function inferProgressionKind(label: string): ProgressionKind | null {
+  const normalized = label.toLocaleLowerCase('pl');
+  if (normalized.includes('biolog')) return 'biologist';
+  if (normalized.includes('jazd') || normalized.includes('koń') || normalized.includes('konn')) {
+    return 'horse';
+  }
+  if (normalized.includes('księg') || normalized.includes('skill')) return 'skill_book';
+  return null;
+}
+
+export function restartAfterDone(
+  kind: ProgressionKind | null,
+  now = new Date(),
+): {
+  readonly readyAtIso: string;
+  readonly remainingLabel: string;
+  readonly detailHint: string;
+} {
+  if (kind === 'horse') {
+    const hours = projectHardHorseRules.advancementCooldownHours;
+    return {
+      readyAtIso: new Date(now.getTime() + hours * 3_600_000).toISOString(),
+      remainingLabel: `${hours} h u Stajennego`,
+      detailHint: `Cooldown jazdy ${hours} h (Projekt Hard).`,
+    };
+  }
+  if (kind === 'biologist' || kind === 'skill_book') {
+    return {
+      readyAtIso: nextMidnightIso(now),
+      remainingLabel: `do ${nextMidnightLabel(now)}`,
+      detailHint:
+        kind === 'biologist'
+          ? 'Biolog: kolejna dostawa od północy.'
+          : 'Księga: limit czytań resetuje się o północy.',
+    };
+  }
+  return {
+    readyAtIso: new Date(now.getTime() + 60 * 60_000).toISOString(),
+    remainingLabel: '60 min',
+    detailHint: 'Kolejny cykl za 60 minut.',
+  };
 }

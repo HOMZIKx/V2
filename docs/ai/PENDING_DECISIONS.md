@@ -39,6 +39,7 @@
   gendered costume renders dla brakujących płci. Zarejestrowane w
   `character-profile.ts`. `listMissingCharacterRenders()` = [].
   Spójność poz → DEC-065.
+
 ### DEC-061 — Przeniesienie prac DESTILED Web do Cursora
 
 - **Status:** OWNER_ACCEPTED (2026-09-03)

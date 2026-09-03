@@ -2,24 +2,24 @@
 
 ## Status
 
-Zrobiony **uczciwy gap audit** (`DESTILED_GAP_AUDIT_2026-09-03.md`): Web mock jest
-mocny lokalnie; bot+API nie są tip-top produkcyjnie.
+Przeanalizowałem EQ/postacie vs Projekt Hard i naprawiłem konkretne błędy logiki
+(nie tylko copy). CI Quality gates wcześniej padło na Prettier docs — też
+ogarnięte w tym torze.
 
-## Poprawki w tym pushu
+## Co naprawione
 
-- Mapy: atlasy **top-down** 512×512 (panoramy → `map-banners/`)
-- **`/timers`** w nav — lista respawnów jak w starej app (19 map / bossy / metiny);
-  party + atlas dopiero w drugiej zakładce / `/maps`
-- Lochy: Pająków z wiki; małpy = schemat do czasu dumpa
-- Honesty strip „Podgląd lokalny”
+- Reset timerów PH: jazda 23 h, Biolog/księga o północy
+- Inbox zaproszeń / akceptacja tylko przez odbiorcę
+- Konflikt tej samej karty EQ na dwóch postaciach
+- Create character: unikalne ID + startowe timery PH
+- Aktywny set zapisuje się; notatka na karcie EQ; puste sloty ≠ „Brak”
+- Rozróżnienie: **Timery** (metiny) vs **Postęp Projekt Hard** (Biolog/jazda/księgi)
 
-## Co jeszcze do tip-top (skrót)
+## Nadal open
 
-1. **Jedna seria poz postaci** (dziś mieszane portrety klas / costume).
-2. **Minimapy lochów małp** z lokalnego dobry-temat (opcjonalny overwrite).
-3. **Backend**: Identity + player-team + reminder → discord-gateway.
-4. Bot: komendy/panele poza P1 LAB — tylko po decyzji właściciela.
-5. Targ / Centrum Aktywności / Zeabur — poza first-slice / deferred.
+- Spójne pozy class×gender (DEC-065)
+- API / bot reminders / Zeabur
+- Minimapy lochów małp z lokalnego dumpa
 
 ## Marker
 

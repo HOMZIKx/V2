@@ -30,6 +30,7 @@ import {
   removeItemFromSet,
   seedDemoData,
   serializePlayerStore,
+  setActiveCharacterSet,
   startDiscordAuth,
   touchLastOpened,
   updateCharacter,
@@ -90,6 +91,7 @@ interface PlayerStoreApi {
     setId: string,
     slot: EquipmentSlot,
   ) => void;
+  setActiveSet: (workspaceId: string, characterId: string, setId: string) => void;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
   createItem: (
@@ -204,6 +206,9 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       },
       removeItem: (workspaceId, characterId, setId, slot) => {
         apply((current) => removeItemFromSet(current, workspaceId, characterId, setId, slot));
+      },
+      setActiveSet: (workspaceId, characterId, setId) => {
+        apply((current) => setActiveCharacterSet(current, workspaceId, characterId, setId));
       },
       confirmLocation: (workspaceId, itemId, locationLabel) => {
         apply((current) => confirmItemLocation(current, workspaceId, itemId, locationLabel));

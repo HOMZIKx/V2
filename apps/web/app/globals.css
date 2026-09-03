@@ -2228,6 +2228,18 @@ button:disabled {
   font-size: 10px;
 }
 
+.character-note-preview {
+  margin: 10px 0 0;
+  max-width: 42rem;
+  padding: 10px 12px;
+  border: 1px solid rgba(212, 175, 106, 0.22);
+  border-radius: 10px;
+  background: rgba(20, 28, 40, 0.55);
+  color: #d7e0ee;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .equipment-page-header p strong {
   color: #bdc4d0;
   font-weight: 580;

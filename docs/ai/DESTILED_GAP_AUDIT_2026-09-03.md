@@ -12,17 +12,17 @@ towarzysz timerów/EQ. Tip-top w sensie „wygląda i da się kliknąć lokalnie
 
 ## A. Web — zrobione (lokalny mock)
 
-| Obszar | Stan |
-| --- | --- |
-| Discord entry (symulowane outcome) | Jest |
-| First-use: create workspace / invite | Jest w store + UI |
-| Workspace → postać → EQ / timery postaci / notatki / historia | Jest (localStorage) |
-| Katalog itemów + bonusy + ikony wiki | Jest (dobry-temat + pl-wiki) |
-| Shared swords (Warrior/Ninja/Sura) | Zweryfikowane online |
-| 8/8 class×gender PNG 272×360 | Jest (różne serie poz — patrz luka) |
-| Timery metinów/bossów z katalogu dobry-temat | Jest pod `/maps`, nav **Timery**, default widok listy |
-| Atlasy top-down 512×512 (nie panoramy) | 15 terenów + Grota; lochy małp = schemat; Loch Pająków = wiki |
-| Honesty: pasek „Podgląd lokalny” | Jest |
+| Obszar                                                        | Stan                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------- |
+| Discord entry (symulowane outcome)                            | Jest                                                          |
+| First-use: create workspace / invite                          | Jest w store + UI                                             |
+| Workspace → postać → EQ / timery postaci / notatki / historia | Jest (localStorage)                                           |
+| Katalog itemów + bonusy + ikony wiki                          | Jest (dobry-temat + pl-wiki)                                  |
+| Shared swords (Warrior/Ninja/Sura)                            | Zweryfikowane online                                          |
+| 8/8 class×gender PNG 272×360                                  | Jest (różne serie poz — patrz luka)                           |
+| Timery metinów/bossów z katalogu dobry-temat                  | Jest pod `/maps`, nav **Timery**, default widok listy         |
+| Atlasy top-down 512×512 (nie panoramy)                        | 15 terenów + Grota; lochy małp = schemat; Loch Pająków = wiki |
+| Honesty: pasek „Podgląd lokalny”                              | Jest                                                          |
 
 ## B. Web — braki / niespójności (nadal)
 
@@ -46,14 +46,14 @@ towarzysz timerów/EQ. Tip-top w sensie „wygląda i da się kliknąć lokalnie
 
 ## C. Bot (`discord-gateway`) — wymagane do „prawdziwego” działania
 
-| Potrzeba produktu | Stan dziś |
-| --- | --- |
-| P1 harness guild-only + Components V2 | OK (PR #9) |
-| Powiadomienia timerów postaci / biologii | Brak |
-| Powiadomienia respawnów / party map | Brak |
-| Panele EQ / workspace (poza LAB) | Brak |
-| Integracja Identity + Authorization | Usługi w monorepo; bot ich nie woła dla Web |
-| Deploy produkcyjny | Wstrzymany (DEC-001) |
+| Potrzeba produktu                        | Stan dziś                                   |
+| ---------------------------------------- | ------------------------------------------- |
+| P1 harness guild-only + Components V2    | OK (PR #9)                                  |
+| Powiadomienia timerów postaci / biologii | Brak                                        |
+| Powiadomienia respawnów / party map      | Brak                                        |
+| Panele EQ / workspace (poza LAB)         | Brak                                        |
+| Integracja Identity + Authorization      | Usługi w monorepo; bot ich nie woła dla Web |
+| Deploy produkcyjny                       | Wstrzymany (DEC-001)                        |
 
 Bez osobnej decyzji właściciela **nie** dokładamy nowych komend ani mikroserwisów
 „przy okazji”.

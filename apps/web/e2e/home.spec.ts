@@ -101,7 +101,7 @@ test('separates planned equipment, confirmed location and character timers', asy
   await expect(page.locator('.entry-status').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
   await expect(page.locator('.catalog-item').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
   await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();
-  await expect(page.getByText('Postęp postaci')).toBeVisible();
+  await expect(page.getByText('Postęp Projekt Hard')).toBeVisible();
 });
 
 test('resolves a Discord identity before creating a team invitation', async ({ page }) => {
@@ -118,16 +118,12 @@ test('resolves a Discord identity before creating a team invitation', async ({ p
   await expect(page.getByRole('link', { name: /Otwórz link zaproszenia/ })).toBeVisible();
 });
 
-test('grants team access only after the recipient accepts', async ({ page }) => {
+test('blocks accepting an invitation addressed to someone else', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/invitations/invitation-mobbynzs');
   await expect(page.getByText('Zalogowano jako')).toBeVisible();
-  await page.getByRole('button', { name: 'Akceptuję i dołączam' }).click();
-  await expect(page.getByRole('heading', { name: 'Zaproszenie zaakceptowane' })).toBeVisible();
-  await expect(
-    page.getByText('Dostęp do zespołu został przyznany po Twoim potwierdzeniu.'),
-  ).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Otwórz przestrzeń zespołu' })).toBeVisible();
+  await expect(page.getByText(/To zaproszenie jest dla/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Akceptuję i dołączam' })).toHaveCount(0);
 });
 
 test('shows append-only team history and resolves a revision conflict explicitly', async ({

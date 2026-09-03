@@ -56,6 +56,10 @@ export function InvitationResponse() {
   const workspaceId = invitation?.teamId ?? state.lastOpenedWorkspaceId ?? '/';
   const inviterName = invitation?.inviterName ?? '—';
   const recipientName = invitation?.recipientDisplayName ?? '—';
+  const isRecipient =
+    !!invitation &&
+    (invitation.recipientDisplayName === state.viewer.displayName ||
+      invitation.recipientDisplayName === state.viewer.discordDisplayName);
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
@@ -68,7 +72,14 @@ export function InvitationResponse() {
           akceptacji.
         </p>
 
-        {!alreadyHandled && invitation ? (
+        {!alreadyHandled && invitation && !isRecipient ? (
+          <p className="entry-status" role="status">
+            To zaproszenie jest dla <strong>{recipientName}</strong>. Zaloguj się na to konto
+            Discord, żeby je przyjąć albo odrzucić.
+          </p>
+        ) : null}
+
+        {!alreadyHandled && invitation && isRecipient ? (
           <div className="invitation-actions">
             <button
               className="primary-button"
@@ -91,7 +102,9 @@ export function InvitationResponse() {
               Odrzuć
             </button>
           </div>
-        ) : (
+        ) : null}
+
+        {alreadyHandled ? (
           <div className="entry-status" role="status">
             {outcome === 'declined' || invitation?.status === 'declined' ? (
               <>
@@ -106,7 +119,7 @@ export function InvitationResponse() {
             )}
             <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
           </div>
-        )}
+        ) : null}
 
         <div className="mock-notice">
           Lokalny podgląd zaproszeń. Produkcja będzie wymagać API i prawdziwego Discord OAuth.

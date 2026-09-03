@@ -35,5 +35,6 @@ describe('project hard progression config', () => {
     expect(projectHardSkillBookRules.dailyReset).toBe('midnight');
     expect(projectHardProductFacts.hasAlchemy).toBe(false);
     expect(projectHardProductFacts.hasSashes).toBe(false);
+    expect(projectHardProductFacts.maxCharacterLevel).toBe(99);
   });
 });

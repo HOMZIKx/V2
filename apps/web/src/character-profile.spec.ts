@@ -30,7 +30,7 @@ describe('character profile view model', () => {
     expect(
       validateCharacterProfile({ ...newCharacterProfileFixture.draft, name: 'Nowa', level: 0 })
         .errors.level,
-    ).toContain('1 do 999');
+    ).toContain(`1 do ${99}`);
   });
 
   it('normalizes fields and preserves optimistic revisions in the save command', () => {

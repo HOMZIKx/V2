@@ -58,6 +58,16 @@ describe('player store first-slice', () => {
     const set = character.sets.find((entry) => entry.id === 'war')!;
     expect(getSlotReadiness(workspace, character, set, 'weapon')).toBe('ready');
     expect(getSlotReadiness(workspace, character, set, 'shield')).toBe('ready');
+    expect(getSlotReadiness(workspace, character, set, 'bracelet')).toBe('ready');
+    const emptySet = character.sets.find((entry) => entry.id === 'empty')!;
+    expect(getSlotReadiness(workspace, character, emptySet, 'weapon')).toBe('empty');
+    // Same physical card planned on two characters = conflict.
+    const xiaohu = workspace.characters.find((entry) => entry.id === 'xiaohu')!;
+    const xiaohuSet = {
+      ...xiaohu.sets[0]!,
+      assignments: { ...xiaohu.sets[0]!.assignments, shield: 'sura-shield' },
+    };
+    expect(getSlotReadiness(workspace, xiaohu, xiaohuSet, 'shield')).toBe('conflict');
     expect(workspace.items.every((item) => item.enhancement >= 0 && item.enhancement <= 9)).toBe(
       true,
     );
@@ -83,7 +93,7 @@ describe('player store first-slice', () => {
     expect(state.workspaces.some((workspace) => workspace.name === 'SoloTest')).toBe(true);
   });
 
-  it('creates a durable outgoing invitation with a followable link id', () => {
+  it('keeps outgoing invitations on the workspace list, not in the viewer inbox', () => {
     let state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
     state = createOutgoingInvitation(state, 'asteria', {
       discordUserId: '994001220033445566',
@@ -92,17 +102,45 @@ describe('player store first-slice', () => {
     });
     const invite = state.workspaces[0]!.invitations.find((entry) => entry.status === 'pending');
     expect(invite).toBeTruthy();
-    expect(state.pendingIncomingInvitations.some((entry) => entry.id === invite!.id)).toBe(true);
+    expect(state.pendingIncomingInvitations.some((entry) => entry.id === invite!.id)).toBe(false);
   });
 
-  it('resets timers idempotently with operation id', () => {
+  it('resets Project Hard timers with kind-specific cooldowns', () => {
     let state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
     const timerId = 'horse-medal-aalpsik';
     state = markTimerDone(state, 'asteria', timerId, 'op-1');
     const first = state.workspaces[0]!.timers.find((timer) => timer.id === timerId)!;
-    expect(first.remainingLabel).toBe('odliczanie rozpoczęte');
+    expect(first.remainingLabel).toContain('23 h');
     state = markTimerDone(state, 'asteria', timerId, 'op-1');
     const second = state.workspaces[0]!.timers.find((timer) => timer.id === timerId)!;
     expect(second.operationId).toBe('op-1');
+  });
+
+  it('seeds unique character ids and default PH timers on create', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Solo');
+    const workspaceId = state.workspaces[0]!.id;
+    state = createCharacter(state, workspaceId, {
+      name: 'Duplikat',
+      characterClass: 'warrior',
+      gender: 'male',
+      level: 61,
+      responsibleMemberId: 'mateusz',
+    });
+    state = createCharacter(state, workspaceId, {
+      name: 'Duplikat',
+      characterClass: 'sura',
+      gender: 'female',
+      level: 30,
+      responsibleMemberId: 'mateusz',
+    });
+    const workspace = state.workspaces[0]!;
+    expect(workspace.characters.map((character) => character.id)).toEqual([
+      'duplikat',
+      'duplikat-2',
+    ]);
+    expect(
+      workspace.timers.filter((timer) => timer.characterId === 'duplikat').length,
+    ).toBeGreaterThan(0);
   });
 });

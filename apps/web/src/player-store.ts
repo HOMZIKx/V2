@@ -31,9 +31,15 @@ import type { CatalogLayer } from './member-dashboard';
 import {
   biologistProgressLabel,
   biologistQuestById,
+  biologistQuestForLevel,
   horseAdvanceDetail,
+  inferProgressionKind,
+  nextMidnightIso,
   nextMidnightLabel,
   projectHardHorseRules,
+  projectHardProductFacts,
+  restartAfterDone,
+  type ProgressionKind,
 } from './project-hard-progression';
 import type { TeamHistoryResource } from './team-history';
 
@@ -57,7 +63,7 @@ export type TaskStatus = 'ready' | 'upcoming' | 'done' | 'snoozed' | 'unavailabl
 export type TaskOutcome = 'done' | 'snoozed' | 'unavailable';
 export type InvitationStatus = 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled';
 export type SetReadiness =
-  'ready' | 'available_elsewhere' | 'missing' | 'stale' | 'conflict' | 'planned';
+  'ready' | 'available_elsewhere' | 'missing' | 'stale' | 'conflict' | 'planned' | 'empty';
 
 export interface PlayerIdentity {
   readonly id: string;
@@ -113,6 +119,8 @@ export interface ProgressTimer {
   readonly discordReminder: boolean;
   readonly reminderState: 'on' | 'off' | 'unavailable';
   readonly operationId: string | null;
+  /** Project Hard progression family when known. */
+  readonly kind?: ProgressionKind;
 }
 
 export interface TeamTask {
@@ -224,10 +232,6 @@ function nowLabel(): string {
   return 'teraz';
 }
 
-function isoInMinutes(minutes: number): string {
-  return new Date(Date.now() + minutes * 60_000).toISOString();
-}
-
 function slugify(value: string): string {
   return value
     .trim()
@@ -242,6 +246,79 @@ function slugify(value: string): string {
 
 function createId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function uniqueSlug(base: string, taken: ReadonlySet<string>): string {
+  const root = slugify(base) || createId('id');
+  if (!taken.has(root)) return root;
+  let index = 2;
+  while (taken.has(`${root}-${index}`)) index += 1;
+  return `${root}-${index}`;
+}
+
+function defaultProgressionTimers(
+  characterId: string,
+  level: number | null,
+): readonly ProgressTimer[] {
+  const midnight = nextMidnightLabel();
+  const quest = level !== null ? biologistQuestForLevel(level) : null;
+  const timers: ProgressTimer[] = [
+    {
+      id: createId('timer-horse'),
+      characterId,
+      label: 'Jazda konna',
+      detail: `${horseAdvanceDetail(1, 2)} · u Stajennego`,
+      status: 'ready',
+      readyAtIso: new Date().toISOString(),
+      remainingLabel: 'gotowe teraz',
+      progressPercent: 100,
+      lastActorName: null,
+      lastConfirmedAt: null,
+      discordReminder: true,
+      reminderState: 'unavailable',
+      operationId: null,
+      kind: 'horse',
+    },
+    {
+      id: createId('timer-book'),
+      characterId,
+      label: 'Księga umiejętności',
+      detail: `Czytanie dostępne · limit resetuje się o północy · do ${midnight}`,
+      status: 'running',
+      readyAtIso: nextMidnightIso(),
+      remainingLabel: `do ${midnight}`,
+      progressPercent: 10,
+      lastActorName: null,
+      lastConfirmedAt: null,
+      discordReminder: true,
+      reminderState: 'unavailable',
+      operationId: null,
+      kind: 'skill_book',
+    },
+  ];
+  if (quest) {
+    timers.unshift({
+      id: createId('timer-bio'),
+      characterId,
+      label: 'Biolog',
+      detail: `${biologistProgressLabel(quest, 0)} · ${
+        quest.cooldownOnlyOnSuccess
+          ? 'cooldown tylko po udanym oddaniu'
+          : 'cooldown po każdej próbie'
+      } · reset o północy`,
+      status: 'ready',
+      readyAtIso: new Date().toISOString(),
+      remainingLabel: 'gotowe teraz',
+      progressPercent: 100,
+      lastActorName: null,
+      lastConfirmedAt: null,
+      discordReminder: true,
+      reminderState: 'unavailable',
+      operationId: null,
+      kind: 'biologist',
+    });
+  }
+  return timers;
 }
 
 export function createInitialPlayerStore(): PlayerStoreState {
@@ -308,8 +385,8 @@ function demoEquipmentItem(
 }
 
 export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
-  const demonQuest = biologistQuestById('demon-keepsake')!;
   const midnight = nextMidnightLabel();
+  const iceQuest = biologistQuestById('dull-ice')!;
 
   // Class-correct cards from wiki/PH categories. Unique IDs per character so shared
   // readiness conflicts are intentional only when the team truly shares one card.
@@ -612,7 +689,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         },
         {
           id: 'dungeon',
-          name: 'Dungeon',
+          name: 'Loch',
           description: 'Roboczy układ pod PvM (bez sztyletów — to broń Ninji)',
           assignments: {
             ...emptyAssignments(),
@@ -621,7 +698,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         },
         {
           id: 'empty',
-          name: 'Nowy set',
+          name: 'Szablon',
           description: 'Pusty szablon do skopiowania',
           assignments: emptyAssignments(),
         },
@@ -642,8 +719,8 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       sets: [
         {
           id: 'dungeon',
-          name: 'Dungeon',
-          description: 'Układ dungeonowy (sztylet + hełm Ninja)',
+          name: 'Loch',
+          description: 'Układ lochowy (sztylet + hełm Ninja)',
           assignments: {
             ...emptyAssignments(),
             weapon: 'ninja-knife',
@@ -701,8 +778,6 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
           assignments: {
             ...emptyAssignments(),
             weapon: 'sura-shared-sword',
-            shield: 'sura-shield',
-            shoes: 'sura-boots',
           },
         },
       ],
@@ -730,7 +805,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         label: 'Księga umiejętności',
         detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
         status: 'running',
-        readyAtIso: isoInMinutes(24),
+        readyAtIso: nextMidnightIso(),
         remainingLabel: `do ${midnight}`,
         progressPercent: 82,
         lastActorName: 'Mateusz',
@@ -738,6 +813,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         discordReminder: true,
         reminderState: 'unavailable',
         operationId: null,
+        kind: 'skill_book',
       },
       {
         id: 'horse-medal-aalpsik',
@@ -753,14 +829,15 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         discordReminder: true,
         reminderState: 'unavailable',
         operationId: null,
+        kind: 'horse',
       },
       {
         id: 'biologist-kimmizic',
         characterId: 'kimmizic',
         label: 'Biolog',
-        detail: `${biologistProgressLabel(demonQuest, 6)} · cooldown tylko po udanym oddaniu · reset o północy`,
+        detail: `${biologistProgressLabel(iceQuest, 4)} · cooldown po każdej próbie · reset o północy`,
         status: 'running',
-        readyAtIso: isoInMinutes(60 * 14),
+        readyAtIso: nextMidnightIso(),
         remainingLabel: `do ${midnight}`,
         progressPercent: 41,
         lastActorName: 'Wicek',
@@ -768,13 +845,15 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         discordReminder: false,
         reminderState: 'off',
         operationId: null,
+        kind: 'biologist',
       },
     ],
     tasks: [
       {
         id: 'task-shield-location',
         title: 'Potwierdź lokalizację tarczy',
-        detail: 'Ostatni zapis wskazuje postać Aalpsik. Sprawdź w grze i potwierdź ręcznie.',
+        detail:
+          'Ostatni zapis wskazuje NerwNicht. Sprawdź w grze, czy Bojowa Tarcza nadal tam leży.',
         characterId: 'nerwnicht',
         characterName: 'NerwNicht',
         assigneeName: 'Mateusz',
@@ -917,30 +996,29 @@ export function seedDemoData(
     expiresLabel: 'za 3 dni',
     revision: 1,
   };
+  const demoWithOutgoing: WorkspaceRecord = {
+    ...demo,
+    invitations: [demoInvite, ...demo.invitations.filter((entry) => entry.id !== demoInvite.id)],
+  };
 
   const replace = options.replace === true || state.workspaces.length === 0;
   const workspaces = replace
-    ? [demo]
-    : [demo, ...state.workspaces.filter((workspace) => workspace.id !== demo.id)];
+    ? [demoWithOutgoing]
+    : [
+        demoWithOutgoing,
+        ...state.workspaces.filter((workspace) => workspace.id !== demoWithOutgoing.id),
+      ];
 
-  const pendingIncomingInvitations = state.pendingIncomingInvitations.some(
-    (entry) => entry.id === demoInvite.id,
-  )
-    ? state.pendingIncomingInvitations
-    : [...state.pendingIncomingInvitations, demoInvite];
-
+  // Outgoing demo invite must not pollute Mateusz's incoming inbox.
   return {
     ...state,
     workspaces,
     seededDemo: true,
-    lastOpenedWorkspaceId: demo.id,
+    lastOpenedWorkspaceId: demoWithOutgoing.id,
     lastOpenedCharacterId: 'nerwnicht',
-    pendingIncomingInvitations: replace
-      ? [
-          demoInvite,
-          ...state.pendingIncomingInvitations.filter((entry) => entry.id !== demoInvite.id),
-        ]
-      : pendingIncomingInvitations,
+    pendingIncomingInvitations: state.pendingIncomingInvitations.filter(
+      (entry) => entry.id !== demoInvite.id,
+    ),
   };
 }
 
@@ -992,10 +1070,8 @@ export function createOutgoingInvitation(
     ],
   }));
 
-  return {
-    ...withWorkspace,
-    pendingIncomingInvitations: [invitation, ...withWorkspace.pendingIncomingInvitations],
-  };
+  // Outgoing invites stay on the workspace list — never in the viewer's inbox.
+  return withWorkspace;
 }
 
 export function findInvitation(
@@ -1040,7 +1116,8 @@ export function createWorkspace(state: PlayerStoreState, name: string): PlayerSt
   if (!state.viewer) return state;
   const trimmed = name.trim();
   if (trimmed.length < 2) return state;
-  const id = slugify(trimmed) || createId('ws');
+  const taken = new Set(state.workspaces.map((workspace) => workspace.id));
+  const id = uniqueSlug(trimmed, taken);
   const workspace: WorkspaceRecord = {
     id,
     name: trimmed,
@@ -1125,18 +1202,24 @@ export function createCharacter(
 ): PlayerStoreState {
   const name = input.name.trim();
   if (name.length < 2) return state;
-  const characterId = slugify(name) || createId('char');
-  const setName = (input.startingSetName ?? 'Główny').trim() || 'Główny';
-  const setId = slugify(setName) || 'main';
-  const imagePath = getApprovedCharacterRender(input.characterClass, input.gender);
 
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const taken = new Set(workspace.characters.map((character) => character.id));
+    const characterId = uniqueSlug(name, taken);
+    const setName = (input.startingSetName ?? 'Główny').trim() || 'Główny';
+    const setId = slugify(setName) || 'main';
+    const imagePath = getApprovedCharacterRender(input.characterClass, input.gender);
+    const level =
+      input.level !== null && input.level > projectHardProductFacts.maxCharacterLevel
+        ? projectHardProductFacts.maxCharacterLevel
+        : input.level;
+
     const character: CharacterRecord = {
       id: characterId,
       name,
       characterClass: input.characterClass,
       gender: input.gender,
-      level: input.level,
+      level,
       responsibleMemberId: input.responsibleMemberId || viewer.id,
       note: (input.note ?? '').trim(),
       imagePath,
@@ -1157,13 +1240,14 @@ export function createCharacter(
       ...workspace,
       revision: workspace.revision + 1,
       characters: [...workspace.characters, character],
+      timers: [...defaultProgressionTimers(characterId, level), ...workspace.timers],
       history: [
         historyEntry(workspace.id, viewer, {
           characterId,
           characterName: name,
           resource: 'character',
           title: 'Utworzono postać',
-          detail: `${characterClassLabels[input.characterClass]} · pusty zestaw „${setName}”`,
+          detail: `${characterClassLabels[input.characterClass]} · pusty zestaw „${setName}” · timery PH startowe`,
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1419,17 +1503,56 @@ export function confirmItemLocation(
     );
     const item = items.find((entry) => entry.id === itemId);
     if (!item) return workspace;
+    const matchedCharacter =
+      workspace.characters.find(
+        (character) =>
+          character.name.toLocaleLowerCase('pl') === locationLabel.toLocaleLowerCase('pl'),
+      ) ?? null;
     return {
       ...workspace,
       revision: workspace.revision + 1,
       items,
       history: [
         historyEntry(workspace.id, viewer, {
-          characterId: null,
-          characterName: locationLabel,
+          characterId: matchedCharacter?.id ?? null,
+          characterName: matchedCharacter?.name ?? null,
           resource: 'equipment',
           title: `Potwierdzono lokalizację: ${item.name}`,
           detail: `Ostatnio potwierdzona lokalizacja: ${locationLabel}`,
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
+export function setActiveCharacterSet(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+  setId: string,
+): PlayerStoreState {
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const character = workspace.characters.find((entry) => entry.id === characterId);
+    if (!character || !character.sets.some((entry) => entry.id === setId)) return workspace;
+    if (character.activeSetId === setId) return workspace;
+    const setName = character.sets.find((entry) => entry.id === setId)?.name ?? setId;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters: workspace.characters.map((entry) =>
+        entry.id === characterId
+          ? { ...entry, activeSetId: setId, revision: entry.revision + 1 }
+          : entry,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId,
+          characterName: character.name,
+          resource: 'equipment',
+          title: `Aktywny set: ${setName}`,
+          detail: 'Przełączono aktywny układ ekwipunku.',
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1454,20 +1577,22 @@ export function markTimerDone(
     ) {
       return workspace;
     }
-    const timers = workspace.timers.map((timer) =>
-      timer.id === timerId
-        ? {
-            ...timer,
-            status: 'running' as const,
-            progressPercent: 0,
-            remainingLabel: 'odliczanie rozpoczęte',
-            readyAtIso: isoInMinutes(60),
-            lastActorName: viewer.displayName,
-            lastConfirmedAt: nowLabel(),
-            operationId,
-          }
-        : timer,
-    );
+    const kind = existing.kind ?? inferProgressionKind(existing.label);
+    const restart = restartAfterDone(kind);
+    const timers = workspace.timers.map((timer) => {
+      if (timer.id !== timerId) return timer;
+      return {
+        ...timer,
+        ...(kind ? { kind } : {}),
+        status: 'running' as const,
+        progressPercent: 0,
+        remainingLabel: restart.remainingLabel,
+        readyAtIso: restart.readyAtIso,
+        lastActorName: viewer.displayName,
+        lastConfirmedAt: nowLabel(),
+        operationId,
+      };
+    });
     return {
       ...workspace,
       revision: workspace.revision + 1,
@@ -1480,7 +1605,7 @@ export function markTimerDone(
             null,
           resource: 'timer',
           title: `Oznaczono wykonane: ${existing.label}`,
-          detail: 'Timer zresetowany. Przypomnienie Discord niedostępne w podglądzie lokalnym.',
+          detail: `${restart.detailHint} Przypomnienie Discord niedostępne w podglądzie lokalnym.`,
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1678,19 +1803,21 @@ export function getSlotReadiness(
   slot: EquipmentSlot,
 ): SetReadiness {
   const expectedId = set.assignments[slot];
-  if (!expectedId) return 'missing';
+  if (!expectedId) return 'empty';
   const item = workspace.items.find((entry) => entry.id === expectedId);
   if (!item) return 'missing';
   if (item.planned) return 'planned';
+  const conflict = workspace.characters.some((otherCharacter) =>
+    otherCharacter.sets.some(
+      (otherSet) =>
+        (otherCharacter.id !== character.id || otherSet.id !== set.id) &&
+        equipmentSlots.some((otherSlot) => otherSet.assignments[otherSlot] === expectedId),
+    ),
+  );
+  if (conflict) return 'conflict';
   if (!item.lastConfirmedLocation) return 'missing';
   if (item.lastConfirmedLocation !== character.name) return 'available_elsewhere';
   if (item.lastConfirmedAt && item.lastConfirmedAt.includes('2 dni')) return 'stale';
-  const conflict = character.sets.some(
-    (other) =>
-      other.id !== set.id &&
-      equipmentSlots.some((otherSlot) => other.assignments[otherSlot] === expectedId),
-  );
-  if (conflict) return 'conflict';
   return 'ready';
 }
 

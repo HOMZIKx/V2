@@ -28,10 +28,11 @@ import { DiscordEntryScreen } from '../../../../discord-entry';
 const readinessLabels: Record<SetReadiness, string> = {
   ready: 'Na postaci',
   available_elsewhere: 'Poza postacią',
-  missing: 'Brak',
+  missing: 'Brak karty',
   stale: 'Nieaktualne',
   conflict: 'Konflikt',
   planned: 'Plan',
+  empty: 'Pusty',
 };
 
 export function CharacterEquipment() {
@@ -42,6 +43,7 @@ export function CharacterEquipment() {
     openWorkspace,
     assignItem,
     removeItem,
+    setActiveSet,
     confirmLocation,
     completeTimer,
     createItem,
@@ -223,6 +225,9 @@ export function CharacterEquipment() {
                   ?.displayName ?? '—'}
               </strong>
             </p>
+            {character.note.trim() ? (
+              <p className="character-note-preview">{character.note}</p>
+            ) : null}
           </div>
           <div className="equipment-header-actions">
             <a href={`/teams/${workspace.id}/characters/${character.id}/edit`}>
@@ -234,8 +239,15 @@ export function CharacterEquipment() {
                 <select
                   id="active-set"
                   onChange={(event) => {
-                    setActiveSetId(event.target.value);
+                    const nextSetId = event.target.value;
+                    setActiveSetId(nextSetId);
                     setSelectedItemId(null);
+                    if (writesEnabled) {
+                      setActiveSet(workspace.id, character.id, nextSetId);
+                      setAnnouncement(
+                        `Aktywny set: ${character.sets.find((set) => set.id === nextSetId)?.name ?? nextSetId}`,
+                      );
+                    }
                   }}
                   value={activeSet.id}
                 >
@@ -298,7 +310,15 @@ export function CharacterEquipment() {
                               aria-label={`${slotLabels[slot]}${item ? `: ${item.name}` : ': pusty slot'}`}
                               className={`equipment-slot slot-${slot}${item ? ' has-item' : ''}${compatibleSelection ? ' can-accept' : ''}`}
                               key={slot}
-                              onClick={() => selectedItemId && onAssign(selectedItemId, slot)}
+                              onClick={() => {
+                                if (!selectedItemId) {
+                                  setAnnouncement(
+                                    'Najpierw wybierz kartę z bazy EQ po prawej, potem kliknij slot.',
+                                  );
+                                  return;
+                                }
+                                onAssign(selectedItemId, slot);
+                              }}
                               onDragOver={(event) => event.preventDefault()}
                               onDrop={(event) => handleDrop(event, slot)}
                               type="button"
@@ -324,14 +344,16 @@ export function CharacterEquipment() {
                   inert={!flipped ? true : undefined}
                 >
                   <header>
-                    <strong>Postęp postaci</strong>
+                    <strong>Postęp Projekt Hard</strong>
                     <button onClick={() => setFlipped(false)} type="button">
                       Wróć do EQ
                     </button>
                   </header>
                   <div className="character-timer-list timer-list">
                     {timers.length === 0 ? (
-                      <p className="empty-copy">Brak timerów dla tej postaci.</p>
+                      <p className="empty-copy">
+                        Brak timerów Biolog / jazda / księgi dla tej postaci.
+                      </p>
                     ) : (
                       timers.map((timer) => (
                         <article
@@ -366,9 +388,13 @@ export function CharacterEquipment() {
                               if (timer.status !== 'ready') return;
                               const operationId = `timer-${timer.id}-${Date.now()}`;
                               completeTimer(workspace.id, timer.id, operationId);
-                              setAnnouncement(
-                                `Oznaczono: ${timer.label}. Następny cykl odlicza się od teraz.`,
-                              );
+                              const kindHint = timer.label.toLocaleLowerCase('pl').includes('jazd')
+                                ? 'Kolejny cykl: 23 h u Stajennego.'
+                                : timer.label.toLocaleLowerCase('pl').includes('biolog') ||
+                                    timer.label.toLocaleLowerCase('pl').includes('księg')
+                                  ? 'Kolejny cykl od północy (Projekt Hard).'
+                                  : 'Kolejny cykl odlicza się od teraz.';
+                              setAnnouncement(`Oznaczono: ${timer.label}. ${kindHint}`);
                             }}
                             type="button"
                           >
@@ -574,6 +600,7 @@ export function CharacterEquipment() {
                       .filter((slot) => activeSet.assignments[slot] === selectedItem.id)
                       .map((slot) => (
                         <button
+                          disabled={!writesEnabled}
                           key={slot}
                           onClick={() => {
                             removeItem(workspace.id, character.id, activeSet.id, slot);
@@ -597,8 +624,9 @@ export function CharacterEquipment() {
         </p>
         {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
-          Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Timery
-          Biolog / jazda / księgi też osobno. Dane tylko w tej przeglądarce.
+          Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Postęp PH
+          (Biolog / jazda / księgi) jest na drugiej stronie karty — to nie to samo co Timery
+          metinów/bossów w nawigacji. Dane tylko w tej przeglądarce.
         </div>
       </main>
     </AppShell>

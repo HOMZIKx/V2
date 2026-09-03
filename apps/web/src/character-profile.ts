@@ -1,3 +1,5 @@
+import { projectHardProductFacts } from './project-hard-progression';
+
 export type CharacterClass = 'warrior' | 'sura' | 'ninja' | 'shaman';
 export type CharacterGender = 'male' | 'female';
 
@@ -104,9 +106,11 @@ export function validateCharacterProfile(draft: CharacterProfileDraft): Characte
   if (name.length > 24) errors.name = 'Nazwa może mieć maksymalnie 24 znaki.';
   if (
     draft.level !== null &&
-    (!Number.isInteger(draft.level) || draft.level < 1 || draft.level > 999)
+    (!Number.isInteger(draft.level) ||
+      draft.level < 1 ||
+      draft.level > projectHardProductFacts.maxCharacterLevel)
   ) {
-    errors.level = 'Poziom musi być liczbą od 1 do 999 albo pozostać pusty.';
+    errors.level = `Poziom musi być liczbą od 1 do ${projectHardProductFacts.maxCharacterLevel} albo pozostać pusty.`;
   }
   if (draft.responsibleMemberId.trim().length === 0) {
     errors.responsibleMemberId = 'Wybierz osobę prowadzącą postać.';
@@ -204,7 +208,7 @@ export function getEditCharacterProfileFixture(
         gender: 'female',
         level: 55,
         responsibleMemberId: 'aalpsik',
-        startingSetName: 'Dungeon',
+        startingSetName: 'Loch',
         teamNote: 'Postać zespołowa do dungeonów.',
       },
     },
