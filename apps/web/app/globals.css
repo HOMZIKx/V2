@@ -2206,6 +2206,7 @@ button:disabled {
   width: min(1540px, 100%);
   margin: 0 auto;
   padding: 20px 24px 42px;
+  background: transparent;
 }
 
 .equipment-page-header {
@@ -8423,11 +8424,14 @@ button:disabled {
 }
 
 /* --- EQ camp board (owner: pool center + characters around + campfire timers) --- */
+.eq-camp-page {
+  background: transparent;
+}
 .eq-camp-page .equipment-page-header {
   background:
-    radial-gradient(circle at 0 30%, rgba(183, 28, 56, 0.1), transparent 32%),
-    radial-gradient(circle at 100% 60%, rgba(45, 108, 224, 0.12), transparent 34%),
-    linear-gradient(145deg, rgba(22, 28, 40, 0.96), rgba(14, 18, 28, 0.98));
+    radial-gradient(circle at 0 0, rgba(194, 34, 63, 0.16), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(42, 105, 224, 0.18), transparent 38%),
+    linear-gradient(120deg, rgba(17, 19, 27, 0.96), rgba(14, 18, 26, 0.94));
 }
 .eq-camp-toolbar {
   display: flex;
@@ -8441,7 +8445,7 @@ button:disabled {
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(16, 22, 34, 0.9);
+  background: var(--panel);
   color: var(--muted-strong);
   cursor: pointer;
   font-size: 12px;
@@ -8460,18 +8464,18 @@ button:disabled {
   border: 1px solid var(--line-strong);
   border-radius: 22px;
   background:
-    radial-gradient(circle at 50% 45%, rgba(55, 103, 196, 0.14), transparent 42%),
-    radial-gradient(circle at 18% 70%, rgba(177, 37, 63, 0.08), transparent 34%),
-    linear-gradient(160deg, rgba(24, 30, 42, 0.98), rgba(16, 20, 30, 0.98));
+    radial-gradient(circle at 12% 0%, rgba(177, 22, 49, 0.12), transparent 42%),
+    radial-gradient(circle at 88% 12%, rgba(31, 100, 224, 0.16), transparent 46%),
+    radial-gradient(circle at 50% 80%, rgba(55, 103, 196, 0.08), transparent 50%),
+    linear-gradient(155deg, rgba(18, 21, 30, 0.94), rgba(12, 15, 21, 0.94));
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
 .eq-camp::before {
   content: '';
   position: absolute;
   inset: 0;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 48px, rgba(255, 255, 255, 0.012) 48px 49px),
-    repeating-linear-gradient(0deg, transparent 0 48px, rgba(255, 255, 255, 0.012) 48px 49px);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.018), transparent);
   pointer-events: none;
 }
 .eq-camp-center {
@@ -8479,20 +8483,20 @@ button:disabled {
   z-index: 2;
   min-height: 280px;
   padding: 16px;
-  border: 1px solid rgba(166, 177, 202, 0.22);
+  border: 1px solid var(--line);
   border-radius: 18px;
   background:
-    radial-gradient(circle at 50% 30%, rgba(80, 120, 200, 0.12), transparent 50%),
-    rgba(18, 24, 36, 0.88);
+    radial-gradient(circle at 50% 20%, rgba(57, 136, 255, 0.12), transparent 48%),
+    linear-gradient(155deg, rgba(22, 28, 40, 0.92), rgba(16, 20, 30, 0.9));
 }
 .eq-camp.is-timers .eq-camp-center {
   display: grid;
   place-items: center;
   min-height: 240px;
   background:
-    radial-gradient(circle at 50% 60%, rgba(240, 140, 60, 0.22), transparent 45%),
-    radial-gradient(circle at 50% 40%, rgba(255, 200, 100, 0.12), transparent 35%),
-    rgba(22, 26, 34, 0.9);
+    radial-gradient(circle at 50% 60%, rgba(240, 140, 60, 0.2), transparent 45%),
+    radial-gradient(circle at 50% 35%, rgba(255, 200, 100, 0.1), transparent 40%),
+    linear-gradient(155deg, rgba(24, 28, 38, 0.94), rgba(18, 22, 32, 0.92));
 }
 .eq-campfire {
   display: grid;
@@ -8619,9 +8623,12 @@ button:disabled {
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: 1px solid rgba(166, 177, 202, 0.22);
+  border: 1px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(160deg, rgba(28, 34, 48, 0.95), rgba(18, 22, 34, 0.96));
+  background:
+    radial-gradient(circle at 100% 0%, rgba(42, 105, 224, 0.12), transparent 55%),
+    linear-gradient(155deg, rgba(18, 21, 30, 0.94), rgba(14, 18, 26, 0.92));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -8648,9 +8655,11 @@ button:disabled {
   height: 96px;
   overflow: hidden;
   border-radius: 12px;
+  border: 1px solid rgba(158, 169, 192, 0.14);
   background:
-    radial-gradient(circle at 50% 70%, rgba(70, 120, 220, 0.18), transparent 55%),
-    rgba(20, 26, 38, 0.9);
+    radial-gradient(circle at 50% 18%, rgba(57, 136, 255, 0.22), transparent 52%),
+    radial-gradient(circle at 20% 90%, rgba(194, 34, 63, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(28, 36, 52, 0.95), rgba(18, 24, 36, 0.9));
 }
 .eq-char-portrait img {
   width: 100%;
@@ -8680,7 +8689,9 @@ button:disabled {
   padding: 4px;
   border: 1px solid rgba(157, 169, 193, 0.2);
   border-radius: 10px;
-  background: rgba(14, 20, 30, 0.75);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(57, 136, 255, 0.08), transparent 60%),
+    linear-gradient(155deg, rgba(22, 28, 40, 0.9), rgba(16, 20, 30, 0.88));
   color: #687384;
   cursor: pointer;
   font-size: 9px;
@@ -8875,12 +8886,16 @@ button:disabled {
   padding: 4px;
   border: 1px solid rgba(170, 185, 210, 0.28);
   border-radius: 8px;
-  background: linear-gradient(160deg, rgba(32, 40, 56, 0.95), rgba(18, 24, 36, 0.98));
+  background:
+    radial-gradient(circle at 50% 20%, rgba(57, 136, 255, 0.1), transparent 55%),
+    linear-gradient(160deg, rgba(28, 36, 52, 0.95), rgba(18, 24, 36, 0.92));
   color: inherit;
   cursor: pointer;
 }
 .eq-inventory-slot.is-empty {
-  background: linear-gradient(160deg, rgba(24, 30, 42, 0.7), rgba(14, 18, 28, 0.85));
+  background:
+    radial-gradient(circle at 50% 30%, rgba(100, 130, 180, 0.06), transparent 60%),
+    linear-gradient(160deg, rgba(22, 28, 40, 0.7), rgba(16, 20, 30, 0.75));
   cursor: default;
 }
 .eq-inventory-slot[aria-pressed='true'] {
