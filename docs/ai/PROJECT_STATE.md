@@ -4,8 +4,10 @@
 
 Web / DESTILED track: `CURSOR_PRIMARY_HANDOFF_ACCEPTED` (D-061, 2026-09-03).
 
-P4 Discord Centrum Aktywności: `READY_FOR_FINAL_P4_SPEC_REAUDIT`
-(visual screenshot contract still `REFERENCE_IMAGE_REQUIRED`).
+Quality audit (2026-09-03): `DESTILED_WEB_QUALITY_AUDIT_COMPLETE` —
+owner concern confirmed (demo shell vs incomplete first-player path). See
+`docs/ai/DESTILED_WEB_QUALITY_AUDIT_2026-09-03.md`. Next: owner picks P0 fix
+scope.
 
 ## Owner decision — Cursor takes DESTILED Web (2026-09-03)
 
@@ -75,7 +77,8 @@ team actions / notes -> Change history`.
 
 ## Open
 
-- Owner names the next DESTILED coding priority.
+- Owner confirms P0 fix priority from
+  `docs/ai/DESTILED_WEB_QUALITY_AUDIT_2026-09-03.md`.
 - P4-D8 assets = OWNER_DECISION_REQUIRED (prod visual sign-off for Discord).
 - Screenshot-based `CENTRUM_AKTYWNOSCI_VISUAL_INTERACTION_CONTRACT.md` still
   blocked without the reference image.
@@ -84,4 +87,4 @@ team actions / notes -> Change history`.
 
 ## Last updated
 
-2026-09-03 — Owner D-061: Cursor takes over DESTILED Web from ChatGPT.
+2026-09-03 — DESTILED Web quality audit vs first-player contracts; D-061 handoff.

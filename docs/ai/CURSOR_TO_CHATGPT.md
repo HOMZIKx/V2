@@ -1,52 +1,36 @@
-# Cursor → ChatGPT / Owner
+# Cursor → Owner / ChatGPT
 
 ## 1. Status
 
-`CURSOR_PRIMARY_HANDOFF_ACCEPTED` — D-061
+`DESTILED_WEB_QUALITY_AUDIT_COMPLETE`
 
 ## 2. Task
 
-`DESTILED-CURSOR-HANDOFF-001` — documentation handoff only
+Owner-requested analysis of DESTILED Web logic, functionality and content vs
+accepted first-player contracts (D-038–D-060).
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- Commit: `6e1deab6945a5af571098ff9a8cdb71279614ba2`
-- No application code changes in this commit
+- Runtime check: Next.js dev on `:3000`
 
-## 3. Owner decision recorded
+## 3. Verdict
 
-| Item | Resolution |
-| ---- | ---------- |
-| Reason | ChatGPT cost |
-| Delivery agent for DESTILED Web | **Cursor** |
-| Working / deploy ref | `preview/destiled-web` |
-| Product contracts D-038–D-060 | unchanged |
-| D-022 / D-037 | SCOPE REVISED by D-061 |
-| `HOLD_CURSOR_WEB_PRODUCT_UI` | **lifted** |
-| ChatGPT | optional, not required for day-to-day Web delivery |
+Owner assessment confirmed: polished **demo shell**, not a complete first-player
+product path. Strong visual shell; weak journey logic, incomplete mutations,
+fake live chrome, premature Maps/Market/Activity in primary nav.
 
-## 4. Files updated
+## 4. Artifacts
 
-- `docs/DECISION_LOG.md` — D-061 + supersession notes
-- `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` — Cursor-primary workflow
-- `docs/ai/PROJECT_STATE.md`
-- `docs/ai/CHATGPT_TO_CURSOR.md`
-- `docs/ai/PENDING_DECISIONS.md` — DEC-061 ACCEPTED
-- `docs/ai/WORKFLOW.md`
-- `docs/ai/CURSOR_TO_CHATGPT.md` (this file)
+- Report: `docs/ai/DESTILED_WEB_QUALITY_AUDIT_2026-09-03.md`
+- Screenshots: `/opt/cursor/artifacts/screenshots/destiled-*.png`
 
-## 5. Next step (needs owner)
+## 5. Recommended next coding task (needs owner OK)
 
-Name the first concrete coding task on DESTILED Web, for example:
-
-- stabilize / fix a specific screen or bug;
-- complete named-set / item / progression-timer edit flows;
-- UX polish within D-051 brand.
-
-Default if unspecified later: stabilize the first-player path already on
-`preview/destiled-web`; still no API/Discord production integration until asked.
+Start **P0 honesty + first-path closure** from the audit (narrow nav, Discord
+entry mock, create workspace, home priorities, character create → list, remove
+hardcoded Asteria). No API/Discord production integration yet.
 
 ## 6. Marker
 
-`READY_FOR_OWNER_NEXT_DESTILED_TASK`
+`AWAITING_OWNER_P0_FIX_PRIORITY`
