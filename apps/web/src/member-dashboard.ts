@@ -119,7 +119,7 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
       label: 'Party',
       description: 'Drużyna na mapie: pinezki skauta (~10 min), odklik, licznik zbić w sesji.',
       href: '/maps',
-      state: 'available',
+      state: 'coming',
     },
     {
       id: 'market',
