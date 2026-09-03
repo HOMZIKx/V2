@@ -2,37 +2,25 @@
 
 ## Status
 
-Rozszerzone cykle PH na karcie postaci (nie „tylko 3/4”), ikony zgodne z nazwami,
-naprawione dodawanie kolejnych setów EQ. Branch `cursor/destiled-cursor-handoff-dfe5`
-(PR **#48**).
+PR #48 **MERGED** do `preview/destiled-web`. Preview Zeabur rebuild odpalony
+pushem na tę gałąź.
 
-## Co naprawione w tym torze
+## Plan dalszy (prośba o priorytet)
 
-- **Postęp PH:** księga, kamień duszy, dowodzenie, polimorfia, górnictwo, combo (≥30),
-  jazda (23 h), biolog (≥30). Czytania / biolog → wspólny reset o północy (PH).
-- **Ikony** w `apps/web/public/game/progression/` (księga / kamień / Sun Zi /
-  polimorfia / górnictwo / Art of Combo / medal / Chaegirab).
-- **Sety EQ:** wcześniej po create był tylko 1 starter — brak `createEquipmentSet`.
-  Teraz przycisk „Dodaj set” na karcie EQ.
-- Ensure na otwarciu karty: brakujące cykle + backfill `iconPath`.
+Pełny plan: `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
 
-## Nadal open (plan jakości / bot)
+Skrót faz:
 
-1. Prawdziwe API + persistence (dziś localStorage mock)
-2. Discord bot reminders ↔ cykle PH / respawny (`/timers`)
-3. Zeabur deploy web + bot (osobny projekt od starego `dobry-temat`)
-4. Minimapy lochów małp z lokalnego dumpa (owner asset)
-5. Live Discord OAuth / eligibility (obecnie mock entry)
+1. **A** — jakość Web preview (regresja Zeabur, EQ readiness, assety lochów małp)
+2. **B** — persistence API + prawdziwy Discord OAuth (warunek syncu)
+3. **C** — reminders Web ↔ discord-gateway (PH + SpawnTimer; idempotent Done)
+4. **D** — pełny Zeabur (zablokowane DEC-001 do wznowienia)
 
-## Deploy / przegląd
+**Proponowany następny duży etap po `APPROVED`:** B1 kontrakt player-team API,
+potem C1 pierwszy reminder Biolog.
 
-- Feature branch + PR #48: `cursor/destiled-cursor-handoff-dfe5` @ `033e473`
-- **Preview Zeabur branch** `preview/destiled-web` zaktualizowany do tego samego tipu
-  (push `c73de3b..033e473`) — to odpala rebuild serwisu web-preview wg
-  `docs/operations/ZEABUR_PREVIEW.md`
-- Agent nie ma panelu Zeabur; status buildu sprawdź w dashboardzie projektu
-  `DESTILED Preview` / serwis `web-preview` + `/health`
+Bez Twojego `APPROVED` nie ruszam Fazy B/C (architektura / zakres).
 
 ## Marker
 
-`READY_FOR_OWNER_REVIEW`
+`PLAN_WEB_BOT_JOINUP` + `READY_FOR_OWNER_REVIEW`

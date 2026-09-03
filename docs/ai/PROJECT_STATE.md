@@ -2,26 +2,18 @@
 
 ## Status
 
-DESTILED Web mock: first-slice + respawn timers. Branch
-`cursor/destiled-cursor-handoff-dfe5` (PR **#48**).
+DESTILED Web mock + preview: first-slice scalony do `preview/destiled-web`
+(PR **#48** MERGED). Tip deployu: patrz `git rev-parse origin/preview/destiled-web`.
 
-Gap audit: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`.
+Gap audit: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`.  
+Plan dalej (Web + bot): `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
 
-## Latest fixes (EQ / PH / honesty)
+## Latest (EQ / PH / deploy)
 
-- Timery PH: Biolog + wszystkie czytania → północ; jazda → 23 h
-- Konflikty EQ między postaciami; puste sloty = „Pusty”
-- Zaproszenia wychodzące nie lądują w inboxie; akceptacja tylko dla odbiorcy
-- Unikalne ID postaci/przestrzeni; startowe timery PH przy create character
-- Aktywny set persystowany; **Dodaj set** — wiele nazwanych setów po utworzeniu postaci
-- Notatka postaci widoczna na EQ
-- Biolog Kimmizic = Matowy Lód (lvl 61); sety Loch/Szablon
-- `/timers` = respawny metinów; karta postaci = „Postęp Projekt Hard”
-- **Postacie:** jedna seria Desert Warrior (8/8) — spójne pozy/styl (DEC-065)
-- **Cykle PH z ikonami:** księga, kamień duszy, dowodzenie, polimorfia, górnictwo,
-  combo (≥30), jazda (23 h), biolog (≥30) — assety Metin2 wiki w
-  `public/game/progression/`
+- 8 cykli PH z ikonami; multi-set EQ; Timery vs Postęp PH
+- Class renders Desert Warrior 8/8 (DEC-065)
+- Preview Zeabur: push na `preview/destiled-web` odpalił check Zeabur
 
 ## Marker
 
-`READY_FOR_OWNER_REVIEW` + `GAP_AUDIT_HONEST`
+`READY_FOR_OWNER_REVIEW` + `PLAN_WEB_BOT_JOINUP`
