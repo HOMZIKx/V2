@@ -40,7 +40,20 @@ export function DiscordEntryScreen() {
           Discord ID jako hasła.
         </p>
 
-        {state.authStatus === 'unauthenticated' || state.authStatus === 'cancelled' ? (
+        {state.authStatus === 'authenticating' ? (
+          <p className="entry-status" role="status">
+            Łączenie z Discord…
+            <button className="text-button" onClick={cancelAuth} type="button">
+              Anuluj
+            </button>
+          </p>
+        ) : null}
+
+        {state.authStatus !== 'authenticating' &&
+        !state.viewer &&
+        state.authStatus !== 'unavailable' &&
+        state.authStatus !== 'ineligible' &&
+        state.authStatus !== 'revoked' ? (
           <>
             <button
               className="primary-button entry-primary"
@@ -55,15 +68,6 @@ export function DiscordEntryScreen() {
               </p>
             )}
           </>
-        ) : null}
-
-        {state.authStatus === 'authenticating' ? (
-          <p className="entry-status" role="status">
-            Łączenie z Discord…
-            <button className="text-button" onClick={cancelAuth} type="button">
-              Anuluj
-            </button>
-          </p>
         ) : null}
 
         {state.authStatus === 'unavailable' ? (

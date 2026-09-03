@@ -3,22 +3,18 @@ import { Pool } from 'pg';
 
 import { createLogger } from '@v2/observability';
 
+import { PlayerTeamError } from '../../domain/errors.js';
+import {
+  type PlayerTeamStateRepositoryPort,
+  type ViewerSnapshotRecord,
+  type ViewerSnapshotUpsertInput,
+  type ViewerSnapshotUpsertResult,
+} from '../../domain/ports/player-team-state.port.js';
 import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
 
-export type ViewerSnapshotRecord = {
-  readonly ownerUserId: string;
-  readonly state: Record<string, unknown>;
-  readonly revision: number;
-  readonly updatedAtIso: string;
-};
-
-export type ViewerSnapshotUpsertResult = {
-  readonly revision: number;
-};
-
 @Injectable()
-export class PlayerTeamStateRepository implements OnModuleInit {
+export class PlayerTeamStateRepository implements PlayerTeamStateRepositoryPort, OnModuleInit {
   private readonly logger = createLogger('player-team-state-repository');
   private pool: Pool | null = null;
 
@@ -37,11 +33,26 @@ export class PlayerTeamStateRepository implements OnModuleInit {
     return this.pool;
   }
 
-  // -------------------------------------------------------------------------
-  // Viewer snapshot — stores the full PlayerStoreState as JSONB per viewer.
-  // Used by the Web dev-sync adapter until per-mutation endpoints are live.
-  // Table: player_team_viewer_snapshots (created by migration 001_initial_schema.sql)
-  // -------------------------------------------------------------------------
+  public async pingDatabase(): Promise<boolean> {
+    try {
+      await this.db.query('SELECT 1');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public async isMigrationApplied(migrationId: string): Promise<boolean> {
+    try {
+      const result = await this.db.query<{ id: string }>(
+        'SELECT id FROM player_team_schema_migrations WHERE id = $1',
+        [migrationId],
+      );
+      return (result.rowCount ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  }
 
   public async getViewerSnapshot(ownerUserId: string): Promise<ViewerSnapshotRecord | null> {
     const result = await this.db.query<{
@@ -67,15 +78,12 @@ export class PlayerTeamStateRepository implements OnModuleInit {
     };
   }
 
-  public async upsertViewerSnapshot(input: {
-    readonly ownerUserId: string;
-    readonly state: Record<string, unknown>;
-    readonly expectedRevision: number | null;
-  }): Promise<ViewerSnapshotUpsertResult> {
+  public async upsertViewerSnapshot(
+    input: ViewerSnapshotUpsertInput,
+  ): Promise<ViewerSnapshotUpsertResult> {
     const stateJson = JSON.stringify(input.state);
 
     if (input.expectedRevision === null) {
-      // Blind upsert — no optimistic concurrency check.
       const result = await this.db.query<{ revision: number }>(
         `INSERT INTO player_team_viewer_snapshots (owner_user_id, state, revision, updated_at)
          VALUES ($1, $2::jsonb, 0, NOW())
@@ -91,7 +99,6 @@ export class PlayerTeamStateRepository implements OnModuleInit {
       return { revision: Number(result.rows[0]?.revision ?? 0) };
     }
 
-    // Optimistic concurrency: update only if current revision matches.
     const result = await this.db.query<{ revision: number }>(
       `UPDATE player_team_viewer_snapshots
        SET state      = $2::jsonb,
@@ -107,8 +114,6 @@ export class PlayerTeamStateRepository implements OnModuleInit {
       return { revision: Number(result.rows[0]?.revision ?? 0) };
     }
 
-    // Rows affected = 0 — either doesn't exist or revision mismatch.
-    // If doesn't exist and expectedRevision == 0, do an insert.
     if (input.expectedRevision === 0) {
       const insertResult = await this.db.query<{ revision: number }>(
         `INSERT INTO player_team_viewer_snapshots (owner_user_id, state, revision, updated_at)
@@ -123,14 +128,12 @@ export class PlayerTeamStateRepository implements OnModuleInit {
       }
     }
 
-    // Fetch current to report the actual revision in the conflict message.
     const current = await this.getViewerSnapshot(input.ownerUserId);
     const actual = current?.revision ?? null;
-    throw Object.assign(
-      new Error(
-        `viewer snapshot revision mismatch: expected ${input.expectedRevision}, actual ${actual}`,
-      ),
-      { code: 'REVISION_CONFLICT', actual },
+    throw new PlayerTeamError(
+      'REVISION_CONFLICT',
+      `viewer snapshot revision mismatch: expected ${input.expectedRevision}, actual ${actual}`,
+      { actualRevision: actual },
     );
   }
 }

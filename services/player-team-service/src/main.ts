@@ -6,9 +6,12 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
 
+import { loadPlayerTeamEnvFiles } from './infrastructure/config/load-env-file.js';
 import { AppModule } from './interface/app.module.js';
 import { PLAYER_TEAM_ENV } from './interface/player-team.tokens.js';
 import { type PlayerTeamEnv } from './infrastructure/config/player-team-env.js';
+
+loadPlayerTeamEnvFiles();
 
 const logger = createLogger('player-team-service');
 
@@ -17,9 +20,15 @@ const bootstrap = async (): Promise<void> => {
 
   const env = app.get<PlayerTeamEnv>(PLAYER_TEAM_ENV, { strict: false });
 
-  // Allow any origin in dev-safe mode. In production, restrict via env config.
+  const corsOrigins =
+    env.PLAYER_TEAM_CORS_ORIGINS.length > 0
+      ? env.PLAYER_TEAM_CORS_ORIGINS
+      : env.NODE_ENV === 'production'
+        ? false
+        : true;
+
   app.enableCors({
-    origin: env.NODE_ENV === 'production' ? false : true,
+    origin: corsOrigins,
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', env.PLAYER_TEAM_DEMO_VIEWER_HEADER],
     credentials: false,

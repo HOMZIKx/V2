@@ -29,6 +29,16 @@ const optionalTrimmed = z
     return trimmed === undefined || trimmed === '' ? undefined : trimmed;
   });
 
+const csvOrigins = z
+  .string()
+  .optional()
+  .transform((value) =>
+    (value ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter((origin) => origin.length > 0),
+  );
+
 const baseSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 
@@ -47,6 +57,8 @@ const baseSchema = z.object({
   PLAYER_TEAM_DEMO_VIEWER_HEADER: optionalTrimmed
     .transform((v) => (v === undefined ? 'x-demo-viewer-id' : v))
     .pipe(z.string().min(1)),
+
+  PLAYER_TEAM_CORS_ORIGINS: csvOrigins,
 });
 
 export type PlayerTeamEnv = z.output<typeof baseSchema>;

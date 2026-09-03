@@ -49,6 +49,7 @@ import {
 } from './player-store';
 
 import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
+import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
@@ -181,14 +182,25 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     void (async () => {
       try {
         const response = await getMyPlayerTeamState({ viewerId });
-        serverRevisionRef.current = response.revision;
+        const localState = state;
 
-        if (response.state !== null) {
+        if (
+          shouldApplyServerSnapshot({
+            localState,
+            localSyncedRevision: serverRevisionRef.current,
+            serverState: response.state,
+            serverRevision: response.revision,
+          })
+        ) {
           const parsed = parsePlayerStore(JSON.stringify(response.state));
           if (parsed) {
-            // Replace local snapshot with server snapshot once.
-            setState(parsed);
+            const merged = mergeServerSnapshot(localState, parsed);
+            setState(merged);
+            window.localStorage.setItem(PLAYER_STORE_KEY, serializePlayerStore(merged));
           }
+          serverRevisionRef.current = response.revision;
+        } else if (response.revision !== null) {
+          serverRevisionRef.current = response.revision;
         }
       } catch (e) {
         // Keep local state as source of truth when server fails.

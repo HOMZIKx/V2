@@ -13,6 +13,12 @@ const identityOnAuthorizationDatabaseUrl =
 const authorizationOnIdentityDatabaseUrl =
   process.env.AUTHORIZATION_ON_IDENTITY_DATABASE_URL ??
   'postgresql://authorization:authorization_dev_password@127.0.0.1:5432/identity';
+const playerTeamDatabaseUrl =
+  process.env.PLAYER_TEAM_DATABASE_URL ??
+  'postgresql://player_team:player_team_dev_password@127.0.0.1:5432/player_team';
+const identityOnPlayerTeamDatabaseUrl =
+  process.env.IDENTITY_ON_PLAYER_TEAM_DATABASE_URL ??
+  'postgresql://identity:identity_dev_password@127.0.0.1:5432/player_team';
 
 async function connectAndQuery(connectionString: string): Promise<void> {
   const client = new Client({ connectionString });
@@ -42,5 +48,13 @@ describeInfra('database isolation', () => {
 
   it('denies the authorization user access to the identity database', async () => {
     await expect(connectAndQuery(authorizationOnIdentityDatabaseUrl)).rejects.toThrow();
+  });
+
+  it('allows the player_team user to connect to the player_team database', async () => {
+    await expect(connectAndQuery(playerTeamDatabaseUrl)).resolves.toBeUndefined();
+  });
+
+  it('denies the identity user access to the player_team database', async () => {
+    await expect(connectAndQuery(identityOnPlayerTeamDatabaseUrl)).rejects.toThrow();
   });
 });

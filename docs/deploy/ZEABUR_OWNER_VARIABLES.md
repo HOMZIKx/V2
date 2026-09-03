@@ -22,8 +22,9 @@ Z UI add-onów skopiuj:
 
 1. URI `postgres-identity` → użyjesz jako `IDENTITY_DATABASE_URL`
 2. URI `postgres-authorization` → użyjesz jako `AUTHORIZATION_DATABASE_URL`
-3. URI `redis` → `REDIS_URL`
-4. URI/host+user+pass `rabbitmq` → `RABBITMQ_URL` (format `amqp://USER:PASS@HOST:5672`)
+3. URI `postgres-player-team` → użyjesz jako `PLAYER_TEAM_DATABASE_URL`
+4. URI `redis` → `REDIS_URL`
+5. URI/host+user+pass `rabbitmq` → `RABBITMQ_URL` (format `amqp://USER:PASS@HOST:5672`)
 
 ---
 
@@ -51,6 +52,26 @@ Z UI add-onów skopiuj:
 
 ---
 
+## Serwis `player-team-service`
+
+Migracje odpalają się przy starcie kontenera. Demo header zostaje do czasu Identity OAuth.
+
+| Klucz                          | Wartość                                           |
+| ------------------------------ | ------------------------------------------------- |
+| `NODE_ENV`                     | `production`                                      |
+| `HOST`                         | `0.0.0.0`                                         |
+| `PLAYER_TEAM_SERVICE_HOST`     | `0.0.0.0`                                         |
+| `PLAYER_TEAM_SERVICE_PORT`     | `4400`                                            |
+| `PLAYER_TEAM_DATABASE_URL`     | _(URI z add-onu postgres-player-team)_            |
+| `ALLOW_PRODUCTION_CONNECTIONS` | `true`                                            |
+| `PLAYER_TEAM_ALLOW_DEMO_WRITE` | `true`                                            |
+| `PLAYER_TEAM_DEMO_VIEWER_HEADER` | `x-demo-viewer-id`                              |
+| `PLAYER_TEAM_CORS_ORIGINS`     | `http://127.0.0.1:3000,https://<publiczny-host-web>` |
+
+Publiczny hostname serwisu wklejasz potem jako `NEXT_PUBLIC_PLAYER_TEAM_BASE_URL` (web + lokalny `.env`).
+
+---
+
 ## Serwis `api-gateway`
 
 | Klucz                          | Wartość                              |
@@ -66,10 +87,15 @@ Z UI add-onów skopiuj:
 
 ## Serwis `web`
 
-| Klucz      | Wartość      |
-| ---------- | ------------ |
-| `NODE_ENV` | `production` |
-| `HOST`     | `0.0.0.0`    |
+| Klucz                                 | Wartość                                              |
+| ------------------------------------- | ---------------------------------------------------- |
+| `NODE_ENV`                            | `production`                                         |
+| `HOST`                                | `0.0.0.0`                                            |
+| `NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED` | `true`                                            |
+| `NEXT_PUBLIC_PLAYER_TEAM_BASE_URL`    | `https://<publiczny-host-player-team-service>`       |
+| `NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER` | `x-demo-viewer-id`                            |
+
+Lokalny `pnpm --dir apps/web dev` może użyć tego samego `NEXT_PUBLIC_PLAYER_TEAM_BASE_URL` (publiczny URL Zeabur), żeby strona na laptopie i bot na Zeaburze widziały tę samą bazę — bez redeployu web przy każdej edycji UI.
 
 ---
 

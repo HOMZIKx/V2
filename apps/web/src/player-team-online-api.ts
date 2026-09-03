@@ -79,8 +79,16 @@ export async function putMyPlayerTeamState(input: {
   if (res.status === 409) {
     let actualRevision: number | null = null;
     try {
-      const body = (await res.json()) as { actualRevision?: number };
-      actualRevision = typeof body.actualRevision === 'number' ? body.actualRevision : null;
+      const body = (await res.json()) as {
+        actualRevision?: number;
+        error?: { actualRevision?: number | null; message?: string };
+      };
+      actualRevision =
+        typeof body.error?.actualRevision === 'number'
+          ? body.error.actualRevision
+          : typeof body.actualRevision === 'number'
+            ? body.actualRevision
+            : null;
     } catch {
       // ignored
     }

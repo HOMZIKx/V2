@@ -143,6 +143,7 @@ const requiredArtifacts = [
   'apps/discord-gateway/dist/apps/discord-gateway/src/main.js',
   'services/identity-service/dist/services/identity-service/src/main.js',
   'services/authorization-service/dist/services/authorization-service/src/main.js',
+  'services/player-team-service/dist/services/player-team-service/src/main.js',
 ];
 
 for (const relativePath of requiredArtifacts) {
@@ -154,8 +155,9 @@ for (const relativePath of requiredArtifacts) {
   }
 }
 
-const [webPort, adminPort, apiGatewayPort, discordGatewayPort, identityPort, authorizationPort] =
+const [webPort, adminPort, apiGatewayPort, discordGatewayPort, identityPort, authorizationPort, playerTeamPort] =
   await Promise.all([
+    allocatePort(),
     allocatePort(),
     allocatePort(),
     allocatePort(),
@@ -171,6 +173,7 @@ for (const port of [
   discordGatewayPort,
   identityPort,
   authorizationPort,
+  playerTeamPort,
 ]) {
   await assertPortAvailable(port);
 }
@@ -268,6 +271,24 @@ const applications = [
     name: 'authorization-service',
     url: `http://127.0.0.1:${authorizationPort}/health/live`,
   },
+  {
+    args: [
+      '--import',
+      'tsx',
+      'services/player-team-service/dist/services/player-team-service/src/main.js',
+    ],
+    command: process.execPath,
+    env: {
+      PLAYER_TEAM_SERVICE_HOST: '127.0.0.1',
+      PLAYER_TEAM_SERVICE_PORT: String(playerTeamPort),
+      PLAYER_TEAM_DATABASE_URL:
+        process.env.PLAYER_TEAM_DATABASE_URL ??
+        'postgresql://player_team:player_team_dev_password@127.0.0.1:5432/player_team',
+      PLAYER_TEAM_ALLOW_DEMO_WRITE: 'true',
+    },
+    name: 'player-team-service',
+    url: `http://127.0.0.1:${playerTeamPort}/health/live`,
+  },
 ];
 
 const children = [];
@@ -278,7 +299,7 @@ try {
     children.push(child);
     await waitForHealthy(application, child);
   }
-  console.log('Runtime smoke checks passed for all six applications and services.');
+  console.log('Runtime smoke checks passed for all seven applications and services.');
 } finally {
   for (const child of children) {
     try {
