@@ -83,9 +83,9 @@ describe('respawn timers imported from dobry-temat', () => {
       ranged.respawnTimeMin * 60_000 +
       Math.floor((ranged.respawnTimeMax - ranged.respawnTimeMin) * 60_000 * 0.85);
     const late = { ...counting, channel: 4 };
-    expect(partitionRespawnRecords([counting], (ranged.respawnTimeMin * 60_000) / 2).counting).toHaveLength(
-      1,
-    );
+    expect(
+      partitionRespawnRecords([counting], (ranged.respawnTimeMin * 60_000) / 2).counting,
+    ).toHaveLength(1);
     expect(isWindowLatePhase(late, lateWindowAt)).toBe(true);
     expect(channelsWithLateWindows([late], 'M1', lateWindowAt)).toEqual([4]);
   });

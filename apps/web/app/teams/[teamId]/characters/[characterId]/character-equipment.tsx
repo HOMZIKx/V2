@@ -21,6 +21,7 @@ import {
   getSlotReadiness,
   slotLabels,
   type CharacterRecord,
+  type EquipmentItem,
   type EquipmentSlot,
   type ProgressTimer,
   type SetReadiness,
@@ -646,7 +647,11 @@ export function CharacterEquipment() {
                               }}
                               type="button"
                             >
-                              {item ? <img alt="" src={item.iconPath} /> : <span>{slotLabels[slot]}</span>}
+                              {item ? (
+                                <img alt="" src={item.iconPath} />
+                              ) : (
+                                <span>{slotLabels[slot]}</span>
+                              )}
                               <small>{slotLabels[slot]}</small>
                             </button>
                           );
@@ -831,7 +836,10 @@ export function CharacterEquipment() {
               </header>
               {selectedItem ? (
                 <>
-                  <div className="eq-pool-item-art" style={{ width: 72, height: 80, marginBottom: 10 }}>
+                  <div
+                    className="eq-pool-item-art"
+                    style={{ width: 72, height: 80, marginBottom: 10 }}
+                  >
                     <img alt="" src={selectedItem.iconPath} />
                   </div>
                   <h3>{selectedItem.name}</h3>

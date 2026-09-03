@@ -5,6 +5,7 @@
 Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 
 ### Timery (`/timers`)
+
 - **Zbite** otwiera mini-okno z mapą (pinezka opcjonalna).
 - Zbity cel **nie znika** — zjeżdża do „Odliczanie” z clockiem.
 - Ostatnie **20% okna** na innym CH → podświetlenie kanału + banner.
@@ -12,12 +13,14 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 - Wyższy kontrast nazw, czasów i przycisków.
 
 ### Party (`/maps`)
+
 - Twój wybór mapy = **widok osobisty** (nie nadpisuje mapy party automatycznie).
 - Przyciski: skocz do mapy party / ustaw mój widok jako mapę party.
 - Pinezki skauta TTL ~10 min + prune z localStorage.
 - Cross-link do Timerów.
 
 ### EQ (karta postaci / obóz)
+
 - Centrum = **inventory** (siatka slotów, dowolna liczba kart).
 - Postacie wokół: max 8 slotów EQ; drag lub tap (mobile).
 - Tryb **ognisko**: timery PH, Start = jeden klik, running zablokowany, Dodaj timer.
@@ -28,8 +31,9 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 ## Plan Web (SoT z gita)
 
 Dalej wg `WEB_PRODUCT_DESIGN_AND_DELIVERY.md` / D-061: stabilizacja first-player
-+ create/edit setów/itemów/timerów za mockami. **Bez** API/Discord prod i bez
-bota, dopóki Web nie będzie zaakceptowany.
+
+- create/edit setów/itemów/timerów za mockami. **Bez** API/Discord prod i bez
+  bota, dopóki Web nie będzie zaakceptowany.
 
 ## Marker
 

@@ -288,8 +288,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 </span>
                 <h2>Mapa party / skaut</h2>
                 <p className="respawn-list-lead">
-                  Pinezka = „tu jest metin” (~10 min). To nie timer respawnu i nie lokalizacja zbicia
-                  z /timers.
+                  Pinezka = „tu jest metin” (~10 min). To nie timer respawnu i nie lokalizacja
+                  zbicia z /timers.
                 </p>
               </div>
               {party ? (

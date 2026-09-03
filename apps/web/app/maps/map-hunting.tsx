@@ -469,7 +469,11 @@ export function MapHunting({
                         type="button"
                       >
                         {record.entity.iconPath ? (
-                          <img alt="" className="respawn-entity-icon" src={record.entity.iconPath} />
+                          <img
+                            alt=""
+                            className="respawn-entity-icon"
+                            src={record.entity.iconPath}
+                          />
                         ) : (
                           <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={15} />
                         )}
@@ -547,7 +551,9 @@ export function MapHunting({
                 <div>
                   <span className="section-kicker">Potwierdź zbicie</span>
                   <h2 id="respawn-pin-modal-title">{modalRecord.entity.name}</h2>
-                  <p>Kliknij mini-mapę, żeby zostawić pinezkę ostatniej lokalizacji — albo pomiń.</p>
+                  <p>
+                    Kliknij mini-mapę, żeby zostawić pinezkę ostatniej lokalizacji — albo pomiń.
+                  </p>
                 </div>
                 <button
                   onClick={() => {

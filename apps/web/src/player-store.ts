@@ -1815,13 +1815,6 @@ export function markTimerDone(
     const existing = workspace.timers.find((timer) => timer.id === timerId);
     if (!existing) return workspace;
     if (existing.status !== 'ready') return workspace;
-    if (
-      existing.operationId === operationId &&
-      existing.status === 'running' &&
-      existing.progressPercent === 0
-    ) {
-      return workspace;
-    }
     const kind = existing.kind ?? inferProgressionKind(existing.label);
     const restart = restartAfterDone(kind);
     const timers = workspace.timers.map((timer) => {

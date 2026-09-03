@@ -98,9 +98,9 @@ describe('item catalog class and enhancement rules', () => {
     expect(names.length).toBeGreaterThan(0);
     expect(names.every((name) => !name.includes('…'))).toBe(true);
     const shield = findGameItemByTitle('Bojowa Tarcza');
-    expect(bonusesAtEnhancement(shield?.upgradeDescription, 9).some((line) => line.includes('Obrona'))).toBe(
-      true,
-    );
+    expect(
+      bonusesAtEnhancement(shield?.upgradeDescription, 9).some((line) => line.includes('Obrona')),
+    ).toBe(true);
     expect(resolveItemBonuses('Bojowa Tarcza +9', 9).length).toBeGreaterThan(0);
   });
 });

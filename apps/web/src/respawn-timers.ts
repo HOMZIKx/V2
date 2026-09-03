@@ -186,11 +186,7 @@ export function respawnWindowMinutes(entity: RespawnEntity): number {
  * Last fraction of the spawn window (default 20%).
  * Used to nudge the player when watching another channel.
  */
-export function isWindowLatePhase(
-  record: RespawnRecord,
-  now: number,
-  fraction = 0.2,
-): boolean {
+export function isWindowLatePhase(record: RespawnRecord, now: number, fraction = 0.2): boolean {
   const display = getRespawnDisplay(record, now);
   if (display.phase !== 'window' || display.minAt === null || display.windowEndsAt === null) {
     return false;
