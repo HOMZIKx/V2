@@ -25,8 +25,10 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 - Postacie wokół: max 8 slotów EQ; drag lub tap (mobile).
 - Tryb **ognisko**: timery PH, Start = jeden klik, running zablokowany, Dodaj timer.
 - Tło jak reszta app (nie czarne).
-- Bonusy: nazwy wyłącznie z dumpa + ręczna obserwacja; **DEC-068** — pełne
-  drabinki po dostarczeniu nieuciętego eksportu ze starego dobry-temat.
+- Bonusy: nazwy wyłącznie z dumpa + ręczna obserwacja; przy dodawaniu przedmiotu
+  wybierasz subset bonusów z katalogu (klik) i zapisane linie są traktowane jako
+  „explicit” (nie nadpisujemy ich pełną drabinką); **DEC-068** — pełne drabinki
+  po dostarczeniu nieuciętego eksportu ze starego dobry-temat.
 
 ## Plan Web (SoT z gita)
 

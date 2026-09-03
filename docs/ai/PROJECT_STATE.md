@@ -15,6 +15,9 @@ D-061 immediate next). Bot Discord odłożony do akceptacji Web.
 - **EQ camp:** inventory siatka (Metin2-like, nielimitowana) w centrum; postacie
   wokół z 8 slotami; drag/tap; tryb ognisko + Start timer (running zablokowany);
   tło w stylu app (nie czarne); edycja bonusów z dumpa / obserwacji.
+- **EQ (bonusy):** przy dodawaniu przedmiotu wybierasz subset bonusów z katalogu
+  (w UI „kliknij”), a zapisane bonusy są traktowane jako „explicit” (nie nadpisujemy
+  ich pełną drabinką z katalogu).
 - **DEC-068:** pełne drabinki bonusów wymagają nieuciętego dumpa / starego app.
 
 ## Marker
