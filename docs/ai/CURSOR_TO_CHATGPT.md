@@ -8,7 +8,8 @@ mocny lokalnie; bot+API nie są tip-top produkcyjnie.
 ## Poprawki w tym pushu
 
 - Mapy: atlasy **top-down** 512×512 (panoramy → `map-banners/`)
-- Nav **Timery** + default widok listy respawnów (mapa = zakładka atlasu)
+- **`/timers`** w nav — lista respawnów jak w starej app (19 map / bossy / metiny);
+  party + atlas dopiero w drugiej zakładce / `/maps`
 - Lochy: Pająków z wiki; małpy = schemat do czasu dumpa
 - Honesty strip „Podgląd lokalny”
 

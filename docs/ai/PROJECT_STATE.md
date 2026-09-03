@@ -11,9 +11,10 @@ Uczciwy audyt luk: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`.
 
 - 8/8 class×gender PNG @ 272×360 (DEC-062 resolved; spójność poz = open)
 - EQ/ulepszacz ikony z pl-wiki; shared swords zweryfikowane
-- `/maps`: katalog respawnów dobry-temat; default **Timery**; atlas top-down 512²
-- Panoramy przeniesione do `public/game/map-banners/`
-- Loch Pająków V2 z wiki; lochy małp = schematyczny atlas (do nadpisania dumpem)
+- **`/timers`** = główna powierzchnia respawnów (nav Timery); katalog 19 map /
+  31 bossów / 55 metinów z dobry-temat; `/maps` = atlas + party
+- Atlasy top-down 512²; panoramy w `map-banners/`
+- Loch Pająków V2 z wiki; lochy małp = schematyczny atlas
 - Pasek „Podgląd lokalny” (honesty localStorage vs API)
 
 ## Not production-ready
