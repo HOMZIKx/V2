@@ -130,6 +130,7 @@ export function AppShell({
       href: '/characters',
     },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
+    { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
   ];
 
   return (

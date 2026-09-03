@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
-  claimsForPartyScope,
+  PARTY_SCOUT_PIN_TTL_MS,
+  activeScoutPins,
   createMapParty,
+  dismissScoutPin,
+  incrementSessionKills,
+  isScoutPinActive,
+  placeScoutPin,
   requestPartyJoin,
   resolvePartyRequest,
+  scoutPinAgeMinutes,
   setPartyMap,
-  upsertSpawnClaim,
 } from './map-party';
 
-describe('map party', () => {
+describe('map party hunt session', () => {
   const leader = { id: 'mateusz', displayName: 'Mateusz' };
 
-  it('tworzy party na wybranej mapie z liderem', () => {
+  it('tworzy party na wybranej mapie z liderem i licznikiem zbić', () => {
     const party = createMapParty({
       leader,
       mapKey: 'M1',
@@ -20,6 +25,7 @@ describe('map party', () => {
       now: 1_000,
     });
     expect(party.members).toHaveLength(1);
+    expect(party.sessionKills).toBe(0);
     expect(party.joinCode).toHaveLength(4);
     expect(setPartyMap(party, 'Dolina Orków')).toMatchObject({
       mapKey: 'Dolina Orków',
@@ -42,27 +48,43 @@ describe('map party', () => {
     ).toContain('wicek');
   });
 
-  it('pokazuje claim tylko uczestnikom właściwego party, mapy i kanału', () => {
+  it('trzyma pinezkę skauta ~10 min, potem znika; age w minutach', () => {
     const party = createMapParty({
       leader,
       mapKey: 'M1',
       activeChannel: 1,
       visibility: 'open',
-      now: 1_000,
+      now: 0,
     });
-    const claims = upsertSpawnClaim([], {
-      id: 'claim-1',
+    const pin = {
+      id: 'pin-1',
       partyId: party.id,
       mapKey: 'M1',
       channel: 1,
-      timerKey: 'timer-1',
-      entityName: 'Lykos',
-      kind: 'boss',
       location: { x: 30, y: 40 },
-      claimedAt: 1_000,
-      claimedBy: 'Mateusz',
+      placedAt: 0,
+      placedBy: 'Wicek',
+      label: 'Metin',
+      kind: 'metin' as const,
+    };
+    const pins = placeScoutPin([], pin);
+    expect(isScoutPinActive(pin, 5 * 60_000)).toBe(true);
+    expect(scoutPinAgeMinutes(pin, 5 * 60_000)).toBe(5);
+    expect(activeScoutPins(pins, party, 'M1', 1, 5 * 60_000)).toHaveLength(1);
+    expect(isScoutPinActive(pin, PARTY_SCOUT_PIN_TTL_MS)).toBe(false);
+    expect(activeScoutPins(pins, party, 'M1', 1, PARTY_SCOUT_PIN_TTL_MS)).toHaveLength(0);
+    expect(dismissScoutPin(pins, 'pin-1')).toHaveLength(0);
+  });
+
+  it('liczy zbicia w sesji party osobno od SpawnTimerów', () => {
+    const party = createMapParty({
+      leader,
+      mapKey: 'M1',
+      activeChannel: 1,
+      visibility: 'open',
+      now: 0,
     });
-    expect(claimsForPartyScope(claims, party, 'M1', 1)).toHaveLength(1);
-    expect(claimsForPartyScope(claims, party, 'M1', 2)).toHaveLength(0);
+    expect(incrementSessionKills(party).sessionKills).toBe(1);
+    expect(incrementSessionKills(party, 3).sessionKills).toBe(3);
   });
 });

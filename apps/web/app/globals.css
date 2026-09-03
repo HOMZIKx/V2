@@ -355,6 +355,14 @@
   transform: translateX(-50%);
   white-space: nowrap;
 }
+.respawn-map-marker span em {
+  color: #9eb0c9;
+  font-style: normal;
+}
+.respawn-map-marker.is-selected {
+  border-color: rgba(255, 196, 120, 0.9);
+  box-shadow: 0 0 0 4px rgba(255, 180, 80, 0.2);
+}
 .respawn-map-help {
   margin: 10px 2px 14px;
   color: #738199;
@@ -7871,6 +7879,14 @@ button:disabled {
   font-size: 7px;
   transform: translateX(-50%);
   white-space: nowrap;
+}
+.respawn-map-marker span em {
+  color: #9eb0c9;
+  font-style: normal;
+}
+.respawn-map-marker.is-selected {
+  border-color: rgba(255, 196, 120, 0.9);
+  box-shadow: 0 0 0 4px rgba(255, 180, 80, 0.2);
 }
 .respawn-map-help {
   margin: 10px 2px 14px;

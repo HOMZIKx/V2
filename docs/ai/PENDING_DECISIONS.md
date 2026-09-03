@@ -2,6 +2,23 @@
 
 ## Aktywne
 
+### DEC-067 — Party hunt: osobna funkcja od Timerów
+
+- **Status:** OWNER_DIRECTED (2026-09-03)
+- **Kontekst:** Po DEC-066 (SpawnTimers bez party) właściciel opisał **Party**
+  jako osobny cykl współpracy na mapie.
+- **Cykl Party:**
+  1. Gracz wybiera mapę, tworzy drużynę.
+  2. Zaprasza / akceptuje dostęp.
+  3. Razem lub osobno wybierają mapę, na której się poruszają.
+  4. Szukający stawia **pinezkę skauta** („tu jest metin”).
+  5. Pinezka żyje ~**10 min**, potem znika sama.
+  6. Bijący jedzie, **odklika** pinezkę kiedy chce.
+  7. Hover/klik pokazuje, ile minut temu postawiono pinezkę.
+  8. Sesja liczy **ile metinów zbito** (licznik sesji).
+- **Granice:** Party ≠ SpawnTimers (`/timers`) ≠ Postęp PH na karcie postaci.
+  Współdzielony realtime = później (API); mock lokalny na `/maps`.
+
 ### DEC-066 — Timery metinów/bossów: cykl mapy, bez party
 
 - **Status:** OWNER_DIRECTED (2026-09-03)

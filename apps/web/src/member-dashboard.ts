@@ -32,7 +32,7 @@ export interface MemberNotice {
 }
 
 export interface MemberModuleAccess {
-  readonly id: 'teams' | 'characters' | 'timers' | 'market' | 'activity';
+  readonly id: 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'activity';
   readonly label: string;
   readonly description: string;
   readonly href: string | null;
@@ -110,8 +110,15 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
     {
       id: 'timers',
       label: 'Timery',
-      description: 'Bossy i metiny z dumpa dobry-temat — mapa, kanał, zbicie, okno respawnu.',
+      description: 'Bossy i metiny: mapa, kanał, zbicie, okno respawnu (osobno od Party).',
       href: '/timers',
+      state: 'available',
+    },
+    {
+      id: 'maps',
+      label: 'Party',
+      description: 'Drużyna na mapie: pinezki skauta (~10 min), odklik, licznik zbić w sesji.',
+      href: '/maps',
       state: 'available',
     },
     {

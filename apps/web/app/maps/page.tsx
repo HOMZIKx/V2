@@ -1,9 +1,9 @@
 'use client';
 
 import { mapHuntingFixture } from '../../src/map-hunting';
-import { MapHunting } from './map-hunting';
+import { PartyHunt } from './party-hunt';
 
-/** Atlas mapy (pinezki SpawnTimer); primary Timers surface lives at `/timers`. */
+/** Party hunt session (DEC-067). SpawnTimers live at `/timers`. */
 export default function MapsPage() {
-  return <MapHunting initialSnapshot={mapHuntingFixture} initialView="map" />;
+  return <PartyHunt initialSnapshot={mapHuntingFixture} />;
 }

@@ -3,6 +3,9 @@ import type { RespawnKind, RespawnLocation } from './respawn-timers';
 export type PartyVisibility = 'open' | 'closed';
 export type PartyRequestStatus = 'pending' | 'accepted' | 'rejected';
 
+/** Scout pin TTL — owner: pinezka aktywna ok. 10 minut, potem znika sama. */
+export const PARTY_SCOUT_PIN_TTL_MS = 10 * 60_000;
+
 export interface MapPartyMember {
   readonly id: string;
   readonly displayName: string;
@@ -15,6 +18,10 @@ export interface MapPartyRequest {
   readonly status: PartyRequestStatus;
 }
 
+/**
+ * Party hunt session — separate from SpawnTimers (DEC-066/067).
+ * Shared session kills; each viewer can focus a map/channel for pins.
+ */
 export interface MapParty {
   readonly id: string;
   readonly name: string;
@@ -25,19 +32,21 @@ export interface MapParty {
   readonly activeChannel: number;
   readonly members: readonly MapPartyMember[];
   readonly requests: readonly MapPartyRequest[];
+  /** Metiny/bossy zbite w tej sesji party (nie SpawnTimer). */
+  readonly sessionKills: number;
 }
 
-export interface MapSpawnClaim {
+/** Finder pin: „metin jest tu” — nie lokalizacja zbicia ze SpawnTimerów. */
+export interface PartyScoutPin {
   readonly id: string;
   readonly partyId: string;
   readonly mapKey: string;
   readonly channel: number;
-  readonly timerKey: string;
-  readonly entityName: string;
-  readonly kind: RespawnKind;
   readonly location: RespawnLocation;
-  readonly claimedAt: number;
-  readonly claimedBy: string;
+  readonly placedAt: number;
+  readonly placedBy: string;
+  readonly label: string;
+  readonly kind: RespawnKind | 'spot';
 }
 
 export function createMapParty(input: {
@@ -50,7 +59,7 @@ export function createMapParty(input: {
   const code = String((input.now % 9000) + 1000);
   return {
     id: `party-${input.now}`,
-    name: `Wyprawa · ${input.mapKey}`,
+    name: `Party · ${input.mapKey}`,
     leaderId: input.leader.id,
     visibility: input.visibility,
     joinCode: code,
@@ -58,11 +67,12 @@ export function createMapParty(input: {
     activeChannel: input.activeChannel,
     members: [{ ...input.leader, role: 'leader' }],
     requests: [],
+    sessionKills: 0,
   };
 }
 
 export function setPartyMap(party: MapParty, mapKey: string, channel = 1): MapParty {
-  return { ...party, mapKey, activeChannel: channel, name: `Wyprawa · ${mapKey}` };
+  return { ...party, mapKey, activeChannel: channel, name: `Party · ${mapKey}` };
 }
 
 export function setPartyChannel(party: MapParty, channel: number): MapParty {
@@ -80,8 +90,9 @@ export function requestPartyJoin(
   if (
     party.members.some((member) => member.id === request.id) ||
     party.requests.some((item) => item.id === request.id)
-  )
+  ) {
     return party;
+  }
   return { ...party, requests: [...party.requests, { ...request, status: 'pending' }] };
 }
 
@@ -101,6 +112,67 @@ export function resolvePartyRequest(
       item.id === requestId ? { ...item, status: accepted ? 'accepted' : 'rejected' } : item,
     ),
   };
+}
+
+export function incrementSessionKills(party: MapParty, by = 1): MapParty {
+  return { ...party, sessionKills: Math.max(0, party.sessionKills + by) };
+}
+
+export function isScoutPinActive(pin: PartyScoutPin, now: number): boolean {
+  return now - pin.placedAt < PARTY_SCOUT_PIN_TTL_MS;
+}
+
+export function scoutPinAgeMinutes(pin: PartyScoutPin, now: number): number {
+  return Math.max(0, Math.floor((now - pin.placedAt) / 60_000));
+}
+
+export function scoutPinRemainingMs(pin: PartyScoutPin, now: number): number {
+  return Math.max(0, PARTY_SCOUT_PIN_TTL_MS - (now - pin.placedAt));
+}
+
+export function activeScoutPins(
+  pins: readonly PartyScoutPin[],
+  party: MapParty | null,
+  mapKey: string,
+  channel: number,
+  now: number,
+): readonly PartyScoutPin[] {
+  if (!party) return [];
+  return pins.filter(
+    (pin) =>
+      pin.partyId === party.id &&
+      pin.mapKey === mapKey &&
+      pin.channel === channel &&
+      isScoutPinActive(pin, now),
+  );
+}
+
+export function placeScoutPin(
+  pins: readonly PartyScoutPin[],
+  pin: PartyScoutPin,
+): readonly PartyScoutPin[] {
+  return [...pins, pin];
+}
+
+export function dismissScoutPin(
+  pins: readonly PartyScoutPin[],
+  pinId: string,
+): readonly PartyScoutPin[] {
+  return pins.filter((pin) => pin.id !== pinId);
+}
+
+/** @deprecated Use PartyScoutPin + activeScoutPins — kept for old localStorage migration. */
+export interface MapSpawnClaim {
+  readonly id: string;
+  readonly partyId: string;
+  readonly mapKey: string;
+  readonly channel: number;
+  readonly timerKey: string;
+  readonly entityName: string;
+  readonly kind: RespawnKind;
+  readonly location: RespawnLocation;
+  readonly claimedAt: number;
+  readonly claimedBy: string;
 }
 
 export function claimsForPartyScope(
