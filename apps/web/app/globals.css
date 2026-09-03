@@ -237,8 +237,12 @@
   display: block;
   width: 100%;
   height: 450px;
-  object-fit: cover;
-  opacity: 0.74;
+  object-fit: contain;
+  background: #0a1018;
+  opacity: 0.92;
+}
+.respawn-map-atlas {
+  height: 450px;
 }
 .respawn-map-shade {
   position: absolute;
@@ -7617,8 +7621,12 @@ button:disabled {
   display: block;
   width: 100%;
   height: 450px;
-  object-fit: cover;
-  opacity: 0.74;
+  object-fit: contain;
+  background: #0a1018;
+  opacity: 0.92;
+}
+.respawn-map-atlas {
+  height: 450px;
 }
 .respawn-map-shade {
   position: absolute;

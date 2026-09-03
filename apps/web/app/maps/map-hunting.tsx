@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
@@ -56,7 +56,8 @@ const mapFiles: Readonly<Record<string, string>> = {
   'Czerwony Las': 'map_czerwonylas.png',
   'Wężowe Pole': 'map_wezowe.png',
   'Atlantyda V1': 'map_atlantyda_v1_new.png',
-  'Atlantyda V2': 'map_atlantyda_v2_new.png',
+  'Atlantyda V2': 'map_atlantyda_v1_new.png',
+  'Grota Wygnańców': 'map_grota_wygnancow.png',
 };
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
 const mapImage = (mapKey: string) => (mapFiles[mapKey] ? `/game/maps/${mapFiles[mapKey]}` : null);
@@ -73,7 +74,7 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
   const [mapKey, setMapKey] = useState(respawnMaps[0]?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
   const [channel, setChannel] = useState(1);
-  const [view, setView] = useState<View>('timers');
+  const [view, setView] = useState<View>('map');
   const [filter, setFilter] = useState<Filter>('all');
   const [store, setStore] = useState<RecordStore>(initialStore);
   const [now, setNow] = useState(() => Date.now());
@@ -277,12 +278,9 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
       <main className="respawn-page" id="main-content">
         <header className="respawn-header">
           <div>
-            <span className="eyebrow">Wyprawa · niezależny moduł</span>
+            <span className="eyebrow">Wyprawa</span>
             <h1>Metiny i bossy</h1>
-            <p>
-              Timery są niezależne. Party służy wyłącznie do wspólnego latania i znaczników na
-              mapie.
-            </p>
+            <p>Wybierz mapę i kanał, prowadź respawny i oznaczaj zbicia na mapie dla party.</p>
           </div>
           <div className="respawn-header-actions">
             <button
@@ -386,13 +384,24 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
                       src={currentMapImage}
                     />
                   ) : (
-                    <div className={`respawn-map-fallback ${styles.fallback}`}>
-                      <Icon name="map" size={27} />
-                      <strong>Brakuje lokalnej grafiki: {map?.key}</strong>
-                      <span>
-                        Po skopiowaniu grafiki ze starej aplikacji pojawi się pełna mapa. Mechanika
-                        party i kanałów już działa.
-                      </span>
+                    <div
+                      className={`respawn-map-atlas ${styles.atlas}`}
+                      style={
+                        {
+                          '--map-accent': map?.color ?? '#3d7ea6',
+                        } as CSSProperties
+                      }
+                    >
+                      <div className={styles.atlasGrid} aria-hidden />
+                      <div className={styles.atlasGlow} aria-hidden />
+                      <div className={styles.atlasCopy}>
+                        <span className={styles.atlasEyebrow}>Teren polowania</span>
+                        <strong>{map?.key}</strong>
+                        <span>
+                          {map?.bosses.length ?? 0} bossów · {map?.metins.length ?? 0} metinów · CH
+                          {channel}
+                        </span>
+                      </div>
                     </div>
                   )}
                   <div className="respawn-map-shade" />

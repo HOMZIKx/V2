@@ -1,3 +1,76 @@
+.atlas {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end start;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% 30%, color-mix(in srgb, var(--map-accent) 45%, #0a121c), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 20% 80%, color-mix(in srgb, var(--map-accent) 28%, #101820), transparent 65%),
+    linear-gradient(155deg, #0c141e 0%, #152033 45%, #0a1018 100%);
+}
+
+.atlasGrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--map-accent) 35%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--map-accent) 35%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, #000 20%, transparent 75%);
+}
+
+.atlasGlow {
+  position: absolute;
+  width: 55%;
+  height: 55%;
+  right: -8%;
+  top: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--map-accent) 55%, transparent), transparent 70%);
+  filter: blur(8px);
+  opacity: 0.7;
+}
+
+.atlasCopy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 28px 32px;
+  color: #d5e2f5;
+}
+
+.atlasEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--map-accent) 70%, #9eb4d0);
+}
+
+.atlasCopy strong {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 650;
+  color: #f2f6fc;
+}
+
+.atlasCopy span {
+  font-size: 13px;
+  color: #9aadc8;
+}
+
+@media (max-width: 620px) {
+  .atlasCopy {
+    padding: 20px;
+  }
+
+  .atlasCopy strong {
+    font-size: 22px;
+  }
+}
+
 .fallback {
   position: relative;
   z-index: 1;

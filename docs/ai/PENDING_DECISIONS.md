@@ -2,17 +2,24 @@
 
 ## Aktywne
 
+### DEC-064 — Mapy w nawigacji (owner: wygląd finalny teraz)
+
+- **Status:** OWNER_DIRECTED (2026-09-03)
+- **Kontekst:** D-049 trzymał mapy poza first-slice jako „później”. Właściciel
+  wymaga wyglądu finalnego — `/maps` renderuje `MapHunting`, nawigacja ma
+  pozycję Mapy, grafiki z oficjalnej wiki Gameforge / stylizowany atlas.
+- **Uwaga:** dokładne PNG z lokalnego dobry-temat nadal mogą nadpisać pliki w
+  `public/game/maps/` 1:1; obecne to oficjalne overview/interactive map z wiki.
+
 ### DEC-063 — Grafiki map polowania z lokalnego dobry-temat
 
-- **Status:** OWNER_ACTION_REQUIRED
+- **Status:** PARTIALLY_SATISFIED
 - **Kontekst:** Katalog respawn/metiny/bossy jest w
   `dobry-temat-respawn-catalog.json` (dane OK). UI map oczekuje PNG z
-  `apps/web/public/game/maps/` (`map_m1.png`, `map_orki.png`, …) — w chmurze jest
-  tylko README. Oficjalna wiki Gameforge nie hostuje tych samych map appki.
-- **Prośba:** skopiować pliki z lokalnego `dobry-temat/frontend/public` do
-  `apps/web/public/game/maps/` według `mapFiles` w `map-hunting.tsx`.
-- **Ikony itemów:** dociągnięte z oficjalnej pl-wiki Gameforge (EQ + Ulepszacze)
-  — nie wymagają tej decyzji.
+  `apps/web/public/game/maps/`. Wgrano overview z oficjalnej wiki Gameforge dla
+  większości terenów; brakujące lochy używają atlasu kolorystycznego z dumpa.
+- **Opcjonalnie:** nadpisz PNG 1:1 ze swojego lokalnego `frontend/public` jeśli
+  chcesz dokładnie te same kadry co stara appka.
 
 ### DEC-062 — Brakujące rendery klas×płeć Metin2 (asset z dobry-temat)
 

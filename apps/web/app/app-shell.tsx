@@ -108,6 +108,7 @@ export function AppShell({
       icon: 'character' as const,
       href: '/characters',
     },
+    { id: 'maps' as const, label: 'Mapy', icon: 'map' as const, href: '/maps' },
   ];
 
   return (
@@ -144,7 +145,7 @@ export function AppShell({
 
         <div className="topbar-actions">
           <span className="topbar-later-pill" title="Późniejsze moduły poza pierwszym slice">
-            Mapy / Targ / Aktywność — później
+            Targ / Aktywność — później
           </span>
           <a
             aria-label={
@@ -181,7 +182,7 @@ export function AppShell({
             {item.label}
           </a>
         ))}
-        <p className="drawer-later">Mapy, Targ i Aktywność wrócą po domknięciu first slice.</p>
+        <p className="drawer-later">Targ i Aktywność wrócą w kolejnych etapach.</p>
       </aside>
 
       {children}

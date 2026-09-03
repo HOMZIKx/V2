@@ -1,14 +1,12 @@
 # Grafiki map DESTILED
 
-Dane metinów/bossów są w `dobry-temat-respawn-catalog.json`.
-**PNG map nie ma w chmurze** — skopiuj z lokalnego `dobry-temat/frontend/public`
-pod tymi nazwami (DEC-063):
+Źródło domyślne: oficjalne overview / interactive map z wiki Gameforge
+(pl-wiki / en-wiki), zapisane lokalnie pod nazwami oczekiwanymi przez UI.
 
-- `map_m1.png`, `map_m2.png`, `map_m3.png`
-- `map_orki.png`, `map_pustynia.png`, `map_swiatynia.png`, `map_sohan.png`
-- `map_ognista.png`, `map_lasduchow.png`, `map_giganty.png`, `map_czerwonylas.png`
-- `map_wezowe.png`, `map_atlantyda_v1_new.png`, `map_atlantyda_v2_new.png`
-- opcjonalnie `map_grota_wygnancow.png`
+Opcjonalnie nadpisz 1:1 plikami z lokalnego `dobry-temat/frontend/public`.
 
-Aplikacja nie pobiera map z prywatnego repo w przeglądarce.
-Ikony itemów są syncowane z oficjalnej wiki Gameforge (`tools/scripts/sync-wiki-item-icons.py`).
+Obecne pliki: `map_m1/m2/m3`, `map_orki`, `map_pustynia`, `map_swiatynia`,
+`map_sohan`, `map_ognista`, `map_lasduchow`, `map_giganty`, `map_czerwonylas`,
+`map_wezowe`, `map_atlantyda_v1_new`, `map_grota_wygnancow`.
+
+Lochy bez grafiki wiki → stylizowany atlas z kolorem z dumpa respawn.

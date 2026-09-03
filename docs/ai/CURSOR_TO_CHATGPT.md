@@ -1,32 +1,21 @@
 # Cursor → Owner
 
-## 1. Status
+## Status
 
-`DESTILED_ASSETS_AND_CATALOG_TRUTH`
+Mapy wyglądają jak produkt, nie jak stub.
 
-## 2. Internet-verified (Sura + miecze)
+## Co zrobiłem
 
-Źródła Gameforge (nie zgadywanie):
+1. **Internet (miecze):** Gameforge wiki — Sura nosi wspólne miecze.
+2. **Ikony itemów:** pełne EQ + ulepszacze z oficjalnej pl-wiki.
+3. **Mapy:** `/maps` = live UI; grafiki z oficjalnej wiki Gameforge; nav „Mapy”.
+4. Brak PNG (lochy) → atlas z kolorem z dumpa, nie komunikat „brakuje pliku”.
 
-- https://en-wiki.metin2.gameforge.com/index.php/Sura/weapons — *Swords can be
-  used by Warriors, Ninjas and Suras*; blades = Sura only
-- https://pl-wiki.metin2.gameforge.com/index.php/Miecz_Bojowy — klasa: Wojownik,
-  Ninja, Sura
+## Opcjonalnie od Ciebie
 
-Kod i testy to trzymają (`b4b67ce` + ten commit).
+Dokładne kadry z lokalnego dobry-temat mogą nadpisać `public/game/maps/`.
+Rendery klas×płeć nadal DEC-062.
 
-## 3. Assets — co jest / czego nie ma
+## Marker
 
-| Co | Stan |
-| --- | --- |
-| Wygląd itemów EQ | **Pobrane** z oficjalnej pl-wiki → `public/game/items/wiki` (220/220) |
-| Ulepszacze | **Pobrane** (157/157) |
-| Metiny / bossy (nazwy, respawn) | **W dumpie** `dobry-temat-respawn-catalog.json` |
-| Grafiki map (`map_m1.png` itd.) | **Nie** — tylko w Twoim lokalnym dobry-temat → **DEC-063** |
-| Rendery klas×płeć | 3/8 → **DEC-062** |
-
-Sync: `python3 tools/scripts/sync-wiki-item-icons.py`
-
-## 4. Marker
-
-`READY_FOR_OWNER_REVIEW` — wrzuć mapy PNG z lokalnego frontend/public.
+`READY_FOR_OWNER_REVIEW`
