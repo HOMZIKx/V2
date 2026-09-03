@@ -21,8 +21,8 @@ import { AppShell, Icon } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
 
 const readinessLabels: Record<SetReadiness, string> = {
-  ready: 'Gotowe',
-  available_elsewhere: 'Indziej',
+  ready: 'Na postaci',
+  available_elsewhere: 'Poza postacią',
   missing: 'Brak',
   stale: 'Nieaktualne',
   conflict: 'Konflikt',
@@ -277,34 +277,47 @@ export function CharacterEquipment() {
                       Wróć do EQ
                     </button>
                   </header>
-                  <div className="timer-list">
+                  <div className="character-timer-list timer-list">
                     {timers.length === 0 ? (
                       <p className="empty-copy">Brak timerów dla tej postaci.</p>
                     ) : (
                       timers.map((timer) => (
-                        <article key={timer.id}>
+                        <article
+                          className={`character-timer timer-card${timer.status === 'ready' ? ' is-ready' : ''}`}
+                          key={timer.id}
+                        >
                           <div>
                             <h3>{timer.label}</h3>
                             <p>{timer.detail}</p>
-                            <small>
-                              {timer.status === 'ready' ? 'Gotowe' : 'W toku'} · {timer.remainingLabel}
-                            </small>
-                            <small>
-                              Ostatnio: {timer.lastActorName ?? '—'} · {timer.lastConfirmedAt ?? '—'}
-                            </small>
-                            <small>
-                              Przypomnienie Discord:{' '}
-                              {timer.reminderState === 'unavailable'
-                                ? 'niedostępne w podglądzie'
-                                : timer.reminderState}
-                            </small>
+                            <ul className="timer-meta">
+                              <li>
+                                {timer.status === 'ready' ? 'Gotowe' : 'W toku'}
+                                {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
+                              </li>
+                              <li>
+                                Ostatnio: {timer.lastActorName ?? '—'}
+                                {timer.lastConfirmedAt ? ` · ${timer.lastConfirmedAt}` : ''}
+                              </li>
+                              <li>
+                                Discord:{' '}
+                                {timer.reminderState === 'unavailable'
+                                  ? 'przypomnienia po podpięciu bota'
+                                  : timer.reminderState === 'on'
+                                    ? 'włączone'
+                                    : 'wyłączone'}
+                              </li>
+                            </ul>
                           </div>
                           <button
                             disabled={!writesEnabled}
                             onClick={() => {
                               const operationId = `timer-${timer.id}-${Date.now()}`;
                               completeTimer(workspace.id, timer.id, operationId);
-                              setAnnouncement('odliczanie rozpoczęte');
+                              setAnnouncement(
+                                timer.status === 'ready'
+                                  ? `Oznaczono: ${timer.label}. Następny cykl odlicza się od teraz.`
+                                  : `Odświeżono timer: ${timer.label}.`,
+                              );
                             }}
                             type="button"
                           >
@@ -327,7 +340,7 @@ export function CharacterEquipment() {
               <Icon name="search" size={16} />
               <input
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Szukaj itemu lub bonusu…"
+                placeholder="Szukaj przedmiotu lub bonusu…"
                 value={query}
               />
             </label>
@@ -350,7 +363,7 @@ export function CharacterEquipment() {
                 </button>
               ))}
             </div>
-            <p className="empty-copy">Przeciągnij item do zgodnego slotu albo wybierz i kliknij slot.</p>
+            <p className="empty-copy">Przeciągnij przedmiot na slot albo wybierz i kliknij slot.</p>
             <div className="catalog-grid">
               {filteredCatalog.map((item) => (
                 <button
@@ -404,16 +417,16 @@ export function CharacterEquipment() {
                 ))}
               </select>
               <button disabled={!writesEnabled} type="submit">
-                Dodaj item
+                Dodaj kartę
               </button>
             </form>
             {matchedDefinition ? (
               <p className="empty-copy">
                 Ikona z katalogu: <strong>{matchedDefinition.title}</strong>
-                {matchedDefinition.sourceImageUrl ? ' · grafika wiki lokalnie' : ' · brak grafiki'}
+                {matchedDefinition.sourceImageUrl ? '' : ' · bez grafiki'}
               </p>
             ) : newItemName.trim().length >= 2 ? (
-              <p className="empty-copy">Brak dopasowania w katalogu — zapiszesz własną kartę zespołu.</p>
+              <p className="empty-copy">Brak w katalogu — zapiszesz własną nazwę zespołu.</p>
             ) : null}
           </section>
 
@@ -500,8 +513,8 @@ export function CharacterEquipment() {
         </p>
         {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
-          Plan setu, potwierdzona lokalizacja i timery są osobnymi danymi. Zapis lokalny + historia
-          przestrzeni. Discord reminders niedostępne w podglądzie.
+          Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Timery
+          Biolog / jazda / księgi też osobno. Dane tylko w tej przeglądarce.
         </div>
       </main>
     </AppShell>

@@ -316,7 +316,7 @@ test('opens seeded team workspace from the member dashboard', async ({ page }) =
   await page.locator('.workspace-list a[href="/teams/asteria"]').click();
   await expect(page).toHaveURL(/\/teams\/asteria$/);
   await expect(page.getByRole('heading', { name: 'Asteria', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Stan postaci i zestawów' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Postacie i sety' })).toBeVisible();
 });
 
 test('opens the separate character module from global navigation', async ({ page }) => {
@@ -420,7 +420,7 @@ test('creates a character profile without inventing equipment', async ({ page })
     page.getByText('Utworzono profil oraz pusty zestaw „Główny”.', { exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Wróć do zespołu' }).click();
-  await expect(page.getByRole('heading', { name: 'Stan postaci i zestawów' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Postacie i sety' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'NowaSura' })).toBeVisible();
 });
 

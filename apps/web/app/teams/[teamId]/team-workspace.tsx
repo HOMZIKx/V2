@@ -105,7 +105,7 @@ export function TeamWorkspace() {
                 {workspace.members.length} {workspace.members.length === 1 ? 'osoba' : 'osób'}
               </strong>
               <span>
-                Obecność live wyłączona w podglądzie · lokalny zapis · {workspace.updatedLabel}
+                Zapis lokalny · {workspace.updatedLabel}
               </span>
             </div>
           </div>
@@ -151,7 +151,7 @@ export function TeamWorkspace() {
         <section className="workspace-grid">
           <section className="panel" id="characters">
             <header>
-              <h2>Stan postaci i zestawów</h2>
+              <h2>Postacie i sety</h2>
               <a className="primary-button" href={`/teams/${workspace.id}/characters/new`}>
                 <Icon name="plus" size={16} /> Dodaj postać
               </a>
@@ -159,7 +159,7 @@ export function TeamWorkspace() {
             {workspace.characters.length === 0 ? (
               <div className="empty-workspace">
                 <h3>Dodaj pierwszą postać</h3>
-                <p>Minimum: nazwa i klasa. Potem EQ, timery i notatki.</p>
+                <p>Nazwa i klasa wystarczą. EQ i timery dodasz na karcie postaci.</p>
                 <a className="primary-button" href={`/teams/${workspace.id}/characters/new`}>
                   Dodaj postać
                 </a>
@@ -197,11 +197,13 @@ export function TeamWorkspace() {
                           {character.level ? ` · poziom ${character.level}` : ''}
                         </p>
                         <small>
-                          Set: {set?.name ?? 'brak'} · {confirmed}/8 potwierdzone lokalizacje
+                          Set {set?.name ?? 'brak'} · {confirmed}/8 slotów na tej postaci
                         </small>
                         <small>
                           {readyTimers > 0
-                            ? `${readyTimers} timer gotowy`
+                            ? readyTimers === 1
+                              ? '1 timer gotowy'
+                              : `${readyTimers} timery gotowe`
                             : nextTimer?.remainingLabel ?? 'Brak timerów'}
                         </small>
                         <a href={`/teams/${workspace.id}/characters/${character.id}`}>
@@ -328,8 +330,8 @@ export function TeamWorkspace() {
           {announcement}
         </p>
         <div className="mock-notice">
-          First-slice workspace · mutacje trafiają do wspólnego localStorage i dziennika historii.
-          Realtime / Discord delivery niedostępne w tym podglądzie.
+          Zmiany z tej przestrzeni zapisują się lokalnie i w dzienniku historii. Przypomnienia
+          Discord wrócą z botem.
         </div>
       </main>
     </AppShell>

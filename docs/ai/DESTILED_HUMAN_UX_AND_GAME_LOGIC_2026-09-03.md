@@ -1,57 +1,50 @@
-# DESTILED — analiza UX i logiki gry (2026-09-03)
+# DESTILED — analiza jak człowiek (2026-09-03)
 
-Źródła (bez zgadywania):
+Źródła: oficjalna prezentacja Project Hard (EN), katalog dobry-temat,
+Metin2 PL wiki (Stajenny / Medal Konny / Biolog), kontrakty D-038–D-061.
 
-- oficjalna prezentacja Project Hard EN: `https://projekt-hard.eu/presentation?lang=en`
-- katalog przedmiotów z `dobry-temat` (`dobry-temat-item-catalog.json`)
-- Metin2 PL wiki (nazwy przedmiotów)
-- kontrakty D-038–D-061 / first-slice
+## Do czego to służy w praktyce
 
-PL prezentacja wymaga logowania — nazwy PL dla Biologa/EQ bierzemy z katalogu wiki + tabeli EN.
+Gracz / zespół otwiera DESTILED żeby wiedzieć trzy rzeczy:
 
-## Co człowiek robi w first-slice
+1. **Gdzie leży item** (ręczne potwierdzenie, nie odczyt z gry).
+2. **Jaki set jest planowany** na wojnę / loch / wsparcie.
+3. **Kiedy można oddać Biologa, awansować jazdę, przeczytać księgę.**
 
-1. Wejście Discord → przestrzeń → postać → karta EQ / timery / notatki / historia.
-2. Cel: wiedzieć **gdzie leży item**, **jaki set jest planowany**, **kiedy Biolog / jazda / księga**.
-3. To nie jest klient gry. Nie odczytujemy stanu z Project Hard.
+Reszta (mapy, targ, eventy) jest później i nie powinna mieszać się w te trzy.
 
-## Błędy logiczne usunięte w tej iteracji
+## Flow, który działa
 
-| Problem | Skąd wiemy | Korekta |
+Discord → przestrzeń → postać → karta EQ / timery / notatki / historia.
+To jest czytelne. Nawigacja nie obiecuje Map / Targu / Aktywności.
+
+## Co bolało w copy / UX (naprawione w tej iteracji)
+
+| Było | Dlaczego źle | Jest |
 | --- | --- | --- |
-| Notatka o „alchemii” | PH: alchemy = never | Notatka o Medalach Konnych / Zwojach w depo |
-| „Tarcza Bojowa” | katalog: **Bojowa Tarcza** | Nazwa poprawiona |
-| „Pamiątki po demonie · 6/10” | PH: Demon Keepsake, 15 szt., nazwa **Pamiątka Po Demonie** | `6/15` + poprawna nazwa |
-| Timer „Medal konny” | PH: awans **jazdy** u Stajennego, materiał Medal Konny, cooldown **23 h** | Label **Jazda konna** + detail z materiałem |
-| Bonusy biżuterii/butów | PH presentation (Ebony / Jade / Wooden / Leather) | Dopasowane do tabeli PH |
-| Placeholder SVG zamiast ikon | katalog + lokalne wiki PNG/JPG | Demo EQ bierze `sourceImageUrl` |
+| „Indziej” na slocie | niepełne PL, nie mówi o lokalizacji | „Poza postacią” / „Na postaci” |
+| Eligible / Cancelled | angielski w PL UI | Dostęp OK / Anulowano… |
+| „Append-only”, „first-slice”, „udawania syncu” | żargon deweloperski | normalny język gracza |
+| „1 gotowych timerów” | zła liczba | odmiana |
+| Timery sklejone w jeden blok tekstu | ciężko czytać reguły PH | meta w osobnych liniach |
+| Alchemia w notatce | PH nie ma alchemii | depo / Medale Konne |
 
-## Zasady Project Hard używane w timerach
+## Logika gry (tylko to, co w źródłach)
 
-- **Biolog:** oddawanie codziennie; reset o północy; pierwsze 3 questy — cooldown tylko po udanym oddaniu.
-- **Jazda:** max 61; cooldown awansu 23 h; Medale z Lochów Małp / wyprawy 30 lvl (niska szansa).
+- **Biolog:** oddawanie codziennie, reset o północy; pierwsze 3 questy — cooldown tylko po udanym oddaniu. Przedmiot: m.in. Pamiątka Po Demonie (15 szt.).
+- **Jazda:** na PH awans przez oddanie materiału u **Stajennego**, cooldown **23 h**, max 61. Classic point-to-point z oficjalnego Metin2 nie jest modelem PH.
 - **Księgi umiejętności:** czytelne o dowolnej porze; limit dzienny resetuje się o północy (jak Biolog).
-- **Brak alchemii i sashy** — nie wolno ich wymyślać w copy.
+- **Brak alchemii i sashy** na PH — nie wolno ich wymyślać w UI.
 
-## UX (jak człowiek)
+## Co dalej podkręcać (bez nowych modułów)
 
-- Pulpit / przestrzenie / postacie: OK jako szkielet codziennego użycia.
-- EQ: plan setu ≠ lokalizacja fizyczna — zostaje; trzeba widzieć prawdziwe ikony (zrobione dla demo + dopasowanie nazwy przy dodawaniu).
-- Mapy: katalog respawnów jest; **brak PNG map** — trzeba skopiować z lokalnego `dobry-temat/frontend/public` (README w `public/game/maps`).
-- Targ: celowo później; katalog ikon żyje przy EQ, nie jako fałszywy marketplace.
-- Klasy: tylko 3 zatwierdzone rendery (`sura-male`, `ninja-female`, `shaman-male`) — reszta musi zostać „brak renderu”, bez AI-generowanych postaci.
+1. Czytelność slotów na mobile (małe labelki readiness).
+2. Więcej pewnych ikon broni/zbroi (bez zgadywania vnumów).
+3. Kopię map PNG z lokalnego dobry-temat, gdy właściciel dorzuci assety.
+4. Formularz edycji bonusów na karcie EQ (nadal ręczne, nie „AI import”).
 
-## Grafiki
+## Czego nie robić teraz
 
-- Ikony biżuterii/butów z oficjalnego CDN prezentacji PH (`/assets/icon/*.webp`,
-  ścieżki jak w HTML prezentacji EN).
-- Ikony z wiki: tylko małe sprite PNG; odrzucamy showcase JPG i placeholder 32×32.
-- Broń bez pewnego sprite’a zostaje na lokalnym SVG — lepiej niż fałszywy vnum.
-- Mapy PNG nadal do skopiowania z lokalnego `dobry-temat`.
-
-## Nadal brakuje (właściciel / lokalne assety)
-
-1. Pełny dump grafik map i brakujących class renderów ze starego frontu.
-2. Większy lokalny zestaw pewnych ikon przedmiotów (broń/zbroje) — bez zgadywania vnumów.
-3. Prawdziwy Discord OAuth / API / bot — poza first-slice mock store.
-
+Nie wracać Map / Targ / Aktywność do głównej nawigacji.
+Nie udawać live presence ani prawdziwego OAuth.
+Nie mieszać timerów postaci z respawnami metinów.

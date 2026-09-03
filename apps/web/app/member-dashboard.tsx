@@ -65,8 +65,7 @@ export function MemberDashboard() {
             <span className="eyebrow">Centrum gracza</span>
             <h1>Witaj, {state.viewer.displayName}</h1>
             <p>
-              Co wymaga uwagi, gdzie byłeś ostatnio i co możesz zrobić dalej — bez udawania żywego
-              syncu Discord/API.
+              Timery gotowe do oddania, ostatnia przestrzeń i co zmienił zespół — w jednym miejscu.
             </p>
           </div>
           <div className="account-identity-card">
@@ -138,10 +137,14 @@ export function MemberDashboard() {
             <section className="panel">
               <header>
                 <h2>Wymaga uwagi</h2>
-                <span>{readyTimers.length} gotowych timerów</span>
+                <span>
+                  {readyTimers.length === 1
+                    ? '1 gotowy timer'
+                    : `${readyTimers.length} gotowych timerów`}
+                </span>
               </header>
               {readyTimers.length === 0 ? (
-                <p className="empty-copy">Brak gotowych timerów w dostępnych przestrzeniach.</p>
+                <p className="empty-copy">Nic nie czeka na oddanie.</p>
               ) : (
                 <ul className="attention-list">
                   {readyTimers.map((entry) => (
@@ -183,7 +186,7 @@ export function MemberDashboard() {
                   )}
                 </div>
               ) : (
-                <p className="empty-copy">Nie otwarto jeszcze przestrzeni w tej sesji.</p>
+                <p className="empty-copy">Wejdź w przestrzeń, żeby tu wrócić.</p>
               )}
             </section>
 
@@ -226,7 +229,7 @@ export function MemberDashboard() {
                 <h2>Ostatnie zmiany</h2>
               </header>
               {recentHistory.length === 0 ? (
-                <p className="empty-copy">Historia pojawi się po pierwszej zmianie.</p>
+                <p className="empty-copy">Po pierwszej zmianie w EQ lub timerze pojawi się wpis.</p>
               ) : (
                 <ul className="attention-list">
                   {recentHistory.map((entry) => (
@@ -247,8 +250,8 @@ export function MemberDashboard() {
         )}
 
         <div className="mock-notice">
-          Podgląd lokalny first-slice · dane w localStorage tej przeglądarki. Discord OAuth, API,
-          realtime i bot nie są jeszcze podpięte. Mapy / Targ / Aktywność są celowo poza nawigacją.
+          Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą później.
+          Mapy, Targ i Aktywność są celowo schowane.
         </div>
       </main>
     </AppShell>

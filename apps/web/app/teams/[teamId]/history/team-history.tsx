@@ -64,10 +64,10 @@ export function TeamHistory() {
         </nav>
 
         <header>
-          <span className="eyebrow">Append-only</span>
+          <span className="eyebrow">Historia przestrzeni</span>
           <h1>Dziennik zmian</h1>
           <p>
-            Połączenie: lokalny podgląd (bez fałszywego live). Mutacje z przestrzeni trafiają tutaj.
+            Kto co zmienił w EQ, timerach, notatkach i członkach — bez cofania wpisów.
           </p>
         </header>
 

@@ -28,8 +28,8 @@ export function DiscordEntryScreen() {
         <span className="eyebrow">DESTILED</span>
         <h1>Wejdź przez Discord</h1>
         <p>
-          To prywatne narzędzie zespołu. Discord potwierdza tożsamość. Nie wpisujesz Discord ID jako
-          dowodu logowania.
+          Prywatne narzędzie zespołu na Project Hard. Logujesz się Discordem — bez wpisywania Discord
+          ID jako hasła.
         </p>
 
         {state.authStatus === 'unauthenticated' || state.authStatus === 'cancelled' ? (
@@ -85,22 +85,22 @@ export function DiscordEntryScreen() {
         ) : null}
 
         <details className="entry-simulator">
-          <summary>Symulator stanów (podgląd bez prawdziwego OAuth)</summary>
+          <summary>Symulator stanów (bez prawdziwego OAuth)</summary>
           <div className="entry-simulator-actions">
             <button onClick={() => simulate('authenticated')} type="button">
-              Eligible
+              Dostęp OK
             </button>
             <button onClick={() => simulate('cancelled')} type="button">
-              Cancelled
+              Anulowano
             </button>
             <button onClick={() => simulate('unavailable')} type="button">
-              Unavailable
+              Discord down
             </button>
             <button onClick={() => simulate('ineligible')} type="button">
-              Ineligible
+              Brak dostępu
             </button>
             <button onClick={() => simulate('revoked')} type="button">
-              Revoked
+              Odebrano dostęp
             </button>
           </div>
         </details>

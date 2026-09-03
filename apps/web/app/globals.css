@@ -2052,6 +2052,34 @@ button:disabled {
   background: rgba(6, 8, 12, 0.46);
 }
 
+.character-timer .timer-meta {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(214, 222, 236, 0.72);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.character-timer h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.character-timer p {
+  margin: 0;
+  color: rgba(214, 222, 236, 0.88);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.character-timer > div + button,
+.character-timer button {
+  margin-top: 12px;
+}
+
 .character-timer.is-ready {
   --timer-tone: #e65068;
 }

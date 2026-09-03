@@ -23,7 +23,6 @@ import {
   horseAdvanceDetail,
   nextMidnightLabel,
   projectHardHorseRules,
-  projectHardSkillBookRules,
 } from './project-hard-progression';
 import type { CatalogLayer } from './member-dashboard';
 import type { TeamHistoryResource } from './team-history';
@@ -520,7 +519,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         id: 'skill-book-nerwnicht',
         characterId: 'nerwnicht',
         label: 'Księga umiejętności',
-        detail: `Smoczy Wir M8 → M9 · reset o północy (${projectHardSkillBookRules.dailyReset === 'midnight' ? 'jak Biolog' : '24 h'})`,
+        detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
         status: 'running',
         readyAtIso: isoInMinutes(24),
         remainingLabel: `do ${midnight}`,
@@ -535,7 +534,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         id: 'horse-medal-aalpsik',
         characterId: 'aalpsik',
         label: 'Jazda konna',
-        detail: horseAdvanceDetail(12, 13),
+        detail: `${horseAdvanceDetail(12, 13)} · u Stajennego`,
         status: 'ready',
         readyAtIso: new Date().toISOString(),
         remainingLabel: 'gotowe teraz',
@@ -550,7 +549,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         id: 'biologist-kimmizic',
         characterId: 'kimmizic',
         label: 'Biolog',
-        detail: `${biologistProgressLabel(demonQuest, 6)} · tylko po udanym oddaniu · reset o północy`,
+        detail: `${biologistProgressLabel(demonQuest, 6)} · cooldown tylko po udanym oddaniu · reset o północy`,
         status: 'running',
         readyAtIso: isoInMinutes(60 * 14),
         remainingLabel: `do ${midnight}`,
@@ -577,7 +576,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       {
         id: 'task-horse-medal',
         title: 'Jazda konna gotowa',
-        detail: `Aalpsik może oddać ${projectHardHorseRules.ranks.find((r) => r.fromLevel === 12)?.materialName ?? 'Medal Konny'} u Stajennego. Cooldown następnego awansu: ${projectHardHorseRules.advancementCooldownHours} h.`,
+        detail: `Aalpsik może oddać materiał u Stajennego. Następny awans: cooldown ${projectHardHorseRules.advancementCooldownHours} h.`,
         characterId: 'aalpsik',
         characterName: 'Aalpsik',
         assigneeName: 'Aalpsik',

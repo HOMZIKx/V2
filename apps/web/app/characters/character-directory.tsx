@@ -41,11 +41,11 @@ export function CharacterDirectory() {
     <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
       <main className="characters-page" id="main-content">
         <header>
-          <span className="eyebrow">Moduł postaci</span>
+          <span className="eyebrow">Wszystkie przestrzenie</span>
           <h1>Postacie</h1>
           <p>
-            Postacie są osobnym modułem. Dostęp zespołowy nie oznacza własności postaci, a konto nie
-            wymaga przypisania żadnej postaci.
+            Lista postaci z Twoich przestrzeni. Miejsce w zespole nie znaczy, że postać jest Twoja —
+            prowadzi ją przypisana osoba.
           </p>
         </header>
 
