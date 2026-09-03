@@ -258,6 +258,54 @@ export function knownCatalogBonusNames(): readonly string[] {
   return [...names].sort((left, right) => left.localeCompare(right, 'pl'));
 }
 
+export interface CatalogBonusEntry {
+  readonly name: string;
+  /** Value at the requested enhancement level, or null when not in dump. */
+  readonly valueAtLevel: string | null;
+  /** Formatted full line, e.g. "Obrona +57". */
+  readonly line: string;
+}
+
+/**
+ * Returns per-bonus entries for a given item at a specific enhancement.
+ * Only returns bonuses that exist (non-truncated) in the dump.
+ * Used for the bonus picker — user sees "Obrona +57" and confirms.
+ */
+export function catalogBonusEntriesForItem(
+  cardName: string,
+  enhancement: number,
+): readonly CatalogBonusEntry[] {
+  const item = findGameItemByCardName(cardName);
+  if (!item?.upgradeDescription) return [];
+  const fields = parseWikiUpgradeFields(item.upgradeDescription);
+  const level = clampEnhancement(enhancement);
+  const entries: CatalogBonusEntry[] = [];
+
+  for (let index = 1; index <= 8; index += 1) {
+    const named = fields[`Bonus${index}-Name`];
+    const altNamed = fields[`Bonus${index}`];
+    const name =
+      named !== undefined && !isTruncatedWikiToken(named)
+        ? named
+        : altNamed !== undefined && !isTruncatedWikiToken(altNamed)
+          ? altNamed
+          : null;
+    if (name === null) continue;
+
+    let rawValue: string | null = null;
+    for (let step = level; step >= ENHANCEMENT_MIN; step -= 1) {
+      const candidate = fields[`Bonus${index}-${step}`];
+      if (candidate !== undefined && !isTruncatedWikiToken(candidate) && candidate.length > 0) {
+        rawValue = candidate;
+        break;
+      }
+    }
+    const line = formatCatalogBonusLine(name, rawValue);
+    entries.push({ name, valueAtLevel: rawValue, line });
+  }
+  return entries;
+}
+
 /** Prefer catalog ladder bonuses; keep caller fallback when dump has none. */
 export function resolveItemBonuses(
   cardName: string,

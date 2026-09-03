@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 're
 import { characterClassLabels } from '../../../../../src/character-profile';
 import {
   ENHANCEMENT_LEVELS,
+  catalogBonusEntriesForItem,
   equipmentCatalogItems,
   equipmentSlotForCategory,
   findGameItemByCardName,
@@ -379,12 +380,16 @@ export function CharacterEquipment() {
   const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
   const [showAssigned, setShowAssigned] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState('');
   const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('skill_book');
   const [customTimerLabel, setCustomTimerLabel] = useState('');
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [bonusDraft, setBonusDraft] = useState('');
   const [bonusPick, setBonusPick] = useState('');
+
+  const INVENTORY_COLS = 6;
+  const INVENTORY_MIN_ROWS = 5;
 
   const catalogBonusNames = useMemo(() => knownCatalogBonusNames(), []);
 
@@ -549,7 +554,7 @@ export function CharacterEquipment() {
     }
     const cardName = formatEnhancedItemName(baseName, newItemEnhancement);
     const bonuses = resolveItemBonuses(cardName, newItemEnhancement, []);
-    createItem(workspace.id, {
+    const createdId = createItem(workspace.id, {
       name: cardName,
       category: newItemSlot,
       enhancement: newItemEnhancement,
@@ -558,10 +563,12 @@ export function CharacterEquipment() {
       forCharacterClass: focusCharacter.characterClass,
     });
     setNewItemName('');
+    setCreateOpen(false);
+    if (createdId) setSelectedItemId(createdId);
     setAnnouncement(
       bonuses.length > 0
-        ? `Utworzono ${cardName} z bonusami z katalogu (${bonuses.length}).`
-        : `Utworzono ${cardName} — uzupełnij bonusy w szczegółach (katalog bez drabinki).`,
+        ? `Dodano do inventory: ${cardName} (${bonuses.length} bonusów z katalogu).`
+        : `Dodano do inventory: ${cardName} — uzupełnij bonusy w szczegółach.`,
     );
   };
 
@@ -768,31 +775,114 @@ export function CharacterEquipment() {
                   <>
                     <div className="eq-pool-header">
                       <div>
-                        <span className="section-kicker">Centrum obozu</span>
-                        <h2>Ekwipunek (inventory)</h2>
+                        <span className="section-kicker">Centrum obozu · torba</span>
+                        <h2>Inventory zespołu</h2>
                         <p className="empty-copy">
-                          Niezałożone karty zespołu. Przeciągnij na postać (desktop) albo wybierz i
-                          kliknij „Załóż” (mobile).
+                          Dowolna liczba kart. Kliknij żeby wybrać, przeciągnij na postać lub użyj
+                          "Załóż" poniżej (mobile).
                         </p>
                       </div>
-                      <label className="field">
-                        <input
-                          checked={showAssigned}
-                          onChange={(event) => setShowAssigned(event.target.checked)}
-                          type="checkbox"
-                        />{' '}
-                        Pokaż też założone
-                      </label>
+                      <div className="eq-pool-actions">
+                        <label className="field">
+                          <input
+                            checked={showAssigned}
+                            onChange={(event) => setShowAssigned(event.target.checked)}
+                            type="checkbox"
+                          />{' '}
+                          Założone
+                        </label>
+                        {writesEnabled ? (
+                          <button
+                            className={`eq-add-toggle${createOpen ? ' is-active' : ''}`}
+                            onClick={() => setCreateOpen((open) => !open)}
+                            type="button"
+                          >
+                            <Icon name="plus" size={14} />{' '}
+                            {createOpen ? 'Zamknij' : 'Dodaj przedmiot'}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <label className="market-search">
+
+                    {createOpen && writesEnabled ? (
+                      <form className="eq-inline-create" onSubmit={handleCreateItem}>
+                        <input
+                          aria-label="Nazwa przedmiotu z gry"
+                          autoFocus
+                          list="eq-catalog-suggestions"
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setNewItemName(stripEnhancementFromName(value));
+                            const fromName = parseEnhancementFromName(value);
+                            if (/\+\d+\s*$/u.test(value.trim())) {
+                              setNewItemEnhancement(fromName);
+                            }
+                            const hit = findGameItemByCardName(value);
+                            const slot = hit ? equipmentSlotForCategory(hit.category) : null;
+                            if (slot) setNewItemSlot(slot);
+                          }}
+                          placeholder="Nazwa z gry, np. Bojowa Tarcza…"
+                          value={newItemName}
+                        />
+                        <datalist id="eq-catalog-suggestions">
+                          {catalogSuggestions.map((item) => (
+                            <option key={item.id} value={item.title} />
+                          ))}
+                        </datalist>
+                        <div className="eq-inline-create-row">
+                          <select
+                            aria-label="Ulepszenie"
+                            onChange={(event) => setNewItemEnhancement(Number(event.target.value))}
+                            value={newItemEnhancement}
+                          >
+                            {ENHANCEMENT_LEVELS.map((level) => (
+                              <option key={level} value={level}>
+                                +{level}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label="Slot"
+                            onChange={(event) =>
+                              setNewItemSlot(event.target.value as EquipmentSlot)
+                            }
+                            value={newItemSlot}
+                          >
+                            {equipmentSlots.map((slot) => (
+                              <option key={slot} value={slot}>
+                                {slotLabels[slot]}
+                              </option>
+                            ))}
+                          </select>
+                          <button type="submit">Dodaj do torby</button>
+                          <button
+                            onClick={() => {
+                              setCreateOpen(false);
+                              setNewItemName('');
+                            }}
+                            type="button"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                        {matchedDefinition ? (
+                          <p className="eq-catalog-hint">
+                            Katalog: <strong>{matchedDefinition.title}</strong>
+                            {matchedDefinition.sourceImageUrl ? ' · z grafiką' : ''}
+                          </p>
+                        ) : null}
+                      </form>
+                    ) : null}
+
+                    <label className="market-search" style={{ marginTop: 8 }}>
                       <Icon name="search" size={16} />
                       <input
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="Szukaj przedmiotu…"
+                        placeholder="Szukaj w inventory…"
                         value={query}
                       />
                     </label>
-                    <div className="catalog-filters" style={{ marginTop: 10, marginBottom: 10 }}>
+                    <div className="catalog-filters" style={{ marginTop: 8, marginBottom: 8 }}>
                       <button
                         className={category === 'all' ? 'is-active' : ''}
                         onClick={() => setCategory('all')}
@@ -811,14 +901,14 @@ export function CharacterEquipment() {
                         </button>
                       ))}
                     </div>
-                    <div className="eq-inventory-grid" aria-label="Inventory zespołu">
+                    <div className="eq-inventory-grid" aria-label="Inventory zespołu — torba">
                       {poolItems.map((item) => {
                         const owner = ownership.get(item.id);
                         return (
                           <button
                             aria-label={item.name}
                             aria-pressed={item.id === selectedItemId}
-                            className={`eq-inventory-slot${owner ? ' is-assigned' : ''}`}
+                            className={`eq-inventory-slot${owner ? ' is-assigned' : ''}${item.id === selectedItemId ? ' is-selected' : ''}`}
                             draggable
                             key={item.id}
                             onClick={() =>
@@ -833,8 +923,19 @@ export function CharacterEquipment() {
                           </button>
                         );
                       })}
+                      {poolItems.length === 0 ? (
+                        <div className="eq-inventory-bag-empty">
+                          <span>Torba pusta</span>
+                          <small>Kliknij "Dodaj przedmiot" powyżej</small>
+                        </div>
+                      ) : null}
                       {Array.from({
-                        length: Math.max(0, 30 - poolItems.length),
+                        length: Math.max(
+                          0,
+                          INVENTORY_COLS * INVENTORY_MIN_ROWS -
+                            poolItems.length -
+                            (poolItems.length === 0 ? 1 : 0),
+                        ),
                       }).map((_, index) => (
                         <div
                           aria-hidden
@@ -843,9 +944,6 @@ export function CharacterEquipment() {
                         />
                       ))}
                     </div>
-                    {poolItems.length === 0 ? (
-                      <p className="empty-copy">Brak kart — dodaj po prawej do inventory.</p>
-                    ) : null}
                   </>
                 ) : (
                   <div className="eq-campfire" aria-hidden={false}>
@@ -939,70 +1037,6 @@ export function CharacterEquipment() {
           ) : null}
 
           <aside className="eq-camp-side">
-            <section className="panel catalog-panel">
-              <header>
-                <h2>Dodaj kartę EQ</h2>
-              </header>
-              <p className="empty-copy">
-                Trafia do inventory w centrum. Grafika z katalogu gry, gdy nazwa pasuje.
-              </p>
-              <form className="inline-create" onSubmit={handleCreateItem}>
-                <input
-                  aria-label="Nazwa nowego przedmiotu"
-                  list="eq-catalog-suggestions"
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setNewItemName(stripEnhancementFromName(value));
-                    const fromName = parseEnhancementFromName(value);
-                    if (/\+\d+\s*$/u.test(value.trim())) {
-                      setNewItemEnhancement(fromName);
-                    }
-                    const hit = findGameItemByCardName(value);
-                    const slot = hit ? equipmentSlotForCategory(hit.category) : null;
-                    if (slot) setNewItemSlot(slot);
-                  }}
-                  placeholder="Nazwa z gry, np. Bojowa Tarcza"
-                  value={newItemName}
-                />
-                <datalist id="eq-catalog-suggestions">
-                  {catalogSuggestions.map((item) => (
-                    <option key={item.id} value={item.title} />
-                  ))}
-                </datalist>
-                <select
-                  aria-label="Ulepszenie"
-                  onChange={(event) => setNewItemEnhancement(Number(event.target.value))}
-                  value={newItemEnhancement}
-                >
-                  {ENHANCEMENT_LEVELS.map((level) => (
-                    <option key={level} value={level}>
-                      +{level}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Slot nowego przedmiotu"
-                  onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
-                  value={newItemSlot}
-                >
-                  {equipmentSlots.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {slotLabels[slot]}
-                    </option>
-                  ))}
-                </select>
-                <button disabled={!writesEnabled} type="submit">
-                  Dodaj do puli
-                </button>
-              </form>
-              {matchedDefinition ? (
-                <p className="empty-copy">
-                  Katalog: <strong>{matchedDefinition.title}</strong>
-                  {matchedDefinition.sourceImageUrl ? ' · z grafiką' : ' · bez grafiki'}
-                </p>
-              ) : null}
-            </section>
-
             <section className="panel inspector-panel">
               <header>
                 <h2>Szczegóły</h2>
@@ -1020,7 +1054,7 @@ export function CharacterEquipment() {
                     Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
                   </p>
                   <div className="eq-bonus-editor">
-                    <span className="section-kicker">Bonusy (obserwowane)</span>
+                    <span className="section-kicker">Bonusy na przedmiocie</span>
                     <ul className="eq-bonus-lines">
                       {selectedItem.bonuses.map((bonus) => (
                         <li key={bonus}>
@@ -1042,27 +1076,78 @@ export function CharacterEquipment() {
                         </li>
                       ))}
                       {selectedItem.bonuses.length === 0 ? (
-                        <li>
-                          <span>Brak linii — dodaj z katalogu lub wpisz obserwację</span>
+                        <li className="eq-bonus-empty">
+                          <span>Brak bonusów — dodaj poniżej</span>
                         </li>
                       ) : null}
                     </ul>
-                    <select
-                      aria-label="Bonus z katalogu dumpa"
-                      onChange={(event) => setBonusPick(event.target.value)}
-                      value={bonusPick}
-                    >
-                      <option value="">Nazwa z katalogu dumpa…</option>
-                      {catalogBonusNames.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
+
+                    {(() => {
+                      const catalogEntries = catalogBonusEntriesForItem(
+                        selectedItem.name,
+                        selectedItem.enhancement,
+                      );
+                      if (catalogEntries.length > 0) {
+                        return (
+                          <>
+                            <span className="eq-bonus-source-label">
+                              Z katalogu gry (+{selectedItem.enhancement}):
+                            </span>
+                            <div className="eq-bonus-catalog-list">
+                              {catalogEntries.map((entry) => {
+                                const alreadyAdded = selectedItem.bonuses.includes(entry.line);
+                                return (
+                                  <button
+                                    className={`eq-bonus-catalog-entry${alreadyAdded ? ' is-added' : ''}`}
+                                    disabled={!writesEnabled || alreadyAdded}
+                                    key={entry.name}
+                                    onClick={() => {
+                                      if (alreadyAdded) return;
+                                      updateItemBonuses(workspace.id, selectedItem.id, [
+                                        ...selectedItem.bonuses,
+                                        entry.line,
+                                      ]);
+                                      setAnnouncement(`Dodano: ${entry.line}`);
+                                    }}
+                                    title={alreadyAdded ? 'Już dodany' : `Dodaj: ${entry.line}`}
+                                    type="button"
+                                  >
+                                    <span>{entry.name}</span>
+                                    <em>{entry.valueAtLevel ?? '?'}</em>
+                                    {alreadyAdded ? (
+                                      <span className="eq-bonus-check">✓</span>
+                                    ) : (
+                                      <span className="eq-bonus-plus">+</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <select
+                            aria-label="Nazwa bonusu z katalogu"
+                            onChange={(event) => setBonusPick(event.target.value)}
+                            value={bonusPick}
+                          >
+                            <option value="">Wybierz nazwę bonusu…</option>
+                            {catalogBonusNames.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      );
+                    })()}
+
                     <input
-                      aria-label="Pełna linia bonusu"
+                      aria-label="Ręczna linia bonusu"
                       onChange={(event) => setBonusDraft(event.target.value)}
-                      placeholder="np. Obrona +57 albo własna obserwacja"
+                      placeholder="np. Obrona +57 lub własna obserwacja"
                       value={bonusDraft}
                     />
                     <button
@@ -1080,7 +1165,7 @@ export function CharacterEquipment() {
                       }}
                       type="button"
                     >
-                      Dodaj bonus
+                      Dodaj ręcznie
                     </button>
                     <button
                       disabled={!writesEnabled}

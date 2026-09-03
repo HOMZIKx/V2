@@ -1937,9 +1937,9 @@ export function createEquipmentItem(
     /** When set, reject catalog items incompatible with this class. */
     readonly forCharacterClass?: CharacterClass;
   },
-): PlayerStoreState {
+): { readonly state: PlayerStoreState; readonly itemId: string | null } {
   const baseName = stripEnhancementFromName(input.name);
-  if (baseName.length < 2) return state;
+  if (baseName.length < 2) return { state, itemId: null };
   const enhancement = clampEnhancement(input.enhancement ?? parseEnhancementFromName(input.name));
   const name = formatEnhancedItemName(baseName, enhancement);
   const catalogHit = findGameItemByCardName(baseName) ?? findGameItemByCardName(name);
@@ -1947,19 +1947,22 @@ export function createEquipmentItem(
   let category = input.category;
   if (catalogHit) {
     const catalogSlot = equipmentSlotForCategory(catalogHit.category);
-    if (catalogSlot === null) return state;
+    if (catalogSlot === null) return { state, itemId: null };
     if (
       input.forCharacterClass &&
       !isItemCompatibleWithClass(catalogHit.category, input.forCharacterClass)
     ) {
-      return state;
+      return { state, itemId: null };
     }
     category = catalogSlot;
   }
 
-  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+  let createdItemId: string | null = null;
+  const next = updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const itemId = createId('item');
+    createdItemId = itemId;
     const item: EquipmentItem = {
-      id: createId('item'),
+      id: itemId,
       name,
       enhancement,
       iconPath: resolveItemIconPath(name),
@@ -1991,6 +1994,7 @@ export function createEquipmentItem(
       ],
     };
   });
+  return { state: next, itemId: createdItemId };
 }
 
 /** Edit observed bonuses on a team equipment card (D-055 free-form / catalog lines). */

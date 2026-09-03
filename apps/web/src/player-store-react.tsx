@@ -124,7 +124,7 @@ interface PlayerStoreApi {
       readonly planned?: boolean;
       readonly forCharacterClass?: CharacterClass;
     },
-  ) => void;
+  ) => string | null;
   updateItemBonuses: (workspaceId: string, itemId: string, bonuses: readonly string[]) => void;
   sendInvitation: (
     workspaceId: string,
@@ -253,7 +253,13 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         apply((current) => addProgressionTimer(current, workspaceId, characterId, input));
       },
       createItem: (workspaceId, input) => {
-        apply((current) => createEquipmentItem(current, workspaceId, input));
+        let createdId: string | null = null;
+        apply((current) => {
+          const result = createEquipmentItem(current, workspaceId, input);
+          createdId = result.itemId;
+          return result.state;
+        });
+        return createdId;
       },
       updateItemBonuses: (workspaceId, itemId, bonuses) => {
         apply((current) => updateEquipmentItemBonuses(current, workspaceId, itemId, bonuses));
