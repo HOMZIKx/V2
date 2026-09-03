@@ -44,6 +44,7 @@ export interface TeamNote {
 }
 
 export interface TeamWorkspaceSnapshot {
+  readonly teamId: string;
   readonly viewerName: string;
   readonly teamName: string;
   readonly teamDescription: string;
@@ -62,6 +63,7 @@ export interface TeamWorkspaceSummary {
 }
 
 export const teamWorkspaceFixture: TeamWorkspaceSnapshot = {
+  teamId: 'asteria',
   viewerName: 'Mateusz',
   teamName: 'Asteria',
   teamDescription: 'Wspólna przestrzeń postaci, ekwipunku i codziennych potwierdzeń zespołu.',
@@ -142,7 +144,7 @@ export const teamWorkspaceFixture: TeamWorkspaceSnapshot = {
     {
       id: 'task-horse-medal',
       title: 'Medal konny',
-      detail: 'Timer minął. Bot wyśle przypomnienie przypisanej osobie na Discordzie.',
+      detail: 'Timer minął. Po podpięciu bota przypomnienie trafi do przypisanej osoby na Discordzie.',
       characterName: 'Aalpsik',
       assigneeName: 'Aalpsik',
       dueLabel: 'gotowe',
@@ -214,4 +216,3 @@ export function appendTeamNote(notes: readonly TeamNote[], note: TeamNote): read
   const normalizedBody = note.body.trim();
   return normalizedBody.length === 0 ? notes : [{ ...note, body: normalizedBody }, ...notes];
 }
-
