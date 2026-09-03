@@ -326,7 +326,7 @@ test('opens the separate character module from global navigation', async ({ page
   await expect(page).toHaveURL(/\/characters$/);
   await expect(page.getByRole('heading', { name: 'Postacie', exact: true })).toBeVisible();
   await expect(
-    page.getByText('Postacie są osobnym modułem. Dostęp zespołowy nie oznacza własności postaci', {
+    page.getByText('Lista postaci z Twoich przestrzeni', {
       exact: false,
     }).first(),
   ).toBeVisible();
