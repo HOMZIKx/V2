@@ -1,2 +1,7 @@
-import { MarketCatalog } from './market-catalog';
-export default function MarketPage() { return <MarketCatalog />; }
+'use client';
+
+import { MarketLaterPage } from '../later-module';
+
+export default function MarketPage() {
+  return <MarketLaterPage />;
+}

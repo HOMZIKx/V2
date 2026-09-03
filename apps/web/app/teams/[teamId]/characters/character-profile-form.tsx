@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useParams } from 'next/navigation';
 
 import {
-  buildSaveCharacterProfileCommand,
   characterClassLabels,
   characterGenderLabels,
   getApprovedCharacterRender,
@@ -11,32 +11,121 @@ import {
   type CharacterClass,
   type CharacterGender,
   type CharacterProfileDraft,
-  type CharacterProfileSnapshot,
 } from '../../../../src/character-profile';
+import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell, Icon } from '../../../app-shell';
+import { DiscordEntryScreen } from '../../../discord-entry';
 
 export function CharacterProfileForm({
-  initialSnapshot,
+  mode,
+  characterId,
 }: {
-  initialSnapshot: CharacterProfileSnapshot;
+  readonly mode: 'create' | 'edit';
+  readonly characterId?: string;
 }) {
-  const [draft, setDraft] = useState(initialSnapshot.draft);
-  const [submitted, setSubmitted] = useState(false);
+  const params = useParams<{ teamId: string }>();
+  const teamId = params.teamId;
+  const { state, hydrated, createCharacter, updateCharacter, writesEnabled } = usePlayerStore();
+  const workspace = state.workspaces.find((entry) => entry.id === teamId) ?? null;
+  const existing =
+    mode === 'edit' && characterId
+      ? workspace?.characters.find((character) => character.id === characterId) ?? null
+      : null;
+
+  const [draft, setDraft] = useState<CharacterProfileDraft>({
+    name: '',
+    characterClass: 'sura',
+    gender: 'male',
+    level: null,
+    responsibleMemberId: 'mateusz',
+    startingSetName: 'Główny',
+    teamNote: '',
+  });
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [attempted, setAttempted] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const editing = initialSnapshot.characterId !== null;
-  const validation = useMemo(() => validateCharacterProfile(draft), [draft]);
-  const renderPath = getApprovedCharacterRender(draft.characterClass, draft.gender);
-  const responsibleMember =
-    initialSnapshot.members.find((member) => member.id === draft.responsibleMemberId)
-      ?.displayName ?? 'Nie wybrano';
+  const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
-    if (!editing) return;
-    const saved = window.localStorage.getItem(`destiled:character-profile:${initialSnapshot.characterId}`);
-    if (!saved) return;
-    try { setDraft(JSON.parse(saved) as CharacterProfileDraft); } catch { window.localStorage.removeItem(`destiled:character-profile:${initialSnapshot.characterId}`); }
-  }, [editing, initialSnapshot.characterId]);
+    if (!hydrated || state.authStatus !== 'authenticated') return;
+    if (!workspace) return;
+    if (draftReady) return;
+    if (mode === 'edit') {
+      if (!existing) return;
+      setDraft({
+        name: existing.name,
+        characterClass: existing.characterClass,
+        gender: existing.gender,
+        level: existing.level,
+        responsibleMemberId: existing.responsibleMemberId,
+        startingSetName: existing.sets[0]?.name ?? 'Główny',
+        teamNote: existing.note,
+      });
+    } else {
+      setDraft({
+        name: '',
+        characterClass: 'sura',
+        gender: 'male',
+        level: null,
+        responsibleMemberId: state.viewer?.id ?? 'mateusz',
+        startingSetName: 'Główny',
+        teamNote: '',
+      });
+    }
+    setDraftReady(true);
+  }, [hydrated, state.authStatus, state.viewer?.id, workspace, existing, mode, draftReady]);
+
+  const validation = useMemo(() => validateCharacterProfile(draft), [draft]);
+  const renderPath = getApprovedCharacterRender(draft.characterClass, draft.gender);
+
+  if (!hydrated) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
+    );
+  }
+
+  if (state.authStatus !== 'authenticated' || !state.viewer) {
+    return <DiscordEntryScreen />;
+  }
+
+  if (!workspace) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="character-profile-page" id="main-content">
+          <h1>Brak przestrzeni</h1>
+          <a href="/">Wróć</a>
+        </main>
+      </AppShell>
+    );
+  }
+
+  if (mode === 'edit' && !existing) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="character-profile-page" id="main-content">
+          <h1>Nie znaleziono postaci</h1>
+          <a href={`/teams/${teamId}`}>Wróć do przestrzeni</a>
+        </main>
+      </AppShell>
+    );
+  }
+
+  if (!draftReady) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Ładowanie formularza…</p>
+      </main>
+    );
+  }
+
+  const members = workspace.members.map((member) => ({
+    id: member.id,
+    displayName: member.displayName,
+  }));
+  const responsibleMember =
+    members.find((member) => member.id === draft.responsibleMemberId)?.displayName ?? 'Nie wybrano';
 
   const updateDraft = <Key extends keyof CharacterProfileDraft>(
     key: Key,
@@ -46,42 +135,55 @@ export function CharacterProfileForm({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAttempted(true);
-    if (!validation.valid) {
+    if (!validation.valid || !writesEnabled) {
       setAnnouncement('Popraw oznaczone pola przed zapisem postaci.');
       return;
     }
 
-    const command = buildSaveCharacterProfileCommand(
-      initialSnapshot,
-      draft,
-      `local-character-${editing ? initialSnapshot.characterId : 'new'}`,
-    );
-    setDraft(command.profile);
-    if (editing) window.localStorage.setItem(`destiled:character-profile:${initialSnapshot.characterId}`, JSON.stringify(command.profile));
-    setSubmitted(true);
-    setAnnouncement(
-      editing
-        ? `${command.profile.name}: zmiany zapisano lokalnie w tym podglądzie.`
-        : `${command.profile.name}: szkic postaci zapisano lokalnie w tym podglądzie.`,
-    );
+    if (mode === 'create') {
+      const id = createCharacter(workspace.id, {
+        name: draft.name,
+        characterClass: draft.characterClass,
+        gender: draft.gender,
+        level: draft.level,
+        responsibleMemberId: draft.responsibleMemberId,
+        startingSetName: draft.startingSetName.trim() || 'Główny',
+        note: draft.teamNote,
+      });
+      setSubmittedId(id);
+      setAnnouncement(
+        `${draft.name.trim()}: utworzono profil oraz pusty zestaw „${draft.startingSetName.trim() || 'Główny'}”.`,
+      );
+      return;
+    }
+
+    if (!characterId) return;
+    updateCharacter(workspace.id, characterId, {
+      name: draft.name,
+      characterClass: draft.characterClass,
+      gender: draft.gender,
+      level: draft.level,
+      responsibleMemberId: draft.responsibleMemberId,
+      note: draft.teamNote,
+    });
+    setSubmittedId(characterId);
+    setAnnouncement('Profil zaktualizowany');
   };
 
-  if (submitted) {
+  if (submittedId) {
     return (
-      <AppShell activeSection="teams" viewerName={initialSnapshot.viewerName}>
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className="character-profile-page" id="main-content">
           <section className="character-save-result">
             <span className="save-result-icon">
               <Icon name="check" size={26} />
             </span>
-            <span className="eyebrow">
-              {editing ? 'Profil zapisany lokalnie' : 'Szkic zapisany lokalnie'}
-            </span>
-            <h1>{draft.name}</h1>
+            <span className="eyebrow">{mode === 'edit' ? 'Profil zaktualizowany' : 'Postać utworzona'}</span>
+            <h1>{draft.name.trim()}</h1>
             <p>
-              {editing
-                ? 'Zmiany są zachowane w tej przeglądarce. Wspólny zapis dla zespołu wymaga API i Postgresa.'
-                : `Szkic i pusty zestaw „${draft.startingSetName}” zapisano w tej przeglądarce. Wspólne utworzenie postaci wymaga API.`}
+              {mode === 'edit'
+                ? 'Profil zaktualizowany'
+                : `Utworzono profil oraz pusty zestaw „${draft.startingSetName.trim() || 'Główny'}”.`}
             </p>
             <div className="save-result-summary">
               <span>{characterClassLabels[draft.characterClass]}</span>
@@ -89,26 +191,8 @@ export function CharacterProfileForm({
               <span>Prowadzi: {responsibleMember}</span>
             </div>
             <div className="save-result-actions">
-              <a href={`/teams/${initialSnapshot.teamId}`}>Wróć do zespołu</a>
-              {editing && (
-                <a
-                  href={`/teams/${initialSnapshot.teamId}/characters/${initialSnapshot.characterId}`}
-                >
-                  Otwórz kartę EQ
-                </a>
-              )}
-              {!editing && (
-                <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setDraft(initialSnapshot.draft);
-                    setAttempted(false);
-                  }}
-                  type="button"
-                >
-                  Dodaj kolejną postać
-                </button>
-              )}
+              <a href={`/teams/${workspace.id}`}>Wróć do zespołu</a>
+              <a href={`/teams/${workspace.id}/characters/${submittedId}`}>Otwórz kartę EQ</a>
             </div>
           </section>
           <p aria-live="polite" className="sr-only">
@@ -120,220 +204,140 @@ export function CharacterProfileForm({
   }
 
   return (
-    <AppShell activeSection="teams" viewerName={initialSnapshot.viewerName}>
+    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className="character-profile-page" id="main-content">
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
-          <a href={`/teams/${initialSnapshot.teamId}`}>{initialSnapshot.teamName}</a>
+          <a href={`/teams/${workspace.id}`}>{workspace.name}</a>
           <Icon name="chevron" size={13} />
-          <strong>{editing ? `Edytuj ${draft.name}` : 'Nowa postać'}</strong>
+          <strong>{mode === 'edit' ? 'Edytuj postać' : 'Dodaj postać'}</strong>
         </nav>
 
-        <header className="character-profile-header">
-          <div>
-            <span className="eyebrow">{editing ? 'Ustawienia postaci' : 'Nowa karta zespołu'}</span>
-            <h1>{editing ? 'Edytuj postać' : 'Dodaj postać'}</h1>
-            <p>
-              To wspólna notatka zespołu, nie połączenie z klientem gry. Wszystkie dane można
-              później zmienić.
-            </p>
-          </div>
-          <a href={`/teams/${initialSnapshot.teamId}`}>
-            <Icon name="x" size={15} /> Anuluj
-          </a>
-        </header>
+        <section className="character-profile-layout">
+          <form className="panel character-profile-form" onSubmit={handleSubmit}>
+            <header>
+              <span className="eyebrow">Karta postaci</span>
+              <h1>{mode === 'edit' ? 'Edytuj postać' : 'Dodaj postać'}</h1>
+              <p>Wymagane: nazwa i klasa. Reszta opcjonalna. To nie jest weryfikacja w grze.</p>
+            </header>
 
-        <div className="character-profile-layout">
-          <form className="panel character-profile-form" noValidate onSubmit={handleSubmit}>
-            <section>
-              <header>
-                <span>01</span>
-                <div>
-                  <h2>Tożsamość postaci</h2>
-                  <p>Nazwa i wariant widoczny na karcie.</p>
-                </div>
-              </header>
-              <div className="profile-form-grid">
-                <label className="is-wide">
-                  <span>Nazwa postaci</span>
-                  <input
-                    aria-invalid={attempted && Boolean(validation.errors.name)}
-                    maxLength={24}
-                    onChange={(event) => updateDraft('name', event.target.value)}
-                    placeholder="np. NerwNicht"
-                    value={draft.name}
-                  />
-                  {attempted && validation.errors.name && <small>{validation.errors.name}</small>}
-                </label>
-                <label>
-                  <span>Klasa</span>
-                  <select
-                    onChange={(event) =>
-                      updateDraft('characterClass', event.target.value as CharacterClass)
-                    }
-                    value={draft.characterClass}
-                  >
-                    {Object.entries(characterClassLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Płeć postaci</span>
-                  <select
-                    onChange={(event) =>
-                      updateDraft('gender', event.target.value as CharacterGender)
-                    }
-                    value={draft.gender}
-                  >
-                    {Object.entries(characterGenderLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>
-                    Poziom <em>opcjonalnie</em>
-                  </span>
-                  <input
-                    aria-invalid={attempted && Boolean(validation.errors.level)}
-                    inputMode="numeric"
-                    min="1"
-                    onChange={(event) =>
-                      updateDraft(
-                        'level',
-                        event.target.value === '' ? null : Number(event.target.value),
-                      )
-                    }
-                    placeholder="np. 75"
-                    type="number"
-                    value={draft.level ?? ''}
-                  />
-                  {attempted && validation.errors.level && <small>{validation.errors.level}</small>}
-                </label>
-              </div>
-            </section>
+            <label className="field">
+              <span>Nazwa postaci</span>
+              <input
+                aria-invalid={attempted && Boolean(validation.errors.name)}
+                onChange={(event) => updateDraft('name', event.target.value)}
+                value={draft.name}
+              />
+              {attempted && validation.errors.name ? <small>{validation.errors.name}</small> : null}
+            </label>
 
-            <section>
-              <header>
-                <span>02</span>
-                <div>
-                  <h2>Współpraca zespołu</h2>
-                  <p>Kto prowadzi postać i co zespół powinien wiedzieć.</p>
-                </div>
-              </header>
-              <div className="profile-form-grid">
-                <label>
-                  <span>Osoba prowadząca</span>
-                  <select
-                    onChange={(event) => updateDraft('responsibleMemberId', event.target.value)}
-                    value={draft.responsibleMemberId}
-                  >
-                    {initialSnapshot.members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Pierwszy zestaw</span>
-                  <input
-                    aria-invalid={attempted && Boolean(validation.errors.startingSetName)}
-                    maxLength={32}
-                    onChange={(event) => updateDraft('startingSetName', event.target.value)}
-                    value={draft.startingSetName}
-                  />
-                  {attempted && validation.errors.startingSetName && (
-                    <small>{validation.errors.startingSetName}</small>
-                  )}
-                </label>
-                <label className="is-wide">
-                  <span>
-                    Notatka zespołu <em>opcjonalnie</em>
-                  </span>
-                  <textarea
-                    maxLength={280}
-                    onChange={(event) => updateDraft('teamNote', event.target.value)}
-                    placeholder="Do czego służy postać, czego pilnować, co jest ważne…"
-                    rows={4}
-                    value={draft.teamNote}
-                  />
-                  <small className="character-count">{draft.teamNote.length}/280</small>
-                </label>
-              </div>
-            </section>
+            <div className="field-row">
+              <label className="field">
+                <span>Klasa</span>
+                <select
+                  onChange={(event) =>
+                    updateDraft('characterClass', event.target.value as CharacterClass)
+                  }
+                  value={draft.characterClass}
+                >
+                  {Object.entries(characterClassLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Płeć / wariant</span>
+                <select
+                  onChange={(event) => updateDraft('gender', event.target.value as CharacterGender)}
+                  value={draft.gender}
+                >
+                  {Object.entries(characterGenderLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-            <footer>
-              <p>
-                <Icon name="history" size={14} /> Ten etap zapisuje bezpiecznie tylko w tej
-                przeglądarce. Wersjonowanie zespołowe dojdzie razem z API.
-              </p>
-              <button type="submit">
-                <Icon name="check" size={16} /> {editing ? 'Zapisz zmiany' : 'Utwórz postać'}
-              </button>
-            </footer>
+            <div className="field-row">
+              <label className="field">
+                <span>Poziom opcjonalnie</span>
+                <input
+                  inputMode="numeric"
+                  onChange={(event) => {
+                    const value = event.target.value.trim();
+                    updateDraft('level', value ? Number(value) : null);
+                  }}
+                  value={draft.level ?? ''}
+                />
+                {attempted && validation.errors.level ? (
+                  <small>{validation.errors.level}</small>
+                ) : null}
+              </label>
+              <label className="field">
+                <span>Osoba prowadząca</span>
+                <select
+                  onChange={(event) => updateDraft('responsibleMemberId', event.target.value)}
+                  value={draft.responsibleMemberId}
+                >
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {mode === 'create' ? (
+              <label className="field">
+                <span>Nazwa pierwszego zestawu (opcjonalnie)</span>
+                <input
+                  onChange={(event) => updateDraft('startingSetName', event.target.value)}
+                  value={draft.startingSetName}
+                />
+              </label>
+            ) : null}
+
+            <label className="field">
+              <span>Notatka zespołu opcjonalnie</span>
+              <textarea
+                maxLength={280}
+                onChange={(event) => updateDraft('teamNote', event.target.value)}
+                value={draft.teamNote}
+              />
+            </label>
+
+            <button className="primary-button" disabled={!writesEnabled} type="submit">
+              <Icon name="check" size={16} /> {mode === 'edit' ? 'Zapisz zmiany' : 'Utwórz postać'}
+            </button>
           </form>
 
-          <aside className="panel character-profile-preview">
-            <header className="panel-header">
-              <div>
-                <span className="section-kicker">Podgląd na żywo</span>
-                <h2>Karta zespołu</h2>
-              </div>
-            </header>
-            <div className="profile-preview-card">
-              <div className={`profile-preview-art${renderPath ? '' : ' is-missing'}`}>
-                {renderPath ? (
-                  <img
-                    alt={`${characterClassLabels[draft.characterClass]} — podgląd`}
-                    src={renderPath}
-                  />
-                ) : (
-                  <div>
-                    <Icon name="character" size={26} />
-                    <strong>Brak zatwierdzonego renderu</strong>
-                    <span>
-                      Nie podstawiamy grafiki innej klasy. Render dodamy do biblioteki później.
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="profile-preview-copy">
-                <span>
-                  {characterClassLabels[draft.characterClass]} ·{' '}
-                  {characterGenderLabels[draft.gender]}
-                </span>
-                <h3>{draft.name.trim() || 'Nazwa postaci'}</h3>
-                <p>
-                  {draft.level ? `Poziom ${draft.level}` : 'Poziom nieustalony'} · prowadzi{' '}
-                  <strong>{responsibleMember}</strong>
-                </p>
-                <div>
-                  <span>Startowy set</span>
-                  <strong>{draft.startingSetName.trim() || 'Bez nazwy'}</strong>
-                </div>
-                {draft.teamNote.trim() && <blockquote>{draft.teamNote.trim()}</blockquote>}
-              </div>
+          <aside className="panel character-preview">
+            <span className="eyebrow">Podgląd</span>
+            <div className="character-preview-visual">
+              {renderPath ? (
+                <img alt="" src={renderPath} />
+              ) : (
+                <span className="missing-render">Brak zatwierdzonego renderu dla tej kombinacji</span>
+              )}
             </div>
-            <p className="profile-preview-hint">
-              <Icon name="equipment" size={14} /> Utworzenie postaci nie dodaje fikcyjnego EQ.
-              Zestaw startuje pusty.
+            <h2>{draft.name.trim() || 'Nowa postać'}</h2>
+            <p>
+              {characterClassLabels[draft.characterClass]} · {characterGenderLabels[draft.gender]}
             </p>
           </aside>
-        </div>
+        </section>
 
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
         <div className="mock-notice">
-          Podgląd funkcji · zapis lokalny. Nie jest jeszcze wspólnym zapisem zespołu ani zmianą
-          danych bota.
+          Zapis trafia do wspólnego store first-slice i historii przestrzeni.
         </div>
       </main>
     </AppShell>

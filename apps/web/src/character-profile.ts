@@ -92,7 +92,9 @@ export function validateCharacterProfile(draft: CharacterProfileDraft): Characte
   if (draft.responsibleMemberId.trim().length === 0) {
     errors.responsibleMemberId = 'Wybierz osobę prowadzącą postać.';
   }
-  if (setName.length < 2) errors.startingSetName = 'Nadaj nazwę pierwszemu zestawowi.';
+  if (setName.length > 0 && setName.length < 2) {
+    errors.startingSetName = 'Nazwa zestawu może być pusta albo mieć min. 2 znaki.';
+  }
   if (setName.length > 32) {
     errors.startingSetName = 'Nazwa zestawu może mieć maksymalnie 32 znaki.';
   }

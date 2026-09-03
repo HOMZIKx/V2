@@ -1,6 +1,7 @@
-import { newCharacterProfileFixture } from '../../../../../src/character-profile';
+'use client';
+
 import { CharacterProfileForm } from '../character-profile-form';
 
 export default function NewCharacterPage() {
-  return <CharacterProfileForm initialSnapshot={newCharacterProfileFixture} />;
+  return <CharacterProfileForm mode="create" />;
 }

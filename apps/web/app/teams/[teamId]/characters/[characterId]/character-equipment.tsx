@@ -1,202 +1,186 @@
 'use client';
 
-import { useEffect, useMemo, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
+import { useParams } from 'next/navigation';
 
+import { characterClassLabels } from '../../../../../src/character-profile';
 import {
-  assignPlannedItem,
-  confirmItemLocation,
   equipmentSlots,
-  filterCatalogItems,
-  getEquipmentCompletion,
-  removePlannedItem,
-  restartProgressTimer,
+  getSlotReadiness,
   slotLabels,
-  type CatalogItem,
-  type CharacterProgressTimer,
-  type CharacterEquipmentSnapshot,
-  type EquipmentAssignments,
   type EquipmentSlot,
-} from '../../../../../src/character-equipment';
-import { characterClassLabels, type CharacterProfileDraft } from '../../../../../src/character-profile';
+  type SetReadiness,
+} from '../../../../../src/player-store';
+import { usePlayerStore } from '../../../../../src/player-store-react';
 import { AppShell, Icon } from '../../../../app-shell';
+import { DiscordEntryScreen } from '../../../../discord-entry';
 
-interface LocalEquipmentState {
-  readonly assignmentsBySet: Readonly<Record<string, EquipmentAssignments>>;
-  readonly catalog: readonly CatalogItem[];
-  readonly timers: readonly CharacterProgressTimer[];
-}
+const readinessLabels: Record<SetReadiness, string> = {
+  ready: 'Gotowe',
+  available_elsewhere: 'Indziej',
+  missing: 'Brak',
+  stale: 'Nieaktualne',
+  conflict: 'Konflikt',
+  planned: 'Plan',
+};
 
-const categoryOptions: ReadonlyArray<{ value: EquipmentSlot | 'all'; label: string }> = [
-  { value: 'all', label: 'Wszystkie' },
-  { value: 'weapon', label: 'Broń' },
-  { value: 'armor', label: 'Zbroje' },
-  { value: 'helmet', label: 'Hełmy' },
-  { value: 'shield', label: 'Tarcze' },
-  { value: 'earrings', label: 'Kolczyki' },
-  { value: 'necklace', label: 'Naszyjniki' },
-  { value: 'bracelet', label: 'Bransolety' },
-  { value: 'shoes', label: 'Buty' },
-];
+export function CharacterEquipment() {
+  const params = useParams<{ teamId: string; characterId: string }>();
+  const {
+    state,
+    hydrated,
+    openWorkspace,
+    assignItem,
+    removeItem,
+    confirmLocation,
+    completeTimer,
+    createItem,
+    writesEnabled,
+  } = usePlayerStore();
 
-function ItemImage({ item }: { item: CatalogItem }) {
-  return <img alt="" draggable={false} src={item.iconPath} />;
-}
+  const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
+  const character =
+    workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
 
-export function CharacterEquipment({
-  initialSnapshot,
-}: {
-  initialSnapshot: CharacterEquipmentSnapshot;
-}) {
-  const [activeSetId, setActiveSetId] = useState(initialSnapshot.sets[0]?.id ?? '');
-  const [assignmentsBySet, setAssignmentsBySet] = useState<
-    Readonly<Record<string, EquipmentAssignments>>
-  >(() => Object.fromEntries(initialSnapshot.sets.map((set) => [set.id, set.assignments])));
-  const [catalog, setCatalog] = useState(initialSnapshot.catalog);
-  const [timers, setTimers] = useState(initialSnapshot.timers);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(
-    initialSnapshot.sets[0]?.assignments.weapon ?? null,
-  );
+  const [activeSetId, setActiveSetId] = useState<string>('');
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentSlot | 'all'>('all');
   const [flipped, setFlipped] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const [profileOverride, setProfileOverride] = useState<CharacterProfileDraft | null>(null);
-  const [equipmentLoaded, setEquipmentLoaded] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
+  const [moveTarget, setMoveTarget] = useState('');
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(`destiled:character-profile:${initialSnapshot.characterId}`);
-      if (saved) setProfileOverride(JSON.parse(saved) as CharacterProfileDraft);
-    } catch {
-      setProfileOverride(null);
-    }
-  }, [initialSnapshot.characterId]);
+    if (!workspace || !character) return;
+    openWorkspace(workspace.id, character.id);
+    setActiveSetId(character.activeSetId || character.sets[0]?.id || '');
+  }, [workspace, character, openWorkspace]);
 
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(
-        `destiled:character-equipment:${initialSnapshot.characterId}`,
-      );
-      if (saved) {
-        const state = JSON.parse(saved) as LocalEquipmentState;
-        if (
-          state.assignmentsBySet &&
-          Array.isArray(state.catalog) &&
-          Array.isArray(state.timers)
-        ) {
-          setAssignmentsBySet(state.assignmentsBySet);
-          setCatalog(state.catalog);
-          setTimers(state.timers);
-        }
-      }
-    } catch {
-      // Nie blokujemy karty, gdy stary podgląd lokalny ma nieprawidłowy format.
-    } finally {
-      setEquipmentLoaded(true);
-    }
-  }, [initialSnapshot.characterId]);
+  const filteredCatalog = useMemo(() => {
+    if (!workspace) return [];
+    const normalized = query.trim().toLocaleLowerCase('pl');
+    return workspace.items.filter((item) => {
+      if (item.archived) return false;
+      const categoryMatches = category === 'all' || item.category === category;
+      const queryMatches =
+        normalized.length === 0 ||
+        item.name.toLocaleLowerCase('pl').includes(normalized) ||
+        item.bonuses.some((bonus) => bonus.toLocaleLowerCase('pl').includes(normalized));
+      return categoryMatches && queryMatches;
+    });
+  }, [workspace, query, category]);
 
-  useEffect(() => {
-    if (!equipmentLoaded) return;
-    window.localStorage.setItem(
-      `destiled:character-equipment:${initialSnapshot.characterId}`,
-      JSON.stringify({ assignmentsBySet, catalog, timers } satisfies LocalEquipmentState),
+  if (!hydrated) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
     );
-  }, [assignmentsBySet, catalog, equipmentLoaded, initialSnapshot.characterId, timers]);
+  }
 
-  const activeSet = initialSnapshot.sets.find((set) => set.id === activeSetId)!;
-  const assignments = assignmentsBySet[activeSetId] ?? activeSet.assignments;
-  const selectedItem = catalog.find((item) => item.id === selectedItemId) ?? null;
-  const filteredCatalog = useMemo(
-    () => filterCatalogItems(catalog, query, category),
-    [catalog, category, query],
-  );
-  const completion = getEquipmentCompletion(assignments);
-  const characterName = profileOverride?.name || initialSnapshot.characterName;
-  const classLabel = profileOverride
-    ? characterClassLabels[profileOverride.characterClass]
-    : initialSnapshot.classLabel;
-  const level = profileOverride?.level ?? initialSnapshot.level;
+  if (state.authStatus !== 'authenticated' || !state.viewer) {
+    return <DiscordEntryScreen />;
+  }
 
-  const assignItem = (itemId: string, slot: EquipmentSlot) => {
-    const item = catalog.find((candidate) => candidate.id === itemId);
-    if (!item) return;
-    const nextAssignments = assignPlannedItem(assignments, item, slot);
-    if (nextAssignments === assignments) {
-      setAnnouncement(`${item.name} nie pasuje do slotu ${slotLabels[slot]}.`);
+  if (!workspace || !character) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="equipment-page" id="main-content">
+          <h1>Nie znaleziono postaci</h1>
+          <a href="/characters">Wróć do postaci</a>
+        </main>
+      </AppShell>
+    );
+  }
+
+  const activeSet =
+    character.sets.find((set) => set.id === activeSetId) ?? character.sets[0] ?? null;
+  const selectedItem = workspace.items.find((item) => item.id === selectedItemId) ?? null;
+  const timers = workspace.timers.filter((timer) => timer.characterId === character.id);
+  const completion = activeSet
+    ? equipmentSlots.filter((slot) => activeSet.assignments[slot] !== null).length
+    : 0;
+
+  const onAssign = (itemId: string, slot: EquipmentSlot) => {
+    if (!writesEnabled || !activeSet) return;
+    const item = workspace.items.find((entry) => entry.id === itemId);
+    if (!item || item.category !== slot) {
+      setAnnouncement('Przedmiot nie pasuje do slotu.');
       return;
     }
-    setAssignmentsBySet((current) => ({ ...current, [activeSetId]: nextAssignments }));
-    setSelectedItemId(item.id);
+    assignItem(workspace.id, character.id, activeSet.id, itemId, slot);
+    setSelectedItemId(itemId);
     setAnnouncement(`${item.name} dodano do planu setu ${activeSet.name}.`);
-  };
-
-  const handleSlotClick = (slot: EquipmentSlot) => {
-    if (selectedItemId) assignItem(selectedItemId, slot);
   };
 
   const handleDrop = (event: DragEvent<HTMLButtonElement>, slot: EquipmentSlot) => {
     event.preventDefault();
-    assignItem(event.dataTransfer.getData('text/item-id'), slot);
+    onAssign(event.dataTransfer.getData('text/item-id'), slot);
   };
 
-  const handleLocationConfirmation = () => {
-    if (!selectedItem) return;
-    setCatalog((current) =>
-      confirmItemLocation(
-        current,
-        selectedItem.id,
-        characterName,
-        initialSnapshot.viewerName,
-      ),
-    );
-    setAnnouncement(
-      `${selectedItem.name}: potwierdzono fizyczną lokalizację na ${characterName}.`,
-    );
+  const handleCreateItem = (event: FormEvent) => {
+    event.preventDefault();
+    if (!writesEnabled || newItemName.trim().length < 2) return;
+    createItem(workspace.id, {
+      name: newItemName,
+      category: newItemSlot,
+      bonuses: [],
+      planned: true,
+    });
+    setNewItemName('');
+    setAnnouncement('Utworzono kartę przedmiotu w bazie zespołu.');
   };
 
   return (
-    <AppShell activeSection="teams" viewerName={initialSnapshot.viewerName}>
+    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className="equipment-page" id="main-content">
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
-          <a href="/teams/asteria">{initialSnapshot.teamName}</a>
+          <a href={`/teams/${workspace.id}`}>{workspace.name}</a>
           <Icon name="chevron" size={13} />
-          <strong>{characterName}</strong>
+          <strong>{character.name}</strong>
         </nav>
 
         <header className="equipment-page-header">
           <div>
             <span className="eyebrow">Karta postaci</span>
-            <h1>{characterName}</h1>
+            <h1>{character.name}</h1>
             <p>
-              {classLabel} · poziom {level} · prowadzi{' '}
-              <strong>{initialSnapshot.responsibleMember}</strong>
+              {characterClassLabels[character.characterClass]}
+              {character.level ? ` · poziom ${character.level}` : ' · poziom nieustalony'} · prowadzi{' '}
+              <strong>
+                {workspace.members.find((member) => member.id === character.responsibleMemberId)
+                  ?.displayName ?? '—'}
+              </strong>
             </p>
           </div>
           <div className="equipment-header-actions">
-            <a href={`/teams/asteria/characters/${initialSnapshot.characterId}/edit`}>
+            <a href={`/teams/${workspace.id}/characters/${character.id}/edit`}>
               <Icon name="settings" size={14} /> Edytuj postać
             </a>
-            <div className="set-switcher">
-              <label htmlFor="active-set">Aktywny widok setu</label>
-              <select
-                id="active-set"
-                onChange={(event) => {
-                  setActiveSetId(event.target.value);
-                  setSelectedItemId(null);
-                }}
-                value={activeSetId}
-              >
-                {initialSnapshot.sets.map((set) => (
-                  <option key={set.id} value={set.id}>
-                    {set.name}
-                  </option>
-                ))}
-              </select>
-              <span>{activeSet.description}</span>
-            </div>
+            {activeSet ? (
+              <div className="set-switcher">
+                <label htmlFor="active-set">Aktywny widok setu</label>
+                <select
+                  id="active-set"
+                  onChange={(event) => {
+                    setActiveSetId(event.target.value);
+                    setSelectedItemId(null);
+                  }}
+                  value={activeSet.id}
+                >
+                  {character.sets.map((set) => (
+                    <option key={set.id} value={set.id}>
+                      {set.name}
+                    </option>
+                  ))}
+                </select>
+                <span>{activeSet.description}</span>
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -212,7 +196,7 @@ export function CharacterEquipment({
                   <header>
                     <div>
                       <span>Set</span>
-                      <strong>{activeSet.name}</strong>
+                      <strong>{activeSet?.name ?? 'Brak'}</strong>
                     </div>
                     <span className="equipment-completion">{completion}/8 EQ</span>
                   </header>
@@ -225,45 +209,42 @@ export function CharacterEquipment({
                       type="button"
                     >
                       <span className="character-aura" />
-                      <img
-                        alt={`${classLabel} — ${characterName}`}
-                        src={initialSnapshot.imagePath}
-                      />
+                      {character.imagePath ? (
+                        <img
+                          alt={`${characterClassLabels[character.characterClass]} — ${character.name}`}
+                          src={character.imagePath}
+                        />
+                      ) : (
+                        <span className="missing-render">Brak zatwierdzonego renderu</span>
+                      )}
                       <span>kliknij postać, aby zobaczyć timery</span>
                     </button>
 
-                    {equipmentSlots.map((slot) => {
-                      const itemId = assignments[slot];
-                      const item = catalog.find((candidate) => candidate.id === itemId) ?? null;
-                      const compatibleSelection = selectedItem?.category === slot;
-                      return (
-                        <button
-                          aria-label={`${slotLabels[slot]}${item ? `: ${item.name}` : ': pusty slot'}`}
-                          className={`equipment-slot slot-${slot}${item ? ' has-item' : ''}${compatibleSelection ? ' can-accept' : ''}`}
-                          key={slot}
-                          onClick={() => handleSlotClick(slot)}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={(event) => handleDrop(event, slot)}
-                          type="button"
-                        >
-                          {item ? <ItemImage item={item} /> : <span>{slotLabels[slot]}</span>}
-                          <small>{slotLabels[slot]}</small>
-                        </button>
-                      );
-                    })}
+                    {activeSet
+                      ? equipmentSlots.map((slot) => {
+                          const itemId = activeSet.assignments[slot];
+                          const item = workspace.items.find((entry) => entry.id === itemId) ?? null;
+                          const readiness = getSlotReadiness(workspace, character, activeSet, slot);
+                          const compatibleSelection = selectedItem?.category === slot;
+                          return (
+                            <button
+                              aria-label={`${slotLabels[slot]}${item ? `: ${item.name}` : ': pusty slot'}`}
+                              className={`equipment-slot slot-${slot}${item ? ' has-item' : ''}${compatibleSelection ? ' can-accept' : ''}`}
+                              key={slot}
+                              onClick={() => selectedItemId && onAssign(selectedItemId, slot)}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => handleDrop(event, slot)}
+                              type="button"
+                            >
+                              {item ? <img alt="" src={item.iconPath} /> : <span>{slotLabels[slot]}</span>}
+                              <small>
+                                {slotLabels[slot]} · {readinessLabels[readiness]}
+                              </small>
+                            </button>
+                          );
+                        })
+                      : null}
                   </div>
-
-                  <footer className="character-card-footer">
-                    <div>
-                      <strong>{characterName}</strong>
-                      <span>
-                        {classLabel} · Lv. {level}
-                      </span>
-                    </div>
-                    <button onClick={() => setFlipped(true)} type="button">
-                      <Icon name="clock" size={15} /> Odwróć kartę
-                    </button>
-                  </footer>
                 </article>
 
                 <article
@@ -272,111 +253,89 @@ export function CharacterEquipment({
                   inert={!flipped ? true : undefined}
                 >
                   <header>
-                    <div>
-                      <span>Postęp postaci</span>
-                      <strong>Timery</strong>
-                    </div>
-                    <button
-                      aria-label="Wróć do ekwipunku"
-                      onClick={() => setFlipped(false)}
-                      type="button"
-                    >
-                      <Icon name="equipment" size={16} /> EQ
+                    <strong>Postęp postaci</strong>
+                    <button onClick={() => setFlipped(false)} type="button">
+                      Wróć do EQ
                     </button>
                   </header>
-                  <div className="character-timer-list">
-                    {timers.map((timer) => (
-                      <article className={`character-timer is-${timer.status}`} key={timer.id}>
-                        <div className="character-timer-heading">
-                          <span className="character-timer-icon">
-                            <Icon name="clock" size={17} />
-                          </span>
+                  <div className="timer-list">
+                    {timers.length === 0 ? (
+                      <p className="empty-copy">Brak timerów dla tej postaci.</p>
+                    ) : (
+                      timers.map((timer) => (
+                        <article key={timer.id}>
                           <div>
-                            <strong>{timer.label}</strong>
-                            <span>{timer.detail}</span>
+                            <h3>{timer.label}</h3>
+                            <p>{timer.detail}</p>
+                            <small>
+                              {timer.status === 'ready' ? 'Gotowe' : 'W toku'} · {timer.remainingLabel}
+                            </small>
+                            <small>
+                              Ostatnio: {timer.lastActorName ?? '—'} · {timer.lastConfirmedAt ?? '—'}
+                            </small>
+                            <small>
+                              Przypomnienie Discord:{' '}
+                              {timer.reminderState === 'unavailable'
+                                ? 'niedostępne w podglądzie'
+                                : timer.reminderState}
+                            </small>
                           </div>
-                          <em>{timer.readyLabel}</em>
-                        </div>
-                        <div className="timer-progress-track">
-                          <span style={{ width: `${timer.progressPercent}%` }} />
-                        </div>
-                        <div className="character-timer-footer">
-                          <span>
-                            {timer.discordReminder ? 'PW Discord włączone' : 'bez PW Discord'}
-                          </span>
-                          {timer.status === 'ready' && (
-                            <button
-                              onClick={() => {
-                                setTimers((current) => restartProgressTimer(current, timer.id));
-                                setAnnouncement(
-                                  `${timer.label}: potwierdzono wykonanie i rozpoczęto nowy timer.`,
-                                );
-                              }}
-                              type="button"
-                            >
-                              <Icon name="check" size={14} /> Oznacz wykonane
-                            </button>
-                          )}
-                        </div>
-                      </article>
-                    ))}
+                          <button
+                            disabled={!writesEnabled}
+                            onClick={() => {
+                              const operationId = `timer-${timer.id}-${Date.now()}`;
+                              completeTimer(workspace.id, timer.id, operationId);
+                              setAnnouncement('odliczanie rozpoczęte');
+                            }}
+                            type="button"
+                          >
+                            Oznacz wykonane
+                          </button>
+                        </article>
+                      ))
+                    )}
                   </div>
-                  <footer className="character-card-footer">
-                    <div>
-                      <strong>{characterName}</strong>
-                      <span>timery rozwoju postaci</span>
-                    </div>
-                    <button onClick={() => setFlipped(false)} type="button">
-                      <Icon name="equipment" size={15} /> Pokaż EQ
-                    </button>
-                  </footer>
                 </article>
               </div>
             </div>
           </section>
 
-          <section className="panel item-catalog-panel">
-            <header className="panel-header item-catalog-header">
-              <div>
-                <span className="section-kicker">Wspólna baza</span>
-                <h2>Przedmioty</h2>
-              </div>
-              <a className="secondary-button" href="/market">
-                <Icon name="search" size={15} /> Otwórz bazę przedmiotów
-              </a>
+          <section className="panel catalog-panel">
+            <header>
+              <h2>Przedmioty</h2>
             </header>
-            <div className="catalog-controls">
-              <label className="catalog-search">
-                <span className="sr-only">Szukaj przedmiotu lub bonusu</span>
-                <Icon name="search" size={15} />
-                <input
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Szukaj itemu lub bonusu…"
-                  type="search"
-                  value={query}
-                />
-              </label>
-              <div className="catalog-categories" aria-label="Kategorie przedmiotów">
-                {categoryOptions.map((option) => (
-                  <button
-                    aria-pressed={category === option.value}
-                    key={option.value}
-                    onClick={() => setCategory(option.value)}
-                    type="button"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
+            <label className="market-search">
+              <Icon name="search" size={16} />
+              <input
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Szukaj itemu lub bonusu…"
+                value={query}
+              />
+            </label>
+            <div className="catalog-filters">
+              <button
+                className={category === 'all' ? 'is-active' : ''}
+                onClick={() => setCategory('all')}
+                type="button"
+              >
+                Wszystkie
+              </button>
+              {equipmentSlots.map((slot) => (
+                <button
+                  className={category === slot ? 'is-active' : ''}
+                  key={slot}
+                  onClick={() => setCategory(slot)}
+                  type="button"
+                >
+                  {slotLabels[slot]}
+                </button>
+              ))}
             </div>
-            <div className="catalog-guidance">
-              <Icon name="equipment" size={15} />
-              Przeciągnij item do zgodnego slotu. Na telefonie wybierz item, potem slot.
-            </div>
-            <div className="item-catalog-grid">
+            <p className="empty-copy">Przeciągnij item do zgodnego slotu albo wybierz i kliknij slot.</p>
+            <div className="catalog-grid">
               {filteredCatalog.map((item) => (
                 <button
-                  aria-pressed={selectedItemId === item.id}
+                  aria-pressed={item.id === selectedItemId}
                   className="catalog-item"
                   draggable
                   key={item.id}
@@ -384,100 +343,115 @@ export function CharacterEquipment({
                   onDragStart={(event) => event.dataTransfer.setData('text/item-id', item.id)}
                   type="button"
                 >
-                  <span className="catalog-item-image">
-                    <ItemImage item={item} />
-                  </span>
-                  <span className="catalog-item-copy">
-                    <strong>{item.name}</strong>
-                    <small>{item.levelLabel}</small>
-                  </span>
-                  <span className={`catalog-layer layer-${item.catalogLayer}`}>
-                    {item.catalogLayer === 'project_hard_source'
-                      ? 'Hard'
-                      : item.catalogLayer === 'destiled_curated'
-                        ? 'DESTILED'
-                        : 'Zespół'}
-                  </span>
+                  <img alt="" src={item.iconPath} />
+                  <strong>{item.name}</strong>
+                  <small>
+                    {item.lastConfirmedLocation
+                      ? `Lokalizacja: ${item.lastConfirmedLocation}`
+                      : 'Brak potwierdzonej lokalizacji'}
+                  </small>
                 </button>
               ))}
-              {filteredCatalog.length === 0 && (
-                <p className="catalog-empty">Brak przedmiotów dla tego filtra.</p>
-              )}
             </div>
+
+            <form className="inline-create" onSubmit={handleCreateItem}>
+              <input
+                aria-label="Nazwa nowego przedmiotu"
+                onChange={(event) => setNewItemName(event.target.value)}
+                placeholder="Nowy przedmiot zespołu…"
+                value={newItemName}
+              />
+              <select
+                aria-label="Slot nowego przedmiotu"
+                onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
+                value={newItemSlot}
+              >
+                {equipmentSlots.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slotLabels[slot]}
+                  </option>
+                ))}
+              </select>
+              <button disabled={!writesEnabled} type="submit">
+                Dodaj item
+              </button>
+            </form>
           </section>
 
-          <aside className="panel item-inspector-panel">
-            <header className="panel-header">
-              <div>
-                <span className="section-kicker">Szczegóły</span>
-                <h2>Wybrany przedmiot</h2>
-              </div>
+          <aside className="panel inspector-panel">
+            <header>
+              <h2>Szczegóły</h2>
             </header>
             {selectedItem ? (
-              <div className="item-inspector">
-                <div className="inspector-item-heading">
-                  <span className="inspector-item-image">
-                    <ItemImage item={selectedItem} />
-                  </span>
-                  <div>
-                    <strong>{selectedItem.name}</strong>
-                    <span>{selectedItem.levelLabel}</span>
-                  </div>
-                </div>
-                <div className="inspector-bonuses">
-                  <span>Bonusy</span>
-                  <ul>
-                    {selectedItem.bonuses.map((bonus) => (
-                      <li key={bonus}>{bonus}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="confirmed-location">
-                  <span>Ostatnia potwierdzona lokalizacja</span>
-                  <strong>{selectedItem.lastConfirmedCharacterName ?? 'brak potwierdzenia'}</strong>
-                  {selectedItem.lastConfirmedBy && (
-                    <small>
-                      {selectedItem.lastConfirmedBy} · {selectedItem.lastConfirmedLabel}
-                    </small>
-                  )}
-                </div>
-                <p className="planning-warning">
-                  Dodanie do setu planuje układ. Nie oznacza, że item został przeniesiony w grze.
+              <>
+                <h3>{selectedItem.name}</h3>
+                <p>{selectedItem.levelLabel}</p>
+                <ul>
+                  {selectedItem.bonuses.map((bonus) => (
+                    <li key={bonus}>{bonus}</li>
+                  ))}
+                </ul>
+                <p>
+                  Ostatnio potwierdzona lokalizacja:{' '}
+                  <strong>{selectedItem.lastConfirmedLocation ?? 'brak'}</strong>
+                  {selectedItem.lastConfirmedBy ? (
+                    <>
+                      {' '}
+                      · {selectedItem.lastConfirmedBy} · {selectedItem.lastConfirmedAt}
+                    </>
+                  ) : null}
                 </p>
                 <button
-                  className="confirm-location-button"
-                  onClick={handleLocationConfirmation}
+                  className="primary-button"
+                  disabled={!writesEnabled}
+                  onClick={() => {
+                    confirmLocation(workspace.id, selectedItem.id, character.name);
+                    setAnnouncement(
+                      `${selectedItem.name}: potwierdzono fizyczną lokalizację na ${character.name}.`,
+                    );
+                  }}
                   type="button"
                 >
-                  <Icon name="check" size={15} /> Potwierdź: jest na {characterName}
+                  Potwierdź: jest na {character.name}
                 </button>
-                {equipmentSlots.find((slot) => assignments[slot] === selectedItem.id) && (
-                  <button
-                    className="remove-planned-button"
-                    onClick={() => {
-                      const slot = equipmentSlots.find(
-                        (candidate) => assignments[candidate] === selectedItem.id,
-                      );
-                      if (!slot) return;
-                      setAssignmentsBySet((current) => ({
-                        ...current,
-                        [activeSetId]: removePlannedItem(assignments, slot),
-                      }));
-                      setAnnouncement(
-                        `${selectedItem.name} usunięto z planu setu ${activeSet.name}.`,
-                      );
-                    }}
-                    type="button"
-                  >
-                    Usuń z planu setu
-                  </button>
-                )}
-              </div>
+                <label className="field">
+                  <span>Oznacz jako przeniesione (lokalizacja)</span>
+                  <input
+                    onChange={(event) => setMoveTarget(event.target.value)}
+                    placeholder="np. depo / inna postać"
+                    value={moveTarget}
+                  />
+                </label>
+                <button
+                  disabled={!writesEnabled || moveTarget.trim().length < 2}
+                  onClick={() => {
+                    confirmLocation(workspace.id, selectedItem.id, moveTarget.trim());
+                    setAnnouncement(`${selectedItem.name}: lokalizacja → ${moveTarget.trim()}`);
+                    setMoveTarget('');
+                  }}
+                  type="button"
+                >
+                  Potwierdź przeniesienie
+                </button>
+                {activeSet
+                  ? equipmentSlots
+                      .filter((slot) => activeSet.assignments[slot] === selectedItem.id)
+                      .map((slot) => (
+                        <button
+                          key={slot}
+                          onClick={() => {
+                            removeItem(workspace.id, character.id, activeSet.id, slot);
+                            setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
+                          }}
+                          type="button"
+                        >
+                          Usuń z planu setu
+                        </button>
+                      ))
+                  : null}
+              </>
             ) : (
-              <div className="item-inspector-empty">
-                <Icon name="equipment" />
-                <p>Wybierz przedmiot, aby zobaczyć bonusy i potwierdzoną lokalizację.</p>
-              </div>
+              <p>Wybierz przedmiot z bazy.</p>
             )}
           </aside>
         </div>
@@ -485,10 +459,10 @@ export function CharacterEquipment({
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
+        {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
-          Plan setu, potwierdzona lokalizacja i timery są celowo osobnymi danymi; ten podgląd
-          zapamiętuje je lokalnie po odświeżeniu. API zapisze je dla zespołu, a AI/skaner będzie
-          tylko proponował zmianę do zatwierdzenia.
+          Plan setu, potwierdzona lokalizacja i timery są osobnymi danymi. Zapis lokalny + historia
+          przestrzeni. Discord reminders niedostępne w podglądzie.
         </div>
       </main>
     </AppShell>

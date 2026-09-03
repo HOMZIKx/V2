@@ -2,12 +2,10 @@
 
 ## Status
 
-Web / DESTILED track: `CURSOR_PRIMARY_HANDOFF_ACCEPTED` (D-061, 2026-09-03).
+Web / DESTILED track: `DESTILED_FIRST_SLICE_FIX_IMPLEMENTED` (D-061).
 
-Quality audit (2026-09-03): `DESTILED_WEB_QUALITY_AUDIT_COMPLETE` —
-owner concern confirmed (demo shell vs incomplete first-player path). See
-`docs/ai/DESTILED_WEB_QUALITY_AUDIT_2026-09-03.md`. Next: owner picks P0 fix
-scope.
+Quality audit completed; P0/P1 first-slice repairs landed on
+`cursor/destiled-cursor-handoff-dfe5` (PR **#48**). Awaiting owner review.
 
 ## Owner decision — Cursor takes DESTILED Web (2026-09-03)
 
@@ -87,4 +85,5 @@ team actions / notes -> Change history`.
 
 ## Last updated
 
-2026-09-03 — DESTILED Web quality audit vs first-player contracts; D-061 handoff.
+2026-09-03 — DESTILED first-slice repair implemented on Cursor (store, Discord
+entry, home, workspace/EQ/history honesty); D-061 handoff.

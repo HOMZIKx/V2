@@ -1,110 +1,65 @@
 'use client';
 
-import { useState } from 'react';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import {
-  invitationStatusLabel,
-  respondToInvitation,
-  type TeamInvitation,
-} from '../../../src/team-membership';
-import { AppShell, Icon } from '../../app-shell';
+import { usePlayerStore } from '../../../src/player-store-react';
+import { AppShell } from '../../app-shell';
+import { DiscordEntryScreen } from '../../discord-entry';
 
-export function InvitationResponse({ initialInvitation }: { initialInvitation: TeamInvitation }) {
-  const [invitation, setInvitation] = useState(initialInvitation);
-  const [announcement, setAnnouncement] = useState('');
-  const isPending = invitation.status === 'pending';
+export function InvitationResponse() {
+  const params = useParams<{ invitationId: string }>();
+  const { state, hydrated, acceptInvitation, loadDemo } = usePlayerStore();
+  const [accepted, setAccepted] = useState(false);
 
-  const respond = (decision: 'accept' | 'decline') => {
-    const next = respondToInvitation(invitation, decision);
-    setInvitation(next);
-    setAnnouncement(
-      decision === 'accept'
-        ? `Dołączono do przestrzeni ${invitation.teamName}.`
-        : `Odrzucono zaproszenie do przestrzeni ${invitation.teamName}.`,
+  useEffect(() => {
+    if (!hydrated || state.authStatus !== 'authenticated') return;
+    if (state.workspaces.length === 0) loadDemo();
+  }, [hydrated, state.authStatus, state.workspaces.length, loadDemo]);
+
+  if (!hydrated) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
     );
-  };
+  }
+
+  if (state.authStatus !== 'authenticated' || !state.viewer) {
+    return <DiscordEntryScreen />;
+  }
+
+  const workspaceId = state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? 'asteria';
 
   return (
-    <AppShell activeSection="teams" viewerName={invitation.recipient.displayName}>
+    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className="invitation-page" id="main-content">
-        <section className={`invitation-card is-${invitation.status}`}>
-          <div className="invitation-emblem">
-            <Icon name={invitation.status === 'accepted' ? 'check' : 'team'} size={30} />
-          </div>
-          <span className="eyebrow">Prywatne zaproszenie zespołu</span>
-          <h1>{invitation.teamName}</h1>
-          <p className="invitation-lead">
-            <strong>{invitation.inviterName}</strong> zaprasza Cię do wspólnej przestrzeni postaci,
-            ekwipunku, timerów i notatek.
-          </p>
-
-          <div className="invitation-identity">
-            <span className="member-avatar is-online">{invitation.recipient.initials}</span>
-            <div>
-              <span>Zalogowano przez Discord jako</span>
-              <strong>{invitation.recipient.displayName}</strong>
-              <small>
-                @{invitation.recipient.username} · ID {invitation.recipient.discordUserId}
-              </small>
-            </div>
-          </div>
-
-          {isPending ? (
-            <>
-              <ul className="invitation-access-list">
-                <li>
-                  <Icon name="check" size={15} /> zobaczysz wspólne postacie i sety EQ;
-                </li>
-                <li>
-                  <Icon name="check" size={15} /> będziesz współdzielić timery i akcje zespołu;
-                </li>
-                <li>
-                  <Icon name="check" size={15} /> zmiany zapiszą autora i historię;
-                </li>
-                <li>
-                  <Icon name="x" size={15} /> nie otrzymasz rangi Lidera ani Technika.
-                </li>
-              </ul>
-              <div className="invitation-actions">
-                <button
-                  className="primary-invitation-button"
-                  onClick={() => respond('accept')}
-                  type="button"
-                >
-                  Akceptuję i dołączam
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => respond('decline')}
-                  type="button"
-                >
-                  Odrzuć
-                </button>
-              </div>
-              <small className="invitation-expiry">
-                Zaproszenie wygasa {invitation.expiresLabel}.
-              </small>
-            </>
-          ) : (
-            <div className={`invitation-result is-${invitation.status}`}>
-              <Icon name={invitation.status === 'accepted' ? 'check' : 'x'} size={20} />
-              <div>
-                <strong>{invitationStatusLabel(invitation.status)}</strong>
-                <p>
-                  {invitation.status === 'accepted'
-                    ? 'Dostęp do zespołu został przyznany po Twoim potwierdzeniu.'
-                    : 'Dane zespołu nie zostały udostępnione.'}
-                </p>
-              </div>
-              {invitation.status === 'accepted' && (
-                <a href={`/teams/${invitation.teamId}`}>Otwórz przestrzeń zespołu</a>
-              )}
-            </div>
-          )}
-        </section>
-        <p aria-live="polite" className="sr-only">
-          {announcement}
+        <span className="eyebrow">Zaproszenie do przestrzeni</span>
+        <h1>Asteria</h1>
+        <p>
+          Zalogowano przez Discord jako <strong>{state.viewer.discordDisplayName}</strong>. Dostęp do
+          prywatnych danych pojawia się dopiero po akceptacji.
         </p>
+        {!accepted ? (
+          <button
+            className="primary-button"
+            onClick={() => {
+              acceptInvitation(params.invitationId);
+              setAccepted(true);
+            }}
+            type="button"
+          >
+            Akceptuję i dołączam
+          </button>
+        ) : (
+          <div className="entry-status">
+            <p>Dostęp do zespołu został przyznany po Twoim potwierdzeniu.</p>
+            <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
+          </div>
+        )}
+        <div className="mock-notice">
+          Akceptacja aktualizuje lokalny store. Prawdziwe membership wymaga API.
+        </div>
       </main>
     </AppShell>
   );

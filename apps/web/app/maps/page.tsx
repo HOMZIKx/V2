@@ -1,7 +1,7 @@
-import { mapHuntingFixture } from '../../src/map-hunting';
+'use client';
 
-import { MapHunting } from './map-hunting';
+import { MapsLaterPage } from '../later-module';
 
 export default function MapsPage() {
-  return <MapHunting initialSnapshot={mapHuntingFixture} />;
+  return <MapsLaterPage />;
 }

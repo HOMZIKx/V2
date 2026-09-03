@@ -1,6 +1,7 @@
-import { teamHistoryFixture } from '../../../../src/team-history';
+'use client';
+
 import { TeamHistory } from './team-history';
 
 export default function TeamHistoryPage() {
-  return <TeamHistory initialSnapshot={teamHistoryFixture} />;
+  return <TeamHistory />;
 }

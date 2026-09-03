@@ -1,7 +1,7 @@
-import { activityCenterFixture } from '../../src/activity-center';
+'use client';
 
-import { ActivityCenter } from './activity-center';
+import { ActivityLaterPage } from '../later-module';
 
 export default function ActivityPage() {
-  return <ActivityCenter initialSnapshot={activityCenterFixture} />;
+  return <ActivityLaterPage />;
 }

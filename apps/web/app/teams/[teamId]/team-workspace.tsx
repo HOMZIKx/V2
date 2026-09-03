@@ -1,405 +1,335 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useParams } from 'next/navigation';
 
-import {
-  appendTeamNote,
-  applyTeamTaskOutcome,
-  getTeamWorkspaceSummary,
-  type TeamNote,
-  type TeamTask,
-  type TeamTaskOutcome,
-  type TeamWorkspaceSnapshot,
-} from '../../../src/team-workspace';
+import { characterClassLabels } from '../../../src/character-profile';
+import { getSlotReadiness, equipmentSlots } from '../../../src/player-store';
+import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell, Icon } from '../../app-shell';
+import { DiscordEntryScreen } from '../../discord-entry';
 
-interface LocalTeamWorkspaceState {
-  readonly tasks: readonly TeamTask[];
-  readonly notes: readonly TeamNote[];
+function taskStatusLabel(status: string, dueLabel: string): string {
+  if (status === 'done') return 'Zrobione';
+  if (status === 'snoozed') return 'Później';
+  if (status === 'unavailable') return 'Nie mogę';
+  return dueLabel;
 }
 
-function taskStatusLabel(task: TeamTask): string {
-  const labels: Record<TeamTask['status'], string> = {
-    ready: task.dueLabel,
-    upcoming: task.dueLabel,
-    done: 'Zrobione',
-    snoozed: 'Później',
-    unavailable: 'Nie mogę',
-  };
-  return labels[task.status];
-}
-
-export function TeamWorkspace({ initialSnapshot }: { initialSnapshot: TeamWorkspaceSnapshot }) {
-  const [tasks, setTasks] = useState(initialSnapshot.tasks);
-  const [notes, setNotes] = useState(initialSnapshot.notes);
+export function TeamWorkspace() {
+  const params = useParams<{ teamId: string }>();
+  const teamId = params.teamId;
+  const { state, hydrated, openWorkspace, applyTaskOutcome, addNote, writesEnabled } =
+    usePlayerStore();
   const [noteDraft, setNoteDraft] = useState('');
   const [announcement, setAnnouncement] = useState('');
-  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+
+  const workspace = state.workspaces.find((entry) => entry.id === teamId) ?? null;
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(`destiled:team-workspace:${initialSnapshot.teamId}`);
-      if (saved) {
-        const state = JSON.parse(saved) as LocalTeamWorkspaceState;
-        if (Array.isArray(state.tasks) && Array.isArray(state.notes)) {
-          setTasks(state.tasks);
-          setNotes(state.notes);
-        }
-      }
-    } catch {
-      // Nie blokujemy zespołu przez nieaktualny lokalny podgląd.
-    } finally {
-      setWorkspaceLoaded(true);
-    }
-  }, [initialSnapshot.teamId]);
+    if (workspace) openWorkspace(workspace.id);
+  }, [workspace, openWorkspace]);
 
-  useEffect(() => {
-    if (!workspaceLoaded) return;
-    window.localStorage.setItem(
-      `destiled:team-workspace:${initialSnapshot.teamId}`,
-      JSON.stringify({ tasks, notes } satisfies LocalTeamWorkspaceState),
-    );
-  }, [initialSnapshot.teamId, notes, tasks, workspaceLoaded]);
-  const snapshot = useMemo(
-    () => ({ ...initialSnapshot, tasks, notes }),
-    [initialSnapshot, notes, tasks],
-  );
-  const summary = useMemo(() => getTeamWorkspaceSummary(snapshot), [snapshot]);
-
-  const handleTaskOutcome = (task: TeamTask, outcome: TeamTaskOutcome) => {
-    setTasks((current) => applyTeamTaskOutcome(current, task.id, outcome));
-    const messages: Record<TeamTaskOutcome, string> = {
-      done: `${task.title}: potwierdzono wykonanie.`,
-      snoozed: `${task.title}: odłożono na później.`,
-      unavailable: `${task.title}: zgłoszono brak możliwości wykonania.`,
+  const summary = useMemo(() => {
+    if (!workspace) return null;
+    const incompleteSets = workspace.characters.filter((character) => {
+      const set = character.sets.find((entry) => entry.id === character.activeSetId);
+      if (!set) return true;
+      return equipmentSlots.some((slot) => {
+        const readiness = getSlotReadiness(workspace, character, set, slot);
+        return readiness !== 'ready' && set.assignments[slot] !== null;
+      });
+    }).length;
+    return {
+      totalCharacters: workspace.characters.length,
+      readyTasks: workspace.tasks.filter((task) => task.status === 'ready').length,
+      incompleteSets,
+      memberCount: workspace.members.length,
     };
-    setAnnouncement(messages[outcome]);
-  };
+  }, [workspace]);
+
+  if (!hydrated) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
+    );
+  }
+
+  if (state.authStatus !== 'authenticated' || !state.viewer) {
+    return <DiscordEntryScreen />;
+  }
+
+  if (!workspace || !summary) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="team-workspace" id="main-content">
+          <section className="panel">
+            <h1>Nie znaleziono przestrzeni</h1>
+            <p>ID „{teamId}” nie istnieje w lokalnym store.</p>
+            <a href="/">Wróć na pulpit</a>
+          </section>
+        </main>
+      </AppShell>
+    );
+  }
+
+  const isSolo = workspace.members.length === 1;
 
   const handleNoteSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const note: TeamNote = {
-      id: `local-note-${notes.length + 1}`,
-      authorName: initialSnapshot.viewerName,
-      body: noteDraft,
-      createdLabel: 'teraz',
-      pinned: false,
-    };
-    const nextNotes = appendTeamNote(notes, note);
-    if (nextNotes === notes) return;
-    setNotes(nextNotes);
+    if (!writesEnabled) return;
+    addNote(workspace.id, noteDraft);
     setNoteDraft('');
-    setAnnouncement('Notatka została dodana do przestrzeni zespołu.');
+    setAnnouncement('Notatka zapisana w przestrzeni.');
   };
 
   return (
-    <AppShell activeSection="teams" viewerName={initialSnapshot.viewerName}>
+    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className="team-workspace" id="main-content">
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
-          <span>Zespoły</span>
+          <span>Przestrzenie</span>
           <Icon name="chevron" size={13} />
-          <strong>{initialSnapshot.teamName}</strong>
+          <strong>{workspace.name}</strong>
         </nav>
 
         <section className="workspace-hero">
           <div className="workspace-hero-copy">
-            <span className="eyebrow">Przestrzeń zespołu</span>
-            <h1>{initialSnapshot.teamName}</h1>
-            <p>{initialSnapshot.teamDescription}</p>
+            <span className="eyebrow">{isSolo ? 'Moja przestrzeń' : 'Przestrzeń zespołu'}</span>
+            <h1>{workspace.name}</h1>
+            <p>{workspace.description}</p>
             <div className="workspace-sync">
-              <span className="live-dot" />
-              <strong>{summary.onlineMembers} osoby online</strong>
-              <span>Stan lokalnego podglądu · {initialSnapshot.lastSynchronizedLabel}</span>
+              <strong>
+                {workspace.members.length} {workspace.members.length === 1 ? 'osoba' : 'osób'}
+              </strong>
+              <span>
+                Obecność live wyłączona w podglądzie · lokalny zapis · {workspace.updatedLabel}
+              </span>
             </div>
           </div>
           <div className="workspace-member-fan" aria-label="Członkowie przestrzeni">
-            {initialSnapshot.members.map((member) => (
-              <span
-                className={`member-avatar is-${member.state}`}
-                key={member.id}
-                title={member.displayName}
-              >
+            {workspace.members.map((member) => (
+              <span className="member-avatar is-unknown" key={member.id} title={member.displayName}>
                 {member.initials}
               </span>
             ))}
           </div>
         </section>
 
-        <nav aria-label="Sekcje zespołu" className="workspace-tabs">
-          <a aria-current="page" href="#overview">
+        <nav aria-label="Sekcje przestrzeni" className="workspace-tabs">
+          <a aria-current="page" href={`/teams/${workspace.id}`}>
             Przegląd
           </a>
-          <a href="#characters">Postacie</a>
-          <a href="#tasks">Akcje i timery</a>
-          <a href="#notes">Notatki</a>
-          <a href="/teams/asteria/members">Członkowie</a>
-          <a href="/teams/asteria/history">Historia</a>
+          <a href={`/teams/${workspace.id}#characters`}>Postacie</a>
+          <a href={`/teams/${workspace.id}#tasks`}>Akcje i timery</a>
+          <a href={`/teams/${workspace.id}#notes`}>Notatki</a>
+          <a href={`/teams/${workspace.id}/members`}>Członkowie</a>
+          <a href={`/teams/${workspace.id}/history`}>Historia</a>
         </nav>
 
-        <section aria-label="Podsumowanie przestrzeni" className="workspace-metrics" id="overview">
+        <section aria-label="Podsumowanie" className="workspace-metrics">
           <article>
-            <Icon name="character" />
-            <div>
-              <strong>{summary.totalCharacters}</strong>
-              <span>postacie</span>
-            </div>
-            <small>wspólnie prowadzone</small>
+            <strong>{summary.totalCharacters}</strong>
+            <span>postacie</span>
           </article>
           <article>
-            <Icon name="clock" />
-            <div>
-              <strong>{summary.readyTasks}</strong>
-              <span>gotowe akcje</span>
-            </div>
-            <small>czekają na człowieka</small>
+            <strong>{summary.readyTasks}</strong>
+            <span>gotowe akcje</span>
           </article>
           <article>
-            <Icon name="equipment" />
-            <div>
-              <strong>{summary.incompleteSets}</strong>
-              <span>niepełne sety</span>
-            </div>
-            <small>wymagają sprawdzenia</small>
+            <strong>{summary.incompleteSets}</strong>
+            <span>sety do sprawdzenia</span>
           </article>
           <article>
-            <Icon name="team" />
-            <div>
-              <strong>{summary.onlineMembers}</strong>
-              <span>osoby online</span>
-            </div>
-            <small>w tym podglądzie</small>
+            <strong>{summary.memberCount}</strong>
+            <span>członków</span>
           </article>
         </section>
 
-        <div className="workspace-grid">
-          <div className="workspace-main-column">
-            <section className="panel workspace-characters-panel" id="characters">
-              <header className="panel-header">
-                <div>
-                  <span className="section-kicker">Wspólne postacie</span>
-                  <h2>Stan postaci i zestawów</h2>
-                </div>
-                <a className="secondary-button" href="/teams/asteria/characters/new">
-                  <Icon name="plus" size={15} /> Dodaj postać
+        <section className="workspace-grid">
+          <section className="panel" id="characters">
+            <header>
+              <h2>Stan postaci i zestawów</h2>
+              <a className="primary-button" href={`/teams/${workspace.id}/characters/new`}>
+                <Icon name="plus" size={16} /> Dodaj postać
+              </a>
+            </header>
+            {workspace.characters.length === 0 ? (
+              <div className="empty-workspace">
+                <h3>Dodaj pierwszą postać</h3>
+                <p>Minimum: nazwa i klasa. Potem EQ, timery i notatki.</p>
+                <a className="primary-button" href={`/teams/${workspace.id}/characters/new`}>
+                  Dodaj postać
                 </a>
-              </header>
-              <div className="workspace-character-list">
-                {initialSnapshot.characters.map((character) => {
-                  const setComplete = character.equipmentConfirmed === character.equipmentCapacity;
-                  const progress = Math.round(
-                    (character.equipmentConfirmed / character.equipmentCapacity) * 100,
+              </div>
+            ) : (
+              <div className="character-cards">
+                {workspace.characters.map((character) => {
+                  const set =
+                    character.sets.find((entry) => entry.id === character.activeSetId) ??
+                    character.sets[0];
+                  const confirmed = set
+                    ? equipmentSlots.filter(
+                        (slot) => getSlotReadiness(workspace, character, set, slot) === 'ready',
+                      ).length
+                    : 0;
+                  const readyTimers = workspace.timers.filter(
+                    (timer) => timer.characterId === character.id && timer.status === 'ready',
+                  ).length;
+                  const nextTimer = workspace.timers.find(
+                    (timer) => timer.characterId === character.id,
                   );
                   return (
-                    <article className="workspace-character-row" key={character.id}>
-                      <div className="workspace-character-figure">
-                        <img
-                          alt={`${character.classLabel} — ${character.name}`}
-                          src={character.imagePath}
-                        />
+                    <article key={character.id}>
+                      <div className="character-card-visual">
+                        {character.imagePath ? (
+                          <img alt="" src={character.imagePath} />
+                        ) : (
+                          <span className="missing-render">Brak zatwierdzonego renderu</span>
+                        )}
                       </div>
-                      <div className="workspace-character-copy">
-                        <div className="workspace-character-heading">
-                          <div>
-                            <span>
-                              {character.classLabel} · poziom {character.level}
-                            </span>
-                            <h3>{character.name}</h3>
-                          </div>
-                          {character.collaboratorLabel && (
-                            <span className="collaborator-pill">
-                              <span className="live-dot" /> {character.collaboratorLabel}
-                            </span>
-                          )}
-                        </div>
+                      <div className="character-card-copy">
+                        <h3>{character.name}</h3>
                         <p>
-                          Prowadzi: <strong>{character.responsibleMember}</strong>
+                          {characterClassLabels[character.characterClass]}
+                          {character.level ? ` · poziom ${character.level}` : ''}
                         </p>
-                        <div className="set-progress-heading">
-                          <span>Set: {character.activeSetName}</span>
-                          <strong className={setComplete ? 'is-complete' : ''}>
-                            {character.equipmentConfirmed}/{character.equipmentCapacity}{' '}
-                            potwierdzone
-                          </strong>
-                        </div>
-                        <div
-                          aria-label={`Kompletność zestawu ${progress}%`}
-                          className="set-progress-track"
-                        >
-                          <span style={{ width: `${progress}%` }} />
-                        </div>
-                        <div className="workspace-character-actions">
-                          <span
-                            className={
-                              character.readyTimers > 0 ? 'timer-chip is-ready' : 'timer-chip'
-                            }
-                          >
-                            <Icon name="clock" size={14} /> {character.nextTimerLabel}
-                          </span>
-                          <a href={`/teams/asteria/characters/${character.id}`}>
-                            Otwórz kartę postaci
-                          </a>
-                        </div>
+                        <small>
+                          Set: {set?.name ?? 'brak'} · {confirmed}/8 potwierdzone lokalizacje
+                        </small>
+                        <small>
+                          {readyTimers > 0
+                            ? `${readyTimers} timer gotowy`
+                            : nextTimer?.remainingLabel ?? 'Brak timerów'}
+                        </small>
+                        <a href={`/teams/${workspace.id}/characters/${character.id}`}>
+                          Otwórz kartę EQ
+                        </a>
                       </div>
                     </article>
                   );
                 })}
               </div>
-            </section>
+            )}
+          </section>
 
-            <section className="panel workspace-tasks-panel" id="tasks">
-              <header className="panel-header">
-                <div>
-                  <span className="section-kicker">Wspólne ustalenia</span>
-                  <h2>Akcje zespołu</h2>
-                </div>
-                <span className="count-badge">{summary.readyTasks}</span>
-              </header>
-              <div className="workspace-task-list">
-                {tasks.map((task) => (
-                  <article className={`workspace-task is-${task.source}`} key={task.id}>
-                    <span className="workspace-task-icon">
-                      <Icon
-                        name={
-                          task.source === 'equipment'
-                            ? 'equipment'
-                            : task.source === 'timer'
-                              ? 'clock'
-                              : 'team'
-                        }
-                      />
-                    </span>
-                    <div className="workspace-task-copy">
-                      <div className="workspace-task-heading">
-                        <div>
-                          <strong>{task.title}</strong>
-                          <span>
-                            {task.characterName} · {task.assigneeName}
-                          </span>
-                        </div>
-                        <span className={`status-pill is-${task.status}`}>
-                          {taskStatusLabel(task)}
-                        </span>
-                      </div>
+          <section className="panel" id="tasks">
+            <header>
+              <h2>Akcje zespołu</h2>
+            </header>
+            {workspace.tasks.length === 0 ? (
+              <p className="empty-copy">Brak otwartych akcji.</p>
+            ) : (
+              <div className="task-list">
+                {workspace.tasks.map((task) => (
+                  <article key={task.id}>
+                    <div>
+                      <h3>{task.title}</h3>
                       <p>{task.detail}</p>
-                      {task.status === 'ready' && (
-                        <div className="action-controls">
-                          <button
-                            className="text-button is-confirm"
-                            onClick={() => handleTaskOutcome(task, 'done')}
-                            type="button"
-                          >
-                            <Icon name="check" size={15} /> Zrobione
-                          </button>
-                          <button
-                            className="text-button"
-                            onClick={() => handleTaskOutcome(task, 'snoozed')}
-                            type="button"
-                          >
-                            <Icon name="clock" size={15} /> Później
-                          </button>
-                          <button
-                            className="text-button"
-                            onClick={() => handleTaskOutcome(task, 'unavailable')}
-                            type="button"
-                          >
-                            Nie mogę
-                          </button>
-                        </div>
-                      )}
+                      <small>
+                        {task.characterName} · {task.assigneeName} ·{' '}
+                        {taskStatusLabel(task.status, task.dueLabel)}
+                      </small>
                     </div>
+                    {task.status === 'ready' || task.status === 'upcoming' ? (
+                      <div className="task-actions">
+                        <button
+                          disabled={!writesEnabled}
+                          onClick={() => {
+                            applyTaskOutcome(workspace.id, task.id, 'done');
+                            setAnnouncement(`${task.title}: potwierdzono wykonanie.`);
+                          }}
+                          type="button"
+                        >
+                          Zrobione
+                        </button>
+                        <button
+                          disabled={!writesEnabled}
+                          onClick={() => {
+                            applyTaskOutcome(workspace.id, task.id, 'snoozed');
+                            setAnnouncement(`${task.title}: odłożono na później.`);
+                          }}
+                          type="button"
+                        >
+                          Później
+                        </button>
+                        <button
+                          disabled={!writesEnabled}
+                          onClick={() => {
+                            applyTaskOutcome(workspace.id, task.id, 'unavailable');
+                            setAnnouncement(`${task.title}: zgłoszono brak możliwości.`);
+                          }}
+                          type="button"
+                        >
+                          Nie mogę
+                        </button>
+                      </div>
+                    ) : (
+                      <strong>{taskStatusLabel(task.status, task.dueLabel)}</strong>
+                    )}
                   </article>
                 ))}
               </div>
-            </section>
-          </div>
+            )}
+          </section>
 
-          <aside className="workspace-side-column">
-            <section className="panel workspace-members-panel">
-              <header className="panel-header">
-                <div>
-                  <span className="section-kicker">Dostęp</span>
-                  <h2>Członkowie</h2>
-                </div>
-                <a
-                  aria-label="Zarządzaj członkami"
-                  className="quiet-icon-button"
-                  href="/teams/asteria/members"
-                >
-                  <Icon name="settings" size={16} />
-                </a>
-              </header>
-              <div className="workspace-member-list">
-                {initialSnapshot.members.map((member) => (
-                  <div className="workspace-member-row" key={member.id}>
-                    <span className={`member-avatar is-${member.state}`}>{member.initials}</span>
-                    <div>
-                      <strong>{member.displayName}</strong>
-                      <span>{member.roleLabel}</span>
-                    </div>
-                    <span className={`presence is-${member.state}`}>
-                      {member.state === 'online'
-                        ? 'online'
-                        : member.state === 'away'
-                          ? 'zaraz wracam'
-                          : 'offline'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="panel workspace-notes-panel" id="notes">
-              <header className="panel-header">
-                <div>
-                  <span className="section-kicker">Pamięć zespołu</span>
-                  <h2>Notatki</h2>
-                </div>
-                <Icon name="note" size={17} />
-              </header>
-              <form className="team-note-form" onSubmit={handleNoteSubmit}>
-                <label htmlFor="team-note">Nowa notatka</label>
+          <section className="panel" id="notes">
+            <header>
+              <h2>Notatki przestrzeni</h2>
+            </header>
+            <form className="note-form" onSubmit={handleNoteSubmit}>
+              <label>
+                Nowa notatka
                 <textarea
-                  id="team-note"
                   maxLength={280}
                   onChange={(event) => setNoteDraft(event.target.value)}
-                  placeholder="Zapisz krótką informację dla zespołu…"
-                  rows={3}
                   value={noteDraft}
                 />
-                <div>
-                  <small>{noteDraft.length}/280</small>
-                  <button disabled={noteDraft.trim().length === 0} type="submit">
-                    Dodaj notatkę
-                  </button>
-                </div>
-              </form>
-              <div className="team-note-list">
-                {notes.map((note) => (
-                  <article
-                    className={note.pinned ? 'team-note is-pinned' : 'team-note'}
-                    key={note.id}
-                  >
-                    <div>
-                      <strong>{note.authorName}</strong>
-                      <time>{note.createdLabel}</time>
-                    </div>
-                    <p>{note.body}</p>
-                    {note.pinned && <span>Przypięta</span>}
-                  </article>
-                ))}
-              </div>
-            </section>
+              </label>
+              <button disabled={!writesEnabled || noteDraft.trim().length === 0} type="submit">
+                Dodaj notatkę
+              </button>
+            </form>
+            <ul className="note-list">
+              {workspace.notes.map((note) => (
+                <li key={note.id}>
+                  <strong>{note.authorName}</strong>
+                  <span>{note.createdAtLabel}</span>
+                  <p>{note.body}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <aside className="panel">
+            <header>
+              <h2>Członkowie</h2>
+              <a href={`/teams/${workspace.id}/members`}>Zarządzaj członkami</a>
+            </header>
+            <ul className="member-list">
+              {workspace.members.map((member) => (
+                <li key={member.id}>
+                  <span className="member-avatar">{member.initials}</span>
+                  <div>
+                    <strong>{member.displayName}</strong>
+                    <small>
+                      {member.role === 'owner' ? 'Właściciel' : 'Członek'} · obecność live wyłączona
+                    </small>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </aside>
-        </div>
+        </section>
 
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
         <div className="mock-notice">
-          Podgląd funkcji · notatki i decyzje są zachowywane lokalnie. Wspólny zapis, realtime i
-          Discord wymagają API/Postgresa oraz integracji z botem.
+          First-slice workspace · mutacje trafiają do wspólnego localStorage i dziennika historii.
+          Realtime / Discord delivery niedostępne w tym podglądzie.
         </div>
       </main>
     </AppShell>

@@ -2,7 +2,9 @@
 
 import { useState, type ReactNode } from 'react';
 
-export type AppSection = 'dashboard' | 'teams' | 'characters' | 'maps' | 'market' | 'activity';
+import { usePlayerStore } from '../src/player-store-react';
+
+export type AppSection = 'dashboard' | 'teams' | 'characters' | 'maps' | 'market' | 'activity' | 'later';
 
 export type IconName =
   | 'activity'
@@ -77,20 +79,6 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
-const navigation = [
-  { id: 'dashboard', label: 'Pulpit', icon: 'home', href: '/' },
-  { id: 'teams', label: 'Moje zespoły', icon: 'team', href: '/teams/asteria' },
-  { id: 'characters', label: 'Postacie', icon: 'character', href: '/characters' },
-  { id: 'maps', label: 'Mapy', icon: 'map', href: '/maps' },
-  { id: 'market', label: 'Targ', icon: 'market', href: '/market' },
-  { id: 'activity', label: 'Aktywność', icon: 'activity', href: '/activity' },
-] as const satisfies ReadonlyArray<{
-  id: AppSection;
-  label: string;
-  icon: IconName;
-  href: string | null;
-}>;
-
 export function AppShell({
   activeSection,
   children,
@@ -101,6 +89,21 @@ export function AppShell({
   viewerName: string;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { state } = usePlayerStore();
+  const primaryWorkspaceId =
+    state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? null;
+  const teamsHref = primaryWorkspaceId ? `/teams/${primaryWorkspaceId}` : '/#first-use';
+  const readyCount = state.workspaces.reduce(
+    (count, workspace) =>
+      count + workspace.timers.filter((timer) => timer.status === 'ready').length,
+    0,
+  );
+
+  const navigation = [
+    { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
+    { id: 'teams' as const, label: 'Moje przestrzenie', icon: 'team' as const, href: teamsHref },
+    { id: 'characters' as const, label: 'Postacie', icon: 'character' as const, href: '/characters' },
+  ];
 
   return (
     <div className="app-shell">
@@ -121,38 +124,40 @@ export function AppShell({
         </a>
 
         <nav aria-label="Główna nawigacja" className="global-nav">
-          {navigation.map((item) =>
-            (
-              <a
-                aria-current={item.id === activeSection ? 'page' : undefined}
-                className="global-nav-item"
-                href={item.href}
-                key={item.id}
-              >
-                <Icon name={item.icon} size={16} />
-                {item.label}
-              </a>
-            ),
-          )}
+          {navigation.map((item) => (
+            <a
+              aria-current={item.id === activeSection ? 'page' : undefined}
+              className="global-nav-item"
+              href={item.href}
+              key={item.id}
+            >
+              <Icon name={item.icon} size={16} />
+              {item.label}
+            </a>
+          ))}
         </nav>
 
         <div className="topbar-actions">
-          <a aria-label="Szukaj w Targu" className="icon-button" href="/market">
-            <Icon name="search" />
-          </a>
+          <span className="topbar-later-pill" title="Późniejsze moduły poza pierwszym slice">
+            Mapy / Targ / Aktywność — później
+          </span>
           <a
-            aria-label="Przejdź do aktywności"
+            aria-label={
+              readyCount > 0
+                ? `Pulpit: ${readyCount} gotowych timerów`
+                : 'Pulpit — brak gotowych timerów'
+            }
             className="icon-button notification-button"
-            href="/activity"
+            href="/"
           >
             <Icon name="bell" />
-            <span className="notification-dot" />
+            {readyCount > 0 ? <span className="notification-dot" /> : null}
           </a>
-          <a aria-label="Otwórz przestrzeń zespołu" className="profile-button" href="/teams/asteria">
+          <a aria-label="Otwórz pulpit konta" className="profile-button" href="/">
             <span className="profile-avatar">{viewerName.slice(0, 1).toUpperCase()}</span>
             <span className="profile-copy">
               <strong>{viewerName}</strong>
-              <small>Członek</small>
+              <small>Discord</small>
             </span>
             <Icon name="chevron" size={15} />
           </a>
@@ -160,19 +165,18 @@ export function AppShell({
       </header>
 
       <aside className={`mobile-drawer${mobileMenuOpen ? ' is-open' : ''}`}>
-        {navigation.map((item) =>
-          (
-            <a
-              aria-current={item.id === activeSection ? 'page' : undefined}
-              className="drawer-item"
-              href={item.href}
-              key={item.id}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </a>
-          ),
-        )}
+        {navigation.map((item) => (
+          <a
+            aria-current={item.id === activeSection ? 'page' : undefined}
+            className="drawer-item"
+            href={item.href}
+            key={item.id}
+          >
+            <Icon name={item.icon} />
+            {item.label}
+          </a>
+        ))}
+        <p className="drawer-later">Mapy, Targ i Aktywność wrócą po domknięciu first slice.</p>
       </aside>
 
       {children}

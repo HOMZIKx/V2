@@ -1,6 +1,7 @@
-import { incomingInvitationFixture } from '../../../src/team-membership';
+'use client';
+
 import { InvitationResponse } from './invitation-response';
 
 export default function InvitationPage() {
-  return <InvitationResponse initialInvitation={incomingInvitationFixture} />;
+  return <InvitationResponse />;
 }

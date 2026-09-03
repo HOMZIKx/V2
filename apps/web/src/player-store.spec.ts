@@ -1,0 +1,72 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  completeDiscordAuth,
+  createCharacter,
+  createInitialPlayerStore,
+  createWorkspace,
+  getReadyTimers,
+  getSlotReadiness,
+  markTimerDone,
+  seedDemoData,
+  startDiscordAuth,
+} from './player-store';
+
+describe('player store first-slice', () => {
+  it('starts unauthenticated and can complete Discord entry', () => {
+    let state = createInitialPlayerStore();
+    expect(state.authStatus).toBe('unauthenticated');
+    state = startDiscordAuth(state);
+    expect(state.authStatus).toBe('authenticating');
+    state = completeDiscordAuth(state, 'authenticated');
+    expect(state.authStatus).toBe('authenticated');
+    expect(state.viewer?.displayName).toBe('Mateusz');
+    expect(state.workspaces).toEqual([]);
+  });
+
+  it('creates a workspace and first character without invented EQ', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Moja przestrzeń');
+    expect(state.workspaces).toHaveLength(1);
+    const workspaceId = state.workspaces[0]!.id;
+    state = createCharacter(state, workspaceId, {
+      name: 'NowaSura',
+      characterClass: 'sura',
+      gender: 'male',
+      level: 42,
+      responsibleMemberId: 'mateusz',
+      startingSetName: 'Główny',
+    });
+    const workspace = state.workspaces[0]!;
+    expect(workspace.characters).toHaveLength(1);
+    expect(workspace.characters[0]!.name).toBe('NowaSura');
+    expect(workspace.characters[0]!.sets[0]!.name).toBe('Główny');
+    expect(Object.values(workspace.characters[0]!.sets[0]!.assignments).every((v) => v === null)).toBe(
+      true,
+    );
+    expect(workspace.history[0]!.title).toContain('Utworzono postać');
+  });
+
+  it('seeds demo data with ready timers and set readiness', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = seedDemoData(state);
+    expect(state.workspaces[0]!.id).toBe('asteria');
+    expect(getReadyTimers(state).length).toBeGreaterThan(0);
+    const workspace = state.workspaces[0]!;
+    const character = workspace.characters.find((entry) => entry.id === 'nerwnicht')!;
+    const set = character.sets.find((entry) => entry.id === 'war')!;
+    expect(getSlotReadiness(workspace, character, set, 'weapon')).toBe('ready');
+    expect(getSlotReadiness(workspace, character, set, 'shield')).toBe('available_elsewhere');
+  });
+
+  it('resets timers idempotently with operation id', () => {
+    let state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
+    const timerId = 'horse-medal-aalpsik';
+    state = markTimerDone(state, 'asteria', timerId, 'op-1');
+    const first = state.workspaces[0]!.timers.find((timer) => timer.id === timerId)!;
+    expect(first.remainingLabel).toBe('odliczanie rozpoczęte');
+    state = markTimerDone(state, 'asteria', timerId, 'op-1');
+    const second = state.workspaces[0]!.timers.find((timer) => timer.id === timerId)!;
+    expect(second.operationId).toBe('op-1');
+  });
+});

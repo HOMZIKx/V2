@@ -1,36 +1,53 @@
-# Cursor → Owner / ChatGPT
+# Cursor → Owner
 
 ## 1. Status
 
-`DESTILED_WEB_QUALITY_AUDIT_COMPLETE`
+`DESTILED_FIRST_SLICE_FIX_IMPLEMENTED`
 
 ## 2. Task
 
-Owner-requested analysis of DESTILED Web logic, functionality and content vs
-accepted first-player contracts (D-038–D-060).
+Owner: repair DESTILED Web to match accepted first-player requirements and
+logical app needs (D-038–D-060 / D-061).
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- Runtime check: Next.js dev on `:3000`
 
-## 3. Verdict
+## 3. Delivered
 
-Owner assessment confirmed: polished **demo shell**, not a complete first-player
-product path. Strong visual shell; weak journey logic, incomplete mutations,
-fake live chrome, premature Maps/Market/Activity in primary nav.
+- Shared local player store (`player-store` + provider) for Discord entry →
+  workspace → character → EQ/timers/notes → history
+- Discord entry outcomes (eligible / cancel / unavailable / ineligible / revoke)
+- First-use: create workspace + optional demo seed
+- Contract home (attention / last opened / workspaces / recent changes)
+- Nav narrowed to Pulpit / Przestrzenie / Postacie; Maps/Market/Activity later
+- Honesty pass: no fake live online/bell-to-activity; local-session labeling
+- Character create appears in workspace list; mutations append history
+- EQ: plan set, confirm location, mark moved, create item, readiness labels,
+  timer done with operation id
+- Sync localStorage on each mutation (no stale overwrite)
 
-## 4. Artifacts
+## 4. Validation
 
-- Report: `docs/ai/DESTILED_WEB_QUALITY_AUDIT_2026-09-03.md`
-- Screenshots: `/opt/cursor/artifacts/screenshots/destiled-*.png`
+- `pnpm typecheck`: PASS
+- `pnpm test`: PASS (41)
+- `pnpm e2e`: PASS (12)
 
-## 5. Recommended next coding task (needs owner OK)
+## 5. Screenshots
 
-Start **P0 honesty + first-path closure** from the audit (narrow nav, Discord
-entry mock, create workspace, home priorities, character create → list, remove
-hardcoded Asteria). No API/Discord production integration yet.
+- `/opt/cursor/artifacts/screenshots/destiled-fixed-01-discord-entry.png`
+- `/opt/cursor/artifacts/screenshots/destiled-fixed-02-first-use.png`
+- `/opt/cursor/artifacts/screenshots/destiled-fixed-03-home.png`
+- `/opt/cursor/artifacts/screenshots/destiled-fixed-04-workspace.png`
+- `/opt/cursor/artifacts/screenshots/destiled-fixed-05-equipment.png`
 
-## 6. Marker
+## 6. Remaining / not claimed done
 
-`AWAITING_OWNER_P0_FIX_PRIORITY`
+- Real Discord OAuth, API, Postgres, realtime, Discord reminder delivery
+- Full set-readiness matrix polish and item edit forms beyond create
+- Production Maps/Market/Activity (intentionally later)
+- Merge to `preview/destiled-web` still owner decision
+
+## 7. Marker
+
+`READY_FOR_OWNER_REVIEW`

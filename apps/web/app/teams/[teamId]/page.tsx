@@ -1,6 +1,7 @@
-import { teamWorkspaceFixture } from '../../../src/team-workspace';
+'use client';
+
 import { TeamWorkspace } from './team-workspace';
 
 export default function TeamWorkspacePage() {
-  return <TeamWorkspace initialSnapshot={teamWorkspaceFixture} />;
+  return <TeamWorkspace />;
 }
