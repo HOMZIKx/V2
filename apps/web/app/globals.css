@@ -2275,6 +2275,43 @@ button:disabled {
   font-size: 8px;
 }
 
+.set-add-button,
+.set-add-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.set-add-button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(158, 170, 194, 0.22);
+  border-radius: 8px;
+  background: rgba(12, 16, 24, 0.9);
+  color: #d7deea;
+  font-size: 11px;
+}
+
+.set-add-form input {
+  min-width: 140px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(158, 170, 194, 0.22);
+  border-radius: 8px;
+  background: #0b0e14;
+  color: #e3e6ec;
+  font-size: 11px;
+}
+
+.set-add-form button {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
 .equipment-layout {
   display: grid;
   grid-template-columns: minmax(560px, 1.35fr) minmax(360px, 0.9fr) minmax(270px, 0.58fr);
@@ -2850,7 +2887,15 @@ button:disabled {
 
 .character-timer > div + button,
 .character-timer button {
-  margin-top: 12px;
+  margin-top: 0;
+}
+
+.character-timer .character-timer-footer button {
+  margin-top: 0;
+}
+
+.character-timer > p {
+  margin-top: 10px;
 }
 
 .character-timer.is-ready {
@@ -2866,13 +2911,21 @@ button:disabled {
 
 .character-timer-icon {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   place-items: center;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--timer-tone) 28%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--timer-tone) 8%, transparent);
+  background: color-mix(in srgb, var(--timer-tone) 8%, #05070c 70%);
   color: var(--timer-tone);
+}
+
+.character-timer-icon img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .character-timer-heading div strong,
@@ -2882,19 +2935,19 @@ button:disabled {
 
 .character-timer-heading div strong {
   color: #dfe2e8;
-  font-size: 11px;
-  font-weight: 590;
+  font-size: 14px;
+  font-weight: 620;
 }
 
 .character-timer-heading div span {
   margin-top: 4px;
-  color: #747d8e;
-  font-size: 8px;
+  color: #9aa3b5;
+  font-size: 11px;
 }
 
 .character-timer-heading em {
   color: var(--timer-tone);
-  font-size: 8px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 620;
 }

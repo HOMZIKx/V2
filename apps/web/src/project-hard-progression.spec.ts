@@ -4,11 +4,17 @@ import {
   biologistProgressLabel,
   biologistQuestById,
   horseAdvanceDetail,
+  inferProgressionKind,
   progressionKindsForLevel,
+  progressionTimerIcons,
+  progressionTimerLabels,
   projectHardBiologistQuests,
+  projectHardExtraReadingRules,
   projectHardHorseRules,
   projectHardProductFacts,
+  projectHardProgressionCycles,
   projectHardSkillBookRules,
+  projectHardSoulStoneRules,
 } from './project-hard-progression';
 
 describe('project hard progression config', () => {
@@ -32,11 +38,51 @@ describe('project hard progression config', () => {
     expect(horseAdvanceDetail(12, 13)).toContain('23 h');
   });
 
-  it('encodes unlock levels for cyclical PH timers', () => {
-    expect(progressionKindsForLevel(19)).toEqual(['skill_book']);
-    expect(progressionKindsForLevel(20)).toEqual(['skill_book', 'horse']);
-    expect(progressionKindsForLevel(30)).toEqual(['skill_book', 'horse', 'biologist']);
+  it('tracks reading families plus level-gated horse/biologist cycles', () => {
+    expect(progressionKindsForLevel(19)).toEqual([
+      'skill_book',
+      'soul_stone',
+      'leadership',
+      'polymorph',
+      'mining',
+    ]);
+    expect(progressionKindsForLevel(20)).toEqual([
+      'skill_book',
+      'soul_stone',
+      'leadership',
+      'polymorph',
+      'mining',
+      'horse',
+    ]);
+    expect(progressionKindsForLevel(30)).toEqual([
+      'skill_book',
+      'soul_stone',
+      'leadership',
+      'polymorph',
+      'mining',
+      'horse',
+      'biologist',
+    ]);
+    expect(projectHardProgressionCycles).toHaveLength(7);
     expect(projectHardSkillBookRules.dailyReset).toBe('midnight');
+    expect(projectHardSoulStoneRules.dailyReset).toBe('midnight');
+    expect(projectHardExtraReadingRules.dailyReset).toBe('midnight');
+    expect(projectHardSoulStoneRules.purpose).toContain('P');
+    expect(progressionTimerLabels.soul_stone).toBe('Kamień duszy');
+    expect(progressionTimerLabels.leadership).toBe('Dowodzenie');
+    expect(progressionTimerLabels.polymorph).toBe('Polimorfia');
+    expect(progressionTimerLabels.mining).toBe('Górnictwo');
+    expect(progressionTimerIcons.skill_book).toContain('skill-book');
+    expect(progressionTimerIcons.soul_stone).toContain('soul-stone');
+    expect(progressionTimerIcons.leadership).toContain('leadership');
+    expect(progressionTimerIcons.polymorph).toContain('polymorph');
+    expect(progressionTimerIcons.mining).toContain('mining');
+    expect(progressionTimerIcons.biologist).toContain('biologist');
+    expect(progressionTimerIcons.horse).toContain('horse-medal');
+    expect(inferProgressionKind('Kamień duszy')).toBe('soul_stone');
+    expect(inferProgressionKind('Dowodzenie')).toBe('leadership');
+    expect(inferProgressionKind('Polimorfia')).toBe('polymorph');
+    expect(inferProgressionKind('Górnictwo')).toBe('mining');
     expect(projectHardProductFacts.hasAlchemy).toBe(false);
     expect(projectHardProductFacts.hasSashes).toBe(false);
     expect(projectHardProductFacts.maxCharacterLevel).toBe(99);

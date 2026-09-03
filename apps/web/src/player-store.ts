@@ -36,7 +36,10 @@ import {
   inferProgressionKind,
   nextMidnightIso,
   nextMidnightLabel,
+  progressionCycleByKind,
   progressionKindsForLevel,
+  progressionTimerIcons,
+  progressionTimerLabels,
   projectHardHorseRules,
   projectHardProductFacts,
   restartAfterDone,
@@ -122,6 +125,8 @@ export interface ProgressTimer {
   readonly operationId: string | null;
   /** Project Hard progression family when known. */
   readonly kind?: ProgressionKind;
+  /** Illustration matching the cycle (book / soul stone / biologist / horse medal). */
+  readonly iconPath?: string;
 }
 
 export interface TeamTask {
@@ -262,69 +267,63 @@ function buildProgressionTimer(
   kind: ProgressionKind,
   level: number | null,
 ): ProgressTimer {
+  const cycle = progressionCycleByKind(kind);
   const midnight = nextMidnightLabel();
+  const base = {
+    characterId,
+    label: cycle.label,
+    iconPath: cycle.iconPath,
+    lastActorName: null as string | null,
+    lastConfirmedAt: null as string | null,
+    discordReminder: true,
+    reminderState: 'unavailable' as const,
+    operationId: null as string | null,
+    kind,
+  };
+
   if (kind === 'horse') {
     return {
+      ...base,
       id: createId('timer-horse'),
-      characterId,
-      label: 'Jazda konna',
-      detail: `${horseAdvanceDetail(1, 2)} · oddanie u Stajennego · cooldown 23 h`,
+      detail: `${horseAdvanceDetail(1, 2)} · ${cycle.detailReady}`,
       status: 'ready',
       readyAtIso: new Date().toISOString(),
-      remainingLabel: 'gotowe do oddania',
+      remainingLabel: cycle.remainingReady,
       progressPercent: 100,
-      lastActorName: null,
-      lastConfirmedAt: null,
-      discordReminder: true,
-      reminderState: 'unavailable',
-      operationId: null,
-      kind: 'horse',
     };
   }
+
   if (kind === 'biologist') {
     const quest = level !== null ? biologistQuestForLevel(level) : null;
     return {
+      ...base,
       id: createId('timer-bio'),
-      characterId,
-      label: 'Biolog',
       detail: quest
         ? `${biologistProgressLabel(quest, 0)} · ${
             quest.cooldownOnlyOnSuccess
               ? 'cooldown tylko po udanym oddaniu'
               : 'cooldown po każdej próbie'
           } · reset o północy`
-        : 'Oddawanie u biologa · reset o północy',
+        : cycle.detailReady,
       status: 'ready',
       readyAtIso: new Date().toISOString(),
-      remainingLabel: 'gotowe do oddania',
+      remainingLabel: cycle.remainingReady,
       progressPercent: 100,
-      lastActorName: null,
-      lastConfirmedAt: null,
-      discordReminder: true,
-      reminderState: 'unavailable',
-      operationId: null,
-      kind: 'biologist',
     };
   }
+
   return {
-    id: createId('timer-book'),
-    characterId,
-    label: 'Księga umiejętności',
-    detail: `Czytanie dostępne cały dzień · limit czytań resetuje się o północy · do ${midnight}`,
+    ...base,
+    id: createId(`timer-${kind}`),
+    detail: `${cycle.detailReady} · do ${midnight}`,
     status: 'ready',
     readyAtIso: new Date().toISOString(),
-    remainingLabel: 'gotowe do czytania',
+    remainingLabel: cycle.remainingReady,
     progressPercent: 100,
-    lastActorName: null,
-    lastConfirmedAt: null,
-    discordReminder: true,
-    reminderState: 'unavailable',
-    operationId: null,
-    kind: 'skill_book',
   };
 }
 
-/** Project Hard cyclical character timers: skill book + horse (+ biologist from lvl 30). */
+/** Project Hard cyclical character timers: reading families + horse / biologist by level. */
 export function defaultProgressionTimers(
   characterId: string,
   level: number | null,
@@ -813,90 +812,161 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
     items,
     timers: characters.flatMap((character) => {
       const base = defaultProgressionTimers(character.id, character.level);
+      const withStableIds = (timers: readonly ProgressTimer[]): ProgressTimer[] =>
+        timers.map((timer) => ({
+          ...timer,
+          id: `${timer.kind}-${character.id}`,
+        }));
+
       // Keep a couple of lived-in demo states so the board is not all "ready".
       if (character.id === 'nerwnicht') {
-        return base.map((timer) =>
-          timer.kind === 'skill_book'
-            ? {
-                ...timer,
-                id: 'skill-book-nerwnicht',
-                detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
-                status: 'running' as const,
-                readyAtIso: nextMidnightIso(),
-                remainingLabel: `do ${midnight}`,
-                progressPercent: 82,
-                lastActorName: 'Mateusz',
-                lastConfirmedAt: 'wczoraj 21:10',
-              }
-            : timer.kind === 'biologist'
-              ? {
-                  ...timer,
-                  id: 'biologist-nerwnicht',
-                  detail: `${biologistProgressLabel(biologistQuestForLevel(75)!, 12)} · cooldown po każdej próbie · reset o północy`,
-                  status: 'running' as const,
-                  readyAtIso: nextMidnightIso(),
-                  remainingLabel: `do ${midnight}`,
-                  progressPercent: 55,
-                  lastActorName: 'Mateusz',
-                  lastConfirmedAt: 'wczoraj 22:40',
-                }
-              : {
-                  ...timer,
-                  id: 'horse-nerwnicht',
-                  detail: `${horseAdvanceDetail(20, 21)} · u Stajennego`,
-                },
-        );
+        return withStableIds(base).map((timer) => {
+          if (timer.kind === 'skill_book') {
+            return {
+              ...timer,
+              detail: 'Smoczy Wir M8 → M9 · limit czytań resetuje się o północy',
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 82,
+              lastActorName: 'Mateusz',
+              lastConfirmedAt: 'wczoraj 21:10',
+            };
+          }
+          if (timer.kind === 'soul_stone') {
+            return {
+              ...timer,
+              detail: 'Błyskawica P · mistrzostwo pasywne · limit czytań resetuje się o północy',
+              status: 'ready' as const,
+              remainingLabel: 'gotowe do czytania',
+              progressPercent: 100,
+              lastActorName: 'Mateusz',
+              lastConfirmedAt: 'wczoraj 19:40',
+            };
+          }
+          if (timer.kind === 'leadership') {
+            return {
+              ...timer,
+              detail: 'Wu Zi M6 → M7 · Dowodzenie · limit czytań resetuje się o północy',
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 48,
+              lastActorName: 'Mateusz',
+              lastConfirmedAt: 'wczoraj 20:15',
+            };
+          }
+          if (timer.kind === 'polymorph') {
+            return {
+              ...timer,
+              detail: 'Zaaw. Księga Polimorfii · M3 · limit czytań resetuje się o północy',
+            };
+          }
+          if (timer.kind === 'mining') {
+            return {
+              ...timer,
+              detail: 'Przewodnik do górnictwa · poziom 7 · limit czytań resetuje się o północy',
+              status: 'ready' as const,
+              remainingLabel: 'gotowe do czytania',
+              progressPercent: 100,
+            };
+          }
+          if (timer.kind === 'biologist') {
+            return {
+              ...timer,
+              detail: `${biologistProgressLabel(biologistQuestForLevel(75)!, 12)} · cooldown po każdej próbie · reset o północy`,
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 55,
+              lastActorName: 'Mateusz',
+              lastConfirmedAt: 'wczoraj 22:40',
+            };
+          }
+          return {
+            ...timer,
+            detail: `${horseAdvanceDetail(20, 21)} · u Stajennego`,
+          };
+        });
       }
       if (character.id === 'aalpsik') {
-        return base.map((timer) =>
-          timer.kind === 'horse'
-            ? {
-                ...timer,
-                id: 'horse-medal-aalpsik',
-                detail: `${horseAdvanceDetail(12, 13)} · u Stajennego`,
-                status: 'ready' as const,
-                remainingLabel: 'gotowe do oddania',
-                progressPercent: 100,
-                lastActorName: 'Aalpsik',
-                lastConfirmedAt: 'dzisiaj 07:00',
-              }
-            : timer.kind === 'biologist'
-              ? {
-                  ...timer,
-                  id: 'biologist-aalpsik',
-                  detail: `${biologistProgressLabel(biologistQuestById('demon-keepsake')!, 9)} · cooldown tylko po udanym oddaniu · reset o północy`,
-                }
-              : { ...timer, id: 'skill-book-aalpsik' },
-        );
+        return withStableIds(base).map((timer) => {
+          if (timer.kind === 'horse') {
+            return {
+              ...timer,
+              detail: `${horseAdvanceDetail(12, 13)} · u Stajennego`,
+              status: 'ready' as const,
+              remainingLabel: 'gotowe do oddania',
+              progressPercent: 100,
+              lastActorName: 'Aalpsik',
+              lastConfirmedAt: 'dzisiaj 07:00',
+            };
+          }
+          if (timer.kind === 'biologist') {
+            return {
+              ...timer,
+              detail: `${biologistProgressLabel(biologistQuestById('demon-keepsake')!, 9)} · cooldown tylko po udanym oddaniu · reset o północy`,
+            };
+          }
+          if (timer.kind === 'soul_stone') {
+            return {
+              ...timer,
+              detail: 'Aura Miecza P · mistrzostwo pasywne · limit czytań resetuje się o północy',
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 64,
+              lastActorName: 'Aalpsik',
+              lastConfirmedAt: 'wczoraj 23:05',
+            };
+          }
+          if (timer.kind === 'leadership') {
+            return {
+              ...timer,
+              detail: 'Sun Zi 14/20 · Dowodzenie · limit czytań resetuje się o północy',
+            };
+          }
+          return timer;
+        });
       }
       if (character.id === 'kimmizic') {
-        return base.map((timer) =>
-          timer.kind === 'biologist'
-            ? {
-                ...timer,
-                id: 'biologist-kimmizic',
-                detail: `${biologistProgressLabel(iceQuest, 4)} · cooldown po każdej próbie · reset o północy`,
-                status: 'running' as const,
-                readyAtIso: nextMidnightIso(),
-                remainingLabel: `do ${midnight}`,
-                progressPercent: 41,
-                lastActorName: 'Wicek',
-                lastConfirmedAt: 'wczoraj 08:10',
-                discordReminder: false,
-                reminderState: 'off' as const,
-              }
-            : timer.kind === 'horse'
-              ? { ...timer, id: 'horse-kimmizic' }
-              : { ...timer, id: 'skill-book-kimmizic' },
-        );
+        return withStableIds(base).map((timer) => {
+          if (timer.kind === 'biologist') {
+            return {
+              ...timer,
+              detail: `${biologistProgressLabel(iceQuest, 4)} · cooldown po każdej próbie · reset o północy`,
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 41,
+              lastActorName: 'Wicek',
+              lastConfirmedAt: 'wczoraj 08:10',
+              discordReminder: false,
+              reminderState: 'off' as const,
+            };
+          }
+          if (timer.kind === 'polymorph') {
+            return {
+              ...timer,
+              detail: 'Księga Polimorfii · 11/20 · limit czytań resetuje się o północy',
+              status: 'running' as const,
+              readyAtIso: nextMidnightIso(),
+              remainingLabel: `do ${midnight}`,
+              progressPercent: 37,
+              lastActorName: 'Wicek',
+              lastConfirmedAt: 'wczoraj 11:20',
+            };
+          }
+          if (timer.kind === 'mining') {
+            return {
+              ...timer,
+              detail: 'Przewodnik do górnictwa · poziom 4 · limit czytań resetuje się o północy',
+            };
+          }
+          return timer;
+        });
       }
-      return base.map((timer) =>
-        timer.kind === 'horse'
-          ? { ...timer, id: 'horse-xiaohu' }
-          : timer.kind === 'biologist'
-            ? { ...timer, id: 'biologist-xiaohu' }
-            : { ...timer, id: 'skill-book-xiaohu' },
-      );
+      return withStableIds(base);
     }),
     tasks: [
       {
@@ -1246,8 +1316,23 @@ export function ensureCharacterProgressionTimers(
   if (!workspace) return state;
   const character = workspace.characters.find((entry) => entry.id === characterId);
   if (!character) return state;
+
+  let iconBackfill = false;
+  const withIcons = workspace.timers.map((timer) => {
+    if (timer.characterId !== characterId) return timer;
+    const kind = timer.kind ?? inferProgressionKind(timer.label);
+    if (!kind) return timer;
+    const iconPath = progressionTimerIcons[kind];
+    const label = progressionTimerLabels[kind];
+    if (timer.kind === kind && timer.iconPath === iconPath && timer.label === label) {
+      return timer;
+    }
+    iconBackfill = true;
+    return { ...timer, kind, iconPath, label };
+  });
+
   const existingKinds = new Set(
-    workspace.timers
+    withIcons
       .filter((timer) => timer.characterId === characterId)
       .map((timer) => timer.kind ?? inferProgressionKind(timer.label))
       .filter((kind): kind is ProgressionKind => kind !== null),
@@ -1255,20 +1340,27 @@ export function ensureCharacterProgressionTimers(
   const missing = progressionKindsForLevel(character.level).filter(
     (kind) => !existingKinds.has(kind),
   );
-  if (missing.length === 0) return state;
+  if (missing.length === 0 && !iconBackfill) return state;
 
   const added = missing.map((kind) => buildProgressionTimer(characterId, kind, character.level));
+  const historyTitle =
+    missing.length > 0 ? 'Uzupełniono cykle Projekt Hard' : 'Odświeżono ilustracje cykli PH';
+  const historyDetail =
+    missing.length > 0
+      ? added.map((timer) => timer.label).join(' · ')
+      : 'Księgi / Kamienie / Dowodzenie / Polimorfia / Górnictwo / Jazda / Biolog';
+
   return updateWorkspace(state, workspaceId, (current, viewer) => ({
     ...current,
     revision: current.revision + 1,
-    timers: [...added, ...current.timers],
+    timers: [...added, ...withIcons],
     history: [
       historyEntry(current.id, viewer, {
         characterId,
         characterName: character.name,
         resource: 'timer',
-        title: 'Uzupełniono cykle Projekt Hard',
-        detail: added.map((timer) => timer.label).join(' · '),
+        title: historyTitle,
+        detail: historyDetail,
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -1648,6 +1740,69 @@ export function setActiveCharacterSet(
       ],
     };
   });
+}
+
+/** Add another named equipment set after character creation (was missing — only starter set existed). */
+export function createEquipmentSet(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+  input: {
+    readonly name: string;
+    readonly description?: string;
+    readonly makeActive?: boolean;
+  },
+): { readonly state: PlayerStoreState; readonly setId: string | null } {
+  const name = input.name.trim();
+  if (name.length < 2) return { state, setId: null };
+
+  let createdSetId: string | null = null;
+  const next = updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const character = workspace.characters.find((entry) => entry.id === characterId);
+    if (!character) return workspace;
+
+    const taken = new Set(character.sets.map((set) => set.id));
+    const setId = uniqueSlug(name, taken);
+    createdSetId = setId;
+    const description = (input.description ?? '').trim() || `Zestaw „${name}”`;
+    const makeActive = input.makeActive !== false;
+
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters: workspace.characters.map((entry) =>
+        entry.id === characterId
+          ? {
+              ...entry,
+              activeSetId: makeActive ? setId : entry.activeSetId,
+              revision: entry.revision + 1,
+              sets: [
+                ...entry.sets,
+                {
+                  id: setId,
+                  name,
+                  description,
+                  assignments: emptyAssignments(),
+                },
+              ],
+            }
+          : entry,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId,
+          characterName: character.name,
+          resource: 'equipment',
+          title: `Dodano set „${name}”`,
+          detail: makeActive ? 'Pusty zestaw · ustawiony jako aktywny' : 'Pusty zestaw',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+
+  return { state: next, setId: createdSetId };
 }
 
 export function markTimerDone(

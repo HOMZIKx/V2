@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   completeDiscordAuth,
   createCharacter,
+  createEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
@@ -107,7 +108,7 @@ describe('player store first-slice', () => {
 
   it('resets Project Hard timers with kind-specific cooldowns', () => {
     let state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
-    const timerId = 'horse-medal-aalpsik';
+    const timerId = 'horse-aalpsik';
     state = markTimerDone(state, 'asteria', timerId, 'op-1');
     const first = state.workspaces[0]!.timers.find((timer) => timer.id === timerId)!;
     expect(first.remainingLabel).toContain('23 h');
@@ -143,7 +144,49 @@ describe('player store first-slice', () => {
       .filter((timer) => timer.characterId === 'duplikat')
       .map((timer) => timer.kind)
       .sort();
-    expect(kinds).toEqual(['biologist', 'horse', 'skill_book']);
+    expect(kinds).toEqual([
+      'biologist',
+      'horse',
+      'leadership',
+      'mining',
+      'polymorph',
+      'skill_book',
+      'soul_stone',
+    ]);
+  });
+
+  it('allows adding more than one equipment set after character creation', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Solo');
+    const workspaceId = state.workspaces[0]!.id;
+    state = createCharacter(state, workspaceId, {
+      name: 'Setowy',
+      characterClass: 'warrior',
+      gender: 'male',
+      level: 40,
+      responsibleMemberId: 'mateusz',
+      startingSetName: 'Główny',
+    });
+    const characterId = state.workspaces[0]!.characters[0]!.id;
+    expect(state.workspaces[0]!.characters[0]!.sets).toHaveLength(1);
+
+    const first = createEquipmentSet(state, workspaceId, characterId, { name: 'Loch' });
+    state = first.state;
+    expect(first.setId).toBe('loch');
+    expect(state.workspaces[0]!.characters[0]!.sets.map((set) => set.name)).toEqual([
+      'Główny',
+      'Loch',
+    ]);
+    expect(state.workspaces[0]!.characters[0]!.activeSetId).toBe('loch');
+
+    const second = createEquipmentSet(state, workspaceId, characterId, {
+      name: 'Wojna',
+      makeActive: false,
+    });
+    state = second.state;
+    expect(second.setId).toBe('wojna');
+    expect(state.workspaces[0]!.characters[0]!.sets).toHaveLength(3);
+    expect(state.workspaces[0]!.characters[0]!.activeSetId).toBe('loch');
   });
 
   it('gives every demo character the Project Hard cyclical timers', () => {
@@ -156,8 +199,15 @@ describe('player store first-slice', () => {
           .map((timer) => timer.kind),
       );
       expect(kinds.has('skill_book')).toBe(true);
+      expect(kinds.has('soul_stone')).toBe(true);
+      expect(kinds.has('leadership')).toBe(true);
+      expect(kinds.has('polymorph')).toBe(true);
+      expect(kinds.has('mining')).toBe(true);
       expect(kinds.has('horse')).toBe(true);
       if ((character.level ?? 0) >= 30) expect(kinds.has('biologist')).toBe(true);
+      for (const timer of workspace.timers.filter((entry) => entry.characterId === character.id)) {
+        expect(timer.iconPath).toMatch(/^\/game\/progression\//);
+      }
     }
   });
 });

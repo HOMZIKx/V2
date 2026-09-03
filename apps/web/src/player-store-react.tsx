@@ -21,6 +21,7 @@ import {
   confirmItemLocation,
   createCharacter,
   createEquipmentItem,
+  createEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
@@ -93,6 +94,15 @@ interface PlayerStoreApi {
     slot: EquipmentSlot,
   ) => void;
   setActiveSet: (workspaceId: string, characterId: string, setId: string) => void;
+  createSet: (
+    workspaceId: string,
+    characterId: string,
+    input: {
+      readonly name: string;
+      readonly description?: string;
+      readonly makeActive?: boolean;
+    },
+  ) => string | null;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
   ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
@@ -211,6 +221,15 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       },
       setActiveSet: (workspaceId, characterId, setId) => {
         apply((current) => setActiveCharacterSet(current, workspaceId, characterId, setId));
+      },
+      createSet: (workspaceId, characterId, input) => {
+        let createdId: string | null = null;
+        apply((current) => {
+          const result = createEquipmentSet(current, workspaceId, characterId, input);
+          createdId = result.setId;
+          return result.state;
+        });
+        return createdId;
       },
       confirmLocation: (workspaceId, itemId, locationLabel) => {
         apply((current) => confirmItemLocation(current, workspaceId, itemId, locationLabel));

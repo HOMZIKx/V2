@@ -19,9 +19,17 @@ import {
   getSlotReadiness,
   slotLabels,
   type EquipmentSlot,
+  type ProgressTimer,
   type SetReadiness,
 } from '../../../../../src/player-store';
 import { usePlayerStore } from '../../../../../src/player-store-react';
+import {
+  inferProgressionKind,
+  isMidnightProgressionKind,
+  progressionDisplayOrder,
+  progressionTimerIcons,
+  type ProgressionKind,
+} from '../../../../../src/project-hard-progression';
 import { AppShell, Icon } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
 
@@ -35,6 +43,35 @@ const readinessLabels: Record<SetReadiness, string> = {
   empty: 'Pusty',
 };
 
+function timerKind(timer: ProgressTimer): ProgressionKind | null {
+  return timer.kind ?? inferProgressionKind(timer.label);
+}
+
+function timerIconPath(timer: ProgressTimer): string | null {
+  const kind = timerKind(timer);
+  if (timer.iconPath) return timer.iconPath;
+  return kind ? progressionTimerIcons[kind] : null;
+}
+
+function sortProgressionTimers(timers: readonly ProgressTimer[]): ProgressTimer[] {
+  return [...timers].sort((left, right) => {
+    const leftKind = timerKind(left);
+    const rightKind = timerKind(right);
+    const leftRank = leftKind ? progressionDisplayOrder.indexOf(leftKind) : 99;
+    const rightRank = rightKind ? progressionDisplayOrder.indexOf(rightKind) : 99;
+    return leftRank - rightRank || left.label.localeCompare(right.label, 'pl');
+  });
+}
+
+function completionHint(timer: ProgressTimer): string {
+  const kind = timerKind(timer);
+  if (kind === 'horse') return 'Kolejny cykl: 23 h u Stajennego.';
+  if (isMidnightProgressionKind(kind)) {
+    return 'Kolejny cykl od północy (Projekt Hard — wspólny reset czytań).';
+  }
+  return 'Kolejny cykl odlicza się od teraz.';
+}
+
 export function CharacterEquipment() {
   const params = useParams<{ teamId: string; characterId: string }>();
   const {
@@ -44,6 +81,7 @@ export function CharacterEquipment() {
     assignItem,
     removeItem,
     setActiveSet,
+    createSet,
     confirmLocation,
     completeTimer,
     ensureProgressionTimers,
@@ -55,6 +93,8 @@ export function CharacterEquipment() {
   const character = workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
 
   const [activeSetId, setActiveSetId] = useState<string>('');
+  const [newSetName, setNewSetName] = useState('');
+  const [addingSet, setAddingSet] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentSlot | 'all'>('all');
@@ -262,6 +302,57 @@ export function CharacterEquipment() {
                   ))}
                 </select>
                 <span>{activeSet.description}</span>
+                {writesEnabled ? (
+                  addingSet ? (
+                    <form
+                      className="set-add-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const createdId = createSet(workspace.id, character.id, {
+                          name: newSetName,
+                          makeActive: true,
+                        });
+                        if (!createdId) {
+                          setAnnouncement('Nazwa setu musi mieć min. 2 znaki.');
+                          return;
+                        }
+                        setActiveSetId(createdId);
+                        setSelectedItemId(null);
+                        setNewSetName('');
+                        setAddingSet(false);
+                        setAnnouncement(`Dodano set „${newSetName.trim()}”.`);
+                      }}
+                    >
+                      <input
+                        aria-label="Nazwa nowego setu"
+                        maxLength={32}
+                        minLength={2}
+                        onChange={(event) => setNewSetName(event.target.value)}
+                        placeholder="np. Loch, Wojna…"
+                        required
+                        value={newSetName}
+                      />
+                      <button type="submit">Zapisz set</button>
+                      <button
+                        onClick={() => {
+                          setAddingSet(false);
+                          setNewSetName('');
+                        }}
+                        type="button"
+                      >
+                        Anuluj
+                      </button>
+                    </form>
+                  ) : (
+                    <button
+                      className="set-add-button"
+                      onClick={() => setAddingSet(true)}
+                      type="button"
+                    >
+                      <Icon name="plus" size={14} /> Dodaj set
+                    </button>
+                  )
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -356,23 +447,37 @@ export function CharacterEquipment() {
                   <div className="character-timer-list timer-list">
                     {timers.length === 0 ? (
                       <p className="empty-copy">
-                        Brak cykli PH. Otwórz kartę ponownie albo wczytaj demo — dopinamy Biolog /
-                        jazdę / księgi według poziomu.
+                        Brak cykli PH. Otwórz kartę ponownie albo wczytaj demo — dopinamy księgi,
+                        kamienie duszy, dowodzenie, polimorfię, górnictwo, jazdę i biologa według
+                        poziomu.
                       </p>
                     ) : (
-                      timers.map((timer) => (
-                        <article
-                          className={`character-timer timer-card${timer.status === 'ready' ? ' is-ready' : ''}`}
-                          key={timer.id}
-                        >
-                          <div>
-                            <h3>{timer.label}</h3>
+                      sortProgressionTimers(timers).map((timer) => {
+                        const iconPath = timerIconPath(timer);
+                        return (
+                          <article
+                            className={`character-timer timer-card${timer.status === 'ready' ? ' is-ready' : ''}`}
+                            key={timer.id}
+                          >
+                            <div className="character-timer-heading">
+                              <span aria-hidden="true" className="character-timer-icon">
+                                {iconPath ? (
+                                  <img alt="" src={iconPath} />
+                                ) : (
+                                  <Icon name="clock" size={18} />
+                                )}
+                              </span>
+                              <div>
+                                <strong>{timer.label}</strong>
+                                <span>
+                                  {timer.status === 'ready' ? 'Gotowe' : 'W toku'}
+                                  {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
+                                </span>
+                              </div>
+                              <em>{timer.status === 'ready' ? 'teraz' : 'cykl'}</em>
+                            </div>
                             <p>{timer.detail}</p>
                             <ul className="timer-meta">
-                              <li>
-                                {timer.status === 'ready' ? 'Gotowe' : 'W toku'}
-                                {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
-                              </li>
                               <li>
                                 Ostatnio: {timer.lastActorName ?? '—'}
                                 {timer.lastConfirmedAt ? ` · ${timer.lastConfirmedAt}` : ''}
@@ -386,27 +491,31 @@ export function CharacterEquipment() {
                                     : 'wyłączone'}
                               </li>
                             </ul>
-                          </div>
-                          <button
-                            disabled={!writesEnabled || timer.status !== 'ready'}
-                            onClick={() => {
-                              if (timer.status !== 'ready') return;
-                              const operationId = `timer-${timer.id}-${Date.now()}`;
-                              completeTimer(workspace.id, timer.id, operationId);
-                              const kindHint = timer.label.toLocaleLowerCase('pl').includes('jazd')
-                                ? 'Kolejny cykl: 23 h u Stajennego.'
-                                : timer.label.toLocaleLowerCase('pl').includes('biolog') ||
-                                    timer.label.toLocaleLowerCase('pl').includes('księg')
-                                  ? 'Kolejny cykl od północy (Projekt Hard).'
-                                  : 'Kolejny cykl odlicza się od teraz.';
-                              setAnnouncement(`Oznaczono: ${timer.label}. ${kindHint}`);
-                            }}
-                            type="button"
-                          >
-                            {timer.status === 'ready' ? 'Oznacz wykonane' : 'Czeka na koniec cyklu'}
-                          </button>
-                        </article>
-                      ))
+                            <div className="timer-progress-track" aria-hidden="true">
+                              <span style={{ width: `${timer.progressPercent}%` }} />
+                            </div>
+                            <div className="character-timer-footer">
+                              <span>cykl PH</span>
+                              <button
+                                disabled={!writesEnabled || timer.status !== 'ready'}
+                                onClick={() => {
+                                  if (timer.status !== 'ready') return;
+                                  const operationId = `timer-${timer.id}-${Date.now()}`;
+                                  completeTimer(workspace.id, timer.id, operationId);
+                                  setAnnouncement(
+                                    `Oznaczono: ${timer.label}. ${completionHint(timer)}`,
+                                  );
+                                }}
+                                type="button"
+                              >
+                                {timer.status === 'ready'
+                                  ? 'Oznacz wykonane'
+                                  : 'Czeka na koniec cyklu'}
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      })
                     )}
                   </div>
                 </article>
@@ -630,8 +739,9 @@ export function CharacterEquipment() {
         {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
           Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Postęp PH
-          (Biolog / jazda / księgi) jest na drugiej stronie karty — to nie to samo co Timery
-          metinów/bossów w nawigacji. Dane tylko w tej przeglądarce.
+          (księgi / kamienie duszy / dowodzenie / polimorfia / górnictwo / jazda / biolog) jest na
+          drugiej stronie karty — to nie to samo co Timery metinów/bossów w nawigacji. Dane tylko w
+          tej przeglądarce.
         </div>
       </main>
     </AppShell>

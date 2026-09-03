@@ -6,7 +6,23 @@
  * Polish item names match Metin2 PL wiki / dobry-temat catalog where available.
  */
 
-export type ProgressionKind = 'biologist' | 'horse' | 'skill_book';
+export type ProgressionKind =
+  'skill_book' | 'soul_stone' | 'leadership' | 'polymorph' | 'mining' | 'horse' | 'biologist';
+
+export type ProgressionReset = 'midnight' | 'hours_23';
+
+export interface ProgressionCycleDef {
+  readonly kind: ProgressionKind;
+  readonly label: string;
+  readonly iconPath: string;
+  readonly reset: ProgressionReset;
+  /** Always tracked reading/turn-in families vs level-gated ones. */
+  readonly alwaysTracked: boolean;
+  readonly unlockLevel: number | null;
+  readonly detailReady: string;
+  readonly remainingReady: string;
+  readonly doneHint: string;
+}
 
 export interface BiologistQuestDef {
   readonly id: string;
@@ -219,6 +235,133 @@ export const projectHardSkillBookRules = {
   sources: 'wyprawy, bossy, szkatułki, drop z potworów',
 };
 
+/**
+ * Soul Stones (Kamienie duszy / duchowe) — mastery toward Perfect (P).
+ * Same midnight reading cadence as Skill Books on Project Hard.
+ */
+export const projectHardSoulStoneRules = {
+  readableAnytime: true,
+  dailyReset: 'midnight' as const,
+  purpose: 'mistrzostwo umiejętności do stopnia P (pasywne / Perfect)',
+  sources: 'metiny, bossy, potwory, skrzynie',
+} as const;
+
+/**
+ * Extra reading families called out by Project Hard presentation + classic Metin2.
+ * On PH all book reads reset together at midnight (same clock as Biolog).
+ */
+export const projectHardExtraReadingRules = {
+  dailyReset: 'midnight' as const,
+  sources: 'wyprawy, bossy, skrzynie, drop alternatywny z potworów',
+  families: ['leadership', 'polymorph', 'mining'] as const,
+} as const;
+
+/** Horse upgrades unlock at character level 20 (Stableman). */
+export const projectHardHorseUnlockLevel = 20;
+
+/** Biologist quests start at level 30. */
+export const projectHardBiologistUnlockLevel = 30;
+
+/**
+ * Full PH cyclical board: reading families + horse turn-in + biologist.
+ * Reading rows are separate so the team can track each passive/book family,
+ * even though PH resets them on the same midnight clock.
+ */
+export const projectHardProgressionCycles: readonly ProgressionCycleDef[] = [
+  {
+    kind: 'skill_book',
+    label: 'Księga umiejętności',
+    iconPath: '/game/progression/skill-book.png',
+    reset: 'midnight',
+    alwaysTracked: true,
+    unlockLevel: null,
+    detailReady: 'Czytanie ksiąg do G1 · limit czytań resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Księga: limit czytań resetuje się o północy.',
+  },
+  {
+    kind: 'soul_stone',
+    label: 'Kamień duszy',
+    iconPath: '/game/progression/soul-stone.png',
+    reset: 'midnight',
+    alwaysTracked: true,
+    unlockLevel: null,
+    detailReady:
+      'Czytanie kamieni duchowych do P (umiejętności pasywne / Perfect) · limit resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Kamień duszy: limit czytań (mistrzostwo P) resetuje się o północy.',
+  },
+  {
+    kind: 'leadership',
+    label: 'Dowodzenie',
+    iconPath: '/game/progression/leadership.png',
+    reset: 'midnight',
+    alwaysTracked: true,
+    unlockLevel: null,
+    detailReady:
+      'Sun Zi / Wu Zi / WeiLiao Zi · czytanie pasywki party · limit resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Dowodzenie: limit czytań resetuje się o północy.',
+  },
+  {
+    kind: 'polymorph',
+    label: 'Polimorfia',
+    iconPath: '/game/progression/polymorph.png',
+    reset: 'midnight',
+    alwaysTracked: true,
+    unlockLevel: null,
+    detailReady:
+      'Księgi polimorfii (zwykła / zaaw. / mistrz.) · czas przemiany · limit resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Polimorfia: limit czytań resetuje się o północy.',
+  },
+  {
+    kind: 'mining',
+    label: 'Górnictwo',
+    iconPath: '/game/progression/mining.png',
+    reset: 'midnight',
+    alwaysTracked: true,
+    unlockLevel: null,
+    detailReady: 'Przewodnik do górnictwa · kopanie rud · limit czytań resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Górnictwo: limit czytań resetuje się o północy.',
+  },
+  {
+    kind: 'horse',
+    label: 'Jazda konna',
+    iconPath: '/game/progression/horse-medal.png',
+    reset: 'hours_23',
+    alwaysTracked: false,
+    unlockLevel: projectHardHorseUnlockLevel,
+    detailReady: 'Oddanie Medalu / materiałów u Stajennego · cooldown 23 h',
+    remainingReady: 'gotowe do oddania',
+    doneHint: `Cooldown jazdy ${projectHardHorseRules.advancementCooldownHours} h (Projekt Hard).`,
+  },
+  {
+    kind: 'biologist',
+    label: 'Biolog',
+    iconPath: '/game/progression/biologist.png',
+    reset: 'midnight',
+    alwaysTracked: false,
+    unlockLevel: projectHardBiologistUnlockLevel,
+    detailReady: 'Oddawanie u biologa Chaegiraba · reset o północy',
+    remainingReady: 'gotowe do oddania',
+    doneHint: 'Biolog: kolejna dostawa od północy.',
+  },
+];
+
+export const progressionTimerIcons: Readonly<Record<ProgressionKind, string>> = Object.fromEntries(
+  projectHardProgressionCycles.map((cycle) => [cycle.kind, cycle.iconPath]),
+) as Readonly<Record<ProgressionKind, string>>;
+
+export const progressionTimerLabels: Readonly<Record<ProgressionKind, string>> = Object.fromEntries(
+  projectHardProgressionCycles.map((cycle) => [cycle.kind, cycle.label]),
+) as Readonly<Record<ProgressionKind, string>>;
+
+export const progressionDisplayOrder: readonly ProgressionKind[] = projectHardProgressionCycles.map(
+  (cycle) => cycle.kind,
+);
+
 /** Project Hard has no alchemy and no sashes — never invent those systems in copy. */
 export const projectHardProductFacts = {
   hasAlchemy: false,
@@ -244,17 +387,23 @@ export function nextMidnightIso(now = new Date()): string {
   return next.toISOString();
 }
 
-/** Horse upgrades unlock at character level 20 (Stableman). */
-export const projectHardHorseUnlockLevel = 20;
-
-/** Biologist quests start at level 30. */
-export const projectHardBiologistUnlockLevel = 30;
+export function progressionCycleByKind(kind: ProgressionKind): ProgressionCycleDef {
+  const cycle = projectHardProgressionCycles.find((entry) => entry.kind === kind);
+  if (!cycle) {
+    throw new Error(`Unknown progression kind: ${kind}`);
+  }
+  return cycle;
+}
 
 export function progressionKindsForLevel(level: number | null): readonly ProgressionKind[] {
-  const kinds: ProgressionKind[] = ['skill_book'];
-  if (level === null || level >= projectHardHorseUnlockLevel) kinds.push('horse');
-  if (level !== null && level >= projectHardBiologistUnlockLevel) kinds.push('biologist');
-  return kinds;
+  return projectHardProgressionCycles
+    .filter((cycle) => {
+      if (cycle.alwaysTracked) return true;
+      if (cycle.unlockLevel === null) return true;
+      if (level === null) return cycle.kind === 'horse';
+      return level >= cycle.unlockLevel;
+    })
+    .map((cycle) => cycle.kind);
 }
 
 export function biologistQuestById(id: string): BiologistQuestDef | null {
@@ -297,8 +446,39 @@ export function inferProgressionKind(label: string): ProgressionKind | null {
   if (normalized.includes('jazd') || normalized.includes('koń') || normalized.includes('konn')) {
     return 'horse';
   }
+  if (
+    normalized.includes('kamień duszy') ||
+    normalized.includes('kamien duszy') ||
+    normalized.includes('kamień duch') ||
+    normalized.includes('kamien duch') ||
+    normalized.includes('soul stone') ||
+    normalized.includes('duchow')
+  ) {
+    return 'soul_stone';
+  }
+  if (
+    normalized.includes('dowodz') ||
+    normalized.includes('sun zi') ||
+    normalized.includes('leadership')
+  ) {
+    return 'leadership';
+  }
+  if (normalized.includes('polimorf') || normalized.includes('polymorph')) return 'polymorph';
+  if (
+    normalized.includes('górnict') ||
+    normalized.includes('gornict') ||
+    normalized.includes('kopan') ||
+    normalized.includes('mining')
+  ) {
+    return 'mining';
+  }
   if (normalized.includes('księg') || normalized.includes('skill')) return 'skill_book';
   return null;
+}
+
+export function isMidnightProgressionKind(kind: ProgressionKind | null): boolean {
+  if (!kind) return false;
+  return progressionCycleByKind(kind).reset === 'midnight';
 }
 
 export function restartAfterDone(
@@ -314,17 +494,14 @@ export function restartAfterDone(
     return {
       readyAtIso: new Date(now.getTime() + hours * 3_600_000).toISOString(),
       remainingLabel: `${hours} h u Stajennego`,
-      detailHint: `Cooldown jazdy ${hours} h (Projekt Hard).`,
+      detailHint: progressionCycleByKind('horse').doneHint,
     };
   }
-  if (kind === 'biologist' || kind === 'skill_book') {
+  if (kind && isMidnightProgressionKind(kind)) {
     return {
       readyAtIso: nextMidnightIso(now),
       remainingLabel: `do ${nextMidnightLabel(now)}`,
-      detailHint:
-        kind === 'biologist'
-          ? 'Biolog: kolejna dostawa od północy.'
-          : 'Księga: limit czytań resetuje się o północy.',
+      detailHint: progressionCycleByKind(kind).doneHint,
     };
   }
   return {

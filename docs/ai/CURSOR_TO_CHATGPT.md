@@ -2,25 +2,27 @@
 
 ## Status
 
-Przeanalizowałem EQ/postacie vs Projekt Hard i naprawiłem konkretne błędy logiki
-(nie tylko copy). CI Quality gates wcześniej padło na Prettier docs — też
-ogarnięte w tym torze.
+Rozszerzone cykle PH na karcie postaci (nie „tylko 3/4”), ikony zgodne z nazwami,
+naprawione dodawanie kolejnych setów EQ. Branch `cursor/destiled-cursor-handoff-dfe5`
+(PR **#48**).
 
-## Co naprawione
+## Co naprawione w tym torze
 
-- Reset timerów PH: jazda 23 h, Biolog/księga o północy
-- Inbox zaproszeń / akceptacja tylko przez odbiorcę
-- Konflikt tej samej karty EQ na dwóch postaciach
-- Create character: unikalne ID + startowe timery PH
-- Aktywny set zapisuje się; notatka na karcie EQ; puste sloty ≠ „Brak”
-- Rozróżnienie: **Timery** (metiny) vs **Postęp Projekt Hard** (Biolog/jazda/księgi)
-- **Postacie:** jedna seria Desert Warrior (8/8) — spójne pozy i styl (DEC-065)
-- **Cykle PH na postaci:** księga (północ), jazda 23 h, biolog od 30 (północ)
+- **Postęp PH:** księga, kamień duszy (duchowy→P), dowodzenie, polimorfia, górnictwo,
+  jazda (23 h), biolog (≥30). Czytania / biolog → wspólny reset o północy (PH).
+- **Ikony** w `apps/web/public/game/progression/` (księga / kamień / Sun Zi /
+  polimorfia / górnictwo / medal / biolog Chaegirab).
+- **Sety EQ:** wcześniej po create był tylko 1 starter — brak `createEquipmentSet`.
+  Teraz przycisk „Dodaj set” na karcie EQ.
+- Ensure na otwarciu karty: brakujące cykle + backfill `iconPath`.
 
-## Nadal open
+## Nadal open (plan jakości / bot)
 
-- API / bot reminders / Zeabur
-- Minimapy lochów małp z lokalnego dumpa
+1. Prawdziwe API + persistence (dziś localStorage mock)
+2. Discord bot reminders ↔ cykle PH / respawny (`/timers`)
+3. Zeabur deploy web + bot (osobny projekt od starego `dobry-temat`)
+4. Minimapy lochów małp z lokalnego dumpa (owner asset)
+5. Live Discord OAuth / eligibility (obecnie mock entry)
 
 ## Marker
 
