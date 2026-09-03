@@ -11,7 +11,8 @@
   Stary monorepo nie jest dostępny w środowisku Cloud Agent.
 - **Zrobione bez zgadywania:** parser `BonusN-Name` + alt `BonusN=`; picker nazw
   wyłącznie z dumpa (`knownCatalogBonusNames`); ręczna edycja obserwowanych
-  bonusów na karcie (D-055); przycisk „Wczytaj z katalogu” gdy drabinka jest.
+  bonusów na karcie (D-055); przycisk „Wczytaj z katalogu” gdy drabinka jest;
+  przy dodawaniu przedmiotu do EQ wybór subsetu bonusów z katalogu (bonusy traktowane jako „explicit” i nie nadpisywane drabinką).
 - **Potrzeba od właściciela:** pełny (nieucięty) eksport wiki_upgrade / pliki
   bonusów ze starego dobry-temat, albo dostęp do referencyjnego folderu lokalnego
   w agencie — wtedy podmienimy dump 1:1.
