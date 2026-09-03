@@ -1,0 +1,99 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[
+  {
+    "ID": "6a889a6ba158dec4057282f2",
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "gitProvider": "GITHUB",
+    "repoOwner": "HOMZIKx",
+    "repoName": "V2",
+    "ref": "refs/heads/cursor/p4-1-activity-domain",
+    "commitSHA": "8280cc2bba66d88e19c4d8e8a878f11341225feb",
+    "commitMessage": "docs(ai): correct deep polish checkpoint head pointers\n\nPin CURRENT_HEAD and DEEP_POLISH_AND_AUTO_SYNC_CHECKPOINT_SHA after push.\n\nCo-authored-by: Cursor \u003ccursoragent@cursor.com\u003e",
+    "planType": "docker",
+    "createdAt": "2026-08-21T18:35:23.306Z",
+    "scheduledAt": "2026-08-21T18:35:27.899Z",
+    "startedAt": "2026-08-21T18:35:37.215Z",
+    "finishedAt": "2026-08-21T18:36:32.439Z",
+    "status": "RUNNING"
+  },
+  {
+    "ID": "6a888ff9acafc201d5035ac2",
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "gitProvider": "GITHUB",
+    "repoOwner": "HOMZIKx",
+    "repoName": "V2",
+    "ref": "refs/heads/cursor/p4-1-activity-domain",
+    "commitSHA": "2c2b3e972c9177b7a157ed1d4ddc9dba96bff859",
+    "commitMessage": "fix(admin): restore Discord guild inventory and honest diagnostics\n\nClassify ActivityÔćĺDiscord and Authz failures instead of flattening to CONFIG_INVALID, split Admin dependency probes, align Zeabur Discord URLs, and include @v2/messaging in activity/discord Docker builds so tip deploys succeed.\n\nCo-authored-by: Cursor \u003ccursoragent@cursor.com\u003e",
+    "planType": "docker",
+    "createdAt": "2026-08-21T17:50:49.207Z",
+    "scheduledAt": "2026-08-21T17:50:53.763Z",
+    "startedAt": "2026-08-21T17:51:01.147Z",
+    "finishedAt": "2026-08-21T17:52:55.067Z",
+    "status": "REMOVED"
+  },
+  {
+    "ID": "6a888e2ca158dec4057281c3",
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "gitProvider": "GITHUB",
+    "repoOwner": "HOMZIKx",
+    "repoName": "V2",
+    "ref": "refs/heads/cursor/p4-1-activity-domain",
+    "commitSHA": "2c2b3e972c9177b7a157ed1d4ddc9dba96bff859",
+    "commitMessage": "fix(admin): restore Discord guild inventory and honest diagnostics\n\nClassify ActivityÔćĺDiscord and Authz failures instead of flattening to CONFIG_INVALID, split Admin dependency probes, align Zeabur Discord URLs, and include @v2/messaging in activity/discord Docker builds so tip deploys succeed.\n\nCo-authored-by: Cursor \u003ccursoragent@cursor.com\u003e",
+    "planType": "docker",
+    "createdAt": "2026-08-21T17:43:08.095Z",
+    "scheduledAt": "2026-08-21T17:43:12.954Z",
+    "startedAt": "2026-08-21T17:43:21.377Z",
+    "finishedAt": "2026-08-21T17:44:25.99Z",
+    "status": "REMOVED"
+  },
+  {
+    "ID": "6a888b52acafc201d5035a5e",
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "gitProvider": "GITHUB",
+    "repoOwner": "HOMZIKx",
+    "repoName": "V2",
+    "ref": "refs/heads/cursor/p4-1-activity-domain",
+    "commitSHA": "d1f651b0aa2875f444d63946f24f0d5afe27da9f",
+    "commitMessage": "docs(ai): record P4_6_FINAL_CHECKPOINT_SHA and Hub discovery gate\n\nMark Stage 2 complete for async ChatGPT audit and stop Stage 3 product invent until OwnerÔćöChatGPT Hub Core decisions are Accepted.\n\nCo-authored-by: Cursor \u003ccursoragent@cursor.com\u003e",
+    "planType": "docker",
+    "createdAt": "2026-08-21T17:30:58.141Z",
+    "scheduledAt": "2026-08-21T17:31:02.843Z",
+    "startedAt": "2026-08-21T17:31:12.539Z",
+    "finishedAt": "2026-08-21T17:31:39.158Z",
+    "status": "FAILED"
+  },
+  {
+    "ID": "6a87754129f0931a12bfa549",
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "gitProvider": "GITHUB",
+    "repoOwner": "HOMZIKx",
+    "repoName": "V2",
+    "ref": "refs/heads/cursor/p4-1-activity-domain",
+    "commitSHA": "955fa8cc2327f30b06238b20432fb4cce5026e94",
+    "commitMessage": "docs(ai): pin SoT tip CI run for visual effective checkpoint\n\nCo-authored-by: Cursor \u003ccursoragent@cursor.com\u003e",
+    "planType": "docker",
+    "createdAt": "2026-08-20T21:44:33.341Z",
+    "scheduledAt": "2026-08-20T21:44:38.105Z",
+    "startedAt": "2026-08-20T21:44:47.581Z",
+    "finishedAt": "2026-08-20T21:46:43.683Z",
+    "status": "REMOVED"
+  }
+]

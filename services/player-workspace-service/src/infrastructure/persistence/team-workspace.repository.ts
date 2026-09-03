@@ -446,6 +446,30 @@ export class PostgresPlayerWorkspaceRepository implements PlayerWorkspaceReposit
     return this.getTeamDetail(input.teamId, input.actorUserId);
   }
 
+  public async listPendingInvitationsForUser(userId: string): Promise<
+    readonly (TeamInvitationRecord & {
+      readonly teamName: string;
+    })[]
+  > {
+    const result = await this.pool.query<
+      InvitationRow & {
+        team_name: string;
+      }
+    >(
+      `SELECT i.id, i.team_id, i.target_user_id, i.invited_by_user_id, i.status,
+              i.created_at, i.resolved_at, i.revision, i.operation_id, t.name AS team_name
+       FROM team_invitations i
+       INNER JOIN teams t ON t.id = i.team_id
+       WHERE i.target_user_id = $1 AND i.status = 'PENDING'
+       ORDER BY i.created_at ASC`,
+      [userId],
+    );
+    return result.rows.map((row) => ({
+      ...mapInvitation(row),
+      teamName: row.team_name,
+    }));
+  }
+
   public async listCharacterBoards(
     teamId: string,
     actorUserId: string,

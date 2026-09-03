@@ -1,0 +1,31 @@
+﻿{
+  "errors": [
+    {
+      "message": "Cannot query field \"type\" on type \"ServiceSpecSource\".",
+      "locations": [
+        {
+          "line": 5,
+          "column": 23
+        }
+      ],
+      "extensions": {
+        "code": "GRAPHQL_VALIDATION_FAILED"
+      }
+    },
+    {
+      "message": "Cannot query field \"variables\" on type \"Query\".",
+      "locations": [
+        {
+          "line": 7,
+          "column": 5
+        }
+      ],
+      "extensions": {
+        "code": "GRAPHQL_VALIDATION_FAILED"
+      }
+    }
+  ],
+  "data": null
+}
+
+ZBPACK/DOCKER vars: []

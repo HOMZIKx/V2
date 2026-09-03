@@ -11,6 +11,7 @@ import { createAssertionJtiStore } from '../infrastructure/internal-jwt/assertio
 import { createInternalJwtRuntime } from '../infrastructure/internal-jwt/create-internal-jwt-runtime.js';
 import { PlayerProfileRepository } from '../infrastructure/persistence/player-profile.repository.js';
 import { AuthBootstrapService } from './auth-bootstrap.service.js';
+import { DirectoryController } from './directory.controller.js';
 import { HealthController } from './health.controller.js';
 import { IdentityController } from './identity.controller.js';
 import {
@@ -93,6 +94,7 @@ const providers: Provider[] = [
   controllers: [
     HealthController,
     IdentityController,
+    DirectoryController,
     PlayerProfileController,
     PlayerAccountsController,
     InternalTokenController,

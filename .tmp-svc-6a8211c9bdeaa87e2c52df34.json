@@ -1,0 +1,38 @@
+﻿{
+  "ID": "6a8211c9bdeaa87e2c52df34",
+  "Name": "api-gateway",
+  "Project": {
+    "ID": "6a720a3e472e2c91a9e660d5"
+  },
+  "CreatedAt": "2026-08-16T19:38:49.239Z",
+  "MarketItemCode": null,
+  "CustomBuildCommand": null,
+  "CustomStartCommand": null,
+  "OutputDir": null,
+  "RootDirectory": "",
+  "Template": "PREBUILT_V2",
+  "WatchPaths": [
+    "*"
+  ],
+  "GitTrigger": {
+    "branchName": "cursor/p4-1-activity-domain",
+    "provider": "GITHUB",
+    "repoID": 1323125581
+  },
+  "ConsoleURL": "",
+  "Status": "RUNNING",
+  "Domains": [
+    {
+      "id": "6a83993582c638a0da12b3ec",
+      "domain": "v2-api.zeabur.app",
+      "serviceID": "6a8211c9bdeaa87e2c52df34",
+      "environmentID": "6a720a3e5f062718bc7b3421",
+      "projectID": "6a720a3e472e2c91a9e660d5",
+      "portName": "web",
+      "redirectTo": "",
+      "status": "PROVISIONED",
+      "isGenerated": true,
+      "createdAt": "2026-08-17T23:28:53.776Z"
+    }
+  ]
+}

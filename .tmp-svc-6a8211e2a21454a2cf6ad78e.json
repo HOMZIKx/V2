@@ -1,0 +1,50 @@
+﻿{
+  "ID": "6a8211e2a21454a2cf6ad78e",
+  "Name": "admin",
+  "Project": {
+    "ID": "6a720a3e472e2c91a9e660d5"
+  },
+  "CreatedAt": "2026-08-16T19:39:14.522Z",
+  "MarketItemCode": null,
+  "CustomBuildCommand": null,
+  "CustomStartCommand": null,
+  "OutputDir": null,
+  "RootDirectory": "",
+  "Template": "PREBUILT_V2",
+  "WatchPaths": [
+    "*"
+  ],
+  "GitTrigger": {
+    "branchName": "cursor/p4-1-activity-domain",
+    "provider": "GITHUB",
+    "repoID": 1323125581
+  },
+  "ConsoleURL": "",
+  "Status": "RUNNING",
+  "Domains": [
+    {
+      "id": "6a83987882c638a0da12b3e8",
+      "domain": "v222.zeabur.app",
+      "serviceID": "6a8211e2a21454a2cf6ad78e",
+      "environmentID": "6a720a3e5f062718bc7b3421",
+      "projectID": "6a720a3e472e2c91a9e660d5",
+      "portName": "web",
+      "redirectTo": "",
+      "status": "PROVISIONED",
+      "isGenerated": true,
+      "createdAt": "2026-08-17T23:25:44.402Z"
+    },
+    {
+      "id": "6a83993d82c638a0da12b3ee",
+      "domain": "v2-admin.zeabur.app",
+      "serviceID": "6a8211e2a21454a2cf6ad78e",
+      "environmentID": "6a720a3e5f062718bc7b3421",
+      "projectID": "6a720a3e472e2c91a9e660d5",
+      "portName": "web",
+      "redirectTo": "",
+      "status": "PROVISIONED",
+      "isGenerated": true,
+      "createdAt": "2026-08-17T23:29:01.572Z"
+    }
+  ]
+}

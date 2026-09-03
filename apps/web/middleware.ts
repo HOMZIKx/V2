@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { shouldUseServerSessionGate } from './src/lib/session-cookie-host';
 
-const PROTECTED_PREFIXES = ['/aktywnosci', '/moje', '/powiadomienia'] as const;
+const PROTECTED_PREFIXES = [
+  '/aktywnosci',
+  '/moje',
+  '/powiadomienia',
+  '/teams',
+  '/invitations',
+] as const;
 
 function getApiBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
@@ -73,5 +79,15 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/aktywnosci', '/aktywnosci/:path*', '/moje', '/powiadomienia'],
+  matcher: [
+    '/',
+    '/aktywnosci',
+    '/aktywnosci/:path*',
+    '/moje',
+    '/powiadomienia',
+    '/teams',
+    '/teams/:path*',
+    '/invitations',
+    '/invitations/:path*',
+  ],
 };

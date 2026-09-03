@@ -1,0 +1,24 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[
+  {
+    "Context": "Project",
+    "ID": "6a720a3e472e2c91a9e660d5",
+    "Name": "untitled-1"
+  },
+  {
+    "Context": "Environment",
+    "ID": "6a720a3e5f062718bc7b3421",
+    "Name": "production"
+  },
+  {
+    "Context": "Service",
+    "ID": "\u003cnot set\u003e",
+    "Name": "\u003cnot set\u003e"
+  }
+]

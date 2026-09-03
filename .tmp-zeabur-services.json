@@ -1,0 +1,275 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[
+  {
+    "ID": "6a720b2bc9628aefeeec0e75",
+    "Name": "v2",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-04T15:54:19.67Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "UNKNOWN",
+    "Domains": []
+  },
+  {
+    "ID": "6a821138a21454a2cf6ad74d",
+    "Name": "postgresql",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:36:24.228Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": []
+  },
+  {
+    "ID": "6a82113da21454a2cf6ad75a",
+    "Name": "redis",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:36:29.857Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": []
+  },
+  {
+    "ID": "6a8211a6bdeaa87e2c52df28",
+    "Name": "discord-gateway",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:38:14.856Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": [
+      {
+        "id": "6a83986682c638a0da12b3e6",
+        "domain": "v22.zeabur.app",
+        "serviceID": "6a8211a6bdeaa87e2c52df28",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:25:26.696Z"
+      }
+    ]
+  },
+  {
+    "ID": "6a8211c2a21454a2cf6ad77b",
+    "Name": "activity-service",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:38:42.981Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": []
+  },
+  {
+    "ID": "6a8211c9bdeaa87e2c52df34",
+    "Name": "api-gateway",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:38:49.239Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": [
+      {
+        "id": "6a83993582c638a0da12b3ec",
+        "domain": "v2-api.zeabur.app",
+        "serviceID": "6a8211c9bdeaa87e2c52df34",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:28:53.776Z"
+      }
+    ]
+  },
+  {
+    "ID": "6a8211cfbdeaa87e2c52df39",
+    "Name": "identity-service",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:38:55.266Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": []
+  },
+  {
+    "ID": "6a8211d5a21454a2cf6ad783",
+    "Name": "authorization-service",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:39:01.504Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": []
+  },
+  {
+    "ID": "6a8211dba21454a2cf6ad789",
+    "Name": "web",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:39:07.968Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": [
+      {
+        "id": "6a83988582c638a0da12b3ea",
+        "domain": "v2222.zeabur.app",
+        "serviceID": "6a8211dba21454a2cf6ad789",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:25:57.945Z"
+      },
+      {
+        "id": "6a83994482c638a0da12b3f0",
+        "domain": "v2-web.zeabur.app",
+        "serviceID": "6a8211dba21454a2cf6ad789",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:29:08.342Z"
+      }
+    ]
+  },
+  {
+    "ID": "6a8211e2a21454a2cf6ad78e",
+    "Name": "admin",
+    "Project": {
+      "ID": "6a720a3e472e2c91a9e660d5"
+    },
+    "CreatedAt": "2026-08-16T19:39:14.522Z",
+    "MarketItemCode": null,
+    "CustomBuildCommand": null,
+    "CustomStartCommand": null,
+    "OutputDir": null,
+    "RootDirectory": "",
+    "Template": "PREBUILT_V2",
+    "WatchPaths": [],
+    "GitTrigger": null,
+    "ConsoleURL": "",
+    "Status": "RUNNING",
+    "Domains": [
+      {
+        "id": "6a83987882c638a0da12b3e8",
+        "domain": "v222.zeabur.app",
+        "serviceID": "6a8211e2a21454a2cf6ad78e",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:25:44.402Z"
+      },
+      {
+        "id": "6a83993d82c638a0da12b3ee",
+        "domain": "v2-admin.zeabur.app",
+        "serviceID": "6a8211e2a21454a2cf6ad78e",
+        "environmentID": "6a720a3e5f062718bc7b3421",
+        "projectID": "6a720a3e472e2c91a9e660d5",
+        "portName": "web",
+        "redirectTo": "",
+        "status": "PROVISIONED",
+        "isGenerated": true,
+        "createdAt": "2026-08-17T23:29:01.572Z"
+      }
+    ]
+  }
+]
