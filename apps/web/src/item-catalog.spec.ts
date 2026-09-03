@@ -30,9 +30,7 @@ describe('item catalog class and enhancement rules', () => {
     expect(isItemCompatibleWithClass('Ekwipunek — Wojownik — Bronie jednoręczne', 'sura')).toBe(
       false,
     );
-    expect(isItemCompatibleWithClass('Ekwipunek — Kolczyki', 'shaman')).toBe(
-      true,
-    );
+    expect(isItemCompatibleWithClass('Ekwipunek — Kolczyki', 'shaman')).toBe(true);
   });
 
   it('formats enhancement levels from 0 to 9', () => {
