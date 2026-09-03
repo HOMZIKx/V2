@@ -12,7 +12,7 @@ keep prior logic/requests; verify only against truth (Project Hard).
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- SHA: `1af2082`
+- SHA: `c3d392c`
 
 ## 3. Delivered
 
