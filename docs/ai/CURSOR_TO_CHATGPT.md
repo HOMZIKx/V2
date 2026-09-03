@@ -2,37 +2,36 @@
 
 ## 1. Status
 
-`DESTILED_HUMAN_UX_POLISH`
+`DESTILED_MANUAL_TEST_READY`
 
 ## 2. Task
 
-Owner: polish what’s already on the site; human UX + Project Hard logic;
-no guessing; no AI-ish copy.
+Owner: make first-slice ready for real manual tests without friction;
+keep prior logic/requests; verify only against truth (Project Hard).
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- SHA: latest on branch
+- SHA: see latest commit on branch
 
 ## 3. Delivered
 
-- Analysis: `docs/ai/DESTILED_HUMAN_UX_AND_GAME_LOGIC_2026-09-03.md`
-- PL copy pass (Discord, pulpit, przestrzeń, postacie, historia, EQ)
-- Readiness: Na postaci / Poza postacią
-- Timer cards structured; Stajenny / Biolog / jazda wording
-- Simulator in Polish
+- Friction fixes: merge demo seed, session reset, persistent invite links,
+  accept/decline outcome, dashboard feedback, mobile EQ labels/breadcrumbs
+- Checklist: `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
+- PH naming/logic unchanged (no alchemy/sashes; jazda 23h; biolog midnight)
 
 ## 4. Validation
 
 - `pnpm typecheck`: PASS
-- `pnpm test`: PASS (44)
-- `pnpm e2e`: PASS (12)
+- `pnpm test`: PASS (46)
+- `pnpm e2e`: PASS (14)
 
-## 5. Screenshots
+## 5. How to test manually
 
-- `/opt/cursor/artifacts/screenshots/destiled-ux-01-home.png`
-- `/opt/cursor/artifacts/screenshots/destiled-ux-02-workspace.png`
-- `/opt/cursor/artifacts/screenshots/destiled-ux-03-timers.png`
+1. `pnpm --filter @v2/web dev` → `http://127.0.0.1:3000`
+2. Follow `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
+3. Dirty session → **Wyczyść sesję lokalną**
 
 ## 6. Marker
 
