@@ -11,6 +11,7 @@ COPY services/player-team-service/package.json ./services/player-team-service/pa
 RUN pnpm install --frozen-lockfile --filter @v2/player-team-service...
 
 FROM deps AS runtime
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY packages/configuration ./packages/configuration
 COPY packages/observability ./packages/observability
 COPY packages/typescript-config ./packages/typescript-config
