@@ -36,11 +36,8 @@ export const characterDirectoryFixture: CharacterDirectorySnapshot = {
       character.responsibleMember === teamWorkspaceFixture.viewerName
         ? 'responsible'
         : 'team_shared',
-    detailHref:
-      character.id === 'nerwnicht'
-        ? `/teams/asteria/characters/${character.id}`
-        : '/teams/asteria#characters',
-    detailLabel: character.id === 'nerwnicht' ? 'Otwórz kartę EQ' : 'Zobacz w zespole',
+    detailHref: `/teams/asteria/characters/${character.id}`,
+    detailLabel: 'Otwórz kartę postaci',
   })),
 };
 

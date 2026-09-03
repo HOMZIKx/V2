@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent } from 'react';
 
 import {
   assignPlannedItem,
@@ -16,6 +16,7 @@ import {
   type EquipmentAssignments,
   type EquipmentSlot,
 } from '../../../../../src/character-equipment';
+import { characterClassLabels, type CharacterProfileDraft } from '../../../../../src/character-profile';
 import { AppShell, Icon } from '../../../../app-shell';
 
 const categoryOptions: ReadonlyArray<{ value: EquipmentSlot | 'all'; label: string }> = [
@@ -52,6 +53,16 @@ export function CharacterEquipment({
   const [category, setCategory] = useState<EquipmentSlot | 'all'>('all');
   const [flipped, setFlipped] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const [profileOverride, setProfileOverride] = useState<CharacterProfileDraft | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(`destiled:character-profile:${initialSnapshot.characterId}`);
+      if (saved) setProfileOverride(JSON.parse(saved) as CharacterProfileDraft);
+    } catch {
+      setProfileOverride(null);
+    }
+  }, [initialSnapshot.characterId]);
 
   const activeSet = initialSnapshot.sets.find((set) => set.id === activeSetId)!;
   const assignments = assignmentsBySet[activeSetId] ?? activeSet.assignments;
@@ -61,6 +72,11 @@ export function CharacterEquipment({
     [catalog, category, query],
   );
   const completion = getEquipmentCompletion(assignments);
+  const characterName = profileOverride?.name || initialSnapshot.characterName;
+  const classLabel = profileOverride
+    ? characterClassLabels[profileOverride.characterClass]
+    : initialSnapshot.classLabel;
+  const level = profileOverride?.level ?? initialSnapshot.level;
 
   const assignItem = (itemId: string, slot: EquipmentSlot) => {
     const item = catalog.find((candidate) => candidate.id === itemId);
@@ -90,12 +106,12 @@ export function CharacterEquipment({
       confirmItemLocation(
         current,
         selectedItem.id,
-        initialSnapshot.characterName,
+        characterName,
         initialSnapshot.viewerName,
       ),
     );
     setAnnouncement(
-      `${selectedItem.name}: potwierdzono fizyczną lokalizację na ${initialSnapshot.characterName}.`,
+      `${selectedItem.name}: potwierdzono fizyczną lokalizację na ${characterName}.`,
     );
   };
 
@@ -107,15 +123,15 @@ export function CharacterEquipment({
           <Icon name="chevron" size={13} />
           <a href="/teams/asteria">{initialSnapshot.teamName}</a>
           <Icon name="chevron" size={13} />
-          <strong>{initialSnapshot.characterName}</strong>
+          <strong>{characterName}</strong>
         </nav>
 
         <header className="equipment-page-header">
           <div>
             <span className="eyebrow">Karta postaci</span>
-            <h1>{initialSnapshot.characterName}</h1>
+            <h1>{characterName}</h1>
             <p>
-              {initialSnapshot.classLabel} · poziom {initialSnapshot.level} · prowadzi{' '}
+              {classLabel} · poziom {level} · prowadzi{' '}
               <strong>{initialSnapshot.responsibleMember}</strong>
             </p>
           </div>
@@ -170,7 +186,7 @@ export function CharacterEquipment({
                     >
                       <span className="character-aura" />
                       <img
-                        alt={`${initialSnapshot.classLabel} — ${initialSnapshot.characterName}`}
+                        alt={`${classLabel} — ${characterName}`}
                         src={initialSnapshot.imagePath}
                       />
                       <span>kliknij postać, aby zobaczyć timery</span>
@@ -199,9 +215,9 @@ export function CharacterEquipment({
 
                   <footer className="character-card-footer">
                     <div>
-                      <strong>{initialSnapshot.characterName}</strong>
+                      <strong>{characterName}</strong>
                       <span>
-                        {initialSnapshot.classLabel} · Lv. {initialSnapshot.level}
+                        {classLabel} · Lv. {level}
                       </span>
                     </div>
                     <button onClick={() => setFlipped(true)} type="button">
@@ -267,7 +283,7 @@ export function CharacterEquipment({
                   </div>
                   <footer className="character-card-footer">
                     <div>
-                      <strong>{initialSnapshot.characterName}</strong>
+                      <strong>{characterName}</strong>
                       <span>timery rozwoju postaci</span>
                     </div>
                     <button onClick={() => setFlipped(false)} type="button">
@@ -393,7 +409,7 @@ export function CharacterEquipment({
                   onClick={handleLocationConfirmation}
                   type="button"
                 >
-                  <Icon name="check" size={15} /> Potwierdź: jest na {initialSnapshot.characterName}
+                  <Icon name="check" size={15} /> Potwierdź: jest na {characterName}
                 </button>
                 {equipmentSlots.find((slot) => assignments[slot] === selectedItem.id) && (
                   <button

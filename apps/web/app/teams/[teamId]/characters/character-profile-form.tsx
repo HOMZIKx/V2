@@ -61,8 +61,8 @@ export function CharacterProfileForm({
     setSubmitted(true);
     setAnnouncement(
       editing
-        ? `${command.profile.name}: zmiany profilu są gotowe do zapisania.`
-        : `${command.profile.name}: postać i pierwszy zestaw są gotowe do utworzenia.`,
+        ? `${command.profile.name}: zmiany zapisano lokalnie w tym podglądzie.`
+        : `${command.profile.name}: szkic postaci zapisano lokalnie w tym podglądzie.`,
     );
   };
 
@@ -75,13 +75,13 @@ export function CharacterProfileForm({
               <Icon name="check" size={26} />
             </span>
             <span className="eyebrow">
-              {editing ? 'Profil zaktualizowany' : 'Postać utworzona'}
+              {editing ? 'Profil zapisany lokalnie' : 'Szkic zapisany lokalnie'}
             </span>
             <h1>{draft.name}</h1>
             <p>
               {editing
-                ? 'Zmiana ma gotowy kontrakt wersji. API zapisze ją bez cichego nadpisania nowszych danych.'
-                : `Utworzono profil oraz pusty zestaw „${draft.startingSetName}”. Przedmioty dodasz osobno.`}
+                ? 'Zmiany są zachowane w tej przeglądarce. Wspólny zapis dla zespołu wymaga API i Postgresa.'
+                : `Szkic i pusty zestaw „${draft.startingSetName}” zapisano w tej przeglądarce. Wspólne utworzenie postaci wymaga API.`}
             </p>
             <div className="save-result-summary">
               <span>{characterClassLabels[draft.characterClass]}</span>
@@ -271,8 +271,8 @@ export function CharacterProfileForm({
 
             <footer>
               <p>
-                <Icon name="history" size={14} /> Zapis będzie miał osobę, czas, wersję i operation
-                ID.
+                <Icon name="history" size={14} /> Ten etap zapisuje bezpiecznie tylko w tej
+                przeglądarce. Wersjonowanie zespołowe dojdzie razem z API.
               </p>
               <button type="submit">
                 <Icon name="check" size={16} /> {editing ? 'Zapisz zmiany' : 'Utwórz postać'}
@@ -332,8 +332,8 @@ export function CharacterProfileForm({
           {announcement}
         </p>
         <div className="mock-notice">
-          Interfejs produkcyjny · zapis demonstracyjny przez typed adapter. API zastąpi adapter bez
-          zmiany formularza.
+          Podgląd funkcji · zapis lokalny. Nie jest jeszcze wspólnym zapisem zespołu ani zmianą
+          danych bota.
         </div>
       </main>
     </AppShell>

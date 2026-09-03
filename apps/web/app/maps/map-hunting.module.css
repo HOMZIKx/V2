@@ -1,0 +1,30 @@
+.fallback {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  height: 450px;
+  align-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 32px;
+  color: #a9bbd8;
+  font-size: 10px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.fallback strong {
+  color: #e0e9fa;
+  font-size: 13px;
+}
+
+.fallback span {
+  max-width: 440px;
+  color: #8495b2;
+}
+
+@media (max-width: 620px) {
+  .fallback {
+    height: 320px;
+  }
+}

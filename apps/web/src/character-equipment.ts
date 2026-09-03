@@ -267,6 +267,28 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
   ],
 };
 
+/**
+ * Tymczasowy adapter danych widoku. Docelowo rekord pochodzi z API zespołu;
+ * już teraz każda udostępniona postać ma własną, pełną kartę, zamiast martwego linku.
+ */
+export function getCharacterEquipmentFixture(characterId: string): CharacterEquipmentSnapshot | null {
+  const variants: Readonly<Record<string, Pick<CharacterEquipmentSnapshot, 'characterName' | 'classLabel' | 'level' | 'imagePath' | 'responsibleMember' | 'timers'>>> = {
+    nerwnicht: {
+      characterName: 'NerwNicht', classLabel: 'Sura', level: 75, imagePath: '/game/classes/sura-male.png', responsibleMember: 'Mateusz', timers: characterEquipmentFixture.timers,
+    },
+    aalpsik: {
+      characterName: 'Aalpsik', classLabel: 'Ninja', level: 55, imagePath: '/game/classes/ninja-female.png', responsibleMember: 'Aalpsik',
+      timers: [{ id: 'horse-medal', label: 'Medal konny', detail: 'Poziom konia 12 → 13', readyLabel: 'gotowe teraz', status: 'ready', progressPercent: 100, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Ostrze Duszy', readyLabel: 'za 42 min', status: 'running', progressPercent: 58, discordReminder: true }],
+    },
+    kimmizic: {
+      characterName: 'Kimmizic', classLabel: 'Szaman', level: 61, imagePath: '/game/classes/shaman-male.png', responsibleMember: 'Wicek',
+      timers: [{ id: 'biologist', label: 'Biolog', detail: 'Pamiątki po demonie · 6/10', readyLabel: 'jutro 08:10', status: 'running', progressPercent: 41, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Błogosławieństwo', readyLabel: 'za 1 h 18 min', status: 'running', progressPercent: 20, discordReminder: false }],
+    },
+  };
+  const variant = variants[characterId];
+  return variant ? { ...characterEquipmentFixture, characterId, ...variant } : null;
+}
+
 export function assignPlannedItem(
   assignments: EquipmentAssignments,
   item: CatalogItem,
