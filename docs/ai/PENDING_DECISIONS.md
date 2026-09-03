@@ -16,6 +16,15 @@
   bonusów ze starego dobry-temat, albo dostęp do referencyjnego folderu lokalnego
   w agencie — wtedy podmienimy dump 1:1.
 
+### DEC-069 — Sprity boss/metin z gry (zamiast SVG placeholder)
+
+- **Status:** PARTIAL
+- **Kontekst:** Katalog respawn nie ma ścieżek obrazków. Wgrane są wyróżniające
+  SVG (kamień metina / medalion bossa) + wysoki kontrast UI Timerów/Party.
+- **Potrzeba od właściciela (opcjonalnie):** PNG/WebP sprite’y 1:1 z dobry-temat
+  `frontend/public` → `apps/web/public/game/respawn/` (nadpiszą SVG przy tej
+  samej nazwie pliku / aktualizacji `respawn-entity-icons.json`).
+
 ### DEC-067 — Party hunt: osobna funkcja od Timerów
 
 - **Status:** OWNER_DIRECTED (2026-09-03)

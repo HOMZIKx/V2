@@ -9094,3 +9094,211 @@ button:disabled {
     min-height: 64px;
   }
 }
+
+/* --- Timers + Party visual quality (owner: contrast, readable names/times, icons) --- */
+.respawn-page .respawn-record {
+  grid-template-columns: 52px minmax(0, 1fr) minmax(120px, 140px) auto;
+  gap: 14px;
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(160, 175, 200, 0.16);
+}
+.respawn-page .respawn-record-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(150, 175, 220, 0.35);
+  background: rgba(16, 24, 38, 0.9);
+  overflow: hidden;
+}
+.respawn-page .respawn-entity-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px;
+}
+.respawn-page .respawn-record-copy strong {
+  color: #f5f7fb !important;
+  font-size: 15px !important;
+  font-weight: 680 !important;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+.respawn-page .respawn-record-copy span {
+  margin-top: 5px !important;
+  color: #b4c0d4 !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+.respawn-page .respawn-record-time b {
+  color: #eef4ff !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+}
+.respawn-page .respawn-record-time span {
+  margin-top: 4px !important;
+  color: #aeb9cc !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.respawn-page .respawn-record-actions button {
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: 1px solid rgba(120, 170, 255, 0.7) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(180deg, rgba(70, 130, 235, 0.45), rgba(40, 90, 190, 0.35)) !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(40, 90, 190, 0.25);
+}
+.respawn-page .respawn-record-actions button:disabled {
+  border-color: rgba(120, 135, 160, 0.35) !important;
+  background: rgba(50, 58, 74, 0.55) !important;
+  color: #9aa6bb !important;
+  box-shadow: none;
+  font-weight: 650 !important;
+}
+.respawn-page .respawn-channels button,
+.respawn-page .respawn-filters button,
+.respawn-page .respawn-header-actions button {
+  min-height: 36px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(160, 180, 215, 0.4) !important;
+  background: rgba(20, 28, 42, 0.92) !important;
+  color: #e4ebf7 !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+.respawn-page .respawn-channels button.is-active,
+.respawn-page .respawn-filters button.is-active,
+.respawn-page .respawn-header-actions button.is-active {
+  border-color: rgba(110, 168, 255, 0.85) !important;
+  background: rgba(55, 120, 230, 0.42) !important;
+  color: #ffffff !important;
+}
+.respawn-page .respawn-party-toggle {
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border: 1px solid rgba(160, 180, 215, 0.4) !important;
+  border-radius: 10px !important;
+  background: rgba(22, 30, 44, 0.95) !important;
+  color: #e8eef8 !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+.respawn-page .respawn-party-toggle.is-on {
+  border-color: rgba(110, 168, 255, 0.7) !important;
+  background: rgba(45, 101, 212, 0.32) !important;
+  color: #ffffff !important;
+}
+.respawn-page .respawn-map-marker {
+  min-height: 28px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid rgba(200, 220, 255, 0.45);
+  background: rgba(10, 16, 28, 0.88);
+  color: #f2f6ff;
+  font-size: 11px;
+  font-weight: 650;
+}
+.respawn-page .respawn-map-marker span {
+  color: #f2f6ff !important;
+  font-size: 11px !important;
+}
+.respawn-page .respawn-map-marker .respawn-entity-icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+.respawn-page .respawn-party-members div,
+.respawn-page .respawn-party-feed p {
+  color: #e4ebf7;
+  font-size: 13px;
+}
+.respawn-page .respawn-party-members strong {
+  color: #ffffff;
+  font-size: 14px;
+}
+.respawn-page .respawn-list-header h2,
+.respawn-page .respawn-party-panel h2,
+.respawn-page .respawn-timers-hint h2 {
+  color: #f5f7fb;
+}
+.respawn-page .respawn-list-lead,
+.respawn-page .respawn-map-help,
+.respawn-page .respawn-data-note {
+  color: #aeb9cc !important;
+  font-size: 13px !important;
+}
+.respawn-page .respawn-controls-stat strong {
+  color: #ffffff;
+  font-size: 24px;
+}
+.respawn-page .respawn-pin-modal-actions button {
+  min-height: 42px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #eef3ff !important;
+}
+.respawn-page .respawn-pin-modal-actions button.is-primary {
+  background: linear-gradient(180deg, rgba(70, 130, 235, 0.55), rgba(40, 90, 190, 0.45)) !important;
+  color: #ffffff !important;
+  border-color: rgba(130, 180, 255, 0.8) !important;
+}
+@media (max-width: 800px) {
+  .respawn-page .respawn-record {
+    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-areas:
+      'icon copy'
+      'time time'
+      'actions actions';
+  }
+  .respawn-page .respawn-record-icon {
+    grid-area: icon;
+  }
+  .respawn-page .respawn-record-copy {
+    grid-area: copy;
+  }
+  .respawn-page .respawn-record-time {
+    grid-area: time;
+    text-align: left;
+    margin-top: 6px;
+  }
+  .respawn-page .respawn-record-actions {
+    grid-area: actions;
+    margin-top: 8px;
+  }
+  .respawn-page .respawn-record-actions button {
+    flex: 1;
+  }
+}
+.respawn-page .respawn-window-chip {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(110, 168, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(55, 120, 230, 0.22);
+  color: #d7e7ff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.respawn-page .respawn-party-feed button,
+.respawn-page .respawn-party-panel button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(150, 175, 220, 0.4);
+  border-radius: 9px;
+  background: rgba(40, 90, 190, 0.28);
+  color: #eef3ff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.respawn-page .catalog-search input {
+  min-height: 38px;
+  color: #eef3ff;
+  font-size: 13px;
+}

@@ -1,11 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Best">
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="Best">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#96a9c6"/>
-      <stop offset="100%" stop-color="#121820"/>
+    <linearGradient id="bgboss1771351838877" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a1820"/>
+      <stop offset="100%" stop-color="#120e14"/>
     </linearGradient>
+    <radialGradient id="orbboss1771351838877" cx="0.45" cy="0.35" r="0.65">
+      <stop offset="0%" stop-color="#ffe2a8"/>
+      <stop offset="45%" stop-color="#d2693a"/>
+      <stop offset="100%" stop-color="#3a1810"/>
+    </radialGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#g)"/>
-  <rect x="3" y="3" width="58" height="58" rx="12" fill="none" stroke="#f0bd64" stroke-width="2" opacity="0.85"/>
-  <text x="32" y="38" text-anchor="middle" font-family="Georgia, serif" font-size="20" font-weight="600" fill="#f4f6fb">BE</text>
+  <rect width="72" height="72" rx="14" fill="url(#bgboss1771351838877)"/>
+  <circle cx="36" cy="32" r="20" fill="url(#orbboss1771351838877)" stroke="#f0c27a" stroke-width="2"/>
+  <path d="M18 54c6-8 12-12 18-12s12 4 18 12" fill="none" stroke="#f0c27a" stroke-width="2" opacity="0.7"/>
+  <text x="36" y="37" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="700" fill="#1a1008">BE</text>
+  <text x="36" y="66" text-anchor="middle" font-family="Georgia, serif" font-size="10" font-weight="700" fill="#f6e2c0">BOSS</text>
 </svg>

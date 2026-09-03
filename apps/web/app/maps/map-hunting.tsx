@@ -231,8 +231,8 @@ export function MapHunting({
         <div className="respawn-record-copy">
           <strong>{record.entity.name}</strong>
           <span>
-            {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)} · CH
-            {record.channel}
+            <em className="respawn-window-chip">{formatWindow(record)}</em>
+            {record.kind === 'boss' ? 'Boss' : 'Metin'} · CH{record.channel}
             {record.location
               ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
               : ' · bez pinezki'}
