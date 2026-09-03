@@ -57,6 +57,7 @@ describe('item catalog class and enhancement rules', () => {
   it('reads bonus ladders from dobry-temat wiki_upgrade without inventing truncated rows', () => {
     const shield = findGameItemByTitle('Bojowa Tarcza');
     expect(bonusesAtEnhancement(shield?.upgradeDescription, 9)).toContain('Obrona +57');
+    expect(bonusesAtEnhancement(shield?.upgradeDescription, 9)).toContain('Szybkość ruchu -2%');
     expect(
       bonusesAtEnhancement(shield?.upgradeDescription, 9).some((line) => line.includes('…')),
     ).toBe(false);

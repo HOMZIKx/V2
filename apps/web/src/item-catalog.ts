@@ -1,6 +1,7 @@
 import type { CharacterClass } from './character-profile';
 import catalogDocument from './data/dobry-temat-item-catalog.json';
 import phItemIconMap from './data/ph-item-icon-map.json';
+import wikiBonusOverrides from './data/wiki-item-bonus-overrides.json';
 import wikiImageMap from './data/wiki-item-image-map.json';
 
 export type EquipmentSlotId =
@@ -32,6 +33,7 @@ interface LegacyCatalogItem {
 const legacy = catalogDocument.items as readonly LegacyCatalogItem[];
 const localImages = wikiImageMap as Record<string, string>;
 const phIcons = phItemIconMap as Record<string, string>;
+const bonusOverrides = wikiBonusOverrides as Record<string, string>;
 
 export const gameItemCatalog: readonly GameItem[] = legacy.map((item) => {
   const ph = phIcons[item.title] ?? null;
@@ -43,7 +45,9 @@ export const gameItemCatalog: readonly GameItem[] = legacy.map((item) => {
     imagePath: item.image_url ?? null,
     sourceImageUrl: local,
     wikiUrl: item.wiki_url ?? null,
-    upgradeDescription: item.wiki_upgrade ?? null,
+    // Prefer full bonus ladders fetched from wiki page wikitext.
+    // Falls back to legacy dump (can be truncated at 201 chars).
+    upgradeDescription: bonusOverrides[item.title] ?? item.wiki_upgrade ?? null,
   };
 });
 
