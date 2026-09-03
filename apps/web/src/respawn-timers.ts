@@ -1,5 +1,6 @@
 import catalogDocument from './data/dobry-temat-respawn-catalog.json';
 import respawnEntityIcons from './data/respawn-entity-icons.json';
+import respawnMetinNameIcons from './data/respawn-metin-name-icons.json';
 
 export type RespawnKind = 'boss' | 'metin';
 export type RespawnPhase = 'no_data' | 'countdown' | 'window' | 'on_map' | 'expired';
@@ -52,9 +53,15 @@ const MINUTE = 60_000;
 const MAP_MARKER_LIFETIME = 5 * MINUTE;
 const rawConfig = catalogDocument.config as Record<string, Omit<RespawnMap, 'key'>>;
 const entityIconMap = respawnEntityIcons as Record<string, string>;
+const metinNameIconMap = respawnMetinNameIcons as Record<string, string>;
+
+function baseMetinName(name: string): string {
+  return name.replace(/\s*#\d+\s*$/u, '').trim();
+}
 
 function withEntityIcon(entity: RespawnEntity): RespawnEntity {
-  const iconPath = entity.iconPath ?? entityIconMap[entity.id];
+  const iconPath =
+    entity.iconPath ?? metinNameIconMap[baseMetinName(entity.name)] ?? entityIconMap[entity.id];
   return iconPath ? { ...entity, iconPath } : entity;
 }
 
