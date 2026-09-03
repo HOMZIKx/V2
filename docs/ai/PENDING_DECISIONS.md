@@ -4,22 +4,32 @@
 
 ### DEC-064 — Mapy w nawigacji (owner: wygląd finalny teraz)
 
-- **Status:** OWNER_DIRECTED (2026-09-03)
+- **Status:** OWNER_DIRECTED → UX doprecyzowany (2026-09-03)
 - **Kontekst:** D-049 trzymał mapy poza first-slice jako „później”. Właściciel
-  wymaga wyglądu finalnego — `/maps` renderuje `MapHunting`, nawigacja ma
-  pozycję Mapy, grafiki z oficjalnej wiki Gameforge / stylizowany atlas.
+  wymaga wyglądu finalnego — `/maps` renderuje `MapHunting`.
+- **Doprecyzowanie UX:** główna etykieta nawigacji = **Timery** (lista respawnów
+  jak w starej app); atlas top-down to drugi widok. Panoramy lokalizacji nie są
+  mapą nawigacyjną — trzymane w `public/game/map-banners/`.
 - **Uwaga:** dokładne PNG z lokalnego dobry-temat nadal mogą nadpisać pliki w
-  `public/game/maps/` 1:1; obecne to oficjalne overview/interactive map z wiki.
+  `public/game/maps/` 1:1 (szczególnie lochy małp).
 
 ### DEC-063 — Grafiki map polowania z lokalnego dobry-temat
 
 - **Status:** PARTIALLY_SATISFIED
 - **Kontekst:** Katalog respawn/metiny/bossy jest w
-  `dobry-temat-respawn-catalog.json` (dane OK). UI map oczekuje PNG z
-  `apps/web/public/game/maps/`. Wgrano overview z oficjalnej wiki Gameforge dla
-  większości terenów; brakujące lochy używają atlasu kolorystycznego z dumpa.
-- **Opcjonalnie:** nadpisz PNG 1:1 ze swojego lokalnego `frontend/public` jeśli
-  chcesz dokładnie te same kadry co stara appka.
+  `dobry-temat-respawn-catalog.json` (dane OK). UI map używa atlasów top-down
+  512×512 (Interactive Map / Interaktive Karte / wiki) dla terenów otwartych.
+  Loch Pająków V2 z pl-wiki; lochy małp = schematyczny atlas kolorystyczny.
+- **Opcjonalnie:** nadpisz PNG 1:1 ze swojego lokalnego `frontend/public`.
+
+### DEC-065 — Spójność wizualna poz class×gender
+
+- **Status:** OPEN
+- **Kontekst:** Komplet 8/8 plików jest, ale źródła mieszają dynamiczne portrety
+  klas z innymi seriami (np. Desert costume). Właściciel wymaga podobnych poz /
+  stylu charakterystycznego dla klasy.
+- **Blokada:** bez lokalnego dumpa dobry-temat albo wskazania jednej oficjalnej
+  serii wiki nie da się ujednolicić bez zgadywania.
 
 ### DEC-062 — Brakujące rendery klas×płeć Metin2 (asset z dobry-temat)
 
@@ -28,7 +38,7 @@
   (272×360, bottom-aligned) z oficjalnej en-wiki Gameforge: portrety klas +
   gendered costume renders dla brakujących płci. Zarejestrowane w
   `character-profile.ts`. `listMissingCharacterRenders()` = [].
-
+  Spójność poz → DEC-065.
 ### DEC-061 — Przeniesienie prac DESTILED Web do Cursora
 
 - **Status:** OWNER_ACCEPTED (2026-09-03)

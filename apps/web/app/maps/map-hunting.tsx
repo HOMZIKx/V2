@@ -56,8 +56,12 @@ const mapFiles: Readonly<Record<string, string>> = {
   'Czerwony Las': 'map_czerwonylas.png',
   'Wężowe Pole': 'map_wezowe.png',
   'Atlantyda V1': 'map_atlantyda_v1_new.png',
-  'Atlantyda V2': 'map_atlantyda_v1_new.png',
+  'Atlantyda V2': 'map_atlantyda_v2_new.png',
   'Grota Wygnańców': 'map_grota_wygnancow.png',
+  'Loch Małp Łatwy': 'map_loch_malp_latwy.png',
+  'Loch Małp Średni': 'map_loch_malp_sredni.png',
+  'Loch Małp Trudny': 'map_loch_malp_trudny.png',
+  'Loch Pająków V2': 'map_loch_pajakow_v2.png',
 };
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
 const mapImage = (mapKey: string) => (mapFiles[mapKey] ? `/game/maps/${mapFiles[mapKey]}` : null);
@@ -74,7 +78,7 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
   const [mapKey, setMapKey] = useState(respawnMaps[0]?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
   const [channel, setChannel] = useState(1);
-  const [view, setView] = useState<View>('map');
+  const [view, setView] = useState<View>('timers');
   const [filter, setFilter] = useState<Filter>('all');
   const [store, setStore] = useState<RecordStore>(initialStore);
   const [now, setNow] = useState(() => Date.now());
@@ -278,30 +282,37 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
       <main className="respawn-page" id="main-content">
         <header className="respawn-header">
           <div>
-            <span className="eyebrow">Wyprawa</span>
-            <h1>Metiny i bossy</h1>
-            <p>Wybierz mapę i kanał, prowadź respawny i oznaczaj zbicia na mapie dla party.</p>
+            <span className="eyebrow">Wyprawa · Projekt Hard</span>
+            <h1>Timery metinów i bossów</h1>
+            <p>
+              Te same mapy, kanały i okna respawnu co w starej aplikacji. Najpierw lista timerów —
+              mapa top-down służy tylko do znaczników party.
+            </p>
           </div>
-          <div className="respawn-header-actions">
+          <div className="respawn-header-actions" role="tablist" aria-label="Widok wyprawy">
             <button
+              aria-selected={view === 'timers'}
               className={view === 'timers' ? 'is-active' : ''}
               onClick={() => setView('timers')}
+              role="tab"
               type="button"
             >
               Timery
             </button>
             <button
+              aria-selected={view === 'map'}
               className={view === 'map' ? 'is-active' : ''}
               onClick={() => setView('map')}
+              role="tab"
               type="button"
             >
-              Mapa i znaczniki
+              Mapa (atlas)
             </button>
           </div>
         </header>
         <section className="respawn-controls panel">
           <div className="respawn-map-select">
-            <label htmlFor="respawn-map">Teren party</label>
+            <label htmlFor="respawn-map">Mapa</label>
             <select
               id="respawn-map"
               onChange={(event) => changeMap(event.target.value)}

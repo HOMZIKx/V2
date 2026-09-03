@@ -99,6 +99,27 @@ export function AppShell({
     0,
   );
 
+  const connectionCopy =
+    state.connection === 'connected'
+      ? {
+          title: 'Podgląd lokalny',
+          detail: 'Dane w przeglądarce (localStorage). Pełna synchronizacja zespołu wymaga API.',
+        }
+      : state.connection === 'reconnecting'
+        ? {
+            title: 'Ponowne łączenie',
+            detail: 'Wersje robocze zostają na urządzeniu.',
+          }
+        : state.connection === 'revoked'
+          ? {
+              title: 'Dostęp zakończony',
+              detail: 'Sesja nie ma już uprawnień do prywatnych danych.',
+            }
+          : {
+              title: 'Offline',
+              detail: 'Brak aktywnego połączenia z backendem.',
+            };
+
   const navigation = [
     { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
     { id: 'teams' as const, label: 'Moje przestrzenie', icon: 'team' as const, href: teamsHref },
@@ -108,7 +129,7 @@ export function AppShell({
       icon: 'character' as const,
       href: '/characters',
     },
-    { id: 'maps' as const, label: 'Mapy', icon: 'map' as const, href: '/maps' },
+    { id: 'maps' as const, label: 'Timery', icon: 'clock' as const, href: '/maps' },
   ];
 
   return (
@@ -169,6 +190,17 @@ export function AppShell({
           </a>
         </div>
       </header>
+
+      <div
+        aria-live="polite"
+        className={`connection-strip is-${state.connection === 'connected' ? 'local' : state.connection}`}
+      >
+        <Icon name="activity" size={14} />
+        <div className="connection-strip-copy">
+          <strong>{connectionCopy.title}</strong>
+          <span>{connectionCopy.detail}</span>
+        </div>
+      </div>
 
       <aside className={`mobile-drawer${mobileMenuOpen ? ' is-open' : ''}`}>
         {navigation.map((item) => (

@@ -585,6 +585,69 @@ button:disabled {
   min-height: 100vh;
 }
 
+.connection-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0.75rem 1.5rem 0;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(120, 160, 210, 0.28);
+  border-radius: 10px;
+  background: rgba(24, 36, 52, 0.72);
+  color: #c5d6ea;
+}
+
+.connection-strip-copy {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.connection-strip strong {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.connection-strip span {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  opacity: 0.92;
+}
+
+.connection-strip.is-local {
+  color: #f0d48a;
+  background: rgba(240, 212, 138, 0.1);
+  border-color: rgba(240, 212, 138, 0.28);
+}
+
+.connection-strip.is-reconnecting {
+  color: #9ec8ff;
+  background: rgba(70, 120, 200, 0.16);
+  border-color: rgba(120, 170, 255, 0.35);
+}
+
+.connection-strip.is-offline {
+  color: #c9d0da;
+  background: rgba(80, 90, 105, 0.2);
+  border-color: rgba(140, 150, 165, 0.3);
+}
+
+.connection-strip.is-revoked {
+  color: #f0a8a0;
+  background: rgba(180, 60, 48, 0.18);
+  border-color: rgba(240, 120, 100, 0.35);
+}
+
+@media (max-width: 720px) {
+  .connection-strip {
+    margin: 0.55rem 0.85rem 0;
+  }
+}
+
 .topbar {
   position: sticky;
   top: 0;

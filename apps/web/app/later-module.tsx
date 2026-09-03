@@ -38,7 +38,7 @@ export function MapsLaterPage() {
   return (
     <LaterModulePage
       title="Mapy i metiny"
-      summary="Dane bossów/metinów i timerów są w dumpie dobry-temat. Brakuje tylko PNG map z lokalnego dobry-temat/frontend/public (DEC-063) — bez nich stage mapy działa w trybie fallback."
+      summary="Live UI jest pod /maps (nav: Timery). Katalog respawnów z dobry-temat + atlasy top-down; lochy małp mają schematyczny atlas do czasu minimap z lokalnego dumpa."
     />
   );
 }
