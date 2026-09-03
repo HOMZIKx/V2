@@ -127,8 +127,8 @@ async function seedAuthenticatedDemo(page: Page) {
             },
             {
               id: 'battle-shield',
-              name: 'Tarcza Bojowa +9',
-              iconPath: '/game/items/battle-shield.svg',
+              name: 'Bojowa Tarcza +9',
+              iconPath: '/game/items/wiki/wiki_a2205fd93e6b34d6.png',
               category: 'shield',
               levelLabel: 'od poziomu 21',
               bonuses: ['Szansa na blok ciosu +10%'],
@@ -220,8 +220,8 @@ async function seedAuthenticatedDemo(page: Page) {
             {
               id: 'horse-medal-aalpsik',
               characterId: 'aalpsik',
-              label: 'Medal konny',
-              detail: 'Poziom konia 12 → 13',
+              label: 'Jazda konna',
+              detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h',
               status: 'ready',
               readyAtIso: new Date(now).toISOString(),
               remainingLabel: 'gotowe teraz',
@@ -259,7 +259,7 @@ async function seedAuthenticatedDemo(page: Page) {
               characterName: 'NerwNicht',
               resource: 'equipment',
               title: 'Potwierdzono lokalizację tarczy',
-              detail: 'Tarcza Bojowa +9',
+              detail: 'Bojowa Tarcza +9',
               occurredAtLabel: 'wczoraj',
               revision: 19,
             },
@@ -359,7 +359,7 @@ test('separates planned equipment, confirmed location and character timers', asy
   await page.getByRole('button', { name: /Krótki Nóż/ }).click();
   await page.getByRole('button', { name: /Broń: Zatruty Miecz/ }).click();
   await expect(page.getByRole('button', { name: /Broń: Krótki Nóż/ })).toBeVisible();
-  await page.locator('.catalog-item').filter({ hasText: 'Tarcza Bojowa +9' }).click();
+  await page.locator('.catalog-item').filter({ hasText: 'Bojowa Tarcza +9' }).click();
   await page.getByRole('button', { name: /Potwierdź: jest na NerwNicht/ }).click();
   await expect(page.getByText(/Mateusz · teraz/)).toBeVisible();
   await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();

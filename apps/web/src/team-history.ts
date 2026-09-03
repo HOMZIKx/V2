@@ -87,7 +87,7 @@ export const teamHistoryFixture: TeamHistorySnapshot = {
   ],
   conflict: {
     id: 'conflict-shield-location',
-    resourceLabel: 'Lokalizacja: Tarcza Bojowa +9',
+    resourceLabel: 'Lokalizacja: Bojowa Tarcza +9',
     characterName: 'NerwNicht',
     localActorName: 'Mateusz',
     serverActorName: 'XiaoHu',
@@ -106,7 +106,7 @@ export const teamHistoryFixture: TeamHistorySnapshot = {
       characterName: 'NerwNicht',
       resource: 'equipment',
       title: 'Potwierdzono lokalizację tarczy',
-      detail: 'Tarcza Bojowa +9 · Aalpsik. To ręczne potwierdzenie, nie odczyt z gry.',
+      detail: 'Bojowa Tarcza +9 · Aalpsik. To ręczne potwierdzenie, nie odczyt z gry.',
       occurredAtLabel: 'dzisiaj 12:08',
       revision: 19,
     },

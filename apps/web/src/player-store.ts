@@ -16,6 +16,15 @@ import {
   type EquipmentAssignments,
   type EquipmentSlot,
 } from './character-equipment';
+import { findGameItemByCardName, resolveItemIconPath } from './item-catalog';
+import {
+  biologistProgressLabel,
+  biologistQuestById,
+  horseAdvanceDetail,
+  nextMidnightLabel,
+  projectHardHorseRules,
+  projectHardSkillBookRules,
+} from './project-hard-progression';
 import type { CatalogLayer } from './member-dashboard';
 import type { TeamHistoryResource } from './team-history';
 
@@ -261,12 +270,23 @@ function historyEntry(
   };
 }
 
+function demoEquipmentItem(
+  partial: Omit<EquipmentItem, 'iconPath'> & { readonly iconPath?: string },
+): EquipmentItem {
+  return {
+    ...partial,
+    iconPath: partial.iconPath ?? resolveItemIconPath(partial.name),
+  };
+}
+
 export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
+  const demonQuest = biologistQuestById('demon-keepsake')!;
+  const midnight = nextMidnightLabel();
+
   const items: EquipmentItem[] = [
-    {
+    demoEquipmentItem({
       id: 'zodiac-sword',
       name: 'Zatruty Miecz +9',
-      iconPath: '/game/items/zodiac-sword.svg',
       category: 'weapon',
       levelLabel: 'od poziomu 75',
       bonuses: ['Średnie obrażenia +37%', 'Silny przeciwko ludziom +10%', 'Witalność +12'],
@@ -277,11 +297,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 3,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'short-knife',
       name: 'Krótki Nóż +9',
-      iconPath: '/game/items/short-knife.svg',
       category: 'weapon',
       levelLabel: 'od poziomu 1',
       bonuses: ['Szybkość ataku +15%', 'Wartość ataku +18'],
@@ -292,11 +311,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 2,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'ivory-suit',
-      name: 'Mglista Zbroja Płyt. +1',
-      iconPath: '/game/items/ivory-suit.svg',
+      name: 'Mglista Zbroja Płytowa +1',
       category: 'armor',
       levelLabel: 'od poziomu 48',
       bonuses: ['Max PŻ +800', 'Odporność na magię 10%', 'Wartość ataku +50'],
@@ -307,27 +325,26 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 2,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'battle-shield',
-      name: 'Tarcza Bojowa +9',
-      iconPath: '/game/items/battle-shield.svg',
+      name: 'Bojowa Tarcza +9',
       category: 'shield',
       levelLabel: 'od poziomu 21',
       bonuses: ['Odporność na omdlenie', 'Szansa na blok ciosu +10%'],
-      catalogLayer: 'destiled_curated',
+      catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'Aalpsik',
       lastConfirmedBy: 'Wicek',
       lastConfirmedAt: '2 dni temu',
       archived: false,
       planned: false,
       revision: 4,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'ebony-earrings',
       name: 'Ebonitowe Kolczyki +9',
-      iconPath: '/game/items/ebony-earrings.svg',
       category: 'earrings',
+      // Project Hard presentation: Ebony Earrings +9, req 33
       levelLabel: 'od poziomu 33',
       bonuses: ['Siła +12', 'Max PŻ +1650'],
       catalogLayer: 'project_hard_source',
@@ -337,14 +354,14 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 1,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'jade-necklace',
       name: 'Jadeitowy Naszyjnik +9',
-      iconPath: '/game/items/jade-necklace.svg',
       category: 'necklace',
-      levelLabel: 'od poziomu 28',
-      bonuses: ['Zręczność +12', 'Szybkość zaklęcia +20%'],
+      // Project Hard presentation: Jade Necklace +9, req 42
+      levelLabel: 'od poziomu 42',
+      bonuses: ['Szybkość zaklęcia +22%', 'Zręczność +4'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -352,11 +369,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 1,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'wooden-necklace',
       name: 'Drewniany Naszyjnik +9',
-      iconPath: '/game/items/wooden-necklace.svg',
       category: 'necklace',
       levelLabel: 'od poziomu 1',
       bonuses: ['Szybkość zaklęcia +10%'],
@@ -367,14 +383,14 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: true,
       revision: 1,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'wooden-bracelet',
       name: 'Drewniana Bransoleta +9',
-      iconPath: '/game/items/wooden-bracelet.svg',
       category: 'bracelet',
-      levelLabel: 'od poziomu 1',
-      bonuses: ['Max PŻ +500'],
+      // Project Hard presentation: Wooden Bracelet +9
+      levelLabel: 'od poziomu 0',
+      bonuses: ['Szybkość ataku +5%', 'Czas trwania umiejętności +20 s'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -382,22 +398,22 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       archived: false,
       planned: false,
       revision: 1,
-    },
-    {
+    }),
+    demoEquipmentItem({
       id: 'leather-boots',
-      name: 'Skórzane Kozaki +8',
-      iconPath: '/game/items/leather-boots.svg',
+      name: 'Skórzane Kozaki +9',
       category: 'shoes',
+      // Project Hard presentation: Leather Boots +9, req 29
       levelLabel: 'od poziomu 29',
-      bonuses: ['Szybkość ruchu +17%', 'Max PŻ +1000', 'Odporność na strzały +18%'],
-      catalogLayer: 'team_private',
+      bonuses: ['Szybkość ruchu +20%', 'Odporność na strzały +20%'],
+      catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
       lastConfirmedAt: 'dzisiaj 18:09',
       archived: false,
       planned: false,
       revision: 1,
-    },
+    }),
   ];
 
   const warAssignments: EquipmentAssignments = {
@@ -504,10 +520,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         id: 'skill-book-nerwnicht',
         characterId: 'nerwnicht',
         label: 'Księga umiejętności',
-        detail: 'Smoczy Wir M8 → M9',
+        detail: `Smoczy Wir M8 → M9 · reset o północy (${projectHardSkillBookRules.dailyReset === 'midnight' ? 'jak Biolog' : '24 h'})`,
         status: 'running',
         readyAtIso: isoInMinutes(24),
-        remainingLabel: 'za 24 min',
+        remainingLabel: `do ${midnight}`,
         progressPercent: 82,
         lastActorName: 'Mateusz',
         lastConfirmedAt: 'wczoraj 21:10',
@@ -518,8 +534,8 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       {
         id: 'horse-medal-aalpsik',
         characterId: 'aalpsik',
-        label: 'Medal konny',
-        detail: 'Poziom konia 12 → 13',
+        label: 'Jazda konna',
+        detail: horseAdvanceDetail(12, 13),
         status: 'ready',
         readyAtIso: new Date().toISOString(),
         remainingLabel: 'gotowe teraz',
@@ -534,10 +550,10 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         id: 'biologist-kimmizic',
         characterId: 'kimmizic',
         label: 'Biolog',
-        detail: 'Pamiątki po demonie · 6/10',
+        detail: `${biologistProgressLabel(demonQuest, 6)} · tylko po udanym oddaniu · reset o północy`,
         status: 'running',
         readyAtIso: isoInMinutes(60 * 14),
-        remainingLabel: 'jutro 08:10',
+        remainingLabel: `do ${midnight}`,
         progressPercent: 41,
         lastActorName: 'Wicek',
         lastConfirmedAt: 'wczoraj 08:10',
@@ -560,8 +576,8 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       },
       {
         id: 'task-horse-medal',
-        title: 'Medal konny',
-        detail: 'Timer minął. Po podpięciu bota przypomnienie trafi do przypisanej osoby na Discordzie.',
+        title: 'Jazda konna gotowa',
+        detail: `Aalpsik może oddać ${projectHardHorseRules.ranks.find((r) => r.fromLevel === 12)?.materialName ?? 'Medal Konny'} u Stajennego. Cooldown następnego awansu: ${projectHardHorseRules.advancementCooldownHours} h.`,
         characterId: 'aalpsik',
         characterName: 'Aalpsik',
         assigneeName: 'Aalpsik',
@@ -587,17 +603,17 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         scope: 'workspace',
         characterId: null,
         authorName: 'Mateusz',
-        body: 'Na wojnę przygotować set pod ludzi. Tarcza musi wrócić na NerwNicht.',
+        body: 'Na wojnę: set pod ludzi. Bojowa Tarcza musi wrócić na NerwNicht.',
         createdAtLabel: 'dzisiaj 09:42',
         revision: 1,
         pinned: true,
       },
       {
-        id: 'note-alchemy',
+        id: 'note-depo',
         scope: 'workspace',
         characterId: null,
         authorName: 'XiaoHu',
-        body: 'Alchemia dla Aalpsik jest w depo. Nie przenosiłem jej na inną postać.',
+        body: 'Medale Konne i Zwoje Błogosławieństwa Aalpsik leżą w depo. Nie przenosiłem ich na inną postać.',
         createdAtLabel: 'wczoraj 23:18',
         revision: 1,
         pinned: false,
@@ -610,7 +626,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         characterName: 'NerwNicht',
         resource: 'equipment',
         title: 'Potwierdzono lokalizację tarczy',
-        detail: 'Tarcza Bojowa +9 · poprzednio Aalpsik → obecnie Aalpsik (wymaga re-check)',
+        detail: 'Bojowa Tarcza +9 · poprzednio Aalpsik → obecnie Aalpsik (wymaga re-check)',
         revision: 19,
       }),
       {
@@ -623,7 +639,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         characterName: 'NerwNicht',
         resource: 'timer',
         title: 'Rozpoczęto timer księgi',
-        detail: 'Smoczy Wir M8 → M9',
+        detail: 'Smoczy Wir M8 → M9 · limit dzienny resetuje się o północy',
         occurredAtLabel: 'wczoraj 21:10',
         revision: 18,
       },
@@ -1143,14 +1159,17 @@ export function createEquipmentItem(
   const name = input.name.trim();
   if (name.length < 2) return state;
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const catalogHit = findGameItemByCardName(name);
     const item: EquipmentItem = {
       id: createId('item'),
       name,
-      iconPath: '/game/items/short-knife.svg',
+      iconPath: resolveItemIconPath(name),
       category: input.category,
-      levelLabel: 'własny wpis zespołu',
+      levelLabel: catalogHit
+        ? `katalog: ${catalogHit.category}`
+        : 'własny wpis zespołu',
       bonuses: input.bonuses,
-      catalogLayer: 'team_private',
+      catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
       lastConfirmedLocation: null,
       lastConfirmedBy: null,
       lastConfirmedAt: null,

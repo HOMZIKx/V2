@@ -2,12 +2,12 @@
 
 ## 1. Status
 
-`DESTILED_FIRST_SLICE_FIX_IMPLEMENTED`
+`DESTILED_GRAPHICS_LOGIC_POLISH`
 
 ## 2. Task
 
-Owner: repair DESTILED Web to match accepted first-player requirements and
-logical app needs (D-038–D-060 / D-061).
+Owner: missing graphics/logic from dobry-temat + polish existing pages with
+real Project Hard / Metin2 naming (no guessing).
 
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
@@ -15,39 +15,26 @@ logical app needs (D-038–D-060 / D-061).
 
 ## 3. Delivered
 
-- Shared local player store (`player-store` + provider) for Discord entry →
-  workspace → character → EQ/timers/notes → history
-- Discord entry outcomes (eligible / cancel / unavailable / ineligible / revoke)
-- First-use: create workspace + optional demo seed
-- Contract home (attention / last opened / workspaces / recent changes)
-- Nav narrowed to Pulpit / Przestrzenie / Postacie; Maps/Market/Activity later
-- Honesty pass: no fake live online/bell-to-activity; local-session labeling
-- Character create appears in workspace list; mutations append history
-- EQ: plan set, confirm location, mark moved, create item, readiness labels,
-  timer done with operation id
-- Sync localStorage on each mutation (no stale overwrite)
+- Local wiki item icons (`public/game/items/wiki/` + `wiki-item-image-map.json`)
+- `project-hard-progression.ts` from official PH presentation (Biolog, jazda 23h,
+  księgi midnight; explicit no-alchemy/no-sashes)
+- Demo EQ uses catalog icons + PH-accurate jewelry/boots bonuses
+- Correct names: Bojowa Tarcza, Pamiątka Po Demonie 6/15, Jazda konna
+- Removed invented alchemy note
+- EQ create: match catalog title → slot + icon
+- Human UX/game-logic note:
+  `docs/ai/DESTILED_HUMAN_UX_AND_GAME_LOGIC_2026-09-03.md`
 
 ## 4. Validation
 
-- `pnpm typecheck`: PASS
-- `pnpm test`: PASS (41)
-- `pnpm e2e`: PASS (12)
+(filled after test run)
 
-## 5. Screenshots
+## 5. Remaining
 
-- `/opt/cursor/artifacts/screenshots/destiled-fixed-01-discord-entry.png`
-- `/opt/cursor/artifacts/screenshots/destiled-fixed-02-first-use.png`
-- `/opt/cursor/artifacts/screenshots/destiled-fixed-03-home.png`
-- `/opt/cursor/artifacts/screenshots/destiled-fixed-04-workspace.png`
-- `/opt/cursor/artifacts/screenshots/destiled-fixed-05-equipment.png`
+- Map PNGs + missing class art must be copied from local dobry-temat by owner
+- ~90/678 catalog icons mapped; rest need dump or further fetch
+- Real Discord/API still mock/localStorage only
 
-## 6. Remaining / not claimed done
-
-- Real Discord OAuth, API, Postgres, realtime, Discord reminder delivery
-- Full set-readiness matrix polish and item edit forms beyond create
-- Production Maps/Market/Activity (intentionally later)
-- Merge to `preview/destiled-web` still owner decision
-
-## 7. Marker
+## 6. Marker
 
 `READY_FOR_OWNER_REVIEW`

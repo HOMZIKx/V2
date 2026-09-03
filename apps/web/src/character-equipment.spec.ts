@@ -33,7 +33,7 @@ describe('character equipment view model', () => {
   it('counts assignments and filters by category or bonus', () => {
     expect(getEquipmentCompletion(warSet.assignments)).toBe(7);
     expect(filterCatalogItems(characterEquipmentFixture.catalog, '', 'weapon')).toHaveLength(2);
-    expect(filterCatalogItems(characterEquipmentFixture.catalog, 'max pż', 'all')).toHaveLength(4);
+    expect(filterCatalogItems(characterEquipmentFixture.catalog, 'max pż', 'all')).toHaveLength(3);
   });
 
   it('keeps planning separate from an explicit physical-location confirmation', () => {

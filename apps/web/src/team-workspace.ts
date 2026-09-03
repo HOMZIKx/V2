@@ -143,8 +143,8 @@ export const teamWorkspaceFixture: TeamWorkspaceSnapshot = {
     },
     {
       id: 'task-horse-medal',
-      title: 'Medal konny',
-      detail: 'Timer minął. Po podpięciu bota przypomnienie trafi do przypisanej osoby na Discordzie.',
+      title: 'Jazda konna',
+      detail: 'Aalpsik może oddać Medal Konny u Stajennego. Cooldown następnego awansu: 23 h.',
       characterName: 'Aalpsik',
       assigneeName: 'Aalpsik',
       dueLabel: 'gotowe',
@@ -171,9 +171,9 @@ export const teamWorkspaceFixture: TeamWorkspaceSnapshot = {
       pinned: true,
     },
     {
-      id: 'note-alchemy',
+      id: 'note-depo',
       authorName: 'XiaoHu',
-      body: 'Alchemia dla Aalpsik jest w depo. Nie przenosiłem jej na inną postać.',
+      body: 'Medale Konne i Zwoje Błogosławieństwa Aalpsik leżą w depo. Nie przenosiłem ich na inną postać.',
       createdLabel: 'wczoraj 23:18',
       pinned: false,
     },

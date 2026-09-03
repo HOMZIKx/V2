@@ -44,7 +44,7 @@ export function MapsLaterPage() {
   return (
     <LaterModulePage
       title="Mapy i metiny"
-      summary="Sesje polowania, markery i respawny są osobną domeną od timerów postaci."
+      summary="Sesja polowania (mapa, kanał, markery, respawn) to osobna domena od timerów Biologa, jazdy i ksiąg. Grafiki map trzeba skopiować z dobry-temat/frontend/public — lokalnie ich jeszcze nie ma."
     />
   );
 }
@@ -53,7 +53,7 @@ export function MarketLaterPage() {
   return (
     <LaterModulePage
       title="Targ"
-      summary="Ogłoszenia i ceny wrócą po domknięciu EQ/katalogu zespołu."
+      summary="Ogłoszenia i ceny wrócą później. Katalog przedmiotów z ikonami działa już przy dodawaniu kart EQ w przestrzeni zespołu."
     />
   );
 }
@@ -62,7 +62,7 @@ export function ActivityLaterPage() {
   return (
     <LaterModulePage
       title="Aktywność"
-      summary="Eventy/RSVP i analytics TOP10 nie zastępują first-slice historii zespołu."
+      summary="Eventy i RSVP nie zastępują historii zmian w przestrzeni (EQ, lokalizacje, timery)."
     />
   );
 }

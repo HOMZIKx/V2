@@ -12,6 +12,11 @@ import {
   type SetReadiness,
 } from '../../../../../src/player-store';
 import { usePlayerStore } from '../../../../../src/player-store-react';
+import {
+  equipmentCatalogItems,
+  equipmentSlotForCategory,
+  findGameItemByCardName,
+} from '../../../../../src/item-catalog';
 import { AppShell, Icon } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
 
@@ -71,6 +76,20 @@ export function CharacterEquipment() {
       return categoryMatches && queryMatches;
     });
   }, [workspace, query, category]);
+
+  const catalogSuggestions = useMemo(() => {
+    const normalized = newItemName.trim().toLocaleLowerCase('pl');
+    if (normalized.length < 2) return [];
+    return equipmentCatalogItems()
+      .filter((item) => {
+        const slot = equipmentSlotForCategory(item.category);
+        if (!slot || slot !== newItemSlot) return false;
+        return item.title.toLocaleLowerCase('pl').includes(normalized);
+      })
+      .slice(0, 6);
+  }, [newItemName, newItemSlot]);
+
+  const matchedDefinition = findGameItemByCardName(newItemName);
 
   if (!hydrated) {
     return (
@@ -357,10 +376,22 @@ export function CharacterEquipment() {
             <form className="inline-create" onSubmit={handleCreateItem}>
               <input
                 aria-label="Nazwa nowego przedmiotu"
-                onChange={(event) => setNewItemName(event.target.value)}
-                placeholder="Nowy przedmiot zespołu…"
+                list="eq-catalog-suggestions"
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setNewItemName(value);
+                  const hit = findGameItemByCardName(value);
+                  const slot = hit ? equipmentSlotForCategory(hit.category) : null;
+                  if (slot) setNewItemSlot(slot);
+                }}
+                placeholder="Nazwa z gry, np. Bojowa Tarcza +9"
                 value={newItemName}
               />
+              <datalist id="eq-catalog-suggestions">
+                {catalogSuggestions.map((item) => (
+                  <option key={item.id} value={item.title} />
+                ))}
+              </datalist>
               <select
                 aria-label="Slot nowego przedmiotu"
                 onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
@@ -376,6 +407,14 @@ export function CharacterEquipment() {
                 Dodaj item
               </button>
             </form>
+            {matchedDefinition ? (
+              <p className="empty-copy">
+                Ikona z katalogu: <strong>{matchedDefinition.title}</strong>
+                {matchedDefinition.sourceImageUrl ? ' · grafika wiki lokalnie' : ' · brak grafiki'}
+              </p>
+            ) : newItemName.trim().length >= 2 ? (
+              <p className="empty-copy">Brak dopasowania w katalogu — zapiszesz własną kartę zespołu.</p>
+            ) : null}
           </section>
 
           <aside className="panel inspector-panel">

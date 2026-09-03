@@ -130,7 +130,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'zodiac-sword',
       name: 'Zatruty Miecz +9',
-      iconPath: '/game/items/zodiac-sword.svg',
+      iconPath: '/game/items/wiki/wiki_99029de35c7b8aaf.jpg',
       category: 'weapon',
       levelLabel: 'od poziomu 75',
       bonuses: ['Średnie obrażenia +37%', 'Silny przeciwko ludziom +10%', 'Witalność +12'],
@@ -142,7 +142,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'short-knife',
       name: 'Krótki Nóż +9',
-      iconPath: '/game/items/short-knife.svg',
+      iconPath: '/game/items/wiki/wiki_d4f9e07aa1bf2e10.jpg',
       category: 'weapon',
       levelLabel: 'od poziomu 1',
       bonuses: ['Szybkość ataku +15%', 'Wartość ataku +18'],
@@ -153,8 +153,8 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     },
     {
       id: 'ivory-suit',
-      name: 'Mglista Zbroja Płyt. +1',
-      iconPath: '/game/items/ivory-suit.svg',
+      name: 'Mglista Zbroja Płytowa +1',
+      iconPath: '/game/items/wiki/wiki_cd6e7c8dc615dca9.png',
       category: 'armor',
       levelLabel: 'od poziomu 48',
       bonuses: ['Max PŻ +800', 'Odporność na magię 10%', 'Wartość ataku +50'],
@@ -165,8 +165,8 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     },
     {
       id: 'battle-shield',
-      name: 'Tarcza Bojowa +9',
-      iconPath: '/game/items/battle-shield.svg',
+      name: 'Bojowa Tarcza +9',
+      iconPath: '/game/items/wiki/wiki_a2205fd93e6b34d6.png',
       category: 'shield',
       levelLabel: 'od poziomu 21',
       bonuses: ['Odporność na omdlenie', 'Szansa na blok ciosu +10%'],
@@ -178,7 +178,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'ebony-earrings',
       name: 'Ebonitowe Kolczyki +9',
-      iconPath: '/game/items/ebony-earrings.svg',
+      iconPath: '/game/items/wiki/wiki_9ed3702c5f233ff1.png',
       category: 'earrings',
       levelLabel: 'od poziomu 33',
       bonuses: ['Siła +12', 'Max PŻ +1650'],
@@ -190,10 +190,10 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'jade-necklace',
       name: 'Jadeitowy Naszyjnik +9',
-      iconPath: '/game/items/jade-necklace.svg',
+      iconPath: '/game/items/wiki/wiki_3ebff6bb7c279bef.png',
       category: 'necklace',
-      levelLabel: 'od poziomu 28',
-      bonuses: ['Zręczność +12', 'Szybkość zaklęcia +20%'],
+      levelLabel: 'od poziomu 42',
+      bonuses: ['Szybkość zaklęcia +22%', 'Zręczność +4'],
       catalogLayer: 'project_hard_source',
       lastConfirmedCharacterName: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -202,7 +202,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'wooden-necklace',
       name: 'Drewniany Naszyjnik +9',
-      iconPath: '/game/items/wooden-necklace.svg',
+      iconPath: '/game/items/wiki/wiki_f007ef1f5335f35e.png',
       category: 'necklace',
       levelLabel: 'od poziomu 1',
       bonuses: ['Szybkość zaklęcia +10%'],
@@ -214,10 +214,10 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'wooden-bracelet',
       name: 'Drewniana Bransoleta +9',
-      iconPath: '/game/items/wooden-bracelet.svg',
+      iconPath: '/game/items/wiki/wiki_74d0f69b4b506d81.png',
       category: 'bracelet',
-      levelLabel: 'od poziomu 1',
-      bonuses: ['Max PŻ +500'],
+      levelLabel: 'od poziomu 0',
+      bonuses: ['Szybkość ataku +5%', 'Czas trwania umiejętności +20 s'],
       catalogLayer: 'project_hard_source',
       lastConfirmedCharacterName: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -225,11 +225,11 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     },
     {
       id: 'leather-boots',
-      name: 'Skórzane Kozaki +8',
-      iconPath: '/game/items/leather-boots.svg',
+      name: 'Skórzane Kozaki +9',
+      iconPath: '/game/items/wiki/wiki_8442ee8613037c74.png',
       category: 'shoes',
       levelLabel: 'od poziomu 29',
-      bonuses: ['Szybkość ruchu +17%', 'Max PŻ +1000', 'Odporność na strzały +18%'],
+      bonuses: ['Szybkość ruchu +20%', 'Odporność na strzały +20%', 'Max PŻ +800'],
       catalogLayer: 'team_private',
       lastConfirmedCharacterName: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -240,7 +240,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'skill-book',
       label: 'Księga umiejętności',
-      detail: 'Smoczy Wir M8 → M9',
+      detail: 'Smoczy Wir M8 → M9 · reset o północy',
       readyLabel: 'za 24 min',
       status: 'running',
       progressPercent: 82,
@@ -248,8 +248,8 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     },
     {
       id: 'horse-medal',
-      label: 'Medal konny',
-      detail: 'Poziom konia 12 → 13',
+      label: 'Jazda konna',
+      detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h',
       readyLabel: 'gotowe teraz',
       status: 'ready',
       progressPercent: 100,
@@ -258,7 +258,7 @@ export const characterEquipmentFixture: CharacterEquipmentSnapshot = {
     {
       id: 'biologist',
       label: 'Biolog',
-      detail: 'Pamiątki po demonie · 6/10',
+      detail: 'Pamiątka Po Demonie · 6/15',
       readyLabel: 'jutro 08:10',
       status: 'running',
       progressPercent: 41,
@@ -278,11 +278,11 @@ export function getCharacterEquipmentFixture(characterId: string): CharacterEqui
     },
     aalpsik: {
       characterName: 'Aalpsik', classLabel: 'Ninja', level: 55, imagePath: '/game/classes/ninja-female.png', responsibleMember: 'Aalpsik',
-      timers: [{ id: 'horse-medal', label: 'Medal konny', detail: 'Poziom konia 12 → 13', readyLabel: 'gotowe teraz', status: 'ready', progressPercent: 100, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Ostrze Duszy', readyLabel: 'za 42 min', status: 'running', progressPercent: 58, discordReminder: true }],
+      timers: [{ id: 'horse-medal', label: 'Jazda konna', detail: 'Jazda 12 → 13 · Medal Konny ×5 · cooldown 23 h', readyLabel: 'gotowe teraz', status: 'ready', progressPercent: 100, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Ostrze Duszy', readyLabel: 'za 42 min', status: 'running', progressPercent: 58, discordReminder: true }],
     },
     kimmizic: {
       characterName: 'Kimmizic', classLabel: 'Szaman', level: 61, imagePath: '/game/classes/shaman-male.png', responsibleMember: 'Wicek',
-      timers: [{ id: 'biologist', label: 'Biolog', detail: 'Pamiątki po demonie · 6/10', readyLabel: 'jutro 08:10', status: 'running', progressPercent: 41, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Błogosławieństwo', readyLabel: 'za 1 h 18 min', status: 'running', progressPercent: 20, discordReminder: false }],
+      timers: [{ id: 'biologist', label: 'Biolog', detail: 'Pamiątka Po Demonie · 6/15', readyLabel: 'jutro 08:10', status: 'running', progressPercent: 41, discordReminder: true }, { id: 'skill-book', label: 'Księga umiejętności', detail: 'Błogosławieństwo', readyLabel: 'za 1 h 18 min', status: 'running', progressPercent: 20, discordReminder: false }],
     },
   };
   const variant = variants[characterId];
