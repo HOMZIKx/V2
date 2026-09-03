@@ -38,7 +38,7 @@ export function MapsLaterPage() {
   return (
     <LaterModulePage
       title="Mapy i metiny"
-      summary="Live UI jest pod /maps (nav: Timery). Katalog respawnów z dobry-temat + atlasy top-down; lochy małp mają schematyczny atlas do czasu minimap z lokalnego dumpa."
+      summary="Główna powierzchnia to /timers (nav Timery) — katalog respawnów jak w starej app. /maps otwiera atlas top-down + party."
     />
   );
 }

@@ -25,13 +25,14 @@ describe('member dashboard view model', () => {
     });
   });
 
-  it('keeps map access independent from team and character access', () => {
-    const mapModule = memberDashboardFixture.modules.find((module) => module.id === 'maps');
+  it('keeps timer access independent from team and character access', () => {
+    const timersModule = memberDashboardFixture.modules.find((module) => module.id === 'timers');
     const charactersModule = memberDashboardFixture.modules.find(
       (module) => module.id === 'characters',
     );
 
-    expect(mapModule?.description).toContain('Niezależne sesje');
+    expect(timersModule?.href).toBe('/timers');
+    expect(timersModule?.description).toContain('Bossy i metiny');
     expect(charactersModule?.description).toContain('jeśli masz do niego dostęp');
   });
 });

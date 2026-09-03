@@ -32,7 +32,7 @@ export interface MemberNotice {
 }
 
 export interface MemberModuleAccess {
-  readonly id: 'teams' | 'characters' | 'maps' | 'market' | 'activity';
+  readonly id: 'teams' | 'characters' | 'timers' | 'market' | 'activity';
   readonly label: string;
   readonly description: string;
   readonly href: string | null;
@@ -108,10 +108,10 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
       state: 'available',
     },
     {
-      id: 'maps',
-      label: 'Mapy i metiny',
-      description: 'Niezależne sesje polowania, markery i timery respawnu.',
-      href: '/maps',
+      id: 'timers',
+      label: 'Timery',
+      description: 'Bossy i metiny z dumpa dobry-temat — mapa, kanał, zbicie, okno respawnu.',
+      href: '/timers',
       state: 'available',
     },
     {

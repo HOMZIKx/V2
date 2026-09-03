@@ -318,7 +318,8 @@ export function MemberDashboard() {
 
         <div className="mock-notice">
           Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą
-          później. Targ i Aktywność są celowo schowane; <a href="/maps">Mapy</a> są już dostępne.{' '}
+          później. Targ i Aktywność są celowo schowane; <a href="/timers">Timery</a> (metiny/bossy)
+          są już dostępne.{' '}
           <button className="text-button" onClick={onResetSession} type="button">
             Wyczyść sesję lokalną
           </button>

@@ -74,11 +74,17 @@ function initialStore(): RecordStore {
   return first ? { [scopeKey(first.key, 1)]: buildMapRespawnRecords(first, 1) } : {};
 }
 
-export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapHuntingSnapshot }) {
+export function MapHunting({
+  initialSnapshot,
+  initialView = 'timers',
+}: {
+  readonly initialSnapshot: MapHuntingSnapshot;
+  readonly initialView?: View;
+}) {
   const [mapKey, setMapKey] = useState(respawnMaps[0]?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
   const [channel, setChannel] = useState(1);
-  const [view, setView] = useState<View>('timers');
+  const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<Filter>('all');
   const [store, setStore] = useState<RecordStore>(initialStore);
   const [now, setNow] = useState(() => Date.now());
@@ -226,11 +232,13 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
   const beginPlacement = (recordKey: string) => {
     const target = records.find((record) => record.key === recordKey);
     if (!target || !canConfirmRespawn(target, now)) return;
+    setView('map');
     if (!party) {
-      setNotice('Najpierw utwórz lub dołącz do party. Timery działają niezależnie od party.');
+      setNotice(
+        'Timery działają bez party (przycisk Zbite). Żeby oznaczyć punkt na atlasie, utwórz party obok.',
+      );
       return;
     }
-    setView('map');
     setPlacingKey(recordKey);
     setNotice('Kliknij punkt — znacznik zobaczy wyłącznie to party na bieżącym kanale.');
   };
@@ -278,22 +286,25 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
   };
 
   return (
-    <AppShell activeSection="maps" viewerName={initialSnapshot.viewerName}>
+    <AppShell activeSection="timers" viewerName={initialSnapshot.viewerName}>
       <main className="respawn-page" id="main-content">
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
-            <h1>Timery metinów i bossów</h1>
+            <h1>Timery</h1>
             <p>
-              Te same mapy, kanały i okna respawnu co w starej aplikacji. Najpierw lista timerów —
-              mapa top-down służy tylko do znaczników party.
+              Katalog z dobry-temat: te same mapy, bossy, metiny, kanały i okna respawnu. Zbicie
+              startuje odliczanie jak w starej aplikacji.
             </p>
           </div>
           <div className="respawn-header-actions" role="tablist" aria-label="Widok wyprawy">
             <button
               aria-selected={view === 'timers'}
               className={view === 'timers' ? 'is-active' : ''}
-              onClick={() => setView('timers')}
+              onClick={() => {
+                setView('timers');
+                setPlacingKey(null);
+              }}
               role="tab"
               type="button"
             >
@@ -306,7 +317,7 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
               role="tab"
               type="button"
             >
-              Mapa (atlas)
+              Atlas mapy + party
             </button>
           </div>
         </header>
@@ -350,7 +361,7 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
             <span>aktywnych timerów</span>
           </div>
         </section>
-        <section className="respawn-workspace">
+        <section className={`respawn-workspace${view === 'timers' ? ' is-timers-only' : ''}`}>
           <div className="panel respawn-main-panel">
             <header className="respawn-list-header">
               <div>
@@ -358,6 +369,12 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
                   {map?.key} · CH{channel}
                 </span>
                 <h2>{view === 'map' ? 'Mapa wyprawy' : 'Lista timerów'}</h2>
+                {view === 'timers' ? (
+                  <p className="respawn-list-lead">
+                    {map?.bosses.length ?? 0} bossów · {map?.metins.length ?? 0} metinów ·{' '}
+                    {records.length} timerów na kanale
+                  </p>
+                ) : null}
               </div>
               <div className="respawn-filters">
                 {filters.map((item) => (
@@ -505,121 +522,142 @@ export function MapHunting({ initialSnapshot }: { readonly initialSnapshot: MapH
               )}
             </div>
           </div>
-          <aside className="panel respawn-party-panel">
-            {!party ? (
-              <>
-                <header>
-                  <span className="section-kicker">Party wyprawy</span>
-                  <h2>Nie latasz jeszcze w party</h2>
-                  <p>Wybierz otwarte party dla każdego albo zamknięte z kodem i decyzją lidera.</p>
-                </header>
-                <button
-                  className="respawn-party-toggle is-on"
-                  onClick={() => createParty('open')}
-                  type="button"
-                >
-                  <span /> Utwórz otwarte party
-                </button>
-                <button
-                  className="respawn-party-toggle"
-                  onClick={() => createParty('closed')}
-                  type="button"
-                >
-                  <span /> Utwórz zamknięte party
-                </button>
-              </>
-            ) : (
-              <>
-                <header>
-                  <span className="section-kicker">Party wyprawy</span>
-                  <h2>{party.name}</h2>
-                  <p>
-                    {party.visibility === 'open'
-                      ? 'Otwarte: każdy może wysłać prośbę o wejście.'
-                      : `Zamknięte: kod ${party.joinCode}, lider zatwierdza wejście.`}
-                  </p>
-                </header>
-                <button
-                  className={`respawn-party-toggle ${party.visibility === 'open' ? 'is-on' : ''}`}
-                  onClick={() =>
-                    setParty((current) => (current ? togglePartyVisibility(current) : null))
-                  }
-                  type="button"
-                >
-                  <span />
-                  {party.visibility === 'open'
-                    ? 'Party otwarte · zamknij'
-                    : 'Party zamknięte · otwórz'}
-                </button>
-                <div className="respawn-party-members">
-                  {party.members.map((member) => (
-                    <div key={member.id}>
-                      <span className="respawn-member-dot is-online" />
-                      <strong>{member.displayName}</strong>
-                      <small>{member.role === 'leader' ? 'lider' : 'uczestnik'}</small>
-                    </div>
-                  ))}
-                </div>
-                <div className="respawn-party-feed">
-                  <span>Dołączenie do party</span>
-                  <p>
-                    Kod: <b>{party.joinCode}</b> · {party.mapKey} · CH{party.activeChannel}
-                  </p>
-                  <label className="catalog-search">
-                    <span className="sr-only">Nazwa osoby proszącej o wejście</span>
-                    <input
-                      onChange={(event) => setRequestName(event.target.value)}
-                      placeholder="Nazwa osoby do party"
-                      value={requestName}
-                    />
-                  </label>
+          {view === 'map' ? (
+            <aside className="panel respawn-party-panel">
+              {!party ? (
+                <>
+                  <header>
+                    <span className="section-kicker">Party wyprawy</span>
+                    <h2>Nie latasz jeszcze w party</h2>
+                    <p>
+                      Wybierz otwarte party dla każdego albo zamknięte z kodem i decyzją lidera.
+                    </p>
+                  </header>
                   <button
-                    className="respawn-party-toggle"
-                    disabled={!requestName.trim()}
-                    onClick={addRequest}
+                    className="respawn-party-toggle is-on"
+                    onClick={() => createParty('open')}
                     type="button"
                   >
-                    <span /> Dodaj prośbę
+                    <span /> Utwórz otwarte party
                   </button>
-                  {party.requests
-                    .filter((request) => request.status === 'pending')
-                    .map((request) => (
-                      <p key={request.id}>
-                        <b>{request.displayName}</b> prosi o wejście{' '}
-                        <button
-                          onClick={() =>
-                            setParty((current) =>
-                              current ? resolvePartyRequest(current, request.id, true) : null,
-                            )
-                          }
-                          type="button"
-                        >
-                          Przyjmij
-                        </button>{' '}
-                        <button
-                          onClick={() =>
-                            setParty((current) =>
-                              current ? resolvePartyRequest(current, request.id, false) : null,
-                            )
-                          }
-                          type="button"
-                        >
-                          Odrzuć
-                        </button>
-                      </p>
+                  <button
+                    className="respawn-party-toggle"
+                    onClick={() => createParty('closed')}
+                    type="button"
+                  >
+                    <span /> Utwórz zamknięte party
+                  </button>
+                </>
+              ) : (
+                <>
+                  <header>
+                    <span className="section-kicker">Party wyprawy</span>
+                    <h2>{party.name}</h2>
+                    <p>
+                      {party.visibility === 'open'
+                        ? 'Otwarte: każdy może wysłać prośbę o wejście.'
+                        : `Zamknięte: kod ${party.joinCode}, lider zatwierdza wejście.`}
+                    </p>
+                  </header>
+                  <button
+                    className={`respawn-party-toggle ${party.visibility === 'open' ? 'is-on' : ''}`}
+                    onClick={() =>
+                      setParty((current) => (current ? togglePartyVisibility(current) : null))
+                    }
+                    type="button"
+                  >
+                    <span />
+                    {party.visibility === 'open'
+                      ? 'Party otwarte · zamknij'
+                      : 'Party zamknięte · otwórz'}
+                  </button>
+                  <div className="respawn-party-members">
+                    {party.members.map((member) => (
+                      <div key={member.id}>
+                        <span className="respawn-member-dot is-online" />
+                        <strong>{member.displayName}</strong>
+                        <small>{member.role === 'leader' ? 'lider' : 'uczestnik'}</small>
+                      </div>
                     ))}
-                </div>
-              </>
-            )}
-          </aside>
+                  </div>
+                  <div className="respawn-party-feed">
+                    <span>Dołączenie do party</span>
+                    <p>
+                      Kod: <b>{party.joinCode}</b> · {party.mapKey} · CH{party.activeChannel}
+                    </p>
+                    <label className="catalog-search">
+                      <span className="sr-only">Nazwa osoby proszącej o wejście</span>
+                      <input
+                        onChange={(event) => setRequestName(event.target.value)}
+                        placeholder="Nazwa osoby do party"
+                        value={requestName}
+                      />
+                    </label>
+                    <button
+                      className="respawn-party-toggle"
+                      disabled={!requestName.trim()}
+                      onClick={addRequest}
+                      type="button"
+                    >
+                      <span /> Dodaj prośbę
+                    </button>
+                    {party.requests
+                      .filter((request) => request.status === 'pending')
+                      .map((request) => (
+                        <p key={request.id}>
+                          <b>{request.displayName}</b> prosi o wejście{' '}
+                          <button
+                            onClick={() =>
+                              setParty((current) =>
+                                current ? resolvePartyRequest(current, request.id, true) : null,
+                              )
+                            }
+                            type="button"
+                          >
+                            Przyjmij
+                          </button>{' '}
+                          <button
+                            onClick={() =>
+                              setParty((current) =>
+                                current ? resolvePartyRequest(current, request.id, false) : null,
+                              )
+                            }
+                            type="button"
+                          >
+                            Odrzuć
+                          </button>
+                        </p>
+                      ))}
+                  </div>
+                </>
+              )}
+            </aside>
+          ) : (
+            <aside className="panel respawn-timers-hint">
+              <header>
+                <span className="section-kicker">Jak w starej appce</span>
+                <h2>Zbite → odliczanie → okno</h2>
+                <p>
+                  Wybierz mapę i CH, filtruj bossy/metiny, kliknij <b>Zbite</b>. Atlas i party są w
+                  drugiej zakładce — nie są potrzebne do samych timerów.
+                </p>
+              </header>
+              <button
+                className="respawn-party-toggle is-on"
+                onClick={() => setView('map')}
+                type="button"
+              >
+                <span /> Otwórz atlas mapy + party
+              </button>
+            </aside>
+          )}
         </section>
         <p aria-live="polite" className="respawn-notice">
           {notice}
         </p>
         <p className="respawn-data-note">
-          Port modelu starej aplikacji: party ma lidera, otwarty/zamknięty dostęp, kod, prośby i
-          znaczniki ograniczone do mapy oraz kanału. Ten podgląd zapisuje dane lokalnie; wspólna
-          wersja wymaga API/Postgresa i bota Discord.
+          Timery: dump respawnów dobry-temat (19 map, te same czasy). Party/atlas to osobna warstwa
+          znaczników. Ten podgląd zapisuje dane lokalnie; wspólna wersja wymaga API i bota Discord.
         </p>
       </main>
     </AppShell>
