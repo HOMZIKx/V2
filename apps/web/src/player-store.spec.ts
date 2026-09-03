@@ -146,6 +146,7 @@ describe('player store first-slice', () => {
       .sort();
     expect(kinds).toEqual([
       'biologist',
+      'combo',
       'horse',
       'leadership',
       'mining',
@@ -204,7 +205,10 @@ describe('player store first-slice', () => {
       expect(kinds.has('polymorph')).toBe(true);
       expect(kinds.has('mining')).toBe(true);
       expect(kinds.has('horse')).toBe(true);
-      if ((character.level ?? 0) >= 30) expect(kinds.has('biologist')).toBe(true);
+      if ((character.level ?? 0) >= 30) {
+        expect(kinds.has('biologist')).toBe(true);
+        expect(kinds.has('combo')).toBe(true);
+      }
       for (const timer of workspace.timers.filter((entry) => entry.characterId === character.id)) {
         expect(timer.iconPath).toMatch(/^\/game\/progression\//);
       }

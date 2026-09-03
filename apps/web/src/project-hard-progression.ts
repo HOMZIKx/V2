@@ -7,7 +7,14 @@
  */
 
 export type ProgressionKind =
-  'skill_book' | 'soul_stone' | 'leadership' | 'polymorph' | 'mining' | 'horse' | 'biologist';
+  | 'skill_book'
+  | 'soul_stone'
+  | 'leadership'
+  | 'polymorph'
+  | 'mining'
+  | 'combo'
+  | 'horse'
+  | 'biologist';
 
 export type ProgressionReset = 'midnight' | 'hours_23';
 
@@ -253,11 +260,14 @@ export const projectHardSoulStoneRules = {
 export const projectHardExtraReadingRules = {
   dailyReset: 'midnight' as const,
   sources: 'wyprawy, bossy, skrzynie, drop alternatywny z potworów',
-  families: ['leadership', 'polymorph', 'mining'] as const,
+  families: ['leadership', 'polymorph', 'mining', 'combo'] as const,
 } as const;
 
 /** Horse upgrades unlock at character level 20 (Stableman). */
 export const projectHardHorseUnlockLevel = 20;
+
+/** First combo book can be read from character level 30 (classic Metin2). */
+export const projectHardComboUnlockLevel = 30;
 
 /** Biologist quests start at level 30. */
 export const projectHardBiologistUnlockLevel = 30;
@@ -325,6 +335,18 @@ export const projectHardProgressionCycles: readonly ProgressionCycleDef[] = [
     detailReady: 'Przewodnik do górnictwa · kopanie rud · limit czytań resetuje się o północy',
     remainingReady: 'gotowe do czytania',
     doneHint: 'Górnictwo: limit czytań resetuje się o północy.',
+  },
+  {
+    kind: 'combo',
+    label: 'Combo',
+    iconPath: '/game/progression/combo.png',
+    reset: 'midnight',
+    alwaysTracked: false,
+    unlockLevel: projectHardComboUnlockLevel,
+    detailReady:
+      'Sztuka Combo / zaaw. / mistrz. · dodatkowe ciosy · limit czytań resetuje się o północy',
+    remainingReady: 'gotowe do czytania',
+    doneHint: 'Combo: limit czytań resetuje się o północy.',
   },
   {
     kind: 'horse',
@@ -472,6 +494,7 @@ export function inferProgressionKind(label: string): ProgressionKind | null {
   ) {
     return 'mining';
   }
+  if (normalized.includes('combo') || normalized.includes('kombinac')) return 'combo';
   if (normalized.includes('księg') || normalized.includes('skill')) return 'skill_book';
   return null;
 }

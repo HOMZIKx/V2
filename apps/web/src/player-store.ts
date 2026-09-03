@@ -1348,7 +1348,7 @@ export function ensureCharacterProgressionTimers(
   const historyDetail =
     missing.length > 0
       ? added.map((timer) => timer.label).join(' · ')
-      : 'Księgi / Kamienie / Dowodzenie / Polimorfia / Górnictwo / Jazda / Biolog';
+      : 'Księgi / Kamienie / Dowodzenie / Polimorfia / Górnictwo / Combo / Jazda / Biolog';
 
   return updateWorkspace(state, workspaceId, (current, viewer) => ({
     ...current,

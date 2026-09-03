@@ -448,8 +448,8 @@ export function CharacterEquipment() {
                     {timers.length === 0 ? (
                       <p className="empty-copy">
                         Brak cykli PH. Otwórz kartę ponownie albo wczytaj demo — dopinamy księgi,
-                        kamienie duszy, dowodzenie, polimorfię, górnictwo, jazdę i biologa według
-                        poziomu.
+                        kamienie duszy, dowodzenie, polimorfię, górnictwo, combo, jazdę i biologa
+                        według poziomu.
                       </p>
                     ) : (
                       sortProgressionTimers(timers).map((timer) => {
@@ -739,9 +739,9 @@ export function CharacterEquipment() {
         {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
           Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Postęp PH
-          (księgi / kamienie duszy / dowodzenie / polimorfia / górnictwo / jazda / biolog) jest na
-          drugiej stronie karty — to nie to samo co Timery metinów/bossów w nawigacji. Dane tylko w
-          tej przeglądarce.
+          (księgi / kamienie duszy / dowodzenie / polimorfia / górnictwo / combo / jazda / biolog)
+          jest na drugiej stronie karty — to nie to samo co Timery metinów/bossów w nawigacji. Dane
+          tylko w tej przeglądarce.
         </div>
       </main>
     </AppShell>

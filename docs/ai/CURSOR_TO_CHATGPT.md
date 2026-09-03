@@ -8,10 +8,10 @@ naprawione dodawanie kolejnych setów EQ. Branch `cursor/destiled-cursor-handoff
 
 ## Co naprawione w tym torze
 
-- **Postęp PH:** księga, kamień duszy (duchowy→P), dowodzenie, polimorfia, górnictwo,
+- **Postęp PH:** księga, kamień duszy, dowodzenie, polimorfia, górnictwo, combo (≥30),
   jazda (23 h), biolog (≥30). Czytania / biolog → wspólny reset o północy (PH).
 - **Ikony** w `apps/web/public/game/progression/` (księga / kamień / Sun Zi /
-  polimorfia / górnictwo / medal / biolog Chaegirab).
+  polimorfia / górnictwo / Art of Combo / medal / Chaegirab).
 - **Sety EQ:** wcześniej po create był tylko 1 starter — brak `createEquipmentSet`.
   Teraz przycisk „Dodaj set” na karcie EQ.
 - Ensure na otwarciu karty: brakujące cykle + backfill `iconPath`.

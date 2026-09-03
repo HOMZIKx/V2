@@ -19,7 +19,8 @@ Gap audit: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`.
 - `/timers` = respawny metinów; karta postaci = „Postęp Projekt Hard”
 - **Postacie:** jedna seria Desert Warrior (8/8) — spójne pozy/styl (DEC-065)
 - **Cykle PH z ikonami:** księga, kamień duszy, dowodzenie, polimorfia, górnictwo,
-  jazda (23 h), biolog (≥30) — assety w `public/game/progression/`
+  combo (≥30), jazda (23 h), biolog (≥30) — assety Metin2 wiki w
+  `public/game/progression/`
 
 ## Marker
 
