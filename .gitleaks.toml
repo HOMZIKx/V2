@@ -8,9 +8,15 @@ title = "v2"
 useDefault = true
 
 [allowlist]
-description = "Known non-secret fixtures used in unit tests"
+description = "Known non-secret fixtures used in unit tests and DESTILED local mocks"
 regexes = [
   '''123456789012345678''',
+  '''994001220033445566''',
+  '''771122334455667788''',
+  '''111122223333444455''',
+  '''222233334444555566''',
+  '''333344445555666677''',
+  '''444455556666777788''',
 ]
 paths = [
   '''services/identity-service/src/infrastructure/config/identity-env\.spec\.ts''',
