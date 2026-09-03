@@ -309,19 +309,18 @@ export function CharacterEquipment() {
                             </ul>
                           </div>
                           <button
-                            disabled={!writesEnabled}
+                            disabled={!writesEnabled || timer.status !== 'ready'}
                             onClick={() => {
+                              if (timer.status !== 'ready') return;
                               const operationId = `timer-${timer.id}-${Date.now()}`;
                               completeTimer(workspace.id, timer.id, operationId);
                               setAnnouncement(
-                                timer.status === 'ready'
-                                  ? `Oznaczono: ${timer.label}. Następny cykl odlicza się od teraz.`
-                                  : `Odświeżono timer: ${timer.label}.`,
+                                `Oznaczono: ${timer.label}. Następny cykl odlicza się od teraz.`,
                               );
                             }}
                             type="button"
                           >
-                            Oznacz wykonane
+                            {timer.status === 'ready' ? 'Oznacz wykonane' : 'Czeka na koniec cyklu'}
                           </button>
                         </article>
                       ))
