@@ -17,7 +17,6 @@ ogarnięte w tym torze.
 
 ## Nadal open
 
-- Spójne pozy class×gender (DEC-065)
 - API / bot reminders / Zeabur
 - Minimapy lochów małp z lokalnego dumpa
 

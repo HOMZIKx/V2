@@ -24,21 +24,18 @@
 
 ### DEC-065 — Spójność wizualna poz class×gender
 
-- **Status:** OPEN
-- **Kontekst:** Komplet 8/8 plików jest, ale źródła mieszają dynamiczne portrety
-  klas z innymi seriami (np. Desert costume). Właściciel wymaga podobnych poz /
-  stylu charakterystycznego dla klasy.
-- **Blokada:** bez lokalnego dumpa dobry-temat albo wskazania jednej oficjalnej
-  serii wiki nie da się ujednolicić bez zgadywania.
+- **Status:** RESOLVED (2026-09-03)
+- **Rozwiązanie:** komplet 8 renderów z jednej serii oficjalnej en-wiki
+  Gameforge — **Desert Warrior** (`File:{Class} (M|F) Desert Warrior.png`),
+  znormalizowane do 272×360, bottom-align. Klasowe cechy (np. ramię Sury)
+  zachowane; poz/styl/oświetlenie spójne.
+- **Pliki:** `apps/web/public/game/classes/{class}-{gender}.png` + README.
 
 ### DEC-062 — Brakujące rendery klas×płeć Metin2 (asset z dobry-temat)
 
 - **Status:** RESOLVED (2026-09-03)
-- **Rozwiązanie:** komplet 8 plików `apps/web/public/game/classes/{class}-{gender}.png`
-  (272×360, bottom-aligned) z oficjalnej en-wiki Gameforge: portrety klas +
-  gendered costume renders dla brakujących płci. Zarejestrowane w
-  `character-profile.ts`. `listMissingCharacterRenders()` = [].
-  Spójność poz → DEC-065.
+- **Rozwiązanie:** komplet 8 plików; od 2026-09-03 ujednolicona seria Desert
+  Warrior (patrz DEC-065). `listMissingCharacterRenders()` = [].
 
 ### DEC-061 — Przeniesienie prac DESTILED Web do Cursora
 
