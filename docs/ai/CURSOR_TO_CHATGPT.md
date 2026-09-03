@@ -2,25 +2,18 @@
 
 ## Status
 
-PR #48 **MERGED** do `preview/destiled-web`. Preview Zeabur rebuild odpalony
-pushem na tę gałąź.
+PR #48 MERGED do `preview/destiled-web`. Nie zgaduję kolejności — SoT to
+`docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (Phase 0–9 + Immediate next
+step) oraz kontrakty D-049 / D-055–D-059.
 
-## Plan dalszy (prośba o priorytet)
+Indeks: `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
 
-Pełny plan: `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
+## Immediate next step (z SoT)
 
-Skrót faz:
-
-1. **A** — jakość Web preview (regresja Zeabur, EQ readiness, assety lochów małp)
-2. **B** — persistence API + prawdziwy Discord OAuth (warunek syncu)
-3. **C** — reminders Web ↔ discord-gateway (PH + SpawnTimer; idempotent Done)
-4. **D** — pełny Zeabur (zablokowane DEC-001 do wznowienia)
-
-**Proponowany następny duży etap po `APPROVED`:** B1 kontrakt player-team API,
-potem C1 pierwszy reminder Biolog.
-
-Bez Twojego `APPROVED` nie ruszam Fazy B/C (architektura / zakres).
+1. Stabilizacja first-player path na `preview/destiled-web`
+2. Domknięcie create/edit: named sets, items, progression timers (mock adapters)
+3. **Bez** API/Discord production integration, dopóki nie poprosisz
 
 ## Marker
 
-`PLAN_WEB_BOT_JOINUP` + `READY_FOR_OWNER_REVIEW`
+`READY_FOR_OWNER_REVIEW` + `SOT_INDEX_ONLY`

@@ -2,18 +2,17 @@
 
 ## Status
 
-DESTILED Web mock + preview: first-slice scalony do `preview/destiled-web`
-(PR **#48** MERGED). Tip deployu: patrz `git rev-parse origin/preview/destiled-web`.
+DESTILED Web na `preview/destiled-web` (PR #48 MERGED).
 
-Gap audit: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`.  
-Plan dalej (Web + bot): `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
+Plan SoT: `docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md`  
+Indeks: `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`  
+Luki vs kontrakt: `docs/ai/DESTILED_GAP_AUDIT_2026-09-03.md`
 
-## Latest (EQ / PH / deploy)
+## Immediate next (D-061 SoT)
 
-- 8 cykli PH z ikonami; multi-set EQ; Timery vs Postęp PH
-- Class renders Desert Warrior 8/8 (DEC-065)
-- Preview Zeabur: push na `preview/destiled-web` odpalił check Zeabur
+Stabilize first-player path; complete create/edit for sets/items/progression
+timers behind mock adapters; no API/Discord prod integration until owner asks.
 
 ## Marker
 
-`READY_FOR_OWNER_REVIEW` + `PLAN_WEB_BOT_JOINUP`
+`READY_FOR_OWNER_REVIEW` + `SOT_INDEX_ONLY`
