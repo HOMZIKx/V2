@@ -136,20 +136,122 @@ export function equipmentSlotForCategory(category: string): EquipmentSlotId | nu
 }
 
 /**
- * Class restriction from wiki/PH category labels.
- * Jewelry, boots and shields have no class tag → any class (official Metin2 wiki).
- * Class-tagged weapons/armor/helmets bind to that class only.
+ * Class restriction from official Metin2 wiki + dobry-temat category labels.
+ *
+ * Shared one-handed swords are stored in the dump under
+ * `Ekwipunek — Wojownik — Bronie jednoręczne`, but Gameforge wiki states:
+ * "Swords can be used by Warriors, Ninjas and Suras."
+ * Two-handed weapons are Warrior-only; Sura blades / Ninja daggers & bows /
+ * Shaman bells & fans stay class-exclusive. Jewelry, boots, shields → any.
+ *
+ * Sources: en-wiki Sura/weapons, Ninja/weapons, Warrior/weapons (Gameforge).
  */
 export function compatibleClassesForCategory(
   category: string,
 ): readonly CharacterClass[] | 'any' | 'none' {
   if (equipmentSlotForCategory(category) === null) return 'none';
   const value = category.toLocaleLowerCase('pl');
+
+  // Explicit weapon families before naive "wojownik/ninja/…" substring checks.
+  if (value.includes('bronie jednoręczne (tylko sura)')) return ['sura'];
+  if (value.includes('bronie dwuręczne')) return ['warrior'];
+  if (value.includes('bronie jednoręczne') && value.includes('wojownik')) {
+    return ['warrior', 'ninja', 'sura'];
+  }
+  if (value.includes('sztylet') || (value.includes('ninja') && value.includes('łuk'))) {
+    return ['ninja'];
+  }
+  if (value.includes('ninja') && value.includes('luk')) return ['ninja'];
+  if (value.includes('dzwon') || value.includes('wachlar')) return ['shaman'];
+
   if (value.includes('wojownik')) return ['warrior'];
   if (value.includes('ninja')) return ['ninja'];
   if (value.includes('sura')) return ['sura'];
   if (value.includes('szaman')) return ['shaman'];
   return 'any';
+}
+
+function isTruncatedWikiToken(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return true;
+  return trimmed.includes('…') || trimmed.includes('...');
+}
+
+function parseWikiUpgradeFields(upgradeDescription: string): Readonly<Record<string, string>> {
+  const fields: Record<string, string> = {};
+  for (const part of upgradeDescription.split('|')) {
+    const trimmed = part.trim();
+    if (trimmed.length === 0 || !trimmed.includes('=')) continue;
+    const separator = trimmed.indexOf('=');
+    const key = trimmed.slice(0, separator).trim();
+    const value = trimmed.slice(separator + 1).trim();
+    if (key.length === 0) continue;
+    fields[key] = value;
+  }
+  return fields;
+}
+
+function formatCatalogBonusLine(name: string, rawValue: string | null): string {
+  if (rawValue === null || rawValue.length === 0) return name;
+  const value = rawValue.replace(/\s+/gu, ' ').trim();
+  if (value.length === 0) return name;
+  if (value.startsWith('+') || value.startsWith('-')) return `${name} ${value}`;
+  if (value.endsWith('%')) return `${name} +${value}`;
+  if (/^\d/u.test(value)) return `${name} +${value}`;
+  return `${name} ${value}`;
+}
+
+/**
+ * Bonus lines at a given enhancement (+0…+9) from dobry-temat `wiki_upgrade`.
+ * Skips truncated wiki dump tokens; never invents missing ladders.
+ */
+export function bonusesAtEnhancement(
+  upgradeDescription: string | null | undefined,
+  enhancement: number,
+): readonly string[] {
+  if (!upgradeDescription || upgradeDescription.trim().length === 0) return [];
+  const fields = parseWikiUpgradeFields(upgradeDescription);
+  const level = clampEnhancement(enhancement);
+  const lines: string[] = [];
+
+  for (let index = 1; index <= 8; index += 1) {
+    const name = fields[`Bonus${index}-Name`];
+    if (name === undefined || isTruncatedWikiToken(name)) continue;
+
+    let rawValue: string | null = null;
+    for (let step = level; step >= ENHANCEMENT_MIN; step -= 1) {
+      const candidate = fields[`Bonus${index}-${step}`];
+      if (candidate !== undefined && !isTruncatedWikiToken(candidate) && candidate.length > 0) {
+        rawValue = candidate;
+        break;
+      }
+    }
+    lines.push(formatCatalogBonusLine(name, rawValue));
+  }
+  return lines;
+}
+
+/** Prefer catalog ladder bonuses; keep caller fallback when dump has none. */
+export function resolveItemBonuses(
+  cardName: string,
+  enhancement: number,
+  fallback: readonly string[] = [],
+): readonly string[] {
+  const item = findGameItemByCardName(cardName);
+  const fromCatalog = bonusesAtEnhancement(item?.upgradeDescription, enhancement);
+  return fromCatalog.length > 0 ? fromCatalog : fallback;
+}
+
+/** Ulepszacze / materiały ulepszania z dumpa (nie sloty EQ). */
+export function enhancerCatalogItems(query = ''): readonly GameItem[] {
+  const normalized = query.trim().toLocaleLowerCase('pl');
+  return gameItemCatalog.filter((item) => {
+    if (!item.category.toLocaleLowerCase('pl').includes('ulepsz')) return false;
+    if (normalized.length === 0) return true;
+    return [item.title, item.category, item.upgradeDescription ?? ''].some((value) =>
+      value.toLocaleLowerCase('pl').includes(normalized),
+    );
+  });
 }
 
 export function isItemCompatibleWithClass(

@@ -23,6 +23,7 @@ import {
   formatEnhancedItemName,
   isItemCompatibleWithClass,
   parseEnhancementFromName,
+  resolveItemBonuses,
   resolveItemIconPath,
   stripEnhancementFromName,
 } from './item-catalog';
@@ -279,9 +280,10 @@ function historyEntry(
 }
 
 function demoEquipmentItem(
-  partial: Omit<EquipmentItem, 'iconPath' | 'name' | 'enhancement'> & {
+  partial: Omit<EquipmentItem, 'iconPath' | 'name' | 'enhancement' | 'bonuses'> & {
     readonly baseName: string;
     readonly enhancement: number;
+    readonly bonuses?: readonly string[];
     readonly iconPath?: string;
   },
 ): EquipmentItem {
@@ -293,7 +295,7 @@ function demoEquipmentItem(
     enhancement,
     category: partial.category,
     levelLabel: partial.levelLabel,
-    bonuses: partial.bonuses,
+    bonuses: resolveItemBonuses(partial.baseName, enhancement, partial.bonuses ?? []),
     catalogLayer: partial.catalogLayer,
     lastConfirmedLocation: partial.lastConfirmedLocation,
     lastConfirmedBy: partial.lastConfirmedBy,
@@ -317,8 +319,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       baseName: 'Demoniczne Ostrze',
       enhancement: 9,
       category: 'weapon',
-      levelLabel: 'katalog: Sura — broń jednoręczna',
-      bonuses: ['Wartość ataku', 'Silny przeciwko ludziom'],
+      levelLabel: 'katalog: Sura — broń jednoręczna (tylko Sura)',
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'XiaoHu',
@@ -332,12 +333,25 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       baseName: 'Lwi Miecz',
       enhancement: 6,
       category: 'weapon',
-      levelLabel: 'katalog: Sura — broń jednoręczna',
-      bonuses: ['Wartość ataku'],
+      levelLabel: 'katalog: Sura — broń jednoręczna (tylko Sura)',
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
       lastConfirmedAt: 'dzisiaj 12:00',
+      archived: false,
+      planned: false,
+      revision: 1,
+    }),
+    demoEquipmentItem({
+      id: 'sura-shared-sword',
+      baseName: 'Zatruty Miecz',
+      enhancement: 8,
+      category: 'weapon',
+      levelLabel: 'katalog: miecz wspólny (Wojownik / Ninja / Sura)',
+      catalogLayer: 'project_hard_source',
+      lastConfirmedLocation: 'NerwNicht',
+      lastConfirmedBy: 'Mateusz',
+      lastConfirmedAt: 'dzisiaj 12:10',
       archived: false,
       planned: false,
       revision: 1,
@@ -363,7 +377,6 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       enhancement: 9,
       category: 'helmet',
       levelLabel: 'katalog: Sura — hełmy',
-      bonuses: ['Obrona'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'NerwNicht',
       lastConfirmedBy: 'Mateusz',
@@ -468,7 +481,6 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       enhancement: 7,
       category: 'helmet',
       levelLabel: 'katalog: Ninja — hełmy',
-      bonuses: ['Obrona'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'Aalpsik',
       lastConfirmedBy: 'Aalpsik',
@@ -498,7 +510,6 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       enhancement: 5,
       category: 'shoes',
       levelLabel: 'katalog: Buty',
-      bonuses: ['Szybkość ruchu'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'Aalpsik',
       lastConfirmedBy: 'Aalpsik',
@@ -543,7 +554,6 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       enhancement: 4,
       category: 'helmet',
       levelLabel: 'katalog: Szaman — hełmy',
-      bonuses: ['Obrona'],
       catalogLayer: 'project_hard_source',
       lastConfirmedLocation: 'Kimmizic',
       lastConfirmedBy: 'Wicek',
@@ -1493,7 +1503,7 @@ export function createEquipmentItem(
       iconPath: resolveItemIconPath(name),
       category,
       levelLabel: catalogHit ? `katalog: ${catalogHit.category}` : 'własny wpis zespołu',
-      bonuses: input.bonuses,
+      bonuses: resolveItemBonuses(name, enhancement, input.bonuses),
       catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
       lastConfirmedLocation: null,
       lastConfirmedBy: null,

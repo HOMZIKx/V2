@@ -65,7 +65,13 @@ describe('player store first-slice', () => {
     expect(ninja.sets[0]!.assignments.weapon).toBe('ninja-knife');
     expect(ninja.sets[0]!.assignments.armor).toBeNull();
     expect(workspace.items.some((item) => item.id === 'sura-sword')).toBe(true);
-    expect(workspace.items.some((item) => /Zatruty Miecz/u.test(item.name))).toBe(false);
+    // Shared one-handed sword (Gameforge: Warrior/Ninja/Sura) — intentional demo card.
+    expect(workspace.items.some((item) => /Zatruty Miecz/u.test(item.name))).toBe(true);
+    expect(
+      workspace.items
+        .find((item) => item.id === 'sura-helmet')
+        ?.bonuses.some((line) => line.includes('Obrona')),
+    ).toBe(true);
   });
 
   it('seeds demo without wiping an existing workspace when merge is requested', () => {

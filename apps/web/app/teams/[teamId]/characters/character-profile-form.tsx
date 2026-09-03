@@ -326,7 +326,10 @@ export function CharacterProfileForm({
                 <img alt="" src={renderPath} />
               ) : (
                 <span className="missing-render">
-                  Brak zatwierdzonego renderu dla tej kombinacji
+                  Brak zatwierdzonego renderu Metin2 dla{' '}
+                  {characterClassLabels[draft.characterClass].toLocaleLowerCase('pl')} /{' '}
+                  {characterGenderLabels[draft.gender].toLocaleLowerCase('pl')}. Potrzebny plik z
+                  lokalnego dobry-temat (D-047 — bez AI).
                 </span>
               )}
             </div>

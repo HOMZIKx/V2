@@ -426,7 +426,10 @@ export function CharacterEquipment() {
               />{' '}
               Pokaż też karty innych klas
             </label>
-            <p className="empty-copy">Przeciągnij przedmiot na slot albo wybierz i kliknij slot.</p>
+            <p className="empty-copy">
+              Przeciągnij przedmiot na slot albo wybierz i kliknij slot. Ulepszacze i amulety z
+              katalogu dobry-temat nie trafiają do slotów EQ — tylko broń / zbroja / biżuteria.
+            </p>
             <div className="catalog-grid">
               {filteredCatalog.map((item) => (
                 <button

@@ -69,6 +69,22 @@ const approvedRenderPaths: Readonly<
   'shaman-male': '/game/classes/shaman-male.png',
 };
 
+/** All class×gender pairs expected for Metin2-correct character cards (D-047). */
+export const allCharacterRenderKeys: readonly `${CharacterClass}-${CharacterGender}`[] = [
+  'warrior-male',
+  'warrior-female',
+  'sura-male',
+  'sura-female',
+  'ninja-male',
+  'ninja-female',
+  'shaman-male',
+  'shaman-female',
+];
+
+export function listMissingCharacterRenders(): readonly `${CharacterClass}-${CharacterGender}`[] {
+  return allCharacterRenderKeys.filter((key) => approvedRenderPaths[key] === undefined);
+}
+
 export function getApprovedCharacterRender(
   characterClass: CharacterClass,
   gender: CharacterGender,

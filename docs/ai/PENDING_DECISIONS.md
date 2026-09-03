@@ -2,6 +2,21 @@
 
 ## Aktywne
 
+### DEC-062 — Brakujące rendery klas×płeć Metin2 (asset z dobry-temat)
+
+- **Status:** OWNER_ACTION_REQUIRED
+- **Kontekst:** D-047 wymaga zatwierdzonych grafik postaci zgodnych z klasą i płcią
+  (bez AI). W V2 są tylko 3 pliki: `sura-male`, `ninja-female`, `shaman-male`
+  (`apps/web/public/game/classes/`). Brakuje: warrior×♂♀, sura-female, ninja-male,
+  shaman-female.
+- **Prośba do właściciela:** skopiować PNG z lokalnego
+  `dobry-temat/frontend/public` (lub innego zatwierdzonego packa Metin2) do
+  `apps/web/public/game/classes/` w nazewnictwie `{class}-{gender}.png` (272×360
+  jak istniejące), potem Cursor dopisze ścieżki w `character-profile.ts`.
+- **Do czasu assetów:** UI pokazuje „Brak zatwierdzonego renderu” — bez
+  podstawiania innej klasy/płci.
+- **SoT:** D-047, `listMissingCharacterRenders()`.
+
 ### DEC-061 — Przeniesienie prac DESTILED Web do Cursora
 
 - **Status:** OWNER_ACCEPTED (2026-09-03)

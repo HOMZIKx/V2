@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSaveCharacterProfileCommand,
   getApprovedCharacterRender,
+  listMissingCharacterRenders,
   newCharacterProfileFixture,
   validateCharacterProfile,
 } from './character-profile.js';
@@ -10,7 +11,19 @@ import {
 describe('character profile view model', () => {
   it('keeps unsupported visual variants honest instead of substituting another class', () => {
     expect(getApprovedCharacterRender('sura', 'male')).toBe('/game/classes/sura-male.png');
+    expect(getApprovedCharacterRender('ninja', 'female')).toBe('/game/classes/ninja-female.png');
+    expect(getApprovedCharacterRender('shaman', 'male')).toBe('/game/classes/shaman-male.png');
     expect(getApprovedCharacterRender('warrior', 'female')).toBeNull();
+    expect(getApprovedCharacterRender('sura', 'female')).toBeNull();
+    expect(listMissingCharacterRenders()).toEqual(
+      expect.arrayContaining([
+        'warrior-male',
+        'warrior-female',
+        'sura-female',
+        'ninja-male',
+        'shaman-female',
+      ]),
+    );
   });
 
   it('allows an unknown level but rejects impossible or malformed values', () => {
