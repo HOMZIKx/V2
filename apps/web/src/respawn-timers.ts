@@ -1,4 +1,5 @@
 import catalogDocument from './data/dobry-temat-respawn-catalog.json';
+import respawnEntityIcons from './data/respawn-entity-icons.json';
 
 export type RespawnKind = 'boss' | 'metin';
 export type RespawnPhase = 'no_data' | 'countdown' | 'window' | 'on_map' | 'expired';
@@ -11,6 +12,7 @@ export interface RespawnEntity {
   readonly hasWindow?: boolean;
   readonly windowTime?: number;
   readonly color?: string;
+  readonly iconPath?: string;
 }
 
 export interface RespawnMap {
@@ -49,14 +51,20 @@ export interface RespawnDisplay {
 const MINUTE = 60_000;
 const MAP_MARKER_LIFETIME = 5 * MINUTE;
 const rawConfig = catalogDocument.config as Record<string, Omit<RespawnMap, 'key'>>;
+const entityIconMap = respawnEntityIcons as Record<string, string>;
+
+function withEntityIcon(entity: RespawnEntity): RespawnEntity {
+  const iconPath = entity.iconPath ?? entityIconMap[entity.id];
+  return iconPath ? { ...entity, iconPath } : entity;
+}
 
 export const respawnMaps: readonly RespawnMap[] = Object.entries(rawConfig)
   .filter(([, entry]) => Array.isArray(entry.bosses) || Array.isArray(entry.metins))
   .map(([key, entry]) => ({
     key,
     channels: Math.min(8, Math.max(1, entry.channels ?? 8)),
-    bosses: entry.bosses ?? [],
-    metins: entry.metins ?? [],
+    bosses: (entry.bosses ?? []).map(withEntityIcon),
+    metins: (entry.metins ?? []).map(withEntityIcon),
     ...(entry.color ? { color: entry.color } : {}),
   }));
 
@@ -172,4 +180,54 @@ export function canConfirmRespawn(record: RespawnRecord, now: number): boolean {
 /** Catalog range max−min (e.g. 20–30 → 10 min spawn window). */
 export function respawnWindowMinutes(entity: RespawnEntity): number {
   return Math.max(0, entity.respawnTimeMax - entity.respawnTimeMin);
+}
+
+/**
+ * Last fraction of the spawn window (default 20%).
+ * Used to nudge the player when watching another channel.
+ */
+export function isWindowLatePhase(
+  record: RespawnRecord,
+  now: number,
+  fraction = 0.2,
+): boolean {
+  const display = getRespawnDisplay(record, now);
+  if (display.phase !== 'window' || display.minAt === null || display.windowEndsAt === null) {
+    return false;
+  }
+  const windowMs = display.windowEndsAt - display.minAt;
+  if (windowMs <= 0) return false;
+  return display.windowEndsAt - now <= windowMs * fraction;
+}
+
+/** Channels on this map that have a late-window timer (any kind). */
+export function channelsWithLateWindows(
+  records: readonly RespawnRecord[],
+  mapKey: string,
+  now: number,
+  fraction = 0.2,
+): readonly number[] {
+  const channels = new Set<number>();
+  for (const record of records) {
+    if (record.mapKey !== mapKey) continue;
+    if (isWindowLatePhase(record, now, fraction)) channels.add(record.channel);
+  }
+  return [...channels].sort((left, right) => left - right);
+}
+
+/** Split list: still confirmable vs already counting down after a kill. */
+export function partitionRespawnRecords(
+  records: readonly RespawnRecord[],
+  now: number,
+): {
+  readonly available: readonly RespawnRecord[];
+  readonly counting: readonly RespawnRecord[];
+} {
+  const available: RespawnRecord[] = [];
+  const counting: RespawnRecord[] = [];
+  for (const record of records) {
+    if (getRespawnPhase(record, now) === 'countdown') counting.push(record);
+    else available.push(record);
+  }
+  return { available, counting };
 }

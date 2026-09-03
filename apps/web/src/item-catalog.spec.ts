@@ -10,6 +10,7 @@ import {
   findGameItemByTitle,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
+  knownCatalogBonusNames,
   parseEnhancementFromName,
   resolveItemBonuses,
   resolveItemIconPath,
@@ -90,5 +91,16 @@ describe('item catalog class and enhancement rules', () => {
         (item) => item.sourceImageUrl !== null && item.sourceImageUrl.length > 0,
       ),
     ).toBe(true);
+  });
+
+  it('exposes only non-truncated bonus names from the dump and reads shield ladders', () => {
+    const names = knownCatalogBonusNames();
+    expect(names.length).toBeGreaterThan(0);
+    expect(names.every((name) => !name.includes('…'))).toBe(true);
+    const shield = findGameItemByTitle('Bojowa Tarcza');
+    expect(bonusesAtEnhancement(shield?.upgradeDescription, 9).some((line) => line.includes('Obrona'))).toBe(
+      true,
+    );
+    expect(resolveItemBonuses('Bojowa Tarcza +9', 9).length).toBeGreaterThan(0);
   });
 });

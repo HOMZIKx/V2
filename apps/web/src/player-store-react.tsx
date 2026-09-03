@@ -13,6 +13,7 @@ import {
 import {
   PLAYER_STORE_KEY,
   acceptIncomingInvitation,
+  addProgressionTimer,
   addWorkspaceNote,
   applyTaskOutcome,
   assignItemToSet,
@@ -36,11 +37,13 @@ import {
   startDiscordAuth,
   touchLastOpened,
   updateCharacter,
+  updateEquipmentItemBonuses,
   type AuthStatus,
   type CharacterClass,
   type CharacterGender,
   type EquipmentSlot,
   type PlayerStoreState,
+  type ProgressionKind,
   type TaskOutcome,
 } from './player-store';
 
@@ -106,6 +109,11 @@ interface PlayerStoreApi {
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
   ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
+  addTimer: (
+    workspaceId: string,
+    characterId: string,
+    input: { readonly kind?: ProgressionKind; readonly label?: string },
+  ) => void;
   createItem: (
     workspaceId: string,
     input: {
@@ -117,6 +125,7 @@ interface PlayerStoreApi {
       readonly forCharacterClass?: CharacterClass;
     },
   ) => void;
+  updateItemBonuses: (workspaceId: string, itemId: string, bonuses: readonly string[]) => void;
   sendInvitation: (
     workspaceId: string,
     recipient: {
@@ -240,8 +249,14 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       ensureProgressionTimers: (workspaceId, characterId) => {
         apply((current) => ensureCharacterProgressionTimers(current, workspaceId, characterId));
       },
+      addTimer: (workspaceId, characterId, input) => {
+        apply((current) => addProgressionTimer(current, workspaceId, characterId, input));
+      },
       createItem: (workspaceId, input) => {
         apply((current) => createEquipmentItem(current, workspaceId, input));
+      },
+      updateItemBonuses: (workspaceId, itemId, bonuses) => {
+        apply((current) => updateEquipmentItemBonuses(current, workspaceId, itemId, bonuses));
       },
       sendInvitation: (workspaceId, recipient) => {
         apply((current) => createOutgoingInvitation(current, workspaceId, recipient));

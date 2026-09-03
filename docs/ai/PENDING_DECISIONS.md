@@ -2,6 +2,20 @@
 
 ## Aktywne
 
+### DEC-068 — Pełne drabinki bonusów z dobry-temat / wiki
+
+- **Status:** OWNER_DECISION_REQUIRED / PARTIAL
+- **Kontekst:** Właściciel wymaga systemu bonusów jak w starej app (dobry-temat),
+  bez zgadywania. W V2 dump `dobry-temat-item-catalog.json` ma `wiki_upgrade`
+  ucięty do ~201 znaków — pełne `Bonus2+` i wiele drabin jest nieczytelnych.
+  Stary monorepo nie jest dostępny w środowisku Cloud Agent.
+- **Zrobione bez zgadywania:** parser `BonusN-Name` + alt `BonusN=`; picker nazw
+  wyłącznie z dumpa (`knownCatalogBonusNames`); ręczna edycja obserwowanych
+  bonusów na karcie (D-055); przycisk „Wczytaj z katalogu” gdy drabinka jest.
+- **Potrzeba od właściciela:** pełny (nieucięty) eksport wiki_upgrade / pliki
+  bonusów ze starego dobry-temat, albo dostęp do referencyjnego folderu lokalnego
+  w agencie — wtedy podmienimy dump 1:1.
+
 ### DEC-067 — Party hunt: osobna funkcja od Timerów
 
 - **Status:** OWNER_DIRECTED (2026-09-03)

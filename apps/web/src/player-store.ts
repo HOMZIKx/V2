@@ -47,7 +47,7 @@ import {
 } from './project-hard-progression';
 import type { TeamHistoryResource } from './team-history';
 
-export type { CharacterClass, CharacterGender, EquipmentSlot };
+export type { CharacterClass, CharacterGender, EquipmentSlot, ProgressionKind };
 
 export const PLAYER_STORE_KEY = 'destiled:player-store:v1';
 
@@ -1814,6 +1814,7 @@ export function markTimerDone(
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const existing = workspace.timers.find((timer) => timer.id === timerId);
     if (!existing) return workspace;
+    if (existing.status !== 'ready') return workspace;
     if (
       existing.operationId === operationId &&
       existing.status === 'running' &&
@@ -1856,6 +1857,79 @@ export function markTimerDone(
       ],
     };
   });
+}
+
+/** Add a missing Project Hard cycle (or custom label) on a character card. */
+export function addProgressionTimer(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+  input: { readonly kind?: ProgressionKind; readonly label?: string },
+): PlayerStoreState {
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace) return state;
+  const character = workspace.characters.find((entry) => entry.id === characterId);
+  if (!character) return state;
+
+  if (input.kind) {
+    const already = workspace.timers.some(
+      (timer) =>
+        timer.characterId === characterId &&
+        (timer.kind ?? inferProgressionKind(timer.label)) === input.kind,
+    );
+    if (already) return state;
+    const timer = buildProgressionTimer(characterId, input.kind, character.level);
+    return updateWorkspace(state, workspaceId, (current, viewer) => ({
+      ...current,
+      revision: current.revision + 1,
+      timers: [timer, ...current.timers],
+      history: [
+        historyEntry(current.id, viewer, {
+          characterId,
+          characterName: character.name,
+          resource: 'timer',
+          title: `Dodano timer: ${timer.label}`,
+          detail: 'Cykl Projekt Hard na karcie postaci',
+          revision: current.revision + 1,
+        }),
+        ...current.history,
+      ],
+    }));
+  }
+
+  const label = input.label?.trim() ?? '';
+  if (label.length < 2) return state;
+  const timer: ProgressTimer = {
+    id: createId('timer-custom'),
+    characterId,
+    label,
+    detail: 'Timer ręczny zespołu · kliknij, gdy gotowy, aby uruchomić cykl',
+    status: 'ready',
+    readyAtIso: new Date().toISOString(),
+    remainingLabel: 'gotowe',
+    progressPercent: 100,
+    lastActorName: null,
+    lastConfirmedAt: null,
+    discordReminder: false,
+    reminderState: 'unavailable',
+    operationId: null,
+  };
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    timers: [timer, ...current.timers],
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId,
+        characterName: character.name,
+        resource: 'timer',
+        title: `Dodano timer: ${label}`,
+        detail: 'Timer ręczny na karcie postaci',
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
 }
 
 export function createEquipmentItem(
@@ -1918,6 +1992,38 @@ export function createEquipmentItem(
           resource: 'equipment',
           title: `Utworzono przedmiot: ${name}`,
           detail: input.planned ? 'Oznaczony jako planowany' : 'Karta zespołu',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
+/** Edit observed bonuses on a team equipment card (D-055 free-form / catalog lines). */
+export function updateEquipmentItemBonuses(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+  bonuses: readonly string[],
+): PlayerStoreState {
+  const cleaned = bonuses.map((line) => line.trim()).filter((line) => line.length > 0);
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing) return workspace;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      items: workspace.items.map((item) =>
+        item.id === itemId ? { ...item, bonuses: cleaned, revision: item.revision + 1 } : item,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'equipment',
+          title: `Zaktualizowano bonusy: ${existing.name}`,
+          detail: cleaned.length > 0 ? cleaned.join(' · ') : 'Wyczyszczono linie bonusów',
           revision: workspace.revision + 1,
         }),
         ...workspace.history,

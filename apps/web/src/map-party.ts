@@ -161,6 +161,14 @@ export function dismissScoutPin(
   return pins.filter((pin) => pin.id !== pinId);
 }
 
+/** Drop expired scout pins so localStorage / UI stay clean. */
+export function pruneExpiredScoutPins(
+  pins: readonly PartyScoutPin[],
+  now: number,
+): readonly PartyScoutPin[] {
+  return pins.filter((pin) => isScoutPinActive(pin, now));
+}
+
 /** @deprecated Use PartyScoutPin + activeScoutPins — kept for old localStorage migration. */
 export interface MapSpawnClaim {
   readonly id: string;

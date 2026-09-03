@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 
+import { huntMapImagePath } from '../../src/hunt-map-assets';
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
   PARTY_SCOUT_PIN_TTL_MS,
@@ -10,6 +11,7 @@ import {
   dismissScoutPin,
   incrementSessionKills,
   placeScoutPin,
+  pruneExpiredScoutPins,
   requestPartyJoin,
   resolvePartyRequest,
   scoutPinAgeMinutes,
@@ -30,29 +32,6 @@ interface LocalPartyState {
   readonly pins: readonly PartyScoutPin[];
 }
 
-const mapFiles: Readonly<Record<string, string>> = {
-  M1: 'map_m1.png',
-  M2: 'map_m2.png',
-  M3: 'map_m3.png',
-  'Dolina Orków': 'map_orki.png',
-  'Pustynia Yongbi': 'map_pustynia.png',
-  'Świątynia Hwang': 'map_swiatynia.png',
-  'Góra Sohan': 'map_sohan.png',
-  'Ognista Ziemia': 'map_ognista.png',
-  'Las Duchów': 'map_lasduchow.png',
-  'Kraina Gigantów': 'map_giganty.png',
-  'Czerwony Las': 'map_czerwonylas.png',
-  'Wężowe Pole': 'map_wezowe.png',
-  'Atlantyda V1': 'map_atlantyda_v1_new.png',
-  'Atlantyda V2': 'map_atlantyda_v2_new.png',
-  'Grota Wygnańców': 'map_grota_wygnancow.png',
-  'Loch Małp Łatwy': 'map_loch_malp_latwy.png',
-  'Loch Małp Średni': 'map_loch_malp_sredni.png',
-  'Loch Małp Trudny': 'map_loch_malp_trudny.png',
-  'Loch Pająków V2': 'map_loch_pajakow_v2.png',
-};
-
-const mapImage = (mapKey: string) => (mapFiles[mapKey] ? `/game/maps/${mapFiles[mapKey]}` : null);
 const STORAGE_KEY = 'destiled:map-party:v2';
 
 function formatAge(minutes: number): string {
@@ -90,8 +69,14 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               }
             : null;
           setParty(migrated);
+          if (migrated) {
+            setMapKey(migrated.mapKey);
+            setChannel(migrated.activeChannel);
+          }
         }
-        if (Array.isArray(saved.pins)) setPins(saved.pins);
+        if (Array.isArray(saved.pins)) {
+          setPins(pruneExpiredScoutPins(saved.pins, Date.now()));
+        }
       }
     } catch {
       /* empty party */
@@ -99,6 +84,14 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       setLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    setPins((current) => {
+      const pruned = pruneExpiredScoutPins(current, Date.now());
+      return pruned.length === current.length ? current : pruned;
+    });
+  }, [loaded, now]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -117,22 +110,35 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     () => activeScoutPins(pins, party, mapKey, channel, now),
     [channel, mapKey, now, party, pins],
   );
-  const currentMapImage = mapImage(mapKey);
+  const currentMapImage = huntMapImagePath(mapKey);
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(mapKey);
   const selectedPin = visiblePins.find((pin) => pin.id === selectedPinId) ?? null;
+  const viewingSharedPartyMap =
+    party !== null && party.mapKey === mapKey && party.activeChannel === channel;
 
+  /** Personal atlas focus — does not overwrite shared party.mapKey. */
   const changeMap = (next: string) => {
     setMapKey(next);
     setChannel(1);
     setPlacing(false);
     setSelectedPinId(null);
-    setParty((current) => (current ? setPartyMap(current, next, 1) : null));
   };
   const changeChannel = (next: number) => {
     setChannel(next);
     setPlacing(false);
     setSelectedPinId(null);
-    setParty((current) => (current ? setPartyChannel(current, next) : null));
+  };
+  const syncPartyToMyView = () => {
+    if (!party) return;
+    setParty(setPartyChannel(setPartyMap(party, mapKey, channel), channel));
+    setNotice(`Wspólna mapa party ustawiona na ${mapKey} · CH${channel}.`);
+  };
+  const jumpToPartyMap = () => {
+    if (!party) return;
+    setMapKey(party.mapKey);
+    setChannel(party.activeChannel);
+    setPlacing(false);
+    setSelectedPinId(null);
   };
   const createParty = (visibility: PartyVisibility) => {
     const next = createMapParty({
@@ -189,7 +195,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setPins((current) => placeScoutPin(current, pin));
     setPlacing(false);
     setSelectedPinId(pin.id);
-    setNotice(`Pinezka „${pin.label}” · znika po 10 min · widoczna dla party.`);
+    setNotice(`Pinezka „${pin.label}” · znika po 10 min · widoczna dla party na tej mapie/CH.`);
   };
   const dismissPin = (pinId: string) => {
     setPins((current) => dismissScoutPin(current, pinId));
@@ -200,11 +206,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setParty((current) => (current ? incrementSessionKills(current) : null));
     setPins((current) => dismissScoutPin(current, pinId));
     setSelectedPinId(null);
-    setNotice('Zbicie w sesji (+1). Pinezka zdjęta.');
+    setNotice('Zbicie w sesji (+1). Pinezka zdjęta. (To nie Timer respawnu.)');
   };
   const markSessionKill = () => {
     setParty((current) => (current ? incrementSessionKills(current) : null));
-    setNotice('Zbicie w sesji (+1).');
+    setNotice('Zbicie w sesji (+1). Timery respawnu są na /timers.');
   };
 
   return (
@@ -215,8 +221,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Party</h1>
             <p>
-              Osobna funkcja od Timerów. Tworzysz drużynę, zapraszasz / akceptujesz. Szukający
-              stawia pinezkę (~10 min) — bijący jedzie i odklika. Sesja liczy zbicia.
+              Osobna funkcja od Timerów. Drużyna + pinezka skauta (~10 min). Twój wybór mapy poniżej
+              to <b>Twój widok</b> — wspólna mapa party zmienia się dopiero przyciskiem w panelu
+              drużyny.
             </p>
           </div>
           <div className="respawn-header-actions">
@@ -242,7 +249,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
             </select>
           </div>
           <div className="respawn-channel-select">
-            <span>Kanał</span>
+            <span>Kanał (Twój widok)</span>
             <div className="respawn-channels">
               {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (
                 <button
@@ -273,10 +280,16 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               <div>
                 <span className="section-kicker">
                   {mapKey} · CH{channel}
+                  {party
+                    ? viewingSharedPartyMap
+                      ? ' · widok = mapa party'
+                      : ` · party na ${party.mapKey} CH${party.activeChannel}`
+                    : ''}
                 </span>
-                <h2>Wspólna mapa party</h2>
+                <h2>Mapa party / skaut</h2>
                 <p className="respawn-list-lead">
-                  Razem albo osobno wybieracie mapę. Pinezka = „tu jest metin”, nie timer respawnu.
+                  Pinezka = „tu jest metin” (~10 min). To nie timer respawnu i nie lokalizacja zbicia
+                  z /timers.
                 </p>
               </div>
               {party ? (
@@ -388,7 +401,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                   ? 'Najpierw utwórz party obok — potem wspólna mapa i pinezki skauta.'
                   : placing
                     ? 'Kliknij atlas: pinezka „tu jest metin” (ok. 10 min).'
-                    : 'Najechanie / klik pinezki pokazuje wiek. Bijący odklika dobrowolnie albo oznacza zbicie w sesji.'}
+                    : 'Najechanie / klik pinezki pokazuje wiek. Bijący odklika albo oznacza zbicie w sesji.'}
               </p>
               {selectedPin ? (
                 <div className="respawn-party-feed">
@@ -414,7 +427,10 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <header>
                   <span className="section-kicker">Drużyna</span>
                   <h2>Utwórz party</h2>
-                  <p>Wybierz mapę, stwórz drużynę, zaproś lub przyjmuj prośby. Bez Timerów.</p>
+                  <p>
+                    Wybierz swój widok mapy, stwórz drużynę. Timery respawnu zostają na{' '}
+                    <a href="/timers">/timers</a>.
+                  </p>
                 </header>
                 <button
                   className="respawn-party-toggle is-on"
@@ -441,7 +457,25 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                     {party.visibility === 'open' ? 'otwarte' : 'zamknięte'} · zbicia sesji:{' '}
                     <b>{party.sessionKills}</b>
                   </p>
+                  <p className="respawn-list-lead">
+                    Wspólna mapa party: <b>{party.mapKey}</b> · CH{party.activeChannel}
+                  </p>
                 </header>
+                {!viewingSharedPartyMap ? (
+                  <div className="respawn-party-feed">
+                    <span>Twój widok ≠ mapa party</span>
+                    <button className="respawn-party-toggle" onClick={jumpToPartyMap} type="button">
+                      <span /> Skocz do mapy party
+                    </button>
+                    <button
+                      className="respawn-party-toggle is-on"
+                      onClick={syncPartyToMyView}
+                      type="button"
+                    >
+                      <span /> Ustaw mój widok jako mapę party
+                    </button>
+                  </div>
+                ) : null}
                 <button
                   className={`respawn-party-toggle ${party.visibility === 'open' ? 'is-on' : ''}`}
                   onClick={() =>
@@ -529,8 +563,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           {notice}
         </p>
         <p className="respawn-data-note">
-          Party ≠ Timery respawnu ≠ Postęp PH. Pinezki skauta znikają po ~10 min. Dane lokalnie;
-          wspólny realtime wymaga API.
+          Party ≠ Timery respawnu ≠ Postęp PH. Twój widok mapy nie nadpisuje automatycznie wspólnej
+          mapy party. Pinezki skauta znikają po ~10 min. Dane lokalnie.
         </p>
       </main>
     </AppShell>

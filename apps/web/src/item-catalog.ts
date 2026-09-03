@@ -216,8 +216,15 @@ export function bonusesAtEnhancement(
   const lines: string[] = [];
 
   for (let index = 1; index <= 8; index += 1) {
-    const name = fields[`Bonus${index}-Name`];
-    if (name === undefined || isTruncatedWikiToken(name)) continue;
+    const named = fields[`Bonus${index}-Name`];
+    const altNamed = fields[`Bonus${index}`];
+    const name =
+      named !== undefined && !isTruncatedWikiToken(named)
+        ? named
+        : altNamed !== undefined && !isTruncatedWikiToken(altNamed)
+          ? altNamed
+          : null;
+    if (name === null) continue;
 
     let rawValue: string | null = null;
     for (let step = level; step >= ENHANCEMENT_MIN; step -= 1) {
@@ -230,6 +237,25 @@ export function bonusesAtEnhancement(
     lines.push(formatCatalogBonusLine(name, rawValue));
   }
   return lines;
+}
+
+/**
+ * Bonus names seen in the dobry-temat dump (non-truncated).
+ * Used for picker UI — never invents names beyond the catalog.
+ */
+export function knownCatalogBonusNames(): readonly string[] {
+  const names = new Set<string>();
+  for (const item of gameItemCatalog) {
+    if (!item.upgradeDescription) continue;
+    const fields = parseWikiUpgradeFields(item.upgradeDescription);
+    for (let index = 1; index <= 8; index += 1) {
+      for (const key of [`Bonus${index}-Name`, `Bonus${index}`] as const) {
+        const value = fields[key];
+        if (value && !isTruncatedWikiToken(value)) names.add(value.trim());
+      }
+    }
+  }
+  return [...names].sort((left, right) => left.localeCompare(right, 'pl'));
 }
 
 /** Prefer catalog ladder bonuses; keep caller fallback when dump has none. */

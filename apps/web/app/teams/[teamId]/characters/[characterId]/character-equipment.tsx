@@ -11,27 +11,35 @@ import {
   findGameItemByCardName,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
+  knownCatalogBonusNames,
   parseEnhancementFromName,
+  resolveItemBonuses,
   stripEnhancementFromName,
 } from '../../../../../src/item-catalog';
 import {
   equipmentSlots,
   getSlotReadiness,
   slotLabels,
+  type CharacterRecord,
   type EquipmentSlot,
   type ProgressTimer,
   type SetReadiness,
+  type WorkspaceRecord,
 } from '../../../../../src/player-store';
 import { usePlayerStore } from '../../../../../src/player-store-react';
 import {
   inferProgressionKind,
   isMidnightProgressionKind,
   progressionDisplayOrder,
+  progressionKindsForLevel,
   progressionTimerIcons,
+  progressionTimerLabels,
   type ProgressionKind,
 } from '../../../../../src/project-hard-progression';
 import { AppShell, Icon } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
+
+type BoardMode = 'eq' | 'timers';
 
 const readinessLabels: Record<SetReadiness, string> = {
   ready: 'Na postaci',
@@ -72,6 +80,20 @@ function completionHint(timer: ProgressTimer): string {
   return 'Kolejny cykl odlicza się od teraz.';
 }
 
+function assignedItemIds(workspace: WorkspaceRecord): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const character of workspace.characters) {
+    if (character.archived) continue;
+    for (const set of character.sets) {
+      for (const slot of equipmentSlots) {
+        const itemId = set.assignments[slot];
+        if (itemId) map.set(itemId, character.name);
+      }
+    }
+  }
+  return map;
+}
+
 export function CharacterEquipment() {
   const params = useParams<{ teamId: string; characterId: string }>();
   const {
@@ -85,53 +107,72 @@ export function CharacterEquipment() {
     confirmLocation,
     completeTimer,
     ensureProgressionTimers,
+    addTimer,
     createItem,
+    updateItemBonuses,
     writesEnabled,
   } = usePlayerStore();
 
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
   const character = workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
 
+  const [boardMode, setBoardMode] = useState<BoardMode>('eq');
+  const [focusCharacterId, setFocusCharacterId] = useState<string>('');
   const [activeSetId, setActiveSetId] = useState<string>('');
   const [newSetName, setNewSetName] = useState('');
   const [addingSet, setAddingSet] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentSlot | 'all'>('all');
-  const [flipped, setFlipped] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
-  const [showIncompatible, setShowIncompatible] = useState(false);
+  const [showAssigned, setShowAssigned] = useState(true);
   const [moveTarget, setMoveTarget] = useState('');
+  const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('skill_book');
+  const [customTimerLabel, setCustomTimerLabel] = useState('');
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [bonusDraft, setBonusDraft] = useState('');
+  const [bonusPick, setBonusPick] = useState('');
+
+  const catalogBonusNames = useMemo(() => knownCatalogBonusNames(), []);
 
   useEffect(() => {
     if (!workspace || !character) return;
     openWorkspace(workspace.id, character.id);
+    setFocusCharacterId(character.id);
     setActiveSetId(character.activeSetId || character.sets[0]?.id || '');
     if (writesEnabled) {
-      ensureProgressionTimers(workspace.id, character.id);
+      for (const entry of workspace.characters) {
+        if (!entry.archived) ensureProgressionTimers(workspace.id, entry.id);
+      }
     }
   }, [workspace, character, openWorkspace, writesEnabled, ensureProgressionTimers]);
 
-  const filteredCatalog = useMemo(() => {
-    if (!workspace || !character) return [];
+  const ownership = useMemo(
+    () => (workspace ? assignedItemIds(workspace) : new Map<string, string>()),
+    [workspace],
+  );
+
+  const poolItems = useMemo(() => {
+    if (!workspace) return [] as EquipmentItem[];
     const normalized = query.trim().toLocaleLowerCase('pl');
     return workspace.items.filter((item) => {
       if (item.archived) return false;
-      const categoryMatches = category === 'all' || item.category === category;
-      const queryMatches =
-        normalized.length === 0 ||
-        item.name.toLocaleLowerCase('pl').includes(normalized) ||
-        item.bonuses.some((bonus) => bonus.toLocaleLowerCase('pl').includes(normalized));
-      if (!categoryMatches || !queryMatches) return false;
-      if (showIncompatible) return true;
-      const catalogHit = findGameItemByCardName(item.name);
-      if (!catalogHit) return true;
-      return isItemCompatibleWithClass(catalogHit.category, character.characterClass);
+      const assignedTo = ownership.get(item.id);
+      if (!showAssigned && assignedTo) return false;
+      if (category !== 'all' && item.category !== category) return false;
+      if (
+        normalized.length > 0 &&
+        !item.name.toLocaleLowerCase('pl').includes(normalized) &&
+        !item.bonuses.some((bonus) => bonus.toLocaleLowerCase('pl').includes(normalized))
+      ) {
+        return false;
+      }
+      return true;
     });
-  }, [workspace, character, query, category, showIncompatible]);
+  }, [workspace, ownership, showAssigned, category, query]);
 
   const catalogSuggestions = useMemo(() => {
     if (!character) return [];
@@ -146,6 +187,10 @@ export function CharacterEquipment() {
   }, [character, newItemName, newItemSlot]);
 
   const matchedDefinition = findGameItemByCardName(newItemName);
+  const livingCharacters = useMemo(
+    () => workspace?.characters.filter((entry) => !entry.archived) ?? [],
+    [workspace],
+  );
 
   if (!hydrated) {
     return (
@@ -170,18 +215,27 @@ export function CharacterEquipment() {
     );
   }
 
+  const focusCharacter =
+    livingCharacters.find((entry) => entry.id === focusCharacterId) ?? character;
   const activeSet =
-    character.sets.find((set) => set.id === activeSetId) ?? character.sets[0] ?? null;
+    focusCharacter.sets.find((set) => set.id === activeSetId) ??
+    focusCharacter.sets.find((set) => set.id === focusCharacter.activeSetId) ??
+    focusCharacter.sets[0] ??
+    null;
   const selectedItem = workspace.items.find((item) => item.id === selectedItemId) ?? null;
-  const timers = workspace.timers.filter((timer) => timer.characterId === character.id);
-  const completion = activeSet
-    ? equipmentSlots.filter((slot) => activeSet.assignments[slot] !== null).length
-    : 0;
 
-  const onAssign = (itemId: string, slot: EquipmentSlot) => {
-    if (!writesEnabled || !activeSet) return;
+  const assignToCharacter = (target: CharacterRecord, itemId: string, slot?: EquipmentSlot) => {
+    if (!writesEnabled) return;
     const item = workspace.items.find((entry) => entry.id === itemId);
-    if (!item || item.category !== slot) {
+    if (!item) return;
+    const set =
+      target.sets.find((entry) => entry.id === target.activeSetId) ?? target.sets[0] ?? null;
+    if (!set) {
+      setAnnouncement('Postać nie ma setu EQ.');
+      return;
+    }
+    const targetSlot = slot ?? item.category;
+    if (item.category !== targetSlot) {
       setAnnouncement('Przedmiot nie pasuje do tego slotu.');
       return;
     }
@@ -192,25 +246,36 @@ export function CharacterEquipment() {
         setAnnouncement('To nie jest przedmiot EQ (np. ulepszacz / amulet).');
         return;
       }
-      if (catalogSlot !== slot) {
+      if (catalogSlot !== targetSlot) {
         setAnnouncement(`Ten przedmiot należy do slotu: ${slotLabels[catalogSlot]}.`);
         return;
       }
-      if (!isItemCompatibleWithClass(catalogHit.category, character.characterClass)) {
+      if (!isItemCompatibleWithClass(catalogHit.category, target.characterClass)) {
         setAnnouncement(
-          `${item.name} nie pasuje do klasy ${characterClassLabels[character.characterClass]}.`,
+          `${item.name} nie pasuje do klasy ${characterClassLabels[target.characterClass]}.`,
         );
         return;
       }
     }
-    assignItem(workspace.id, character.id, activeSet.id, itemId, slot);
+    assignItem(workspace.id, target.id, set.id, itemId, targetSlot);
+    setFocusCharacterId(target.id);
+    setActiveSetId(set.id);
     setSelectedItemId(itemId);
-    setAnnouncement(`${item.name} dodano do planu setu ${activeSet.name}.`);
+    setAnnouncement(`${item.name} → ${target.name} (${slotLabels[targetSlot]}).`);
   };
 
-  const handleDrop = (event: DragEvent<HTMLButtonElement>, slot: EquipmentSlot) => {
+  const onPoolDragStart = (event: DragEvent<HTMLButtonElement>, itemId: string) => {
+    event.dataTransfer.setData('text/item-id', itemId);
+    event.dataTransfer.effectAllowed = 'move';
+    setSelectedItemId(itemId);
+  };
+
+  const onCharacterDrop = (event: DragEvent<HTMLElement>, target: CharacterRecord) => {
     event.preventDefault();
-    onAssign(event.dataTransfer.getData('text/item-id'), slot);
+    setDropTargetId(null);
+    const itemId = event.dataTransfer.getData('text/item-id') || selectedItemId;
+    if (!itemId) return;
+    assignToCharacter(target, itemId);
   };
 
   const handleCreateItem = (event: FormEvent) => {
@@ -225,29 +290,44 @@ export function CharacterEquipment() {
         setAnnouncement('Amuletów i ulepszaczy nie dodaje się do slotów EQ.');
         return;
       }
-      if (!isItemCompatibleWithClass(catalogHit.category, character.characterClass)) {
+      if (!isItemCompatibleWithClass(catalogHit.category, focusCharacter.characterClass)) {
         setAnnouncement(
-          `${catalogHit.title} nie jest dla klasy ${characterClassLabels[character.characterClass]}.`,
+          `${catalogHit.title} nie jest dla klasy ${characterClassLabels[focusCharacter.characterClass]}.`,
         );
         return;
       }
     }
     const cardName = formatEnhancedItemName(baseName, newItemEnhancement);
+    const bonuses = resolveItemBonuses(cardName, newItemEnhancement, []);
     createItem(workspace.id, {
       name: cardName,
       category: newItemSlot,
       enhancement: newItemEnhancement,
-      bonuses: [],
+      bonuses,
       planned: true,
-      forCharacterClass: character.characterClass,
+      forCharacterClass: focusCharacter.characterClass,
     });
     setNewItemName('');
-    setAnnouncement(`Utworzono kartę ${cardName} w bazie EQ zespołu.`);
+    setAnnouncement(
+      bonuses.length > 0
+        ? `Utworzono ${cardName} z bonusami z katalogu (${bonuses.length}).`
+        : `Utworzono ${cardName} — uzupełnij bonusy w szczegółach (katalog bez drabinki).`,
+    );
+  };
+
+  const missingKindsFor = (target: CharacterRecord): ProgressionKind[] => {
+    const existing = new Set(
+      workspace.timers
+        .filter((timer) => timer.characterId === target.id)
+        .map((timer) => timerKind(timer))
+        .filter((kind): kind is ProgressionKind => kind !== null),
+    );
+    return progressionKindsForLevel(target.level).filter((kind) => !existing.has(kind));
   };
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
-      <main className="equipment-page" id="main-content">
+      <main className="equipment-page eq-camp-page" id="main-content">
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
@@ -258,28 +338,20 @@ export function CharacterEquipment() {
 
         <header className="equipment-page-header">
           <div>
-            <span className="eyebrow">Karta postaci</span>
-            <h1>{character.name}</h1>
+            <span className="eyebrow">Obóz EQ · przestrzeń</span>
+            <h1>{workspace.name}</h1>
             <p>
-              {characterClassLabels[character.characterClass]}
-              {character.level ? ` · poziom ${character.level}` : ' · poziom nieustalony'} ·
-              prowadzi{' '}
-              <strong>
-                {workspace.members.find((member) => member.id === character.responsibleMemberId)
-                  ?.displayName ?? '—'}
-              </strong>
+              W centrum pula przedmiotów zespołu. Postacie wokół — przeciągnij kartę na postać
+              (mobile: wybierz kartę, potem postać / slot). Odwrócenie → ognisko i timery PH.
             </p>
-            {character.note.trim() ? (
-              <p className="character-note-preview">{character.note}</p>
-            ) : null}
           </div>
           <div className="equipment-header-actions">
             <a href={`/teams/${workspace.id}/characters/${character.id}/edit`}>
-              <Icon name="settings" size={14} /> Edytuj postać
+              <Icon name="settings" size={14} /> Edytuj {character.name}
             </a>
-            {activeSet ? (
+            {activeSet && focusCharacter.id === character.id ? (
               <div className="set-switcher">
-                <label htmlFor="active-set">Aktywny widok setu</label>
+                <label htmlFor="active-set">Aktywny set · {focusCharacter.name}</label>
                 <select
                   id="active-set"
                   onChange={(event) => {
@@ -287,28 +359,27 @@ export function CharacterEquipment() {
                     setActiveSetId(nextSetId);
                     setSelectedItemId(null);
                     if (writesEnabled) {
-                      setActiveSet(workspace.id, character.id, nextSetId);
+                      setActiveSet(workspace.id, focusCharacter.id, nextSetId);
                       setAnnouncement(
-                        `Aktywny set: ${character.sets.find((set) => set.id === nextSetId)?.name ?? nextSetId}`,
+                        `Aktywny set: ${focusCharacter.sets.find((set) => set.id === nextSetId)?.name ?? nextSetId}`,
                       );
                     }
                   }}
                   value={activeSet.id}
                 >
-                  {character.sets.map((set) => (
+                  {focusCharacter.sets.map((set) => (
                     <option key={set.id} value={set.id}>
                       {set.name}
                     </option>
                   ))}
                 </select>
-                <span>{activeSet.description}</span>
                 {writesEnabled ? (
                   addingSet ? (
                     <form
                       className="set-add-form"
                       onSubmit={(event) => {
                         event.preventDefault();
-                        const createdId = createSet(workspace.id, character.id, {
+                        const createdId = createSet(workspace.id, focusCharacter.id, {
                           name: newSetName,
                           makeActive: true,
                         });
@@ -317,7 +388,6 @@ export function CharacterEquipment() {
                           return;
                         }
                         setActiveSetId(createdId);
-                        setSelectedItemId(null);
                         setNewSetName('');
                         setAddingSet(false);
                         setAnnouncement(`Dodano set „${newSetName.trim()}”.`);
@@ -358,378 +428,559 @@ export function CharacterEquipment() {
           </div>
         </header>
 
-        <div className="equipment-layout">
-          <section className="character-card-panel" aria-label="Karta postaci i ekwipunek">
-            <div className={`character-flip-card${flipped ? ' is-flipped' : ''}`}>
-              <div className="character-flip-inner">
-                <article
-                  aria-hidden={flipped}
-                  className="character-card-face character-card-front"
-                  inert={flipped ? true : undefined}
-                >
-                  <header>
-                    <div>
-                      <span>Set</span>
-                      <strong>{activeSet?.name ?? 'Brak'}</strong>
-                    </div>
-                    <span className="equipment-completion">{completion}/8 EQ</span>
-                  </header>
+        <div className="eq-camp-toolbar" role="tablist" aria-label="Tryb obozu">
+          <button
+            aria-selected={boardMode === 'eq'}
+            className={boardMode === 'eq' ? 'is-active' : ''}
+            onClick={() => setBoardMode('eq')}
+            role="tab"
+            type="button"
+          >
+            Ekwipunek (pula)
+          </button>
+          <button
+            aria-selected={boardMode === 'timers'}
+            className={boardMode === 'timers' ? 'is-active' : ''}
+            onClick={() => setBoardMode('timers')}
+            role="tab"
+            type="button"
+          >
+            Timery PH (ognisko)
+          </button>
+          {selectedItemId ? (
+            <span className="empty-copy">
+              Wybrano kartę — kliknij postać lub slot, żeby przypisać.
+            </span>
+          ) : null}
+        </div>
 
-                  <div className="metin-equipment-board">
+        <div className="eq-camp-layout">
+          <section className={`eq-camp ${boardMode === 'timers' ? 'is-timers' : 'is-eq'}`}>
+            <div className="eq-camp-center">
+              {boardMode === 'eq' ? (
+                <>
+                  <div className="eq-pool-header">
+                    <div>
+                      <span className="section-kicker">Centrum obozu</span>
+                      <h2>Ekwipunek (inventory)</h2>
+                      <p className="empty-copy">
+                        Siatka jak w Metin2 — tu mieści się dowolna liczba kart. Na postać zakładysz
+                        max 8 slotów EQ.
+                      </p>
+                    </div>
+                    <label className="field">
+                      <input
+                        checked={showAssigned}
+                        onChange={(event) => setShowAssigned(event.target.checked)}
+                        type="checkbox"
+                      />{' '}
+                      Pokaż też założone
+                    </label>
+                  </div>
+                  <label className="market-search">
+                    <Icon name="search" size={16} />
+                    <input
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Szukaj przedmiotu…"
+                      value={query}
+                    />
+                  </label>
+                  <div className="catalog-filters" style={{ marginTop: 10, marginBottom: 10 }}>
                     <button
-                      aria-label="Odwróć kartę i pokaż timery"
-                      className="character-portrait-button"
-                      onClick={() => setFlipped(true)}
+                      className={category === 'all' ? 'is-active' : ''}
+                      onClick={() => setCategory('all')}
                       type="button"
                     >
-                      <span className="character-aura" />
-                      {character.imagePath ? (
-                        <img
-                          alt={`${characterClassLabels[character.characterClass]} — ${character.name}`}
-                          src={character.imagePath}
-                        />
-                      ) : (
-                        <span className="missing-render">Brak zatwierdzonego renderu</span>
-                      )}
-                      <span>kliknij postać, aby zobaczyć timery</span>
+                      Wszystkie
                     </button>
-
-                    {activeSet
-                      ? equipmentSlots.map((slot) => {
-                          const itemId = activeSet.assignments[slot];
-                          const item = workspace.items.find((entry) => entry.id === itemId) ?? null;
-                          const readiness = getSlotReadiness(workspace, character, activeSet, slot);
-                          const compatibleSelection = selectedItem?.category === slot;
-                          return (
-                            <button
-                              aria-label={`${slotLabels[slot]}${item ? `: ${item.name}` : ': pusty slot'}`}
-                              className={`equipment-slot slot-${slot}${item ? ' has-item' : ''}${compatibleSelection ? ' can-accept' : ''}`}
-                              key={slot}
-                              onClick={() => {
-                                if (!selectedItemId) {
-                                  setAnnouncement(
-                                    'Najpierw wybierz kartę z bazy EQ po prawej, potem kliknij slot.',
-                                  );
-                                  return;
-                                }
-                                onAssign(selectedItemId, slot);
-                              }}
-                              onDragOver={(event) => event.preventDefault()}
-                              onDrop={(event) => handleDrop(event, slot)}
-                              type="button"
-                            >
-                              {item ? (
-                                <img alt="" src={item.iconPath} />
-                              ) : (
-                                <span>{slotLabels[slot]}</span>
-                              )}
-                              <small>
-                                {slotLabels[slot]} · {readinessLabels[readiness]}
-                              </small>
-                            </button>
-                          );
-                        })
-                      : null}
+                    {equipmentSlots.map((slot) => (
+                      <button
+                        className={category === slot ? 'is-active' : ''}
+                        key={slot}
+                        onClick={() => setCategory(slot)}
+                        type="button"
+                      >
+                        {slotLabels[slot]}
+                      </button>
+                    ))}
                   </div>
-                </article>
-
-                <article
-                  aria-hidden={!flipped}
-                  className="character-card-face character-card-back"
-                  inert={!flipped ? true : undefined}
-                >
-                  <header>
-                    <strong>Postęp Projekt Hard</strong>
-                    <button onClick={() => setFlipped(false)} type="button">
-                      Wróć do EQ
-                    </button>
-                  </header>
-                  <div className="character-timer-list timer-list">
-                    {timers.length === 0 ? (
-                      <p className="empty-copy">
-                        Brak cykli PH. Otwórz kartę ponownie albo wczytaj demo — dopinamy księgi,
-                        kamienie duszy, dowodzenie, polimorfię, górnictwo, combo, jazdę i biologa
-                        według poziomu.
-                      </p>
-                    ) : (
-                      sortProgressionTimers(timers).map((timer) => {
-                        const iconPath = timerIconPath(timer);
-                        return (
-                          <article
-                            className={`character-timer timer-card${timer.status === 'ready' ? ' is-ready' : ''}`}
-                            key={timer.id}
-                          >
-                            <div className="character-timer-heading">
-                              <span aria-hidden="true" className="character-timer-icon">
-                                {iconPath ? (
-                                  <img alt="" src={iconPath} />
-                                ) : (
-                                  <Icon name="clock" size={18} />
-                                )}
-                              </span>
-                              <div>
-                                <strong>{timer.label}</strong>
-                                <span>
-                                  {timer.status === 'ready' ? 'Gotowe' : 'W toku'}
-                                  {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
-                                </span>
-                              </div>
-                              <em>{timer.status === 'ready' ? 'teraz' : 'cykl'}</em>
-                            </div>
-                            <p>{timer.detail}</p>
-                            <ul className="timer-meta">
-                              <li>
-                                Ostatnio: {timer.lastActorName ?? '—'}
-                                {timer.lastConfirmedAt ? ` · ${timer.lastConfirmedAt}` : ''}
-                              </li>
-                              <li>
-                                Discord:{' '}
-                                {timer.reminderState === 'unavailable'
-                                  ? 'przypomnienia po podpięciu bota'
-                                  : timer.reminderState === 'on'
-                                    ? 'włączone'
-                                    : 'wyłączone'}
-                              </li>
-                            </ul>
-                            <div className="timer-progress-track" aria-hidden="true">
-                              <span style={{ width: `${timer.progressPercent}%` }} />
-                            </div>
-                            <div className="character-timer-footer">
-                              <span>cykl PH</span>
-                              <button
-                                disabled={!writesEnabled || timer.status !== 'ready'}
-                                onClick={() => {
-                                  if (timer.status !== 'ready') return;
-                                  const operationId = `timer-${timer.id}-${Date.now()}`;
-                                  completeTimer(workspace.id, timer.id, operationId);
-                                  setAnnouncement(
-                                    `Oznaczono: ${timer.label}. ${completionHint(timer)}`,
-                                  );
-                                }}
-                                type="button"
-                              >
-                                {timer.status === 'ready'
-                                  ? 'Oznacz wykonane'
-                                  : 'Czeka na koniec cyklu'}
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })
-                    )}
-                  </div>
-                </article>
-              </div>
-            </div>
-          </section>
-
-          <section className="panel catalog-panel">
-            <header>
-              <h2>Baza EQ zespołu</h2>
-            </header>
-            <p className="empty-copy">
-              To nie jest Targ. Tu trzymacie karty ekwipunku pod sety postaci (
-              {characterClassLabels[character.characterClass]}).
-            </p>
-            <label className="market-search">
-              <Icon name="search" size={16} />
-              <input
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Szukaj przedmiotu lub bonusu…"
-                value={query}
-              />
-            </label>
-            <div className="catalog-filters">
-              <button
-                className={category === 'all' ? 'is-active' : ''}
-                onClick={() => setCategory('all')}
-                type="button"
-              >
-                Wszystkie
-              </button>
-              {equipmentSlots.map((slot) => (
-                <button
-                  className={category === slot ? 'is-active' : ''}
-                  key={slot}
-                  onClick={() => setCategory(slot)}
-                  type="button"
-                >
-                  {slotLabels[slot]}
-                </button>
-              ))}
-            </div>
-            <label className="field" style={{ marginTop: 8 }}>
-              <input
-                checked={showIncompatible}
-                onChange={(event) => setShowIncompatible(event.target.checked)}
-                type="checkbox"
-              />{' '}
-              Pokaż też karty innych klas
-            </label>
-            <p className="empty-copy">
-              Przeciągnij przedmiot na slot albo wybierz i kliknij slot. Ulepszacze i amulety z
-              katalogu dobry-temat nie trafiają do slotów EQ — tylko broń / zbroja / biżuteria.
-            </p>
-            <div className="catalog-grid">
-              {filteredCatalog.map((item) => (
-                <button
-                  aria-pressed={item.id === selectedItemId}
-                  className="catalog-item"
-                  draggable
-                  key={item.id}
-                  onClick={() => setSelectedItemId(item.id)}
-                  onDragStart={(event) => event.dataTransfer.setData('text/item-id', item.id)}
-                  type="button"
-                >
-                  <img alt="" src={item.iconPath} />
-                  <strong>{item.name}</strong>
-                  <small>
-                    +{item.enhancement} ·{' '}
-                    {item.lastConfirmedLocation
-                      ? `Lokalizacja: ${item.lastConfirmedLocation}`
-                      : 'Brak potwierdzonej lokalizacji'}
-                  </small>
-                </button>
-              ))}
-            </div>
-
-            <form className="inline-create" onSubmit={handleCreateItem}>
-              <input
-                aria-label="Nazwa nowego przedmiotu"
-                list="eq-catalog-suggestions"
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setNewItemName(stripEnhancementFromName(value));
-                  const fromName = parseEnhancementFromName(value);
-                  if (/\+\d+\s*$/u.test(value.trim())) {
-                    setNewItemEnhancement(fromName);
-                  }
-                  const hit = findGameItemByCardName(value);
-                  const slot = hit ? equipmentSlotForCategory(hit.category) : null;
-                  if (slot) setNewItemSlot(slot);
-                }}
-                placeholder="Nazwa z gry, np. Bojowa Tarcza"
-                value={newItemName}
-              />
-              <datalist id="eq-catalog-suggestions">
-                {catalogSuggestions.map((item) => (
-                  <option key={item.id} value={item.title} />
-                ))}
-              </datalist>
-              <select
-                aria-label="Ulepszenie"
-                onChange={(event) => setNewItemEnhancement(Number(event.target.value))}
-                value={newItemEnhancement}
-              >
-                {ENHANCEMENT_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    +{level}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Slot nowego przedmiotu"
-                onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
-                value={newItemSlot}
-              >
-                {equipmentSlots.map((slot) => (
-                  <option key={slot} value={slot}>
-                    {slotLabels[slot]}
-                  </option>
-                ))}
-              </select>
-              <button disabled={!writesEnabled} type="submit">
-                Dodaj kartę
-              </button>
-            </form>
-            {matchedDefinition ? (
-              <p className="empty-copy">
-                Katalog: <strong>{matchedDefinition.title}</strong> · {matchedDefinition.category}
-                {matchedDefinition.sourceImageUrl ? '' : ' · bez grafiki'}
-              </p>
-            ) : newItemName.trim().length >= 2 ? (
-              <p className="empty-copy">Brak w katalogu — zapiszesz własną nazwę zespołu.</p>
-            ) : null}
-          </section>
-
-          <aside className="panel inspector-panel">
-            <header>
-              <h2>Szczegóły</h2>
-            </header>
-            {selectedItem ? (
-              <>
-                <h3>{selectedItem.name}</h3>
-                <p>
-                  Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
-                </p>
-                <ul>
-                  {selectedItem.bonuses.map((bonus) => (
-                    <li key={bonus}>{bonus}</li>
-                  ))}
-                </ul>
-                <p>
-                  Ostatnio potwierdzona lokalizacja:{' '}
-                  <strong>{selectedItem.lastConfirmedLocation ?? 'brak'}</strong>
-                  {selectedItem.lastConfirmedBy ? (
-                    <>
-                      {' '}
-                      · {selectedItem.lastConfirmedBy} · {selectedItem.lastConfirmedAt}
-                    </>
-                  ) : null}
-                </p>
-                <button
-                  className="primary-button"
-                  disabled={!writesEnabled}
-                  onClick={() => {
-                    confirmLocation(workspace.id, selectedItem.id, character.name);
-                    setAnnouncement(
-                      `${selectedItem.name}: potwierdzono fizyczną lokalizację na ${character.name}.`,
-                    );
-                  }}
-                  type="button"
-                >
-                  Potwierdź: jest na {character.name}
-                </button>
-                <label className="field">
-                  <span>Oznacz jako przeniesione (lokalizacja)</span>
-                  <input
-                    onChange={(event) => setMoveTarget(event.target.value)}
-                    placeholder="np. depo / inna postać"
-                    value={moveTarget}
-                  />
-                </label>
-                <button
-                  disabled={!writesEnabled || moveTarget.trim().length < 2}
-                  onClick={() => {
-                    confirmLocation(workspace.id, selectedItem.id, moveTarget.trim());
-                    setAnnouncement(`${selectedItem.name}: lokalizacja → ${moveTarget.trim()}`);
-                    setMoveTarget('');
-                  }}
-                  type="button"
-                >
-                  Potwierdź przeniesienie
-                </button>
-                {activeSet
-                  ? equipmentSlots
-                      .filter((slot) => activeSet.assignments[slot] === selectedItem.id)
-                      .map((slot) => (
+                  <div className="eq-inventory-grid" aria-label="Inventory zespołu">
+                    {poolItems.map((item) => {
+                      const owner = ownership.get(item.id);
+                      return (
                         <button
-                          disabled={!writesEnabled}
-                          key={slot}
-                          onClick={() => {
-                            removeItem(workspace.id, character.id, activeSet.id, slot);
-                            setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
-                          }}
+                          aria-label={item.name}
+                          aria-pressed={item.id === selectedItemId}
+                          className={`eq-inventory-slot${owner ? ' is-assigned' : ''}`}
+                          draggable
+                          key={item.id}
+                          onClick={() =>
+                            setSelectedItemId((current) => (current === item.id ? null : item.id))
+                          }
+                          onDragStart={(event) => onPoolDragStart(event, item.id)}
+                          title={owner ? `${item.name} · na ${owner}` : item.name}
                           type="button"
                         >
-                          Usuń z planu setu
+                          <img alt="" src={item.iconPath} />
+                          <em>+{item.enhancement}</em>
                         </button>
-                      ))
-                  : null}
-              </>
-            ) : (
-              <p>Wybierz kartę z bazy EQ zespołu.</p>
-            )}
+                      );
+                    })}
+                    {Array.from({
+                      length: Math.max(0, 30 - poolItems.length),
+                    }).map((_, index) => (
+                      <div
+                        aria-hidden
+                        className="eq-inventory-slot is-empty"
+                        key={`empty-${index}`}
+                      />
+                    ))}
+                  </div>
+                  {poolItems.length === 0 ? (
+                    <p className="empty-copy">Brak kart — dodaj po prawej do inventory.</p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="eq-campfire" aria-hidden={false}>
+                  <div className="eq-campfire-flame" />
+                  <strong>Ognisko</strong>
+                  <span>Karty postaci pokazują cykle PH · jeden klik uruchamia odliczanie</span>
+                </div>
+              )}
+            </div>
+
+            <div className="eq-camp-characters">
+              {livingCharacters.map((entry) => {
+                const set =
+                  entry.sets.find((candidate) => candidate.id === entry.activeSetId) ??
+                  entry.sets[0] ??
+                  null;
+                const timers = sortProgressionTimers(
+                  workspace.timers.filter((timer) => timer.characterId === entry.id),
+                );
+                const missing = missingKindsFor(entry);
+                return (
+                  <article
+                    className={`eq-char-card${focusCharacter.id === entry.id ? ' is-focus' : ''}${
+                      dropTargetId === entry.id ? ' is-drop-target' : ''
+                    }`}
+                    key={entry.id}
+                    onDragLeave={() => setDropTargetId(null)}
+                    onDragOver={(event) => {
+                      if (boardMode !== 'eq') return;
+                      event.preventDefault();
+                      setDropTargetId(entry.id);
+                    }}
+                    onDrop={(event) => {
+                      if (boardMode !== 'eq') return;
+                      onCharacterDrop(event, entry);
+                    }}
+                  >
+                    <div className="eq-char-card-top">
+                      <div className="eq-char-portrait">
+                        {entry.imagePath ? (
+                          <img
+                            alt={`${characterClassLabels[entry.characterClass]} — ${entry.name}`}
+                            src={entry.imagePath}
+                          />
+                        ) : (
+                          <span className="missing-render">Brak renderu</span>
+                        )}
+                      </div>
+                      <div>
+                        <strong>{entry.name}</strong>
+                        <span>
+                          {characterClassLabels[entry.characterClass]}
+                          {entry.level ? ` · lv ${entry.level}` : ''} · {set?.name ?? 'brak setu'}
+                        </span>
+                        {boardMode === 'eq' && selectedItemId ? (
+                          <button
+                            onClick={() => assignToCharacter(entry, selectedItemId)}
+                            style={{ marginTop: 8 }}
+                            type="button"
+                          >
+                            Przypisz wybrany przedmiot
+                          </button>
+                        ) : null}
+                        <button
+                          onClick={() => {
+                            setFocusCharacterId(entry.id);
+                            setActiveSetId(entry.activeSetId || entry.sets[0]?.id || '');
+                          }}
+                          style={{ marginTop: 6 }}
+                          type="button"
+                        >
+                          Ustaw fokus
+                        </button>
+                      </div>
+                    </div>
+
+                    {boardMode === 'eq' && set ? (
+                      <div className="eq-char-slots">
+                        {equipmentSlots.map((slot) => {
+                          const itemId = set.assignments[slot];
+                          const item = workspace.items.find((candidate) => candidate.id === itemId);
+                          const readiness = getSlotReadiness(workspace, entry, set, slot);
+                          return (
+                            <button
+                              className={`eq-char-slot${item ? ' has-item' : ''}`}
+                              key={slot}
+                              onClick={() => {
+                                if (selectedItemId) {
+                                  assignToCharacter(entry, selectedItemId, slot);
+                                  return;
+                                }
+                                if (item) {
+                                  setSelectedItemId(item.id);
+                                  setFocusCharacterId(entry.id);
+                                  setAnnouncement(`${item.name} · ${readinessLabels[readiness]}`);
+                                }
+                              }}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                const itemIdDrop =
+                                  event.dataTransfer.getData('text/item-id') || selectedItemId;
+                                if (itemIdDrop) assignToCharacter(entry, itemIdDrop, slot);
+                              }}
+                              type="button"
+                            >
+                              {item ? <img alt="" src={item.iconPath} /> : <span>{slotLabels[slot]}</span>}
+                              <small>{slotLabels[slot]}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+
+                    {boardMode === 'timers' ? (
+                      <div className="eq-char-timers">
+                        {timers.length === 0 ? (
+                          <p className="empty-copy">Brak timerów — dodaj poniżej.</p>
+                        ) : (
+                          timers.map((timer) => {
+                            const iconPath = timerIconPath(timer);
+                            const running = timer.status !== 'ready';
+                            return (
+                              <article
+                                className={`eq-char-timer${running ? ' is-running' : ' is-ready'}`}
+                                key={timer.id}
+                              >
+                                <div className="eq-char-timer-row">
+                                  <span>
+                                    {iconPath ? (
+                                      <img alt="" src={iconPath} />
+                                    ) : (
+                                      <Icon name="clock" size={18} />
+                                    )}
+                                  </span>
+                                  <div>
+                                    <strong>{timer.label}</strong>
+                                    <span>
+                                      {running ? 'Odliczanie' : 'Gotowe'}
+                                      {timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={!writesEnabled || running}
+                                    onClick={() => {
+                                      if (running) return;
+                                      const operationId = `timer-${timer.id}-${Date.now()}`;
+                                      completeTimer(workspace.id, timer.id, operationId);
+                                      setAnnouncement(
+                                        `${entry.name}: ${timer.label} — czas ruszył. ${completionHint(timer)}`,
+                                      );
+                                    }}
+                                    title={
+                                      running
+                                        ? 'Timer w toku — edycja zablokowana'
+                                        : 'Jeden klik uruchamia cykl'
+                                    }
+                                    type="button"
+                                  >
+                                    {running ? 'Zablokowany' : 'Start'}
+                                  </button>
+                                </div>
+                                <div className="timer-progress-track" aria-hidden="true">
+                                  <span style={{ width: `${timer.progressPercent}%` }} />
+                                </div>
+                              </article>
+                            );
+                          })
+                        )}
+                        <div className="eq-add-timer">
+                          <span className="section-kicker">Dodaj timer</span>
+                          <select
+                            aria-label="Rodzaj timera"
+                            onChange={(event) =>
+                              setAddTimerKind(event.target.value as ProgressionKind | 'custom')
+                            }
+                            value={addTimerKind}
+                          >
+                            {missing.map((kind) => (
+                              <option key={kind} value={kind}>
+                                {progressionTimerLabels[kind]}
+                              </option>
+                            ))}
+                            <option value="custom">Własny opis…</option>
+                          </select>
+                          {addTimerKind === 'custom' ? (
+                            <input
+                              aria-label="Nazwa własnego timera"
+                              onChange={(event) => setCustomTimerLabel(event.target.value)}
+                              placeholder="np. Codzienne zadanie"
+                              value={customTimerLabel}
+                            />
+                          ) : null}
+                          <button
+                            disabled={!writesEnabled}
+                            onClick={() => {
+                              if (addTimerKind === 'custom') {
+                                addTimer(workspace.id, entry.id, { label: customTimerLabel });
+                                setCustomTimerLabel('');
+                                setAnnouncement(`Dodano timer na ${entry.name}.`);
+                                return;
+                              }
+                              addTimer(workspace.id, entry.id, { kind: addTimerKind });
+                              setAnnouncement(
+                                `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
+                              );
+                            }}
+                            type="button"
+                          >
+                            Dodaj timer
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <aside className="eq-camp-side">
+            <section className="panel catalog-panel">
+              <header>
+                <h2>Dodaj kartę EQ</h2>
+              </header>
+              <p className="empty-copy">
+                Trafia do puli w centrum. Grafika z katalogu gry, gdy nazwa pasuje.
+              </p>
+              <form className="inline-create" onSubmit={handleCreateItem}>
+                <input
+                  aria-label="Nazwa nowego przedmiotu"
+                  list="eq-catalog-suggestions"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setNewItemName(stripEnhancementFromName(value));
+                    const fromName = parseEnhancementFromName(value);
+                    if (/\+\d+\s*$/u.test(value.trim())) {
+                      setNewItemEnhancement(fromName);
+                    }
+                    const hit = findGameItemByCardName(value);
+                    const slot = hit ? equipmentSlotForCategory(hit.category) : null;
+                    if (slot) setNewItemSlot(slot);
+                  }}
+                  placeholder="Nazwa z gry, np. Bojowa Tarcza"
+                  value={newItemName}
+                />
+                <datalist id="eq-catalog-suggestions">
+                  {catalogSuggestions.map((item) => (
+                    <option key={item.id} value={item.title} />
+                  ))}
+                </datalist>
+                <select
+                  aria-label="Ulepszenie"
+                  onChange={(event) => setNewItemEnhancement(Number(event.target.value))}
+                  value={newItemEnhancement}
+                >
+                  {ENHANCEMENT_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      +{level}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Slot nowego przedmiotu"
+                  onChange={(event) => setNewItemSlot(event.target.value as EquipmentSlot)}
+                  value={newItemSlot}
+                >
+                  {equipmentSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slotLabels[slot]}
+                    </option>
+                  ))}
+                </select>
+                <button disabled={!writesEnabled} type="submit">
+                  Dodaj do puli
+                </button>
+              </form>
+              {matchedDefinition ? (
+                <p className="empty-copy">
+                  Katalog: <strong>{matchedDefinition.title}</strong>
+                  {matchedDefinition.sourceImageUrl ? ' · z grafiką' : ' · bez grafiki'}
+                </p>
+              ) : null}
+            </section>
+
+            <section className="panel inspector-panel">
+              <header>
+                <h2>Szczegóły</h2>
+              </header>
+              {selectedItem ? (
+                <>
+                  <div className="eq-pool-item-art" style={{ width: 72, height: 80, marginBottom: 10 }}>
+                    <img alt="" src={selectedItem.iconPath} />
+                  </div>
+                  <h3>{selectedItem.name}</h3>
+                  <p>
+                    Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
+                  </p>
+                  <div className="eq-bonus-editor">
+                    <span className="section-kicker">Bonusy (obserwowane)</span>
+                    <ul className="eq-bonus-lines">
+                      {selectedItem.bonuses.map((bonus) => (
+                        <li key={bonus}>
+                          <span>{bonus}</span>
+                          <button
+                            disabled={!writesEnabled}
+                            onClick={() => {
+                              updateItemBonuses(
+                                workspace.id,
+                                selectedItem.id,
+                                selectedItem.bonuses.filter((line) => line !== bonus),
+                              );
+                              setAnnouncement(`Usunięto bonus: ${bonus}`);
+                            }}
+                            type="button"
+                          >
+                            Usuń
+                          </button>
+                        </li>
+                      ))}
+                      {selectedItem.bonuses.length === 0 ? (
+                        <li>
+                          <span>Brak linii — dodaj z katalogu lub wpisz obserwację</span>
+                        </li>
+                      ) : null}
+                    </ul>
+                    <select
+                      aria-label="Bonus z katalogu dumpa"
+                      onChange={(event) => setBonusPick(event.target.value)}
+                      value={bonusPick}
+                    >
+                      <option value="">Nazwa z katalogu dumpa…</option>
+                      {catalogBonusNames.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label="Pełna linia bonusu"
+                      onChange={(event) => setBonusDraft(event.target.value)}
+                      placeholder="np. Obrona +57 albo własna obserwacja"
+                      value={bonusDraft}
+                    />
+                    <button
+                      disabled={!writesEnabled || (bonusDraft.trim().length < 2 && !bonusPick)}
+                      onClick={() => {
+                        const line = bonusDraft.trim() || bonusPick;
+                        if (line.length < 2) return;
+                        updateItemBonuses(workspace.id, selectedItem.id, [
+                          ...selectedItem.bonuses,
+                          line,
+                        ]);
+                        setBonusDraft('');
+                        setBonusPick('');
+                        setAnnouncement(`Dodano bonus: ${line}`);
+                      }}
+                      type="button"
+                    >
+                      Dodaj bonus
+                    </button>
+                    <button
+                      disabled={!writesEnabled}
+                      onClick={() => {
+                        const fromCatalog = resolveItemBonuses(
+                          selectedItem.name,
+                          selectedItem.enhancement,
+                          [],
+                        );
+                        if (fromCatalog.length === 0) {
+                          setAnnouncement(
+                            'Dump nie ma pełnej drabinki dla tej karty (często ucięty wiki_upgrade).',
+                          );
+                          return;
+                        }
+                        updateItemBonuses(workspace.id, selectedItem.id, fromCatalog);
+                        setAnnouncement(`Wczytano ${fromCatalog.length} linii z katalogu dumpa.`);
+                      }}
+                      type="button"
+                    >
+                      Wczytaj z katalogu (+{selectedItem.enhancement})
+                    </button>
+                  </div>
+                  <p>
+                    Ostatnio potwierdzona lokalizacja:{' '}
+                    <strong>{selectedItem.lastConfirmedLocation ?? 'brak'}</strong>
+                  </p>
+                  <button
+                    className="primary-button"
+                    disabled={!writesEnabled}
+                    onClick={() => {
+                      confirmLocation(workspace.id, selectedItem.id, focusCharacter.name);
+                      setAnnouncement(
+                        `${selectedItem.name}: potwierdzono lokalizację na ${focusCharacter.name}.`,
+                      );
+                    }}
+                    type="button"
+                  >
+                    Potwierdź: jest na {focusCharacter.name}
+                  </button>
+                  <label className="field">
+                    <span>Oznacz jako przeniesione</span>
+                    <input
+                      onChange={(event) => setMoveTarget(event.target.value)}
+                      placeholder="np. depo / inna postać"
+                      value={moveTarget}
+                    />
+                  </label>
+                  <button
+                    disabled={!writesEnabled || moveTarget.trim().length < 2}
+                    onClick={() => {
+                      confirmLocation(workspace.id, selectedItem.id, moveTarget.trim());
+                      setAnnouncement(`${selectedItem.name}: lokalizacja → ${moveTarget.trim()}`);
+                      setMoveTarget('');
+                    }}
+                    type="button"
+                  >
+                    Potwierdź przeniesienie
+                  </button>
+                  {activeSet
+                    ? equipmentSlots
+                        .filter((slot) => activeSet.assignments[slot] === selectedItem.id)
+                        .map((slot) => (
+                          <button
+                            disabled={!writesEnabled}
+                            key={slot}
+                            onClick={() => {
+                              removeItem(workspace.id, focusCharacter.id, activeSet.id, slot);
+                              setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
+                            }}
+                            type="button"
+                          >
+                            Usuń z planu setu
+                          </button>
+                        ))
+                    : null}
+                </>
+              ) : (
+                <p>Wybierz kartę z inventory albo slotu postaci.</p>
+              )}
+            </section>
           </aside>
         </div>
 
@@ -738,10 +989,8 @@ export function CharacterEquipment() {
         </p>
         {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
-          Plan setu to układ docelowy. Lokalizacja to osobne, ręczne potwierdzenie z gry. Postęp PH
-          (księgi / kamienie duszy / dowodzenie / polimorfia / górnictwo / combo / jazda / biolog)
-          jest na drugiej stronie karty — to nie to samo co Timery metinów/bossów w nawigacji. Dane
-          tylko w tej przeglądarce.
+          Pula EQ jest wspólna dla przestrzeni. Drag na postać = plan setu. Timery PH przy ognisku ≠
+          Timery metinów na /timers. Dane tylko w tej przeglądarce.
         </div>
       </main>
     </AppShell>

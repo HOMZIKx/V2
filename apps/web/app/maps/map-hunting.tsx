@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 
+import { huntMapImagePath } from '../../src/hunt-map-assets';
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
   buildMapRespawnRecords,
   canConfirmRespawn,
+  channelsWithLateWindows,
   getRespawnDisplay,
+  isWindowLatePhase,
+  partitionRespawnRecords,
   respawnMaps,
   respawnWindowMinutes,
   type RespawnKind,
@@ -26,29 +30,7 @@ const filters: ReadonlyArray<{ readonly id: Filter; readonly label: string }> = 
   { id: 'metin', label: 'Metiny' },
   { id: 'active', label: 'Okno / mapa' },
 ];
-const mapFiles: Readonly<Record<string, string>> = {
-  M1: 'map_m1.png',
-  M2: 'map_m2.png',
-  M3: 'map_m3.png',
-  'Dolina Orków': 'map_orki.png',
-  'Pustynia Yongbi': 'map_pustynia.png',
-  'Świątynia Hwang': 'map_swiatynia.png',
-  'Góra Sohan': 'map_sohan.png',
-  'Ognista Ziemia': 'map_ognista.png',
-  'Las Duchów': 'map_lasduchow.png',
-  'Kraina Gigantów': 'map_giganty.png',
-  'Czerwony Las': 'map_czerwonylas.png',
-  'Wężowe Pole': 'map_wezowe.png',
-  'Atlantyda V1': 'map_atlantyda_v1_new.png',
-  'Atlantyda V2': 'map_atlantyda_v2_new.png',
-  'Grota Wygnańców': 'map_grota_wygnancow.png',
-  'Loch Małp Łatwy': 'map_loch_malp_latwy.png',
-  'Loch Małp Średni': 'map_loch_malp_sredni.png',
-  'Loch Małp Trudny': 'map_loch_malp_trudny.png',
-  'Loch Pająków V2': 'map_loch_pajakow_v2.png',
-};
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
-const mapImage = (mapKey: string) => (mapFiles[mapKey] ? `/game/maps/${mapFiles[mapKey]}` : null);
 const formatWindow = (record: RespawnRecord) => {
   const span = respawnWindowMinutes(record.entity);
   if (record.entity.respawnTimeMin === record.entity.respawnTimeMax) {
@@ -62,6 +44,15 @@ const formatWindow = (record: RespawnRecord) => {
 function initialStore(): RecordStore {
   const first = respawnMaps[0];
   return first ? { [scopeKey(first.key, 1)]: buildMapRespawnRecords(first, 1) } : {};
+}
+
+function matchesFilter(record: RespawnRecord, filter: Filter, now: number): boolean {
+  const phase = getRespawnDisplay(record, now).phase;
+  return (
+    filter === 'all' ||
+    record.kind === filter ||
+    (filter === 'active' && (phase === 'window' || phase === 'on_map'))
+  );
 }
 
 export function MapHunting({
@@ -79,6 +70,8 @@ export function MapHunting({
   const [store, setStore] = useState<RecordStore>(initialStore);
   const [now, setNow] = useState(() => Date.now());
   const [placingKey, setPlacingKey] = useState<string | null>(null);
+  const [pinModalKey, setPinModalKey] = useState<string | null>(null);
+  const [modalDraftLocation, setModalDraftLocation] = useState<RespawnLocation | null>(null);
   const [notice, setNotice] = useState('');
   const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
   const scope = scopeKey(map?.key ?? '', channel);
@@ -100,17 +93,28 @@ export function MapHunting({
     return () => window.clearInterval(timer);
   }, []);
 
-  const visibleRecords = useMemo(
-    () =>
-      records.filter((record) => {
-        const phase = getRespawnDisplay(record, now).phase;
-        return (
-          filter === 'all' ||
-          record.kind === filter ||
-          (filter === 'active' && (phase === 'window' || phase === 'on_map'))
-        );
-      }),
+  const mapRecordsFlat = useMemo(() => {
+    if (!map) return [] as RespawnRecord[];
+    const collected: RespawnRecord[] = [];
+    for (let ch = 1; ch <= map.channels; ch += 1) {
+      const key = scopeKey(map.key, ch);
+      collected.push(...(store[key] ?? buildMapRespawnRecords(map, ch)));
+    }
+    return collected;
+  }, [map, store]);
+
+  const lateChannels = useMemo(
+    () => channelsWithLateWindows(mapRecordsFlat, map?.key ?? '', now),
+    [map?.key, mapRecordsFlat, now],
+  );
+
+  const filtered = useMemo(
+    () => records.filter((record) => matchesFilter(record, filter, now)),
     [filter, now, records],
+  );
+  const { available, counting } = useMemo(
+    () => partitionRespawnRecords(filtered, now),
+    [filtered, now],
   );
   const activeTimerCount = useMemo(
     () =>
@@ -120,8 +124,9 @@ export function MapHunting({
     [now, records],
   );
   const mapPins = useMemo(() => records.filter((record) => record.location !== null), [records]);
-  const currentMapImage = mapImage(map?.key ?? '');
+  const currentMapImage = huntMapImagePath(map?.key ?? '');
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(map?.key ?? '');
+  const modalRecord = records.find((record) => record.key === pinModalKey) ?? null;
 
   const updateCurrentScope = (
     updater: (current: readonly RespawnRecord[]) => readonly RespawnRecord[],
@@ -136,10 +141,14 @@ export function MapHunting({
     setMapKey(nextMapKey);
     setChannel(1);
     setPlacingKey(null);
+    setPinModalKey(null);
+    setModalDraftLocation(null);
   };
   const changeChannel = (nextChannel: number) => {
     setChannel(nextChannel);
     setPlacingKey(null);
+    setPinModalKey(null);
+    setModalDraftLocation(null);
   };
   const confirmKilled = (recordKey: string, location: RespawnLocation | null) => {
     const target = records.find((record) => record.key === recordKey);
@@ -163,17 +172,28 @@ export function MapHunting({
       ),
     );
     setPlacingKey(null);
+    setPinModalKey(null);
+    setModalDraftLocation(null);
     setNotice(
       location
-        ? 'Zbicie zapisane. Pinezka = ostatnia znana lokalizacja. Timer ruszył.'
-        : 'Zbicie zapisane. Timer ruszył (bez nowej pinezki).',
+        ? 'Zbicie zapisane. Pinezka = ostatnia znana lokalizacja. Timer zjechał na listę odliczań.'
+        : 'Zbicie zapisane. Timer zjechał na listę odliczań (bez nowej pinezki).',
     );
+  };
+  const openKillModal = (recordKey: string) => {
+    const target = records.find((record) => record.key === recordKey);
+    if (!target || !canConfirmRespawn(target, now)) return;
+    setPinModalKey(recordKey);
+    setModalDraftLocation(null);
+    setPlacingKey(null);
+    setNotice('Zaznacz pinezkę na mini-mapie albo zapisz zbicie bez pinezki.');
   };
   const beginPlacement = (recordKey: string) => {
     const target = records.find((record) => record.key === recordKey);
     if (!target || !canConfirmRespawn(target, now)) return;
     setView('map');
     setPlacingKey(recordKey);
+    setPinModalKey(null);
     setNotice('Kliknij mapę — pinezka pokaże, gdzie ostatnio zbito ten metin/bossa.');
   };
   const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
@@ -190,6 +210,65 @@ export function MapHunting({
       ),
     });
   };
+  const placeOnModalMap = (event: MouseEvent<HTMLDivElement>) => {
+    if (!pinModalKey) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setModalDraftLocation({
+      x: Math.max(
+        0,
+        Math.min(100, Math.round(((event.clientX - bounds.left) / bounds.width) * 1_000) / 10),
+      ),
+      y: Math.max(
+        0,
+        Math.min(100, Math.round(((event.clientY - bounds.top) / bounds.height) * 1_000) / 10),
+      ),
+    });
+  };
+
+  const renderRecord = (record: RespawnRecord, countingDown: boolean) => {
+    const display = getRespawnDisplay(record, now);
+    const canConfirm = canConfirmRespawn(record, now);
+    const late = isWindowLatePhase(record, now);
+    return (
+      <article
+        className={`respawn-record is-${display.phase}${countingDown ? ' is-counting' : ''}${
+          late ? ' is-late-window' : ''
+        }`}
+        key={record.key}
+      >
+        <span className="respawn-record-icon" style={{ color: record.entity.color ?? undefined }}>
+          {record.entity.iconPath ? (
+            <img alt="" className="respawn-entity-icon" src={record.entity.iconPath} />
+          ) : (
+            <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={17} />
+          )}
+        </span>
+        <div className="respawn-record-copy">
+          <strong>{record.entity.name}</strong>
+          <span>
+            {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)} ·{' '}
+            {record.location
+              ? `pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
+              : 'bez pinezki'}
+            {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
+            {late ? ' · ostatnie 20% okna' : ''}
+          </span>
+        </div>
+        <div className="respawn-record-time">
+          <b>{display.clock}</b>
+          <span>{display.label}</span>
+        </div>
+        <div className="respawn-record-actions">
+          <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
+            {canConfirm ? 'Zbite' : 'Odliczanie'}
+          </button>
+          <button disabled={!canConfirm} onClick={() => beginPlacement(record.key)} type="button">
+            Atlas
+          </button>
+        </div>
+      </article>
+    );
+  };
 
   return (
     <AppShell activeSection="timers" viewerName={initialSnapshot.viewerName}>
@@ -199,33 +278,38 @@ export function MapHunting({
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Timery</h1>
             <p>
-              Osobny system od party i EQ: mapa + czasy respawnu z katalogu. Zbijasz w grze →
-              zaznaczasz zbicie → opcjonalnie pinezka na atlasie → timer rusza. Ponowne zbicie
-              dopiero gdy otworzy się okno (np. 20–30 min = 10 min okna).
+              Osobny system od Party i EQ: mapa + respawn z katalogu. <b>Zbite</b> otwiera mini-mapę
+              pinezki. Zbity cel zjeżdża na dół z odliczaniem. Gdy okno wchodzi w ostatnie 20% na
+              innym kanale — ten CH się podświetla.
             </p>
           </div>
-          <div className="respawn-header-actions" role="tablist" aria-label="Widok wyprawy">
-            <button
-              aria-selected={view === 'timers'}
-              className={view === 'timers' ? 'is-active' : ''}
-              onClick={() => {
-                setView('timers');
-                setPlacingKey(null);
-              }}
-              role="tab"
-              type="button"
-            >
-              Timery
-            </button>
-            <button
-              aria-selected={view === 'map'}
-              className={view === 'map' ? 'is-active' : ''}
-              onClick={() => setView('map')}
-              role="tab"
-              type="button"
-            >
-              Atlas mapy
-            </button>
+          <div className="respawn-header-actions">
+            <div role="tablist" aria-label="Widok timerów">
+              <button
+                aria-selected={view === 'timers'}
+                className={view === 'timers' ? 'is-active' : ''}
+                onClick={() => {
+                  setView('timers');
+                  setPlacingKey(null);
+                }}
+                role="tab"
+                type="button"
+              >
+                Timery
+              </button>
+              <button
+                aria-selected={view === 'map'}
+                className={view === 'map' ? 'is-active' : ''}
+                onClick={() => setView('map')}
+                role="tab"
+                type="button"
+              >
+                Atlas mapy
+              </button>
+            </div>
+            <a className="respawn-party-toggle" href="/maps">
+              <span /> Party (osobny system)
+            </a>
           </div>
         </header>
         <section className="respawn-controls panel">
@@ -249,9 +333,16 @@ export function MapHunting({
               {Array.from({ length: map?.channels ?? 0 }, (_, index) => index + 1).map((value) => (
                 <button
                   aria-pressed={value === channel}
-                  className={value === channel ? 'is-active' : ''}
+                  className={`${value === channel ? 'is-active' : ''}${
+                    lateChannels.includes(value) ? ' is-late-channel' : ''
+                  }`}
                   key={value}
                   onClick={() => changeChannel(value)}
+                  title={
+                    lateChannels.includes(value)
+                      ? 'Na tym kanale timer wchodzi w ostatnie 20% okna'
+                      : undefined
+                  }
                   type="button"
                 >
                   CH{value}
@@ -268,6 +359,13 @@ export function MapHunting({
             <span>aktywnych timerów</span>
           </div>
         </section>
+        {lateChannels.length > 0 && !lateChannels.includes(channel) ? (
+          <p className="respawn-late-banner" role="status">
+            Okno w ostatnich 20%: podświetlone{' '}
+            {lateChannels.map((value) => `CH${value}`).join(', ')} — przełącz kanał, jeśli chcesz
+            zdążyć.
+          </p>
+        ) : null}
         <section className={`respawn-workspace${view === 'timers' ? ' is-timers-only' : ''}`}>
           <div className="panel respawn-main-panel">
             <header className="respawn-list-header">
@@ -278,8 +376,8 @@ export function MapHunting({
                 <h2>{view === 'map' ? 'Atlas i pinezki' : 'Lista timerów'}</h2>
                 {view === 'timers' ? (
                   <p className="respawn-list-lead">
-                    {map?.bosses.length ?? 0} bossów · {map?.metins.length ?? 0} metinów ·{' '}
-                    {records.length} timerów na kanale
+                    {available.length} dostępnych · {counting.length} w odliczaniu · pinezka =
+                    ostatnie zbicie (nie skaut Party)
                   </p>
                 ) : null}
               </div>
@@ -370,7 +468,11 @@ export function MapHunting({
                         style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
                         type="button"
                       >
-                        <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={15} />
+                        {record.entity.iconPath ? (
+                          <img alt="" className="respawn-entity-icon" src={record.entity.iconPath} />
+                        ) : (
+                          <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={15} />
+                        )}
                         <span>{record.entity.name}</span>
                       </button>
                     );
@@ -379,69 +481,35 @@ export function MapHunting({
                 <p className="respawn-map-help">
                   {placingKey
                     ? 'Kliknij na mapie: zbicie + pinezka ostatniej znanej lokalizacji.'
-                    : '„Zbite + mapa” ustawia pinezkę. Nie wymaga party — Timery to osobny system.'}
+                    : 'Pinezki Timerów = ostatnie zbicie. Party skauta jest na /maps.'}
                 </p>
               </div>
             )}
             <div className="respawn-records">
-              {visibleRecords.map((record) => {
-                const display = getRespawnDisplay(record, now);
-                const canConfirm = canConfirmRespawn(record, now);
-                return (
-                  <article className={`respawn-record is-${display.phase}`} key={record.key}>
-                    <span
-                      className="respawn-record-icon"
-                      style={{ color: record.entity.color ?? undefined }}
-                    >
-                      <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={17} />
-                    </span>
-                    <div className="respawn-record-copy">
-                      <strong>{record.entity.name}</strong>
-                      <span>
-                        {record.kind === 'boss' ? 'Boss' : 'Metin'} · respawn {formatWindow(record)}{' '}
-                        ·{' '}
-                        {record.location
-                          ? `pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
-                          : 'bez pinezki'}
-                        {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
-                      </span>
-                    </div>
-                    <div className="respawn-record-time">
-                      <b>{display.clock}</b>
-                      <span>{display.label}</span>
-                    </div>
-                    <div className="respawn-record-actions">
-                      <button
-                        disabled={!canConfirm}
-                        onClick={() => confirmKilled(record.key, null)}
-                        type="button"
-                      >
-                        {canConfirm ? 'Zbite' : 'Odliczanie'}
-                      </button>
-                      <button
-                        disabled={!canConfirm}
-                        onClick={() => beginPlacement(record.key)}
-                        type="button"
-                      >
-                        Zbite + mapa
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-              {visibleRecords.length === 0 && (
+              {available.map((record) => renderRecord(record, false))}
+              {counting.length > 0 ? (
+                <div className="respawn-counting-block">
+                  <header>
+                    <span className="section-kicker">Po zbiciu</span>
+                    <h3>Odliczanie — cel nie znika</h3>
+                    <p>Widać pozostały czas do okna. Ponowne Zbite dopiero w oknie respawnu.</p>
+                  </header>
+                  {counting.map((record) => renderRecord(record, true))}
+                </div>
+              ) : null}
+              {available.length === 0 && counting.length === 0 ? (
                 <p className="respawn-empty">Brak timerów w tym filtrze.</p>
-              )}
+              ) : null}
             </div>
           </div>
           <aside className="panel respawn-timers-hint">
             <header>
               <span className="section-kicker">Cykl</span>
-              <h2>Zbite → timer → okno → znowu</h2>
+              <h2>Zbite → mini-mapa → timer ↓</h2>
               <p>
-                W grze znajdujesz metina/bossa, zbijaasz, tu klikasz <b>Zbite</b> (lub{' '}
-                <b>Zbite + mapa</b> i pinezka). Jedziesz dalej. Dopóki trwa odliczanie, nie
-                klikniesz drugi raz. Gdy otworzy się okno respawnu — możesz oznaczyć kolejne zbicie.
+                W grze zbijaasz cel, tu klikasz <b>Zbite</b> — otwiera się mini-mapa do pinezki
+                (możesz pominąć). Cel zjeżdża na dół z odliczaniem. Party i pinezki skauta są osobno
+                na <a href="/maps">/maps</a>.
               </p>
             </header>
             {view !== 'map' ? (
@@ -450,11 +518,11 @@ export function MapHunting({
                 onClick={() => setView('map')}
                 type="button"
               >
-                <span /> Otwórz atlas mapy
+                <span /> Otwórz pełny atlas
               </button>
             ) : (
               <p className="respawn-list-lead">
-                Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez party.
+                Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez Party.
               </p>
             )}
           </aside>
@@ -463,9 +531,87 @@ export function MapHunting({
           {notice}
         </p>
         <p className="respawn-data-note">
-          Timery metinów/bossów ≠ party, ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
+          Timery metinów/bossów ≠ Party ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
           Dane lokalnie w przeglądarce.
         </p>
+
+        {modalRecord ? (
+          <div
+            aria-modal="true"
+            className="respawn-pin-modal"
+            role="dialog"
+            aria-labelledby="respawn-pin-modal-title"
+          >
+            <div className="respawn-pin-modal-card">
+              <header>
+                <div>
+                  <span className="section-kicker">Potwierdź zbicie</span>
+                  <h2 id="respawn-pin-modal-title">{modalRecord.entity.name}</h2>
+                  <p>Kliknij mini-mapę, żeby zostawić pinezkę ostatniej lokalizacji — albo pomiń.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setPinModalKey(null);
+                    setModalDraftLocation(null);
+                  }}
+                  type="button"
+                >
+                  Anuluj
+                </button>
+              </header>
+              <div
+                aria-label="Mini-mapa pinezki zbicia"
+                className="respawn-map-stage respawn-pin-modal-map is-placing"
+                onClick={placeOnModalMap}
+                role="button"
+                tabIndex={0}
+              >
+                {canShowMapImage ? (
+                  <img alt="" src={currentMapImage} />
+                ) : (
+                  <div
+                    className={`respawn-map-atlas ${styles.atlas}`}
+                    style={{ '--map-accent': map?.color ?? '#3d7ea6' } as CSSProperties}
+                  >
+                    <div className={styles.atlasGrid} aria-hidden />
+                    <div className={styles.atlasCopy}>
+                      <strong>{map?.key}</strong>
+                      <span>CH{channel}</span>
+                    </div>
+                  </div>
+                )}
+                {modalDraftLocation ? (
+                  <span
+                    className="respawn-map-marker is-metin is-selected"
+                    style={{
+                      left: `${modalDraftLocation.x}%`,
+                      top: `${modalDraftLocation.y}%`,
+                    }}
+                  >
+                    <Icon name="map" size={15} />
+                  </span>
+                ) : null}
+              </div>
+              <footer className="respawn-pin-modal-actions">
+                <button onClick={() => confirmKilled(modalRecord.key, null)} type="button">
+                  Zbite bez pinezki
+                </button>
+                <button
+                  className="is-primary"
+                  disabled={!modalDraftLocation}
+                  onClick={() =>
+                    modalDraftLocation
+                      ? confirmKilled(modalRecord.key, modalDraftLocation)
+                      : undefined
+                  }
+                  type="button"
+                >
+                  Zapisz zbicie + pinezkę
+                </button>
+              </footer>
+            </div>
+          </div>
+        ) : null}
       </main>
     </AppShell>
   );

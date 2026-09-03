@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMapRespawnRecords,
   canConfirmRespawn,
+  channelsWithLateWindows,
   getRespawnClock,
   getRespawnPhase,
+  isWindowLatePhase,
+  partitionRespawnRecords,
   respawnKey,
   respawnMaps,
   respawnWindowMinutes,
@@ -65,5 +68,31 @@ describe('respawn timers imported from dobry-temat', () => {
     expect(canConfirmRespawn(record, fixedBoss.respawnTimeMax * 60_000 + 5 * 60_000 + 60_001)).toBe(
       true,
     );
+  });
+
+  it('splits counting timers from available ones and flags late window channels', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    const ranged = map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5)!;
+    const counting = {
+      ...buildMapRespawnRecords(map, 1).find((entry) => entry.entity.id === ranged.id)!,
+      confirmedAt: 0,
+      confirmedBy: 'Mateusz',
+      location: { x: 10, y: 20 },
+    };
+    const lateWindowAt =
+      ranged.respawnTimeMin * 60_000 +
+      Math.floor((ranged.respawnTimeMax - ranged.respawnTimeMin) * 60_000 * 0.85);
+    const late = { ...counting, channel: 4 };
+    expect(partitionRespawnRecords([counting], (ranged.respawnTimeMin * 60_000) / 2).counting).toHaveLength(
+      1,
+    );
+    expect(isWindowLatePhase(late, lateWindowAt)).toBe(true);
+    expect(channelsWithLateWindows([late], 'M1', lateWindowAt)).toEqual([4]);
+  });
+
+  it('attaches generated icon paths to boss and metin entities', () => {
+    const map = respawnMaps.find((entry) => entry.key === 'M1')!;
+    expect(map.metins[0]?.iconPath).toMatch(/^\/game\/respawn\//u);
+    expect(map.bosses[0]?.iconPath).toMatch(/^\/game\/respawn\//u);
   });
 });

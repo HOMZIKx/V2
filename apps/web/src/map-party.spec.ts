@@ -7,6 +7,7 @@ import {
   incrementSessionKills,
   isScoutPinActive,
   placeScoutPin,
+  pruneExpiredScoutPins,
   requestPartyJoin,
   resolvePartyRequest,
   scoutPinAgeMinutes,
@@ -86,5 +87,21 @@ describe('map party hunt session', () => {
     });
     expect(incrementSessionKills(party).sessionKills).toBe(1);
     expect(incrementSessionKills(party, 3).sessionKills).toBe(3);
+  });
+
+  it('czyści wygasłe pinezki skauta z magazynu lokalnego', () => {
+    const pin = {
+      id: 'pin-old',
+      partyId: 'party-1',
+      mapKey: 'M1',
+      channel: 1,
+      location: { x: 10, y: 20 },
+      placedAt: 0,
+      placedBy: 'Wicek',
+      label: 'Metin',
+      kind: 'metin' as const,
+    };
+    expect(pruneExpiredScoutPins([pin], 5 * 60_000)).toHaveLength(1);
+    expect(pruneExpiredScoutPins([pin], PARTY_SCOUT_PIN_TTL_MS)).toHaveLength(0);
   });
 });
