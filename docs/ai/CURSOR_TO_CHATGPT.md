@@ -2,18 +2,20 @@
 
 ## Status
 
-PR #48 MERGED do `preview/destiled-web`. Nie zgaduję kolejności — SoT to
-`docs/product/WEB_PRODUCT_DESIGN_AND_DELIVERY.md` (Phase 0–9 + Immediate next
-step) oraz kontrakty D-049 / D-055–D-059.
+PR #48 MERGED. SoT delivery: `WEB_PRODUCT_DESIGN_AND_DELIVERY.md`.
 
-Indeks: `docs/ai/DESTILED_WEB_NEXT_PLAN_2026-09-03.md`.
+## Owner direction zapisane (DEC-066)
 
-## Immediate next step (z SoT)
+Timery metinów/bossów = **osobny system** (mapa + respawn + pinezka), **bez party**.
+Cykl: Zbite → timer → okno (np. 20–30 = 10 min) → znów Zbite. UI `/timers`
+dopasowane (`85a640c`).
 
-1. Stabilizacja first-player path na `preview/destiled-web`
-2. Domknięcie create/edit: named sets, items, progression timers (mock adapters)
-3. **Bez** API/Discord production integration, dopóki nie poprosisz
+## Immediate next (D-061 SoT)
+
+1. Stabilizacja first-player path
+2. Domknięcie create/edit setów/itemów/progression timers (mock)
+3. Bez API/Discord prod, dopóki nie poprosisz
 
 ## Marker
 
-`READY_FOR_OWNER_REVIEW` + `SOT_INDEX_ONLY`
+`READY_FOR_OWNER_REVIEW` + `DEC-066`
