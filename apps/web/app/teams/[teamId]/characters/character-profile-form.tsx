@@ -325,12 +325,7 @@ export function CharacterProfileForm({
               {renderPath ? (
                 <img alt="" src={renderPath} />
               ) : (
-                <span className="missing-render">
-                  Brak zatwierdzonego renderu Metin2 dla{' '}
-                  {characterClassLabels[draft.characterClass].toLocaleLowerCase('pl')} /{' '}
-                  {characterGenderLabels[draft.gender].toLocaleLowerCase('pl')}. Potrzebny plik z
-                  lokalnego dobry-temat (D-047 — bez AI).
-                </span>
+                <span className="missing-render">Brak grafiki postaci</span>
               )}
             </div>
             <h2>{draft.name.trim() || 'Nowa postać'}</h2>

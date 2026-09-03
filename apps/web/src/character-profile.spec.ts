@@ -9,21 +9,18 @@ import {
 } from './character-profile.js';
 
 describe('character profile view model', () => {
-  it('keeps unsupported visual variants honest instead of substituting another class', () => {
+  it('registers Metin2 class×gender renders for every combination', () => {
     expect(getApprovedCharacterRender('sura', 'male')).toBe('/game/classes/sura-male.png');
     expect(getApprovedCharacterRender('ninja', 'female')).toBe('/game/classes/ninja-female.png');
     expect(getApprovedCharacterRender('shaman', 'male')).toBe('/game/classes/shaman-male.png');
-    expect(getApprovedCharacterRender('warrior', 'female')).toBeNull();
-    expect(getApprovedCharacterRender('sura', 'female')).toBeNull();
-    expect(listMissingCharacterRenders()).toEqual(
-      expect.arrayContaining([
-        'warrior-male',
-        'warrior-female',
-        'sura-female',
-        'ninja-male',
-        'shaman-female',
-      ]),
+    expect(getApprovedCharacterRender('warrior', 'female')).toBe(
+      '/game/classes/warrior-female.png',
     );
+    expect(getApprovedCharacterRender('sura', 'female')).toBe('/game/classes/sura-female.png');
+    expect(getApprovedCharacterRender('ninja', 'male')).toBe('/game/classes/ninja-male.png');
+    expect(getApprovedCharacterRender('shaman', 'female')).toBe('/game/classes/shaman-female.png');
+    expect(getApprovedCharacterRender('warrior', 'male')).toBe('/game/classes/warrior-male.png');
+    expect(listMissingCharacterRenders()).toEqual([]);
   });
 
   it('allows an unknown level but rejects impossible or malformed values', () => {

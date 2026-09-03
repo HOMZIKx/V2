@@ -1362,10 +1362,11 @@ button:disabled {
 .character-figure img {
   position: relative;
   z-index: 1;
-  width: 94%;
-  height: 145px;
+  width: 100%;
+  height: 168px;
   object-fit: contain;
   object-position: center bottom;
+  image-rendering: auto;
   filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.6));
   transform: translateY(3px);
   transition: transform 220ms ease;

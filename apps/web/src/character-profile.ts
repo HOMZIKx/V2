@@ -61,15 +61,18 @@ export const characterGenderLabels: Record<CharacterGender, string> = {
   female: 'Kobieta',
 };
 
-const approvedRenderPaths: Readonly<
-  Partial<Record<`${CharacterClass}-${CharacterGender}`, string>>
-> = {
+const approvedRenderPaths: Readonly<Record<`${CharacterClass}-${CharacterGender}`, string>> = {
+  'warrior-male': '/game/classes/warrior-male.png',
+  'warrior-female': '/game/classes/warrior-female.png',
   'sura-male': '/game/classes/sura-male.png',
+  'sura-female': '/game/classes/sura-female.png',
+  'ninja-male': '/game/classes/ninja-male.png',
   'ninja-female': '/game/classes/ninja-female.png',
   'shaman-male': '/game/classes/shaman-male.png',
+  'shaman-female': '/game/classes/shaman-female.png',
 };
 
-/** All class×gender pairs expected for Metin2-correct character cards (D-047). */
+/** All class×gender pairs for Metin2-correct character cards (D-047 / DEC-062). */
 export const allCharacterRenderKeys: readonly `${CharacterClass}-${CharacterGender}`[] = [
   'warrior-male',
   'warrior-female',
@@ -217,6 +220,20 @@ export function getEditCharacterProfileFixture(
         responsibleMemberId: 'wicek',
         startingSetName: 'Wsparcie',
         teamNote: 'Postać wsparcia zespołu.',
+      },
+    },
+    xiaohu: {
+      ...editCharacterProfileFixture,
+      characterId: 'xiaohu',
+      characterRevision: 2,
+      draft: {
+        name: 'XiaoHu',
+        characterClass: 'warrior',
+        gender: 'male',
+        level: 68,
+        responsibleMemberId: 'xiaohu',
+        startingSetName: 'Wojna',
+        teamNote: 'Wojownik zespołu.',
       },
     },
   };

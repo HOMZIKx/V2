@@ -681,6 +681,32 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
         },
       ],
     },
+    {
+      id: 'xiaohu',
+      name: 'XiaoHu',
+      characterClass: 'warrior',
+      gender: 'male',
+      level: 68,
+      responsibleMemberId: 'xiaohu',
+      note: 'Wojownik zespołu — wspólny miecz jednoręczny (Wojownik/Ninja/Sura).',
+      imagePath: '/game/classes/warrior-male.png',
+      activeSetId: 'war',
+      revision: 2,
+      archived: false,
+      sets: [
+        {
+          id: 'war',
+          name: 'Wojna',
+          description: 'Układ PvP Wojownika',
+          assignments: {
+            ...emptyAssignments(),
+            weapon: 'sura-shared-sword',
+            shield: 'sura-shield',
+            shoes: 'sura-boots',
+          },
+        },
+      ],
+    },
   ];
 
   return {

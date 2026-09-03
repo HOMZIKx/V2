@@ -5,8 +5,16 @@
   place-items: end start;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 60% at 70% 30%, color-mix(in srgb, var(--map-accent) 45%, #0a121c), transparent 70%),
-    radial-gradient(ellipse 70% 50% at 20% 80%, color-mix(in srgb, var(--map-accent) 28%, #101820), transparent 65%),
+    radial-gradient(
+      ellipse 80% 60% at 70% 30%,
+      color-mix(in srgb, var(--map-accent) 45%, #0a121c),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 20% 80%,
+      color-mix(in srgb, var(--map-accent) 28%, #101820),
+      transparent 65%
+    ),
     linear-gradient(155deg, #0c141e 0%, #152033 45%, #0a1018 100%);
 }
 
@@ -16,7 +24,11 @@
   opacity: 0.35;
   background-image:
     linear-gradient(color-mix(in srgb, var(--map-accent) 35%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--map-accent) 35%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--map-accent) 35%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 48px 48px;
   mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, #000 20%, transparent 75%);
 }
@@ -28,7 +40,11 @@
   right: -8%;
   top: -12%;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--map-accent) 55%, transparent), transparent 70%);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--map-accent) 55%, transparent),
+    transparent 70%
+  );
   filter: blur(8px);
   opacity: 0.7;
 }

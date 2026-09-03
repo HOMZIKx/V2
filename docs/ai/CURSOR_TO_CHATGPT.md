@@ -2,19 +2,13 @@
 
 ## Status
 
-Mapy wyglądają jak produkt, nie jak stub.
+Wszystko na miejscu: postacie (8/8 płeć×klasa), mapy live, ikony EQ.
 
-## Co zrobiłem
+## Assets
 
-1. **Internet (miecze):** Gameforge wiki — Sura nosi wspólne miecze.
-2. **Ikony itemów:** pełne EQ + ulepszacze z oficjalnej pl-wiki.
-3. **Mapy:** `/maps` = live UI; grafiki z oficjalnej wiki Gameforge; nav „Mapy”.
-4. Brak PNG (lochy) → atlas z kolorem z dumpa, nie komunikat „brakuje pliku”.
-
-## Opcjonalnie od Ciebie
-
-Dokładne kadry z lokalnego dobry-temat mogą nadpisać `public/game/maps/`.
-Rendery klas×płeć nadal DEC-062.
+- Klasy: oficjalna en-wiki Gameforge → `public/game/classes/*-{male,female}.png`
+- Mapy: wiki overview + live `/maps`
+- Itemy: pl-wiki ikony
 
 ## Marker
 
