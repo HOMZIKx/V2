@@ -7,11 +7,23 @@ import { usePlayerStore } from '../src/player-store-react';
 import { AppShell, Icon } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
 
+function readyTimerLabel(count: number): string {
+  if (count === 1) return '1 gotowy timer';
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${count} gotowe timery`;
+  }
+  return `${count} gotowych timerów`;
+}
+
 export function MemberDashboard() {
-  const { state, hydrated, createWorkspace, loadDemo, writesEnabled } = usePlayerStore();
+  const { state, hydrated, createWorkspace, loadDemo, resetStore, writesEnabled } =
+    usePlayerStore();
   const [workspaceName, setWorkspaceName] = useState('');
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
 
   if (!hydrated) {
     return (
@@ -43,6 +55,9 @@ export function MemberDashboard() {
       (character) => character.id === state.lastOpenedCharacterId,
     ) ?? null;
   const isFirstUse = state.workspaces.length === 0;
+  const pendingInvites = state.pendingIncomingInvitations.filter(
+    (entry) => entry.status === 'pending',
+  );
 
   const onCreateWorkspace = () => {
     if (!writesEnabled) return;
@@ -55,6 +70,30 @@ export function MemberDashboard() {
     setCreateError(null);
     setCreatedId(id);
     setWorkspaceName('');
+    setSessionNotice(null);
+  };
+
+  const onLoadDemo = () => {
+    if (!writesEnabled) return;
+    if (state.workspaces.length > 0) {
+      const ok = window.confirm(
+        'Wczytać demo Asteria? Istniejące przestrzenie zostaną zachowane; Asteria zostanie odświeżona.',
+      );
+      if (!ok) return;
+      loadDemo({ replace: false });
+    } else {
+      loadDemo({ replace: true });
+    }
+    setCreatedId(null);
+    setSessionNotice('Wczytano demo Asteria.');
+  };
+
+  const onResetSession = () => {
+    const ok = window.confirm(
+      'Wyczyścić lokalną sesję? Usunie przestrzenie, EQ i timery z tej przeglądarki.',
+    );
+    if (!ok) return;
+    resetStore();
   };
 
   return (
@@ -76,11 +115,24 @@ export function MemberDashboard() {
               <small>Konto Discord</small>
               <strong>{state.viewer.discordDisplayName}</strong>
               <span>
-                Sesja lokalna · {state.connection === 'connected' ? 'zapis w tej przeglądarce' : state.connection}
+                Sesja lokalna ·{' '}
+                {state.connection === 'connected' ? 'zapis w tej przeglądarce' : state.connection}
               </span>
             </div>
           </div>
         </section>
+
+        {createdId ? (
+          <p className="entry-status" role="status">
+            Utworzono przestrzeń.{' '}
+            <a href={`/teams/${createdId}`}>Otwórz i dodaj pierwszą postać</a>
+          </p>
+        ) : null}
+        {sessionNotice ? (
+          <p className="entry-status" role="status">
+            {sessionNotice} <a href="/teams/asteria">Otwórz Asteria</a>
+          </p>
+        ) : null}
 
         {isFirstUse ? (
           <section className="first-use-panel" id="first-use">
@@ -104,24 +156,18 @@ export function MemberDashboard() {
                 <button className="primary-button" onClick={onCreateWorkspace} type="button">
                   Utwórz przestrzeń
                 </button>
-                <button className="secondary-button" onClick={loadDemo} type="button">
+                <button className="secondary-button" onClick={onLoadDemo} type="button">
                   Wczytaj przykładowe Asteria (demo)
                 </button>
               </div>
-              {createdId ? (
-                <p className="entry-status">
-                  Utworzono.{' '}
-                  <a href={`/teams/${createdId}`}>Otwórz przestrzeń i dodaj pierwszą postać</a>
-                </p>
-              ) : null}
             </div>
             <aside>
               <h3>Albo zaakceptuj zaproszenie</h3>
-              {state.pendingIncomingInvitations.length === 0 ? (
+              {pendingInvites.length === 0 ? (
                 <p>Brak oczekujących zaproszeń w tej sesji.</p>
               ) : (
                 <ul className="invite-list">
-                  {state.pendingIncomingInvitations.map((invitation) => (
+                  {pendingInvites.map((invitation) => (
                     <li key={invitation.id}>
                       <strong>{invitation.teamName}</strong>
                       <span>od {invitation.inviterName}</span>
@@ -137,14 +183,27 @@ export function MemberDashboard() {
             <section className="panel">
               <header>
                 <h2>Wymaga uwagi</h2>
-                <span>
-                  {readyTimers.length === 1
-                    ? '1 gotowy timer'
-                    : `${readyTimers.length} gotowych timerów`}
-                </span>
+                <span>{readyTimerLabel(readyTimers.length)}</span>
               </header>
+              {pendingInvites.length > 0 ? (
+                <ul className="attention-list" style={{ marginBottom: 12 }}>
+                  {pendingInvites.map((invitation) => (
+                    <li key={invitation.id}>
+                      <div>
+                        <strong>Zaproszenie: {invitation.teamName}</strong>
+                        <small>od {invitation.inviterName}</small>
+                      </div>
+                      <a href={`/invitations/${invitation.id}`}>Otwórz</a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {readyTimers.length === 0 ? (
-                <p className="empty-copy">Nic nie czeka na oddanie.</p>
+                <p className="empty-copy">
+                  {pendingInvites.length > 0
+                    ? 'Brak gotowych timerów do oddania.'
+                    : 'Nic nie czeka na oddanie.'}
+                </p>
               ) : (
                 <ul className="attention-list">
                   {readyTimers.map((entry) => (
@@ -201,7 +260,9 @@ export function MemberDashboard() {
                     <div>
                       <strong>{workspace.name}</strong>
                       <small>
-                        {workspace.members.length === 1 ? 'Solo' : `${workspace.members.length} członków`}{' '}
+                        {workspace.members.length === 1
+                          ? 'Solo'
+                          : `${workspace.members.length} członków`}{' '}
                         · {workspace.updatedLabel}
                       </small>
                     </div>
@@ -220,6 +281,12 @@ export function MemberDashboard() {
                 />
                 <button onClick={onCreateWorkspace} type="button">
                   <Icon name="plus" size={16} /> Utwórz
+                </button>
+              </div>
+              {createError ? <p className="field-error">{createError}</p> : null}
+              <div className="first-use-actions" style={{ marginTop: 12 }}>
+                <button className="secondary-button" onClick={onLoadDemo} type="button">
+                  Wczytaj / odśwież demo Asteria
                 </button>
               </div>
             </section>
@@ -251,7 +318,10 @@ export function MemberDashboard() {
 
         <div className="mock-notice">
           Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą później.
-          Mapy, Targ i Aktywność są celowo schowane.
+          Mapy, Targ i Aktywność są celowo schowane.{' '}
+          <button className="text-button" onClick={onResetSession} type="button">
+            Wyczyść sesję lokalną
+          </button>
         </div>
       </main>
     </AppShell>

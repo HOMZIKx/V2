@@ -18,7 +18,20 @@ async function seedAuthenticatedDemo(page: Page) {
       lastOpenedWorkspaceId: 'asteria',
       lastOpenedCharacterId: 'nerwnicht',
       intendedDestination: null,
-      pendingIncomingInvitations: [],
+      pendingIncomingInvitations: [
+        {
+          id: 'invitation-mobbynzs',
+          teamId: 'asteria',
+          teamName: 'Asteria',
+          inviterName: 'Mateusz',
+          recipientDiscordId: '994001220033445566',
+          recipientDisplayName: 'MobbynZS Oak',
+          status: 'pending',
+          createdLabel: 'dzisiaj',
+          expiresLabel: 'za 3 dni',
+          revision: 1,
+        },
+      ],
       workspaces: [
         {
           id: 'asteria',
@@ -377,13 +390,15 @@ test('resolves a Discord identity before creating a team invitation', async ({ p
   await expect(page.getByText('MobbynZS Oak').first()).toBeVisible();
   await page.getByRole('button', { name: 'Wyślij zaproszenie' }).click();
   await expect(page.getByText(/Oczekuje na akceptację/)).toBeVisible();
+  await expect(page.getByRole('link', { name: /Otwórz link zaproszenia/ })).toBeVisible();
 });
 
 test('grants team access only after the recipient accepts', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/invitations/invitation-mobbynzs');
-  await expect(page.getByText('Zalogowano przez Discord jako')).toBeVisible();
+  await expect(page.getByText('Zalogowano jako')).toBeVisible();
   await page.getByRole('button', { name: 'Akceptuję i dołączam' }).click();
+  await expect(page.getByRole('heading', { name: 'Zaproszenie zaakceptowane' })).toBeVisible();
   await expect(
     page.getByText('Dostęp do zespołu został przyznany po Twoim potwierdzeniu.'),
   ).toBeVisible();
@@ -403,8 +418,33 @@ test('shows append-only team history and resolves a revision conflict explicitly
   await expect(page.getByText('Rozpoczęto timer księgi')).toBeVisible();
   await expect(page.getByText('Potwierdzono lokalizację tarczy')).not.toBeVisible();
   await page.getByLabel('Szukaj w historii').fill('');
+  await page.getByText('Symulator konfliktu rewizji').click();
   await page.getByRole('button', { name: 'Zachowaj mój szkic' }).click();
   await expect(page.getByText('Konflikt obsłużony')).toBeVisible();
+});
+
+test('loads demo Asteria from the home dashboard button', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Kontynuuj z Discord' }).click();
+  await expect(page.getByRole('heading', { name: 'Utwórz swoją przestrzeń' })).toBeVisible({
+    timeout: 5000,
+  });
+  await page.getByRole('button', { name: 'Wczytaj przykładowe Asteria (demo)' }).click();
+  await expect(page.getByRole('heading', { name: /Witaj, Mateusz/ })).toBeVisible();
+  await expect(page.getByText('Jazda konna')).toBeVisible();
+  await page.locator('.workspace-list a[href="/teams/asteria"]').click();
+  await expect(page.getByRole('heading', { name: 'Asteria', exact: true })).toBeVisible();
+});
+
+test('marks a ready horse timer done and clears attention', async ({ page }) => {
+  await seedAuthenticatedDemo(page);
+  await page.goto('/teams/asteria/characters/aalpsik');
+  await page.getByRole('button', { name: 'Odwróć kartę i pokaż timery' }).click();
+  await expect(page.getByText('Jazda konna')).toBeVisible();
+  await page.getByRole('button', { name: 'Oznacz wykonane' }).click();
+  await expect(page.locator('.entry-status').filter({ hasText: 'Oznaczono: Jazda konna' })).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByText('Brak gotowych timerów do oddania.')).toBeVisible();
 });
 
 test('creates a character profile without inventing equipment', async ({ page }) => {

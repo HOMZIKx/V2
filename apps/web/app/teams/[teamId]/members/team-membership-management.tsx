@@ -14,12 +14,12 @@ import { DiscordEntryScreen } from '../../../discord-entry';
 
 export function TeamMembershipManagement() {
   const params = useParams<{ teamId: string }>();
-  const { state, hydrated } = usePlayerStore();
+  const { state, hydrated, sendInvitation, writesEnabled } = usePlayerStore();
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
   const [discordId, setDiscordId] = useState('');
   const [resolved, setResolved] = useState<DiscordIdentity | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
-  const [pending, setPending] = useState<DiscordIdentity[]>([]);
+  const [justSentDiscordId, setJustSentDiscordId] = useState<string | null>(null);
 
   const isOwner = useMemo(() => {
     if (!workspace || !state.viewer) return false;
@@ -27,6 +27,10 @@ export function TeamMembershipManagement() {
       (member) => member.id === state.viewer?.id && member.role === 'owner',
     );
   }, [workspace, state.viewer]);
+
+  const pending = workspace?.invitations.filter((entry) => entry.status === 'pending') ?? [];
+  const justSent =
+    pending.find((entry) => entry.recipientDiscordId === justSentDiscordId) ?? pending[0] ?? null;
 
   if (!hydrated) {
     return (
@@ -43,8 +47,12 @@ export function TeamMembershipManagement() {
   if (!workspace) {
     return (
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
-        <main id="main-content">
-          <h1>Brak przestrzeni</h1>
+        <main className="membership-page" id="main-content">
+          <h1>Nie znaleziono przestrzeni</h1>
+          <p>Ta sesja nie ma przestrzeni o ID „{params.teamId}”.</p>
+          <a className="primary-button" href="/">
+            Wróć na pulpit
+          </a>
         </main>
       </AppShell>
     );
@@ -64,8 +72,8 @@ export function TeamMembershipManagement() {
         <header>
           <h1>Członkowie i zaproszenia</h1>
           <p>
-            Zaproszenie nie daje od razu dostępu. Najpierw rozpoznaj Discord ID, potwierdź tożsamość,
-            potem wyślij — odbiorca musi zaakceptować.
+            Najpierw rozpoznaj Discord ID, potem wyślij. Odbiorca musi otworzyć link i zaakceptować —
+            samo wysłanie nie daje dostępu.
           </p>
         </header>
 
@@ -92,6 +100,7 @@ export function TeamMembershipManagement() {
               />
             </label>
             <button
+              disabled={!writesEnabled}
               onClick={() => {
                 const result = resolveDiscordIdentity(discordDirectoryFixture, discordId);
                 if (!result.ok || !result.identity) {
@@ -107,6 +116,9 @@ export function TeamMembershipManagement() {
               Sprawdź konto Discord
             </button>
             {resolveError ? <p className="field-error">{resolveError}</p> : null}
+            {!writesEnabled ? (
+              <p className="field-error">Zapis niedostępny (sesja offline).</p>
+            ) : null}
             {resolved ? (
               <div>
                 <label>
@@ -115,18 +127,28 @@ export function TeamMembershipManagement() {
                 </label>
                 <p>{resolved.displayName}</p>
                 <button
+                  disabled={!writesEnabled}
                   onClick={() => {
-                    setPending((current) =>
-                      current.some((entry) => entry.discordUserId === resolved.discordUserId)
-                        ? current
-                        : [...current, resolved],
-                    );
+                    sendInvitation(workspace.id, {
+                      discordUserId: resolved.discordUserId,
+                      displayName: resolved.displayName,
+                      initials: resolved.initials,
+                    });
+                    setJustSentDiscordId(resolved.discordUserId);
+                    setDiscordId('');
+                    setResolved(null);
                   }}
                   type="button"
                 >
                   Wyślij zaproszenie
                 </button>
               </div>
+            ) : null}
+            {justSentDiscordId && justSent ? (
+              <p className="entry-status">
+                Wysłano. Link zaproszenia:{' '}
+                <a href={`/invitations/${justSent.id}`}>{`/invitations/${justSent.id}`}</a>
+              </p>
             ) : null}
           </section>
         ) : (
@@ -136,13 +158,16 @@ export function TeamMembershipManagement() {
         <section className="panel">
           <h2>Oczekujące</h2>
           {pending.length === 0 ? (
-            <p className="empty-copy">Brak lokalnych oczekujących zaproszeń.</p>
+            <p className="empty-copy">Brak oczekujących zaproszeń.</p>
           ) : (
-            <ul>
-              {pending.map((identity) => (
-                <li key={identity.discordUserId}>
-                  <strong>{identity.displayName}</strong>
-                  <span>Oczekuje na akceptację</span>
+            <ul className="invite-list">
+              {pending.map((entry) => (
+                <li key={entry.id}>
+                  <div>
+                    <strong>{entry.recipientDisplayName}</strong>
+                    <span>Oczekuje na akceptację · {entry.createdLabel}</span>
+                  </div>
+                  <a href={`/invitations/${entry.id}`}>Otwórz link zaproszenia</a>
                 </li>
               ))}
             </ul>
@@ -150,8 +175,7 @@ export function TeamMembershipManagement() {
         </section>
 
         <div className="mock-notice">
-          Produkcyjny kontrakt interfejsu · rozpoznawanie Discord ID jest demonstracyjne; trwałe
-          zaproszenia wymagają API.
+          Rozpoznawanie Discord ID jest lokalną listą demo. Trwałe zaproszenia wrócą z API.
         </div>
       </main>
     </AppShell>

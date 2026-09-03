@@ -4,6 +4,7 @@ import {
   completeDiscordAuth,
   createCharacter,
   createInitialPlayerStore,
+  createOutgoingInvitation,
   createWorkspace,
   getReadyTimers,
   getSlotReadiness,
@@ -57,6 +58,27 @@ describe('player store first-slice', () => {
     const set = character.sets.find((entry) => entry.id === 'war')!;
     expect(getSlotReadiness(workspace, character, set, 'weapon')).toBe('ready');
     expect(getSlotReadiness(workspace, character, set, 'shield')).toBe('available_elsewhere');
+  });
+
+  it('seeds demo without wiping an existing workspace when merge is requested', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'SoloTest');
+    expect(state.workspaces).toHaveLength(1);
+    state = seedDemoData(state, { replace: false });
+    expect(state.workspaces.some((workspace) => workspace.id === 'asteria')).toBe(true);
+    expect(state.workspaces.some((workspace) => workspace.name === 'SoloTest')).toBe(true);
+  });
+
+  it('creates a durable outgoing invitation with a followable link id', () => {
+    let state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
+    state = createOutgoingInvitation(state, 'asteria', {
+      discordUserId: '994001220033445566',
+      displayName: 'MobbynZS Oak',
+      initials: 'MO',
+    });
+    const invite = state.workspaces[0]!.invitations.find((entry) => entry.status === 'pending');
+    expect(invite).toBeTruthy();
+    expect(state.pendingIncomingInvitations.some((entry) => entry.id === invite!.id)).toBe(true);
   });
 
   it('resets timers idempotently with operation id', () => {

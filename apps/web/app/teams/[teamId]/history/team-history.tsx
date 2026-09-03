@@ -96,16 +96,16 @@ export function TeamHistory() {
         </section>
 
         {!conflictResolved ? (
-          <section className="panel conflict-panel">
-            <h2>Przykładowy konflikt rewizji (edukacyjny)</h2>
+          <details className="panel conflict-panel">
+            <summary>Symulator konfliktu rewizji (opcjonalny)</summary>
             <p>
-              Lokalny szkic i nowsza wersja nie nadpisują się cicho. Wybierz zachowanie szkicu albo
-              przyjęcie wersji serwera — bez automatycznej publikacji.
+              Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych —
+              tylko podgląd zachowania na produkcję.
             </p>
             <button onClick={() => setConflictResolved(true)} type="button">
               Zachowaj mój szkic
             </button>
-          </section>
+          </details>
         ) : (
           <p className="entry-status">Konflikt obsłużony — szkic zachowany lokalnie.</p>
         )}
@@ -130,7 +130,7 @@ export function TeamHistory() {
         </ol>
 
         <div className="mock-notice">
-          Historia jest append-only w lokalnym store. Realtime lease/conflict API wróci z backendem.
+          Dziennik tylko dopisuje wpisy (bez cofania). Live sync wróci z backendem.
         </div>
       </main>
     </AppShell>

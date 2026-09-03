@@ -690,29 +690,138 @@ export function cancelDiscordAuth(state: PlayerStoreState): PlayerStoreState {
   return { ...state, authStatus: 'cancelled', connection: 'offline' };
 }
 
-export function seedDemoData(state: PlayerStoreState): PlayerStoreState {
+export function seedDemoData(
+  state: PlayerStoreState,
+  options: { readonly replace?: boolean } = {},
+): PlayerStoreState {
   if (!state.viewer) return state;
   const demo = buildDemoWorkspace(state.viewer);
+  const demoInvite: PendingInvitation = {
+    id: 'invitation-mobbynzs',
+    teamId: demo.id,
+    teamName: demo.name,
+    inviterName: 'Mateusz',
+    recipientDiscordId: '994001220033445566',
+    recipientDisplayName: 'MobbynZS Oak',
+    status: 'pending',
+    createdLabel: 'dzisiaj',
+    expiresLabel: 'za 3 dni',
+    revision: 1,
+  };
+
+  const replace = options.replace === true || state.workspaces.length === 0;
+  const workspaces = replace
+    ? [demo]
+    : [demo, ...state.workspaces.filter((workspace) => workspace.id !== demo.id)];
+
+  const pendingIncomingInvitations = state.pendingIncomingInvitations.some(
+    (entry) => entry.id === demoInvite.id,
+  )
+    ? state.pendingIncomingInvitations
+    : [...state.pendingIncomingInvitations, demoInvite];
+
   return {
     ...state,
-    workspaces: [demo],
+    workspaces,
     seededDemo: true,
     lastOpenedWorkspaceId: demo.id,
     lastOpenedCharacterId: 'nerwnicht',
-    pendingIncomingInvitations: [
-      {
-        id: 'invitation-mobbynzs',
-        teamId: demo.id,
-        teamName: demo.name,
-        inviterName: 'Mateusz',
-        recipientDiscordId: '994001220033445566',
-        recipientDisplayName: 'MobbynZS Oak',
-        status: 'pending',
-        createdLabel: 'dzisiaj',
-        expiresLabel: 'za 3 dni',
-        revision: 1,
-      },
+    pendingIncomingInvitations: replace
+      ? [demoInvite, ...state.pendingIncomingInvitations.filter((entry) => entry.id !== demoInvite.id)]
+      : pendingIncomingInvitations,
+  };
+}
+
+export function createOutgoingInvitation(
+  state: PlayerStoreState,
+  workspaceId: string,
+  recipient: {
+    readonly discordUserId: string;
+    readonly displayName: string;
+    readonly initials: string;
+  },
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace) return state;
+
+  const existing = workspace.invitations.find(
+    (entry) =>
+      entry.recipientDiscordId === recipient.discordUserId && entry.status === 'pending',
+  );
+  if (existing) return state;
+
+  const invitation: PendingInvitation = {
+    id: createId('inv'),
+    teamId: workspace.id,
+    teamName: workspace.name,
+    inviterName: state.viewer.displayName,
+    recipientDiscordId: recipient.discordUserId,
+    recipientDisplayName: recipient.displayName,
+    status: 'pending',
+    createdLabel: nowLabel(),
+    expiresLabel: 'za 3 dni',
+    revision: 1,
+  };
+
+  const withWorkspace = updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    invitations: [invitation, ...current.invitations],
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: `Wysłano zaproszenie: ${recipient.displayName}`,
+        detail: `Discord ID ${recipient.discordUserId}`,
+        revision: current.revision + 1,
+      }),
+      ...current.history,
     ],
+  }));
+
+  return {
+    ...withWorkspace,
+    pendingIncomingInvitations: [invitation, ...withWorkspace.pendingIncomingInvitations],
+  };
+}
+
+export function findInvitation(
+  state: PlayerStoreState,
+  invitationId: string,
+): PendingInvitation | null {
+  const fromPending =
+    state.pendingIncomingInvitations.find((entry) => entry.id === invitationId) ?? null;
+  if (fromPending) return fromPending;
+  for (const workspace of state.workspaces) {
+    const hit = workspace.invitations.find((entry) => entry.id === invitationId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+export function declineIncomingInvitation(
+  state: PlayerStoreState,
+  invitationId: string,
+): PlayerStoreState {
+  const invitation = findInvitation(state, invitationId);
+  if (!invitation || invitation.status !== 'pending') return state;
+
+  return {
+    ...state,
+    pendingIncomingInvitations: state.pendingIncomingInvitations.filter(
+      (entry) => entry.id !== invitationId,
+    ),
+    workspaces: state.workspaces.map((workspace) => {
+      if (workspace.id !== invitation.teamId) return workspace;
+      return {
+        ...workspace,
+        invitations: workspace.invitations.map((entry) =>
+          entry.id === invitationId ? { ...entry, status: 'declined' as const } : entry,
+        ),
+      };
+    }),
   };
 }
 
@@ -1211,36 +1320,42 @@ export function acceptIncomingInvitation(
     const existing = state.workspaces.find((workspace) => workspace.id === invitation.teamId);
     if (existing) {
       return {
-        ...updateWorkspace(state, existing.id, (workspace, viewer) => ({
-          ...workspace,
-          revision: workspace.revision + 1,
-          members: workspace.members.some((member) => member.id === viewer.id)
-            ? workspace.members
-            : [
-                ...workspace.members,
-                {
-                  id: viewer.id,
-                  displayName: viewer.displayName,
-                  initials: viewer.initials,
-                  role: 'member',
-                  state: 'unknown',
-                },
-              ],
-          invitations: workspace.invitations.map((entry) =>
-            entry.id === invitationId ? { ...entry, status: 'accepted' as const } : entry,
-          ),
-          history: [
-            historyEntry(workspace.id, viewer, {
-              characterId: null,
-              characterName: null,
-              resource: 'member',
-              title: 'Zaakceptowano zaproszenie',
-              detail: viewer.displayName,
-              revision: workspace.revision + 1,
-            }),
-            ...workspace.history,
-          ],
-        })),
+        ...updateWorkspace(state, existing.id, (workspace, viewer) => {
+          const hasInvite = workspace.invitations.some((entry) => entry.id === invitationId);
+          const invitations = hasInvite
+            ? workspace.invitations.map((entry) =>
+                entry.id === invitationId ? { ...entry, status: 'accepted' as const } : entry,
+              )
+            : [{ ...invitation, status: 'accepted' as const }, ...workspace.invitations];
+          return {
+            ...workspace,
+            revision: workspace.revision + 1,
+            members: workspace.members.some((member) => member.id === viewer.id)
+              ? workspace.members
+              : [
+                  ...workspace.members,
+                  {
+                    id: viewer.id,
+                    displayName: viewer.displayName,
+                    initials: viewer.initials,
+                    role: 'member',
+                    state: 'unknown',
+                  },
+                ],
+            invitations,
+            history: [
+              historyEntry(workspace.id, viewer, {
+                characterId: null,
+                characterName: null,
+                resource: 'member',
+                title: 'Zaakceptowano zaproszenie',
+                detail: viewer.displayName,
+                revision: workspace.revision + 1,
+              }),
+              ...workspace.history,
+            ],
+          };
+        }),
         pendingIncomingInvitations: state.pendingIncomingInvitations.filter(
           (entry) => entry.id !== invitationId,
         ),
@@ -1254,6 +1369,18 @@ export function acceptIncomingInvitation(
       ...updateWorkspace(state, workspaceInvite.workspace.id, (workspace, viewer) => ({
         ...workspace,
         revision: workspace.revision + 1,
+        members: workspace.members.some((member) => member.id === viewer.id)
+          ? workspace.members
+          : [
+              ...workspace.members,
+              {
+                id: viewer.id,
+                displayName: viewer.displayName,
+                initials: viewer.initials,
+                role: 'member',
+                state: 'unknown',
+              },
+            ],
         invitations: workspace.invitations.map((entry) =>
           entry.id === invitationId ? { ...entry, status: 'accepted' as const } : entry,
         ),
@@ -1262,26 +1389,22 @@ export function acceptIncomingInvitation(
             characterId: null,
             characterName: null,
             resource: 'member',
-            title: 'Zaproszenie zaakceptowane przez odbiorcę',
+            title: 'Zaproszenie zaakceptowane',
             detail: workspaceInvite.entry.recipientDisplayName,
             revision: workspace.revision + 1,
           }),
           ...workspace.history,
         ],
       })),
+      pendingIncomingInvitations: state.pendingIncomingInvitations.filter(
+        (entry) => entry.id !== invitationId,
+      ),
       lastOpenedWorkspaceId: workspaceInvite.workspace.id,
     };
   }
 
-  // Fallback for e2e invitation page: treat as accepted and ensure asteria exists
-  let next = state.seededDemo || state.workspaces.some((workspace) => workspace.id === 'asteria')
-    ? state
-    : seedDemoData(state);
-  if (!next.viewer) return next;
-  return {
-    ...next,
-    lastOpenedWorkspaceId: 'asteria',
-  };
+  // Fallback: unknown id — do not wipe existing workspaces
+  return state;
 }
 
 export function getWorkspace(

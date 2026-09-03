@@ -90,7 +90,7 @@ export function TeamWorkspace() {
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
-          <span>Przestrzenie</span>
+          <a href="/">Przestrzenie</a>
           <Icon name="chevron" size={13} />
           <strong>{workspace.name}</strong>
         </nav>
@@ -123,7 +123,7 @@ export function TeamWorkspace() {
             Przegląd
           </a>
           <a href={`/teams/${workspace.id}#characters`}>Postacie</a>
-          <a href={`/teams/${workspace.id}#tasks`}>Akcje i timery</a>
+          <a href={`/teams/${workspace.id}#tasks`}>Akcje zespołu</a>
           <a href={`/teams/${workspace.id}#notes`}>Notatki</a>
           <a href={`/teams/${workspace.id}/members`}>Członkowie</a>
           <a href={`/teams/${workspace.id}/history`}>Historia</a>
@@ -203,7 +203,9 @@ export function TeamWorkspace() {
                           {readyTimers > 0
                             ? readyTimers === 1
                               ? '1 timer gotowy'
-                              : `${readyTimers} timery gotowe`
+                              : readyTimers < 5
+                                ? `${readyTimers} timery gotowe`
+                                : `${readyTimers} timerów gotowych`
                             : nextTimer?.remainingLabel ?? 'Brak timerów'}
                         </small>
                         <a href={`/teams/${workspace.id}/characters/${character.id}`}>
@@ -294,15 +296,19 @@ export function TeamWorkspace() {
                 Dodaj notatkę
               </button>
             </form>
-            <ul className="note-list">
-              {workspace.notes.map((note) => (
-                <li key={note.id}>
-                  <strong>{note.authorName}</strong>
-                  <span>{note.createdAtLabel}</span>
-                  <p>{note.body}</p>
-                </li>
-              ))}
-            </ul>
+            {workspace.notes.length === 0 ? (
+              <p className="empty-copy">Brak notatek. Zostaw krótką informację dla zespołu.</p>
+            ) : (
+              <ul className="note-list">
+                {workspace.notes.map((note) => (
+                  <li key={note.id}>
+                    <strong>{note.authorName}</strong>
+                    <span>{note.createdAtLabel}</span>
+                    <p>{note.body}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
           <aside className="panel">
@@ -329,6 +335,7 @@ export function TeamWorkspace() {
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
+        {announcement ? <p className="entry-status">{announcement}</p> : null}
         <div className="mock-notice">
           Zmiany z tej przestrzeni zapisują się lokalnie i w dzienniku historii. Przypomnienia
           Discord wrócą z botem.

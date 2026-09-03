@@ -2756,11 +2756,18 @@ button:disabled {
   }
 
   .equipment-slot small {
-    display: none;
+    display: block;
+    font-size: 8px;
+    line-height: 1.1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .character-portrait-button > span:last-child {
-    display: none;
+    display: block;
+    font-size: 9px;
   }
 
   .character-card-face > header,
@@ -2785,16 +2792,19 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 12px;
+  }
+
   .catalog-item {
     min-height: 86px;
   }
 
   .item-inspector {
     grid-template-columns: 1fr;
-  }
-
-  .breadcrumbs {
-    display: none;
   }
 
   .workspace-hero {

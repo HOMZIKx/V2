@@ -22,7 +22,9 @@ import {
   createCharacter,
   createEquipmentItem,
   createInitialPlayerStore,
+  createOutgoingInvitation,
   createWorkspace,
+  declineIncomingInvitation,
   markTimerDone,
   parsePlayerStore,
   removeItemFromSet,
@@ -46,7 +48,7 @@ interface PlayerStoreApi {
   startAuth: () => void;
   finishAuth: (outcome: Exclude<AuthStatus, 'unauthenticated' | 'authenticating'>) => void;
   cancelAuth: () => void;
-  loadDemo: () => void;
+  loadDemo: (options?: { readonly replace?: boolean }) => void;
   createWorkspace: (name: string) => string | null;
   openWorkspace: (workspaceId: string, characterId?: string | null) => void;
   createCharacter: (
@@ -99,7 +101,16 @@ interface PlayerStoreApi {
       readonly planned?: boolean;
     },
   ) => void;
+  sendInvitation: (
+    workspaceId: string,
+    recipient: {
+      readonly discordUserId: string;
+      readonly displayName: string;
+      readonly initials: string;
+    },
+  ) => void;
   acceptInvitation: (invitationId: string) => void;
+  declineInvitation: (invitationId: string) => void;
   returnToEntry: () => void;
   resetStore: () => void;
 }
@@ -148,8 +159,8 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       cancelAuth: () => {
         apply((current) => cancelDiscordAuth(current));
       },
-      loadDemo: () => {
-        apply((current) => seedDemoData(current));
+      loadDemo: (options) => {
+        apply((current) => seedDemoData(current, options));
       },
       createWorkspace: (name) => {
         let createdId: string | null = null;
@@ -203,8 +214,14 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       createItem: (workspaceId, input) => {
         apply((current) => createEquipmentItem(current, workspaceId, input));
       },
+      sendInvitation: (workspaceId, recipient) => {
+        apply((current) => createOutgoingInvitation(current, workspaceId, recipient));
+      },
       acceptInvitation: (invitationId) => {
         apply((current) => acceptIncomingInvitation(current, invitationId));
+      },
+      declineInvitation: (invitationId) => {
+        apply((current) => declineIncomingInvitation(current, invitationId));
       },
       returnToEntry: () => {
         apply((current) => ({

@@ -1,21 +1,22 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { findInvitation } from '../../../src/player-store';
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell } from '../../app-shell';
 import { DiscordEntryScreen } from '../../discord-entry';
 
 export function InvitationResponse() {
   const params = useParams<{ invitationId: string }>();
-  const { state, hydrated, acceptInvitation, loadDemo } = usePlayerStore();
-  const [accepted, setAccepted] = useState(false);
+  const { state, hydrated, acceptInvitation, declineInvitation } = usePlayerStore();
+  const [outcome, setOutcome] = useState<'accepted' | 'declined' | null>(null);
 
-  useEffect(() => {
-    if (!hydrated || state.authStatus !== 'authenticated') return;
-    if (state.workspaces.length === 0) loadDemo();
-  }, [hydrated, state.authStatus, state.workspaces.length, loadDemo]);
+  const invitation = useMemo(
+    () => (hydrated ? findInvitation(state, params.invitationId) : null),
+    [hydrated, state, params.invitationId],
+  );
 
   if (!hydrated) {
     return (
@@ -29,36 +30,85 @@ export function InvitationResponse() {
     return <DiscordEntryScreen />;
   }
 
-  const workspaceId = state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? 'asteria';
+  // Keep local outcome even if invitation moves off the pending list after accept.
+  const alreadyHandled = outcome !== null || (invitation !== null && invitation.status !== 'pending');
+
+  if (!invitation && outcome === null) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="invitation-page" id="main-content">
+          <span className="eyebrow">Zaproszenie</span>
+          <h1>Nie znaleziono zaproszenia</h1>
+          <p>
+            ID <code>{params.invitationId}</code> nie ma w tej sesji. Wczytaj demo albo wyślij
+            zaproszenie z poziomu członków przestrzeni.
+          </p>
+          <a className="primary-button" href="/">
+            Wróć na pulpit
+          </a>
+        </main>
+      </AppShell>
+    );
+  }
+
+  const teamName = invitation?.teamName ?? 'Przestrzeń';
+  const workspaceId = invitation?.teamId ?? state.lastOpenedWorkspaceId ?? '/';
+  const inviterName = invitation?.inviterName ?? '—';
+  const recipientName = invitation?.recipientDisplayName ?? '—';
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className="invitation-page" id="main-content">
         <span className="eyebrow">Zaproszenie do przestrzeni</span>
-        <h1>Asteria</h1>
+        <h1>{teamName}</h1>
         <p>
-          Zalogowano przez Discord jako <strong>{state.viewer.discordDisplayName}</strong>. Dostęp do
-          prywatnych danych pojawia się dopiero po akceptacji.
+          Od <strong>{inviterName}</strong> dla <strong>{recipientName}</strong>. Zalogowano jako{' '}
+          <strong>{state.viewer.discordDisplayName}</strong>. Dane prywatne pojawią się dopiero po
+          akceptacji.
         </p>
-        {!accepted ? (
-          <button
-            className="primary-button"
-            onClick={() => {
-              acceptInvitation(params.invitationId);
-              setAccepted(true);
-            }}
-            type="button"
-          >
-            Akceptuję i dołączam
-          </button>
+
+        {!alreadyHandled && invitation ? (
+          <div className="invitation-actions">
+            <button
+              className="primary-button"
+              onClick={() => {
+                acceptInvitation(invitation.id);
+                setOutcome('accepted');
+              }}
+              type="button"
+            >
+              Akceptuję i dołączam
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                declineInvitation(invitation.id);
+                setOutcome('declined');
+              }}
+              type="button"
+            >
+              Odrzuć
+            </button>
+          </div>
         ) : (
-          <div className="entry-status">
-            <p>Dostęp do zespołu został przyznany po Twoim potwierdzeniu.</p>
+          <div className="entry-status" role="status">
+            {outcome === 'declined' || invitation?.status === 'declined' ? (
+              <>
+                <h2>Zaproszenie odrzucone</h2>
+                <p>Nic się nie zmieniło w członkostwie zespołu.</p>
+              </>
+            ) : (
+              <>
+                <h2>Zaproszenie zaakceptowane</h2>
+                <p>Dostęp do zespołu został przyznany po Twoim potwierdzeniu.</p>
+              </>
+            )}
             <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
           </div>
         )}
+
         <div className="mock-notice">
-          Akceptacja aktualizuje lokalny store. Prawdziwe membership wymaga API.
+          Lokalny podgląd zaproszeń. Produkcja będzie wymagać API i prawdziwego Discord OAuth.
         </div>
       </main>
     </AppShell>

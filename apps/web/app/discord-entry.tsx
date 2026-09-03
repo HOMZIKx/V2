@@ -6,7 +6,7 @@ import { usePlayerStore } from '../src/player-store-react';
 import type { AuthStatus } from '../src/player-store';
 
 export function DiscordEntryScreen() {
-  const { state, startAuth, finishAuth, cancelAuth, returnToEntry } = usePlayerStore();
+  const { state, startAuth, finishAuth, cancelAuth, returnToEntry, resetStore } = usePlayerStore();
 
   useEffect(() => {
     if (state.authStatus !== 'authenticating') return;
@@ -19,6 +19,14 @@ export function DiscordEntryScreen() {
   const simulate = (outcome: Exclude<AuthStatus, 'unauthenticated' | 'authenticating'>) => {
     startAuth();
     window.setTimeout(() => finishAuth(outcome), 500);
+  };
+
+  const onResetSession = () => {
+    const ok = window.confirm(
+      'Wyczyścić lokalną sesję? Usunie dane z tej przeglądarki i wrócisz do startu.',
+    );
+    if (!ok) return;
+    resetStore();
   };
 
   return (
@@ -103,6 +111,9 @@ export function DiscordEntryScreen() {
               Odebrano dostęp
             </button>
           </div>
+          <button className="text-button" onClick={onResetSession} type="button">
+            Wyczyść sesję lokalną
+          </button>
         </details>
       </section>
     </main>
