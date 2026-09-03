@@ -22,6 +22,7 @@ D-061 immediate next). Bot Discord odłożony do akceptacji Web.
   API pl-wiki Metin2, bez zgadywania) i podpięty jako nadrzędne źródło drabinek
   bonusów dla kart EQ.
 - **DEC-068:** pełne drabinki bonusów wymagają nieuciętego dumpa / starego app.
+- **Online persistence (MVP, dev):** dodany `player-team-service` + Web dev-safe snapshot persistence (bez włączania logowania).
 
 ## Marker
 

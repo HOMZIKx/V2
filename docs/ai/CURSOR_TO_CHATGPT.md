@@ -38,6 +38,8 @@ Dalej wg `WEB_PRODUCT_DESIGN_AND_DELIVERY.md` / D-061: stabilizacja first-player
 
 - create/edit setów/itemów/timerów za mockami. **Bez** API/Discord prod i bez
   bota, dopóki Web nie będzie zaakceptowany.
+- Włączone dev-safe online persistence MVP (snapshot `PlayerStoreState` przez `player-team-service`)
+  — login dalej wyłączony; używany demo header.
 
 ## Marker
 
