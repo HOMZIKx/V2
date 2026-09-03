@@ -2,6 +2,18 @@
 
 ## Aktywne
 
+### DEC-063 — Grafiki map polowania z lokalnego dobry-temat
+
+- **Status:** OWNER_ACTION_REQUIRED
+- **Kontekst:** Katalog respawn/metiny/bossy jest w
+  `dobry-temat-respawn-catalog.json` (dane OK). UI map oczekuje PNG z
+  `apps/web/public/game/maps/` (`map_m1.png`, `map_orki.png`, …) — w chmurze jest
+  tylko README. Oficjalna wiki Gameforge nie hostuje tych samych map appki.
+- **Prośba:** skopiować pliki z lokalnego `dobry-temat/frontend/public` do
+  `apps/web/public/game/maps/` według `mapFiles` w `map-hunting.tsx`.
+- **Ikony itemów:** dociągnięte z oficjalnej pl-wiki Gameforge (EQ + Ulepszacze)
+  — nie wymagają tej decyzji.
+
 ### DEC-062 — Brakujące rendery klas×płeć Metin2 (asset z dobry-temat)
 
 - **Status:** OWNER_ACTION_REQUIRED

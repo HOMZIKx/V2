@@ -2,49 +2,31 @@
 
 ## 1. Status
 
-`DESTILED_EQ_CATALOG_AND_RENDERS`
+`DESTILED_ASSETS_AND_CATALOG_TRUTH`
 
-## 2. Task
+## 2. Internet-verified (Sura + miecze)
 
-Owner: use full dobry-temat catalog (items, bonuses, enhancers, graphics); every
-character needs Metin2-correct class×gender art. Also: do not guess — Sura can
-wear shared one-handed swords (verify online).
+Źródła Gameforge (nie zgadywanie):
 
-- Branch: `cursor/destiled-cursor-handoff-dfe5`
-- Draft PR: **#48**
-- Base: `preview/destiled-web`
+- https://en-wiki.metin2.gameforge.com/index.php/Sura/weapons — *Swords can be
+  used by Warriors, Ninjas and Suras*; blades = Sura only
+- https://pl-wiki.metin2.gameforge.com/index.php/Miecz_Bojowy — klasa: Wojownik,
+  Ninja, Sura
 
-## 3. Delivered
+Kod i testy to trzymają (`b4b67ce` + ten commit).
 
-- **Swords:** `Ekwipunek — Wojownik — Bronie jednoręczne` = Warrior/Ninja/Sura
-  (Gameforge Sura/Ninja/Warrior weapons wiki). Two-handed = Warrior only.
-  Sura-only blades stay exclusive. Demo card: `Zatruty Miecz +8` on Sura.
-- **Bonuses:** parse dobry-temat `wiki_upgrade` ladders; seed/create prefer
-  catalog lines (e.g. Bojowa Tarcza `Obrona +57`, Krwawy Hełm `Obrona +41`).
-  Truncated dump tokens skipped — no invention.
-- **Icons:** wiki image map rebuilt from catalog `image_url` ∩ local files.
-- **Ulepszacze:** still not EQ slots; helper `enhancerCatalogItems()`; UI copy
-  clarifies.
-- **Character art (D-047):** still only 3 approved PNGs; missing listed in
-  `listMissingCharacterRenders()` + **DEC-062** (owner must supply from local
-  dobry-temat — no AI substitutes).
+## 3. Assets — co jest / czego nie ma
 
-## 4. Validation
+| Co | Stan |
+| --- | --- |
+| Wygląd itemów EQ | **Pobrane** z oficjalnej pl-wiki → `public/game/items/wiki` (220/220) |
+| Ulepszacze | **Pobrane** (157/157) |
+| Metiny / bossy (nazwy, respawn) | **W dumpie** `dobry-temat-respawn-catalog.json` |
+| Grafiki map (`map_m1.png` itd.) | **Nie** — tylko w Twoim lokalnym dobry-temat → **DEC-063** |
+| Rendery klas×płeć | 3/8 → **DEC-062** |
 
-- Unit (catalog/profile/store/equipment): PASS (19 in this set)
-- `tsc --noEmit` (apps/web): PASS
-- Full monorepo suite / e2e: deferred while owner follow-up queue was non-empty;
-  run on next idle pass
+Sync: `python3 tools/scripts/sync-wiki-item-icons.py`
 
-## 5. Manual note
+## 4. Marker
 
-Wyczyść sesję / wczytaj demo ponownie — nowe karty i bonusy z katalogu.
-
-## 6. Owner action
-
-Drop missing `{class}-{gender}.png` into `apps/web/public/game/classes/`
-(see DEC-062).
-
-## 7. Marker
-
-`READY_FOR_OWNER_REVIEW`
+`READY_FOR_OWNER_REVIEW` — wrzuć mapy PNG z lokalnego frontend/public.

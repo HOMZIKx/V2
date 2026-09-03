@@ -38,7 +38,7 @@ export function MapsLaterPage() {
   return (
     <LaterModulePage
       title="Mapy i metiny"
-      summary="Sesja polowania (mapa, kanał, markery, respawn) to osobna domena od timerów Biologa, jazdy i ksiąg. Grafiki map trzeba skopiować z dobry-temat/frontend/public — lokalnie ich jeszcze nie ma."
+      summary="Dane bossów/metinów i timerów są w dumpie dobry-temat. Brakuje tylko PNG map z lokalnego dobry-temat/frontend/public (DEC-063) — bez nich stage mapy działa w trybie fallback."
     />
   );
 }

@@ -97,6 +97,7 @@ export function equipmentSlotForCategory(category: string): EquipmentSlotId | nu
     value.includes('talizman') ||
     value.includes('kamień duszy') ||
     value.includes('kamien duszy') ||
+    value.includes('kamienie duszy') ||
     value.includes('pozostałe')
   ) {
     return null;

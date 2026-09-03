@@ -2,39 +2,41 @@
 
 ## Status
 
-Web / DESTILED track: `DESTILED_EQ_CATALOG_AND_RENDERS` (D-061).
+Web / DESTILED track: `DESTILED_ASSETS_AND_CATALOG_TRUTH` (D-061).
 
-Branch `cursor/destiled-cursor-handoff-dfe5` (PR **#48**). Awaiting owner review / assets.
+Branch `cursor/destiled-cursor-handoff-dfe5` (PR **#48**).
 
 ## Active task
 
-- Task ID: `DESTILED-EQ-CATALOG-TRUTH-002`
+- Task ID: `DESTILED-WIKI-ICONS-AND-MAPS-003`
 - Branch: `cursor/destiled-cursor-handoff-dfe5`
 - Draft PR: **#48**
 - Base: `preview/destiled-web`
-- Focus: dobry-temat catalog truth (shared swords, wiki_upgrade bonuses, icons),
-  class×gender renders without inventing assets
-- Checklist: `docs/ai/DESTILED_MANUAL_TEST_CHECKLIST.md`
 
-## EQ truth (this pass)
+## Verified online (no guessing)
 
-- Shared one-handed swords (`Wojownik — Bronie jednoręczne`) → Warrior + Ninja +
-  Sura (Gameforge wiki); two-handed Warrior-only; Sura blades exclusive
-- Demo includes `Zatruty Miecz` on Sura as shared-sword proof
-- `wiki_upgrade` → `bonusesAtEnhancement` / `resolveItemBonuses` (no invented
-  truncated ladders); create/seed prefer catalog bonuses
-- Wiki icon map expanded from local `/game/items/wiki` + catalog `image_url`
-- Ulepszacze remain catalog-only (not EQ slots); `enhancerCatalogItems()` exposed
+- Shared swords: Gameforge wiki Sura/Ninja/Warrior weapons + pl-wiki item pages
+  (e.g. Miecz Bojowy → Wojownik, Ninja, Sura). Code matches.
 
-## Still blocked on owner assets (DEC-062)
+## Assets
 
-- Remaining class×gender PNGs from local `dobry-temat/frontend/public`:
-  warrior×♂♀, sura-female, ninja-male, shaman-female
-- Map PNGs / fuller item sprite pack
-- Ninja armor entries if PH wiki has them beyond current dump
+| Asset | Status |
+| --- | --- |
+| Item icons EQ | **220/220** from official pl-wiki Gameforge |
+| Ulepszacze icons | **157/157** from pl-wiki |
+| Metin/boss timer data | **in** `dobry-temat-respawn-catalog.json` |
+| Map PNGs | **missing** — DEC-063, copy from local dobry-temat |
+| Class×gender renders | 3/8 — DEC-062 |
+
+Script: `tools/scripts/sync-wiki-item-icons.py`
+
+## Owner actions
+
+1. Copy map PNGs → `apps/web/public/game/maps/` (DEC-063)
+2. Copy remaining class renders (DEC-062)
+3. Clear browser session / reload demo for new icons
 
 ## Open
 
-- Owner drops missing class renders → register in `character-profile.ts`
-- Owner review of PR #48
-- Real Discord OAuth / API / bot (out of slice)
+- Owner asset drops + PR #48 review
+- Real Discord OAuth / API (out of slice)

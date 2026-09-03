@@ -12,6 +12,7 @@ import {
   isItemCompatibleWithClass,
   parseEnhancementFromName,
   resolveItemBonuses,
+  resolveItemIconPath,
   stripEnhancementFromName,
 } from './item-catalog.js';
 
@@ -20,6 +21,7 @@ describe('item catalog class and enhancement rules', () => {
     expect(equipmentSlotForCategory('Ekwipunek — Ninja — Sztylety')).toBe('weapon');
     expect(equipmentSlotForCategory('Ekwipunek — Sura — Zbroje')).toBe('armor');
     expect(equipmentSlotForCategory('Ulepszacze')).toBeNull();
+    expect(equipmentSlotForCategory('Kamienie duszy — Broń')).toBeNull();
     expect(compatibleClassesForCategory('Ekwipunek — Ninja — Sztylety')).toEqual(['ninja']);
     expect(
       compatibleClassesForCategory('Ekwipunek — Sura — Bronie jednoręczne (tylko Sura)'),
@@ -76,5 +78,17 @@ describe('item catalog class and enhancement rules', () => {
     expect(equipmentCatalogItems().every((item) => equipmentSlotForCategory(item.category))).toBe(
       true,
     );
+  });
+
+  it('resolves Gameforge wiki icons for catalog EQ and shared swords', () => {
+    const poisoned = findGameItemByTitle('Zatruty Miecz');
+    expect(poisoned?.sourceImageUrl).toMatch(/^\/game\/items\//u);
+    expect(resolveItemIconPath('Zatruty Miecz +8')).not.toBe('/game/items/short-knife.svg');
+    expect(resolveItemIconPath('Bojowa Tarcza +9')).toMatch(/\/game\/items\//u);
+    expect(
+      equipmentCatalogItems().every(
+        (item) => item.sourceImageUrl !== null && item.sourceImageUrl.length > 0,
+      ),
+    ).toBe(true);
   });
 });
