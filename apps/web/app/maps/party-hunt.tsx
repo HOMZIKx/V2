@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 
@@ -118,12 +118,10 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   const changeMap = (next: string) => {
     setMapKey(next);
     setChannel(1);
-    setPlacing(false);
     setSelectedPinId(null);
   };
   const changeChannel = (next: number) => {
     setChannel(next);
-    setPlacing(false);
     setSelectedPinId(null);
   };
   const syncPartyToMyView = () => {
@@ -135,7 +133,6 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     if (!party) return;
     setMapKey(party.mapKey);
     setChannel(party.activeChannel);
-    setPlacing(false);
     setSelectedPinId(null);
   };
   const createParty = (visibility: PartyVisibility) => {
