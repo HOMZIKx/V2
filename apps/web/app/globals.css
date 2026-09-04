@@ -10521,3 +10521,110 @@ button:disabled {
   color: #eef3ff;
   font-size: 13px;
 }
+
+/* Mini okno (port RespTimer miniMode) */
+.respawn-page.is-mini {
+  width: min(520px, calc(100% - 24px));
+  padding: 16px 0 28px;
+}
+.respawn-page.is-mini .respawn-header {
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.respawn-page.is-mini .respawn-header h1 {
+  margin: 2px 0;
+  font-size: 22px;
+}
+.respawn-page.is-mini .respawn-mini-lead {
+  margin: 0;
+  color: #97a2b7;
+  font-size: 10px;
+}
+.respawn-page.is-mini .respawn-controls {
+  grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.4fr);
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+.respawn-page.is-mini .respawn-controls-stat {
+  display: none;
+}
+.respawn-page.is-mini .respawn-workspace,
+.respawn-page.is-mini .respawn-workspace.is-timers-only {
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.respawn-page.is-mini .respawn-list-header {
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.respawn-page.is-mini .respawn-list-header h2 {
+  font-size: 15px;
+}
+.respawn-page.is-mini .respawn-list-lead {
+  font-size: 10px;
+}
+.respawn-page.is-mini .respawn-records {
+  gap: 6px;
+}
+.respawn-page.is-mini .respawn-record {
+  gap: 8px;
+  padding: 8px 10px;
+}
+.respawn-page.is-mini .respawn-record-copy strong {
+  font-size: 12px;
+}
+.respawn-page.is-mini .respawn-record-time b {
+  font-size: 13px;
+}
+.respawn-page.is-mini .respawn-counting-block {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+.respawn-page.is-mini .respawn-counting-block h3 {
+  font-size: 13px;
+}
+.respawn-page.is-mini .respawn-late-banner {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 10px;
+}
+
+/* Compact countdown pills until ~90% toward minAt (old shouldMinimize). */
+.respawn-record.is-minimized {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 10px;
+  border-style: dashed;
+  opacity: 0.72;
+  cursor: pointer;
+}
+.respawn-record.is-minimized:hover {
+  opacity: 1;
+}
+.respawn-record.is-minimized .respawn-record-icon {
+  width: 22px;
+  height: 22px;
+}
+.respawn-record.is-minimized .respawn-entity-icon {
+  width: 16px;
+  height: 16px;
+}
+.respawn-record.is-minimized .respawn-record-copy strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-strong);
+}
+.respawn-record.is-minimized .respawn-record-time {
+  margin: 0;
+}
+.respawn-record.is-minimized .respawn-record-time b {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.28);
+}

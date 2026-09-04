@@ -23,12 +23,19 @@
 
 ### DEC-069 — Sprity boss/metin z gry (zamiast SVG placeholder)
 
-- **Status:** PARTIAL
-- **Kontekst:** Katalog respawn nie ma ścieżek obrazków. Wgrane są wyróżniające
-  SVG (kamień metina / medalion bossa) + wysoki kontrast UI Timerów/Party.
-- **Potrzeba od właściciela (opcjonalnie):** PNG/WebP sprite’y 1:1 z dobry-temat
-  `frontend/public` → `apps/web/public/game/respawn/` (nadpiszą SVG przy tej
-  samej nazwie pliku / aktualizacji `respawn-entity-icons.json`).
+- **Status:** PARTIAL → assets in (`from-dobry-temat/`)
+- **Zrobione (2026-09-04):** skopiowano sprite’y z dobry-temat do
+  `apps/web/public/game/respawn/from-dobry-temat/` (25 bossów + 33 metiny) i
+  podpięto je w `respawn-entity-icons.json` / `respawn-metin-name-icons.json`.
+- **Bez zgadywania — unmatched (zostają SVG / brak 1:1 art):**
+  - Bossy: `boss_1771352720784` (Ezoteryczny Skalniak, Świątynia Hwang),
+    `boss_1771353163748` (Komandor Ynghan, Atlantyda V2),
+    `general_setaou` (Generał Setaou, Grota Wygnańców),
+    `silna_lodowa_wiedzma` (Silna Lodowa Wiedźma, Grota Wygnańców).
+  - Metiny (nazwy/ID bez dedykowanego sprite’a): Metin Przeklętych (M3/Wężowe Pole),
+    Metin Łatwych/Średnich/Trudnych Małp, Specjalny Metin / Metin Wygnańców (Grota).
+- **Mini okno:** port UI z RespTimer (`destiled:timers-mini-mode:v1`) na `/timers`
+  — bez WebSocket sync w tym PR.
 
 ### DEC-067 — Party hunt: osobna funkcja od Timerów
 
