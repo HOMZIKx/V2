@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
@@ -15,7 +15,6 @@ import {
   formatCharacterClassLine,
   getApprovedCharacterRender,
   validateCharacterProfile,
-  type CharacterAppearanceLook,
   type CharacterClass,
   type CharacterGender,
   type CharacterProfileDraft,
@@ -355,7 +354,7 @@ export function CharacterProfileForm({
                         checked={selected}
                         name="appearanceLook"
                         onChange={() =>
-                          updateDraft('appearanceLook', look.id as CharacterAppearanceLook)
+                          updateDraft('appearanceLook', look.id)
                         }
                         type="radio"
                         value={look.id}
