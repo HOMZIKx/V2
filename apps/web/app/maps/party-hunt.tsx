@@ -47,8 +47,6 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   const [party, setParty] = useState<MapParty | null>(null);
   const [pins, setPins] = useState<readonly PartyScoutPin[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [placing, setPlacing] = useState(false);
-  const [pinLabel, setPinLabel] = useState('Metin');
   const [requestName, setRequestName] = useState('');
   const [notice, setNotice] = useState('');
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
@@ -169,7 +167,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setNotice(`${name} czeka na decyzję lidera.`);
   };
   const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
-    if (!placing || !party) return;
+    if (!party) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const location: RespawnLocation = {
       x: Math.max(
@@ -189,13 +187,12 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       location,
       placedAt: Date.now(),
       placedBy: initialSnapshot.viewerName,
-      label: pinLabel.trim() || 'Metin',
+      label: 'Metin',
       kind: 'metin',
     };
     setPins((current) => placeScoutPin(current, pin));
-    setPlacing(false);
     setSelectedPinId(pin.id);
-    setNotice(`Pinezka „${pin.label}” · znika po 10 min · widoczna dla party na tej mapie/CH.`);
+    setNotice('Pinezka · ~10 min · widoczna dla party na tej mapie/CH.');
   };
   const dismissPin = (pinId: string) => {
     setPins((current) => dismissScoutPin(current, pinId));
@@ -288,36 +285,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 </span>
                 <h2>Mapa party / skaut</h2>
                 <p className="respawn-list-lead">
-                  Pinezka = „tu jest metin” (~10 min). To nie timer respawnu i nie lokalizacja
-                  zbicia z /timers.
+                  Klik mapy = pinezka (~10 min). To nie timer respawnu z /timers.
                 </p>
               </div>
               {party ? (
                 <div className="respawn-filters">
-                  <label className="catalog-search">
-                    <span className="sr-only">Etykieta pinezki</span>
-                    <input
-                      onChange={(event) => setPinLabel(event.target.value)}
-                      placeholder="Etykieta pinezki"
-                      value={pinLabel}
-                    />
-                  </label>
-                  <button
-                    aria-pressed={placing}
-                    className={placing ? 'is-active' : ''}
-                    onClick={() => {
-                      setPlacing((current) => !current);
-                      setSelectedPinId(null);
-                      setNotice(
-                        placing
-                          ? ''
-                          : 'Kliknij mapę — pinezka będzie widoczna dla party przez ~10 min.',
-                      );
-                    }}
-                    type="button"
-                  >
-                    {placing ? 'Anuluj pinezkę' : 'Postaw pinezkę'}
-                  </button>
                   <button onClick={markSessionKill} type="button">
                     Zbite w sesji (+1)
                   </button>
@@ -327,11 +299,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
 
             <div className="respawn-map-stage-wrap">
               <div
-                aria-label={placing ? 'Kliknij pozycję pinezki skauta' : 'Mapa party'}
-                className={`respawn-map-stage ${placing ? 'is-placing' : ''}`}
+                aria-label={party ? 'Mapa party — klik stawia pinezkę' : 'Mapa party'}
+                className={`respawn-map-stage${party ? ' is-placing' : ''}`}
                 onClick={placeOnMap}
-                role={placing ? 'button' : undefined}
-                tabIndex={placing ? 0 : undefined}
+                role={party ? 'button' : undefined}
+                tabIndex={party ? 0 : undefined}
               >
                 {canShowMapImage ? (
                   <img
@@ -364,51 +336,40 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                     CH{channel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min
                   </span>
                 </div>
-                {placing ? (
-                  <div className="respawn-placement-callout">
-                    <Icon name="plus" size={16} /> Kliknij pozycję skauta: {pinLabel || 'Metin'}
-                  </div>
-                ) : null}
                 {visiblePins.map((pin) => {
                   const age = scoutPinAgeMinutes(pin, now);
                   const remaining = Math.ceil(scoutPinRemainingMs(pin, now) / 60_000);
                   return (
                     <button
-                      className={`respawn-map-marker is-metin${
+                      aria-label={`Pinezka · ${formatAge(age)} · znika za ~${remaining} min`}
+                      className={`respawn-map-marker is-scout is-metin${
                         selectedPinId === pin.id ? ' is-selected' : ''
                       }`}
                       key={pin.id}
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedPinId(pin.id);
-                        setNotice(`${pin.label}: ${formatAge(age)} · znika za ~${remaining} min`);
+                        setNotice(`Pinezka: ${formatAge(age)} · znika za ~${remaining} min`);
                       }}
                       style={{ left: `${pin.location.x}%`, top: `${pin.location.y}%` }}
-                      title={`${pin.label} · ${formatAge(age)} · ${pin.placedBy}`}
+                      title={`${formatAge(age)} · ${pin.placedBy}`}
                       type="button"
                     >
-                      <Icon name="map" size={15} />
-                      <span>
-                        {pin.label}
-                        <em> · {formatAge(age)}</em>
-                      </span>
+                      <Icon name="map" size={10} />
                     </button>
                   );
                 })}
               </div>
               <p className="respawn-map-help">
                 {!party
-                  ? 'Najpierw utwórz party obok — potem wspólna mapa i pinezki skauta.'
-                  : placing
-                    ? 'Kliknij atlas: pinezka „tu jest metin” (ok. 10 min).'
-                    : 'Najechanie / klik pinezki pokazuje wiek. Bijący odklika albo oznacza zbicie w sesji.'}
+                  ? 'Najpierw utwórz party obok — potem klik mapy stawia pinezkę.'
+                  : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}
               </p>
               {selectedPin ? (
                 <div className="respawn-party-feed">
                   <span>Pinezka</span>
                   <p>
-                    <b>{selectedPin.label}</b> · {formatAge(scoutPinAgeMinutes(selectedPin, now))} ·{' '}
-                    {selectedPin.placedBy}
+                    {formatAge(scoutPinAgeMinutes(selectedPin, now))} · {selectedPin.placedBy}
                   </p>
                   <button onClick={() => dismissPin(selectedPin.id)} type="button">
                     Odkliknij pinezkę

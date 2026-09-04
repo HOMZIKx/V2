@@ -10401,6 +10401,25 @@ button:disabled {
   font-size: 11px;
   font-weight: 650;
 }
+.respawn-page .respawn-map-marker.is-scout {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(120, 190, 255, 0.95);
+  background: rgba(12, 28, 52, 0.95);
+  box-shadow: 0 0 0 2px rgba(8, 14, 24, 0.55);
+  color: #d8ecff;
+}
+.respawn-page .respawn-map-marker.is-scout .icon {
+  width: 10px;
+  height: 10px;
+}
+.respawn-page .respawn-map-marker.is-scout.is-selected {
+  border-color: rgba(255, 196, 120, 0.95);
+  box-shadow: 0 0 0 2px rgba(255, 180, 80, 0.28);
+}
 .respawn-page .respawn-map-marker span {
   color: #f2f6ff !important;
   font-size: 11px !important;
