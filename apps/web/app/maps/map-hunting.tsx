@@ -30,6 +30,20 @@ const filters: ReadonlyArray<{ readonly id: Filter; readonly label: string }> = 
   { id: 'metin', label: 'Metiny' },
   { id: 'active', label: 'Okno / mapa' },
 ];
+const MINI_MODE_STORAGE_KEY = 'destiled:timers-mini-mode:v1';
+
+/** Mirror old RespTimer shouldMinimize: countdown pills stay compact until >=90% toward minAt. */
+function shouldMinimizeCountdown(record: RespawnRecord, now: number): boolean {
+  const display = getRespawnDisplay(record, now);
+  if (display.phase !== 'countdown' || display.minAt === null || record.confirmedAt === null) {
+    return false;
+  }
+  const span = display.minAt - record.confirmedAt;
+  if (span <= 0) return false;
+  const elapsedFraction = (now - record.confirmedAt) / span;
+  return elapsedFraction < 0.9;
+}
+
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
 const formatWindow = (record: RespawnRecord) => {
   const span = respawnWindowMinutes(record.entity);
@@ -73,6 +87,8 @@ export function MapHunting({
   const [modalDraftLocation, setModalDraftLocation] = useState<RespawnLocation | null>(null);
   const [notice, setNotice] = useState('');
   const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
+  const [miniMode, setMiniMode] = useState(false);
+  const [expandedMiniKeys, setExpandedMiniKeys] = useState<readonly string[]>([]);
   const scope = scopeKey(map?.key ?? '', channel);
   const records = store[scope] ?? (map ? buildMapRespawnRecords(map, channel) : []);
 
@@ -85,8 +101,23 @@ export function MapHunting({
     }
   }, []);
   useEffect(() => {
+    try {
+      setMiniMode(window.localStorage.getItem(MINI_MODE_STORAGE_KEY) === '1');
+    } catch {
+      /* default false */
+    }
+  }, []);
+  useEffect(() => {
     window.localStorage.setItem('destiled:map-hunting-state:v2', JSON.stringify(store));
   }, [store]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(MINI_MODE_STORAGE_KEY, miniMode ? '1' : '0');
+    } catch {
+      /* ignore quota */
+    }
+    if (miniMode) setView('timers');
+  }, [miniMode]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
@@ -214,12 +245,26 @@ export function MapHunting({
     const canConfirm = canConfirmRespawn(record, now);
     const late = isWindowLatePhase(record, now);
     const inWindow = display.phase === 'window';
+    const minimized =
+      countingDown &&
+      shouldMinimizeCountdown(record, now) &&
+      !expandedMiniKeys.includes(record.key);
     return (
       <article
         className={`respawn-record is-${display.phase}${countingDown ? ' is-counting' : ''}${
           inWindow ? ' is-window-active' : ''
-        }${late ? ' is-late-window' : ''}`}
+        }${late ? ' is-late-window' : ''}${minimized ? ' is-minimized' : ''}`}
         key={record.key}
+        onClick={
+          minimized
+            ? () =>
+                setExpandedMiniKeys((current) =>
+                  current.includes(record.key) ? current : [...current, record.key],
+                )
+            : undefined
+        }
+        role={minimized ? 'button' : undefined}
+        tabIndex={minimized ? 0 : undefined}
       >
         <span className="respawn-record-icon" style={{ color: record.entity.color ?? undefined }}>
           {record.entity.iconPath ? (
@@ -230,72 +275,98 @@ export function MapHunting({
         </span>
         <div className="respawn-record-copy">
           <strong>{record.entity.name}</strong>
-          <span>
-            <em className="respawn-window-chip">{formatWindow(record)}</em>
-            {record.kind === 'boss' ? 'Boss' : 'Metin'} · CH{record.channel}
-            {record.location
-              ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
-              : ' · bez pinezki'}
-            {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
-            {late ? ' · ostatnie 20% okna' : inWindow ? ' · w oknie' : ''}
-          </span>
+          {!minimized ? (
+            <span>
+              <em className="respawn-window-chip">{formatWindow(record)}</em>
+              {record.kind === 'boss' ? 'Boss' : 'Metin'} · CH{record.channel}
+              {record.location
+                ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
+                : ' · bez pinezki'}
+              {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
+              {late ? ' · ostatnie 20% okna' : inWindow ? ' · w oknie' : ''}
+            </span>
+          ) : null}
         </div>
         <div className="respawn-record-time">
           <b>{display.clock}</b>
-          <span>
-            {countingDown
-              ? `Do okna · ${display.label}`
-              : late
-                ? `Końcówka okna · ${display.clock}`
-                : display.label}
-          </span>
+          {!minimized ? (
+            <span>
+              {countingDown
+                ? `Do okna · ${display.label}`
+                : late
+                  ? `Końcówka okna · ${display.clock}`
+                  : display.label}
+            </span>
+          ) : null}
         </div>
-        <div className="respawn-record-actions">
-          <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
-            {canConfirm ? 'Zbite' : 'Odliczanie'}
-          </button>
-        </div>
+        {!minimized ? (
+          <div className="respawn-record-actions">
+            <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
+              {canConfirm ? 'Zbite' : 'Odliczanie'}
+            </button>
+          </div>
+        ) : null}
       </article>
     );
   };
 
   return (
     <AppShell activeSection="timers" viewerName={initialSnapshot.viewerName}>
-      <main className="respawn-page" id="main-content">
+      <main className={`respawn-page${miniMode ? ' is-mini' : ''}`} id="main-content">
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Timery</h1>
-            <p>
-              Osobny system od Party i EQ: mapa + respawn z katalogu. <b>Zbite</b> otwiera mini-mapę
-              pinezki. Zbity cel zjeżdża na dół z odliczaniem. Gdy okno wchodzi w ostatnie 20% na
-              innym kanale — ten CH się podświetla.
-            </p>
+            {!miniMode ? (
+              <p>
+                Osobny system od Party i EQ: mapa + respawn z katalogu. <b>Zbite</b> otwiera
+                mini-mapę pinezki. Zbity cel zjeżdża na dół z odliczaniem. Gdy okno wchodzi w
+                ostatnie 20% na innym kanale — ten CH się podświetla.
+              </p>
+            ) : (
+              <p className="respawn-mini-lead">
+                {map?.key} · CH{channel} · mini okno
+              </p>
+            )}
           </div>
           <div className="respawn-header-actions">
-            <div role="tablist" aria-label="Widok timerów">
-              <button
-                aria-selected={view === 'timers'}
-                className={view === 'timers' ? 'is-active' : ''}
-                onClick={() => setView('timers')}
-                role="tab"
-                type="button"
-              >
-                Timery
-              </button>
-              <button
-                aria-selected={view === 'map'}
-                className={view === 'map' ? 'is-active' : ''}
-                onClick={() => setView('map')}
-                role="tab"
-                type="button"
-              >
-                Atlas mapy
-              </button>
-            </div>
-            <a className="respawn-party-toggle" href="/maps">
-              <span /> Party (osobny system)
-            </a>
+            {!miniMode ? (
+              <div role="tablist" aria-label="Widok timerów">
+                <button
+                  aria-selected={view === 'timers'}
+                  className={view === 'timers' ? 'is-active' : ''}
+                  onClick={() => setView('timers')}
+                  role="tab"
+                  type="button"
+                >
+                  Timery
+                </button>
+                <button
+                  aria-selected={view === 'map'}
+                  className={view === 'map' ? 'is-active' : ''}
+                  onClick={() => setView('map')}
+                  role="tab"
+                  type="button"
+                >
+                  Atlas mapy
+                </button>
+              </div>
+            ) : null}
+            <button
+              aria-pressed={miniMode}
+              className={miniMode ? 'is-active' : ''}
+              data-testid="mini-mode-btn"
+              onClick={() => setMiniMode((current) => !current)}
+              title={miniMode ? 'Widok pełny' : 'Mini okno'}
+              type="button"
+            >
+              {miniMode ? 'Widok pełny' : 'Mini okno'}
+            </button>
+            {!miniMode ? (
+              <a className="respawn-party-toggle" href="/maps">
+                <span /> Party (osobny system)
+              </a>
+            ) : null}
           </div>
         </header>
         <section className="respawn-controls panel">
@@ -360,10 +431,15 @@ export function MapHunting({
                   {map?.key} · CH{channel}
                 </span>
                 <h2>{view === 'map' ? 'Atlas i pinezki' : 'Lista timerów'}</h2>
-                {view === 'timers' ? (
+                {view === 'timers' && !miniMode ? (
                   <p className="respawn-list-lead">
                     {available.length} dostępnych · {counting.length} w odliczaniu · pinezka =
                     ostatnie zbicie (nie skaut Party)
+                  </p>
+                ) : null}
+                {view === 'timers' && miniMode ? (
+                  <p className="respawn-list-lead">
+                    {available.length} dostępnych · {counting.length} odliczań
                   </p>
                 ) : null}
               </div>
@@ -464,11 +540,13 @@ export function MapHunting({
                 <div className="respawn-counting-block">
                   <header>
                     <span className="section-kicker">Po zbiciu</span>
-                    <h3>Odliczanie — cel nie znika</h3>
-                    <p>
-                      Zbite cele zjeżdżają tu z zegarem do okna respawnu. Ponowne <b>Zbite</b>{' '}
-                      dopiero gdy otworzy się okno.
-                    </p>
+                    <h3>{miniMode ? 'Odliczanie' : 'Odliczanie — cel nie znika'}</h3>
+                    {!miniMode ? (
+                      <p>
+                        Zbite cele zjeżdżają tu z zegarem do okna respawnu. Ponowne <b>Zbite</b>{' '}
+                        dopiero gdy otworzy się okno.
+                      </p>
+                    ) : null}
                   </header>
                   {counting.map((record) => renderRecord(record, true))}
                 </div>
@@ -478,38 +556,42 @@ export function MapHunting({
               ) : null}
             </div>
           </div>
-          <aside className="panel respawn-timers-hint">
-            <header>
-              <span className="section-kicker">Cykl</span>
-              <h2>Zbite → mini-mapa → timer ↓</h2>
-              <p>
-                W grze zbijaasz cel, tu klikasz <b>Zbite</b> — otwiera się mini-mapa do pinezki
-                (możesz pominąć). Cel zjeżdża na dół z odliczaniem. Party i pinezki skauta są osobno
-                na <a href="/maps">/maps</a>.
-              </p>
-            </header>
-            {view !== 'map' ? (
-              <button
-                className="respawn-party-toggle is-on"
-                onClick={() => setView('map')}
-                type="button"
-              >
-                <span /> Otwórz pełny atlas
-              </button>
-            ) : (
-              <p className="respawn-list-lead">
-                Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez Party.
-              </p>
-            )}
-          </aside>
+          {!miniMode ? (
+            <aside className="panel respawn-timers-hint">
+              <header>
+                <span className="section-kicker">Cykl</span>
+                <h2>Zbite → mini-mapa → timer ↓</h2>
+                <p>
+                  W grze zbijaasz cel, tu klikasz <b>Zbite</b> — otwiera się mini-mapa do pinezki
+                  (możesz pominąć). Cel zjeżdża na dół z odliczaniem. Party i pinezki skauta są
+                  osobno na <a href="/maps">/maps</a>.
+                </p>
+              </header>
+              {view !== 'map' ? (
+                <button
+                  className="respawn-party-toggle is-on"
+                  onClick={() => setView('map')}
+                  type="button"
+                >
+                  <span /> Otwórz pełny atlas
+                </button>
+              ) : (
+                <p className="respawn-list-lead">
+                  Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez Party.
+                </p>
+              )}
+            </aside>
+          ) : null}
         </section>
         <p aria-live="polite" className="respawn-notice">
           {notice}
         </p>
-        <p className="respawn-data-note">
-          Timery metinów/bossów ≠ Party ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
-          Dane lokalnie w przeglądarce.
-        </p>
+        {!miniMode ? (
+          <p className="respawn-data-note">
+            Timery metinów/bossów ≠ Party ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
+            Dane lokalnie w przeglądarce.
+          </p>
+        ) : null}
 
         {modalRecord ? (
           <div
