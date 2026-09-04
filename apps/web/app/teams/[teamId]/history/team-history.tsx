@@ -7,6 +7,7 @@ import { usePlayerStore } from '../../../../src/player-store-react';
 import type { TeamHistoryResource } from '../../../../src/team-history';
 import { AppShell, Icon } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
+import { WorkspaceSectionNav } from '../workspace-section-nav';
 
 export function TeamHistory() {
   const params = useParams<{ teamId: string }>();
@@ -62,6 +63,8 @@ export function TeamHistory() {
           <Icon name="chevron" size={13} />
           <strong>Historia</strong>
         </nav>
+
+        <WorkspaceSectionNav active="history" workspaceId={workspace.id} />
 
         <header>
           <span className="eyebrow">Historia przestrzeni</span>

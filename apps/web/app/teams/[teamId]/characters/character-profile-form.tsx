@@ -4,13 +4,22 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import {
+  characterAppearanceLooks,
+  characterAppearanceLabel,
   characterClassLabels,
   characterGenderLabels,
+  characterSkillPathLabels,
+  characterSkillPathsByClass,
+  DEFAULT_APPEARANCE_LOOK,
+  defaultSkillPathForClass,
+  formatCharacterClassLine,
   getApprovedCharacterRender,
   validateCharacterProfile,
+  type CharacterAppearanceLook,
   type CharacterClass,
   type CharacterGender,
   type CharacterProfileDraft,
+  type CharacterSkillPath,
 } from '../../../../src/character-profile';
 import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell, Icon } from '../../../app-shell';
@@ -35,6 +44,8 @@ export function CharacterProfileForm({
   const [draft, setDraft] = useState<CharacterProfileDraft>({
     name: '',
     characterClass: 'sura',
+    skillPath: 'sura_weapon',
+    appearanceLook: DEFAULT_APPEARANCE_LOOK,
     gender: 'male',
     level: null,
     responsibleMemberId: 'mateusz',
@@ -55,6 +66,8 @@ export function CharacterProfileForm({
       setDraft({
         name: existing.name,
         characterClass: existing.characterClass,
+        skillPath: existing.skillPath ?? defaultSkillPathForClass(existing.characterClass),
+        appearanceLook: existing.appearanceLook ?? DEFAULT_APPEARANCE_LOOK,
         gender: existing.gender,
         level: existing.level,
         responsibleMemberId: existing.responsibleMemberId,
@@ -65,6 +78,8 @@ export function CharacterProfileForm({
       setDraft({
         name: '',
         characterClass: 'sura',
+        skillPath: 'sura_weapon',
+        appearanceLook: DEFAULT_APPEARANCE_LOOK,
         gender: 'male',
         level: null,
         responsibleMemberId: state.viewer?.id ?? 'mateusz',
@@ -76,7 +91,12 @@ export function CharacterProfileForm({
   }, [hydrated, state.authStatus, state.viewer?.id, workspace, existing, mode, draftReady]);
 
   const validation = useMemo(() => validateCharacterProfile(draft), [draft]);
-  const renderPath = getApprovedCharacterRender(draft.characterClass, draft.gender);
+  const renderPath = getApprovedCharacterRender(
+    draft.characterClass,
+    draft.gender,
+    draft.appearanceLook,
+  );
+  const skillPathOptions = characterSkillPathsByClass[draft.characterClass];
 
   if (!hydrated) {
     return (
@@ -92,7 +112,7 @@ export function CharacterProfileForm({
 
   if (!workspace) {
     return (
-      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+      <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
         <main className="character-profile-page" id="main-content">
           <h1>Brak przestrzeni</h1>
           <a href="/">Wróć</a>
@@ -103,7 +123,7 @@ export function CharacterProfileForm({
 
   if (mode === 'edit' && !existing) {
     return (
-      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+      <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
         <main className="character-profile-page" id="main-content">
           <h1>Nie znaleziono postaci</h1>
           <a href={`/teams/${teamId}`}>Wróć do przestrzeni</a>
@@ -132,6 +152,14 @@ export function CharacterProfileForm({
     value: CharacterProfileDraft[Key],
   ) => setDraft((current) => ({ ...current, [key]: value }));
 
+  const handleClassChange = (nextClass: CharacterClass) => {
+    setDraft((current) => ({
+      ...current,
+      characterClass: nextClass,
+      skillPath: defaultSkillPathForClass(nextClass),
+    }));
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setAttempted(true);
@@ -144,6 +172,8 @@ export function CharacterProfileForm({
       const id = createCharacter(workspace.id, {
         name: draft.name,
         characterClass: draft.characterClass,
+        skillPath: draft.skillPath,
+        appearanceLook: draft.appearanceLook,
         gender: draft.gender,
         level: draft.level,
         responsibleMemberId: draft.responsibleMemberId,
@@ -161,6 +191,8 @@ export function CharacterProfileForm({
     updateCharacter(workspace.id, characterId, {
       name: draft.name,
       characterClass: draft.characterClass,
+      skillPath: draft.skillPath,
+      appearanceLook: draft.appearanceLook,
       gender: draft.gender,
       level: draft.level,
       responsibleMemberId: draft.responsibleMemberId,
@@ -172,7 +204,7 @@ export function CharacterProfileForm({
 
   if (submittedId) {
     return (
-      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+      <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
         <main className="character-profile-page" id="main-content">
           <section className="character-save-result">
             <span className="save-result-icon">
@@ -188,7 +220,10 @@ export function CharacterProfileForm({
                 : `Utworzono profil oraz pusty zestaw „${draft.startingSetName.trim() || 'Główny'}”.`}
             </p>
             <div className="save-result-summary">
-              <span>{characterClassLabels[draft.characterClass]}</span>
+              <span>
+                {formatCharacterClassLine(draft.characterClass, draft.skillPath, draft.gender)}
+              </span>
+              <span>{characterAppearanceLabel(draft.appearanceLook)}</span>
               <span>{draft.level ? `Poziom ${draft.level}` : 'Poziom nieustalony'}</span>
               <span>Prowadzi: {responsibleMember}</span>
             </div>
@@ -206,12 +241,14 @@ export function CharacterProfileForm({
   }
 
   return (
-    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+    <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
       <main className="character-profile-page" id="main-content">
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
           <a href={`/teams/${workspace.id}`}>{workspace.name}</a>
+          <Icon name="chevron" size={13} />
+          <a href="/characters">Postacie</a>
           <Icon name="chevron" size={13} />
           <strong>{mode === 'edit' ? 'Edytuj postać' : 'Dodaj postać'}</strong>
         </nav>
@@ -238,9 +275,7 @@ export function CharacterProfileForm({
               <label className="field">
                 <span>Klasa</span>
                 <select
-                  onChange={(event) =>
-                    updateDraft('characterClass', event.target.value as CharacterClass)
-                  }
+                  onChange={(event) => handleClassChange(event.target.value as CharacterClass)}
                   value={draft.characterClass}
                 >
                   {Object.entries(characterClassLabels).map(([value, label]) => (
@@ -250,6 +285,28 @@ export function CharacterProfileForm({
                   ))}
                 </select>
               </label>
+              <label className="field">
+                <span>Ścieżka (skill)</span>
+                <select
+                  aria-invalid={attempted && Boolean(validation.errors.skillPath)}
+                  onChange={(event) =>
+                    updateDraft('skillPath', event.target.value as CharacterSkillPath)
+                  }
+                  value={draft.skillPath}
+                >
+                  {skillPathOptions.map((path) => (
+                    <option key={path} value={path}>
+                      {characterSkillPathLabels[path]}
+                    </option>
+                  ))}
+                </select>
+                {attempted && validation.errors.skillPath ? (
+                  <small>{validation.errors.skillPath}</small>
+                ) : null}
+              </label>
+            </div>
+
+            <div className="field-row">
               <label className="field">
                 <span>Płeć / wariant</span>
                 <select
@@ -263,9 +320,6 @@ export function CharacterProfileForm({
                   ))}
                 </select>
               </label>
-            </div>
-
-            <div className="field-row">
               <label className="field">
                 <span>Poziom opcjonalnie</span>
                 <input
@@ -280,20 +334,58 @@ export function CharacterProfileForm({
                   <small>{validation.errors.level}</small>
                 ) : null}
               </label>
-              <label className="field">
-                <span>Osoba prowadząca</span>
-                <select
-                  onChange={(event) => updateDraft('responsibleMemberId', event.target.value)}
-                  value={draft.responsibleMemberId}
-                >
-                  {members.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
+
+            <fieldset className="appearance-look-picker">
+              <legend>Wygląd kostiumu</legend>
+              <div className="appearance-look-grid" role="radiogroup" aria-label="Wygląd kostiumu">
+                {characterAppearanceLooks.map((look) => {
+                  const thumb = getApprovedCharacterRender(
+                    draft.characterClass,
+                    draft.gender,
+                    look.id,
+                  );
+                  const selected = draft.appearanceLook === look.id;
+                  return (
+                    <label
+                      className={selected ? 'appearance-look-option is-selected' : 'appearance-look-option'}
+                      key={look.id}
+                    >
+                      <input
+                        checked={selected}
+                        name="appearanceLook"
+                        onChange={() =>
+                          updateDraft('appearanceLook', look.id as CharacterAppearanceLook)
+                        }
+                        type="radio"
+                        value={look.id}
+                      />
+                      <span className="appearance-look-thumb">
+                        {thumb ? <img alt="" src={thumb} /> : <span className="missing-render">—</span>}
+                      </span>
+                      <span className="appearance-look-label">{look.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {attempted && validation.errors.appearanceLook ? (
+                <small>{validation.errors.appearanceLook}</small>
+              ) : null}
+            </fieldset>
+
+            <label className="field">
+              <span>Osoba prowadząca</span>
+              <select
+                onChange={(event) => updateDraft('responsibleMemberId', event.target.value)}
+                value={draft.responsibleMemberId}
+              >
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             {mode === 'create' ? (
               <label className="field">
@@ -330,8 +422,9 @@ export function CharacterProfileForm({
             </div>
             <h2>{draft.name.trim() || 'Nowa postać'}</h2>
             <p>
-              {characterClassLabels[draft.characterClass]} · {characterGenderLabels[draft.gender]}
+              {formatCharacterClassLine(draft.characterClass, draft.skillPath, draft.gender)}
             </p>
+            <p>{characterAppearanceLabel(draft.appearanceLook)}</p>
           </aside>
         </section>
 

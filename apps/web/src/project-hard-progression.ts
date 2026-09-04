@@ -12,11 +12,10 @@ export type ProgressionKind =
   | 'leadership'
   | 'polymorph'
   | 'mining'
-  | 'combo'
   | 'horse'
   | 'biologist';
 
-export type ProgressionReset = 'midnight' | 'hours_23';
+export type ProgressionReset = 'midnight' | 'hours_12' | 'hours_23';
 
 export interface ProgressionCycleDef {
   readonly kind: ProgressionKind;
@@ -243,12 +242,12 @@ export const projectHardSkillBookRules = {
 };
 
 /**
- * Soul Stones (Kamienie duszy / duchowe) — mastery toward Perfect (P).
- * Same midnight reading cadence as Skill Books on Project Hard.
+ * Soul Stones (Kamienie duchowe) — mastery toward Perfect (P).
+ * Owner rule (DESTILED): next read is available 12 h after reading.
  */
 export const projectHardSoulStoneRules = {
   readableAnytime: true,
-  dailyReset: 'midnight' as const,
+  cooldownHours: 12,
   purpose: 'mistrzostwo umiejętności do stopnia P (pasywne / Perfect)',
   sources: 'metiny, bossy, potwory, skrzynie',
 } as const;
@@ -260,14 +259,11 @@ export const projectHardSoulStoneRules = {
 export const projectHardExtraReadingRules = {
   dailyReset: 'midnight' as const,
   sources: 'wyprawy, bossy, skrzynie, drop alternatywny z potworów',
-  families: ['leadership', 'polymorph', 'mining', 'combo'] as const,
+  families: ['leadership', 'polymorph', 'mining'] as const,
 } as const;
 
 /** Horse upgrades unlock at character level 20 (Stableman). */
 export const projectHardHorseUnlockLevel = 20;
-
-/** First combo book can be read from character level 30 (classic Metin2). */
-export const projectHardComboUnlockLevel = 30;
 
 /** Biologist quests start at level 30. */
 export const projectHardBiologistUnlockLevel = 30;
@@ -291,15 +287,14 @@ export const projectHardProgressionCycles: readonly ProgressionCycleDef[] = [
   },
   {
     kind: 'soul_stone',
-    label: 'Kamień duszy',
+    label: 'Kamień Duchowy',
     iconPath: '/game/progression/soul-stone.png',
-    reset: 'midnight',
+    reset: 'hours_12',
     alwaysTracked: true,
     unlockLevel: null,
-    detailReady:
-      'Czytanie kamieni duchowych do P (umiejętności pasywne / Perfect) · limit resetuje się o północy',
+    detailReady: `Czytanie kamieni duchowych do P · cooldown ${projectHardSoulStoneRules.cooldownHours} h od przeczytania`,
     remainingReady: 'gotowe do czytania',
-    doneHint: 'Kamień duszy: limit czytań (mistrzostwo P) resetuje się o północy.',
+    doneHint: `Kamień Duchowy: kolejne czytanie po ${projectHardSoulStoneRules.cooldownHours} h.`,
   },
   {
     kind: 'leadership',
@@ -335,18 +330,6 @@ export const projectHardProgressionCycles: readonly ProgressionCycleDef[] = [
     detailReady: 'Przewodnik do górnictwa · kopanie rud · limit czytań resetuje się o północy',
     remainingReady: 'gotowe do czytania',
     doneHint: 'Górnictwo: limit czytań resetuje się o północy.',
-  },
-  {
-    kind: 'combo',
-    label: 'Combo',
-    iconPath: '/game/progression/combo.png',
-    reset: 'midnight',
-    alwaysTracked: false,
-    unlockLevel: projectHardComboUnlockLevel,
-    detailReady:
-      'Sztuka Combo / zaaw. / mistrz. · dodatkowe ciosy · limit czytań resetuje się o północy',
-    remainingReady: 'gotowe do czytania',
-    doneHint: 'Combo: limit czytań resetuje się o północy.',
   },
   {
     kind: 'horse',
@@ -494,7 +477,7 @@ export function inferProgressionKind(label: string): ProgressionKind | null {
   ) {
     return 'mining';
   }
-  if (normalized.includes('combo') || normalized.includes('kombinac')) return 'combo';
+  if (normalized.includes('combo') || normalized.includes('kombinac')) return null;
   if (normalized.includes('księg') || normalized.includes('skill')) return 'skill_book';
   return null;
 }
@@ -520,6 +503,14 @@ export function restartAfterDone(
       detailHint: progressionCycleByKind('horse').doneHint,
     };
   }
+  if (kind === 'soul_stone') {
+    const hours = projectHardSoulStoneRules.cooldownHours;
+    return {
+      readyAtIso: new Date(now.getTime() + hours * 3_600_000).toISOString(),
+      remainingLabel: `${hours} h od przeczytania`,
+      detailHint: progressionCycleByKind('soul_stone').doneHint,
+    };
+  }
   if (kind && isMidnightProgressionKind(kind)) {
     return {
       readyAtIso: nextMidnightIso(now),
@@ -532,4 +523,51 @@ export function restartAfterDone(
     remainingLabel: '60 min',
     detailHint: 'Kolejny cykl za 60 minut.',
   };
+}
+
+/** Estimated full cycle length for progress bars (mock / local preview). */
+export function progressionCycleDurationMs(
+  kind: ProgressionKind | null | undefined,
+  now = new Date(),
+): number {
+  if (kind === 'horse') {
+    return projectHardHorseRules.advancementCooldownHours * 3_600_000;
+  }
+  if (kind === 'soul_stone') {
+    return projectHardSoulStoneRules.cooldownHours * 3_600_000;
+  }
+  if (kind && isMidnightProgressionKind(kind)) {
+    const midnight = new Date(nextMidnightIso(now)).getTime();
+    return Math.max(60_000, midnight - now.getTime());
+  }
+  return 60 * 60_000;
+}
+
+/**
+ * Visible progress for a PH timer card.
+ * Ready = full. Running fills toward readyAtIso (never shows an empty track).
+ */
+export function timerProgressPercent(
+  timer: {
+    readonly status: string;
+    readonly progressPercent: number;
+    readonly readyAtIso: string | null;
+    readonly kind?: ProgressionKind;
+  },
+  now = new Date(),
+): number {
+  if (timer.status === 'ready') return 100;
+  const endMs = timer.readyAtIso ? Date.parse(timer.readyAtIso) : Number.NaN;
+  if (Number.isFinite(endMs)) {
+    const durationMs = progressionCycleDurationMs(timer.kind, now);
+    const startMs = endMs - durationMs;
+    const nowMs = now.getTime();
+    if (nowMs >= endMs) return 99;
+    if (nowMs <= startMs) return 4;
+    const ratio = (nowMs - startMs) / durationMs;
+    return Math.max(4, Math.min(99, Math.round(ratio * 100)));
+  }
+  const stored = Math.round(timer.progressPercent);
+  if (!Number.isFinite(stored) || stored <= 0) return 4;
+  return Math.max(4, Math.min(99, stored));
 }

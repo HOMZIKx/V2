@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  archiveCharacter,
   completeDiscordAuth,
   createCharacter,
   createEquipmentSet,
@@ -34,6 +35,8 @@ describe('player store first-slice', () => {
     state = createCharacter(state, workspaceId, {
       name: 'NowaSura',
       characterClass: 'sura',
+      skillPath: 'sura_weapon',
+      appearanceLook: 'azrael',
       gender: 'male',
       level: 42,
       responsibleMemberId: 'mateusz',
@@ -42,6 +45,8 @@ describe('player store first-slice', () => {
     const workspace = state.workspaces[0]!;
     expect(workspace.characters).toHaveLength(1);
     expect(workspace.characters[0]!.name).toBe('NowaSura');
+    expect(workspace.characters[0]!.appearanceLook).toBe('azrael');
+    expect(workspace.characters[0]!.imagePath).toBe('/game/classes/looks/azrael/sura-male.png');
     expect(workspace.characters[0]!.sets[0]!.name).toBe('Główny');
     expect(
       Object.values(workspace.characters[0]!.sets[0]!.assignments).every((v) => v === null),
@@ -117,13 +122,14 @@ describe('player store first-slice', () => {
     expect(second.operationId).toBe('op-1');
   });
 
-  it('seeds unique character ids and default PH timers on create', () => {
+  it('seeds unique character ids without auto PH timers on create', () => {
     let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
     state = createWorkspace(state, 'Solo');
     const workspaceId = state.workspaces[0]!.id;
     state = createCharacter(state, workspaceId, {
       name: 'Duplikat',
       characterClass: 'warrior',
+      skillPath: 'warrior_body',
       gender: 'male',
       level: 61,
       responsibleMemberId: 'mateusz',
@@ -131,6 +137,7 @@ describe('player store first-slice', () => {
     state = createCharacter(state, workspaceId, {
       name: 'Duplikat',
       characterClass: 'sura',
+      skillPath: 'sura_magic',
       gender: 'female',
       level: 30,
       responsibleMemberId: 'mateusz',
@@ -140,20 +147,7 @@ describe('player store first-slice', () => {
       'duplikat',
       'duplikat-2',
     ]);
-    const kinds = workspace.timers
-      .filter((timer) => timer.characterId === 'duplikat')
-      .map((timer) => timer.kind)
-      .sort();
-    expect(kinds).toEqual([
-      'biologist',
-      'combo',
-      'horse',
-      'leadership',
-      'mining',
-      'polymorph',
-      'skill_book',
-      'soul_stone',
-    ]);
+    expect(workspace.timers.filter((timer) => timer.characterId === 'duplikat')).toEqual([]);
   });
 
   it('allows adding more than one equipment set after character creation', () => {
@@ -163,6 +157,7 @@ describe('player store first-slice', () => {
     state = createCharacter(state, workspaceId, {
       name: 'Setowy',
       characterClass: 'warrior',
+      skillPath: 'warrior_body',
       gender: 'male',
       level: 40,
       responsibleMemberId: 'mateusz',
@@ -190,6 +185,26 @@ describe('player store first-slice', () => {
     expect(state.workspaces[0]!.characters[0]!.activeSetId).toBe('loch');
   });
 
+  it('archives a character out of the living roster', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Skład test');
+    const workspaceId = state.workspaces[0]!.id;
+    state = createCharacter(state, workspaceId, {
+      name: 'DoUsuniecia',
+      characterClass: 'warrior',
+      skillPath: 'warrior_body',
+      gender: 'male',
+      level: 10,
+      responsibleMemberId: 'mateusz',
+    });
+    const characterId = state.workspaces[0]!.characters[0]!.id;
+    state = { ...state, lastOpenedCharacterId: characterId };
+    state = archiveCharacter(state, workspaceId, characterId);
+    expect(state.workspaces[0]!.characters[0]!.archived).toBe(true);
+    expect(state.workspaces[0]!.history[0]!.title).toContain('Usunięto postać');
+    expect(state.lastOpenedCharacterId).toBeNull();
+  });
+
   it('gives every demo character the Project Hard cyclical timers', () => {
     const state = seedDemoData(completeDiscordAuth(createInitialPlayerStore(), 'authenticated'));
     const workspace = state.workspaces[0]!;
@@ -207,8 +222,8 @@ describe('player store first-slice', () => {
       expect(kinds.has('horse')).toBe(true);
       if ((character.level ?? 0) >= 30) {
         expect(kinds.has('biologist')).toBe(true);
-        expect(kinds.has('combo')).toBe(true);
       }
+      expect(kinds.has('combo')).toBe(false);
       for (const timer of workspace.timers.filter((entry) => entry.characterId === character.id)) {
         expect(timer.iconPath).toMatch(/^\/game\/progression\//);
       }

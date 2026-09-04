@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bonusesAtEnhancement,
+  catalogBonusEntriesForItem,
   clampEnhancement,
   compatibleClassesForCategory,
   enhancerCatalogItems,
@@ -14,6 +15,7 @@ import {
   parseEnhancementFromName,
   resolveItemBonuses,
   resolveItemIconPath,
+  searchEquipmentCatalogSuggestions,
   stripEnhancementFromName,
 } from './item-catalog.js';
 
@@ -82,6 +84,28 @@ describe('item catalog class and enhancement rules', () => {
     );
   });
 
+  it('finds EQ items across classes and abbreviated wiki titles', () => {
+    const bySteel = searchEquipmentCatalogSuggestions('czarna stal', {
+      characterClass: 'warrior',
+      limit: 30,
+    });
+    expect(bySteel.some((item) => item.title === 'Zbroja Z Czarnej Stali')).toBe(true);
+
+    const byCzar = searchEquipmentCatalogSuggestions('czar', {
+      characterClass: 'warrior',
+      limit: 30,
+    });
+    expect(byCzar.some((item) => item.title === 'Zbroja Z Czarnej Stali')).toBe(true);
+    expect(byCzar.some((item) => item.title === 'Czarna Szata')).toBe(true);
+    expect(byCzar.some((item) => item.title === 'Zbr. Płyt. Czar. Magii')).toBe(true);
+    expect(byCzar.findIndex((item) => item.title === 'Zbroja Z Czarnej Stali')).toBeLessThan(
+      byCzar.findIndex((item) => item.title === 'Czarna Szata'),
+    );
+
+    const abbreviated = searchEquipmentCatalogSuggestions('czar mag', { limit: 20 });
+    expect(abbreviated.some((item) => item.title.includes('Czar. Magii'))).toBe(true);
+  });
+
   it('resolves Gameforge wiki icons for catalog EQ and shared swords', () => {
     const poisoned = findGameItemByTitle('Zatruty Miecz');
     expect(poisoned?.sourceImageUrl).toMatch(/^\/game\/items\//u);
@@ -103,5 +127,19 @@ describe('item catalog class and enhancement rules', () => {
       bonusesAtEnhancement(shield?.upgradeDescription, 9).some((line) => line.includes('Obrona')),
     ).toBe(true);
     expect(resolveItemBonuses('Bojowa Tarcza +9', 9).length).toBeGreaterThan(0);
+  });
+
+  it('exposes only this item’s bonus values, never a global name-only list', () => {
+    const shield = catalogBonusEntriesForItem('Bojowa Tarcza', 9);
+    expect(shield.length).toBeGreaterThan(0);
+    expect(shield.every((entry) => entry.valueAtLevel !== null && entry.line.includes(' '))).toBe(
+      true,
+    );
+    expect(shield.some((entry) => entry.name.toLocaleLowerCase('pl').includes('obron'))).toBe(true);
+
+    const knife = catalogBonusEntriesForItem('Krótki Nóż', 9);
+    expect(
+      knife.every((entry) => !entry.name.toLocaleLowerCase('pl').includes('obrona')),
+    ).toBe(true);
   });
 });

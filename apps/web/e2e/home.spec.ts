@@ -16,31 +16,31 @@ test('shows Discord entry before access', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Witaj, Mateusz/ })).toBeVisible({
     timeout: 5000,
   });
-  await expect(page.getByRole('heading', { name: 'Utwórz swoją przestrzeń' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Utwórz swój zespół' })).toBeVisible();
 });
 
 test('creates a workspace from first-use', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Kontynuuj z Discord' }).click();
-  await expect(page.getByRole('heading', { name: 'Utwórz swoją przestrzeń' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Utwórz swój zespół' })).toBeVisible({
     timeout: 5000,
   });
-  await page.getByPlaceholder('np. Moja przestrzeń').fill('SoloTest');
-  await page.getByRole('button', { name: 'Utwórz przestrzeń' }).click();
-  await expect(page.getByRole('heading', { name: 'Moje przestrzenie' })).toBeVisible();
-  await page.locator('.workspace-list a').first().click();
+  await page.getByPlaceholder('np. Asteria').fill('SoloTest');
+  await page.getByRole('button', { name: 'Utwórz zespół' }).click();
+  await page.getByRole('link', { name: 'Otwórz Zespół' }).click();
   await expect(page.getByRole('heading', { name: 'SoloTest', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Dodaj pierwszą postać' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Notatki zespołu' })).toBeVisible();
 });
 
 test('opens seeded team workspace from the member dashboard', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Witaj, Mateusz/ })).toBeVisible();
-  await page.locator('.workspace-list a[href="/teams/asteria"]').click();
+  await page.getByRole('link', { name: 'Otwórz zespół' }).click();
   await expect(page).toHaveURL(/\/teams\/asteria$/);
   await expect(page.getByRole('heading', { name: 'Asteria', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Postacie i sety' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ostatnie zmiany' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Notatki zespołu' })).toBeVisible();
 });
 
 test('opens the separate character module from global navigation', async ({ page }) => {
@@ -54,7 +54,7 @@ test('opens the separate character module from global navigation', async ({ page
   await expect(page.getByRole('heading', { name: 'Postacie', exact: true })).toBeVisible();
   await expect(
     page
-      .getByText('Lista postaci z Twoich przestrzeni', {
+          .getByText('Lista postaci z Twoich zespołów', {
         exact: false,
       })
       .first(),
@@ -72,10 +72,10 @@ test('keeps team actions and notes explicit', async ({ page }) => {
   await expect(page.getByText('Sprawdzić tarczę przed wojną.')).toBeVisible();
 });
 
-test('opens the character equipment card from the team workspace', async ({ page }) => {
+test('opens the character equipment card from the character directory', async ({ page }) => {
   await seedAuthenticatedDemo(page);
-  await page.goto('/teams/asteria');
-  await page.getByRole('link', { name: 'Otwórz kartę EQ' }).first().click();
+  await page.goto('/characters');
+  await page.getByRole('link', { name: /NerwNicht/ }).first().click();
   await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht$/);
   await expect(page.getByRole('link', { name: /Edytuj NerwNicht/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Inventory zespołu', exact: true })).toBeVisible();
@@ -85,7 +85,7 @@ test('opens the character equipment card from the team workspace', async ({ page
 test('separates planned equipment, confirmed location and character timers', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/teams/asteria/characters/nerwnicht');
-  await page.getByLabel('Założone').check();
+  await page.getByRole('button', { name: 'Pokaż założone' }).click();
   await page
     .getByRole('button', { name: /Bojowa Tarcza \+9/ })
     .first()
@@ -99,8 +99,8 @@ test('separates planned equipment, confirmed location and character timers', asy
   await page.getByRole('button', { name: 'Dodaj do torby' }).click();
   await expect(page.locator('.entry-status').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Lwi Miecz \+4/ }).first()).toBeVisible();
-  await page.getByRole('tab', { name: 'Timery PH (ognisko)' }).click();
-  await expect(page.getByText('Ognisko', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Timery PH' }).click();
+  await expect(page.getByText('Timery PH', { exact: true }).first()).toBeVisible();
 });
 
 test('resolves a Discord identity before creating a team invitation', async ({ page }) => {
@@ -146,20 +146,20 @@ test('shows append-only team history and resolves a revision conflict explicitly
 test('loads demo Asteria from the home dashboard button', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Kontynuuj z Discord' }).click();
-  await expect(page.getByRole('heading', { name: 'Utwórz swoją przestrzeń' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Utwórz swój zespół' })).toBeVisible({
     timeout: 5000,
   });
   await page.getByRole('button', { name: 'Wczytaj przykładowe Asteria (demo)' }).click();
   await expect(page.getByRole('heading', { name: /Witaj, Mateusz/ })).toBeVisible();
-  await expect(page.getByText('Jazda konna').first()).toBeVisible();
-  await page.locator('.workspace-list a[href="/teams/asteria"]').click();
+  await page.getByRole('link', { name: 'Otwórz zespół' }).click();
   await expect(page.getByRole('heading', { name: 'Asteria', exact: true })).toBeVisible();
+  await expect(page.getByText('Jazda konna').first()).toBeVisible();
 });
 
 test('marks a ready horse timer done and clears attention', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/teams/asteria/characters/aalpsik');
-  await page.getByRole('tab', { name: 'Timery PH (ognisko)' }).click();
+  await page.getByRole('tab', { name: 'Timery PH' }).click();
   await expect(page.getByText('Jazda konna').first()).toBeVisible();
   await page.getByRole('button', { name: 'Start' }).first().click();
   await expect(page.getByRole('button', { name: 'Zablokowany' }).first()).toBeVisible();
@@ -168,7 +168,7 @@ test('marks a ready horse timer done and clears attention', async ({ page }) => 
 
 test('creates a character profile without inventing equipment', async ({ page }) => {
   await seedAuthenticatedDemo(page);
-  await page.goto('/teams/asteria');
+  await page.goto('/characters');
   await page.getByRole('link', { name: 'Dodaj postać' }).first().click();
   await expect(page).toHaveURL(/\/teams\/asteria\/characters\/new$/);
   await page.getByLabel('Nazwa postaci').fill('NowaSura');
@@ -179,7 +179,8 @@ test('creates a character profile without inventing equipment', async ({ page })
     page.getByText('Utworzono profil oraz pusty zestaw „Główny”.', { exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: 'Wróć do zespołu' }).click();
-  await expect(page.getByRole('heading', { name: 'Postacie i sety' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ostatnie zmiany' })).toBeVisible();
+  await page.goto('/characters');
   await expect(page.getByRole('heading', { name: 'NowaSura' })).toBeVisible();
 });
 

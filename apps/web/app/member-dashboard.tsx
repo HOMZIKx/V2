@@ -2,20 +2,10 @@
 
 import { useState } from 'react';
 
-import { getReadyTimers } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
-import { AppShell, Icon } from './app-shell';
+import { AppShell } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
 
-function readyTimerLabel(count: number): string {
-  if (count === 1) return '1 gotowy timer';
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return `${count} gotowe timery`;
-  }
-  return `${count} gotowych timerów`;
-}
 
 export function MemberDashboard() {
   const { state, hydrated, createWorkspace, loadDemo, resetStore, writesEnabled } =
@@ -37,24 +27,11 @@ export function MemberDashboard() {
     return <DiscordEntryScreen />;
   }
 
-  const readyTimers = getReadyTimers(state);
-  const recentHistory = state.workspaces
-    .flatMap((workspace) =>
-      workspace.history.slice(0, 3).map((entry) => ({
-        ...entry,
-        workspaceName: workspace.name,
-        workspaceId: workspace.id,
-      })),
-    )
-    .slice(0, 5);
-  const lastWorkspace = state.workspaces.find(
-    (workspace) => workspace.id === state.lastOpenedWorkspaceId,
-  );
-  const lastCharacter =
-    lastWorkspace?.characters.find((character) => character.id === state.lastOpenedCharacterId) ??
-    null;
+  const lastWorkspace =
+    state.workspaces.find((workspace) => workspace.id === state.lastOpenedWorkspaceId) ??
+    state.workspaces[0];
   const isFirstUse = state.workspaces.length === 0;
-  const pendingInvites = state.pendingIncomingInvitations.filter(
+  const pendingInvites = (state.pendingIncomingInvitations ?? []).filter(
     (entry) => entry.status === 'pending',
   );
 
@@ -62,7 +39,7 @@ export function MemberDashboard() {
     if (!writesEnabled) return;
     const trimmed = workspaceName.trim();
     if (trimmed.length < 2) {
-      setCreateError('Podaj nazwę przestrzeni (min. 2 znaki).');
+      setCreateError('Podaj nazwę zespołu (min. 2 znaki).');
       return;
     }
     const id = createWorkspace(trimmed);
@@ -103,7 +80,8 @@ export function MemberDashboard() {
             <span className="eyebrow">Centrum gracza</span>
             <h1>Witaj, {state.viewer.displayName}</h1>
             <p>
-              Timery gotowe do oddania, ostatnia przestrzeń i co zmienił zespół — w jednym miejscu.
+              Konto i pierwsze uruchomienie. Notatki, zmiany i akcje zespołu są w{' '}
+              <strong>Zespół</strong>; EQ na kartach w <strong>Postacie</strong>.
             </p>
           </div>
           <div className="account-identity-card">
@@ -123,7 +101,10 @@ export function MemberDashboard() {
 
         {createdId ? (
           <p className="entry-status" role="status">
-            Utworzono przestrzeń. <a href={`/teams/${createdId}`}>Otwórz i dodaj pierwszą postać</a>
+            Utworzono zespół.{' '}
+            <a href={`/teams/${createdId}`}>Otwórz Zespół</a>
+            {' · '}
+            <a href="/characters">Dodaj postać</a>
           </p>
         ) : null}
         {sessionNotice ? (
@@ -136,23 +117,23 @@ export function MemberDashboard() {
           <section className="first-use-panel" id="first-use">
             <div>
               <span className="eyebrow">Pierwsze uruchomienie</span>
-              <h2>Utwórz swoją przestrzeń</h2>
+              <h2>Utwórz swój zespół</h2>
               <p>
-                Solo i zespół używają tego samego modelu. Na start wystarczy nazwa. Potem dodasz
-                pierwszą postać.
+                Solo i grupa używają tego samego modelu. Na start wystarczy nazwa. Postacie dodasz w
+                module Postacie.
               </p>
               <label className="field">
-                <span>Nazwa przestrzeni</span>
+                <span>Nazwa zespołu</span>
                 <input
                   onChange={(event) => setWorkspaceName(event.target.value)}
-                  placeholder="np. Moja przestrzeń"
+                  placeholder="np. Asteria"
                   value={workspaceName}
                 />
               </label>
               {createError ? <p className="field-error">{createError}</p> : null}
               <div className="first-use-actions">
                 <button className="primary-button" onClick={onCreateWorkspace} type="button">
-                  Utwórz przestrzeń
+                  Utwórz zespół
                 </button>
                 <button className="secondary-button" onClick={onLoadDemo} type="button">
                   Wczytaj przykładowe Asteria (demo)
@@ -180,138 +161,34 @@ export function MemberDashboard() {
           <section className="account-dashboard-grid home-priorities">
             <section className="panel">
               <header>
-                <h2>Wymaga uwagi</h2>
-                <span>{readyTimerLabel(readyTimers.length)}</span>
-              </header>
-              {pendingInvites.length > 0 ? (
-                <ul className="attention-list" style={{ marginBottom: 12 }}>
-                  {pendingInvites.map((invitation) => (
-                    <li key={invitation.id}>
-                      <div>
-                        <strong>Zaproszenie: {invitation.teamName}</strong>
-                        <small>od {invitation.inviterName}</small>
-                      </div>
-                      <a href={`/invitations/${invitation.id}`}>Otwórz</a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {readyTimers.length === 0 ? (
-                <p className="empty-copy">
-                  {pendingInvites.length > 0
-                    ? 'Brak gotowych timerów do oddania.'
-                    : 'Nic nie czeka na oddanie.'}
-                </p>
-              ) : (
-                <ul className="attention-list">
-                  {readyTimers.map((entry) => (
-                    <li key={entry.timer.id}>
-                      <div>
-                        <strong>{entry.timer.label}</strong>
-                        <small>
-                          {entry.characterName} · {entry.workspaceName}
-                        </small>
-                      </div>
-                      <a href={`/teams/${entry.workspaceId}/characters/${entry.timer.characterId}`}>
-                        Otwórz
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="panel">
-              <header>
-                <h2>Ostatnio używane</h2>
+                <h2>Twój zespół</h2>
               </header>
               {lastWorkspace ? (
                 <div className="last-opened">
                   <p>
                     <strong>{lastWorkspace.name}</strong>
                     <small>
-                      {lastWorkspace.members.length === 1
-                        ? 'Moja przestrzeń'
-                        : 'Przestrzeń zespołu'}{' '}
-                      · {lastWorkspace.characters.length} postaci
+                      Notatki, zmiany i akcje · {lastWorkspace.updatedLabel}
                     </small>
                   </p>
-                  {lastCharacter ? (
-                    <a href={`/teams/${lastWorkspace.id}/characters/${lastCharacter.id}`}>
-                      Wróć do {lastCharacter.name}
-                    </a>
-                  ) : (
-                    <a href={`/teams/${lastWorkspace.id}`}>Otwórz przestrzeń</a>
-                  )}
+                  <a className="primary-button" href={`/teams/${lastWorkspace.id}`}>
+                    Otwórz zespół
+                  </a>
                 </div>
               ) : (
-                <p className="empty-copy">Wejdź w przestrzeń, żeby tu wrócić.</p>
+                <p className="empty-copy">Utwórz zespół, żeby tu wrócić.</p>
               )}
             </section>
-
             <section className="panel">
               <header>
-                <h2>Moje przestrzenie</h2>
-                <span>{state.workspaces.length}</span>
+                <h2>Postacie i EQ</h2>
               </header>
-              <ul className="workspace-list">
-                {state.workspaces.map((workspace) => (
-                  <li key={workspace.id}>
-                    <div>
-                      <strong>{workspace.name}</strong>
-                      <small>
-                        {workspace.members.length === 1
-                          ? 'Solo'
-                          : `${workspace.members.length} członków`}{' '}
-                        · {workspace.updatedLabel}
-                      </small>
-                    </div>
-                    <a className="primary-button" href={`/teams/${workspace.id}`}>
-                      Otwórz
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              <div className="inline-create">
-                <input
-                  aria-label="Nazwa nowej przestrzeni"
-                  onChange={(event) => setWorkspaceName(event.target.value)}
-                  placeholder="Nowa przestrzeń…"
-                  value={workspaceName}
-                />
-                <button onClick={onCreateWorkspace} type="button">
-                  <Icon name="plus" size={16} /> Utwórz
-                </button>
-              </div>
-              {createError ? <p className="field-error">{createError}</p> : null}
-              <div className="first-use-actions" style={{ marginTop: 12 }}>
-                <button className="secondary-button" onClick={onLoadDemo} type="button">
-                  Wczytaj / odśwież demo Asteria
-                </button>
-              </div>
-            </section>
-
-            <section className="panel">
-              <header>
-                <h2>Ostatnie zmiany</h2>
-              </header>
-              {recentHistory.length === 0 ? (
-                <p className="empty-copy">Po pierwszej zmianie w EQ lub timerze pojawi się wpis.</p>
-              ) : (
-                <ul className="attention-list">
-                  {recentHistory.map((entry) => (
-                    <li key={entry.id}>
-                      <div>
-                        <strong>{entry.title}</strong>
-                        <small>
-                          {entry.workspaceName} · {entry.actorName} · {entry.occurredAtLabel}
-                        </small>
-                      </div>
-                      <a href={`/teams/${entry.workspaceId}/history`}>Historia</a>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <p className="empty-copy">
+                Skład, kasowanie kart i ekwipunek są w osobnym module.
+              </p>
+              <a className="secondary-button" href="/characters">
+                Otwórz postacie
+              </a>
             </section>
           </section>
         )}
@@ -320,6 +197,9 @@ export function MemberDashboard() {
           Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą
           później. Targ i Aktywność są celowo schowane; <a href="/timers">Timery</a> (metiny/bossy)
           są już dostępne.{' '}
+          <button className="text-button" onClick={onLoadDemo} type="button">
+            Wczytaj / odśwież demo Asteria
+          </button>{' '}
           <button className="text-button" onClick={onResetSession} type="button">
             Wyczyść sesję lokalną
           </button>

@@ -1,20 +1,20 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react';
 
-import { characterClassLabels } from '../../../../../src/character-profile';
+import { characterClassLabels, formatCharacterClassLine } from '../../../../../src/character-profile';
 import {
   ENHANCEMENT_LEVELS,
   catalogBonusEntriesForItem,
-  equipmentCatalogItems,
   equipmentSlotForCategory,
   findGameItemByCardName,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
-  knownCatalogBonusNames,
+  normalizeItemSearchText,
   parseEnhancementFromName,
   resolveItemBonuses,
+  searchEquipmentCatalogSuggestions,
   stripEnhancementFromName,
 } from '../../../../../src/item-catalog';
 import {
@@ -36,6 +36,7 @@ import {
   progressionKindsForLevel,
   progressionTimerIcons,
   progressionTimerLabels,
+  timerProgressPercent,
   type ProgressionKind,
 } from '../../../../../src/project-hard-progression';
 import { AppShell, Icon } from '../../../../app-shell';
@@ -114,6 +115,33 @@ function ItemIcon({
   return <img alt="" className={className} onError={() => setFailed(true)} src={item.iconPath} />;
 }
 
+function ItemHoverTooltip({
+  item,
+  meta,
+}: {
+  readonly item: EquipmentItem;
+  readonly meta?: string;
+}) {
+  return (
+    <span className="eq-item-tooltip" role="tooltip">
+      <strong>{item.name}</strong>
+      <em>
+        +{item.enhancement}
+        {meta ? ` · ${meta}` : ''}
+      </em>
+      {item.bonuses.length > 0 ? (
+        <ul>
+          {item.bonuses.map((bonus) => (
+            <li key={bonus}>{bonus}</li>
+          ))}
+        </ul>
+      ) : (
+        <span className="eq-item-tooltip-empty">Brak zapisanych bonusów</span>
+      )}
+    </span>
+  );
+}
+
 function CharacterCard(props: {
   readonly entry: CharacterRecord;
   readonly workspace: WorkspaceRecord;
@@ -131,6 +159,7 @@ function CharacterCard(props: {
   readonly onCharacterDrop: (event: DragEvent<HTMLElement>, target: CharacterRecord) => void;
   readonly onRemove: (characterId: string, setId: string, slot: EquipmentSlot) => void;
   readonly onCompleteTimer: (timerId: string, label: string, characterName: string) => void;
+  readonly onRemoveTimer: (timerId: string, label: string, characterName: string) => void;
   readonly onAddTimer: (characterId: string) => void;
   readonly onAddTimerKind: (value: ProgressionKind | 'custom') => void;
   readonly onCustomTimerLabel: (value: string) => void;
@@ -153,6 +182,7 @@ function CharacterCard(props: {
     onCharacterDrop,
     onRemove,
     onCompleteTimer,
+    onRemoveTimer,
     onAddTimer,
     onAddTimerKind,
     onCustomTimerLabel,
@@ -160,6 +190,12 @@ function CharacterCard(props: {
   } = props;
   const set =
     entry.sets.find((candidate) => candidate.id === entry.activeSetId) ?? entry.sets[0] ?? null;
+  const [timerClock, setTimerClock] = useState(() => Date.now());
+  useEffect(() => {
+    if (boardMode !== 'timers') return;
+    const id = window.setInterval(() => setTimerClock(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [boardMode]);
   const timers = sortProgressionTimers(
     workspace.timers.filter((timer) => timer.characterId === entry.id),
   );
@@ -169,6 +205,10 @@ function CharacterCard(props: {
       className={`eq-char-card${focusId === entry.id ? ' is-focus' : ''}${
         dropTargetId === entry.id ? ' is-drop-target' : ''
       }${selectedItemId && boardMode === 'eq' ? ' is-assignable' : ''}`}
+      onClick={() => {
+        if (focusId === entry.id) return;
+        onFocus(entry.id, entry.activeSetId || entry.sets[0]?.id || '');
+      }}
       onDragLeave={() => onDropTarget(null)}
       onDragOver={(event) => {
         if (boardMode !== 'eq') return;
@@ -191,27 +231,26 @@ function CharacterCard(props: {
             <span className="missing-render">Brak renderu</span>
           )}
         </div>
-        <div>
+        <div className="eq-char-copy">
           <strong>{entry.name}</strong>
-          <span>
-            {characterClassLabels[entry.characterClass]}
-            {entry.level ? ` · lv ${entry.level}` : ''} · {set?.name ?? 'brak setu'}
+          <span className="eq-char-meta">
+            {formatCharacterClassLine(entry.characterClass, entry.skillPath)}
+            {entry.level ? ` · lv ${entry.level}` : ''}
           </span>
+          <span className="eq-char-set">Set {set?.name ?? 'brak'}</span>
+          {focusId === entry.id ? <span className="eq-char-selected">Wybrana</span> : null}
           {boardMode === 'eq' && selectedItemId ? (
             <button
               className="eq-assign-cta"
-              onClick={() => onAssign(entry, selectedItemId)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onAssign(entry, selectedItemId);
+              }}
               type="button"
             >
               Załóż wybrany przedmiot
             </button>
           ) : null}
-          <button
-            onClick={() => onFocus(entry.id, entry.activeSetId || entry.sets[0]?.id || '')}
-            type="button"
-          >
-            Ustaw fokus
-          </button>
         </div>
       </div>
 
@@ -225,7 +264,8 @@ function CharacterCard(props: {
               <button
                 className={`eq-char-slot${item ? ' has-item' : ''}`}
                 key={slot}
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   if (selectedItemId) {
                     onAssign(entry, selectedItemId, slot);
                     return;
@@ -242,11 +282,13 @@ function CharacterCard(props: {
                   const itemIdDrop = event.dataTransfer.getData('text/item-id') || selectedItemId;
                   if (itemIdDrop) onAssign(entry, itemIdDrop, slot);
                 }}
-                title={item ? `${item.name} · ${readinessLabels[readiness]}` : slotLabels[slot]}
                 type="button"
               >
                 {item ? <ItemIcon item={item} /> : <span>{slotLabels[slot]}</span>}
                 <small>{slotLabels[slot]}</small>
+                {item ? (
+                  <ItemHoverTooltip item={item} meta={readinessLabels[readiness]} />
+                ) : null}
               </button>
             );
           })}
@@ -254,13 +296,18 @@ function CharacterCard(props: {
       ) : null}
 
       {boardMode === 'timers' ? (
-        <div className="eq-char-timers">
+        <div
+          className="eq-char-timers"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           {timers.length === 0 ? (
             <p className="empty-copy">Brak timerów — dodaj poniżej.</p>
           ) : (
             timers.map((timer) => {
               const iconPath = timerIconPath(timer);
               const running = timer.status !== 'ready';
+              const progress = timerProgressPercent(timer, new Date(timerClock));
               return (
                 <article
                   className={`eq-char-timer${running ? ' is-running' : ' is-ready'}`}
@@ -290,9 +337,25 @@ function CharacterCard(props: {
                     >
                       {running ? 'Zablokowany' : 'Start'}
                     </button>
+                    <button
+                      className="eq-char-timer-remove"
+                      disabled={!writesEnabled}
+                      onClick={() => onRemoveTimer(timer.id, timer.label, entry.name)}
+                      title="Usuń timer z karty"
+                      type="button"
+                    >
+                      Usuń
+                    </button>
                   </div>
-                  <div className="timer-progress-track" aria-hidden="true">
-                    <span style={{ width: `${timer.progressPercent}%` }} />
+                  <div
+                    aria-label={`Postęp: ${progress}%`}
+                    aria-valuemax={100}
+                    aria-valuemin={0}
+                    aria-valuenow={progress}
+                    className="timer-progress-track"
+                    role="progressbar"
+                  >
+                    <span style={{ width: `${progress}%` }} />
                   </div>
                 </article>
               );
@@ -347,6 +410,8 @@ function CharacterCard(props: {
 
 export function CharacterEquipment() {
   const params = useParams<{ teamId: string; characterId: string }>();
+  const searchParams = useSearchParams();
+  const requestedBoardMode: BoardMode = searchParams.get('view') === 'timers' ? 'timers' : 'eq';
   const {
     state,
     hydrated,
@@ -359,6 +424,7 @@ export function CharacterEquipment() {
     completeTimer,
     ensureProgressionTimers,
     addTimer,
+    removeTimer,
     createItem,
     updateItemBonuses,
     writesEnabled,
@@ -367,7 +433,7 @@ export function CharacterEquipment() {
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
   const character = workspace?.characters.find((entry) => entry.id === params.characterId) ?? null;
 
-  const [boardMode, setBoardMode] = useState<BoardMode>('eq');
+  const [boardMode, setBoardMode] = useState<BoardMode>(requestedBoardMode);
   const [focusCharacterId, setFocusCharacterId] = useState<string>('');
   const [activeSetId, setActiveSetId] = useState<string>('');
   const [newSetName, setNewSetName] = useState('');
@@ -376,24 +442,34 @@ export function CharacterEquipment() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<EquipmentSlot | 'all'>('all');
   const [announcement, setAnnouncement] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState('');
-  const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot>('weapon');
+  const [catalogMenuOpen, setCatalogMenuOpen] = useState(false);
+  const [newItemSlot, setNewItemSlot] = useState<EquipmentSlot | null>(null);
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
   const [newItemSelectedBonuses, setNewItemSelectedBonuses] = useState<readonly string[]>([]);
-  const [newItemManualBonusDraft, setNewItemManualBonusDraft] = useState('');
   const [showAssigned, setShowAssigned] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState('');
-  const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('skill_book');
+  const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('custom');
   const [customTimerLabel, setCustomTimerLabel] = useState('');
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-  const [bonusDraft, setBonusDraft] = useState('');
-  const [bonusPick, setBonusPick] = useState('');
 
   const INVENTORY_COLS = 6;
   const INVENTORY_MIN_ROWS = 5;
 
-  const catalogBonusNames = useMemo(() => knownCatalogBonusNames(), []);
+  useEffect(() => {
+    setBoardMode(requestedBoardMode);
+  }, [requestedBoardMode]);
+
+  const selectBoardMode = (mode: BoardMode) => {
+    setBoardMode(mode);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (mode === 'timers') url.searchParams.set('view', 'timers');
+    else url.searchParams.delete('view');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}`);
+  };
 
   useEffect(() => {
     if (!workspace || !character) return;
@@ -405,7 +481,14 @@ export function CharacterEquipment() {
         if (!entry.archived) ensureProgressionTimers(workspace.id, entry.id);
       }
     }
-  }, [workspace, character, openWorkspace, writesEnabled, ensureProgressionTimers]);
+  }, [
+    workspace?.id,
+    character?.id,
+    character?.activeSetId,
+    openWorkspace,
+    writesEnabled,
+    ensureProgressionTimers,
+  ]);
 
   const ownership = useMemo(
     () => (workspace ? assignedItemIds(workspace) : new Map<string, string>()),
@@ -414,34 +497,34 @@ export function CharacterEquipment() {
 
   const poolItems = useMemo(() => {
     if (!workspace) return [] as EquipmentItem[];
-    const normalized = query.trim().toLocaleLowerCase('pl');
+    const tokens = normalizeItemSearchText(query)
+      .split(' ')
+      .filter((token) => token.length > 0);
     return workspace.items.filter((item) => {
       if (item.archived) return false;
       const assignedTo = ownership.get(item.id);
       if (!showAssigned && assignedTo) return false;
       if (category !== 'all' && item.category !== category) return false;
-      if (
-        normalized.length > 0 &&
-        !item.name.toLocaleLowerCase('pl').includes(normalized) &&
-        !item.bonuses.some((bonus) => bonus.toLocaleLowerCase('pl').includes(normalized))
-      ) {
+      if (tokens.length === 0) return true;
+      const haystack = normalizeItemSearchText(`${item.name} ${item.bonuses.join(' ')}`);
+      return tokens.every((token) => {
+        if (haystack.includes(token)) return true;
+        if (token.length >= 4) {
+          const stem = token.slice(0, Math.max(4, token.length - 1));
+          return haystack.includes(stem);
+        }
         return false;
-      }
-      return true;
+      });
     });
   }, [workspace, ownership, showAssigned, category, query]);
 
   const catalogSuggestions = useMemo(() => {
     if (!character) return [];
-    const normalized = stripEnhancementFromName(newItemName).toLocaleLowerCase('pl');
-    if (normalized.length < 2) return [];
-    return equipmentCatalogItems({
+    return searchEquipmentCatalogSuggestions(stripEnhancementFromName(newItemName), {
       characterClass: character.characterClass,
-      slot: newItemSlot,
-    })
-      .filter((item) => item.title.toLocaleLowerCase('pl').includes(normalized))
-      .slice(0, 8);
-  }, [character, newItemName, newItemSlot]);
+      limit: 30,
+    });
+  }, [character, newItemName]);
 
   const matchedDefinition = findGameItemByCardName(newItemName);
   const createCatalogBonusEntries = useMemo(() => {
@@ -449,11 +532,10 @@ export function CharacterEquipment() {
     const normalized = newItemName.trim();
     if (normalized.length < 2) return [];
     return catalogBonusEntriesForItem(normalized, newItemEnhancement);
-  }, [catalogBonusEntriesForItem, createOpen, newItemName, newItemEnhancement]);
+  }, [createOpen, newItemName, newItemEnhancement]);
 
   useEffect(() => {
     if (!createOpen) return;
-    setNewItemManualBonusDraft('');
     setNewItemSelectedBonuses(createCatalogBonusEntries.map((entry) => entry.line));
   }, [createOpen, createCatalogBonusEntries]);
   const livingCharacters = useMemo(
@@ -551,40 +633,50 @@ export function CharacterEquipment() {
     event.preventDefault();
     if (!writesEnabled) return;
     const baseName = stripEnhancementFromName(newItemName);
-    if (baseName.length < 2) return;
-    const catalogHit = findGameItemByCardName(baseName);
-    if (catalogHit) {
-      const catalogSlot = equipmentSlotForCategory(catalogHit.category);
-      if (catalogSlot === null) {
-        setAnnouncement('Amuletów i ulepszaczy nie dodaje się do slotów EQ.');
-        return;
-      }
-      if (!isItemCompatibleWithClass(catalogHit.category, focusCharacter.characterClass)) {
-        setAnnouncement(
-          `${catalogHit.title} nie jest dla klasy ${characterClassLabels[focusCharacter.characterClass]}.`,
-        );
-        return;
-      }
+    if (baseName.length < 2) {
+      setCreateError('Wpisz nazwę i wybierz pozycję z katalogu.');
+      return;
     }
-    const cardName = formatEnhancedItemName(baseName, newItemEnhancement);
+    const catalogHit = findGameItemByCardName(baseName);
+    if (!catalogHit) {
+      setCreateError('Wybierz przedmiot z listy katalogu.');
+      setCatalogMenuOpen(true);
+      return;
+    }
+    const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+    if (catalogSlot === null) {
+      setCreateError('Amuletów i ulepszaczy nie dodaje się do torby EQ.');
+      return;
+    }
+    const cardName = formatEnhancedItemName(catalogHit.title, newItemEnhancement);
     const bonuses = newItemSelectedBonuses;
     const createdId = createItem(workspace.id, {
       name: cardName,
-      category: newItemSlot,
+      category: catalogSlot,
       enhancement: newItemEnhancement,
       bonuses,
       planned: true,
-      forCharacterClass: focusCharacter.characterClass,
     });
+    if (!createdId) {
+      setCreateError('Nie udało się dodać karty. Spróbuj inną nazwę z katalogu.');
+      return;
+    }
     setNewItemName('');
+    setNewItemSlot(null);
     setNewItemSelectedBonuses([]);
-    setNewItemManualBonusDraft('');
+    setCreateError(null);
     setCreateOpen(false);
-    if (createdId) setSelectedItemId(createdId);
+    setSelectedItemId(createdId);
+    const otherClass = !isItemCompatibleWithClass(
+      catalogHit.category,
+      focusCharacter.characterClass,
+    );
     setAnnouncement(
-      bonuses.length > 0
-        ? `Dodano do inventory: ${cardName} (${bonuses.length} bonusów).`
-        : `Dodano do inventory: ${cardName} — uzupełnij bonusy w szczegółach.`,
+      otherClass
+        ? `Dodano do torby: ${cardName} (dla innej klasy — nie założysz na ${characterClassLabels[focusCharacter.characterClass]}).`
+        : bonuses.length > 0
+          ? `Dodano do torby: ${cardName} (${bonuses.length} bonusów).`
+          : `Dodano do torby: ${cardName}.`,
     );
   };
 
@@ -597,6 +689,58 @@ export function CharacterEquipment() {
     );
     return progressionKindsForLevel(target.level).filter((kind) => !existing.has(kind));
   };
+
+  const renderCampCard = (entry: CharacterRecord) => (
+    <CharacterCard
+      addTimerKind={addTimerKind}
+      boardMode={boardMode}
+      customTimerLabel={customTimerLabel}
+      dropTargetId={dropTargetId}
+      entry={entry}
+      focusId={focusCharacter.id}
+      key={entry.id}
+      missingKinds={missingKindsFor(entry)}
+      selectedItemId={selectedItemId}
+      workspace={workspace}
+      writesEnabled={writesEnabled}
+      onAddTimer={(characterId) => {
+        if (addTimerKind === 'custom') {
+          addTimer(workspace.id, characterId, { label: customTimerLabel });
+          setCustomTimerLabel('');
+          setAnnouncement(`Dodano timer na ${entry.name}.`);
+          return;
+        }
+        addTimer(workspace.id, characterId, { kind: addTimerKind });
+        setAnnouncement(`Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`);
+      }}
+      onAddTimerKind={setAddTimerKind}
+      onAssign={assignToCharacter}
+      onCharacterDrop={onCharacterDrop}
+      onCompleteTimer={(timerId, label, characterName) => {
+        const operationId = `timer-${timerId}-${Date.now()}`;
+        completeTimer(workspace.id, timerId, operationId);
+        const timer = workspace.timers.find((item) => item.id === timerId);
+        setAnnouncement(
+          `${characterName}: ${label} — czas ruszył.${timer ? ` ${completionHint(timer)}` : ''}`,
+        );
+      }}
+      onRemoveTimer={(timerId, label, characterName) => {
+        removeTimer(workspace.id, timerId);
+        setAnnouncement(`${characterName}: usunięto timer „${label}”.`);
+      }}
+      onCustomTimerLabel={setCustomTimerLabel}
+      onDropTarget={setDropTargetId}
+      onFocus={(characterId, setId) => {
+        setFocusCharacterId(characterId);
+        setActiveSetId(setId);
+      }}
+      onRemove={(characterId, setId, slot) => {
+        removeItem(workspace.id, characterId, setId, slot);
+        setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
+      }}
+      onSelectItem={setSelectedItemId}
+    />
+  );
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
@@ -615,7 +759,8 @@ export function CharacterEquipment() {
             <h1>{workspace.name}</h1>
             <p>
               W centrum pula przedmiotów zespołu. Postacie wokół — przeciągnij kartę na postać
-              (mobile: wybierz kartę, potem postać / slot). Odwrócenie → ognisko i timery PH.
+              (mobile: wybierz kartę, potem postać / slot). Zakładka Timery PH: cykle na kartach
+              postaci.
             </p>
           </div>
           <div className="equipment-header-actions">
@@ -705,7 +850,7 @@ export function CharacterEquipment() {
           <button
             aria-selected={boardMode === 'eq'}
             className={boardMode === 'eq' ? 'is-active' : ''}
-            onClick={() => setBoardMode('eq')}
+            onClick={() => selectBoardMode('eq')}
             role="tab"
             type="button"
           >
@@ -714,11 +859,11 @@ export function CharacterEquipment() {
           <button
             aria-selected={boardMode === 'timers'}
             className={boardMode === 'timers' ? 'is-active' : ''}
-            onClick={() => setBoardMode('timers')}
+            onClick={() => selectBoardMode('timers')}
             role="tab"
             type="button"
           >
-            Timery PH (ognisko)
+            Timery PH
           </button>
           {selectedItemId ? (
             <span className="empty-copy">
@@ -732,58 +877,8 @@ export function CharacterEquipment() {
             <div className="eq-camp-ring">
               <div className="eq-camp-side-col eq-camp-side-left">
                 {livingCharacters
-                  .filter((_, index) => index % 2 === 0)
-                  .map((entry) => (
-                    <CharacterCard
-                      addTimerKind={addTimerKind}
-                      boardMode={boardMode}
-                      customTimerLabel={customTimerLabel}
-                      dropTargetId={dropTargetId}
-                      entry={entry}
-                      focusId={focusCharacter.id}
-                      key={entry.id}
-                      missingKinds={missingKindsFor(entry)}
-                      selectedItemId={selectedItemId}
-                      workspace={workspace}
-                      writesEnabled={writesEnabled}
-                      onAddTimer={(characterId) => {
-                        if (addTimerKind === 'custom') {
-                          addTimer(workspace.id, characterId, { label: customTimerLabel });
-                          setCustomTimerLabel('');
-                          setAnnouncement(`Dodano timer na ${entry.name}.`);
-                          return;
-                        }
-                        addTimer(workspace.id, characterId, { kind: addTimerKind });
-                        setAnnouncement(
-                          `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
-                        );
-                      }}
-                      onAddTimerKind={setAddTimerKind}
-                      onAssign={assignToCharacter}
-                      onCharacterDrop={onCharacterDrop}
-                      onCompleteTimer={(timerId, label, characterName) => {
-                        const operationId = `timer-${timerId}-${Date.now()}`;
-                        completeTimer(workspace.id, timerId, operationId);
-                        const timer = workspace.timers.find((item) => item.id === timerId);
-                        setAnnouncement(
-                          `${characterName}: ${label} — czas ruszył.${
-                            timer ? ` ${completionHint(timer)}` : ''
-                          }`,
-                        );
-                      }}
-                      onCustomTimerLabel={setCustomTimerLabel}
-                      onDropTarget={setDropTargetId}
-                      onFocus={(characterId, setId) => {
-                        setFocusCharacterId(characterId);
-                        setActiveSetId(setId);
-                      }}
-                      onRemove={(characterId, setId, slot) => {
-                        removeItem(workspace.id, characterId, setId, slot);
-                        setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
-                      }}
-                      onSelectItem={setSelectedItemId}
-                    />
-                  ))}
+                  .filter((_, index) => boardMode === 'timers' || index % 2 === 0)
+                  .map(renderCampCard)}
               </div>
 
               <div className="eq-camp-center">
@@ -799,18 +894,29 @@ export function CharacterEquipment() {
                         </p>
                       </div>
                       <div className="eq-pool-actions">
-                        <label className="field">
-                          <input
-                            checked={showAssigned}
-                            onChange={(event) => setShowAssigned(event.target.checked)}
-                            type="checkbox"
-                          />{' '}
-                          Założone
-                        </label>
+                        <button
+                          aria-pressed={showAssigned}
+                          className={`eq-filter-toggle${showAssigned ? ' is-active' : ''}`}
+                          onClick={() => setShowAssigned((value) => !value)}
+                          title="Domyślnie torba ukrywa przedmioty już założone na postaciach. Włącz, żeby je zobaczyć."
+                          type="button"
+                        >
+                          {showAssigned ? 'Założone: widoczne' : 'Pokaż założone'}
+                        </button>
                         {writesEnabled ? (
                           <button
                             className={`eq-add-toggle${createOpen ? ' is-active' : ''}`}
-                            onClick={() => setCreateOpen((open) => !open)}
+                            onClick={() =>
+                              setCreateOpen((open) => {
+                                if (open) {
+                                  setNewItemName('');
+                                  setNewItemSlot(null);
+                                  setNewItemSelectedBonuses([]);
+                                  setCreateError(null);
+                                }
+                                return !open;
+                              })
+                            }
                             type="button"
                           >
                             <Icon name="plus" size={14} />{' '}
@@ -820,31 +926,78 @@ export function CharacterEquipment() {
                       </div>
                     </div>
 
+                    {announcement ? (
+                      <p className="entry-status" role="status">
+                        {announcement}
+                      </p>
+                    ) : null}
+
                     {createOpen && writesEnabled ? (
                       <form className="eq-inline-create" onSubmit={handleCreateItem}>
-                        <input
-                          aria-label="Nazwa przedmiotu z gry"
-                          autoFocus
-                          list="eq-catalog-suggestions"
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setNewItemName(stripEnhancementFromName(value));
-                            const fromName = parseEnhancementFromName(value);
-                            if (/\+\d+\s*$/u.test(value.trim())) {
-                              setNewItemEnhancement(fromName);
-                            }
-                            const hit = findGameItemByCardName(value);
-                            const slot = hit ? equipmentSlotForCategory(hit.category) : null;
-                            if (slot) setNewItemSlot(slot);
-                          }}
-                          placeholder="Nazwa z gry, np. Bojowa Tarcza…"
-                          value={newItemName}
-                        />
-                        <datalist id="eq-catalog-suggestions">
-                          {catalogSuggestions.map((item) => (
-                            <option key={item.id} value={item.title} />
-                          ))}
-                        </datalist>
+                        <div className="eq-catalog-combobox">
+                          <input
+                            aria-autocomplete="list"
+                            aria-controls="eq-catalog-menu"
+                            aria-expanded={catalogMenuOpen && newItemName.trim().length >= 2}
+                            aria-label="Nazwa przedmiotu z gry"
+                            autoComplete="off"
+                            autoFocus
+                            onBlur={() => {
+                              window.setTimeout(() => setCatalogMenuOpen(false), 120);
+                            }}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setNewItemName(stripEnhancementFromName(value));
+                              setCatalogMenuOpen(true);
+                              const fromName = parseEnhancementFromName(value);
+                              if (/\+\d+\s*$/u.test(value.trim())) {
+                                setNewItemEnhancement(fromName);
+                              }
+                              const hit = findGameItemByCardName(value);
+                              setNewItemSlot(
+                                hit ? equipmentSlotForCategory(hit.category) : null,
+                              );
+                            }}
+                            onFocus={() => setCatalogMenuOpen(true)}
+                            placeholder="Szukaj w katalogu, np. czarna stal…"
+                            value={newItemName}
+                          />
+                          {catalogMenuOpen && newItemName.trim().length >= 2 ? (
+                            <ul className="eq-catalog-menu" id="eq-catalog-menu" role="listbox">
+                              {catalogSuggestions.length === 0 ? (
+                                <li className="eq-catalog-menu-empty">Brak trafień w katalogu EQ</li>
+                              ) : (
+                                catalogSuggestions.map((item) => {
+                                  const slot = equipmentSlotForCategory(item.category);
+                                  const compatible = isItemCompatibleWithClass(
+                                    item.category,
+                                    character.characterClass,
+                                  );
+                                  return (
+                                    <li key={item.id} role="option">
+                                      <button
+                                        className={compatible ? undefined : 'is-incompatible'}
+                                        onMouseDown={(event) => {
+                                          event.preventDefault();
+                                          setNewItemName(item.title);
+                                          setNewItemSlot(slot);
+                                          setCatalogMenuOpen(false);
+                                        }}
+                                        type="button"
+                                      >
+                                        <strong>{item.title}</strong>
+                                        <span>
+                                          {slot ? slotLabels[slot] : '—'}
+                                          {compatible ? '' : ' · inna klasa'}
+                                        </span>
+                                      </button>
+                                    </li>
+                                  );
+                                })
+                              )}
+                            </ul>
+                          ) : null}
+                        </div>
                         <div className="eq-inline-create-row">
                           <select
                             aria-label="Ulepszenie"
@@ -857,24 +1010,22 @@ export function CharacterEquipment() {
                               </option>
                             ))}
                           </select>
-                          <select
-                            aria-label="Slot"
-                            onChange={(event) =>
-                              setNewItemSlot(event.target.value as EquipmentSlot)
-                            }
-                            value={newItemSlot}
+                          <span
+                            aria-live="polite"
+                            className={`eq-auto-slot${newItemSlot ? ' is-ready' : ''}`}
                           >
-                            {equipmentSlots.map((slot) => (
-                              <option key={slot} value={slot}>
-                                {slotLabels[slot]}
-                              </option>
-                            ))}
-                          </select>
-                          <button type="submit">Dodaj do torby</button>
+                            {newItemSlot
+                              ? `Kategoria: ${slotLabels[newItemSlot]}`
+                              : 'Kategoria: z katalogu'}
+                          </span>
+                          <button disabled={!newItemSlot} type="submit">
+                            Dodaj do torby
+                          </button>
                           <button
                             onClick={() => {
                               setCreateOpen(false);
                               setNewItemName('');
+                              setNewItemSlot(null);
                             }}
                             type="button"
                           >
@@ -885,11 +1036,26 @@ export function CharacterEquipment() {
                           <p className="eq-catalog-hint">
                             Katalog: <strong>{matchedDefinition.title}</strong>
                             {matchedDefinition.sourceImageUrl ? ' · z grafiką' : ''}
+                            {!isItemCompatibleWithClass(
+                              matchedDefinition.category,
+                              focusCharacter.characterClass,
+                            )
+                              ? ` · nie założysz na ${characterClassLabels[focusCharacter.characterClass]}, ale możesz dodać do torby zespołu`
+                              : ''}
+                          </p>
+                        ) : newItemName.trim().length >= 2 ? (
+                          <p className="eq-catalog-hint">
+                            Wybierz pozycję z listy — slot ustawi się automatycznie.
+                          </p>
+                        ) : null}
+                        {createError ? (
+                          <p className="eq-create-error" role="alert">
+                            {createError}
                           </p>
                         ) : null}
 
                         <div className="eq-create-bonus-section" aria-label="Wybór bonusów">
-                          <span className="section-kicker">Bonusy (z katalogu) — kliknij</span>
+                          <span className="section-kicker">Bonusy tej karty (z katalogu)</span>
                           {createCatalogBonusEntries.length > 0 ? (
                             <div className="eq-bonus-toggle-list" role="list">
                               {createCatalogBonusEntries.map((entry) => {
@@ -912,7 +1078,7 @@ export function CharacterEquipment() {
                                     type="button"
                                   >
                                     <span>{entry.name}</span>
-                                    <em>{entry.valueAtLevel ?? '?'}</em>
+                                    <em>{entry.valueAtLevel}</em>
                                     {isSelected ? (
                                       <span className="eq-bonus-check">✓</span>
                                     ) : (
@@ -922,45 +1088,27 @@ export function CharacterEquipment() {
                                 );
                               })}
                             </div>
+                          ) : matchedDefinition ? (
+                            <p className="eq-catalog-hint">
+                              W katalogu nie ma drabinki wartości dla „{matchedDefinition.title}”.
+                              Nie da się dodać bonusów z innych przedmiotów.
+                            </p>
                           ) : (
                             <p className="eq-catalog-hint">
-                              Brak drabinki w katalogu — dodaj ręcznie.
+                              Najpierw wybierz przedmiot z listy — bonusy i wartości wejdą z jego
+                              karty w katalogu.
                             </p>
                           )}
-
-                          <div className="eq-create-bonus-manual">
-                            <input
-                              aria-label="Ręczna linia bonusu"
-                              onChange={(event) => setNewItemManualBonusDraft(event.target.value)}
-                              placeholder="np. Obrona +57 albo własna obserwacja"
-                              value={newItemManualBonusDraft}
-                            />
-                            <button
-                              disabled={!writesEnabled || newItemManualBonusDraft.trim().length < 2}
-                              onClick={() => {
-                                const line = newItemManualBonusDraft.trim();
-                                if (line.length < 2) return;
-                                setNewItemSelectedBonuses((current) => {
-                                  if (current.includes(line)) return current;
-                                  return [...current, line];
-                                });
-                                setNewItemManualBonusDraft('');
-                              }}
-                              type="button"
-                            >
-                              Dodaj linię
-                            </button>
-                          </div>
                           {newItemSelectedBonuses.length > 0 ? (
                             <p className="eq-create-bonus-selected">
-                              Wybrane: {newItemSelectedBonuses.length}
+                              Wybrane: {newItemSelectedBonuses.join(' · ')}
                             </p>
                           ) : null}
                         </div>
                       </form>
                     ) : null}
 
-                    <label className="market-search" style={{ marginTop: 8 }}>
+                    <label className="market-search eq-pool-search">
                       <Icon name="search" size={16} />
                       <input
                         onChange={(event) => setQuery(event.target.value)}
@@ -968,8 +1116,13 @@ export function CharacterEquipment() {
                         value={query}
                       />
                     </label>
-                    <div className="catalog-filters" style={{ marginTop: 8, marginBottom: 8 }}>
+                    <div
+                      aria-label="Filtr slotu EQ"
+                      className="catalog-filters"
+                      role="group"
+                    >
                       <button
+                        aria-pressed={category === 'all'}
                         className={category === 'all' ? 'is-active' : ''}
                         onClick={() => setCategory('all')}
                         type="button"
@@ -978,6 +1131,7 @@ export function CharacterEquipment() {
                       </button>
                       {equipmentSlots.map((slot) => (
                         <button
+                          aria-pressed={category === slot}
                           className={category === slot ? 'is-active' : ''}
                           key={slot}
                           onClick={() => setCategory(slot)}
@@ -1001,11 +1155,14 @@ export function CharacterEquipment() {
                               setSelectedItemId((current) => (current === item.id ? null : item.id))
                             }
                             onDragStart={(event) => onPoolDragStart(event, item.id)}
-                            title={owner ? `${item.name} · na ${owner}` : item.name}
                             type="button"
                           >
                             <ItemIcon item={item} />
                             <em>+{item.enhancement}</em>
+                            <ItemHoverTooltip
+                              item={item}
+                              meta={owner ? `na ${owner}` : 'w torbie'}
+                            />
                           </button>
                         );
                       })}
@@ -1031,69 +1188,13 @@ export function CharacterEquipment() {
                       ))}
                     </div>
                   </>
-                ) : (
-                  <div className="eq-campfire" aria-hidden={false}>
-                    <div className="eq-campfire-flame" />
-                    <strong>Ognisko</strong>
-                    <span>Karty postaci pokazują cykle PH · jeden klik uruchamia odliczanie</span>
-                  </div>
-                )}
+                ) : null}
               </div>
 
               <div className="eq-camp-side-col eq-camp-side-right">
                 {livingCharacters
-                  .filter((_, index) => index % 2 === 1)
-                  .map((entry) => (
-                    <CharacterCard
-                      addTimerKind={addTimerKind}
-                      boardMode={boardMode}
-                      customTimerLabel={customTimerLabel}
-                      dropTargetId={dropTargetId}
-                      entry={entry}
-                      focusId={focusCharacter.id}
-                      key={entry.id}
-                      missingKinds={missingKindsFor(entry)}
-                      selectedItemId={selectedItemId}
-                      workspace={workspace}
-                      writesEnabled={writesEnabled}
-                      onAddTimer={(characterId) => {
-                        if (addTimerKind === 'custom') {
-                          addTimer(workspace.id, characterId, { label: customTimerLabel });
-                          setCustomTimerLabel('');
-                          setAnnouncement(`Dodano timer na ${entry.name}.`);
-                          return;
-                        }
-                        addTimer(workspace.id, characterId, { kind: addTimerKind });
-                        setAnnouncement(
-                          `Dodano ${progressionTimerLabels[addTimerKind]} na ${entry.name}.`,
-                        );
-                      }}
-                      onAddTimerKind={setAddTimerKind}
-                      onAssign={assignToCharacter}
-                      onCharacterDrop={onCharacterDrop}
-                      onCompleteTimer={(timerId, label, characterName) => {
-                        const operationId = `timer-${timerId}-${Date.now()}`;
-                        completeTimer(workspace.id, timerId, operationId);
-                        const timer = workspace.timers.find((item) => item.id === timerId);
-                        setAnnouncement(
-                          `${characterName}: ${label} — czas ruszył.${
-                            timer ? ` ${completionHint(timer)}` : ''
-                          }`,
-                        );
-                      }}
-                      onCustomTimerLabel={setCustomTimerLabel}
-                      onDropTarget={setDropTargetId}
-                      onFocus={(characterId, setId) => {
-                        setFocusCharacterId(characterId);
-                        setActiveSetId(setId);
-                      }}
-                      onRemove={(characterId, setId, slot) => {
-                        removeItem(workspace.id, characterId, setId, slot);
-                        setAnnouncement(`Usunięto z planu setu (${slotLabels[slot]}).`);
-                      }}
-                      onSelectItem={setSelectedItemId}
-                    />
-                  ))}
+                  .filter((_, index) => boardMode !== 'timers' && index % 2 === 1)
+                  .map(renderCampCard)}
               </div>
             </div>
           </section>
@@ -1213,46 +1314,13 @@ export function CharacterEquipment() {
                         );
                       }
                       return (
-                        <>
-                          <select
-                            aria-label="Nazwa bonusu z katalogu"
-                            onChange={(event) => setBonusPick(event.target.value)}
-                            value={bonusPick}
-                          >
-                            <option value="">Wybierz nazwę bonusu…</option>
-                            {catalogBonusNames.map((name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
-                        </>
+                        <p className="eq-catalog-hint">
+                          W katalogu nie ma drabinki wartości dla tej karty. Bonusów z innych
+                          przedmiotów nie da się tu dodać.
+                        </p>
                       );
                     })()}
 
-                    <input
-                      aria-label="Ręczna linia bonusu"
-                      onChange={(event) => setBonusDraft(event.target.value)}
-                      placeholder="np. Obrona +57 lub własna obserwacja"
-                      value={bonusDraft}
-                    />
-                    <button
-                      disabled={!writesEnabled || (bonusDraft.trim().length < 2 && !bonusPick)}
-                      onClick={() => {
-                        const line = bonusDraft.trim() || bonusPick;
-                        if (line.length < 2) return;
-                        updateItemBonuses(workspace.id, selectedItem.id, [
-                          ...selectedItem.bonuses,
-                          line,
-                        ]);
-                        setBonusDraft('');
-                        setBonusPick('');
-                        setAnnouncement(`Dodano bonus: ${line}`);
-                      }}
-                      type="button"
-                    >
-                      Dodaj ręcznie
-                    </button>
                     <button
                       disabled={!writesEnabled}
                       onClick={() => {

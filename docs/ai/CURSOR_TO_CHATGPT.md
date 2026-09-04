@@ -23,14 +23,23 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 
 - Centrum = **inventory** (siatka slotów, dowolna liczba kart).
 - Postacie wokół: max 8 slotów EQ; drag lub tap (mobile).
-- Tryb **ognisko**: timery PH, Start = jeden klik, running zablokowany, Dodaj timer.
+- Tryb Timery PH: timery PH, Start = jeden klik, running zablokowany, Dodaj timer.
 - Tło jak reszta app (nie czarne).
+- Katalog EQ = 1:1 dump dobry-temat `wiki_catalog` (678). Wyszukiwarka przy
+  dodawaniu przeszukuje całą bazę EQ (także inne klasy — oznaczone), toleruje
+  skróty wiki i odmiany („czarna stal”); **kategoria/slot tylko z katalogu**
+  (select usunięty).
 - Bonusy: nazwy wyłącznie z dumpa + ręczna obserwacja; przy dodawaniu przedmiotu
   wybierasz subset bonusów z katalogu (klik) i zapisane linie są traktowane jako
   „explicit” (nie nadpisujemy ich pełną drabinką); **DEC-068** — pełne drabinki
   po dostarczeniu nieuciętego eksportu ze starego dobry-temat.
 - Źródło drabinek: `wiki-item-bonus-overrides.json` z publicznego API pl-wiki
   Metin2 (`action=parse`/`wikitext`) jako nadrzędne dane nad uciętym dumpem.
+
+### Zespół (dawniej „Moje przestrzenie”)
+
+- Nav: **Zespół**. Przegląd = zmiany, notatki, akcje, członkowie, gotowe timery.
+- Postacie / EQ nie są już siatką na tej stronie — skład w `/characters`.
 
 ## Plan Web (SoT z gita)
 

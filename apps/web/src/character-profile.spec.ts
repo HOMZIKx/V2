@@ -23,6 +23,21 @@ describe('character profile view model', () => {
     expect(listMissingCharacterRenders()).toEqual([]);
   });
 
+  it('resolves alternate costume looks under /game/classes/looks/', () => {
+    expect(getApprovedCharacterRender('sura', 'male', 'black-desert')).toBe(
+      '/game/classes/looks/black-desert/sura-male.png',
+    );
+    expect(getApprovedCharacterRender('ninja', 'female', 'azrael')).toBe(
+      '/game/classes/looks/azrael/ninja-female.png',
+    );
+    expect(getApprovedCharacterRender('shaman', 'male', 'ice-dragon')).toBe(
+      '/game/classes/looks/ice-dragon/shaman-male.png',
+    );
+    expect(getApprovedCharacterRender('warrior', 'female', 'desert')).toBe(
+      '/game/classes/warrior-female.png',
+    );
+  });
+
   it('allows an unknown level but rejects impossible or malformed values', () => {
     expect(
       validateCharacterProfile({ ...newCharacterProfileFixture.draft, name: 'Nowa' }).valid,

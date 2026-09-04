@@ -55,15 +55,42 @@ export const gameItemCategories = [...new Set(gameItemCatalog.map((item) => item
   (a, b) => a.localeCompare(b, 'pl'),
 );
 
+/** Collapse wiki abbreviations ("Zbr. Płyt.") and case for substring search. */
+export function normalizeItemSearchText(value: string): string {
+  return value
+    .toLocaleLowerCase('pl')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[./_/\\-]+/gu, ' ')
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+function searchTokenMatches(haystack: string, token: string): boolean {
+  if (token.length === 0) return true;
+  if (haystack.includes(token)) return true;
+  // Polish inflection: "czarna" → stem "czarn" still hits "czarnej stali".
+  if (token.length >= 4) {
+    const stem = token.slice(0, Math.max(4, token.length - 1));
+    if (haystack.includes(stem)) return true;
+  }
+  return false;
+}
+
+/** Token AND match against title + category (abbreviations / diacritics tolerant). */
+export function itemMatchesSearchQuery(item: GameItem, query: string): boolean {
+  const normalizedQuery = normalizeItemSearchText(query);
+  if (normalizedQuery.length === 0) return true;
+  const haystack = normalizeItemSearchText(`${item.title} ${item.category}`);
+  const tokens = normalizedQuery.split(' ').filter((token) => token.length > 0);
+  return tokens.every((token) => searchTokenMatches(haystack, token));
+}
+
 export function searchGameItems(query: string, category = 'all'): readonly GameItem[] {
-  const normalized = query.trim().toLocaleLowerCase('pl');
   return gameItemCatalog.filter(
     (item) =>
-      (category === 'all' || item.category === category) &&
-      (normalized.length === 0 ||
-        [item.title, item.category, item.upgradeDescription ?? ''].some((value) =>
-          value.toLocaleLowerCase('pl').includes(normalized),
-        )),
+      (category === 'all' || item.category === category) && itemMatchesSearchQuery(item, query),
   );
 }
 
@@ -304,6 +331,7 @@ export function catalogBonusEntriesForItem(
         break;
       }
     }
+    if (rawValue === null) continue;
     const line = formatCatalogBonusLine(name, rawValue);
     entries.push({ name, valueAtLevel: rawValue, line });
   }
@@ -323,13 +351,9 @@ export function resolveItemBonuses(
 
 /** Ulepszacze / materiały ulepszania z dumpa (nie sloty EQ). */
 export function enhancerCatalogItems(query = ''): readonly GameItem[] {
-  const normalized = query.trim().toLocaleLowerCase('pl');
   return gameItemCatalog.filter((item) => {
     if (!item.category.toLocaleLowerCase('pl').includes('ulepsz')) return false;
-    if (normalized.length === 0) return true;
-    return [item.title, item.category, item.upgradeDescription ?? ''].some((value) =>
-      value.toLocaleLowerCase('pl').includes(normalized),
-    );
+    return itemMatchesSearchQuery(item, query);
   });
 }
 
@@ -383,4 +407,40 @@ export function equipmentCatalogItems(options?: {
     }
     return true;
   });
+}
+
+/**
+ * Autocomplete for EQ create: searches the full equipment dump (all classes),
+ * ranks class-compatible hits first, keeps incompatible visible so names are findable.
+ */
+export function searchEquipmentCatalogSuggestions(
+  query: string,
+  options?: {
+    readonly characterClass?: CharacterClass;
+    readonly limit?: number;
+  },
+): readonly GameItem[] {
+  const normalized = normalizeItemSearchText(query);
+  if (normalized.length < 2) return [];
+  const limit = options?.limit ?? 30;
+  const characterClass = options?.characterClass;
+  const scored: { item: GameItem; rank: number }[] = [];
+
+  for (const item of equipmentCatalogItems({ slot: 'all' })) {
+    if (!itemMatchesSearchQuery(item, query)) continue;
+    const titleNorm = normalizeItemSearchText(item.title);
+    const compatible =
+      characterClass === undefined || isItemCompatibleWithClass(item.category, characterClass);
+    let rank = compatible ? 0 : 100;
+    if (titleNorm.startsWith(normalized)) rank += 0;
+    else if (titleNorm.split(' ').some((word) => word.startsWith(normalized))) rank += 10;
+    else rank += 20;
+    scored.push({ item, rank });
+  }
+
+  scored.sort((a, b) => {
+    if (a.rank !== b.rank) return a.rank - b.rank;
+    return a.item.title.localeCompare(b.item.title, 'pl');
+  });
+  return scored.slice(0, limit).map((entry) => entry.item);
 }

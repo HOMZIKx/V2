@@ -11,6 +11,7 @@ import {
 } from '../../../../src/team-membership';
 import { AppShell, Icon } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
+import { WorkspaceSectionNav } from '../workspace-section-nav';
 
 export function TeamMembershipManagement() {
   const params = useParams<{ teamId: string }>();
@@ -68,6 +69,8 @@ export function TeamMembershipManagement() {
           <Icon name="chevron" size={13} />
           <strong>Członkowie</strong>
         </nav>
+
+        <WorkspaceSectionNav active="members" workspaceId={workspace.id} />
 
         <header>
           <h1>Członkowie i zaproszenia</h1>

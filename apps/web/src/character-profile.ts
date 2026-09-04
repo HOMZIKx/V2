@@ -3,9 +3,41 @@ import { projectHardProductFacts } from './project-hard-progression';
 export type CharacterClass = 'warrior' | 'sura' | 'ninja' | 'shaman';
 export type CharacterGender = 'male' | 'female';
 
+/** Metin2 skill trees / second class choice. */
+export type CharacterSkillPath =
+  | 'warrior_body'
+  | 'warrior_mental'
+  | 'sura_weapon'
+  | 'sura_magic'
+  | 'ninja_blade'
+  | 'ninja_archery'
+  | 'shaman_dragon'
+  | 'shaman_heal';
+
+/** Official costume showcase lines (class×gender frames from en-wiki). */
+export type CharacterAppearanceLook = 'desert' | 'black-desert' | 'azrael' | 'ice-dragon';
+
+export const characterAppearanceLooks: readonly {
+  readonly id: CharacterAppearanceLook;
+  readonly label: string;
+}[] = [
+  { id: 'desert', label: 'Desert Warrior' },
+  { id: 'black-desert', label: 'Black Desert' },
+  { id: 'azrael', label: "Azrael's Armour" },
+  { id: 'ice-dragon', label: 'Ice Dragon Guard' },
+];
+
+export const DEFAULT_APPEARANCE_LOOK: CharacterAppearanceLook = 'desert';
+
+export function isCharacterAppearanceLook(value: string): value is CharacterAppearanceLook {
+  return characterAppearanceLooks.some((look) => look.id === value);
+}
+
 export interface CharacterProfileDraft {
   readonly name: string;
   readonly characterClass: CharacterClass;
+  readonly skillPath: CharacterSkillPath;
+  readonly appearanceLook: CharacterAppearanceLook;
   readonly gender: CharacterGender;
   readonly level: number | null;
   readonly responsibleMemberId: string;
@@ -63,6 +95,52 @@ export const characterGenderLabels: Record<CharacterGender, string> = {
   female: 'Kobieta',
 };
 
+export const characterSkillPathLabels: Record<CharacterSkillPath, string> = {
+  warrior_body: 'Body',
+  warrior_mental: 'Mental',
+  sura_weapon: 'WP',
+  sura_magic: 'BM',
+  ninja_blade: 'Ostrze',
+  ninja_archery: 'Łuk',
+  shaman_dragon: 'Smok',
+  shaman_heal: 'Leczenie',
+};
+
+export const characterSkillPathsByClass: Record<
+  CharacterClass,
+  readonly CharacterSkillPath[]
+> = {
+  warrior: ['warrior_body', 'warrior_mental'],
+  sura: ['sura_weapon', 'sura_magic'],
+  ninja: ['ninja_blade', 'ninja_archery'],
+  shaman: ['shaman_dragon', 'shaman_heal'],
+};
+
+export function defaultSkillPathForClass(characterClass: CharacterClass): CharacterSkillPath {
+  return characterSkillPathsByClass[characterClass][0]!;
+}
+
+export function isSkillPathForClass(
+  characterClass: CharacterClass,
+  skillPath: CharacterSkillPath,
+): boolean {
+  return characterSkillPathsByClass[characterClass].includes(skillPath);
+}
+
+export function formatCharacterClassLine(
+  characterClass: CharacterClass,
+  skillPath: CharacterSkillPath | null | undefined,
+  gender?: CharacterGender,
+): string {
+  const classLabel = characterClassLabels[characterClass];
+  const path =
+    skillPath && isSkillPathForClass(characterClass, skillPath)
+      ? characterSkillPathLabels[skillPath]
+      : null;
+  const genderLabel = gender ? characterGenderLabels[gender] : null;
+  return [classLabel, path, genderLabel].filter(Boolean).join(' · ');
+}
+
 const approvedRenderPaths: Readonly<Record<`${CharacterClass}-${CharacterGender}`, string>> = {
   'warrior-male': '/game/classes/warrior-male.png',
   'warrior-female': '/game/classes/warrior-female.png',
@@ -93,8 +171,20 @@ export function listMissingCharacterRenders(): readonly `${CharacterClass}-${Cha
 export function getApprovedCharacterRender(
   characterClass: CharacterClass,
   gender: CharacterGender,
+  appearanceLook: CharacterAppearanceLook = DEFAULT_APPEARANCE_LOOK,
 ): string | null {
-  return approvedRenderPaths[`${characterClass}-${gender}`] ?? null;
+  const key = `${characterClass}-${gender}` as const;
+  if (appearanceLook === 'desert') {
+    return approvedRenderPaths[key] ?? null;
+  }
+  if (!isCharacterAppearanceLook(appearanceLook)) {
+    return approvedRenderPaths[key] ?? null;
+  }
+  return `/game/classes/looks/${appearanceLook}/${characterClass}-${gender}.png`;
+}
+
+export function characterAppearanceLabel(look: CharacterAppearanceLook): string {
+  return characterAppearanceLooks.find((entry) => entry.id === look)?.label ?? look;
 }
 
 export function validateCharacterProfile(draft: CharacterProfileDraft): CharacterProfileValidation {
@@ -114,6 +204,12 @@ export function validateCharacterProfile(draft: CharacterProfileDraft): Characte
   }
   if (draft.responsibleMemberId.trim().length === 0) {
     errors.responsibleMemberId = 'Wybierz osobę prowadzącą postać.';
+  }
+  if (!isSkillPathForClass(draft.characterClass, draft.skillPath)) {
+    errors.skillPath = 'Wybierz ścieżkę zgodną z klasą postaci.';
+  }
+  if (!isCharacterAppearanceLook(draft.appearanceLook)) {
+    errors.appearanceLook = 'Wybierz wygląd postaci.';
   }
   if (setName.length > 0 && setName.length < 2) {
     errors.startingSetName = 'Nazwa zestawu może być pusta albo mieć min. 2 znaki.';
@@ -170,6 +266,8 @@ export const newCharacterProfileFixture: CharacterProfileSnapshot = {
   draft: {
     name: '',
     characterClass: 'sura',
+    skillPath: 'sura_weapon',
+    appearanceLook: 'desert',
     gender: 'male',
     level: null,
     responsibleMemberId: 'mateusz',
@@ -185,6 +283,8 @@ export const editCharacterProfileFixture: CharacterProfileSnapshot = {
   draft: {
     name: 'NerwNicht',
     characterClass: 'sura',
+    skillPath: 'sura_magic',
+    appearanceLook: 'black-desert',
     gender: 'male',
     level: 75,
     responsibleMemberId: 'mateusz',
@@ -205,6 +305,8 @@ export function getEditCharacterProfileFixture(
       draft: {
         name: 'Aalpsik',
         characterClass: 'ninja',
+        skillPath: 'ninja_blade',
+        appearanceLook: 'azrael',
         gender: 'female',
         level: 55,
         responsibleMemberId: 'aalpsik',
@@ -219,6 +321,8 @@ export function getEditCharacterProfileFixture(
       draft: {
         name: 'Kimmizic',
         characterClass: 'shaman',
+        skillPath: 'shaman_heal',
+        appearanceLook: 'ice-dragon',
         gender: 'male',
         level: 61,
         responsibleMemberId: 'wicek',
@@ -233,6 +337,8 @@ export function getEditCharacterProfileFixture(
       draft: {
         name: 'XiaoHu',
         characterClass: 'warrior',
+        skillPath: 'warrior_body',
+        appearanceLook: 'desert',
         gender: 'male',
         level: 68,
         responsibleMemberId: 'xiaohu',

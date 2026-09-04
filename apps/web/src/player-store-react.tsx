@@ -32,21 +32,25 @@ import {
   markTimerDone,
   parsePlayerStore,
   removeItemFromSet,
+  removeProgressionTimer,
   seedDemoData,
   serializePlayerStore,
   setActiveCharacterSet,
   startDiscordAuth,
   touchLastOpened,
   updateCharacter,
+  archiveCharacter,
   updateEquipmentItemBonuses,
   type AuthStatus,
   type CharacterClass,
   type CharacterGender,
+  type CharacterSkillPath,
   type EquipmentSlot,
   type PlayerStoreState,
   type ProgressionKind,
   type TaskOutcome,
 } from './player-store';
+import type { CharacterAppearanceLook } from './character-profile';
 
 import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
 import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
@@ -66,6 +70,8 @@ interface PlayerStoreApi {
     input: {
       readonly name: string;
       readonly characterClass: CharacterClass;
+      readonly skillPath: CharacterSkillPath;
+      readonly appearanceLook?: CharacterAppearanceLook;
       readonly gender: CharacterGender;
       readonly level: number | null;
       readonly responsibleMemberId: string;
@@ -79,12 +85,15 @@ interface PlayerStoreApi {
     input: {
       readonly name: string;
       readonly characterClass: CharacterClass;
+      readonly skillPath: CharacterSkillPath;
+      readonly appearanceLook?: CharacterAppearanceLook;
       readonly gender: CharacterGender;
       readonly level: number | null;
       readonly responsibleMemberId: string;
       readonly note?: string;
     },
   ) => void;
+  archiveCharacter: (workspaceId: string, characterId: string) => void;
   applyTaskOutcome: (workspaceId: string, taskId: string, outcome: TaskOutcome) => void;
   addNote: (workspaceId: string, body: string, characterId?: string | null) => void;
   assignItem: (
@@ -118,6 +127,7 @@ interface PlayerStoreApi {
     characterId: string,
     input: { readonly kind?: ProgressionKind; readonly label?: string },
   ) => void;
+  removeTimer: (workspaceId: string, timerId: string) => void;
   createItem: (
     workspaceId: string,
     input: {
@@ -272,6 +282,7 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     setState((current) => {
       const next = updater(current);
       snapshot = next;
+      if (Object.is(next, current)) return current;
       window.localStorage.setItem(PLAYER_STORE_KEY, serializePlayerStore(next));
       return next;
     });
@@ -328,6 +339,9 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       updateCharacter: (workspaceId, characterId, input) => {
         apply((current) => updateCharacter(current, workspaceId, characterId, input));
       },
+      archiveCharacter: (workspaceId, characterId) => {
+        apply((current) => archiveCharacter(current, workspaceId, characterId));
+      },
       applyTaskOutcome: (workspaceId, taskId, outcome) => {
         apply((current) => applyTaskOutcome(current, workspaceId, taskId, outcome));
       },
@@ -363,6 +377,9 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       },
       addTimer: (workspaceId, characterId, input) => {
         apply((current) => addProgressionTimer(current, workspaceId, characterId, input));
+      },
+      removeTimer: (workspaceId, timerId) => {
+        apply((current) => removeProgressionTimer(current, workspaceId, timerId));
       },
       createItem: (workspaceId, input) => {
         let createdId: string | null = null;

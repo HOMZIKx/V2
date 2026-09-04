@@ -122,7 +122,7 @@ export function AppShell({
 
   const navigation = [
     { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
-    { id: 'teams' as const, label: 'Moje przestrzenie', icon: 'team' as const, href: teamsHref },
+    { id: 'teams' as const, label: 'Zespół', icon: 'team' as const, href: teamsHref },
     {
       id: 'characters' as const,
       label: 'Postacie',

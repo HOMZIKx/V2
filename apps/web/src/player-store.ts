@@ -12,9 +12,16 @@ import {
 } from './character-equipment';
 import {
   characterClassLabels,
+  characterSkillPathLabels,
+  DEFAULT_APPEARANCE_LOOK,
+  defaultSkillPathForClass,
   getApprovedCharacterRender,
+  isCharacterAppearanceLook,
+  isSkillPathForClass,
+  type CharacterAppearanceLook,
   type CharacterClass,
   type CharacterGender,
+  type CharacterSkillPath,
 } from './character-profile';
 import {
   clampEnhancement,
@@ -47,7 +54,7 @@ import {
 } from './project-hard-progression';
 import type { TeamHistoryResource } from './team-history';
 
-export type { CharacterClass, CharacterGender, EquipmentSlot, ProgressionKind };
+export type { CharacterClass, CharacterGender, CharacterSkillPath, EquipmentSlot, ProgressionKind };
 
 export const PLAYER_STORE_KEY = 'destiled:player-store:v1';
 
@@ -156,6 +163,8 @@ export interface CharacterRecord {
   readonly id: string;
   readonly name: string;
   readonly characterClass: CharacterClass;
+  readonly skillPath: CharacterSkillPath;
+  readonly appearanceLook: CharacterAppearanceLook;
   readonly gender: CharacterGender;
   readonly level: number | null;
   readonly responsibleMemberId: string;
@@ -684,11 +693,13 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       id: 'nerwnicht',
       name: 'NerwNicht',
       characterClass: 'sura',
+      skillPath: 'sura_magic',
+      appearanceLook: 'black-desert',
       gender: 'male',
       level: 75,
       responsibleMemberId: 'mateusz',
       note: 'Główna postać zespołu do prowadzenia setów na wojnę i dungeon.',
-      imagePath: '/game/classes/sura-male.png',
+      imagePath: '/game/classes/looks/black-desert/sura-male.png',
       activeSetId: 'war',
       revision: 7,
       archived: false,
@@ -720,11 +731,13 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       id: 'aalpsik',
       name: 'Aalpsik',
       characterClass: 'ninja',
+      skillPath: 'ninja_blade',
+      appearanceLook: 'azrael',
       gender: 'female',
       level: 55,
       responsibleMemberId: 'aalpsik',
       note: 'Postać zespołowa do dungeonów. Zbroja Ninja nie ma wpisu w obecnym katalogu wiki — slot zostawiony pusty.',
-      imagePath: '/game/classes/ninja-female.png',
+      imagePath: '/game/classes/looks/azrael/ninja-female.png',
       activeSetId: 'dungeon',
       revision: 4,
       archived: false,
@@ -747,11 +760,13 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       id: 'kimmizic',
       name: 'Kimmizic',
       characterClass: 'shaman',
+      skillPath: 'shaman_heal',
+      appearanceLook: 'ice-dragon',
       gender: 'male',
       level: 61,
       responsibleMemberId: 'wicek',
       note: 'Postać wsparcia zespołu.',
-      imagePath: '/game/classes/shaman-male.png',
+      imagePath: '/game/classes/looks/ice-dragon/shaman-male.png',
       activeSetId: 'support',
       revision: 3,
       archived: false,
@@ -774,6 +789,8 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
       id: 'xiaohu',
       name: 'XiaoHu',
       characterClass: 'warrior',
+      skillPath: 'warrior_body',
+      appearanceLook: 'desert',
       gender: 'male',
       level: 68,
       responsibleMemberId: 'xiaohu',
@@ -836,7 +853,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
           if (timer.kind === 'soul_stone') {
             return {
               ...timer,
-              detail: 'Błyskawica P · mistrzostwo pasywne · limit czytań resetuje się o północy',
+              detail: 'Błyskawica P · mistrzostwo pasywne · cooldown 12 h od przeczytania',
               status: 'ready' as const,
               remainingLabel: 'gotowe do czytania',
               progressPercent: 100,
@@ -911,11 +928,11 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
           if (timer.kind === 'soul_stone') {
             return {
               ...timer,
-              detail: 'Aura Miecza P · mistrzostwo pasywne · limit czytań resetuje się o północy',
+              detail: 'Aura Miecza P · mistrzostwo pasywne · cooldown 12 h od przeczytania',
               status: 'running' as const,
-              readyAtIso: nextMidnightIso(),
-              remainingLabel: `do ${midnight}`,
-              progressPercent: 64,
+              readyAtIso: new Date(Date.now() + 12 * 3_600_000).toISOString(),
+              remainingLabel: '12 h od przeczytania',
+              progressPercent: 4,
               lastActorName: 'Aalpsik',
               lastConfirmedAt: 'wczoraj 23:05',
             };
@@ -1283,10 +1300,17 @@ export function touchLastOpened(
   workspaceId: string,
   characterId: string | null,
 ): PlayerStoreState {
+  const nextCharacterId = characterId ?? state.lastOpenedCharacterId;
+  if (
+    state.lastOpenedWorkspaceId === workspaceId &&
+    state.lastOpenedCharacterId === nextCharacterId
+  ) {
+    return state;
+  }
   return {
     ...state,
     lastOpenedWorkspaceId: workspaceId,
-    lastOpenedCharacterId: characterId ?? state.lastOpenedCharacterId,
+    lastOpenedCharacterId: nextCharacterId,
   };
 }
 
@@ -1331,36 +1355,20 @@ export function ensureCharacterProgressionTimers(
     return { ...timer, kind, iconPath, label };
   });
 
-  const existingKinds = new Set(
-    withIcons
-      .filter((timer) => timer.characterId === characterId)
-      .map((timer) => timer.kind ?? inferProgressionKind(timer.label))
-      .filter((kind): kind is ProgressionKind => kind !== null),
-  );
-  const missing = progressionKindsForLevel(character.level).filter(
-    (kind) => !existingKinds.has(kind),
-  );
-  if (missing.length === 0 && !iconBackfill) return state;
-
-  const added = missing.map((kind) => buildProgressionTimer(characterId, kind, character.level));
-  const historyTitle =
-    missing.length > 0 ? 'Uzupełniono cykle Projekt Hard' : 'Odświeżono ilustracje cykli PH';
-  const historyDetail =
-    missing.length > 0
-      ? added.map((timer) => timer.label).join(' · ')
-      : 'Księgi / Kamienie / Dowodzenie / Polimorfia / Górnictwo / Combo / Jazda / Biolog';
+  // Timers are opt-in per character — never auto-seed missing PH cycles.
+  if (!iconBackfill) return state;
 
   return updateWorkspace(state, workspaceId, (current, viewer) => ({
     ...current,
     revision: current.revision + 1,
-    timers: [...added, ...withIcons],
+    timers: withIcons,
     history: [
       historyEntry(current.id, viewer, {
         characterId,
         characterName: character.name,
         resource: 'timer',
-        title: historyTitle,
-        detail: historyDetail,
+        title: 'Odświeżono ilustracje cykli PH',
+        detail: 'Księgi / Kamienie / Dowodzenie / Polimorfia / Górnictwo / Jazda / Biolog',
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -1374,6 +1382,8 @@ export function createCharacter(
   input: {
     readonly name: string;
     readonly characterClass: CharacterClass;
+    readonly skillPath: CharacterSkillPath;
+    readonly appearanceLook?: CharacterAppearanceLook;
     readonly gender: CharacterGender;
     readonly level: number | null;
     readonly responsibleMemberId: string;
@@ -1383,13 +1393,24 @@ export function createCharacter(
 ): PlayerStoreState {
   const name = input.name.trim();
   if (name.length < 2) return state;
+  const skillPath = isSkillPathForClass(input.characterClass, input.skillPath)
+    ? input.skillPath
+    : defaultSkillPathForClass(input.characterClass);
+  const appearanceLook =
+    input.appearanceLook && isCharacterAppearanceLook(input.appearanceLook)
+      ? input.appearanceLook
+      : DEFAULT_APPEARANCE_LOOK;
 
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const taken = new Set(workspace.characters.map((character) => character.id));
     const characterId = uniqueSlug(name, taken);
     const setName = (input.startingSetName ?? 'Główny').trim() || 'Główny';
     const setId = slugify(setName) || 'main';
-    const imagePath = getApprovedCharacterRender(input.characterClass, input.gender);
+    const imagePath = getApprovedCharacterRender(
+      input.characterClass,
+      input.gender,
+      appearanceLook,
+    );
     const level =
       input.level !== null && input.level > projectHardProductFacts.maxCharacterLevel
         ? projectHardProductFacts.maxCharacterLevel
@@ -1399,6 +1420,8 @@ export function createCharacter(
       id: characterId,
       name,
       characterClass: input.characterClass,
+      skillPath,
+      appearanceLook,
       gender: input.gender,
       level,
       responsibleMemberId: input.responsibleMemberId || viewer.id,
@@ -1421,14 +1444,13 @@ export function createCharacter(
       ...workspace,
       revision: workspace.revision + 1,
       characters: [...workspace.characters, character],
-      timers: [...defaultProgressionTimers(characterId, level), ...workspace.timers],
       history: [
         historyEntry(workspace.id, viewer, {
           characterId,
           characterName: name,
           resource: 'character',
           title: 'Utworzono postać',
-          detail: `${characterClassLabels[input.characterClass]} · pusty zestaw „${setName}” · timery PH startowe`,
+          detail: `${characterClassLabels[input.characterClass]} · ${characterSkillPathLabels[skillPath]} · pusty zestaw „${setName}”`,
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1444,6 +1466,8 @@ export function updateCharacter(
   input: {
     readonly name: string;
     readonly characterClass: CharacterClass;
+    readonly skillPath: CharacterSkillPath;
+    readonly appearanceLook?: CharacterAppearanceLook;
     readonly gender: CharacterGender;
     readonly level: number | null;
     readonly responsibleMemberId: string;
@@ -1453,15 +1477,28 @@ export function updateCharacter(
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const characters = workspace.characters.map((character) => {
       if (character.id !== characterId) return character;
+      const skillPath = isSkillPathForClass(input.characterClass, input.skillPath)
+        ? input.skillPath
+        : defaultSkillPathForClass(input.characterClass);
+      const appearanceLook =
+        input.appearanceLook && isCharacterAppearanceLook(input.appearanceLook)
+          ? input.appearanceLook
+          : (character.appearanceLook ?? DEFAULT_APPEARANCE_LOOK);
       return {
         ...character,
         name: input.name.trim(),
         characterClass: input.characterClass,
+        skillPath,
+        appearanceLook,
         gender: input.gender,
         level: input.level,
         responsibleMemberId: input.responsibleMemberId,
         note: (input.note ?? '').trim(),
-        imagePath: getApprovedCharacterRender(input.characterClass, input.gender),
+        imagePath: getApprovedCharacterRender(
+          input.characterClass,
+          input.gender,
+          appearanceLook,
+        ),
         revision: character.revision + 1,
       };
     });
@@ -1484,6 +1521,42 @@ export function updateCharacter(
       ],
     };
   });
+}
+
+/** Soft-remove character from the living roster (D-042 owner/member squad edit). */
+export function archiveCharacter(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+): PlayerStoreState {
+  const next = updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const target = workspace.characters.find((character) => character.id === characterId);
+    if (!target || target.archived) return workspace;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters: workspace.characters.map((character) =>
+        character.id === characterId
+          ? { ...character, archived: true, revision: character.revision + 1 }
+          : character,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId,
+          characterName: target.name,
+          resource: 'character',
+          title: 'Usunięto postać ze składu',
+          detail: 'Karta ukryta w listach (archiwum).',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+  if (next.lastOpenedCharacterId === characterId) {
+    return { ...next, lastOpenedCharacterId: null };
+  }
+  return next;
 }
 
 export function applyTaskOutcome(
@@ -1823,7 +1896,7 @@ export function markTimerDone(
         ...timer,
         ...(kind ? { kind } : {}),
         status: 'running' as const,
-        progressPercent: 0,
+        progressPercent: 4,
         remainingLabel: restart.remainingLabel,
         readyAtIso: restart.readyAtIso,
         lastActorName: viewer.displayName,
@@ -1918,6 +1991,36 @@ export function addProgressionTimer(
         resource: 'timer',
         title: `Dodano timer: ${label}`,
         detail: 'Timer ręczny na karcie postaci',
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+}
+
+export function removeProgressionTimer(
+  state: PlayerStoreState,
+  workspaceId: string,
+  timerId: string,
+): PlayerStoreState {
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace) return state;
+  const existing = workspace.timers.find((timer) => timer.id === timerId);
+  if (!existing) return state;
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    timers: current.timers.filter((timer) => timer.id !== timerId),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: existing.characterId,
+        characterName:
+          current.characters.find((character) => character.id === existing.characterId)?.name ??
+          null,
+        resource: 'timer',
+        title: `Usunięto timer: ${existing.label}`,
+        detail: 'Timer zdjęty z karty postaci',
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -2205,6 +2308,47 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
       ...parsed,
       workspaces: (parsed.workspaces ?? []).map((workspace) => ({
         ...workspace,
+        members: workspace.members ?? [],
+        characters: (workspace.characters ?? []).map((character) => {
+          const characterClass = character.characterClass;
+          const rawPath = (character as { skillPath?: CharacterSkillPath }).skillPath;
+          const skillPath =
+            rawPath && isSkillPathForClass(characterClass, rawPath)
+              ? rawPath
+              : defaultSkillPathForClass(characterClass);
+          const rawLook = (character as { appearanceLook?: string }).appearanceLook;
+          const appearanceLook =
+            rawLook && isCharacterAppearanceLook(rawLook) ? rawLook : DEFAULT_APPEARANCE_LOOK;
+          return {
+            ...character,
+            skillPath,
+            appearanceLook,
+            imagePath: getApprovedCharacterRender(
+              characterClass,
+              character.gender,
+              appearanceLook,
+            ),
+            sets: character.sets ?? [],
+          };
+        }),
+        timers: (workspace.timers ?? [])
+          .filter((timer) => {
+            const kind = (timer as { kind?: string }).kind;
+            if (kind === 'combo') return false;
+            const label = timer.label.toLocaleLowerCase('pl');
+            return !label.includes('combo') && !label.includes('kombinac');
+          })
+          .map((timer) => {
+            const kind = timer.kind ?? inferProgressionKind(timer.label);
+            if (kind === 'soul_stone' && timer.label !== progressionTimerLabels.soul_stone) {
+              return { ...timer, kind, label: progressionTimerLabels.soul_stone };
+            }
+            return timer.kind ? timer : kind ? { ...timer, kind } : timer;
+          }),
+        tasks: workspace.tasks ?? [],
+        notes: workspace.notes ?? [],
+        history: workspace.history ?? [],
+        invitations: workspace.invitations ?? [],
         items: (workspace.items ?? []).map((item) => {
           const enhancement =
             typeof item.enhancement === 'number'
@@ -2219,6 +2363,7 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
           };
         }),
       })),
+      pendingIncomingInvitations: parsed.pendingIncomingInvitations ?? [],
     };
   } catch {
     return null;

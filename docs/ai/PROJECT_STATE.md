@@ -13,8 +13,12 @@ D-061 immediate next). Bot Discord odłożony do akceptacji Web.
   odliczania; CH podświetla się w ostatnich 20% okna na innym kanale; ikony
   metin/boss (SVG z katalogu) + kontrast list.
 - **EQ camp:** inventory siatka (Metin2-like, nielimitowana) w centrum; postacie
-  wokół z 8 slotami; drag/tap; tryb ognisko + Start timer (running zablokowany);
+  wokół z 8 slotami; drag/tap; tryb Timery PH + Start timer (running zablokowany);
   tło w stylu app (nie czarne); edycja bonusów z dumpa / obserwacji.
+- **EQ (katalog):** dump `dobry-temat-item-catalog.json` = 1:1 `wiki_catalog.json`
+  ze starej app (678 pozycji). Wyszukiwanie przy dodawaniu: cała baza EQ (bez
+  ukrywania innych klas), tokeny + skróty wiki (`Zbr. Płyt.`), kategoria/slot
+  ustawiana automatycznie po wyborze z listy (bez ręcznego selecta).
 - **EQ (bonusy):** przy dodawaniu przedmiotu wybierasz subset bonusów z katalogu
   (w UI „kliknij”), a zapisane bonusy są traktowane jako „explicit” (nie nadpisujemy
   ich pełną drabinką z katalogu).
@@ -23,6 +27,12 @@ D-061 immediate next). Bot Discord odłożony do akceptacji Web.
   bonusów dla kart EQ.
 - **DEC-068:** pełne drabinki bonusów wymagają nieuciętego dumpa / starego app.
 - **Online persistence (MVP, dev):** `player-team-service` z pełnym SQL schema (migracje), OpenAPI v1, ADR-0015; Web z 409-conflict retry + CORS.
+- **Wyglądy postaci:** 4 serie kostiumów (Desert / Black Desert / Azrael / Ice Dragon Guard),
+  wybór w formularzu profilu; karty używają `appearanceLook` + znormalizowane PNG 272×360.
+- **Postacie / skład:** na `/characters` przycisk **Edycja składu** (edycja profilu + usuwanie /
+  soft-archive karty ze składu).
+- **Nawigacja Zespół:** „Moje przestrzenie” → **Zespół**. Hub notatek, zmian, akcji i uwagi;
+  dodawanie postaci tylko w module Postacie. Pulpit = konto / pierwsze uruchomienie.
 
 ## Marker
 
