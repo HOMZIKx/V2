@@ -161,3 +161,40 @@ The member experience must make the shared state readable during play:
 
 These details are resolved during the map slice. They do not block adding the
 module to the product map or continuing the private-team slice.
+
+## Shared Timers + Party sync (player-team)
+
+As of 2026-09-04 the localStorage-only mock is superseded when player-team online is configured.
+
+### How to enable online
+
+1. Set NEXT_PUBLIC_PLAYER_TEAM_BASE_URL to the player-team-service URL (local default http://127.0.0.1:4400).
+2. Keep NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED=true (or omit in non-production; web defaults on).
+3. Use the demo viewer header (x-demo-viewer-id / NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER) until Discord JWT; each browser needs a stable id.
+4. Apply schema file 002_hunt_shared_rooms.sql via the service migration runner (creates party/timer room tables).
+5. Start player-team-service with PLAYER_TEAM_ALLOW_DEMO_WRITE=true and a valid PLAYER_TEAM_DATABASE_URL.
+
+### API (HuntRoomsController)
+
+- Timers and Party stay separate rooms/APIs/UI.
+- Transport: REST poll + mutations with OCC (expectedRevision). Confirm-kill is idempotent via operationId. No WebSocket in MVP.
+- Storage owner: player-team-service (ADR-0015). Real routes:
+  - POST /player-team/v1/party-rooms, POST .../join, GET|PATCH .../{roomId}, POST .../{roomId}/leave
+  - POST|DELETE .../{roomId}/pins[/{pinId}]
+  - GET /player-team/v1/timer-rooms/{mapKey}/{channel} (+ optional roomCode)
+  - POST /player-team/v1/timer-rooms/{mapKey}/{channel}/confirm-kill
+- Personal /me/state may carry optional mapHunt / partyHunt prefs (offline cache only). Shared multi-browser truth is the rooms above; never EQ keys.
+- Auth remains demo header x-demo-viewer-id until Discord/Identity JWT wiring.
+- UI shows ONLINE when poll/mutations work, otherwise Offline lokalny (localStorage mock).
+
+## Local /maps Party mock (web)
+
+Interim client-only polish on apps/web (no realtime sync yet):
+
+- join-by-code when the user has no active party; closed party stores joinCode in localStorage; leaving keeps that saved session so the same code rejoins; with no saved closed party, any non-empty code creates a local mock member session labeled with that code; wrong saved code shows a clear Polish error;
+- scout pins support kind/label presets Metin / Boss / Inne (optional short custom label), with a sidebar list of active pins (label, map/CH, %, live TTL) and dismiss;
+- party header actions: Kopiuj kod, Reset sesji (confirm to session kills = 0); selected pin shows live TTL countdown.
+
+- Mini okno on /maps: toggle Mini okno / Widok pelny (data-testid=party-mini-mode-btn), persisted in destiled:party-mini-mode:v1; compact layout keeps map + essential party controls + pin list, hides long help/invite chrome. Local-only; separate from Timers mini mode key.
+
+Offline fallback remains separate from /timers SpawnTimers. When player-team hunt sync is online, local mock is not the source of truth.

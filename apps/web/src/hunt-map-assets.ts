@@ -1,7 +1,6 @@
 /** Shared PH map atlas assets for Timers + Party (separate domains, same images). */
 
 export const huntMapFiles: Readonly<Record<string, string>> = {
-  M1: 'map_m1.png',
   M2: 'map_m2.png',
   M3: 'map_m3.png',
   'Dolina Orków': 'map_orki.png',
@@ -15,11 +14,6 @@ export const huntMapFiles: Readonly<Record<string, string>> = {
   'Wężowe Pole': 'map_wezowe.png',
   'Atlantyda V1': 'map_atlantyda_v1_new.png',
   'Atlantyda V2': 'map_atlantyda_v2_new.png',
-  'Grota Wygnańców': 'map_grota_wygnancow.png',
-  'Loch Małp Łatwy': 'map_loch_malp_latwy.png',
-  'Loch Małp Średni': 'map_loch_malp_sredni.png',
-  'Loch Małp Trudny': 'map_loch_malp_trudny.png',
-  'Loch Pająków V2': 'map_loch_pajakow_v2.png',
 };
 
 export function huntMapImagePath(mapKey: string): string | null {

@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bonusesAtEnhancement,
+  additionalBonusOptionsForSlot,
+  additionalBonusOptionsForItem,
+  maxAdditionalBonusesForItem,
   catalogBonusEntriesForItem,
+  splitItemBonuses,
+  weaponHasAverageSkillDamage,
+  weaponHasPhPvmAttackBonuses,
+  weaponRequiredLevel,
   clampEnhancement,
   compatibleClassesForCategory,
   enhancerCatalogItems,
@@ -13,6 +20,8 @@ import {
   isItemCompatibleWithClass,
   knownCatalogBonusNames,
   parseEnhancementFromName,
+  phPlus9Lines,
+  phRequiredLevel,
   resolveItemBonuses,
   resolveItemIconPath,
   searchEquipmentCatalogSuggestions,
@@ -142,4 +151,102 @@ describe('item catalog class and enhancement rules', () => {
       knife.every((entry) => !entry.name.toLocaleLowerCase('pl').includes('obrona')),
     ).toBe(true);
   });
+  it('keeps catalog builtins non-editable and exposes slot mix pools', () => {
+    const split = splitItemBonuses('Bojowa Tarcza', 9, [
+      'Obrona +57',
+      'Silny przeciwko Nieumarłym +20%',
+      'Max PŻ +2000',
+    ]);
+    expect(split.builtin.some((line) => line.includes('Obrona'))).toBe(true);
+    expect(split.additional).toEqual([
+      'Silny przeciwko Nieumarłym +20%',
+      'Max PŻ +2000',
+    ]);
+    const weaponPool = additionalBonusOptionsForSlot('weapon');
+    expect(weaponPool).toContain('Silny przeciwko Nieumarłym +20%');
+    expect(weaponPool).toContain('Siła +12');
+    expect(additionalBonusOptionsForSlot('armor').length).toBeGreaterThan(0);
+  });
+
+
+
+  it('fills truncated wiki ladders via overrides for black steel armor and crystal bracelet', () => {
+    expect(resolveItemBonuses('Zbroja Z Czarnej Stali', 9)).toEqual(
+      expect.arrayContaining(['Odporność na Magię +20%']),
+    );
+    // At +9 PH presentation snapshot wins over wiki ladder for documented jewelry.
+    expect(resolveItemBonuses('Kryształowa Bransoleta', 9)).toEqual(
+      expect.arrayContaining(['Szybkość ataku +10%', 'Szansa na podwójne Yang 7%']),
+    );
+    // Below +9, wiki / dump ladder still applies (PH only documents +9).
+    expect(resolveItemBonuses('Kryształowa Bransoleta', 8)).toEqual(
+      expect.arrayContaining(['Szybk. Ataku +9%', 'Regeneracja PŻ +45%']),
+    );
+  });
+
+  it('marks wiki lvl 30/75 weapons for average/skill as additional kinds within max 5', () => {
+    expect(weaponRequiredLevel('Ostrze Z Czerwonej Stali')).toBe(30);
+    expect(weaponRequiredLevel('Zatruty Miecz')).toBe(75);
+    expect(weaponHasAverageSkillDamage('Ostrze Z Czerwonej Stali +9')).toBe(true);
+    expect(weaponHasAverageSkillDamage('Krótki Nóż')).toBe(false);
+    expect(weaponHasPhPvmAttackBonuses('Zatruty Miecz')).toBe(true);
+    expect(maxAdditionalBonusesForItem('Zatruty Miecz', 'weapon')).toBe(5);
+    expect(additionalBonusOptionsForSlot('weapon')).toContain('Silny przeciwko Mistykom +2%');
+    expect(additionalBonusOptionsForSlot('weapon')).toContain('Silny przeciwko Mistykom +20%');
+    expect(additionalBonusOptionsForItem('Zatruty Miecz', 'weapon')).toContain('Średnie Obrażenia +20%');
+    expect(additionalBonusOptionsForItem('Zatruty Miecz', 'weapon')).toContain(
+      'Obrażenia Umiejętności +10%',
+    );
+    expect(additionalBonusOptionsForItem('Krótki Nóż', 'weapon')).not.toContain(
+      'Średnie Obrażenia +20%',
+    );
+  });
+
+  it('fills Zatruty Miecz upgrade ladder from wiki overrides (AV + AS)', () => {
+    expect(resolveItemBonuses('Zatruty Miecz', 9)).toEqual(
+      expect.arrayContaining(['Wartość Ataku +237-277', 'Szybkość Ataku +26%']),
+    );
+    expect(resolveItemBonuses('Zatruty Miecz', 0)).toEqual(
+      expect.arrayContaining(['Wartość Ataku +100-140', 'Szybkość Ataku +17%']),
+    );
+    const { builtin } = splitItemBonuses('Zatruty Miecz +9', 9, []);
+    expect(builtin.length).toBeGreaterThan(0);
+  });
+
+  it('fills Miecz Żalu upgrade ladder from wiki overrides (AV + AS)', () => {
+    expect(resolveItemBonuses('Miecz Żalu', 9)).toEqual(
+      expect.arrayContaining(['Wartość Ataku +226-274', 'Szybkość Ataku +26%']),
+    );
+    expect(resolveItemBonuses('Miecz Żalu', 0)).toEqual(
+      expect.arrayContaining(['Wartość Ataku +136-184', 'Szybkość Ataku +17%']),
+    );
+    const { builtin } = splitItemBonuses('Miecz Żalu +9', 9, []);
+    expect(builtin.length).toBeGreaterThan(0);
+  });
+
+  it('uses PH plus9 snapshot as builtins for Ametystowe Kolczyki +9', () => {
+    expect(phRequiredLevel('Ametystowe Kolczyki')).toBe(54);
+    expect(phPlus9Lines('Ametystowe Kolczyki')).toEqual([
+      'Siła +14',
+      'Szansa na krytyczne uderzenie +5%',
+      'Wartość ataku +30',
+      'Max PŻ +1650',
+    ]);
+    expect(resolveItemBonuses('Ametystowe Kolczyki', 9)).toEqual([
+      'Siła +14',
+      'Szansa na krytyczne uderzenie +5%',
+      'Wartość ataku +30',
+      'Max PŻ +1650',
+    ]);
+    expect(resolveItemBonuses('Ametystowe Kolczyki +9', 9)).toContain('Siła +14');
+    const entries = catalogBonusEntriesForItem('Ametystowe Kolczyki', 9);
+    expect(entries.map((entry) => entry.line)).toEqual(phPlus9Lines('Ametystowe Kolczyki'));
+    expect(splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).builtin).toContain(
+      'Siła +14',
+    );
+    expect(splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).additional).toEqual([
+      'Max PŻ +2000',
+    ]);
+  });
+
 });

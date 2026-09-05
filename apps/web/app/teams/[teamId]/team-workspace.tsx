@@ -64,8 +64,10 @@ export function TeamWorkspace() {
         <main className="team-workspace" id="main-content">
           <section className="panel">
             <h1>Nie znaleziono zespołu</h1>
-            <p>ID „{teamId}” nie istnieje w lokalnym store.</p>
-            <a href="/">Wróć na pulpit</a>
+            <p>Ten zespół nie jest w lokalnej sesji.</p>
+            <a className="secondary-button" href="/">
+              Wróć na pulpit
+            </a>
           </section>
         </main>
       </AppShell>
@@ -99,8 +101,11 @@ export function TeamWorkspace() {
             <span className="eyebrow">{isSolo ? 'Zespół (solo)' : 'Zespół'}</span>
             <h1>{workspace.name}</h1>
             <p>
-              Notatki, zmiany i akcje w jednym miejscu. Postacie i EQ są w module{' '}
-              <a href="/characters">Postacie</a>.
+              Notatki, zmiany i akcje. EQ w module{' '}
+              <a className="panel-text-link" href="/characters">
+                Postacie
+              </a>
+              .
             </p>
             <div className="workspace-sync">
               <strong>
@@ -158,7 +163,7 @@ export function TeamWorkspace() {
           <section className="panel" id="changes">
             <header>
               <h2>Ostatnie zmiany</h2>
-              <a href={`/teams/${workspace.id}/history`}>Pełna historia</a>
+              <a className="panel-text-link" href={`/teams/${workspace.id}/history`}>Pełna historia</a>
             </header>
             {recentHistory.length === 0 ? (
               <p className="empty-copy">Po pierwszej zmianie w EQ, składzie lub timerze pojawi się wpis.</p>
@@ -222,27 +227,37 @@ export function TeamWorkspace() {
             <header>
               <h2>Notatki zespołu</h2>
             </header>
-            <form className="note-form" onSubmit={handleNoteSubmit}>
+            <form className="team-note-form" onSubmit={handleNoteSubmit}>
               <label>
                 Nowa notatka
                 <textarea
                   maxLength={280}
                   onChange={(event) => setNoteDraft(event.target.value)}
+                  placeholder="Krótka informacja dla zespołu…"
+                  rows={5}
                   value={noteDraft}
                 />
               </label>
-              <button disabled={!writesEnabled || noteDraft.trim().length === 0} type="submit">
-                Dodaj notatkę
-              </button>
+              <div>
+                <small>{noteDraft.trim().length}/280</small>
+                <button disabled={!writesEnabled || noteDraft.trim().length === 0} type="submit">
+                  Dodaj notatkę
+                </button>
+              </div>
             </form>
-            {workspace.notes.length === 0 ? (
+            {workspace.notes.filter((note) => note.scope !== 'equipment').length === 0 ? (
               <p className="empty-copy">Brak notatek. Zostaw krótką informację dla zespołu.</p>
             ) : (
-              <ul className="note-list">
-                {workspace.notes.map((note) => (
-                  <li key={note.id}>
-                    <strong>{note.authorName}</strong>
-                    <span>{note.createdAtLabel}</span>
+              <ul className="team-note-list">
+                {workspace.notes
+                  .filter((note) => note.scope !== 'equipment')
+                  .map((note) => (
+                  <li className="team-note" key={note.id}>
+                    <div className="team-note-meta">
+                      <strong>{note.authorName}</strong>
+                      <span aria-hidden="true"> · </span>
+                      <time>{note.createdAtLabel}</time>
+                    </div>
                     <p>{note.body}</p>
                   </li>
                 ))}
@@ -271,6 +286,7 @@ export function TeamWorkspace() {
                     {task.status === 'ready' || task.status === 'upcoming' ? (
                       <div className="task-actions">
                         <button
+                          className="secondary-button"
                           disabled={!writesEnabled}
                           onClick={() => {
                             applyTaskOutcome(workspace.id, task.id, 'done');
@@ -281,6 +297,7 @@ export function TeamWorkspace() {
                           Zrobione
                         </button>
                         <button
+                          className="secondary-button"
                           disabled={!writesEnabled}
                           onClick={() => {
                             applyTaskOutcome(workspace.id, task.id, 'snoozed');
@@ -291,6 +308,7 @@ export function TeamWorkspace() {
                           Później
                         </button>
                         <button
+                          className="secondary-button"
                           disabled={!writesEnabled}
                           onClick={() => {
                             applyTaskOutcome(workspace.id, task.id, 'unavailable');
@@ -339,7 +357,7 @@ export function TeamWorkspace() {
                         {member.role === 'owner' ? 'Właściciel' : 'Członek'}
                       </span>
                     </div>
-                    <small>Obecność na żywo — wyłączona</small>
+                    <small>Rola w zespole</small>
                   </div>
                 </li>
               ))}
@@ -349,18 +367,18 @@ export function TeamWorkspace() {
           <section className="panel">
             <header>
               <h2>Postacie</h2>
-              <a href="/characters">Otwórz listę</a>
+              <a className="panel-text-link" href="/characters">
+                Otwórz listę
+              </a>
             </header>
             {livingCharacters.length === 0 ? (
-              <p className="empty-copy">
-                Skład jest pusty. Dodawanie i usuwanie postaci jest w module Postacie.
-              </p>
+              <p className="empty-copy">Skład pusty — dodaj postacie w module Postacie.</p>
             ) : (
               <p className="empty-copy">
                 {livingCharacters.length === 1
                   ? '1 karta w składzie.'
                   : `${livingCharacters.length} kart w składzie.`}{' '}
-                EQ i timery PH otwierasz z listy postaci.
+                EQ i timery z listy postaci.
               </p>
             )}
           </section>
@@ -370,10 +388,6 @@ export function TeamWorkspace() {
           {announcement}
         </p>
         {announcement ? <p className="entry-status">{announcement}</p> : null}
-        <div className="mock-notice">
-          Zmiany z tego zespołu zapisują się lokalnie i w dzienniku historii. Przypomnienia Discord
-          wrócą z botem.
-        </div>
       </main>
     </AppShell>
   );

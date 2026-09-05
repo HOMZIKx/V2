@@ -1,0 +1,25 @@
+{
+  "source": "https://pl-wiki.metin2.gameforge.com/index.php/Srednie_i_umiejetnosci",
+  "note": "Official Metin2 PL wiki: Srednie Obrazenia / Obrazenia Umiejetnosci on weapons level 30 and 75. Ranges avg -60..+60, skill -30..+30.",
+  "phPresentation": {
+    "source": "https://projekt-hard.eu/presentation",
+    "note": "PH: weapons above level 25 include Attack Value PvM and Magic Attack Value PvM. No public numeric ladder — do not invent values.",
+    "pvmAttackFromLevelExclusive": 25
+  },
+  "byTitle": {
+    "Kozik Czar. Lis.": 30,
+    "Łuk z Rogu Jelenia": 30,
+    "Miecz Pełni Księżyca": 30,
+    "Ostrze Z Czerwonej Stali": 30,
+    "Wachlarz Jes. Wiatru": 30,
+    "Antyczny Dzwon": 30,
+    "Skrzydła Demona Chakr.": 75,
+    "Stalowy Łuk Kruka": 75,
+    "Zatruty Miecz": 75,
+    "Miecz Żalu": 75,
+    "Bambusowy Dzwon": 75,
+    "Lwi Miecz": 75,
+    "Kolczasty Szpon": 75,
+    "Dzida Feniksa": 30
+  }
+}

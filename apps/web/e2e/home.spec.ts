@@ -78,11 +78,11 @@ test('opens the character equipment card from the character directory', async ({
   await page.getByRole('link', { name: /NerwNicht/ }).first().click();
   await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht$/);
   await expect(page.getByRole('link', { name: /Edytuj NerwNicht/ })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Inventory zespołu', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ekwipunek', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Broń/i }).first()).toBeVisible();
 });
 
-test('separates planned equipment, confirmed location and character timers', async ({ page }) => {
+test('separates planned equipment, item details and character timers', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/teams/asteria/characters/nerwnicht');
   await page.getByRole('button', { name: 'Pokaż założone' }).click();
@@ -90,17 +90,17 @@ test('separates planned equipment, confirmed location and character timers', asy
     .getByRole('button', { name: /Bojowa Tarcza \+9/ })
     .first()
     .click();
-  await page.getByRole('button', { name: /Potwierdź: jest na NerwNicht/ }).click();
-  await expect(page.getByText(/Ostatnio potwierdzona lokalizacja:/)).toBeVisible();
-  await expect(page.getByText('NerwNicht').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Szczegóły' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Bojowa Tarcza/ })).toBeVisible();
+  await expect(page.getByText('Bonusy wbudowane')).toBeVisible();
   await page.getByRole('button', { name: 'Dodaj przedmiot' }).click();
   await page.getByLabel('Nazwa przedmiotu z gry').fill('Lwi Miecz');
   await page.getByLabel('Ulepszenie').selectOption('4');
   await page.getByRole('button', { name: 'Dodaj do torby' }).click();
   await expect(page.locator('.entry-status').filter({ hasText: 'Lwi Miecz +4' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Lwi Miecz \+4/ }).first()).toBeVisible();
-  await page.getByRole('tab', { name: 'Timery PH' }).click();
-  await expect(page.getByText('Timery PH', { exact: true }).first()).toBeVisible();
+  await page.getByRole('tab', { name: 'Timer' }).click();
+  await expect(page.getByText('Timer', { exact: true }).first()).toBeVisible();
 });
 
 test('resolves a Discord identity before creating a team invitation', async ({ page }) => {
@@ -133,10 +133,10 @@ test('shows append-only team history and resolves a revision conflict explicitly
   await page.getByRole('link', { name: 'Historia' }).click();
   await expect(page).toHaveURL(/\/teams\/asteria\/history$/);
   await expect(page.getByRole('heading', { name: 'Dziennik zmian' })).toBeVisible();
-  await expect(page.getByText('Potwierdzono lokalizację tarczy')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Szczegóły' })).toBeVisible();
   await page.getByLabel('Szukaj w historii').fill('księgi');
   await expect(page.getByText('Rozpoczęto timer księgi')).toBeVisible();
-  await expect(page.getByText('Potwierdzono lokalizację tarczy')).not.toBeVisible();
+  await expect(page.getByText('Bonusy wbudowane')).toBeVisible();
   await page.getByLabel('Szukaj w historii').fill('');
   await page.getByText('Symulator konfliktu rewizji').click();
   await page.getByRole('button', { name: 'Zachowaj mój szkic' }).click();
@@ -159,7 +159,7 @@ test('loads demo Asteria from the home dashboard button', async ({ page }) => {
 test('marks a ready horse timer done and clears attention', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/teams/asteria/characters/aalpsik');
-  await page.getByRole('tab', { name: 'Timery PH' }).click();
+  await page.getByRole('tab', { name: 'Timer' }).click();
   await expect(page.getByText('Jazda konna').first()).toBeVisible();
   await page.getByRole('button', { name: 'Start' }).first().click();
   await expect(page.getByRole('button', { name: 'Zablokowany' }).first()).toBeVisible();

@@ -6,6 +6,10 @@ info:
     Stores and manages per-user team/player state for DESTILED Web and Discord bot.
     Auth: dev-safe demo header `x-demo-viewer-id` (temporary until Identity JWT wiring).
 
+    Shared Timers + Party rooms are served by HuntRoomsController
+    (`/party-rooms/*`, `/timer-rooms/*`). Personal `/me/state` may optionally
+    carry `mapHunt` / `partyHunt` prefs (offline cache only — not shared rooms).
+
 servers:
   - url: http://127.0.0.1:4400
     description: local dev
@@ -15,6 +19,10 @@ tags:
     description: Full PlayerStoreState snapshot sync (dev-sync bridge, temporary)
   - name: health
     description: Service health checks
+  - name: party-rooms
+    description: Shared Party rooms (members, pins, session kills)
+  - name: timer-rooms
+    description: Shared Timers rooms (confirm-kill with operationId idempotency)
 
 paths:
   /health/live:
@@ -62,6 +70,11 @@ paths:
         Returns the viewer's last persisted state. Returns `{ state: null }` when no
         snapshot exists yet. The viewer identity is resolved from the demo header
         (dev mode) or internal JWT (production, future).
+
+        Optional top-level keys on `state` (personal prefs / offline cache only):
+        - `mapHunt` — Timers UI prefs + local confirmed store
+        - `partyHunt` — Party UI prefs + lastJoinCode / partyRoomId
+        Shared multi-browser rooms use `/party-rooms` and `/timer-rooms`, not these keys.
       parameters:
         - $ref: "#/components/parameters/DemoViewerIdHeader"
       responses:
@@ -84,6 +97,9 @@ paths:
         Persists the full `PlayerStoreState` snapshot. Optionally uses
         optimistic concurrency control via `expectedRevision`. On conflict (409)
         the caller should re-fetch, merge if needed, and retry.
+
+        May include optional `mapHunt` / `partyHunt` keys (personal cache).
+        Do not use this endpoint as the source of truth for shared rooms.
       parameters:
         - $ref: "#/components/parameters/DemoViewerIdHeader"
       requestBody:
@@ -99,6 +115,281 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PutViewerStateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+
+  /player-team/v1/party-rooms:
+    post:
+      tags: [party-rooms]
+      summary: Create a party room
+      operationId: createPartyRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePartyRoomRequest"
+      responses:
+        "200":
+          description: Created party room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyRoom"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /player-team/v1/party-rooms/join:
+    post:
+      tags: [party-rooms]
+      summary: Join a party room by join code
+      operationId: joinPartyRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinPartyRoomRequest"
+      responses:
+        "200":
+          description: Joined party room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyRoom"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /player-team/v1/party-rooms/{roomId}:
+    get:
+      tags: [party-rooms]
+      summary: Get party room by id
+      operationId: getPartyRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Party room or null when missing
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PartyRoom"
+                  - type: "null"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    patch:
+      tags: [party-rooms]
+      summary: Patch party room (OCC via expectedRevision)
+      operationId: patchPartyRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchPartyRoomRequest"
+      responses:
+        "200":
+          description: Updated party room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyRoom"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+
+  /player-team/v1/party-rooms/{roomId}/leave:
+    post:
+      tags: [party-rooms]
+      summary: Leave a party room
+      operationId: leavePartyRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Left party (room may be null if deleted when empty)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeavePartyRoomResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /player-team/v1/party-rooms/{roomId}/pins:
+    post:
+      tags: [party-rooms]
+      summary: Add or replace a scout pin
+      operationId: addPartyRoomPin
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPartyRoomPinRequest"
+      responses:
+        "200":
+          description: Party room with updated pins
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyRoom"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /player-team/v1/party-rooms/{roomId}/pins/{pinId}:
+    delete:
+      tags: [party-rooms]
+      summary: Remove a scout pin
+      operationId: removePartyRoomPin
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: roomId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: pinId
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        "200":
+          description: Party room with pin removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartyRoom"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /player-team/v1/timer-rooms/{mapKey}/{channel}:
+    get:
+      tags: [timer-rooms]
+      summary: Get or create shared Timers room for map+channel
+      operationId: getOrCreateTimerRoom
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: mapKey
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: channel
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: roomCode
+          in: query
+          required: false
+          description: Optional party/room scope; omit for public map channel room
+          schema: { type: string }
+      responses:
+        "200":
+          description: Timer room snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimerRoom"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /player-team/v1/timer-rooms/{mapKey}/{channel}/confirm-kill:
+    post:
+      tags: [timer-rooms]
+      summary: Confirm a kill (idempotent via operationId)
+      operationId: confirmTimerKill
+      description: |
+        Applies a kill confirmation into the Timers room. `operationId` is the
+        idempotency key — repeating the same id returns the existing snapshot
+        without double-applying. Optional `expectedRevision` enables OCC
+        (409 when mismatch and op not yet applied).
+      parameters:
+        - $ref: "#/components/parameters/DemoViewerIdHeader"
+        - name: mapKey
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+        - name: channel
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmTimerKillRequest"
+      responses:
+        "200":
+          description: Updated (or idempotent duplicate) timer room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimerRoom"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -127,11 +418,22 @@ components:
       required: [state]
       properties:
         state:
-          description: The last saved PlayerStoreState JSON, or null when empty.
+          description: |
+            The last saved PlayerStoreState JSON, or null when empty.
+            Optional hunt personal-cache keys: `mapHunt`, `partyHunt`.
           oneOf:
             - type: "null"
             - type: object
               additionalProperties: true
+              properties:
+                mapHunt:
+                  type: object
+                  additionalProperties: true
+                  description: Optional Timers personal prefs / offline cache
+                partyHunt:
+                  type: object
+                  additionalProperties: true
+                  description: Optional Party personal prefs / offline cache
         revision:
           type: integer
           minimum: 0
@@ -148,7 +450,9 @@ components:
         state:
           type: object
           additionalProperties: true
-          description: Full serialized PlayerStoreState.
+          description: |
+            Full serialized PlayerStoreState. May include optional `mapHunt` /
+            `partyHunt` personal-cache keys.
         expectedRevision:
           type: integer
           minimum: 0
@@ -165,6 +469,225 @@ components:
           minimum: 0
           description: New revision after a successful save.
 
+    PartyRoomMember:
+      type: object
+      required: [id, displayName, role]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        role:
+          type: string
+          enum: [leader, member]
+
+    PartyRoomRequest:
+      type: object
+      required: [id, displayName, status]
+      properties:
+        id: { type: string }
+        displayName: { type: string }
+        status:
+          type: string
+          enum: [pending, accepted, rejected]
+
+    PartyRoomPin:
+      type: object
+      required: [id, partyId, mapKey, channel, location, placedAt, placedBy, label, kind]
+      properties:
+        id: { type: string, minLength: 1 }
+        partyId: { type: string }
+        mapKey: { type: string, minLength: 1 }
+        channel: { type: integer, minimum: 1 }
+        location:
+          type: object
+          required: [x, y]
+          properties:
+            x: { type: number }
+            y: { type: number }
+        placedAt: { type: number }
+        placedBy: { type: string, minLength: 1 }
+        label: { type: string, minLength: 1 }
+        kind:
+          type: string
+          enum: [metin, boss, spot]
+
+    PartyRoom:
+      type: object
+      required:
+        - id
+        - joinCode
+        - name
+        - leaderId
+        - visibility
+        - mapKey
+        - activeChannel
+        - sessionKills
+        - members
+        - requests
+        - pins
+        - revision
+        - updatedAtIso
+      properties:
+        id: { type: string }
+        joinCode: { type: string }
+        name: { type: string }
+        leaderId: { type: string }
+        visibility:
+          type: string
+          enum: [open, closed]
+        mapKey: { type: string }
+        activeChannel: { type: integer, minimum: 1 }
+        sessionKills: { type: integer, minimum: 0 }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartyRoomMember"
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartyRoomRequest"
+        pins:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartyRoomPin"
+        revision: { type: integer, minimum: 0 }
+        updatedAtIso:
+          type: string
+          format: date-time
+
+    CreatePartyRoomRequest:
+      type: object
+      required: [displayName, mapKey, visibility]
+      properties:
+        displayName: { type: string, minLength: 1 }
+        mapKey: { type: string, minLength: 1 }
+        activeChannel:
+          type: integer
+          minimum: 1
+          default: 1
+        visibility:
+          type: string
+          enum: [open, closed]
+
+    JoinPartyRoomRequest:
+      type: object
+      required: [displayName, joinCode]
+      properties:
+        displayName: { type: string, minLength: 1 }
+        joinCode: { type: string, minLength: 1 }
+
+    PatchPartyRoomRequest:
+      type: object
+      required: [expectedRevision]
+      properties:
+        expectedRevision: { type: integer, minimum: 0 }
+        mapKey: { type: string, minLength: 1 }
+        activeChannel: { type: integer, minimum: 1 }
+        sessionKills: { type: integer, minimum: 0 }
+        visibility:
+          type: string
+          enum: [open, closed]
+
+    AddPartyRoomPinRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          allOf:
+            - $ref: "#/components/schemas/PartyRoomPin"
+            - type: object
+              properties:
+                partyId:
+                  type: string
+                  description: Optional; server defaults to roomId when omitted
+
+    LeavePartyRoomResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        room:
+          oneOf:
+            - $ref: "#/components/schemas/PartyRoom"
+            - type: "null"
+
+    TimerRoomRecord:
+      type: object
+      required: [key, mapKey, channel, kind, confirmedAt, confirmedBy, location]
+      properties:
+        key: { type: string, minLength: 1 }
+        mapKey: { type: string, minLength: 1 }
+        channel: { type: integer, minimum: 1 }
+        kind:
+          type: string
+          enum: [boss, metin]
+        entityName: { type: string }
+        confirmedAt:
+          oneOf:
+            - type: number
+            - type: "null"
+        confirmedBy:
+          oneOf:
+            - type: string
+            - type: "null"
+        location:
+          oneOf:
+            - type: object
+              required: [x, y]
+              properties:
+                x: { type: number }
+                y: { type: number }
+            - type: "null"
+        operationId:
+          oneOf:
+            - type: string
+            - type: "null"
+
+    TimerRoom:
+      type: object
+      required: [id, mapKey, channel, roomCode, timers, appliedOps, revision, updatedAtIso]
+      properties:
+        id: { type: string }
+        mapKey: { type: string }
+        channel: { type: integer, minimum: 1 }
+        roomCode:
+          oneOf:
+            - type: string
+            - type: "null"
+        timers:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/TimerRoomRecord"
+        appliedOps:
+          type: array
+          items: { type: string }
+          description: Recent operationIds already applied (idempotency)
+        revision: { type: integer, minimum: 0 }
+        updatedAtIso:
+          type: string
+          format: date-time
+
+    ConfirmTimerKillRequest:
+      type: object
+      required: [operationId, record]
+      properties:
+        roomCode:
+          oneOf:
+            - type: string
+            - type: "null"
+          description: Optional party/room scope for the timers room
+        operationId:
+          type: string
+          minLength: 1
+          description: Idempotency key for this confirm-kill mutation
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Optional OCC; omit for unconditional apply (still idempotent by operationId)
+        record:
+          $ref: "#/components/schemas/TimerRoomRecord"
+
     ErrorResponse:
       type: object
       required: [message, statusCode]
@@ -175,6 +698,9 @@ components:
           type: string
         error:
           type: string
+        actualRevision:
+          type: integer
+          nullable: true
 
   responses:
     BadRequest:
@@ -193,6 +719,13 @@ components:
 
     Forbidden:
       description: Demo persistence disabled (PLAYER_TEAM_ALLOW_DEMO_WRITE=false)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: Resource not found
       content:
         application/json:
           schema:

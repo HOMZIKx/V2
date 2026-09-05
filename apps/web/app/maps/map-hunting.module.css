@@ -117,3 +117,578 @@
     height: 320px;
   }
 }
+
+/* Mini okno (RespTimer port) — local .root keeps CSS-modules purity; globals.css untouched */
+
+.root:global(.is-mini) {
+  width: min(420px, calc(100% - 24px));
+  margin: 0 auto;
+  padding: 12px 0 28px;
+}
+
+.root:global(.is-mini) :global(.respawn-header) {
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.root:global(.is-mini) :global(.respawn-header h1) {
+  margin: 2px 0;
+  font-size: 20px;
+}
+
+.root:global(.is-mini) :global(.respawn-mini-lead),
+.root:global(.is-mini) :global(.respawn-header p) {
+  margin: 0;
+  color: #9db0cb;
+  font-size: 10px;
+}
+
+.root:global(.is-mini) :global(.respawn-header-actions) {
+  gap: 6px;
+}
+
+.root:global(.is-mini) :global(.respawn-header-actions button) {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 9px;
+}
+
+.root:global(.is-mini) :global(.respawn-controls) {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.root:global(.is-mini) :global(.respawn-controls-stat) {
+  display: none;
+}
+
+.root:global(.is-mini) :global(.respawn-workspace),
+.root:global(.is-mini) :global(.respawn-workspace.is-timers-only) {
+  grid-template-columns: 1fr;
+  margin-top: 10px;
+}
+
+.root:global(.is-mini) :global(.respawn-list-header) {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.root:global(.is-mini) :global(.respawn-list-header h2) {
+  font-size: 15px;
+}
+
+.root:global(.is-mini) :global(.respawn-list-lead) {
+  font-size: 11px;
+}
+
+.root:global(.is-mini) :global(.respawn-filters) {
+  padding: 8px 10px;
+}
+
+.root:global(.is-mini) :global(.respawn-filters button),
+.root:global(.is-mini) :global(.respawn-channels button) {
+  min-height: 26px;
+  padding: 0 7px;
+  font-size: 8px;
+}
+
+.root:global(.is-mini) :global(.respawn-records) {
+  padding: 6px;
+}
+
+.root:global(.is-mini) :global(.respawn-record) {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px;
+}
+
+.root:global(.is-mini) :global(.respawn-record-icon) {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.root:global(.is-mini) :global(.respawn-record-actions) {
+  grid-column: 2 / -1;
+}
+
+.root:global(.is-mini) :global(.respawn-counting-block header) {
+  padding: 8px 10px 4px;
+}
+
+.root:global(.is-mini) :global(.respawn-counting-block h3) {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.root:global(.is-mini) :global(.respawn-late-banner),
+.root:global(.is-mini) :global(.respawn-notice) {
+  font-size: 10px;
+  margin-top: 8px;
+}
+
+/* Countdown pills when progress to minAt < 0.9 */
+.root :global(.respawn-record.is-minimized) {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(110, 140, 190, 0.18);
+  background: rgba(14, 20, 32, 0.72);
+  cursor: pointer;
+}
+
+.root :global(.respawn-record.is-minimized .respawn-record-icon) {
+  width: 26px;
+  height: 26px;
+}
+
+.root :global(.respawn-record.is-minimized .respawn-record-copy strong) {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.root :global(.respawn-record.is-minimized .respawn-record-time b) {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.root:global(.is-mini) :global(.respawn-record.is-minimized) {
+  margin: 3px 0;
+}
+
+
+/* Real map pins (pinezki) — not entity portraits / green squares.
+   Overrides globals .respawn-map-marker chrome without editing globals.css. */
+.root :global(.respawn-map-marker.respawn-map-pin) {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #7ec8ff;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-boss) {
+  color: #f0b35a;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-metin) {
+  color: #6ec8ff;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-window),
+.root :global(.respawn-map-marker.respawn-map-pin.is-on_map) {
+  color: #64e5a8;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-countdown) {
+  color: #9eb0c9;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-scout) {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  color: #e8f2ff;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin.is-selected) {
+  color: #ffc478;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 0 6px rgba(255, 180, 80, 0.55));
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin span) {
+  top: calc(100% + 2px);
+  font-size: 10px !important;
+  color: #f2f6ff !important;
+}
+
+.root :global(.respawn-map-marker.respawn-map-pin .respawn-entity-icon),
+.root :global(.respawn-map-marker.respawn-map-pin .icon) {
+  display: none !important;
+}
+
+.pinGlyph {
+  display: block;
+  width: 20px;
+  height: 30px;
+  pointer-events: none;
+}
+
+.pinGlyphScout {
+  width: 16px;
+  height: 24px;
+}
+
+.metinCounts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+  max-width: 340px;
+  flex: 1 1 240px;
+}
+
+.metinCountsLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9eb0c9;
+}
+
+.metinCountsList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.metinCountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metinCountName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: #e8f2ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metinCountControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.metinCountControls button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid rgba(126, 200, 255, 0.28);
+  background: rgba(12, 20, 32, 0.75);
+  color: #e8f2ff;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.metinCountControls button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.metinCountControls input[type='number'] {
+  width: 42px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(126, 200, 255, 0.28);
+  background: rgba(8, 14, 22, 0.9);
+  color: #e8f2ff;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metinCountControls input[type='number']::-webkit-outer-spin-button,
+.metinCountControls input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.metinCountControls input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+
+/* Entity icons: fill the icon slot, never overflow (globals force 44px). */
+.root :global(.respawn-record-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.root :global(.respawn-entity-icon) {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center;
+  display: block;
+  border-radius: inherit;
+}
+
+.root:global(.is-mini) :global(.respawn-entity-icon),
+.root :global(.respawn-record.is-minimized .respawn-entity-icon) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+
+/* Party scout pin kind picker + sidebar pin list (Party only; Timers untouched). */
+.pinKindBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 14px 4px;
+}
+
+.pinKindLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #9eb0c9;
+}
+
+.pinKindChoices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pinKindChoices button {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(126, 200, 255, 0.28);
+  background: rgba(12, 20, 32, 0.75);
+  color: #e8f2ff;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.pinKindChoices button.is-active,
+.pinKindChoices button[aria-pressed='true'] {
+  border-color: rgba(255, 196, 120, 0.55);
+  background: rgba(48, 36, 18, 0.85);
+  color: #ffe0b0;
+}
+
+.pinKindCustom {
+  flex: 1 1 160px;
+  min-width: 140px;
+  max-width: 240px;
+}
+
+.pinKindHint {
+  font-size: 11px;
+  color: #9eb0c9;
+}
+
+.pinList {
+  margin-top: 8px;
+}
+
+.pinListItems {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.pinListItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: stretch;
+  border: 1px solid rgba(126, 200, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(10, 16, 26, 0.72);
+  padding: 2px;
+}
+
+.pinListItemSelected {
+  border-color: rgba(255, 196, 120, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 180, 80, 0.25);
+}
+
+.pinListSelect {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pinListSelect strong {
+  font-size: 12px;
+  color: #f2f6ff;
+}
+
+.pinListSelect small {
+  font-size: 10px;
+  color: #b6c6dd;
+  line-height: 1.35;
+}
+
+.pinListTtl {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #ffc478;
+}
+
+.pinListDismiss {
+  width: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(40, 18, 18, 0.8);
+  color: #ffb4b4;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Party mini okno — denser chrome; reuses .root.is-mini from Timers block above. */
+.root:global(.is-mini) .pinKindBar {
+  padding: 6px 10px 2px;
+  gap: 6px 8px;
+}
+
+.root:global(.is-mini) .pinKindLabel,
+.root:global(.is-mini) .pinKindHint {
+  font-size: 10px;
+}
+
+.root:global(.is-mini) .pinKindChoices button {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.root:global(.is-mini) .pinKindCustom {
+  flex-basis: 120px;
+  min-width: 110px;
+  max-width: 180px;
+}
+
+.root:global(.is-mini) .pinListItems {
+  max-height: 150px;
+  gap: 4px;
+}
+
+.root:global(.is-mini) .pinListSelect {
+  padding: 6px 8px;
+}
+
+.root:global(.is-mini) .pinListSelect strong {
+  font-size: 11px;
+}
+
+.root:global(.is-mini) .pinListTtl {
+  font-size: 11px;
+}
+
+.root:global(.is-mini) .pinListDismiss {
+  width: 28px;
+  font-size: 14px;
+}
+
+.root:global(.is-mini) :global(.respawn-party-panel) {
+  padding-bottom: 10px;
+}
+
+.root:global(.is-mini) :global(.respawn-party-members) {
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.root:global(.is-mini) :global(.respawn-party-feed) {
+  margin-top: 8px;
+  padding: 8px 10px;
+}
+
+.root:global(.is-mini) :global(.respawn-map-stage-wrap) {
+  margin-top: 6px;
+}
+
+.root:global(.is-mini) :global(.respawn-map-caption) {
+  font-size: 10px;
+}
+
+
+/* Wspolny sync Timers / Party (player-team) */
+.syncBanner {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  width: fit-content;
+  max-width: 100%;
+}
+.syncOnline {
+  background: rgba(24, 70, 42, 0.55);
+  color: #b6f5c8;
+  border: 1px solid rgba(110, 220, 150, 0.35);
+}
+.syncOffline {
+  background: rgba(60, 48, 20, 0.55);
+  color: #f0d59a;
+  border: 1px solid rgba(220, 180, 80, 0.35);
+}
+.syncWarn {
+  background: rgba(70, 28, 28, 0.55);
+  color: #ffc0c0;
+  border: 1px solid rgba(255, 140, 140, 0.35);
+}
+.root:global(.is-mini) .syncBanner {
+  font-size: 10px;
+  padding: 4px 8px;
+  margin-top: 4px;
+}

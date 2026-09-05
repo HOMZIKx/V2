@@ -1,11 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 
 import { huntMapImagePath } from '../../src/hunt-map-assets';
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
-  buildMapRespawnRecords,
+  MAP_HUNT_SNAPSHOT_VERSION,
+  type MapHuntSnapshotV1,
+} from '../../src/hunt-snapshot';
+import { loadHuntFieldsFromServer, putMapHuntField } from '../../src/player-team-field-sync';
+import {
+  confirmTimerKill,
+  getOrCreateTimerRoom,
+  type TimerRoomSnapshot,
+} from '../../src/player-team-rooms-api';
+import { huntStatusLabel, useHuntViewer, type HuntConnectionStatus } from '../../src/hunt-online';
+import {
   canConfirmRespawn,
   channelsWithLateWindows,
   getRespawnDisplay,
@@ -13,23 +23,67 @@ import {
   partitionRespawnRecords,
   respawnMaps,
   respawnWindowMinutes,
-  type RespawnKind,
   type RespawnLocation,
   type RespawnRecord,
 } from '../../src/respawn-timers';
+import {
+  METIN_COUNTS_STORAGE_KEY,
+  MAX_METIN_SLOT_COUNT,
+  MIN_METIN_SLOT_COUNT,
+  buildMapTimerRecords,
+  listMetinTypes,
+  mergeTimerRecordState,
+  parseMetinCountOverrides,
+  resolveMetinSlotCount,
+  setMetinSlotCount,
+  type MetinCountOverrides,
+} from '../../src/timers-metin-counts';
 import { AppShell, Icon } from '../app-shell';
 import styles from './map-hunting.module.css';
 
-type Filter = 'all' | RespawnKind | 'active';
-type View = 'timers' | 'map';
+type Filter = 'all' | 'active';
 type RecordStore = Record<string, readonly RespawnRecord[]>;
 
 const filters: ReadonlyArray<{ readonly id: Filter; readonly label: string }> = [
   { id: 'all', label: 'Wszystkie' },
-  { id: 'boss', label: 'Bossy' },
-  { id: 'metin', label: 'Metiny' },
   { id: 'active', label: 'Okno / mapa' },
 ];
+const MINI_MODE_STORAGE_KEY = 'destiled:timers-mini-mode:v1';
+const TIMER_STATE_STORAGE_KEY = 'destiled:map-hunting-state:v2';
+
+
+function MapPinGlyph({ scout = false }: { readonly scout?: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      className={scout ? `${styles.pinGlyph} ${styles.pinGlyphScout}` : styles.pinGlyph}
+      viewBox="0 0 24 36"
+      width={scout ? 16 : 20}
+      height={scout ? 24 : 30}
+    >
+      <path
+        d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12c0 8.2 10.5 22 10.5 22S22.5 20.2 22.5 12C22.5 6.2 17.8 1.5 12 1.5z"
+        fill="currentColor"
+        stroke="rgba(255,255,255,0.7)"
+        strokeWidth="1.25"
+      />
+      <circle cx="12" cy="12" r="4" fill="#0a1018" />
+    </svg>
+  );
+}
+
+/** Mirror old RespTimer shouldMinimize: countdown pills stay compact until >=90% toward minAt. */
+function shouldMinimizeCountdown(record: RespawnRecord, now: number): boolean {
+  const display = getRespawnDisplay(record, now);
+  if (display.phase !== 'countdown' || display.minAt === null || record.confirmedAt === null) {
+    return false;
+  }
+  const span = display.minAt - record.confirmedAt;
+  if (span <= 0) return false;
+  const elapsedFraction = (now - record.confirmedAt) / span;
+  return elapsedFraction < 0.9;
+}
+
 const scopeKey = (mapKey: string, channel: number) => `${mapKey}:ch${channel}`;
 const formatWindow = (record: RespawnRecord) => {
   const span = respawnWindowMinutes(record.entity);
@@ -41,52 +95,215 @@ const formatWindow = (record: RespawnRecord) => {
   }`;
 };
 
-function initialStore(): RecordStore {
-  const first = respawnMaps[0];
-  return first ? { [scopeKey(first.key, 1)]: buildMapRespawnRecords(first, 1) } : {};
-}
-
 function matchesFilter(record: RespawnRecord, filter: Filter, now: number): boolean {
   const phase = getRespawnDisplay(record, now).phase;
-  return (
-    filter === 'all' ||
-    record.kind === filter ||
-    (filter === 'active' && (phase === 'window' || phase === 'on_map'))
+  return filter === 'all' || (filter === 'active' && (phase === 'window' || phase === 'on_map'));
+}
+
+function recordsForScope(
+  map: (typeof respawnMaps)[number],
+  channel: number,
+  counts: MetinCountOverrides,
+  store: RecordStore,
+): readonly RespawnRecord[] {
+  return mergeTimerRecordState(
+    buildMapTimerRecords(map, channel, counts),
+    store[scopeKey(map.key, channel)],
   );
 }
 
 export function MapHunting({
   initialSnapshot,
-  initialView = 'timers',
 }: {
   readonly initialSnapshot: MapHuntingSnapshot;
-  readonly initialView?: View;
 }) {
   const [mapKey, setMapKey] = useState(respawnMaps[0]?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
   const [channel, setChannel] = useState(1);
-  const [view, setView] = useState<View>(initialView);
   const [filter, setFilter] = useState<Filter>('all');
-  const [store, setStore] = useState<RecordStore>(initialStore);
+  const [store, setStore] = useState<RecordStore>({});
+  const [metinCounts, setMetinCounts] = useState<MetinCountOverrides>({});
   const [now, setNow] = useState(() => Date.now());
   const [pinModalKey, setPinModalKey] = useState<string | null>(null);
   const [modalDraftLocation, setModalDraftLocation] = useState<RespawnLocation | null>(null);
   const [notice, setNotice] = useState('');
   const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
+  const [miniMode, setMiniMode] = useState(false);
+  const [expandedMiniKeys, setExpandedMiniKeys] = useState<readonly string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const { viewerId, displayName, onlineEnabled, hydrated: storeHydrated } = useHuntViewer();
+  const [connectionStatus, setConnectionStatus] = useState<HuntConnectionStatus>('offline');
+  const [timerRoomRevision, setTimerRoomRevision] = useState<number | null>(null);
+  const personalSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteRef = useRef(false);
   const scope = scopeKey(map?.key ?? '', channel);
-  const records = store[scope] ?? (map ? buildMapRespawnRecords(map, channel) : []);
+  const records = map ? recordsForScope(map, channel, metinCounts, store) : [];
+  const metinTypes = useMemo(() => (map ? listMetinTypes(map) : []), [map]);
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem('destiled:map-hunting-state:v2');
-      if (raw) setStore((current) => ({ ...current, ...(JSON.parse(raw) as RecordStore) }));
+      const raw = window.localStorage.getItem(TIMER_STATE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as RecordStore;
+        const metinOnly: RecordStore = {};
+        for (const [key, list] of Object.entries(parsed)) {
+          if (!Array.isArray(list)) continue;
+          metinOnly[key] = list.filter((record) => record && record.kind === 'metin');
+        }
+        setStore((current) => ({ ...current, ...metinOnly }));
+      }
+      const countsRaw = window.localStorage.getItem(METIN_COUNTS_STORAGE_KEY);
+      if (countsRaw) setMetinCounts(parseMetinCountOverrides(JSON.parse(countsRaw)));
+      setMiniMode(window.localStorage.getItem(MINI_MODE_STORAGE_KEY) === '1');
     } catch {
-      /* keep the fixture */
+      /* keep defaults */
+    } finally {
+      setHydrated(true);
     }
   }, []);
+
+  const applyMapHuntSnapshot = useCallback((snap: MapHuntSnapshotV1) => {
+    applyingRemoteRef.current = true;
+    if (snap.mapKey) setMapKey(snap.mapKey);
+    if (snap.channel) setChannel(snap.channel);
+    if (snap.filter) setFilter(snap.filter);
+    setMiniMode(snap.miniMode === true);
+    setMetinCounts(snap.metinCounts);
+    const metinOnly: RecordStore = {};
+    for (const [key, list] of Object.entries(snap.store)) {
+      metinOnly[key] = list.filter((record) => record && record.kind === 'metin');
+    }
+    setStore((current) => ({ ...current, ...metinOnly }));
+    setTimeout(() => {
+      applyingRemoteRef.current = false;
+    }, 0);
+  }, []);
+
+  const applyTimerRoom = useCallback((room: TimerRoomSnapshot) => {
+    setTimerRoomRevision(room.revision);
+    const roomScope = scopeKey(room.mapKey, room.channel);
+    const remoteList: RespawnRecord[] = Object.values(room.timers).map((t) => ({
+      key: t.key,
+      mapKey: t.mapKey,
+      channel: t.channel,
+      kind: t.kind,
+      entity: {
+        id: t.key,
+        name: t.entityName ?? t.key,
+        respawnTimeMin: 5,
+        respawnTimeMax: 10,
+      },
+      confirmedAt: t.confirmedAt,
+      confirmedBy: t.confirmedBy,
+      location: t.location,
+    }));
+    const mapDef = respawnMaps.find((m) => m.key === room.mapKey);
+    if (!mapDef) return;
+    setStore((current) => {
+      const base = buildMapTimerRecords(mapDef, room.channel, metinCounts);
+      const merged = mergeTimerRecordState(base, remoteList);
+      return { ...current, [roomScope]: merged };
+    });
+  }, [metinCounts]);
+
+  // Personal mapHunt from /me/state on enter.
   useEffect(() => {
-    window.localStorage.setItem('destiled:map-hunting-state:v2', JSON.stringify(store));
-  }, [store]);
+    if (!hydrated || !storeHydrated) return;
+    if (!onlineEnabled || !viewerId) {
+      setConnectionStatus('offline');
+      return;
+    }
+    let cancelled = false;
+    setConnectionStatus('connecting');
+    void (async () => {
+      const loaded = await loadHuntFieldsFromServer({ viewerId });
+      if (cancelled) return;
+      if (!loaded.ok) {
+        setConnectionStatus('error');
+        return;
+      }
+      if (loaded.mapHunt) applyMapHuntSnapshot(loaded.mapHunt);
+      setConnectionStatus('online');
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyMapHuntSnapshot, hydrated, onlineEnabled, storeHydrated, viewerId]);
+
+  // Poll shared timer room for current map+channel.
+  useEffect(() => {
+    if (!hydrated || !onlineEnabled || !viewerId || !map) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const room = await getOrCreateTimerRoom({
+          viewerId,
+          mapKey: map.key,
+          channel,
+        });
+        if (cancelled) return;
+        applyTimerRoom(room);
+        setConnectionStatus('online');
+      } catch {
+        if (!cancelled) setConnectionStatus((s) => (s === 'online' ? 'error' : s));
+      }
+    };
+    void poll();
+    const id = window.setInterval(() => void poll(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [applyTimerRoom, channel, hydrated, map, onlineEnabled, viewerId]);
+
+  // Persist personal mapHunt (prefs + offline cache) via GET→merge→PUT.
+  useEffect(() => {
+    if (!hydrated || applyingRemoteRef.current) return;
+    if (!onlineEnabled || !viewerId || !map) return;
+    if (personalSyncTimerRef.current) clearTimeout(personalSyncTimerRef.current);
+    personalSyncTimerRef.current = setTimeout(() => {
+      const snap: MapHuntSnapshotV1 = {
+        version: MAP_HUNT_SNAPSHOT_VERSION,
+        mapKey: map.key,
+        channel,
+        filter,
+        miniMode,
+        store,
+        metinCounts,
+        updatedAtIso: new Date().toISOString(),
+      };
+      void putMapHuntField({ viewerId, mapHunt: snap }).then((result) => {
+        setConnectionStatus(result.ok ? 'online' : 'error');
+      });
+    }, 600);
+    return () => {
+      if (personalSyncTimerRef.current) clearTimeout(personalSyncTimerRef.current);
+    };
+  }, [channel, filter, hydrated, map, metinCounts, miniMode, onlineEnabled, store, viewerId]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(TIMER_STATE_STORAGE_KEY, JSON.stringify(store));
+    } catch {
+      /* ignore quota */
+    }
+  }, [hydrated, store]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(METIN_COUNTS_STORAGE_KEY, JSON.stringify(metinCounts));
+    } catch {
+      /* ignore quota */
+    }
+  }, [hydrated, metinCounts]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(MINI_MODE_STORAGE_KEY, miniMode ? '1' : '0');
+    } catch {
+      /* ignore quota */
+    }
+  }, [hydrated, miniMode]);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
@@ -96,11 +313,10 @@ export function MapHunting({
     if (!map) return [] as RespawnRecord[];
     const collected: RespawnRecord[] = [];
     for (let ch = 1; ch <= map.channels; ch += 1) {
-      const key = scopeKey(map.key, ch);
-      collected.push(...(store[key] ?? buildMapRespawnRecords(map, ch)));
+      collected.push(...recordsForScope(map, ch, metinCounts, store));
     }
     return collected;
-  }, [map, store]);
+  }, [map, metinCounts, store]);
 
   const lateChannels = useMemo(
     () => channelsWithLateWindows(mapRecordsFlat, map?.key ?? '', now),
@@ -133,7 +349,6 @@ export function MapHunting({
       ).length,
     [now, records],
   );
-  const mapPins = useMemo(() => records.filter((record) => record.location !== null), [records]);
   const currentMapImage = huntMapImagePath(map?.key ?? '');
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(map?.key ?? '');
   const modalRecord = records.find((record) => record.key === pinModalKey) ?? null;
@@ -144,8 +359,24 @@ export function MapHunting({
     if (!map) return;
     setStore((current) => ({
       ...current,
-      [scope]: updater(current[scope] ?? buildMapRespawnRecords(map, channel)),
+      [scope]: updater(recordsForScope(map, channel, metinCounts, current)),
     }));
+  };
+  const changeMetinCount = (typeKey: string, nextCount: number, defaultCount: number) => {
+    if (!map) return;
+    const nextCounts = setMetinSlotCount(metinCounts, map.key, typeKey, nextCount, defaultCount);
+    setMetinCounts(nextCounts);
+    setStore((current) => {
+      const next: Record<string, readonly RespawnRecord[]> = { ...current };
+      for (let ch = 1; ch <= map.channels; ch += 1) {
+        const key = scopeKey(map.key, ch);
+        const allowed = new Set(buildMapTimerRecords(map, ch, nextCounts).map((record) => record.key));
+        const existing = current[key];
+        if (!existing) continue;
+        next[key] = existing.filter((record) => allowed.has(record.key));
+      }
+      return next;
+    });
   };
   const changeMap = (nextMapKey: string) => {
     setMapKey(nextMapKey);
@@ -167,14 +398,16 @@ export function MapHunting({
       return;
     }
     const confirmedAt = Date.now();
+    const nextLocation = location ?? target.location;
+    const actor = displayName || initialSnapshot.viewerName;
     updateCurrentScope((current) =>
       current.map((record) =>
         record.key === recordKey
           ? {
               ...record,
               confirmedAt,
-              confirmedBy: initialSnapshot.viewerName,
-              location: location ?? record.location,
+              confirmedBy: actor,
+              location: nextLocation,
             }
           : record,
       ),
@@ -186,6 +419,33 @@ export function MapHunting({
         ? 'Zbicie zapisane. Pinezka = ostatnia znana lokalizacja. Timer zjechał na listę odliczań.'
         : 'Zbicie zapisane. Timer zjechał na listę odliczań (bez nowej pinezki).',
     );
+
+    if (onlineEnabled && viewerId && map) {
+      const operationId = `kill:${recordKey}:${confirmedAt}`;
+      void confirmTimerKill({
+        viewerId,
+        mapKey: map.key,
+        channel,
+        record: {
+          key: target.key,
+          mapKey: target.mapKey,
+          channel: target.channel,
+          kind: target.kind,
+          entityName: target.entity.name,
+          confirmedAt,
+          confirmedBy: actor,
+          location: nextLocation,
+          operationId,
+        },
+        operationId,
+        expectedRevision: timerRoomRevision,
+      })
+        .then((room) => {
+          applyTimerRoom(room);
+          setConnectionStatus('online');
+        })
+        .catch(() => setConnectionStatus('error'));
+    }
   };
   const openKillModal = (recordKey: string) => {
     const target = records.find((record) => record.key === recordKey);
@@ -214,88 +474,109 @@ export function MapHunting({
     const canConfirm = canConfirmRespawn(record, now);
     const late = isWindowLatePhase(record, now);
     const inWindow = display.phase === 'window';
+    const minimized =
+      miniMode &&
+      countingDown &&
+      shouldMinimizeCountdown(record, now) &&
+      !expandedMiniKeys.includes(record.key);
     return (
       <article
         className={`respawn-record is-${display.phase}${countingDown ? ' is-counting' : ''}${
           inWindow ? ' is-window-active' : ''
-        }${late ? ' is-late-window' : ''}`}
+        }${late ? ' is-late-window' : ''}${minimized ? ' is-minimized' : ''}`}
         key={record.key}
+        onClick={
+          minimized
+            ? () =>
+                setExpandedMiniKeys((current) =>
+                  current.includes(record.key) ? current : [...current, record.key],
+                )
+            : undefined
+        }
+        role={minimized ? 'button' : undefined}
+        tabIndex={minimized ? 0 : undefined}
       >
         <span className="respawn-record-icon" style={{ color: record.entity.color ?? undefined }}>
           {record.entity.iconPath ? (
             <img alt="" className="respawn-entity-icon" src={record.entity.iconPath} />
           ) : (
-            <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={17} />
+            <Icon name="map" size={17} />
           )}
         </span>
         <div className="respawn-record-copy">
           <strong>{record.entity.name}</strong>
-          <span>
-            <em className="respawn-window-chip">{formatWindow(record)}</em>
-            {record.kind === 'boss' ? 'Boss' : 'Metin'} · CH{record.channel}
-            {record.location
-              ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
-              : ' · bez pinezki'}
-            {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
-            {late ? ' · ostatnie 20% okna' : inWindow ? ' · w oknie' : ''}
-          </span>
+          {!minimized ? (
+            <span>
+              <em className="respawn-window-chip">{formatWindow(record)}</em>
+              Metin · CH{record.channel}
+              {record.location
+                ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
+                : ' · bez pinezki'}
+              {record.confirmedBy ? ` · zgłosił ${record.confirmedBy}` : ''}
+              {late ? ' · ostatnie 20% okna' : inWindow ? ' · w oknie' : ''}
+            </span>
+          ) : null}
         </div>
         <div className="respawn-record-time">
           <b>{display.clock}</b>
-          <span>
-            {countingDown
-              ? `Do okna · ${display.label}`
-              : late
-                ? `Końcówka okna · ${display.clock}`
-                : display.label}
-          </span>
+          {!minimized ? (
+            <span>
+              {countingDown
+                ? `Do okna · ${display.label}`
+                : late
+                  ? `Końcówka okna · ${display.clock}`
+                  : display.label}
+            </span>
+          ) : null}
         </div>
-        <div className="respawn-record-actions">
-          <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
-            {canConfirm ? 'Zbite' : 'Odliczanie'}
-          </button>
-        </div>
+        {!minimized ? (
+          <div className="respawn-record-actions">
+            <button disabled={!canConfirm} onClick={() => openKillModal(record.key)} type="button">
+              {canConfirm ? 'Zbite' : 'Odliczanie'}
+            </button>
+          </div>
+        ) : null}
       </article>
     );
   };
 
   return (
-    <AppShell activeSection="timers" viewerName={initialSnapshot.viewerName}>
-      <main className="respawn-page" id="main-content">
+    <AppShell activeSection="timers" viewerName={displayName || initialSnapshot.viewerName}>
+      <main className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`} id="main-content">
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Timery</h1>
-            <p>
-              Osobny system od Party i EQ: mapa + respawn z katalogu. <b>Zbite</b> otwiera mini-mapę
-              pinezki. Zbity cel zjeżdża na dół z odliczaniem. Gdy okno wchodzi w ostatnie 20% na
-              innym kanale — ten CH się podświetla.
-            </p>
+            {!miniMode ? (
+              <p>
+                Mapa + respawn z katalogu. <b>Zbite</b> otwiera mini-mapę pinezki. Zbity cel
+                zjeżdża na dół z odliczaniem. Gdy okno wchodzi w ostatnie 20% na innym kanale —
+                ten CH się podświetla.
+              </p>
+            ) : (
+              <p className="respawn-mini-lead">
+                {map?.key} · CH{channel} · mini okno
+              </p>
+            )}
           </div>
           <div className="respawn-header-actions">
-            <div role="tablist" aria-label="Widok timerów">
-              <button
-                aria-selected={view === 'timers'}
-                className={view === 'timers' ? 'is-active' : ''}
-                onClick={() => setView('timers')}
-                role="tab"
-                type="button"
-              >
-                Timery
-              </button>
-              <button
-                aria-selected={view === 'map'}
-                className={view === 'map' ? 'is-active' : ''}
-                onClick={() => setView('map')}
-                role="tab"
-                type="button"
-              >
-                Atlas mapy
-              </button>
-            </div>
-            <a className="respawn-party-toggle" href="/maps">
-              <span /> Party (osobny system)
-            </a>
+            <span
+              className={`respawn-sync-status is-${connectionStatus}`}
+              data-testid="timers-sync-status"
+              title={viewerId ? `viewer ${viewerId}` : 'Brak demo viewer id — tylko lokalnie'}
+            >
+              {huntStatusLabel(connectionStatus)}
+            </span>
+            <button
+              aria-pressed={miniMode}
+              className={miniMode ? 'is-active' : ''}
+              data-testid="mini-mode-btn"
+              onClick={() => setMiniMode((current) => !current)}
+              title={miniMode ? 'Widok pełny' : 'Mini okno'}
+              type="button"
+            >
+              {miniMode ? 'Widok pełny' : 'Mini okno'}
+            </button>
           </div>
         </header>
         <section className="respawn-controls panel">
@@ -336,6 +617,59 @@ export function MapHunting({
               ))}
             </div>
           </div>
+          {!miniMode && metinTypes.length > 0 ? (
+            <div className={styles.metinCounts} data-testid="metin-counts">
+              <span className={styles.metinCountsLabel}>Liczba metinów</span>
+              <div className={styles.metinCountsList}>
+                {metinTypes.map((definition) => {
+                  const count = resolveMetinSlotCount(definition, metinCounts, map?.key ?? '');
+                  return (
+                    <div className={styles.metinCountRow} key={definition.typeKey}>
+                      <span className={styles.metinCountName} title={definition.label}>
+                        {definition.label}
+                      </span>
+                      <div className={styles.metinCountControls}>
+                        <button
+                          aria-label={`Mniej: ${definition.label}`}
+                          disabled={count <= MIN_METIN_SLOT_COUNT}
+                          onClick={() =>
+                            changeMetinCount(definition.typeKey, count - 1, definition.defaultCount)
+                          }
+                          type="button"
+                        >
+                          −
+                        </button>
+                        <input
+                          aria-label={`Liczba: ${definition.label}`}
+                          max={MAX_METIN_SLOT_COUNT}
+                          min={MIN_METIN_SLOT_COUNT}
+                          onChange={(event) =>
+                            changeMetinCount(
+                              definition.typeKey,
+                              Number(event.target.value),
+                              definition.defaultCount,
+                            )
+                          }
+                          type="number"
+                          value={count}
+                        />
+                        <button
+                          aria-label={`Więcej: ${definition.label}`}
+                          disabled={count >= MAX_METIN_SLOT_COUNT}
+                          onClick={() =>
+                            changeMetinCount(definition.typeKey, count + 1, definition.defaultCount)
+                          }
+                          type="button"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="respawn-controls-stat">
             <strong>{records.length}</strong>
             <span>timerów na tej mapie</span>
@@ -352,18 +686,23 @@ export function MapHunting({
             zdążyć.
           </p>
         ) : null}
-        <section className={`respawn-workspace${view === 'timers' ? ' is-timers-only' : ''}`}>
+        <section className="respawn-workspace is-timers-only">
           <div className="panel respawn-main-panel">
             <header className="respawn-list-header">
               <div>
                 <span className="section-kicker">
                   {map?.key} · CH{channel}
                 </span>
-                <h2>{view === 'map' ? 'Atlas i pinezki' : 'Lista timerów'}</h2>
-                {view === 'timers' ? (
+                <h2>Lista timerów</h2>
+                {!miniMode ? (
                   <p className="respawn-list-lead">
                     {available.length} dostępnych · {counting.length} w odliczaniu · pinezka =
-                    ostatnie zbicie (nie skaut Party)
+                    ostatnie zbicie
+                  </p>
+                ) : null}
+                {miniMode ? (
+                  <p className="respawn-list-lead">
+                    {available.length} dostępnych · {counting.length} odliczań
                   </p>
                 ) : null}
               </div>
@@ -381,94 +720,19 @@ export function MapHunting({
                 ))}
               </div>
             </header>
-            {view === 'map' && (
-              <div className="respawn-map-stage-wrap">
-                <div aria-label="Mapa z ostatnimi lokalizacjami" className="respawn-map-stage">
-                  {canShowMapImage ? (
-                    <img
-                      alt={`Mapa ${map?.key ?? ''}`}
-                      onError={() =>
-                        setFailedMapImages((current) =>
-                          current.includes(map?.key ?? '') ? current : [...current, map?.key ?? ''],
-                        )
-                      }
-                      src={currentMapImage}
-                    />
-                  ) : (
-                    <div
-                      className={`respawn-map-atlas ${styles.atlas}`}
-                      style={
-                        {
-                          '--map-accent': map?.color ?? '#3d7ea6',
-                        } as CSSProperties
-                      }
-                    >
-                      <div className={styles.atlasGrid} aria-hidden />
-                      <div className={styles.atlasGlow} aria-hidden />
-                      <div className={styles.atlasCopy}>
-                        <span className={styles.atlasEyebrow}>Teren polowania</span>
-                        <strong>{map?.key}</strong>
-                        <span>
-                          {map?.bosses.length ?? 0} bossów · {map?.metins.length ?? 0} metinów · CH
-                          {channel}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  <div className="respawn-map-shade" />
-                  <div className="respawn-map-caption">
-                    <strong>{map?.key}</strong>
-                    <span>
-                      CH{channel} · {mapPins.length} pinezek
-                    </span>
-                  </div>
-                  {mapPins.map((record) => {
-                    const pin = record.location!;
-                    const phase = getRespawnDisplay(record, now).phase;
-                    return (
-                      <button
-                        className={`respawn-map-marker is-${record.kind} is-${phase}`}
-                        key={record.key}
-                        onClick={() => {
-                          setNotice(
-                            `${record.entity.name}: ostatnie zbicie${
-                              record.confirmedBy ? ` · ${record.confirmedBy}` : ''
-                            } · ${getRespawnDisplay(record, now).label}`,
-                          );
-                        }}
-                        style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-                        type="button"
-                      >
-                        {record.entity.iconPath ? (
-                          <img
-                            alt=""
-                            className="respawn-entity-icon"
-                            src={record.entity.iconPath}
-                          />
-                        ) : (
-                          <Icon name={record.kind === 'boss' ? 'activity' : 'map'} size={15} />
-                        )}
-                        <span>{record.entity.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="respawn-map-help">
-                  Pinezki = ostatnie zbicie z mini-okna po <b>Zbite</b>. Party skauta jest na /maps.
-                </p>
-              </div>
-            )}
             <div className="respawn-records">
               {available.map((record) => renderRecord(record, false))}
               {counting.length > 0 ? (
                 <div className="respawn-counting-block">
                   <header>
                     <span className="section-kicker">Po zbiciu</span>
-                    <h3>Odliczanie — cel nie znika</h3>
-                    <p>
-                      Zbite cele zjeżdżają tu z zegarem do okna respawnu. Ponowne <b>Zbite</b>{' '}
-                      dopiero gdy otworzy się okno.
-                    </p>
+                    <h3>{miniMode ? 'Odliczanie' : 'Odliczanie — cel nie znika'}</h3>
+                    {!miniMode ? (
+                      <p>
+                        Zbite cele zjeżdżają tu z zegarem do okna respawnu. Ponowne <b>Zbite</b>{' '}
+                        dopiero gdy otworzy się okno.
+                      </p>
+                    ) : null}
                   </header>
                   {counting.map((record) => renderRecord(record, true))}
                 </div>
@@ -478,38 +742,18 @@ export function MapHunting({
               ) : null}
             </div>
           </div>
-          <aside className="panel respawn-timers-hint">
-            <header>
-              <span className="section-kicker">Cykl</span>
-              <h2>Zbite → mini-mapa → timer ↓</h2>
-              <p>
-                W grze zbijaasz cel, tu klikasz <b>Zbite</b> — otwiera się mini-mapa do pinezki
-                (możesz pominąć). Cel zjeżdża na dół z odliczaniem. Party i pinezki skauta są osobno
-                na <a href="/maps">/maps</a>.
-              </p>
-            </header>
-            {view !== 'map' ? (
-              <button
-                className="respawn-party-toggle is-on"
-                onClick={() => setView('map')}
-                type="button"
-              >
-                <span /> Otwórz pełny atlas
-              </button>
-            ) : (
-              <p className="respawn-list-lead">
-                Pinezki = ostatnia znana lokalizacja na mapie/kanale. Bez Party.
-              </p>
-            )}
-          </aside>
         </section>
         <p aria-live="polite" className="respawn-notice">
           {notice}
         </p>
-        <p className="respawn-data-note">
-          Timery metinów/bossów ≠ Party ≠ Postęp PH na karcie postaci. Katalog: dump dobry-temat.
-          Dane lokalnie w przeglądarce.
-        </p>
+        {!miniMode ? (
+          <p className="respawn-data-note">
+            Timery metinów — katalog dump dobry-temat.{' '}
+            {connectionStatus === 'online'
+              ? 'Wspólny pokój mapy/CH przez player-team (poll). localStorage = cache offline.'
+              : 'Tryb lokalny / offline — localStorage jako cache.'}
+          </p>
+        ) : null}
 
         {modalRecord ? (
           <div
@@ -560,13 +804,13 @@ export function MapHunting({
                 )}
                 {modalDraftLocation ? (
                   <span
-                    className="respawn-map-marker is-metin is-selected"
+                    className="respawn-map-marker respawn-map-pin is-metin is-selected"
                     style={{
                       left: `${modalDraftLocation.x}%`,
                       top: `${modalDraftLocation.y}%`,
                     }}
                   >
-                    <Icon name="map" size={15} />
+                    <MapPinGlyph />
                   </span>
                 ) : null}
               </div>

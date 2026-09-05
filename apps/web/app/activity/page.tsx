@@ -1,7 +1,7 @@
 'use client';
 
-import { ActivityLaterPage } from '../later-module';
+import { ActivityCenter } from './activity-center';
 
 export default function ActivityPage() {
-  return <ActivityLaterPage />;
+  return <ActivityCenter />;
 }

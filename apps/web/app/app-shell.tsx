@@ -99,12 +99,24 @@ export function AppShell({
     0,
   );
 
+  const playerTeamOnlineEnabled =
+    process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED === 'true' ||
+    (process.env.NODE_ENV !== 'production' &&
+      process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED !== 'false');
+
   const connectionCopy =
     state.connection === 'connected'
-      ? {
-          title: 'Podgląd lokalny',
-          detail: 'Dane w przeglądarce (localStorage). Pełna synchronizacja zespołu wymaga API.',
-        }
+      ? playerTeamOnlineEnabled
+        ? {
+            title: 'Sync online',
+            detail:
+              'Stan zespołu synchronizowany z player-team API. Lokalna kopia zostaje w przeglądarce jako cache.',
+          }
+        : {
+            title: 'Podgląd lokalny',
+            detail:
+              'Dane w przeglądarce (localStorage). Pełna synchronizacja zespołu wymaga API.',
+          }
       : state.connection === 'reconnecting'
         ? {
             title: 'Ponowne łączenie',
@@ -131,6 +143,12 @@ export function AppShell({
     },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
+    {
+      id: 'activity' as const,
+      label: 'Aktywność',
+      icon: 'activity' as const,
+      href: '/activity',
+    },
   ];
 
   return (
@@ -167,7 +185,7 @@ export function AppShell({
 
         <div className="topbar-actions">
           <span className="topbar-later-pill" title="Późniejsze moduły poza pierwszym slice">
-            Targ / Aktywność — później
+            Targ — później
           </span>
           <a
             aria-label={
@@ -215,7 +233,7 @@ export function AppShell({
             {item.label}
           </a>
         ))}
-        <p className="drawer-later">Targ i Aktywność wrócą w kolejnych etapach.</p>
+        <p className="drawer-later">Targ wróci w kolejnych etapach.</p>
       </aside>
 
       {children}

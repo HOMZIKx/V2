@@ -55,7 +55,7 @@ const rawConfig = catalogDocument.config as Record<string, Omit<RespawnMap, 'key
 const entityIconMap = respawnEntityIcons as Record<string, string>;
 const metinNameIconMap = respawnMetinNameIcons as Record<string, string>;
 
-function baseMetinName(name: string): string {
+export function baseMetinName(name: string): string {
   return name.replace(/\s*#\d+\s*$/u, '').trim();
 }
 

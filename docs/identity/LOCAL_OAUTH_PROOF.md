@@ -176,3 +176,13 @@ redis-cli -n 1 --scan --pattern 'v2:identity:auth:*'
 - Opaque session id only — no JWT in the cookie, no tokens in
   `localStorage`/`sessionStorage`.
 - Cookie cache and stateless session are disabled, so revoke is immediate.
+
+## 9. DESTILED web entry (apps/web)
+
+After this Identity proof works, use the product UI:
+
+- [WEB_DISCORD_LOGIN.md](./WEB_DISCORD_LOGIN.md)
+- Public env: NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL=http://127.0.0.1:4200
+- Real OAuth is the default; NEXT_PUBLIC_DISCORD_AUTH_SIMULATE=true only for the state simulator
+- Run Identity :4200 + Web :3000 (prefer 127.0.0.1 on both hosts)
+

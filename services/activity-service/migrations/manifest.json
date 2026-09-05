@@ -1,0 +1,104 @@
+{
+  "service": "activity",
+  "trackingTable": "activity_schema_migrations",
+  "count": 19,
+  "foundationId": "001_activity_foundation.sql",
+  "latestId": "019_performance_indexes.sql",
+  "migrations": [
+    {
+      "id": "001_activity_foundation.sql",
+      "checksum": "27cf87228babc1b9daa521edb5b87c3dfc6282326d536fa1c0a9563b16fdd498",
+      "flags": ["CREATE EXTENSION"]
+    },
+    {
+      "id": "002_p42_discord_support.sql",
+      "checksum": "441ab9c200ed36845923d752b22f4aa4998f989c606e2d7b2dcf4eae685e2bb4",
+      "flags": ["SET NOT NULL"]
+    },
+    {
+      "id": "003_p43_admin_config.sql",
+      "checksum": "71654313a32f20c461760170a03252e67d452b90c59f16ac5c9184d83c8da272",
+      "flags": ["DROP CONSTRAINT"]
+    },
+    {
+      "id": "004_activity_schedule.sql",
+      "checksum": "e9ccff8505f563afd9eea23b73105fecee4931bb7e4a04fb53e6a58aae30fabd",
+      "flags": ["DROP CONSTRAINT"]
+    },
+    {
+      "id": "005_p45_participant_mode.sql",
+      "checksum": "dda4695e88dd39f5f7d1a5598d0fb47762eabac6a21304c3c66a3894eaf63b46",
+      "flags": []
+    },
+    {
+      "id": "006_p45_publication_targets.sql",
+      "checksum": "18e12b9d145b331b5f61260dd0151d8e69a475929d77764f828925799ccf04f5",
+      "flags": []
+    },
+    {
+      "id": "007_p45_projections_multi.sql",
+      "checksum": "aa92f38b1a351f50c397cd63a878cb481941fe6323ce6913ffac5b7218fe02fa",
+      "flags": ["SET NOT NULL", "DROP CONSTRAINT"]
+    },
+    {
+      "id": "008_p45_participations_scope.sql",
+      "checksum": "26f61373d4291a2e1144cf9edaf252a17d1204781539487895b70088b785b355",
+      "flags": ["DROP INDEX"]
+    },
+    {
+      "id": "009_p45_outbox_delivery_meta.sql",
+      "checksum": "9524d0bfa35193ffe709d7a5960c7b11f579b26f0a63e5936b16146d3d57b07e",
+      "flags": []
+    },
+    {
+      "id": "010_p46_series_privacy_attendance.sql",
+      "checksum": "5e166024fdd9d761d8442485c763340dff4ce82cf4467a211887f018a209df06",
+      "flags": []
+    },
+    {
+      "id": "011_hub_core_foundation.sql",
+      "checksum": "a2fa2291319275adf4e21368b9201a2c2272da47df5ef45e0a5854d4b4c4dd6f",
+      "flags": []
+    },
+    {
+      "id": "012_notifications_core.sql",
+      "checksum": "fcadb515dff3e5cfde49ca98cab2fc9ce0e964d5c56544cf63cbf3cc46139ade",
+      "flags": []
+    },
+    {
+      "id": "013_lfg_matching.sql",
+      "checksum": "52e228cb36d3f9c79470dd0ddcc23c836a84f6f0ef9915f5d9398e7c02750971",
+      "flags": []
+    },
+    {
+      "id": "014_reservations_core.sql",
+      "checksum": "47cbf59101786e1510ed8a5fc3370069ec4bf5ee967ba80082fc1f80ae1df488",
+      "flags": []
+    },
+    {
+      "id": "015_marketplace_core.sql",
+      "checksum": "c53fe9046b79866c77f6ad0e9a548862343ecc615cf17c6e08108c127316decc",
+      "flags": []
+    },
+    {
+      "id": "016_reservations_no_overlap.sql",
+      "checksum": "2d712d22d673e75f62cb03d73dfc69da3663c016f9e5f9942d05e009be9c0928",
+      "flags": ["CREATE EXTENSION", "EXCLUDE CONSTRAINT"]
+    },
+    {
+      "id": "017_lfg_v1.sql",
+      "checksum": "ae6d2d6dce8100c490ffb861464ecf1bf63620a4c22aa26d85a78ad25bca478c",
+      "flags": ["DROP CONSTRAINT"]
+    },
+    {
+      "id": "018_lfg_audit_suppressions.sql",
+      "checksum": "b7e99714aa0f7385d3ec11f6bf9a9c6e8dc3d308d505d2ac87d126cc68e94e0f",
+      "flags": []
+    },
+    {
+      "id": "019_performance_indexes.sql",
+      "checksum": "42db175b0989b2fac2098f46c6328a052dadb715943d0d76cc40724d4a4a6b2c",
+      "flags": []
+    }
+  ]
+}

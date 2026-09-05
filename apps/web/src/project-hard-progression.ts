@@ -490,6 +490,7 @@ export function isMidnightProgressionKind(kind: ProgressionKind | null): boolean
 export function restartAfterDone(
   kind: ProgressionKind | null,
   now = new Date(),
+  durationMinutes?: number,
 ): {
   readonly readyAtIso: string;
   readonly remainingLabel: string;
@@ -518,10 +519,14 @@ export function restartAfterDone(
       detailHint: progressionCycleByKind(kind).doneHint,
     };
   }
+  const minutes =
+    typeof durationMinutes === 'number' && Number.isFinite(durationMinutes)
+      ? Math.max(1, Math.min(24 * 60, Math.round(durationMinutes)))
+      : 60;
   return {
-    readyAtIso: new Date(now.getTime() + 60 * 60_000).toISOString(),
-    remainingLabel: '60 min',
-    detailHint: 'Kolejny cykl za 60 minut.',
+    readyAtIso: new Date(now.getTime() + minutes * 60_000).toISOString(),
+    remainingLabel: `${minutes} min`,
+    detailHint: `Kolejny cykl za ${minutes} minut.`,
   };
 }
 
@@ -529,6 +534,7 @@ export function restartAfterDone(
 export function progressionCycleDurationMs(
   kind: ProgressionKind | null | undefined,
   now = new Date(),
+  durationMinutes?: number,
 ): number {
   if (kind === 'horse') {
     return projectHardHorseRules.advancementCooldownHours * 3_600_000;
@@ -540,7 +546,11 @@ export function progressionCycleDurationMs(
     const midnight = new Date(nextMidnightIso(now)).getTime();
     return Math.max(60_000, midnight - now.getTime());
   }
-  return 60 * 60_000;
+  const minutes =
+    typeof durationMinutes === 'number' && Number.isFinite(durationMinutes)
+      ? Math.max(1, Math.min(24 * 60, Math.round(durationMinutes)))
+      : 60;
+  return minutes * 60_000;
 }
 
 /**
@@ -553,13 +563,14 @@ export function timerProgressPercent(
     readonly progressPercent: number;
     readonly readyAtIso: string | null;
     readonly kind?: ProgressionKind;
+    readonly durationMinutes?: number;
   },
   now = new Date(),
 ): number {
   if (timer.status === 'ready') return 100;
   const endMs = timer.readyAtIso ? Date.parse(timer.readyAtIso) : Number.NaN;
   if (Number.isFinite(endMs)) {
-    const durationMs = progressionCycleDurationMs(timer.kind, now);
+    const durationMs = progressionCycleDurationMs(timer.kind, now, timer.durationMinutes);
     const startMs = endMs - durationMs;
     const nowMs = now.getTime();
     if (nowMs >= endMs) return 99;

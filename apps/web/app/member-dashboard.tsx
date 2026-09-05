@@ -80,8 +80,7 @@ export function MemberDashboard() {
             <span className="eyebrow">Centrum gracza</span>
             <h1>Witaj, {state.viewer.displayName}</h1>
             <p>
-              Konto i pierwsze uruchomienie. Notatki, zmiany i akcje zespołu są w{' '}
-              <strong>Zespół</strong>; EQ na kartach w <strong>Postacie</strong>.
+              Notatki i akcje w <strong>Zespół</strong>. EQ i skład w <strong>Postacie</strong>.
             </p>
           </div>
           <div className="account-identity-card">
@@ -102,14 +101,21 @@ export function MemberDashboard() {
         {createdId ? (
           <p className="entry-status" role="status">
             Utworzono zespół.{' '}
-            <a href={`/teams/${createdId}`}>Otwórz Zespół</a>
+            <a className="panel-text-link" href={`/teams/${createdId}`}>
+              Otwórz Zespół
+            </a>
             {' · '}
-            <a href="/characters">Dodaj postać</a>
+            <a className="panel-text-link" href="/characters">
+              Dodaj postać
+            </a>
           </p>
         ) : null}
         {sessionNotice ? (
           <p className="entry-status" role="status">
-            {sessionNotice} <a href="/teams/asteria">Otwórz Asteria</a>
+            {sessionNotice}{' '}
+            <a className="panel-text-link" href="/teams/asteria">
+              Otwórz Asteria
+            </a>
           </p>
         ) : null}
 
@@ -118,10 +124,7 @@ export function MemberDashboard() {
             <div>
               <span className="eyebrow">Pierwsze uruchomienie</span>
               <h2>Utwórz swój zespół</h2>
-              <p>
-                Solo i grupa używają tego samego modelu. Na start wystarczy nazwa. Postacie dodasz w
-                module Postacie.
-              </p>
+              <p>Wpisz nazwę zespołu. Postacie dodasz w module Postacie.</p>
               <label className="field">
                 <span>Nazwa zespołu</span>
                 <input
@@ -135,9 +138,11 @@ export function MemberDashboard() {
                 <button className="primary-button" onClick={onCreateWorkspace} type="button">
                   Utwórz zespół
                 </button>
-                <button className="secondary-button" onClick={onLoadDemo} type="button">
-                  Wczytaj przykładowe Asteria (demo)
-                </button>
+                {process.env.NODE_ENV !== 'production' ? (
+                  <button className="secondary-button" onClick={onLoadDemo} type="button">
+                    Wczytaj przykładowe Asteria (demo)
+                  </button>
+                ) : null}
               </div>
             </div>
             <aside>
@@ -150,7 +155,9 @@ export function MemberDashboard() {
                     <li key={invitation.id}>
                       <strong>{invitation.teamName}</strong>
                       <span>od {invitation.inviterName}</span>
-                      <a href={`/invitations/${invitation.id}`}>Otwórz zaproszenie</a>
+                      <a className="panel-text-link" href={`/invitations/${invitation.id}`}>
+                        Otwórz zaproszenie
+                      </a>
                     </li>
                   ))}
                 </ul>
@@ -183,9 +190,7 @@ export function MemberDashboard() {
               <header>
                 <h2>Postacie i EQ</h2>
               </header>
-              <p className="empty-copy">
-                Skład, kasowanie kart i ekwipunek są w osobnym module.
-              </p>
+              <p className="empty-copy">Skład i ekwipunek w module Postacie.</p>
               <a className="secondary-button" href="/characters">
                 Otwórz postacie
               </a>
@@ -193,17 +198,19 @@ export function MemberDashboard() {
           </section>
         )}
 
-        <div className="mock-notice">
-          Podgląd lokalny: dane zostają w tej przeglądarce. Discord OAuth, API i bot przyjdą
-          później. Targ i Aktywność są celowo schowane; <a href="/timers">Timery</a> (metiny/bossy)
-          są już dostępne.{' '}
-          <button className="text-button" onClick={onLoadDemo} type="button">
-            Wczytaj / odśwież demo Asteria
-          </button>{' '}
-          <button className="text-button" onClick={onResetSession} type="button">
-            Wyczyść sesję lokalną
-          </button>
-        </div>
+        {process.env.NODE_ENV !== 'production' ? (
+          <div className="session-tools">
+            <a className="panel-text-link" href="/timers">
+              Timery
+            </a>
+            <button className="text-button" onClick={onLoadDemo} type="button">
+              Wczytaj / odśwież demo Asteria
+            </button>
+            <button className="text-button" onClick={onResetSession} type="button">
+              Wyczyść sesję lokalną
+            </button>
+          </div>
+        ) : null}
       </main>
     </AppShell>
   );

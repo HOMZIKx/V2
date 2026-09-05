@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   archiveCharacter,
+  assignItemToSet,
+  unequipItemToBag,
+  updateEquipmentItemBonuses,
   completeDiscordAuth,
   createCharacter,
+  createEquipmentItem,
   createEquipmentSet,
+  renameEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
@@ -25,6 +30,17 @@ describe('player store first-slice', () => {
     expect(state.authStatus).toBe('authenticated');
     expect(state.viewer?.displayName).toBe('Mateusz');
     expect(state.workspaces).toEqual([]);
+  });
+  it('accepts an Identity-backed viewer override (V2 uuid id)', () => {
+    let state = startDiscordAuth(createInitialPlayerStore());
+    state = completeDiscordAuth(state, 'authenticated', {
+      v2UserId: '11111111-2222-4333-8444-555555555555',
+      displayName: 'Mateusz C.',
+      discordUserId: '123456789012345678',
+    });
+    expect(state.viewer?.id).toBe('11111111-2222-4333-8444-555555555555');
+    expect(state.viewer?.discordAccountId).toBe('123456789012345678');
+    expect(state.viewer?.displayName).toBe('Mateusz C.');
   });
 
   it('creates a workspace and first character without invented EQ', () => {
@@ -81,7 +97,7 @@ describe('player store first-slice', () => {
     expect(ninja.sets[0]!.assignments.weapon).toBe('ninja-knife');
     expect(ninja.sets[0]!.assignments.armor).toBeNull();
     expect(workspace.items.some((item) => item.id === 'sura-sword')).toBe(true);
-    // Shared one-handed sword (Gameforge: Warrior/Ninja/Sura) — intentional demo card.
+    // Shared one-handed sword (Gameforge: Warrior/Ninja/Sura) â€” intentional demo card.
     expect(workspace.items.some((item) => /Zatruty Miecz/u.test(item.name))).toBe(true);
     expect(
       workspace.items
@@ -185,9 +201,32 @@ describe('player store first-slice', () => {
     expect(state.workspaces[0]!.characters[0]!.activeSetId).toBe('loch');
   });
 
+  it('renames an equipment set without changing its id', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Set rename');
+    const workspaceId = state.workspaces[0]!.id;
+    state = createCharacter(state, workspaceId, {
+      name: 'RenameHero',
+      characterClass: 'warrior',
+      skillPath: 'warrior_body',
+      gender: 'male',
+      level: 40,
+      responsibleMemberId: 'mateusz',
+      startingSetName: 'Główny',
+    });
+    const characterId = state.workspaces[0]!.characters[0]!.id;
+    const setId = state.workspaces[0]!.characters[0]!.sets[0]!.id;
+    const renamed = renameEquipmentSet(state, workspaceId, characterId, setId, 'Loch PH');
+    expect(renamed.ok).toBe(true);
+    state = renamed.state;
+    expect(state.workspaces[0]!.characters[0]!.sets[0]!.id).toBe(setId);
+    expect(state.workspaces[0]!.characters[0]!.sets[0]!.name).toBe('Loch PH');
+    expect(renameEquipmentSet(state, workspaceId, characterId, setId, 'x').ok).toBe(false);
+  });
+
   it('archives a character out of the living roster', () => {
     let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
-    state = createWorkspace(state, 'Skład test');
+    state = createWorkspace(state, 'SkĹ‚ad test');
     const workspaceId = state.workspaces[0]!.id;
     state = createCharacter(state, workspaceId, {
       name: 'DoUsuniecia',
@@ -223,10 +262,149 @@ describe('player store first-slice', () => {
       if ((character.level ?? 0) >= 30) {
         expect(kinds.has('biologist')).toBe(true);
       }
-      expect(kinds.has('combo')).toBe(false);
+      expect(Array.from(kinds as Set<string>).includes('combo')).toBe(false);
       for (const timer of workspace.timers.filter((entry) => entry.characterId === character.id)) {
         expect(timer.iconPath).toMatch(/^\/game\/progression\//);
       }
     }
   });
+  it('moves an equipped item between characters instead of copying it', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = seedDemoData(state);
+    const workspaceId = state.workspaces[0]!.id;
+    const created = createEquipmentItem(state, workspaceId, {
+      name: 'Ebonitowe Kolczyki',
+      category: 'earrings',
+      enhancement: 9,
+      bonuses: [],
+      planned: true,
+    });
+    state = created.state;
+    const itemId = created.itemId!;
+    expect(itemId).toBeTruthy();
+
+    const nerw = state.workspaces[0]!.characters.find((entry) => entry.id === 'nerwnicht')!;
+    const aalp = state.workspaces[0]!.characters.find((entry) => entry.id === 'aalpsik')!;
+    const nerwSet = nerw.activeSetId || nerw.sets[0]!.id;
+    const aalpSet = aalp.activeSetId || aalp.sets[0]!.id;
+
+    state = assignItemToSet(state, workspaceId, nerw.id, nerwSet, itemId, 'earrings');
+    expect(
+      state.workspaces[0]!.characters
+        .find((entry) => entry.id === nerw.id)!
+        .sets.find((set) => set.id === nerwSet)!.assignments.earrings,
+    ).toBe(itemId);
+
+    state = assignItemToSet(state, workspaceId, aalp.id, aalpSet, itemId, 'earrings');
+    const workspace = state.workspaces[0]!;
+    const onNerw = workspace.characters
+      .find((entry) => entry.id === nerw.id)!
+      .sets.find((set) => set.id === nerwSet)!.assignments.earrings;
+    const onAalp = workspace.characters
+      .find((entry) => entry.id === aalp.id)!
+      .sets.find((set) => set.id === aalpSet)!.assignments.earrings;
+    expect(onAalp).toBe(itemId);
+    expect(onNerw).toBeNull();
+
+    const owners = workspace.characters.flatMap((character) =>
+      character.sets.flatMap((set) =>
+        Object.values(set.assignments).filter((id) => id === itemId).map(() => character.id),
+      ),
+    );
+    expect(owners).toEqual([aalp.id]);
+  });
+
+
+
+  it('unequipItemToBag clears the item from every character set', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = seedDemoData(state);
+    const workspaceId = state.workspaces[0]!.id;
+    const created = createEquipmentItem(state, workspaceId, {
+      name: 'Ebonitowe Kolczyki',
+      category: 'earrings',
+      enhancement: 9,
+      bonuses: [],
+      planned: true,
+    });
+    state = created.state;
+    const itemId = created.itemId!;
+    const nerw = state.workspaces[0]!.characters.find((entry) => entry.id === 'nerwnicht')!;
+    const setA = nerw.sets[0]!.id;
+    state = createEquipmentSet(state, workspaceId, nerw.id, { name: 'Set B' }).state;
+    const setB =
+      state.workspaces[0]!.characters.find((entry) => entry.id === nerw.id)!.sets.find(
+        (set) => set.id !== setA,
+      )!.id;
+
+    // Simulate ghost assignment on a second set (pre-fix unique-ownership gap).
+    state = assignItemToSet(state, workspaceId, nerw.id, setA, itemId, 'earrings');
+    state = {
+      ...state,
+      workspaces: state.workspaces.map((workspace) =>
+        workspace.id !== workspaceId
+          ? workspace
+          : {
+              ...workspace,
+              characters: workspace.characters.map((character) =>
+                character.id !== nerw.id
+                  ? character
+                  : {
+                      ...character,
+                      sets: character.sets.map((set) =>
+                        set.id === setB
+                          ? { ...set, assignments: { ...set.assignments, earrings: itemId } }
+                          : set,
+                      ),
+                    },
+              ),
+            },
+      ),
+    };
+
+    state = unequipItemToBag(state, workspaceId, itemId);
+    const owners = state.workspaces[0]!.characters.flatMap((character) =>
+      character.sets.flatMap((set) =>
+        Object.values(set.assignments).filter((id) => id === itemId),
+      ),
+    );
+    expect(owners).toEqual([]);
+    expect(state.workspaces[0]!.items.some((item) => item.id === itemId)).toBe(true);
+  });
+
+  it('updateEquipmentItemBonuses persists additional lines including free SR/UM percent', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = seedDemoData(state);
+    const workspaceId = state.workspaces[0]!.id;
+    const created = createEquipmentItem(state, workspaceId, {
+      name: 'Zatruty Miecz',
+      category: 'weapon',
+      enhancement: 9,
+      bonuses: [],
+      planned: true,
+    });
+    state = created.state;
+    const itemId = created.itemId!;
+    const additional = [
+      'SiĹ‚a +12',
+      'Ĺšrednie ObraĹĽenia +27%',
+      'ObraĹĽenia UmiejÄ™tnoĹ›ci +12%',
+    ] as const;
+
+    state = updateEquipmentItemBonuses(state, workspaceId, itemId, additional, {
+      enhancement: 9,
+    });
+    const item = state.workspaces[0]!.items.find((entry) => entry.id === itemId)!;
+    expect(item.bonuses).toEqual(expect.arrayContaining([...additional]));
+    // Saving again with a pre-merged payload must not wipe additionals.
+    state = updateEquipmentItemBonuses(state, workspaceId, itemId, item.bonuses, {
+      enhancement: 9,
+    });
+    const again = state.workspaces[0]!.items.find((entry) => entry.id === itemId)!;
+    for (const line of additional) {
+      expect(again.bonuses).toContain(line);
+    }
+  });
+
+
 });

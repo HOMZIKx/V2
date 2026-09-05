@@ -1,0 +1,560 @@
+{
+  "_comment": "Projekt Hard equipment +9 tooltips and required levels from presentation (sections Equipment Changes + High-Level Equipment). Prefer items[*].plus9 as builtins at enhancement 9. Do not invent Attack Value PvM / Magic Attack Value PvM numbers.",
+  "sources": [
+    {
+      "url": "https://projekt-hard.eu/presentation",
+      "note": "Public presentation (login-gated). Indexed +9 tooltips transcribed 2026-09-04. Weapons above level 25 gain Attack Value PvM and Magic Attack Value PvM — exact numbers via server wiki or SHIFT-hover only."
+    }
+  ],
+  "rules": {
+    "weaponsAboveLevel25": {
+      "bonuses": [
+        "Attack Value PvM",
+        "Magic Attack Value PvM"
+      ],
+      "valuesDocumented": false,
+      "note": "exact via server wiki/SHIFT"
+    },
+    "averageAndSkillDamage": {
+      "hidden": false
+    },
+    "level70WeaponsRequire": 85,
+    "level70WeaponsStrongAgainstHumansAtPlus9": 20
+  },
+  "items": {
+    "Drewniane Kolczyki": {
+      "requiredLevel": 12,
+      "plus9": [
+        "Zręczność +10"
+      ]
+    },
+    "Złote Kolczyki": {
+      "requiredLevel": 12,
+      "plus9": [
+        "Inteligencja +10"
+      ]
+    },
+    "Srebrne Kolczyki": {
+      "requiredLevel": 12,
+      "plus9": [
+        "Energia Życiowa +10"
+      ]
+    },
+    "Miedziane Kolczyki": {
+      "requiredLevel": 12,
+      "plus9": [
+        "Siła +10"
+      ]
+    },
+    "Jadeitowe Kolczyki": {
+      "requiredLevel": 33,
+      "plus9": [
+        "Zręczność +12",
+        "Max PŻ +1650"
+      ]
+    },
+    "Ebonitowe Kolczyki": {
+      "requiredLevel": 33,
+      "plus9": [
+        "Siła +12",
+        "Max PŻ +1650"
+      ]
+    },
+    "Perłowe Kolczyki": {
+      "requiredLevel": 33,
+      "plus9": [
+        "Energia Życiowa +12",
+        "Max PŻ +1650"
+      ]
+    },
+    "Kolczyki Z Białego Złota": {
+      "requiredLevel": 33,
+      "plus9": [
+        "Inteligencja +12",
+        "Max PŻ +1650"
+      ]
+    },
+    "Kryształowe Kolczyki": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Zręczność +14",
+        "Szansa na krytyczne uderzenie +5%",
+        "Wartość ataku +30",
+        "Max PŻ +1650"
+      ]
+    },
+    "Ametystowe Kolczyki": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Siła +14",
+        "Szansa na krytyczne uderzenie +5%",
+        "Wartość ataku +30",
+        "Max PŻ +1650"
+      ]
+    },
+    "Kolczyki Z Niebiańskich Łez": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Inteligencja +14",
+        "Szansa na krytyczne uderzenie +5%",
+        "Wartość ataku +30",
+        "Max PŻ +1650"
+      ]
+    },
+    "Jadeitowy Naszyjnik": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość zaklęcia +22%",
+        "Zręczność +4"
+      ]
+    },
+    "Ebonitowy Naszyjnik": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość zaklęcia +22%",
+        "Energia Życiowa +4"
+      ]
+    },
+    "Perłowy Naszyjnik": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość zaklęcia +22%",
+        "Inteligencja +4"
+      ]
+    },
+    "Naszyj. Z Biał. Złota": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość zaklęcia +22%",
+        "Siła +4"
+      ]
+    },
+    "Kryształowy Naszyjnik": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość zaklęcia +24%",
+        "Szansa na ogłuszenie 8%"
+      ]
+    },
+    "Ametystowy Naszyjnik": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość zaklęcia +24%",
+        "Szansa na krytyczne uderzenie +10%"
+      ]
+    },
+    "Naszyj. Z Niebiań. Łez": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość zaklęcia +24%",
+        "Szansa na przeszywające uderzenie 20%"
+      ]
+    },
+    "Drewniana Bransoleta": {
+      "requiredLevel": 0,
+      "plus9": [
+        "Szybkość ataku +5%",
+        "Czas trwania umiejętności +20 s"
+      ]
+    },
+    "Miedziana Bransoleta": {
+      "requiredLevel": 8,
+      "plus9": [
+        "Szybkość ataku +5%",
+        "5% obrażeń dodanych do PE"
+      ]
+    },
+    "Złota Bransoleta": {
+      "requiredLevel": 22,
+      "plus9": [
+        "Szybkość ataku +5%",
+        "Szansa na truciznę 7%"
+      ]
+    },
+    "Jadeitowa Bransoleta": {
+      "requiredLevel": 28,
+      "plus9": [
+        "Szybkość ataku +7%",
+        "7% obrażeń dodanych do PŻ"
+      ]
+    },
+    "Ebonitowa Bransoleta": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość ataku +7%",
+        "Szansa na regenerację PŻ przy zabiciu 5%"
+      ]
+    },
+    "Perłowa Bransoleta": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość ataku +7%",
+        "Szansa na przeszywające uderzenie 7%"
+      ]
+    },
+    "Bransol. Z Biał. Złota": {
+      "requiredLevel": 42,
+      "plus9": [
+        "Szybkość ataku +7%",
+        "Max PŻ +1800"
+      ]
+    },
+    "Kryształowa Bransoleta": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość ataku +10%",
+        "Szansa na podwójne Yang 7%"
+      ]
+    },
+    "Ametystowa Bransoleta": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość ataku +10%",
+        "Szansa na ogłuszenie 5%"
+      ]
+    },
+    "Bransol. Z Niebiań. Łez": {
+      "requiredLevel": 54,
+      "plus9": [
+        "Szybkość ataku +10%",
+        "Szansa na krytyczne uderzenie +10%"
+      ]
+    },
+    "Skórzane Buty": {
+      "requiredLevel": 29,
+      "plus9": [
+        "Obrona 3",
+        "Szybkość ruchu +20%",
+        "Odporność na strzały +20%"
+      ]
+    },
+    "Złote Buty": {
+      "requiredLevel": 29,
+      "plus9": [
+        "Obrona 3",
+        "Szybkość ruchu +20%",
+        "Max PŻ +1200"
+      ]
+    },
+    "Buty Z Brązu": {
+      "requiredLevel": 29,
+      "plus9": [
+        "Obrona 3",
+        "Szybkość ruchu +20%",
+        "Obrona +45"
+      ]
+    },
+    "Jadeitowe Buty": {
+      "requiredLevel": 29,
+      "plus9": [
+        "Obrona 3",
+        "Szybkość ruchu +20%",
+        "Czas trwania umiejętności +45 s"
+      ]
+    },
+    "Ekstazyjne Buty": {
+      "requiredLevel": 55,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Szybkość zaklęcia +16%"
+      ]
+    },
+    "Deszczowe Buty": {
+      "requiredLevel": 55,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Szansa na uniknięcie strzał 16%"
+      ]
+    },
+    "Buty Feniksa": {
+      "requiredLevel": 55,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Szansa na blok 10%"
+      ]
+    },
+    "Buty Ognistego Ptaka": {
+      "requiredLevel": 55,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Max PŻ +2400"
+      ]
+    },
+    "Upiorna Maska": {
+      "requiredLevel": 41,
+      "plus9": [
+        "Obrona 93",
+        "Szansa na blok 5%"
+      ]
+    },
+    "Stalowy Kaptur": {
+      "requiredLevel": 41,
+      "plus9": [
+        "Obrona 93",
+        "Szansa na blok 5%"
+      ],
+      "note": "Steel Hood — brak w dumpie katalogu; nazwa PL konwencjonalna"
+    },
+    "Zamkowy Hełm": {
+      "requiredLevel": 41,
+      "plus9": [
+        "Obrona 93",
+        "Szansa na blok 5%"
+      ]
+    },
+    "Świetlista Czapka": {
+      "requiredLevel": 41,
+      "plus9": [
+        "Obrona 93",
+        "Szansa na blok 5%"
+      ]
+    },
+    "Naszyjnik Krysz. Duszy": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Odporność na błyskawice +10%",
+        "Szansa na przeszywające uderzenie 20%",
+        "Szansa na regenerację PŻ przy zabiciu 8%",
+        "Silny przeciwko Setaou +10%",
+        "Szybkość zaklęcia +24%"
+      ]
+    },
+    "Opaska Kryształu Duszy": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Szybkość ataku +10%",
+        "Szansa na krytyczne uderzenie +10%",
+        "Silny przeciwko Setaou +10%"
+      ]
+    },
+    "Kolczyki Kryształu Duszy": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Szansa na krytyczne uderzenie +5%",
+        "Siła +14",
+        "Max PŻ +1650",
+        "Silny przeciwko Setaou +10%"
+      ],
+      "note": "wariant Siła (STR); patrz też warianty Inteligencja/Zręczność"
+    },
+    "Kolczyki Kryształu Duszy (Inteligencja)": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Szansa na krytyczne uderzenie +5%",
+        "Inteligencja +14",
+        "Max PŻ +1650",
+        "Silny przeciwko Setaou +10%"
+      ],
+      "sourceItem": "Kolczyki Kryształu Duszy"
+    },
+    "Kolczyki Kryształu Duszy (Zręczność)": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Szansa na krytyczne uderzenie +5%",
+        "Zręczność +14",
+        "Max PŻ +1650",
+        "Silny przeciwko Setaou +10%"
+      ],
+      "sourceItem": "Kolczyki Kryształu Duszy"
+    },
+    "Tarcza Tytanów": {
+      "requiredLevel": 81,
+      "plus9": [
+        "Obrona 161",
+        "Szybkość ruchu -6%",
+        "Odporność na umiejętności bossów 10%",
+        "Silny przeciwko Setaou +10%",
+        "Odporność na klasy +20%"
+      ]
+    },
+    "Hełm Mistrza Wojny": {
+      "requiredLevel": 80,
+      "plus9": [
+        "Obrona 97",
+        "Szansa na blok 5%",
+        "Silny przeciwko Setaou +10%"
+      ]
+    },
+    "Pajęczy Kaptur": {
+      "requiredLevel": 80,
+      "plus9": [
+        "Obrona 97",
+        "Szansa na blok 5%",
+        "Silny przeciwko Setaou +10%"
+      ]
+    },
+    "Magiczny Hełm": {
+      "requiredLevel": 80,
+      "plus9": [
+        "Obrona 97",
+        "Szansa na blok 5%",
+        "Silny przeciwko Setaou +10%"
+      ]
+    },
+    "Kapelusz Duszy": {
+      "requiredLevel": 80,
+      "plus9": [
+        "Obrona 97",
+        "Szansa na blok 5%",
+        "Silny przeciwko Setaou +10%"
+      ]
+    },
+    "Stalowy Hełm Smoków": {
+      "requiredLevel": 95,
+      "plus9": [
+        "Obrona 101",
+        "Szansa na blok 8%",
+        "Silny przeciwko potworom +8%",
+        "Silny przeciwko ludziom +10%"
+      ],
+      "note": "Dragon Steel Helm — brak w dumpie katalogu"
+    },
+    "Smoczy Kaptur": {
+      "requiredLevel": 95,
+      "plus9": [
+        "Obrona 101",
+        "Szansa na blok 8%",
+        "Silny przeciwko potworom +8%",
+        "Silny przeciwko ludziom +10%"
+      ],
+      "note": "Dragon Hood — brak w dumpie katalogu"
+    },
+    "Hełm Ze Smoczych Łusek": {
+      "requiredLevel": 95,
+      "plus9": [
+        "Obrona 101",
+        "Szansa na blok 8%",
+        "Silny przeciwko potworom +8%",
+        "Silny przeciwko ludziom +10%"
+      ],
+      "note": "Dragonscale Helm — brak w dumpie katalogu"
+    },
+    "Smoczy Kapelusz": {
+      "requiredLevel": 95,
+      "plus9": [
+        "Obrona 101",
+        "Szansa na blok 8%",
+        "Silny przeciwko potworom +8%",
+        "Silny przeciwko ludziom +10%"
+      ],
+      "note": "Dragon Hat — brak w dumpie katalogu"
+    },
+    "Buty Qilina": {
+      "requiredLevel": 94,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Szansa na blok 20%",
+        "Odporność na błyskawice +10%"
+      ]
+    },
+    "Kozaki Glorii": {
+      "requiredLevel": 94,
+      "plus9": [
+        "Obrona 8",
+        "Szybkość ruchu +25%",
+        "Silny przeciwko klasom +15",
+        "Odporność na błyskawice +10%"
+      ]
+    },
+    "Zbroja Setaou": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Obrona 244",
+        "Szybkość ruchu -4%",
+        "Odporność na magię 20%",
+        "Silny przeciwko Setaou +10%",
+        "Silny przeciwko potworom +10%"
+      ],
+      "note": "PH endgame Warrior — brak w dumpie katalogu"
+    },
+    "Strój Setaou": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Obrona 244",
+        "Szybkość ruchu -4%",
+        "Odporność na magię 20%",
+        "Silny przeciwko Setaou +10%",
+        "Silny przeciwko potworom +10%"
+      ],
+      "note": "PH endgame Ninja — brak w dumpie katalogu"
+    },
+    "Pancerz Setaou": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Obrona 244",
+        "Szybkość ruchu -4%",
+        "Odporność na magię 20%",
+        "Silny przeciwko Setaou +10%",
+        "Silny przeciwko potworom +10%"
+      ],
+      "note": "PH endgame Sura — brak w dumpie katalogu"
+    },
+    "Ubranie Setaou": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Obrona 244",
+        "Szybkość ruchu -4%",
+        "Odporność na magię 20%",
+        "Silny przeciwko Setaou +10%",
+        "Silny przeciwko potworom +10%"
+      ],
+      "note": "PH endgame Shaman — brak w dumpie katalogu"
+    },
+    "Miecz Żądło": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 237 - 277",
+        "Wartość ataku magicznego 155 - 177",
+        "Szybkość ataku +15%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    },
+    "Demoniczne Ostrze": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 142 - 204",
+        "Wartość ataku magicznego 227 - 247",
+        "Szybkość ataku +15%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    },
+    "Złodziej Dusz": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 263 - 331",
+        "Szybkość ataku +25%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    },
+    "Nóż Siamese": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 211 - 223",
+        "Szybkość ataku +15%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    },
+    "Łuk Niebieskiego Smoka": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 324 - 430",
+        "Szybkość ataku +15%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    },
+    "Ekstazyjny Wachlarz": {
+      "requiredLevel": 85,
+      "plus9": [
+        "Wartość ataku 159 - 181",
+        "Wartość ataku magicznego 205 - 225",
+        "Szybkość ataku +15%",
+        "Silny przeciwko ludziom +20%"
+      ]
+    }
+  }
+}

@@ -1,141 +1,6 @@
 {
-  "_bundleRevision": 15,
+  "_bundleRevision": 17,
   "config": {
-    "M1": {
-      "bosses": [
-        {
-          "id": "boss_1771351612946",
-          "name": "Lykos",
-          "respawnTimeMin": 30,
-          "respawnTimeMax": 31,
-          "hasWindow": true,
-          "windowTime": 1
-        },
-        {
-          "id": "boss_1771353667872",
-          "name": "Lykos #2",
-          "respawnTimeMin": 30,
-          "respawnTimeMax": 31,
-          "hasWindow": true,
-          "windowTime": 1
-        },
-        {
-          "id": "boss_1771351613443",
-          "name": "Scrofa",
-          "respawnTimeMin": 10,
-          "respawnTimeMax": 10,
-          "hasWindow": false,
-          "windowTime": 0,
-          "color": "#AA96DA"
-        },
-        {
-          "id": "boss_1771354575438",
-          "name": "Scrofa #2",
-          "respawnTimeMin": 10,
-          "respawnTimeMax": 10,
-          "hasWindow": false,
-          "windowTime": 0,
-          "color": "#AA96DA"
-        },
-        {
-          "id": "boss_1771351617241",
-          "name": "Bera",
-          "respawnTimeMin": 10,
-          "respawnTimeMax": 10,
-          "hasWindow": false,
-          "windowTime": 0,
-          "color": "#4ECDC4"
-        },
-        {
-          "id": "boss_1771351618565",
-          "name": "Tigris",
-          "respawnTimeMin": 10,
-          "respawnTimeMax": 10,
-          "hasWindow": false,
-          "windowTime": 0,
-          "color": "#FFE66D"
-        }
-      ],
-      "metins": [
-        {
-          "id": "metin1",
-          "name": "Metin Cierpienia",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#6BCB77"
-        },
-        {
-          "id": "metin_1771354594405",
-          "name": "Metin Cierpienia #2",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#6BCB77"
-        },
-        {
-          "id": "metin_1771351681711",
-          "name": "Metin Walki",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        },
-        {
-          "id": "metin_1771353840888",
-          "name": "Metin Walki #2",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        },
-        {
-          "id": "metin_1771351682088",
-          "name": "Metin Bitwy",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FF9F43"
-        },
-        {
-          "id": "metin_1771351682551",
-          "name": "Metin Bitwy #2",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FF9F43"
-        },
-        {
-          "id": "metin_1771351703813",
-          "name": "Metin Bitwy #3",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FF9F43"
-        },
-        {
-          "id": "metin_1771354431841",
-          "name": "Metin Bitwy #4",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FF9F43"
-        },
-        {
-          "id": "metin_1771354551293",
-          "name": "Metin Bitwy #5",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FF9F43"
-        },
-        {
-          "id": "metin_1771353424136",
-          "name": "Metin Chciwości",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#FCBAD3"
-        },
-        {
-          "id": "metin_1771353487596",
-          "name": "Metin Czerni",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30,
-          "color": "#A8D8EA"
-        }
-      ],
-      "channels": 8,
-      "color": "#20B2AA"
-    },
     "M2": {
       "bosses": [
         {
@@ -478,7 +343,10 @@
       "color": "#ff4500"
     },
     "Las Duchów": {
-      "widgetModules": ["support", "spot_reservations"],
+      "widgetModules": [
+        "support",
+        "spot_reservations"
+      ],
       "bosses": [
         {
           "id": "duch_generala",
@@ -562,7 +430,10 @@
       "color": "#8B0000"
     },
     "Czerwony Las": {
-      "widgetModules": ["support", "spot_reservations"],
+      "widgetModules": [
+        "support",
+        "spot_reservations"
+      ],
       "bosses": [],
       "metins": [
         {
@@ -596,7 +467,11 @@
       "color": "#c0392b"
     },
     "Atlantyda V1": {
-      "widgetModules": ["support", "spot_reservations", "timers"],
+      "widgetModules": [
+        "support",
+        "spot_reservations",
+        "timers"
+      ],
       "bosses": [
         {
           "id": "krol_morz",
@@ -619,7 +494,11 @@
       "color": "#00CED1"
     },
     "Atlantyda V2": {
-      "widgetModules": ["support", "spot_reservations", "timers"],
+      "widgetModules": [
+        "support",
+        "spot_reservations",
+        "timers"
+      ],
       "bosses": [
         {
           "id": "boss_1771353163748",
@@ -633,131 +512,13 @@
       "metins": [
         {
           "id": "metin1",
-          "name": "Metin Zbawienia",
+          "name": "Metin Setao",
           "respawnTimeMin": 20,
           "respawnTimeMax": 30
         }
       ],
       "channels": 8,
       "color": "#1E90FF"
-    },
-    "Loch Pająków V2": {
-      "bosses": [
-        {
-          "id": "cesarzowa_pajak",
-          "name": "Królowa Pająków",
-          "respawnTimeMin": 120,
-          "respawnTimeMax": 120,
-          "hasWindow": false,
-          "windowTime": 0
-        }
-      ],
-      "metins": [],
-      "channels": 8,
-      "color": "#800080"
-    },
-    "Loch Małp Łatwy": {
-      "bosses": [
-        {
-          "id": "malpi_wojownik",
-          "name": "Skalista Małpa",
-          "respawnTimeMin": 30,
-          "respawnTimeMax": 30,
-          "hasWindow": false,
-          "windowTime": 0
-        }
-      ],
-      "metins": [
-        {
-          "id": "metin1",
-          "name": "Metin Łatwych Małp",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        }
-      ],
-      "channels": 8,
-      "color": "#8B4513"
-    },
-    "Loch Małp Średni": {
-      "bosses": [
-        {
-          "id": "malpi_general",
-          "name": "Chodząca Małpa",
-          "respawnTimeMin": 30,
-          "respawnTimeMax": 30,
-          "hasWindow": false,
-          "windowTime": 0
-        }
-      ],
-      "metins": [
-        {
-          "id": "metin1",
-          "name": "Metin Średnich Małp",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        }
-      ],
-      "channels": 8,
-      "color": "#A0522D"
-    },
-    "Loch Małp Trudny": {
-      "bosses": [
-        {
-          "id": "malpi_wladca",
-          "name": "Lord Małp",
-          "respawnTimeMin": 60,
-          "respawnTimeMax": 60,
-          "hasWindow": false,
-          "windowTime": 0
-        }
-      ],
-      "metins": [
-        {
-          "id": "metin1",
-          "name": "Metin Trudnych Małp",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        }
-      ],
-      "channels": 8,
-      "color": "#CD853F"
-    },
-    "Grota Wygnańców": {
-      "bosses": [
-        {
-          "id": "general_setaou",
-          "name": "Generał Setaou",
-          "respawnTimeMin": 240,
-          "respawnTimeMax": 240,
-          "hasWindow": false,
-          "windowTime": 0
-        },
-        {
-          "id": "silna_lodowa_wiedzma",
-          "name": "Silna Lodowa Wiedźma",
-          "respawnTimeMin": 10080,
-          "respawnTimeMax": 10080,
-          "hasWindow": false,
-          "windowTime": 0
-        }
-      ],
-      "metins": [
-        {
-          "id": "metin_specjalny_grota",
-          "name": "Specjalny Metin",
-          "respawnTimeMin": 120,
-          "respawnTimeMax": 120
-        },
-        {
-          "id": "metin1",
-          "name": "Metin Wygnańców",
-          "respawnTimeMin": 20,
-          "respawnTimeMax": 30
-        }
-      ],
-      "channels": 8,
-      "color": "#1abc9c",
-      "mapImage": "/map_grota_wygnancow.png"
     }
   },
   "empireMapTemplates": {

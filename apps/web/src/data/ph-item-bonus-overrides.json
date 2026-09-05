@@ -1,0 +1,59 @@
+{
+  "_comment": "Projekt Hard item bonus overlays applied AFTER wiki-item-bonus-overrides.json. Only documented values — never invent mid-ladder numbers.",
+  "sources": [
+    {
+      "url": "https://projekt-hard.eu/presentation",
+      "note": "Login-gated presentation transcribed in ph-presentation-equipment-bonuses.md (2026-09-04). Max PŻ +0..+9 for lv33/54 earrings reuses classic ebony Max PŻ ladder ending at 1650 (matches PH +9)."
+    }
+  ],
+  "requireLevelByTitle": {
+    "Miecz Żądło": 85,
+    "Złodziej Dusz": 85,
+    "Nóż Siamese": 85,
+    "Łuk Niebieskiego Smoka": 85,
+    "Demoniczne Ostrze": 85
+  },
+  "upgradeByTitle": {
+    "Jadeitowe Kolczyki": "|Bonus1 = Zręczność|Bonus1-0 = 3|Bonus1-1 = 4|Bonus1-2 = 5|Bonus1-3 = 6|Bonus1-4 = 7|Bonus1-5 = 8|Bonus1-6 = 9|Bonus1-7 = 10|Bonus1-8 = 11|Bonus1-9 = 12|Bonus2 = Max PŻ|Bonus2-0 = 25|Bonus2-1 = 40|Bonus2-2 = 60|Bonus2-3 = 100|Bonus2-4 = 150|Bonus2-5 = 250|Bonus2-6 = 400|Bonus2-7 = 650|Bonus2-8 = 1.000|Bonus2-9 = 1.650",
+    "Ebonitowe Kolczyki": "|Bonus1 = Siła|Bonus1-0 = 3|Bonus1-1 = 4|Bonus1-2 = 5|Bonus1-3 = 6|Bonus1-4 = 7|Bonus1-5 = 8|Bonus1-6 = 9|Bonus1-7 = 10|Bonus1-8 = 11|Bonus1-9 = 12|Bonus2 = Max PŻ|Bonus2-0 = 25|Bonus2-1 = 40|Bonus2-2 = 60|Bonus2-3 = 100|Bonus2-4 = 150|Bonus2-5 = 250|Bonus2-6 = 400|Bonus2-7 = 650|Bonus2-8 = 1.000|Bonus2-9 = 1.650",
+    "Perłowe Kolczyki": "|Bonus1 = Energia Życiowa|Bonus1-0 = +3|Bonus1-1 = +4|Bonus1-2 = +5|Bonus1-3 = +6|Bonus1-4 = +7|Bonus1-5 = +8|Bonus1-6 = +9|Bonus1-7 = +10|Bonus1-8 = +11|Bonus1-9 = +12|Bonus2 = Max PŻ|Bonus2-0 = 25|Bonus2-1 = 40|Bonus2-2 = 60|Bonus2-3 = 100|Bonus2-4 = 150|Bonus2-5 = 250|Bonus2-6 = 400|Bonus2-7 = 650|Bonus2-8 = 1.000|Bonus2-9 = 1.650",
+    "Kolczyki Z Białego Złota": "|Bonus1 = Inteligencja|Bonus1-0 = +3|Bonus1-1 = +4|Bonus1-2 = +5|Bonus1-3 = +6|Bonus1-4 = +7|Bonus1-5 = +8|Bonus1-6 = +9|Bonus1-7 = +10|Bonus1-8 = +11|Bonus1-9 = +12|Bonus2 = Max PŻ|Bonus2-0 = 25|Bonus2-1 = 40|Bonus2-2 = 60|Bonus2-3 = 100|Bonus2-4 = 150|Bonus2-5 = 250|Bonus2-6 = 400|Bonus2-7 = 650|Bonus2-8 = 1.000|Bonus2-9 = 1.650",
+    "Kryształowe Kolczyki": "|Bonus1 = Zręczność|Bonus1-0 = +5|Bonus1-1 = +6|Bonus1-2 = +7|Bonus1-3 = +8|Bonus1-4 = +9|Bonus1-5 = +10|Bonus1-6 = +11|Bonus1-7 = +12|Bonus1-8 = +13|Bonus1-9 = +14|Bonus2 = Kryt. uderzenie|Bonus2-0 = 1%|Bonus2-1 = 1%|Bonus2-2 = 2%|Bonus2-3 = 2%|Bonus2-4 = 3%|Bonus2-5 = 3%|Bonus2-6 = 4%|Bonus2-7 = 4%|Bonus2-8 = 5%|Bonus2-9 = 5%|Bonus3 = Wartość ataku|Bonus3-9 = +30|Bonus4 = Max PŻ|Bonus4-0 = 25|Bonus4-1 = 40|Bonus4-2 = 60|Bonus4-3 = 100|Bonus4-4 = 150|Bonus4-5 = 250|Bonus4-6 = 400|Bonus4-7 = 650|Bonus4-8 = 1.000|Bonus4-9 = 1.650",
+    "Ametystowe Kolczyki": "|Bonus1 = Siła|Bonus1-0 = +5|Bonus1-1 = +6|Bonus1-2 = +7|Bonus1-3 = +8|Bonus1-4 = +9|Bonus1-5 = +10|Bonus1-6 = +11|Bonus1-7 = +12|Bonus1-8 = +13|Bonus1-9 = +14|Bonus2 = Kryt. uderzenie|Bonus2-0 = 1%|Bonus2-1 = 1%|Bonus2-2 = 2%|Bonus2-3 = 2%|Bonus2-4 = 3%|Bonus2-5 = 3%|Bonus2-6 = 4%|Bonus2-7 = 4%|Bonus2-8 = 5%|Bonus2-9 = 5%|Bonus3 = Wartość ataku|Bonus3-9 = +30|Bonus4 = Max PŻ|Bonus4-0 = 25|Bonus4-1 = 40|Bonus4-2 = 60|Bonus4-3 = 100|Bonus4-4 = 150|Bonus4-5 = 250|Bonus4-6 = 400|Bonus4-7 = 650|Bonus4-8 = 1.000|Bonus4-9 = 1.650",
+    "Kolczyki Z Niebiańskich Łez": "|Bonus1 = Inteligencja|Bonus1-0 = +5|Bonus1-1 = +6|Bonus1-2 = +7|Bonus1-3 = +8|Bonus1-4 = +9|Bonus1-5 = +10|Bonus1-6 = +11|Bonus1-7 = +12|Bonus1-8 = +13|Bonus1-9 = +14|Bonus2 = Kryt. uderzenie|Bonus2-0 = 1%|Bonus2-1 = 1%|Bonus2-2 = 2%|Bonus2-3 = 2%|Bonus2-4 = 3%|Bonus2-5 = 3%|Bonus2-6 = 4%|Bonus2-7 = 4%|Bonus2-8 = 5%|Bonus2-9 = 5%|Bonus3 = Wartość ataku|Bonus3-9 = +30|Bonus4 = Max PŻ|Bonus4-0 = 25|Bonus4-1 = 40|Bonus4-2 = 60|Bonus4-3 = 100|Bonus4-4 = 150|Bonus4-5 = 250|Bonus4-6 = 400|Bonus4-7 = 650|Bonus4-8 = 1.000|Bonus4-9 = 1.650",
+    "Miedziana Bransoleta": "|Bonus1 = Szybk. Ataku|Bonus1-0 = 1%|Bonus1-1 = 1%|Bonus1-2 = 2%|Bonus1-3 = 2%|Bonus1-4 = 3%|Bonus1-5 = 3%|Bonus1-6 = 4%|Bonus1-7 = 4%|Bonus1-8 = 5%|Bonus1-9 = 5%|Bonus2 = obrażeń będzie dodanych do PE|Bonus2-9 = 5%",
+    "Jadeitowa Bransoleta": "|Bonus1 = Szybk. Ataku|Bonus1-0 = 1%|Bonus1-1 = 1%|Bonus1-2 = 2%|Bonus1-3 = 2%|Bonus1-4 = 3%|Bonus1-5 = 3%|Bonus1-6 = 4%|Bonus1-7 = 5%|Bonus1-8 = 6%|Bonus1-9 = 7%|Bonus2 = obrażeń będzie dodanych do PŻ|Bonus2-9 = 7%",
+    "Perłowa Bransoleta": "|Bonus1 = Szybk. Ataku|Bonus1-0 = 1%|Bonus1-1 = 1%|Bonus1-2 = 2%|Bonus1-3 = 2%|Bonus1-4 = 3%|Bonus1-5 = 3%|Bonus1-6 = 4%|Bonus1-7 = 5%|Bonus1-8 = 6%|Bonus1-9 = 7%|Bonus2 = Szansa na przeszywające Uderzenie|Bonus2-9 = 7%",
+    "Ametystowa Bransoleta": "|Bonus1 = Szybk. Ataku|Bonus1-0 = 1%|Bonus1-1 = 2%|Bonus1-2 = 3%|Bonus1-3 = 4%|Bonus1-4 = 5%|Bonus1-5 = 6%|Bonus1-6 = 7%|Bonus1-7 = 8%|Bonus1-8 = 9%|Bonus1-9 = 10%|Bonus2 = Szansa na Omdlenie|Bonus2-9 = 5%",
+    "Buty Feniksa": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 5%|Bonus1-1 = 6%|Bonus1-2 = 7%|Bonus1-3 = 8%|Bonus1-4 = 9%|Bonus1-5 = 12%|Bonus1-6 = 15%|Bonus1-7 = 18%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Obrona|Bonus2-0 = 8|Bonus2-1 = 8|Bonus2-2 = 8|Bonus2-3 = 8|Bonus2-4 = 8|Bonus2-5 = 8|Bonus2-6 = 8|Bonus2-7 = 8|Bonus2-8 = 8|Bonus2-9 = 8|Bonus3-Name = Szansa na blok ciosów|Bonus3-0 = 1%|Bonus3-1 = 2%|Bonus3-2 = 3%|Bonus3-3 = 4%|Bonus3-4 = 5%|Bonus3-5 = 6%|Bonus3-6 = 7%|Bonus3-7 = 8%|Bonus3-8 = 9%|Bonus3-9 = 10%",
+    "Ekstazyjne Buty": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 5%|Bonus1-1 = 6%|Bonus1-2 = 7%|Bonus1-3 = 8%|Bonus1-4 = 9%|Bonus1-5 = 12%|Bonus1-6 = 15%|Bonus1-7 = 18%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Obrona|Bonus2-0 = 8|Bonus2-1 = 8|Bonus2-2 = 8|Bonus2-3 = 8|Bonus2-4 = 8|Bonus2-5 = 8|Bonus2-6 = 8|Bonus2-7 = 8|Bonus2-8 = 8|Bonus2-9 = 8|Bonus3-Name = Szybkość zaklęcia|Bonus3-9 = 16%",
+    "Buty Ognistego Ptaka": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 5%|Bonus1-1 = 6%|Bonus1-2 = 7%|Bonus1-3 = 8%|Bonus1-4 = 9%|Bonus1-5 = 12%|Bonus1-6 = 15%|Bonus1-7 = 18%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Obrona|Bonus2-0 = 8|Bonus2-1 = 8|Bonus2-2 = 8|Bonus2-3 = 8|Bonus2-4 = 8|Bonus2-5 = 8|Bonus2-6 = 8|Bonus2-7 = 8|Bonus2-8 = 8|Bonus2-9 = 8|Bonus3-Name = Max PŻ|Bonus3-9 = 2400",
+    "Złodziej Dusz": "|Bonus1-Name = Silny przeciwko Ludziom|Bonus1-0 = 2%|Bonus1-1 = 3%|Bonus1-2 = 4%|Bonus1-3 = 5%|Bonus1-4 = 6%|Bonus1-5 = 7%|Bonus1-6 = 8%|Bonus1-7 = 10%|Bonus1-8 = 12%|Bonus1-9 = 20%",
+    "Miecz Żądło": "|Bonus1-Name = Max. PŻ|Bonus1-0 = 50|Bonus1-1 = 100|Bonus1-2 = 150|Bonus1-3 = 300|Bonus1-4 = 450|Bonus1-5 = 600|Bonus1-6 = 800|Bonus1-7 = 1.000|Bonus1-8 = 1.200|Bonus1-9 = 1.500|Bonus2-Name = Silny przeciwko Ludziom|Bonus2-9 = 20%",
+    "Nóż Siamese": "|Bonus1-Name = Silny przeciwko potworom|Bonus1-0 = 5%|Bonus1-1 = 6%|Bonus1-2 = 7%|Bonus1-3 = 8%|Bonus1-4 = 10%|Bonus1-5 = 12%|Bonus1-6 = 14%|Bonus1-7 = 17%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Silny przeciwko Ludziom|Bonus2-9 = 20%",
+    "Łuk Niebieskiego Smoka": "|Bonus1-Name = Szansa na Bonus DOŚ.|Bonus1-0 = 2%|Bonus1-1 = 3%|Bonus1-2 = 4%|Bonus1-3 = 5%|Bonus1-4 = 6%|Bonus1-5 = 8%|Bonus1-6 = 10%|Bonus1-7 = 12%|Bonus1-8 = 15%|Bonus1-9 = 20%|Bonus2-Name = Silny przeciwko Ludziom|Bonus2-9 = 20%",
+    "Demoniczne Ostrze": "|Bonus1-Name = Szansa na kradzież PE|Bonus1-0 = 2%|Bonus1-1 = 3%|Bonus1-2 = 4%|Bonus1-3 = 5%|Bonus1-4 = 7%|Bonus1-5 = 9%|Bonus1-6 = 12%|Bonus1-7 = 15%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Silny przeciwko Ludziom|Bonus2-9 = 20%",
+    "Deszczowe Buty": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 5%|Bonus1-1 = 6%|Bonus1-2 = 7%|Bonus1-3 = 8%|Bonus1-4 = 9%|Bonus1-5 = 12%|Bonus1-6 = 15%|Bonus1-7 = 18%|Bonus1-8 = 20%|Bonus1-9 = 25%|Bonus2-Name = Obrona|Bonus2-0 = 8|Bonus2-1 = 8|Bonus2-2 = 8|Bonus2-3 = 8|Bonus2-4 = 8|Bonus2-5 = 8|Bonus2-6 = 8|Bonus2-7 = 8|Bonus2-8 = 8|Bonus2-9 = 8|Bonus3-Name = Szansa na uniknięcie strzały|Bonus3-9 = 16%",
+    "Skórzane Buty": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 3%|Bonus1-1 = 4%|Bonus1-2 = 5%|Bonus1-3 = 6%|Bonus1-4 = 8%|Bonus1-5 = 10%|Bonus1-6 = 12%|Bonus1-7 = 14%|Bonus1-8 = 17%|Bonus1-9 = 20%|Bonus2-Name = Obrona|Bonus2-0 = 3|Bonus2-1 = 3|Bonus2-2 = 3|Bonus2-3 = 3|Bonus2-4 = 3|Bonus2-5 = 3|Bonus2-6 = 3|Bonus2-7 = 3|Bonus2-8 = 3|Bonus2-9 = 3|Bonus3-Name = odporność na strzały|Bonus3-0 = 2%|Bonus3-1 = 4%|Bonus3-2 = 6%|Bonus3-3 = 8%|Bonus3-4 = 10%|Bonus3-5 = 12%|Bonus3-6 = 14%|Bonus3-7 = 16%|Bonus3-8 = 18%|Bonus3-9 = 20%",
+    "Złote Buty": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 3%|Bonus1-1 = 4%|Bonus1-2 = 5%|Bonus1-3 = 6%|Bonus1-4 = 8%|Bonus1-5 = 10%|Bonus1-6 = 12%|Bonus1-7 = 14%|Bonus1-8 = 17%|Bonus1-9 = 20%|Bonus2-Name = Obrona|Bonus2-0 = 3|Bonus2-1 = 3|Bonus2-2 = 3|Bonus2-3 = 3|Bonus2-4 = 3|Bonus2-5 = 3|Bonus2-6 = 3|Bonus2-7 = 3|Bonus2-8 = 3|Bonus2-9 = 3|Bonus3-Name = Max PŻ|Bonus3-9 = 1200",
+    "Buty Z Brązu": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 3%|Bonus1-1 = 4%|Bonus1-2 = 5%|Bonus1-3 = 6%|Bonus1-4 = 8%|Bonus1-5 = 10%|Bonus1-6 = 12%|Bonus1-7 = 14%|Bonus1-8 = 17%|Bonus1-9 = 20%|Bonus2-Name = Obrona|Bonus2-0 = 3|Bonus2-1 = 3|Bonus2-2 = 3|Bonus2-3 = 3|Bonus2-4 = 3|Bonus2-5 = 3|Bonus2-6 = 3|Bonus2-7 = 3|Bonus2-8 = 3|Bonus2-9 = 3|Bonus3-Name = Obrona|Bonus3-9 = 45",
+    "Jadeitowe Buty": "|Bonus1-Name = Szybkość ruchu|Bonus1-0 = 3%|Bonus1-1 = 4%|Bonus1-2 = 5%|Bonus1-3 = 6%|Bonus1-4 = 8%|Bonus1-5 = 10%|Bonus1-6 = 12%|Bonus1-7 = 14%|Bonus1-8 = 17%|Bonus1-9 = 20%|Bonus2-Name = Obrona|Bonus2-0 = 3|Bonus2-1 = 3|Bonus2-2 = 3|Bonus2-3 = 3|Bonus2-4 = 3|Bonus2-5 = 3|Bonus2-6 = 3|Bonus2-7 = 3|Bonus2-8 = 3|Bonus2-9 = 3|Bonus3-Name = Czas trwania umiejętności|Bonus3-9 = 45 s"
+  },
+  "skipped": [
+    "Attack Value PvM / Magic Attack Value PvM numeric ladders for weapons >25 — editable empty fields in UI; no public per-weapon numbers",
+    "Bracelet second-bonus intermediate +0..+8 — only +9 from presentation",
+    "Lv54 earrings Wartość ataku +0..+8 — only +9=+30 documented",
+    "SAH +0..+8 for lv70 weapons — only +9=20% (type Silny przeciwko Ludziom)",
+    "Ekstazyjne/Deszczowe casting-or-evasion mid steps; Fire Bird Max PŻ mid steps; Bronze/Jade/Gold lv29 third-bonus mid steps — unknown",
+    "Full necklace/helmet/soul-crystal ladders — plus9 captured in ph-equipment-bonus-overrides.json; full +0..+9 not invented here"
+  ],
+  "rules": {
+    "weaponsAboveLevel25": {
+      "bonuses": [
+        "Attack Value PvM",
+        "Magic Attack Value PvM"
+      ],
+      "valuesDocumented": false
+    }
+  }
+}

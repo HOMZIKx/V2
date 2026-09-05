@@ -2,9 +2,20 @@ import type { RespawnKind, RespawnLocation } from './respawn-timers';
 
 export type PartyVisibility = 'open' | 'closed';
 export type PartyRequestStatus = 'pending' | 'accepted' | 'rejected';
+/** Scout pin kinds shown in UI: Metin / Boss / Inne. */
+export type ScoutPinKind = RespawnKind | 'spot';
 
 /** Scout pin TTL — owner: pinezka aktywna ok. 10 minut, potem znika sama. */
 export const PARTY_SCOUT_PIN_TTL_MS = 10 * 60_000;
+
+export const SCOUT_PIN_KIND_PRESETS: readonly {
+  readonly kind: ScoutPinKind;
+  readonly label: string;
+}[] = [
+  { kind: 'metin', label: 'Metin' },
+  { kind: 'boss', label: 'Boss' },
+  { kind: 'spot', label: 'Inne' },
+];
 
 export interface MapPartyMember {
   readonly id: string;
@@ -46,7 +57,11 @@ export interface PartyScoutPin {
   readonly placedAt: number;
   readonly placedBy: string;
   readonly label: string;
-  readonly kind: RespawnKind | 'spot';
+  readonly kind: ScoutPinKind;
+}
+
+export function scoutPinKindLabel(kind: ScoutPinKind): string {
+  return SCOUT_PIN_KIND_PRESETS.find((item) => item.kind === kind)?.label ?? 'Inne';
 }
 
 export function createMapParty(input: {
@@ -68,6 +83,66 @@ export function createMapParty(input: {
     members: [{ ...input.leader, role: 'leader' }],
     requests: [],
     sessionKills: 0,
+  };
+}
+
+/**
+ * Local mock join-by-code:
+ * - if `savedClosedParty` exists, only its exact `joinCode` rejoins that session;
+ * - wrong code → error;
+ * - if nothing saved, any non-empty code creates a mock member party labeled with that code.
+ */
+export function joinPartyByCode(input: {
+  readonly code: string;
+  readonly savedClosedParty: MapParty | null;
+  readonly member: Omit<MapPartyMember, 'role'>;
+  readonly mapKey: string;
+  readonly activeChannel: number;
+  readonly now: number;
+}):
+  | { readonly ok: true; readonly party: MapParty; readonly fromSaved: boolean }
+  | { readonly ok: false; readonly error: string } {
+  const code = input.code.trim();
+  if (!code) {
+    return { ok: false, error: 'Podaj kod party.' };
+  }
+
+  if (input.savedClosedParty) {
+    if (input.savedClosedParty.joinCode !== code) {
+      return { ok: false, error: 'Niepoprawny kod party.' };
+    }
+    const party = input.savedClosedParty;
+    if (party.members.some((member) => member.id === input.member.id)) {
+      return { ok: true, party, fromSaved: true };
+    }
+    return {
+      ok: true,
+      fromSaved: true,
+      party: {
+        ...party,
+        members: [...party.members, { ...input.member, role: 'member' }],
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    fromSaved: false,
+    party: {
+      id: `party-join-${input.now}`,
+      name: `Party · kod ${code}`,
+      leaderId: 'remote-leader',
+      visibility: 'closed',
+      joinCode: code,
+      mapKey: input.mapKey,
+      activeChannel: input.activeChannel,
+      members: [
+        { id: 'remote-leader', displayName: 'Lider (mock)', role: 'leader' },
+        { ...input.member, role: 'member' },
+      ],
+      requests: [],
+      sessionKills: 0,
+    },
   };
 }
 
@@ -118,6 +193,10 @@ export function incrementSessionKills(party: MapParty, by = 1): MapParty {
   return { ...party, sessionKills: Math.max(0, party.sessionKills + by) };
 }
 
+export function resetSessionKills(party: MapParty): MapParty {
+  return { ...party, sessionKills: 0 };
+}
+
 export function isScoutPinActive(pin: PartyScoutPin, now: number): boolean {
   return now - pin.placedAt < PARTY_SCOUT_PIN_TTL_MS;
 }
@@ -128,6 +207,14 @@ export function scoutPinAgeMinutes(pin: PartyScoutPin, now: number): number {
 
 export function scoutPinRemainingMs(pin: PartyScoutPin, now: number): number {
   return Math.max(0, PARTY_SCOUT_PIN_TTL_MS - (now - pin.placedAt));
+}
+
+/** Live countdown for list / selected pin — mm:ss. */
+export function formatScoutPinRemaining(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1_000));
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 export function activeScoutPins(
@@ -145,6 +232,16 @@ export function activeScoutPins(
       pin.channel === channel &&
       isScoutPinActive(pin, now),
   );
+}
+
+/** All still-active scout pins for the party (any map/CH) — sidebar list. */
+export function partyActiveScoutPins(
+  pins: readonly PartyScoutPin[],
+  party: MapParty | null,
+  now: number,
+): readonly PartyScoutPin[] {
+  if (!party) return [];
+  return pins.filter((pin) => pin.partyId === party.id && isScoutPinActive(pin, now));
 }
 
 export function placeScoutPin(

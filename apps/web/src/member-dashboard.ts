@@ -131,7 +131,7 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
     {
       id: 'activity',
       label: 'Aktywność',
-      description: 'Eventy, obecność i statystyki widoczne dla Twojej roli.',
+      description: 'Centrum Aktywności — shell UI; dane z activity-service (most Discord / New Bot w toku).',
       href: '/activity',
       state: 'available',
     },

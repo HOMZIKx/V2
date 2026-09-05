@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   characterAppearanceLabel,
@@ -10,11 +10,20 @@ import { usePlayerStore } from '../../src/player-store-react';
 import { AppShell, Icon } from '../app-shell';
 import { DiscordEntryScreen } from '../discord-entry';
 
+type ChoiceTarget = {
+  readonly workspaceId: string;
+  readonly characterId: string;
+  readonly name: string;
+};
+
 export function CharacterDirectory() {
-  const { state, hydrated, writesEnabled, archiveCharacter } = usePlayerStore();
+  const { state, hydrated, writesEnabled, archiveCharacter, addNote, removeNote } =
+    usePlayerStore();
   const [query, setQuery] = useState('');
   const [rosterEdit, setRosterEdit] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const [choice, setChoice] = useState<ChoiceTarget | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
 
   const characters = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('pl');
@@ -30,7 +39,33 @@ export function CharacterDirectory() {
     );
   }, [state.workspaces, query]);
 
+  const choiceNotes = useMemo(() => {
+    if (!choice) return [];
+    const workspace = state.workspaces.find((entry) => entry.id === choice.workspaceId);
+    if (!workspace) return [];
+    return workspace.notes.filter(
+      (note) => note.scope === 'character' && note.characterId === choice.characterId,
+    );
+  }, [choice, state.workspaces]);
+
   const primaryWorkspace = state.workspaces[0] ?? null;
+
+  useEffect(() => {
+    if (!choice) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setChoice(null);
+        setNoteDraft('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [choice]);
+
+  const closeChoice = () => {
+    setChoice(null);
+    setNoteDraft('');
+  };
 
   if (!hydrated) {
     return (
@@ -51,10 +86,7 @@ export function CharacterDirectory() {
           <div>
             <span className="eyebrow">Wszystkie przestrzenie</span>
             <h1>Postacie</h1>
-            <p>
-              Lista postaci z Twoich zespołów. EQ i timery PH są na karcie postaci. Skład edytujesz
-            przyciskiem Edycja składu.
-            </p>
+            <p>Lista postaci z Twoich zespołów.</p>
           </div>
           <div className="characters-page-actions">
             {writesEnabled && primaryWorkspace ? (
@@ -81,7 +113,7 @@ export function CharacterDirectory() {
 
         {rosterEdit ? (
           <p className="roster-edit-banner" role="status">
-            Tryb edycji składu: możesz edytować profil albo usunąć postać z listy.
+            Edycja składu: profil albo usunięcie postaci.
           </p>
         ) : null}
         {announcement ? (
@@ -94,6 +126,7 @@ export function CharacterDirectory() {
           <Icon name="search" size={16} />
           <input
             onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
             placeholder="Szukaj postaci…"
             value={query}
           />
@@ -102,11 +135,20 @@ export function CharacterDirectory() {
         {characters.length === 0 ? (
           <section className="panel">
             <p className="empty-copy">
-              Brak postaci w Twoich przestrzeniach. Utwórz przestrzeń i dodaj pierwszą kartę.
+              Brak postaci. Dodaj pierwszą kartę, żeby otworzyć EQ i Timer.
             </p>
-            <a className="primary-button" href="/">
-              Przejdź na pulpit
-            </a>
+            {writesEnabled && primaryWorkspace ? (
+              <a
+                className="primary-button"
+                href={`/teams/${primaryWorkspace.id}/characters/new`}
+              >
+                Dodaj postać
+              </a>
+            ) : (
+              <a className="primary-button" href="/">
+                Przejdź na pulpit
+              </a>
+            )}
           </section>
         ) : (
           <div className={`character-cards${rosterEdit ? ' is-roster-edit' : ''}`}>
@@ -130,7 +172,6 @@ export function CharacterDirectory() {
                     </p>
                     <p>{characterAppearanceLabel(character.appearanceLook ?? 'desert')}</p>
                     <small>{workspace.name}</small>
-                    {!rosterEdit ? <span className="character-card-cta">EQ · Timery</span> : null}
                   </div>
                 </>
               );
@@ -167,21 +208,127 @@ export function CharacterDirectory() {
               }
 
               return (
-                <a
+                <button
                   className="character-card-link"
-                  href={href}
                   key={`${workspace.id}-${character.id}`}
+                  onClick={() =>
+                    setChoice({
+                      workspaceId: workspace.id,
+                      characterId: character.id,
+                      name: character.name,
+                    })
+                  }
+                  type="button"
                 >
                   {cardBody}
-                </a>
+                </button>
               );
             })}
           </div>
         )}
 
-        <div className="mock-notice">
-          Postacie są osobnym modułem. Lista pochodzi ze wspólnego store first-slice.
-        </div>
+        {choice ? (
+          <div
+            aria-modal="true"
+            className="character-choice-backdrop"
+            onClick={closeChoice}
+            role="presentation"
+          >
+            <div
+              aria-labelledby="character-choice-title"
+              className="character-choice-panel"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+            >
+              <header>
+                <h2 id="character-choice-title">{choice.name}</h2>
+                <button
+                  aria-label="Zamknij"
+                  className="icon-button"
+                  onClick={closeChoice}
+                  type="button"
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </header>
+              <div className="character-choice-actions">
+                <a
+                  className="secondary-button"
+                  href={`/teams/${choice.workspaceId}/characters/${choice.characterId}`}
+                >
+                  <Icon name="equipment" size={16} /> EQ
+                </a>
+                <a
+                  className="secondary-button"
+                  href={`/teams/${choice.workspaceId}/characters/${choice.characterId}?view=timers`}
+                >
+                  <Icon name="clock" size={16} /> Timer
+                </a>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    const el = document.getElementById('character-choice-notes');
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }}
+                  type="button"
+                >
+                  <Icon name="note" size={16} /> Notatki postaci
+                </button>
+              </div>
+              <section className="character-choice-notes" id="character-choice-notes">
+                <h3>Notatki postaci</h3>
+                {writesEnabled ? (
+                  <form
+                    className="character-choice-note-form"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const body = noteDraft.trim();
+                      if (!body) return;
+                      addNote(choice.workspaceId, body, choice.characterId);
+                      setNoteDraft('');
+                    }}
+                  >
+                    <textarea
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      placeholder="Treść notatki…"
+                      rows={3}
+                      value={noteDraft}
+                    />
+                    <button className="secondary-button" disabled={!noteDraft.trim()} type="submit">
+                      Dodaj notatkę
+                    </button>
+                  </form>
+                ) : null}
+                {choiceNotes.length === 0 ? (
+                  <p className="empty-copy">Brak notatek postaci.</p>
+                ) : (
+                  <ul className="character-choice-notes-list">
+                    {choiceNotes.map((note) => (
+                      <li key={note.id}>
+                        <div className="character-choice-note-meta">
+                          <span>
+                            {note.authorName} · {note.createdAtLabel}
+                          </span>
+                          {writesEnabled ? (
+                            <button
+                              className="secondary-button is-danger character-choice-note-remove"
+                              onClick={() => removeNote(choice.workspaceId, note.id)}
+                              type="button"
+                            >
+                              Usuń
+                            </button>
+                          ) : null}
+                        </div>
+                        <p>{note.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          </div>
+        ) : null}
       </main>
     </AppShell>
   );

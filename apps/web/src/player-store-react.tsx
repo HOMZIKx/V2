@@ -16,6 +16,9 @@ import {
   acceptIncomingInvitation,
   addProgressionTimer,
   addWorkspaceNote,
+  removeWorkspaceNote,
+  addItemNote,
+  removeItemNote,
   applyTaskOutcome,
   assignItemToSet,
   cancelDiscordAuth,
@@ -24,6 +27,7 @@ import {
   createCharacter,
   createEquipmentItem,
   createEquipmentSet,
+  renameEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
@@ -32,6 +36,7 @@ import {
   markTimerDone,
   parsePlayerStore,
   removeItemFromSet,
+  unequipItemToBag,
   removeProgressionTimer,
   seedDemoData,
   serializePlayerStore,
@@ -41,7 +46,10 @@ import {
   updateCharacter,
   archiveCharacter,
   updateEquipmentItemBonuses,
+  updateEquipmentItemWeaponStats,
   type AuthStatus,
+  type DiscordAuthViewerInput,
+  type PlayerIdentity,
   type CharacterClass,
   type CharacterGender,
   type CharacterSkillPath,
@@ -54,13 +62,17 @@ import type { CharacterAppearanceLook } from './character-profile';
 
 import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
 import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
+import { preserveHuntFieldsOnPut } from './hunt-snapshot';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
   readonly hydrated: boolean;
   readonly writesEnabled: boolean;
   startAuth: () => void;
-  finishAuth: (outcome: Exclude<AuthStatus, 'unauthenticated' | 'authenticating'>) => void;
+  finishAuth: (
+    outcome: Exclude<AuthStatus, 'unauthenticated' | 'authenticating'>,
+    identity?: DiscordAuthViewerInput | PlayerIdentity,
+  ) => void;
   cancelAuth: () => void;
   loadDemo: (options?: { readonly replace?: boolean }) => void;
   createWorkspace: (name: string) => string | null;
@@ -95,7 +107,15 @@ interface PlayerStoreApi {
   ) => void;
   archiveCharacter: (workspaceId: string, characterId: string) => void;
   applyTaskOutcome: (workspaceId: string, taskId: string, outcome: TaskOutcome) => void;
-  addNote: (workspaceId: string, body: string, characterId?: string | null) => void;
+  addNote: (
+    workspaceId: string,
+    body: string,
+    characterId?: string | null,
+    scope?: 'workspace' | 'character' | 'equipment' | null,
+  ) => void;
+  removeNote: (workspaceId: string, noteId: string) => void;
+  addItemNote: (workspaceId: string, itemId: string, body: string) => void;
+  removeItemNote: (workspaceId: string, itemId: string, noteId: string) => void;
   assignItem: (
     workspaceId: string,
     characterId: string,
@@ -109,6 +129,7 @@ interface PlayerStoreApi {
     setId: string,
     slot: EquipmentSlot,
   ) => void;
+  unequipItem: (workspaceId: string, itemId: string) => void;
   setActiveSet: (workspaceId: string, characterId: string, setId: string) => void;
   createSet: (
     workspaceId: string,
@@ -119,13 +140,19 @@ interface PlayerStoreApi {
       readonly makeActive?: boolean;
     },
   ) => string | null;
+  renameSet: (
+    workspaceId: string,
+    characterId: string,
+    setId: string,
+    name: string,
+  ) => boolean;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
   ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
   addTimer: (
     workspaceId: string,
     characterId: string,
-    input: { readonly kind?: ProgressionKind; readonly label?: string },
+    input: { readonly kind?: ProgressionKind; readonly label?: string; readonly durationMinutes?: number },
   ) => void;
   removeTimer: (workspaceId: string, timerId: string) => void;
   createItem: (
@@ -139,7 +166,22 @@ interface PlayerStoreApi {
       readonly forCharacterClass?: CharacterClass;
     },
   ) => string | null;
-  updateItemBonuses: (workspaceId: string, itemId: string, bonuses: readonly string[]) => void;
+  updateItemBonuses: (
+    workspaceId: string,
+    itemId: string,
+    bonuses: readonly string[],
+    options?: { readonly enhancement?: number },
+  ) => void;
+  updateItemWeaponStats: (
+    workspaceId: string,
+    itemId: string,
+    patch: {
+      readonly averageDamagePercent?: number | null;
+      readonly skillDamagePercent?: number | null;
+      readonly attackValuePvm?: number | null;
+      readonly magicAttackValuePvm?: number | null;
+    },
+  ) => void;
   sendInvitation: (
     workspaceId: string,
     recipient: {
@@ -237,7 +279,19 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     pendingSyncTimerRef.current = setTimeout(() => {
       void (async () => {
         const viewerId = state.viewer!.id;
-        const stateSnapshot = state as unknown as Record<string, unknown>;
+        const localSnapshot = state as unknown as Record<string, unknown>;
+
+        let stateSnapshot = localSnapshot;
+        try {
+          const latest = await getMyPlayerTeamState({ viewerId });
+          // Preserve mapHunt/partyHunt from server when local EQ put would omit them.
+          stateSnapshot = preserveHuntFieldsOnPut(localSnapshot, latest.state);
+          if (latest.revision !== null) {
+            serverRevisionRef.current = latest.revision;
+          }
+        } catch {
+          // Fall back to local-only put if GET fails.
+        }
 
         const result = await putMyPlayerTeamState({
           viewerId,
@@ -251,16 +305,31 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         }
 
         if (result.conflict) {
-          // Revision conflict: retry with blind upsert (expectedRevision = null).
-          const retry = await putMyPlayerTeamState({
-            viewerId,
-            state: stateSnapshot,
-            expectedRevision: null,
-          });
-          if (retry.ok && retry.revision !== null) {
-            serverRevisionRef.current = retry.revision;
-          } else if (!retry.ok && !retry.conflict) {
-            console.error('player-team: blind-retry sync-to-server failed', retry.error);
+          // Revision conflict: re-GET, preserve hunt fields, retry once with fresh revision.
+          try {
+            const latest = await getMyPlayerTeamState({ viewerId });
+            const merged = preserveHuntFieldsOnPut(localSnapshot, latest.state);
+            const retry = await putMyPlayerTeamState({
+              viewerId,
+              state: merged,
+              expectedRevision: latest.revision,
+            });
+            if (retry.ok && retry.revision !== null) {
+              serverRevisionRef.current = retry.revision;
+            } else if (!retry.ok && retry.conflict) {
+              const blind = await putMyPlayerTeamState({
+                viewerId,
+                state: merged,
+                expectedRevision: null,
+              });
+              if (blind.ok && blind.revision !== null) {
+                serverRevisionRef.current = blind.revision;
+              }
+            } else if (!retry.ok && !retry.conflict) {
+              console.error('player-team: conflict-retry sync-to-server failed', retry.error);
+            }
+          } catch (e) {
+            console.error('player-team: conflict-retry failed', e);
           }
           return;
         }
@@ -301,8 +370,8 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       startAuth: () => {
         apply((current) => startDiscordAuth(current));
       },
-      finishAuth: (outcome) => {
-        apply((current) => completeDiscordAuth(current, outcome));
+      finishAuth: (outcome, identity) => {
+        apply((current) => completeDiscordAuth(current, outcome, identity));
       },
       cancelAuth: () => {
         apply((current) => cancelDiscordAuth(current));
@@ -345,14 +414,26 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       applyTaskOutcome: (workspaceId, taskId, outcome) => {
         apply((current) => applyTaskOutcome(current, workspaceId, taskId, outcome));
       },
-      addNote: (workspaceId, body, characterId = null) => {
-        apply((current) => addWorkspaceNote(current, workspaceId, body, characterId));
+      addNote: (workspaceId, body, characterId = null, scope = null) => {
+        apply((current) => addWorkspaceNote(current, workspaceId, body, characterId, scope));
+      },
+      removeNote: (workspaceId, noteId) => {
+        apply((current) => removeWorkspaceNote(current, workspaceId, noteId));
+      },
+      addItemNote: (workspaceId, itemId, body) => {
+        apply((current) => addItemNote(current, workspaceId, itemId, body));
+      },
+      removeItemNote: (workspaceId, itemId, noteId) => {
+        apply((current) => removeItemNote(current, workspaceId, itemId, noteId));
       },
       assignItem: (workspaceId, characterId, setId, itemId, slot) => {
         apply((current) => assignItemToSet(current, workspaceId, characterId, setId, itemId, slot));
       },
       removeItem: (workspaceId, characterId, setId, slot) => {
         apply((current) => removeItemFromSet(current, workspaceId, characterId, setId, slot));
+      },
+      unequipItem: (workspaceId, itemId) => {
+        apply((current) => unequipItemToBag(current, workspaceId, itemId));
       },
       setActiveSet: (workspaceId, characterId, setId) => {
         apply((current) => setActiveCharacterSet(current, workspaceId, characterId, setId));
@@ -365,6 +446,15 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
           return result.state;
         });
         return createdId;
+      },
+      renameSet: (workspaceId, characterId, setId, name) => {
+        let ok = false;
+        apply((current) => {
+          const result = renameEquipmentSet(current, workspaceId, characterId, setId, name);
+          ok = result.ok;
+          return result.state;
+        });
+        return ok;
       },
       confirmLocation: (workspaceId, itemId, locationLabel) => {
         apply((current) => confirmItemLocation(current, workspaceId, itemId, locationLabel));
@@ -390,8 +480,13 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         });
         return createdId;
       },
-      updateItemBonuses: (workspaceId, itemId, bonuses) => {
-        apply((current) => updateEquipmentItemBonuses(current, workspaceId, itemId, bonuses));
+      updateItemBonuses: (workspaceId, itemId, bonuses, options) => {
+        apply((current) =>
+          updateEquipmentItemBonuses(current, workspaceId, itemId, bonuses, options),
+        );
+      },
+      updateItemWeaponStats: (workspaceId, itemId, patch) => {
+        apply((current) => updateEquipmentItemWeaponStats(current, workspaceId, itemId, patch));
       },
       sendInvitation: (workspaceId, recipient) => {
         apply((current) => createOutgoingInvitation(current, workspaceId, recipient));

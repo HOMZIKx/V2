@@ -29,10 +29,16 @@ import {
   findGameItemByCardName,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
+  clampAverageDamagePercent,
+  clampSkillDamagePercent,
+  mergeItemBonusStorage,
   parseEnhancementFromName,
   resolveItemBonuses,
   resolveItemIconPath,
+  splitItemBonuses,
   stripEnhancementFromName,
+  weaponHasAverageSkillDamage,
+  weaponHasPhPvmAttackBonuses,
 } from './item-catalog';
 import type { CatalogLayer } from './member-dashboard';
 import {
@@ -55,6 +61,9 @@ import {
 import type { TeamHistoryResource } from './team-history';
 
 export type { CharacterClass, CharacterGender, CharacterSkillPath, EquipmentSlot, ProgressionKind };
+
+import type { MapHuntSnapshotV1, PartyHuntSnapshotV1 } from './hunt-snapshot';
+import { parseMapHuntSnapshot, parsePartyHuntSnapshot } from './hunt-snapshot';
 
 export const PLAYER_STORE_KEY = 'destiled:player-store:v1';
 
@@ -81,6 +90,8 @@ export interface PlayerIdentity {
   readonly displayName: string;
   readonly discordDisplayName: string;
   readonly initials: string;
+  /** Discord snowflake when known — for later DMs / gateway; id stays V2 UUID. */
+  readonly discordAccountId?: string;
 }
 
 export interface WorkspaceMember {
@@ -89,6 +100,14 @@ export interface WorkspaceMember {
   readonly initials: string;
   readonly role: MembershipRole;
   readonly state: 'online' | 'away' | 'offline' | 'unknown';
+}
+
+export interface EquipmentItemNote {
+  readonly id: string;
+  readonly body: string;
+  readonly authorName: string;
+  /** Display label (same style as WorkspaceNote.createdAtLabel). */
+  readonly createdAt: string;
 }
 
 export interface EquipmentItem {
@@ -100,6 +119,28 @@ export interface EquipmentItem {
   readonly enhancement: number;
   readonly levelLabel: string;
   readonly bonuses: readonly string[];
+  /** Team communication notes attached to this card (sync via workspace.items). */
+  readonly notes: readonly EquipmentItemNote[];
+  /**
+   * Official Metin2 characteristic on weapons level 30/75 (wiki: Średnie Obrażenia).
+   * Percent in roughly -60…+60; null = unset / invisible zero.
+   */
+  readonly averageDamagePercent: number | null;
+  /**
+   * Official Metin2 characteristic on weapons level 30/75 (wiki: Obrażenia Umiejętności).
+   * Percent in roughly -30…+30; null = unset / invisible zero.
+   */
+  readonly skillDamagePercent: number | null;
+  /**
+   * PH presentation only: Attack Value PvM on weapons above level 25.
+   * No invented defaults — store observed values or null.
+   */
+  readonly attackValuePvm: number | null;
+  /**
+   * PH presentation only: Magic Attack Value PvM on weapons above level 25.
+   * No invented defaults — store observed values or null.
+   */
+  readonly magicAttackValuePvm: number | null;
   readonly catalogLayer: CatalogLayer;
   readonly lastConfirmedLocation: string | null;
   readonly lastConfirmedBy: string | null;
@@ -134,6 +175,8 @@ export interface ProgressTimer {
   readonly kind?: ProgressionKind;
   /** Illustration matching the cycle (book / soul stone / biologist / horse medal). */
   readonly iconPath?: string;
+  /** Custom cycle length in minutes (manual timers). Presets use kind rules instead. */
+  readonly durationMinutes?: number;
 }
 
 export interface TeamTask {
@@ -150,7 +193,8 @@ export interface TeamTask {
 
 export interface WorkspaceNote {
   readonly id: string;
-  readonly scope: 'workspace' | 'character';
+  /** workspace = team board; character = per-character; equipment = shared EQ board notes */
+  readonly scope: 'workspace' | 'character' | 'equipment';
   readonly characterId: string | null;
   readonly authorName: string;
   readonly body: string;
@@ -230,6 +274,10 @@ export interface PlayerStoreState {
   readonly lastOpenedCharacterId: string | null;
   readonly intendedDestination: string | null;
   readonly seededDemo: boolean;
+  /** Personal Timers prefs/cache on /me/state — optional, must not collide with EQ. */
+  readonly mapHunt?: MapHuntSnapshotV1 | null;
+  /** Personal Party prefs/cache on /me/state — optional, must not collide with EQ. */
+  readonly partyHunt?: PartyHuntSnapshotV1 | null;
 }
 
 const emptyAssignments = (): EquipmentAssignments => ({
@@ -378,10 +426,26 @@ function historyEntry(
 }
 
 function demoEquipmentItem(
-  partial: Omit<EquipmentItem, 'iconPath' | 'name' | 'enhancement' | 'bonuses'> & {
+  partial: Omit<
+    EquipmentItem,
+    | 'iconPath'
+    | 'name'
+    | 'enhancement'
+    | 'bonuses'
+    | 'notes'
+    | 'averageDamagePercent'
+    | 'skillDamagePercent'
+    | 'attackValuePvm'
+    | 'magicAttackValuePvm'
+  > & {
     readonly baseName: string;
     readonly enhancement: number;
     readonly bonuses?: readonly string[];
+    readonly notes?: readonly EquipmentItemNote[];
+    readonly averageDamagePercent?: number | null;
+    readonly skillDamagePercent?: number | null;
+    readonly attackValuePvm?: number | null;
+    readonly magicAttackValuePvm?: number | null;
     readonly iconPath?: string;
   },
 ): EquipmentItem {
@@ -394,6 +458,10 @@ function demoEquipmentItem(
     category: partial.category,
     levelLabel: partial.levelLabel,
     bonuses: resolveItemBonuses(partial.baseName, enhancement, partial.bonuses ?? []),
+    averageDamagePercent: partial.averageDamagePercent ?? null,
+    skillDamagePercent: partial.skillDamagePercent ?? null,
+    attackValuePvm: partial.attackValuePvm ?? null,
+    magicAttackValuePvm: partial.magicAttackValuePvm ?? null,
     catalogLayer: partial.catalogLayer,
     lastConfirmedLocation: partial.lastConfirmedLocation,
     lastConfirmedBy: partial.lastConfirmedBy,
@@ -401,6 +469,7 @@ function demoEquipmentItem(
     archived: partial.archived,
     planned: partial.planned,
     revision: partial.revision,
+    notes: partial.notes ?? [],
     iconPath: partial.iconPath ?? resolveItemIconPath(name),
   };
 }
@@ -1071,6 +1140,22 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
   };
 }
 
+export interface DiscordAuthViewerInput {
+  readonly displayName: string;
+  /** V2 Identity user UUID — preferred PlayerIdentity.id. */
+  readonly v2UserId?: string;
+  /** Discord snowflake — stored as discordAccountId; used as id only if v2UserId missing. */
+  readonly discordUserId?: string;
+}
+
+/** Initials for avatar chips — first letter, or first+last when multi-word. */
+export function initialsFromDisplayName(displayName: string): string {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0]!.charAt(0).toUpperCase();
+  return (parts[0]!.charAt(0) + parts[parts.length - 1]!.charAt(0)).toUpperCase();
+}
+
 export function startDiscordAuth(state: PlayerStoreState): PlayerStoreState {
   return {
     ...state,
@@ -1082,14 +1167,26 @@ export function startDiscordAuth(state: PlayerStoreState): PlayerStoreState {
 export function completeDiscordAuth(
   state: PlayerStoreState,
   outcome: Exclude<AuthStatus, 'unauthenticated' | 'authenticating'>,
+  identity?: DiscordAuthViewerInput | PlayerIdentity,
 ): PlayerStoreState {
   if (outcome === 'authenticated') {
-    const viewer: PlayerIdentity = {
-      id: 'mateusz',
-      displayName: 'Mateusz',
-      discordDisplayName: 'Mateusz',
-      initials: 'M',
-    };
+    let viewer: PlayerIdentity;
+    if (identity && 'initials' in identity && typeof (identity as PlayerIdentity).id === 'string') {
+      viewer = identity as PlayerIdentity;
+    } else {
+      const input = identity as DiscordAuthViewerInput | undefined;
+      const displayName = input?.displayName?.trim() || 'Mateusz';
+      const v2UserId = input?.v2UserId?.trim();
+      const discordAccountId = input?.discordUserId?.trim();
+      const id = v2UserId || discordAccountId || 'mateusz';
+      viewer = {
+        id,
+        displayName,
+        discordDisplayName: displayName,
+        initials: initialsFromDisplayName(displayName),
+        ...(discordAccountId ? { discordAccountId } : {}),
+      };
+    }
     return {
       ...state,
       authStatus: 'authenticated',
@@ -1613,33 +1710,160 @@ export function addWorkspaceNote(
   workspaceId: string,
   body: string,
   characterId: string | null = null,
+  scope: WorkspaceNote['scope'] | null = null,
 ): PlayerStoreState {
   const trimmed = body.trim();
   if (!trimmed) return state;
+  const resolvedScope: WorkspaceNote['scope'] =
+    scope ?? (characterId ? 'character' : 'workspace');
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const note: WorkspaceNote = {
       id: createId('note'),
-      scope: characterId ? 'character' : 'workspace',
-      characterId,
+      scope: resolvedScope,
+      characterId: resolvedScope === 'character' ? characterId : null,
       authorName: viewer.displayName,
       body: trimmed,
       createdAtLabel: nowLabel(),
       revision: 1,
       pinned: false,
     };
+    const title =
+      resolvedScope === 'character'
+        ? 'Zapisano notatkę postaci'
+        : resolvedScope === 'equipment'
+          ? 'Zapisano notatkę EQ'
+          : 'Zapisano notatkę przestrzeni';
     return {
       ...workspace,
       revision: workspace.revision + 1,
       notes: [note, ...workspace.notes],
       history: [
         historyEntry(workspace.id, viewer, {
-          characterId,
-          characterName: characterId
-            ? (workspace.characters.find((character) => character.id === characterId)?.name ?? null)
+          characterId: note.characterId,
+          characterName: note.characterId
+            ? (workspace.characters.find((character) => character.id === note.characterId)?.name ?? null)
             : null,
           resource: 'note',
-          title: characterId ? 'Zapisano notatkę postaci' : 'Zapisano notatkę przestrzeni',
+          title,
           detail: trimmed,
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
+export function removeWorkspaceNote(
+  state: PlayerStoreState,
+  workspaceId: string,
+  noteId: string,
+): PlayerStoreState {
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace) return state;
+  const existing = workspace.notes.find((note) => note.id === noteId);
+  if (!existing) return state;
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    notes: current.notes.filter((note) => note.id !== noteId),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: existing.characterId,
+        characterName: existing.characterId
+          ? (current.characters.find((character) => character.id === existing.characterId)?.name ??
+            null)
+          : null,
+        resource: 'note',
+        title:
+          existing.scope === 'character'
+            ? 'Usunięto notatkę postaci'
+            : existing.scope === 'equipment'
+              ? 'Usunięto notatkę EQ'
+              : 'Usunięto notatkę przestrzeni',
+        detail: existing.body,
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+}
+
+export function addItemNote(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+  body: string,
+): PlayerStoreState {
+  const trimmed = body.trim();
+  if (!trimmed) return state;
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing) return workspace;
+    const note: EquipmentItemNote = {
+      id: createId('item-note'),
+      body: trimmed,
+      authorName: viewer.displayName,
+      createdAt: nowLabel(),
+    };
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      items: workspace.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              notes: [note, ...(item.notes ?? [])],
+              revision: item.revision + 1,
+            }
+          : item,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'note',
+          title: `Notatka przy karcie: ${existing.name}`,
+          detail: trimmed,
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
+export function removeItemNote(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+  noteId: string,
+): PlayerStoreState {
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing) return workspace;
+    const note = (existing.notes ?? []).find((entry) => entry.id === noteId);
+    if (!note) return workspace;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      items: workspace.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              notes: (item.notes ?? []).filter((entry) => entry.id !== noteId),
+              revision: item.revision + 1,
+            }
+          : item,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'note',
+          title: `Usunięto notatkę karty: ${existing.name}`,
+          detail: note.body,
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1670,17 +1894,42 @@ export function assignItemToSet(
       }
     }
 
+    // Unique physical ownership: MOVE (not copy). Clear this itemId from every
+    // character/set (including other sets of the same character) before placing.
     const characters = workspace.characters.map((entry) => {
-      if (entry.id !== characterId) return entry;
       const sets = entry.sets.map((set) => {
-        if (set.id !== setId) return set;
         const assignments = { ...set.assignments };
+        let touched = false;
+
         for (const key of equipmentSlots) {
-          if (assignments[key] === itemId) assignments[key] = null;
+          if (assignments[key] === itemId) {
+            assignments[key] = null;
+            touched = true;
+          }
+        }
+
+        if (entry.id !== characterId || set.id !== setId) {
+          return touched ? { ...set, assignments } : set;
+        }
+
+        // Never leave a wrong-category item sitting in another slot on this set
+        // (e.g. weapon id wrongly stuck on Zbroja from older bugs).
+        for (const key of equipmentSlots) {
+          const existingId = assignments[key];
+          if (!existingId) continue;
+          const existing = workspace.items.find((row) => row.id === existingId);
+          if (existing && existing.category !== key) {
+            assignments[key] = null;
+            touched = true;
+          }
         }
         assignments[slot] = itemId;
+        touched = true;
         return { ...set, assignments };
       });
+
+      const setsChanged = sets.some((set, index) => set !== entry.sets[index]);
+      if (!setsChanged) return entry;
       return { ...entry, sets, revision: entry.revision + 1 };
     });
     return {
@@ -1694,6 +1943,54 @@ export function assignItemToSet(
           resource: 'equipment',
           title: `Zaplanowano ${item.name} na ${slotLabels[slot]}`,
           detail: 'Zmiana planu setu — to nie jest potwierdzenie lokalizacji w grze.',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
+
+/** Clear itemId from every character set assignment — item stays in shared bag inventory. */
+export function unequipItemToBag(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+): PlayerStoreState {
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const item = workspace.items.find((entry) => entry.id === itemId);
+    if (!item) return workspace;
+    let cleared = 0;
+    const characters = workspace.characters.map((character) => {
+      const sets = character.sets.map((set) => {
+        const assignments = { ...set.assignments };
+        let touched = false;
+        for (const key of equipmentSlots) {
+          if (assignments[key] === itemId) {
+            assignments[key] = null;
+            touched = true;
+            cleared += 1;
+          }
+        }
+        return touched ? { ...set, assignments } : set;
+      });
+      const setsChanged = sets.some((set, index) => set !== character.sets[index]);
+      if (!setsChanged) return character;
+      return { ...character, sets, revision: character.revision + 1 };
+    });
+    if (cleared === 0) return workspace;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters,
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'equipment',
+          title: `Zdjęto do torby: ${item.name}`,
+          detail: 'Wyczyszczono wszystkie przypisania setów dla tej karty.',
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -1878,6 +2175,54 @@ export function createEquipmentSet(
   return { state: next, setId: createdSetId };
 }
 
+/** Rename an existing equipment set (display name only; id stays stable). */
+export function renameEquipmentSet(
+  state: PlayerStoreState,
+  workspaceId: string,
+  characterId: string,
+  setId: string,
+  nameInput: string,
+): { readonly state: PlayerStoreState; readonly ok: boolean } {
+  const name = nameInput.trim();
+  if (name.length < 2) return { state, ok: false };
+
+  let ok = false;
+  const next = updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const character = workspace.characters.find((entry) => entry.id === characterId);
+    if (!character) return workspace;
+    const target = character.sets.find((set) => set.id === setId);
+    if (!target) return workspace;
+    ok = true;
+    if (target.name === name) return workspace;
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters: workspace.characters.map((entry) =>
+        entry.id === characterId
+          ? {
+              ...entry,
+              revision: entry.revision + 1,
+              sets: entry.sets.map((set) => (set.id === setId ? { ...set, name } : set)),
+            }
+          : entry,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId,
+          characterName: character.name,
+          resource: 'equipment',
+          title: `Zmieniono nazwę setu na „${name}”`,
+          detail: `Było: ${target.name}`,
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+
+  return { state: next, ok };
+}
+
 export function markTimerDone(
   state: PlayerStoreState,
   workspaceId: string,
@@ -1889,7 +2234,7 @@ export function markTimerDone(
     if (!existing) return workspace;
     if (existing.status !== 'ready') return workspace;
     const kind = existing.kind ?? inferProgressionKind(existing.label);
-    const restart = restartAfterDone(kind);
+    const restart = restartAfterDone(kind, new Date(), existing.durationMinutes);
     const timers = workspace.timers.map((timer) => {
       if (timer.id !== timerId) return timer;
       return {
@@ -1930,7 +2275,7 @@ export function addProgressionTimer(
   state: PlayerStoreState,
   workspaceId: string,
   characterId: string,
-  input: { readonly kind?: ProgressionKind; readonly label?: string },
+  input: { readonly kind?: ProgressionKind; readonly label?: string; readonly durationMinutes?: number },
 ): PlayerStoreState {
   const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
   if (!workspace) return state;
@@ -1963,22 +2308,28 @@ export function addProgressionTimer(
     }));
   }
 
-  const label = input.label?.trim() ?? '';
+    const label = input.label?.trim() ?? '';
   if (label.length < 2) return state;
+  const rawMinutes = input.durationMinutes;
+  const durationMinutes =
+    typeof rawMinutes === 'number' && Number.isFinite(rawMinutes)
+      ? Math.max(1, Math.min(24 * 60, Math.round(rawMinutes)))
+      : 60;
   const timer: ProgressTimer = {
     id: createId('timer-custom'),
     characterId,
     label,
-    detail: 'Timer ręczny zespołu · kliknij, gdy gotowy, aby uruchomić cykl',
+    detail: `Timer ręczny zespołu · co ${durationMinutes} min · kliknij, gdy gotowy, aby uruchomić cykl`,
     status: 'ready',
     readyAtIso: new Date().toISOString(),
-    remainingLabel: 'gotowe',
+    remainingLabel: `co ${durationMinutes} min`,
     progressPercent: 100,
     lastActorName: null,
     lastConfirmedAt: null,
     discordReminder: false,
     reminderState: 'unavailable',
     operationId: null,
+    durationMinutes,
   };
   return updateWorkspace(state, workspaceId, (current, viewer) => ({
     ...current,
@@ -2077,6 +2428,10 @@ export function createEquipmentItem(
         input.bonuses.length > 0
           ? input.bonuses.map((line) => line.trim()).filter((line) => line.length > 0)
           : resolveItemBonuses(name, enhancement, []),
+      averageDamagePercent: null,
+      skillDamagePercent: null,
+      attackValuePvm: null,
+      magicAttackValuePvm: null,
       catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
       lastConfirmedLocation: null,
       lastConfirmedBy: null,
@@ -2084,6 +2439,7 @@ export function createEquipmentItem(
       archived: false,
       planned: input.planned ?? true,
       revision: 1,
+      notes: [],
     };
     return {
       ...workspace,
@@ -2105,30 +2461,60 @@ export function createEquipmentItem(
   return { state: next, itemId: createdItemId };
 }
 
-/** Edit observed bonuses on a team equipment card (D-055 free-form / catalog lines). */
+/** Edit bonuses (and optional +N) on a team card. Catalog builtins stay locked; additional lines change.
+ * `bonuses` may be additional-only OR a previously merged list — builtins never wipe additionals. */
 export function updateEquipmentItemBonuses(
   state: PlayerStoreState,
   workspaceId: string,
   itemId: string,
   bonuses: readonly string[],
+  options?: { readonly enhancement?: number },
 ): PlayerStoreState {
   const cleaned = bonuses.map((line) => line.trim()).filter((line) => line.length > 0);
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const existing = workspace.items.find((item) => item.id === itemId);
     if (!existing) return workspace;
+    const nextEnhancement =
+      options?.enhancement === undefined
+        ? existing.enhancement
+        : clampEnhancement(options.enhancement);
+    const baseName = stripEnhancementFromName(existing.name);
+    const nextName = formatEnhancedItemName(baseName, nextEnhancement);
+    // Re-split so a pre-merged caller payload cannot starve the additional pool (max 5).
+    const { additional } = splitItemBonuses(nextName, nextEnhancement, cleaned);
+    const nextBonuses = mergeItemBonusStorage(
+      nextName,
+      nextEnhancement,
+      additional,
+      existing.category,
+    );
     return {
       ...workspace,
       revision: workspace.revision + 1,
       items: workspace.items.map((item) =>
-        item.id === itemId ? { ...item, bonuses: cleaned, revision: item.revision + 1 } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              name: nextName,
+              enhancement: nextEnhancement,
+              iconPath: resolveItemIconPath(nextName),
+              bonuses: nextBonuses,
+              revision: item.revision + 1,
+            }
+          : item,
       ),
       history: [
         historyEntry(workspace.id, viewer, {
           characterId: null,
           characterName: null,
           resource: 'equipment',
-          title: `Zaktualizowano bonusy: ${existing.name}`,
-          detail: cleaned.length > 0 ? cleaned.join(' · ') : 'Wyczyszczono linie bonusów',
+          title: `Zaktualizowano kartę: ${nextName}`,
+          detail:
+            additional.length > 0
+              ? `Dodatkowe (${additional.length}): ${additional.join(' · ')}`
+              : nextBonuses.length > 0
+                ? nextBonuses.join(' · ')
+                : 'Wyczyszczono linie bonusów',
           revision: workspace.revision + 1,
         }),
         ...workspace.history,
@@ -2136,6 +2522,83 @@ export function updateEquipmentItemBonuses(
     };
   });
 }
+
+export function updateEquipmentItemWeaponStats(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+  patch: {
+    readonly averageDamagePercent?: number | null;
+    readonly skillDamagePercent?: number | null;
+    readonly attackValuePvm?: number | null;
+    readonly magicAttackValuePvm?: number | null;
+  },
+): PlayerStoreState {
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing) return workspace;
+
+    let averageDamagePercent =
+      patch.averageDamagePercent === undefined
+        ? existing.averageDamagePercent
+        : patch.averageDamagePercent === null
+          ? null
+          : clampAverageDamagePercent(patch.averageDamagePercent);
+    let skillDamagePercent =
+      patch.skillDamagePercent === undefined
+        ? existing.skillDamagePercent
+        : patch.skillDamagePercent === null
+          ? null
+          : clampSkillDamagePercent(patch.skillDamagePercent);
+    let attackValuePvm =
+      patch.attackValuePvm === undefined
+        ? existing.attackValuePvm
+        : patch.attackValuePvm === null
+          ? null
+          : Math.trunc(patch.attackValuePvm);
+    let magicAttackValuePvm =
+      patch.magicAttackValuePvm === undefined
+        ? existing.magicAttackValuePvm
+        : patch.magicAttackValuePvm === null
+          ? null
+          : Math.trunc(patch.magicAttackValuePvm);
+
+    if (!weaponHasAverageSkillDamage(existing.name)) {
+      averageDamagePercent = null;
+      skillDamagePercent = null;
+    }
+    if (!weaponHasPhPvmAttackBonuses(existing.name)) {
+      attackValuePvm = null;
+      magicAttackValuePvm = null;
+    }
+
+    const next: EquipmentItem = {
+      ...existing,
+      averageDamagePercent,
+      skillDamagePercent,
+      attackValuePvm,
+      magicAttackValuePvm,
+      revision: existing.revision + 1,
+    };
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      items: workspace.items.map((item) => (item.id === itemId ? next : item)),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'equipment',
+          title: `Zaktualizowano cechy broni: ${existing.name}`,
+          detail: 'Średnie / umiejętności / PvM (PH) — zapis na karcie',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
 
 export function acceptIncomingInvitation(
   state: PlayerStoreState,
@@ -2270,6 +2733,13 @@ export function getSlotReadiness(
     ),
   );
   if (conflict) return 'conflict';
+  // Planner assignment is source of truth for board ownership labels.
+  // An item sitting on this character's slot is "Na postaci", not "Poza postacią".
+  if (expectedId && set.assignments[slot] === expectedId) {
+    if (item.lastConfirmedAt && item.lastConfirmedAt.includes('2 dni')) return 'stale';
+    if (item.planned) return 'planned';
+    return 'ready';
+  }
   if (!item.lastConfirmedLocation) return 'missing';
   if (item.lastConfirmedLocation !== character.name) return 'available_elsewhere';
   if (item.lastConfirmedAt && item.lastConfirmedAt.includes('2 dni')) return 'stale';
@@ -2346,7 +2816,15 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
             return timer.kind ? timer : kind ? { ...timer, kind } : timer;
           }),
         tasks: workspace.tasks ?? [],
-        notes: workspace.notes ?? [],
+        notes: (workspace.notes ?? []).map((note) => ({
+          ...note,
+          scope:
+            note.scope === 'character' || note.scope === 'equipment' || note.scope === 'workspace'
+              ? note.scope
+              : note.characterId
+                ? 'character'
+                : 'workspace',
+        })),
         history: workspace.history ?? [],
         invitations: workspace.invitations ?? [],
         items: (workspace.items ?? []).map((item) => {
@@ -2357,13 +2835,33 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
           const name = formatEnhancedItemName(item.name, enhancement);
           return {
             ...item,
+            notes: Array.isArray(item.notes) ? item.notes : [],
             enhancement,
             name,
             iconPath: resolveItemIconPath(name, item.iconPath),
+            averageDamagePercent:
+              typeof item.averageDamagePercent === 'number'
+                ? clampAverageDamagePercent(item.averageDamagePercent)
+                : null,
+            skillDamagePercent:
+              typeof item.skillDamagePercent === 'number'
+                ? clampSkillDamagePercent(item.skillDamagePercent)
+                : null,
+            attackValuePvm:
+              typeof item.attackValuePvm === 'number' && Number.isFinite(item.attackValuePvm)
+                ? Math.trunc(item.attackValuePvm)
+                : null,
+            magicAttackValuePvm:
+              typeof item.magicAttackValuePvm === 'number' &&
+              Number.isFinite(item.magicAttackValuePvm)
+                ? Math.trunc(item.magicAttackValuePvm)
+                : null,
           };
         }),
       })),
       pendingIncomingInvitations: parsed.pendingIncomingInvitations ?? [],
+      mapHunt: parseMapHuntSnapshot((parsed as { mapHunt?: unknown }).mapHunt),
+      partyHunt: parsePartyHuntSnapshot((parsed as { partyHunt?: unknown }).partyHunt),
     };
   } catch {
     return null;
