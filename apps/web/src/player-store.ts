@@ -1171,8 +1171,8 @@ export function completeDiscordAuth(
 ): PlayerStoreState {
   if (outcome === 'authenticated') {
     let viewer: PlayerIdentity;
-    if (identity && 'initials' in identity && typeof (identity as PlayerIdentity).id === 'string') {
-      viewer = identity as PlayerIdentity;
+    if (identity && 'initials' in identity && typeof identity.id === 'string') {
+      viewer = identity;
     } else {
       const input = identity as DiscordAuthViewerInput | undefined;
       const displayName = input?.displayName?.trim() || 'Mateusz';

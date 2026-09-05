@@ -56,7 +56,7 @@ function asRecordStore(value: unknown): MapHuntRecordStore {
         typeof record.key === 'string' &&
         typeof record.mapKey === 'string' &&
         typeof record.channel === 'number',
-    ) as RespawnRecord[];
+    );
   }
   return out;
 }

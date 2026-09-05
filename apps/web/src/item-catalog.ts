@@ -516,8 +516,10 @@ export function clampSkillDamagePercent(value: number): number {
  * For weapons lvl 30/75, Średnie Obrażenia / Obrażenia Umiejętności are normal additional
  * kinds that consume 1–2 of those 5 slots when set.
  */
-export function maxAdditionalBonusesForItem(_cardName: string, _slot: EquipmentSlotId): number {
-  return MAX_ADDITIONAL_ITEM_BONUSES;
+export function maxAdditionalBonusesForItem(_cardName?: string, _slot?: EquipmentSlotId): number {
+  void _cardName;
+  void _slot;
+  return 5;
 }
 
 export const MAX_ADDITIONAL_ITEM_BONUSES = 5;

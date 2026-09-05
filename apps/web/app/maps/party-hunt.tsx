@@ -139,7 +139,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               id: typeof value.id === 'string' ? value.id : `party-migrated-${Date.now()}`,
               name: typeof value.name === 'string' ? value.name : `Party · ${nextMapKey}`,
               leaderId:
-                typeof value.leaderId === 'string' ? value.leaderId : members[0]?.id ?? 'unknown',
+                typeof value.leaderId === 'string'
+                ? value.leaderId
+                : (members as Array<{ id?: string }>)[0]?.id ?? 'unknown',
               visibility: value.visibility === 'closed' ? 'closed' : 'open',
               joinCode: typeof value.joinCode === 'string' ? value.joinCode : '',
               mapKey: nextMapKey,
@@ -167,10 +169,12 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           }
         }
         if (Array.isArray(saved.pins)) {
-          const validPins = saved.pins.filter(
-            (pin): pin is PartyScoutPin =>
-              !!pin &&
-              typeof pin === 'object' &&
+          const validPins = saved.pins.filter((pinUnknown): pinUnknown is PartyScoutPin => {
+            if (!pinUnknown || typeof pinUnknown !== 'object') return false;
+            const pin = pinUnknown as Partial<PartyScoutPin> & {
+              location?: { x?: number; y?: number };
+            };
+            return (
               typeof pin.id === 'string' &&
               typeof pin.partyId === 'string' &&
               typeof pin.mapKey === 'string' &&
@@ -178,8 +182,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               typeof pin.placedAt === 'number' &&
               !!pin.location &&
               typeof pin.location.x === 'number' &&
-              typeof pin.location.y === 'number',
-          );
+              typeof pin.location.y === 'number'
+            );
+          });
           setPins(pruneExpiredScoutPins(validPins, Date.now()));
         }
       }
@@ -727,7 +732,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
             {party && !miniMode ? (
               <>
                 {party.visibility === 'closed' || party.joinCode ? (
-                  <button className="respawn-party-toggle" onClick={copyJoinCode} type="button">
+                  <button className="respawn-party-toggle" onClick={() => { void copyJoinCode(); }} type="button">
                     <span /> Kopiuj kod
                   </button>
                 ) : null}
@@ -737,7 +742,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               </>
             ) : null}
             {party && miniMode ? (
-              <button className="respawn-party-toggle" onClick={copyJoinCode} type="button">
+              <button className="respawn-party-toggle" onClick={() => { void copyJoinCode(); }} type="button">
                 <span /> Kod
               </button>
             ) : null}

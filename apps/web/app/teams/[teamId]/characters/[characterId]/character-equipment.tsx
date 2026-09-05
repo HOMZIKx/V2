@@ -200,7 +200,7 @@ function ItemHoverTooltip({
   useEffect(() => {
     const anchor = anchorRef.current;
     if (!anchor) return;
-    const slot = anchor.closest('.eq-inventory-slot, .eq-char-slot') as HTMLElement | null;
+    const slot = anchor.closest('.eq-inventory-slot, .eq-char-slot');
     if (!slot) return;
 
     let visible = false;

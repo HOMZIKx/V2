@@ -163,7 +163,7 @@ export async function putTimersRoom(input: {
 
   return putMyPlayerTeamState({
     viewerId: timersRoomOwnerId(input.mapKey, input.channel),
-    state: input.state as unknown as Record<string, unknown>,
+    state: input.state,
     expectedRevision: input.expectedRevision,
   });
 }
@@ -299,7 +299,7 @@ export async function putPartyRoom(input: {
 
   return putMyPlayerTeamState({
     viewerId: partyRoomOwnerId(input.code),
-    state: input.state as unknown as Record<string, unknown>,
+    state: input.state,
     expectedRevision: input.expectedRevision,
   });
 }

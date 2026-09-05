@@ -127,7 +127,7 @@ export function MapHunting({
   const [pinModalKey, setPinModalKey] = useState<string | null>(null);
   const [modalDraftLocation, setModalDraftLocation] = useState<RespawnLocation | null>(null);
   const [notice, setNotice] = useState('');
-  const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
+  const [failedMapImages] = useState<readonly string[]>([]);
   const [miniMode, setMiniMode] = useState(false);
   const [expandedMiniKeys, setExpandedMiniKeys] = useState<readonly string[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -148,7 +148,7 @@ export function MapHunting({
         const metinOnly: RecordStore = {};
         for (const [key, list] of Object.entries(parsed)) {
           if (!Array.isArray(list)) continue;
-          metinOnly[key] = list.filter((record) => record && record.kind === 'metin');
+          metinOnly[key] = list.filter((record: { kind?: string } | null | undefined) => !!record && record.kind === 'metin');
         }
         setStore((current) => ({ ...current, ...metinOnly }));
       }
@@ -171,7 +171,7 @@ export function MapHunting({
     setMetinCounts(snap.metinCounts);
     const metinOnly: RecordStore = {};
     for (const [key, list] of Object.entries(snap.store)) {
-      metinOnly[key] = list.filter((record) => record && record.kind === 'metin');
+      metinOnly[key] = list.filter((record: { kind?: string } | null | undefined) => !!record && record.kind === 'metin');
     }
     setStore((current) => ({ ...current, ...metinOnly }));
     setTimeout(() => {

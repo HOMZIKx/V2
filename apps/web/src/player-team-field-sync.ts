@@ -30,7 +30,7 @@ async function putMergedField(input: {
       };
     }
 
-    const base = (latest.state ?? {}) as Record<string, unknown>;
+    const base: Record<string, unknown> = latest.state ?? {};
     const merged = mergeHuntFieldsIntoState(base, {
       ...(input.mapHunt !== undefined ? { mapHunt: input.mapHunt } : {}),
       ...(input.partyHunt !== undefined ? { partyHunt: input.partyHunt } : {}),
