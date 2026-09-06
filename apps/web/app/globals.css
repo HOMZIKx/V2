@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: dark;
   --bg: #07080b;
   --bg-elevated: #0d1016;
@@ -11660,30 +11660,6 @@ button:disabled {
   font-size: 13px;
   line-height: 1.45;
   white-space: pre-wrap;
-}
-
-  0% {
-    border-color: rgba(160, 210, 255, 0.85);
-    box-shadow:
-      0 0 0 1px rgba(160, 210, 255, 0.55),
-      0 0 22px rgba(100, 180, 255, 0.55);
-    background: linear-gradient(
-      135deg,
-      rgba(90, 160, 240, 0.4),
-      rgba(8, 12, 20, 0.5)
-    );
-  }
-  35% {
-    border-color: rgba(120, 190, 255, 0.55);
-    box-shadow:
-      0 0 0 1px rgba(120, 190, 255, 0.35),
-      0 0 18px rgba(80, 160, 255, 0.35);
-  }
-  100% {
-    border-color: rgba(168, 178, 198, 0.14);
-    box-shadow: none;
-    background: rgba(8, 12, 20, 0.35);
-  }
 }
 
 .character-choice-note-remove {
