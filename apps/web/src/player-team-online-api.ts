@@ -9,15 +9,20 @@ export type PlayerTeamPutResult =
   | { readonly ok: false; readonly conflict: true; readonly actualRevision: number | null }
   | { readonly ok: false; readonly conflict: false; readonly error: string };
 
-const baseUrl =
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim() || 'http://127.0.0.1:4400';
+// Production defaults to the same-origin /player-team rewrite. An explicit
+// NEXT_PUBLIC_PLAYER_TEAM_BASE_URL remains available for local/dev overrides.
+const configuredBaseUrl = (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim();
+const baseUrl = configuredBaseUrl.replace(/\/$/, '');
 
 const demoHeaderName = (
   (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
 ).toLowerCase();
 
+function playerTeamUrl(path: string): string {
+  return `${baseUrl}${path}`;
+}
 
-/** Prefer Discord snowflake for x-demo-viewer-id (matches bot Gotowe / player-team keys). */
+/** Prefer Discord snowflake for current player-team identity key. */
 export function resolvePlayerTeamDemoViewerId(viewer: {
   readonly id: string;
   readonly discordAccountId?: string | null;
@@ -35,7 +40,7 @@ export function resolvePlayerTeamDemoViewerId(viewer: {
 export async function getMyPlayerTeamState(input: {
   readonly viewerId: string;
 }): Promise<PlayerTeamOnlineStateResponse> {
-  const res = await fetch(`${baseUrl}/player-team/v1/me/state`, {
+  const res = await fetch(playerTeamUrl('/player-team/v1/me/state'), {
     method: 'GET',
     headers: {
       [demoHeaderName]: input.viewerId,
@@ -73,7 +78,7 @@ export async function putMyPlayerTeamState(input: {
   let res: Response;
 
   try {
-    res = await fetch(`${baseUrl}/player-team/v1/me/state`, {
+    res = await fetch(playerTeamUrl('/player-team/v1/me/state'), {
       method: 'PUT',
       headers: {
         'content-type': 'application/json',
