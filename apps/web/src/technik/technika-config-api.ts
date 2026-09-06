@@ -470,7 +470,7 @@ export function sortGuildsForTechnik(
 ): TechnikaGuildDto[] {
   const rank = (g: TechnikaGuildDto): number => {
     if (g.id === TECHNIK_TEST_GUILD_ID) return 0;
-    const blob = ${g.name ?? ''}  .toLowerCase();
+    const blob = ((g.name ?? '') + ' ' + (g.notes ?? '')).toLowerCase();
     if (/\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)) return 1;
     if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) return 3;
     return 2;
@@ -486,7 +486,7 @@ export function sortGuildsForTechnik(
 
 export function guildDisplayLabel(g: TechnikaGuildDto): string {
   const name = (g.name ?? '').trim();
-  const blob = ${name} .toLowerCase();
+  const blob = (name + ' ' + (g.notes ?? '')).toLowerCase();
   let tag = '';
   if (
     g.id === TECHNIK_TEST_GUILD_ID ||
@@ -496,12 +496,11 @@ export function guildDisplayLabel(g: TechnikaGuildDto): string {
   } else if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) {
     tag = 'MAIN';
   }
-  if (tag && name) return ${tag} · ;
-  if (tag) return ${tag} · ;
+  if (tag && name) return tag + ' · ' + name;
+  if (tag) return tag + ' · ' + g.id;
   if (name) return name;
   return g.id;
 }
-
 /** Default selection: known TEST guild when present, else first after sort. */
 export function pickDefaultGuildId(
   guilds: readonly TechnikaGuildDto[],
