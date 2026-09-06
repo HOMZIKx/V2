@@ -106,7 +106,7 @@ export function MemberDashboard() {
               Otwórz Zespół
             </a>
             {' · '}
-            <a className="panel-text-link" href="/characters">
+            <a className="panel-text-link" href={`/teams/${createdId}/characters/new`}>
               Dodaj postać
             </a>
           </p>
@@ -192,7 +192,14 @@ export function MemberDashboard() {
                 <h2>Postacie i EQ</h2>
               </header>
               <p className="empty-copy">Skład i ekwipunek w module Postacie.</p>
-              <a className="secondary-button" href="/characters">
+              <a
+                className="secondary-button"
+                href={
+                  lastWorkspace
+                    ? `/teams/${lastWorkspace.id}/characters`
+                    : '/#first-use'
+                }
+              >
                 Otwórz postacie
               </a>
             </section>

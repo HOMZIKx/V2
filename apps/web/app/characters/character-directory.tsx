@@ -48,7 +48,11 @@ export function CharacterDirectory() {
     );
   }, [choice, state.workspaces]);
 
-  const primaryWorkspace = state.workspaces[0] ?? null;
+  const activeWorkspaces = state.workspaces.filter((workspace) => !workspace.archived);
+  const primaryWorkspace =
+    activeWorkspaces.find((workspace) => workspace.id === state.lastOpenedWorkspaceId) ??
+    activeWorkspaces[0] ??
+    null;
 
   useEffect(() => {
     if (!choice) return;
@@ -82,6 +86,16 @@ export function CharacterDirectory() {
   return (
     <AppShell activeSection="characters" viewerName={state.viewer.displayName}>
       <main className="characters-page" id="main-content">
+        {primaryWorkspace ? (
+          <div className="team-section-back">
+            <a className="secondary-button" href={`/teams/${primaryWorkspace.id}/members`}>
+              ← Zarządzanie zespołem
+            </a>
+            <a className="panel-text-link" href={`/teams/${primaryWorkspace.id}/characters`}>
+              Postacie w zespole {primaryWorkspace.name}
+            </a>
+          </div>
+        ) : null}
         <header className="characters-page-header">
           <div>
             <span className="eyebrow">Wszystkie przestrzenie</span>

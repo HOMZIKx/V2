@@ -16,6 +16,10 @@ import {
   renameWorkspace,
   removeWorkspaceMember,
   archiveWorkspace,
+  updateWorkspaceNotifyPrefs,
+  updateMemberNotifyPrefs,
+  resolveEffectiveNotifyPrefs,
+  isNotifyPrefEnabled,
   getReadyTimers,
   getSlotReadiness,
   markTimerDone,
@@ -439,5 +443,39 @@ describe('team manage (owner)', () => {
     state = archiveWorkspace(state, id);
     expect(state.workspaces[0]!.archived).toBe(true);
     expect(state.lastOpenedWorkspaceId).toBeNull();
+  });
+});
+
+
+describe('notifyPrefs', () => {
+  it('defaults missing prefs to true', () => {
+    const prefs = resolveEffectiveNotifyPrefs({}, null);
+    expect(prefs.characterTimers).toBe(true);
+    expect(prefs.kingdomWar).toBe(true);
+    expect(isNotifyPrefEnabled({}, 'characterTimers')).toBe(true);
+  });
+
+  it('prefers member override over team default', () => {
+    const prefs = resolveEffectiveNotifyPrefs(
+      { notifyPrefs: { characterTimers: true, kingdomWar: true } },
+      { notifyPrefs: { characterTimers: false, kingdomWar: true } },
+    );
+    expect(prefs.characterTimers).toBe(false);
+    expect(prefs.kingdomWar).toBe(true);
+  });
+
+  it('persists team and member toggles via store', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Prefs');
+    const id = state.workspaces[0]!.id;
+    state = updateWorkspaceNotifyPrefs(state, id, { characterTimers: false });
+    expect(state.workspaces[0]!.notifyPrefs?.characterTimers).toBe(false);
+    state = updateMemberNotifyPrefs(state, id, { kingdomWar: false });
+    const member = state.workspaces[0]!.members.find((m) => m.id === state.viewer!.id)!;
+    expect(member.notifyPrefs?.kingdomWar).toBe(false);
+    expect(
+      resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).characterTimers,
+    ).toBe(false);
+    expect(resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).kingdomWar).toBe(false);
   });
 });

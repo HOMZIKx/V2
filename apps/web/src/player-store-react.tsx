@@ -34,6 +34,8 @@ import {
   renameWorkspace,
   removeWorkspaceMember,
   archiveWorkspace,
+  updateWorkspaceNotifyPrefs,
+  updateMemberNotifyPrefs,
   declineIncomingInvitation,
   ensureCharacterProgressionTimers,
   markTimerDone,
@@ -63,7 +65,7 @@ import {
 } from './player-store';
 import type { CharacterAppearanceLook } from './character-profile';
 
-import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
+import { getMyPlayerTeamState, putMyPlayerTeamState, resolvePlayerTeamDemoViewerId } from './player-team-online-api';
 import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
 import { preserveHuntFieldsOnPut } from './hunt-snapshot';
 
@@ -82,6 +84,14 @@ interface PlayerStoreApi {
   renameWorkspace: (workspaceId: string, name: string) => void;
   removeWorkspaceMember: (workspaceId: string, memberId: string) => void;
   archiveWorkspace: (workspaceId: string) => void;
+  updateNotifyPrefs: (
+    workspaceId: string,
+    patch: { readonly characterTimers?: boolean; readonly kingdomWar?: boolean },
+  ) => void;
+  updateMyNotifyPrefs: (
+    workspaceId: string,
+    patch: { readonly characterTimers?: boolean; readonly kingdomWar?: boolean },
+  ) => void;
   openWorkspace: (workspaceId: string, characterId?: string | null) => void;
   createCharacter: (
     workspaceId: string,
@@ -230,7 +240,7 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     if (!hydrated) return;
     if (state.authStatus !== 'authenticated') return;
     if (!state.viewer) return;
-    const viewerId = state.viewer.id;
+    const viewerId = resolvePlayerTeamDemoViewerId(state.viewer);
 
     // Avoid repeated fetch after we already loaded for this viewer.
     if (serverHydratedViewerIdRef.current === viewerId && serverHydratedRef.current) return;
@@ -284,7 +294,7 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
 
     pendingSyncTimerRef.current = setTimeout(() => {
       void (async () => {
-        const viewerId = state.viewer!.id;
+        const viewerId = resolvePlayerTeamDemoViewerId(state.viewer!);
         const localSnapshot = state as unknown as Record<string, unknown>;
 
         let stateSnapshot = localSnapshot;
@@ -403,6 +413,12 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       },
       archiveWorkspace: (workspaceId) => {
         apply((current) => archiveWorkspace(current, workspaceId));
+      },
+      updateNotifyPrefs: (workspaceId, patch) => {
+        apply((current) => updateWorkspaceNotifyPrefs(current, workspaceId, patch));
+      },
+      updateMyNotifyPrefs: (workspaceId, patch) => {
+        apply((current) => updateMemberNotifyPrefs(current, workspaceId, patch));
       },
       openWorkspace: (workspaceId, characterId = null) => {
         apply((current) => touchLastOpened(current, workspaceId, characterId));

@@ -146,6 +146,48 @@ export function isNotifyPrefEnabled(
 }
 
 
+export function isDiscordSnowflakeId(value: string | null | undefined): boolean {
+  return typeof value === 'string' && /^\d{17,20}$/.test(value.trim());
+}
+
+/** Resolve a team member's Discord snowflake for DM fan-out (never invents guild members). */
+export function resolveMemberDiscordAccountId(
+  member: WorkspaceMember,
+  viewer?: PlayerIdentity | null,
+): string | null {
+  const fromMember = member.discordAccountId?.trim();
+  if (isDiscordSnowflakeId(fromMember)) return fromMember!.trim();
+  if (viewer && member.id === viewer.id) {
+    const fromViewer = viewer.discordAccountId?.trim();
+    if (isDiscordSnowflakeId(fromViewer)) return fromViewer!.trim();
+  }
+  if (isDiscordSnowflakeId(member.id)) return member.id.trim();
+  return null;
+}
+
+/**
+ * HARD fan-out allowlist: ONLY current team members with notifyPrefs[key] true
+ * (default true if missing). Never expands to a Discord guild roster.
+ */
+export function listTeamNotifyDiscordRecipients(
+  workspace: {
+    readonly members: readonly WorkspaceMember[];
+    readonly notifyPrefs?: TeamNotifyPrefs | null;
+  },
+  key: NotifyPrefKey,
+  viewer?: PlayerIdentity | null,
+): string[] {
+  const ids = new Set<string>();
+  for (const member of workspace.members) {
+    if (!isNotifyPrefEnabled(workspace, key, member)) continue;
+    const discordId = resolveMemberDiscordAccountId(member, viewer);
+    if (discordId) ids.add(discordId);
+  }
+  return [...ids];
+}
+
+
+
 
 export interface WorkspaceMember {
   readonly id: string;
@@ -153,8 +195,10 @@ export interface WorkspaceMember {
   readonly initials: string;
   readonly role: MembershipRole;
   readonly state: 'online' | 'away' | 'offline' | 'unknown';
+  /** Discord snowflake when known — required for team DM fan-out. */
+  readonly discordAccountId?: string;
   /** Personal Discord PW override — wins over team notifyPrefs; missing = inherit/true. */
-  readonly notifyPrefs?: TeamNotifyPrefs;
+  readonly notifyPrefs?: Partial<TeamNotifyPrefs>;
 }
 
 export interface EquipmentItemNote {
@@ -1426,6 +1470,9 @@ export function createWorkspace(state: PlayerStoreState, name: string): PlayerSt
         initials: state.viewer.initials,
         role: 'owner',
         state: 'unknown',
+        ...(state.viewer.discordAccountId
+          ? { discordAccountId: state.viewer.discordAccountId }
+          : {}),
       },
     ],
     characters: [],
@@ -1569,7 +1616,6 @@ export function archiveWorkspace(
   };
 }
 
-/** Owner updates Discord PW prefs for the team (characterTimers / kingdomWar). */
 /** Owner updates team Discord PW defaults (characterTimers / kingdomWar). */
 export function updateWorkspaceNotifyPrefs(
   state: PlayerStoreState,
@@ -1623,18 +1669,27 @@ export function updateMemberNotifyPrefs(
   const member = workspace.members.find((entry) => entry.id === state.viewer!.id);
   if (!member) return state;
 
-  const currentPrefs = normalizeTeamNotifyPrefs(member.notifyPrefs);
-  const nextPrefs = normalizeTeamNotifyPrefs({
-    ...currentPrefs,
-    ...patch,
-  });
+  const prev =
+    member.notifyPrefs && typeof member.notifyPrefs === 'object' ? member.notifyPrefs : {};
+  const nextPrefs: Partial<TeamNotifyPrefs> = { ...prev };
+  if (typeof patch.characterTimers === 'boolean') {
+    nextPrefs.characterTimers = patch.characterTimers;
+  }
+  if (typeof patch.kingdomWar === 'boolean') {
+    nextPrefs.kingdomWar = patch.kingdomWar;
+  }
   if (
-    nextPrefs.characterTimers === currentPrefs.characterTimers &&
-    nextPrefs.kingdomWar === currentPrefs.kingdomWar &&
+    nextPrefs.characterTimers === prev.characterTimers &&
+    nextPrefs.kingdomWar === prev.kingdomWar &&
     member.notifyPrefs
   ) {
     return state;
   }
+
+  const effective = resolveEffectiveNotifyPrefs(
+    { notifyPrefs: workspace.notifyPrefs },
+    { notifyPrefs: nextPrefs },
+  );
 
   return updateWorkspace(state, workspaceId, (current, viewer) => ({
     ...current,
@@ -1647,8 +1702,13 @@ export function updateMemberNotifyPrefs(
         characterId: null,
         characterName: null,
         resource: 'member',
-        title: 'Zmieniono własne powiadomienia Discord',
-        detail: 'PW timerów postaci: ' + (nextPrefs.characterTimers ? 'włączone' : 'wyłączone') + ' · PW wojny: ' + (nextPrefs.kingdomWar ? 'włączone' : 'wyłączone'),
+        title: "Zmieniono własne powiadomienia Discord",
+        detail:
+          "PW timerów postaci: " +
+          (effective.characterTimers ? "włączone" : "wyłączone") +
+          " · " +
+          'PW wojny: ' +
+          (effective.kingdomWar ? "włączone" : "wyłączone"),
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -2900,6 +2960,9 @@ export function acceptIncomingInvitation(
                     initials: viewer.initials,
                     role: 'member',
                     state: 'unknown',
+                    ...(viewer.discordAccountId
+                      ? { discordAccountId: viewer.discordAccountId }
+                      : {}),
                   },
                 ],
             invitations,
@@ -2939,6 +3002,9 @@ export function acceptIncomingInvitation(
                 initials: viewer.initials,
                 role: 'member',
                 state: 'unknown',
+                ...(viewer.discordAccountId
+                  ? { discordAccountId: viewer.discordAccountId }
+                  : {}),
               },
             ],
         invitations: workspace.invitations.map((entry) =>
@@ -3046,7 +3112,17 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
         notifyPrefs: normalizeTeamNotifyPrefs(
           (workspace as { notifyPrefs?: unknown }).notifyPrefs,
         ),
-        members: workspace.members ?? [],
+        members: (workspace.members ?? []).map((member) => {
+          const rawPrefs = (member as { notifyPrefs?: unknown }).notifyPrefs;
+          if (!rawPrefs || typeof rawPrefs !== "object") {
+            return member;
+          }
+          const src = rawPrefs as Record<string, unknown>;
+          const partial: Partial<TeamNotifyPrefs> = {};
+          if (typeof src.characterTimers === "boolean") partial.characterTimers = src.characterTimers;
+          if (typeof src.kingdomWar === "boolean") partial.kingdomWar = src.kingdomWar;
+          return Object.keys(partial).length > 0 ? { ...member, notifyPrefs: partial } : member;
+        }),
         characters: (workspace.characters ?? []).map((character) => {
           const characterClass = character.characterClass;
           const rawPath = (character as { skillPath?: CharacterSkillPath }).skillPath;

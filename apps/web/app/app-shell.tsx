@@ -100,6 +100,9 @@ export function AppShell({
     activeWorkspaces[0]?.id ??
     null;
   const teamsHref = primaryWorkspaceId ? `/teams/${primaryWorkspaceId}` : '/#first-use';
+  const charactersHref = primaryWorkspaceId
+    ? `/teams/${primaryWorkspaceId}/characters`
+    : '/#first-use';
   const readyCount = state.workspaces.reduce(
     (count, workspace) =>
       count + workspace.timers.filter((timer) => timer.status === 'ready').length,
@@ -146,7 +149,7 @@ export function AppShell({
       id: 'characters' as const,
       label: 'Postacie',
       icon: 'character' as const,
-      href: '/characters',
+      href: charactersHref,
     },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },

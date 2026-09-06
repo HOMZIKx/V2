@@ -58,7 +58,9 @@ export function InvitationResponse() {
   const recipientName = invitation?.recipientDisplayName ?? '—';
   const isRecipient =
     !!invitation &&
-    (invitation.recipientDisplayName === state.viewer.displayName ||
+    (invitation.recipientDiscordId === state.viewer.discordAccountId ||
+      invitation.recipientDiscordId === state.viewer.id ||
+      invitation.recipientDisplayName === state.viewer.displayName ||
       invitation.recipientDisplayName === state.viewer.discordDisplayName);
 
   return (
@@ -120,11 +122,7 @@ export function InvitationResponse() {
             <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
           </div>
         ) : null}
-
-        <div className="mock-notice">
-          Lokalny podgląd zaproszeń. Produkcja będzie wymagać API i prawdziwego Discord OAuth.
-        </div>
-      </main>
+</main>
     </AppShell>
   );
 }

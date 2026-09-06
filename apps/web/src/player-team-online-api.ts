@@ -16,6 +16,22 @@ const demoHeaderName = (
   (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
 ).toLowerCase();
 
+
+/** Prefer Discord snowflake for x-demo-viewer-id (matches bot Gotowe / player-team keys). */
+export function resolvePlayerTeamDemoViewerId(viewer: {
+  readonly id: string;
+  readonly discordAccountId?: string | null;
+}): string {
+  const snowflake = viewer.discordAccountId?.trim();
+  if (snowflake && /^\d{17,20}$/.test(snowflake)) {
+    return snowflake;
+  }
+  const id = viewer.id.trim();
+  const prefixed = /^discord:(\d{17,20})$/i.exec(id);
+  if (prefixed?.[1]) return prefixed[1];
+  return id;
+}
+
 export async function getMyPlayerTeamState(input: {
   readonly viewerId: string;
 }): Promise<PlayerTeamOnlineStateResponse> {

@@ -31,8 +31,6 @@ export function TeamHistory() {
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
   const [query, setQuery] = useState('');
   const [resource, setResource] = useState<TeamHistoryResource | 'all'>('all');
-  const [conflictResolved, setConflictResolved] = useState(false);
-
   const entries = useMemo(() => {
     if (!workspace) return [];
     const normalized = query.trim().toLocaleLowerCase('pl');
@@ -132,21 +130,6 @@ export function TeamHistory() {
             </label>
           </div>
 
-          {!conflictResolved ? (
-            <details className="conflict-panel">
-              <summary>Symulator konfliktu rewizji (opcjonalny)</summary>
-              <p>
-                Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych
-                — tylko podgląd zachowania na produkcję.
-              </p>
-              <button onClick={() => setConflictResolved(true)} type="button">
-                Zachowaj mój szkic
-              </button>
-            </details>
-          ) : (
-            <p className="entry-status">Konflikt obsłużony — szkic zachowany lokalnie.</p>
-          )}
-
           {entries.length === 0 ? (
             <div className="history-empty-state">
               <Icon name="history" size={28} />
@@ -182,9 +165,6 @@ export function TeamHistory() {
           )}
         </section>
 
-        <div className="mock-notice">
-          Dziennik tylko dopisuje wpisy (bez cofania). Live sync wróci z backendem.
-        </div>
       </main>
     </AppShell>
   );
