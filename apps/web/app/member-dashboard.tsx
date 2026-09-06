@@ -93,8 +93,11 @@ export function MemberDashboard() {
               <small>Konto Discord</small>
               <strong>{state.viewer.discordDisplayName}</strong>
               <span>
-                Sesja lokalna ·{' '}
-                {state.connection === 'connected' ? 'zapis w tej przeglądarce' : state.connection}
+                {state.connection === 'connected'
+                  ? 'Zalogowany · sync zespołu + zapis lokalny'
+                  : state.connection === 'reconnecting'
+                    ? 'Ponowne łączenie z sync zespołu…'
+                    : `Sesja · ${state.connection}`}
               </span>
             </div>
           </div>

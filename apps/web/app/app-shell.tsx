@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { getReadyTimers } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
+import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { progressionTimerLabels } from '../src/project-hard-progression';
 
 export type AppSection =
@@ -240,6 +241,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const { state } = usePlayerStore();
+  useDiscordMembershipWatchdog();
   const needsProfileSetup =
     state.authStatus === 'authenticated' &&
     Boolean(state.viewer) &&

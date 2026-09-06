@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   resolveMemberActivityGuild,
@@ -18,6 +18,8 @@ const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: '14d', label: '14 dni' },
   { id: '30d', label: '30 dni' },
 ];
+
+const RANKING_REFRESH_MS = 30 * 60 * 1000;
 
 function DiscordNick({
   discordUserId,
@@ -87,12 +89,16 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve on account id only
   }, [discordUserId]);
 
-  useEffect(() => {
-    if (!resolved) return;
-    let cancelled = false;
-    void (async () => {
-      setBusy(true);
-      setError(null);
+  const [refreshedHint, setRefreshedHint] = useState<string | null>(null);
+
+  const loadActivity = useCallback(
+    async (opts?: { readonly silent?: boolean }) => {
+      if (!resolved) return;
+      const silent = Boolean(opts?.silent);
+      if (!silent) {
+        setBusy(true);
+        setError(null);
+      }
       try {
         const [me, ranking] = await Promise.all([
           fetchMyRanking({
@@ -107,11 +113,10 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
             full: false,
           }),
         ]);
-        if (cancelled) return;
 
         const parts: string[] = [];
         if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
-        else {
+        else if (!silent) {
           setMyRow(null);
           if (!me.ok) {
             parts.push(
@@ -125,7 +130,13 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
 
         if (ranking.ok) {
           setTop(ranking.rows.slice(0, 10));
-        } else {
+          if (silent) {
+            const t = new Date();
+            const hh = String(t.getHours()).padStart(2, '0');
+            const mm = String(t.getMinutes()).padStart(2, '0');
+            setRefreshedHint('odświeżono ' + hh + ':' + mm);
+          }
+        } else if (!silent) {
           setTop([]);
           if (ranking.offline) {
             parts.push('Discord gateway offline — ranking chwilowo niedostępny.');
@@ -139,16 +150,39 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
           }
         }
 
-        if (parts.length) setError(parts.join(' '));
-        else setError(null);
+        if (!silent) {
+          if (parts.length) setError(parts.join(' '));
+          else setError(null);
+        }
       } finally {
-        if (!cancelled) setBusy(false);
+        if (!silent) setBusy(false);
       }
-    })();
-    return () => {
-      cancelled = true;
+    },
+    [resolved, windowId, discordUserId],
+  );
+
+  useEffect(() => {
+    if (!resolved) return;
+    void loadActivity();
+  }, [resolved, loadActivity]);
+
+  useEffect(() => {
+    if (!resolved) return;
+    const refresh = () => {
+      void loadActivity({ silent: true });
     };
-  }, [resolved, windowId, discordUserId]);
+    const id = window.setInterval(refresh, RANKING_REFRESH_MS);
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [resolved, loadActivity]);
 
   return (
     <section className="panel ma-pulpit" aria-label="Aktywność Discord">
@@ -200,6 +234,9 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
                   ? ' · domyślny Destiled (sprawdzam ranking)'
                   : ' · wykryty po aktywności'}
             </span>
+            {refreshedHint ? (
+              <span className="ma-refresh-hint"> · {refreshedHint}</span>
+            ) : null}
           </p>
 
           {error ? (
