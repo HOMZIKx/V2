@@ -27,10 +27,11 @@ export function MemberDashboard() {
     return <DiscordEntryScreen />;
   }
 
+  const activeWorkspaces = state.workspaces.filter((workspace) => !workspace.archived);
   const lastWorkspace =
-    state.workspaces.find((workspace) => workspace.id === state.lastOpenedWorkspaceId) ??
-    state.workspaces[0];
-  const isFirstUse = state.workspaces.length === 0;
+    activeWorkspaces.find((workspace) => workspace.id === state.lastOpenedWorkspaceId) ??
+    activeWorkspaces[0];
+  const isFirstUse = activeWorkspaces.length === 0;
   const pendingInvites = (state.pendingIncomingInvitations ?? []).filter(
     (entry) => entry.status === 'pending',
   );

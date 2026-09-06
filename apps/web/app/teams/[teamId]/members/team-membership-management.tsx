@@ -1,7 +1,7 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { usePlayerStore } from '../../../../src/player-store-react';
 import {
@@ -15,12 +15,23 @@ import { WorkspaceSectionNav } from '../workspace-section-nav';
 
 export function TeamMembershipManagement() {
   const params = useParams<{ teamId: string }>();
-  const { state, hydrated, sendInvitation, writesEnabled } = usePlayerStore();
+  const router = useRouter();
+  const {
+    state,
+    hydrated,
+    sendInvitation,
+    renameWorkspace,
+    removeWorkspaceMember,
+    archiveWorkspace,
+    writesEnabled,
+  } = usePlayerStore();
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
   const [discordId, setDiscordId] = useState('');
   const [resolved, setResolved] = useState<DiscordIdentity | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [justSentDiscordId, setJustSentDiscordId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [announcement, setAnnouncement] = useState('');
 
   const isOwner = useMemo(() => {
     if (!workspace || !state.viewer) return false;
@@ -28,6 +39,10 @@ export function TeamMembershipManagement() {
       (member) => member.id === state.viewer?.id && member.role === 'owner',
     );
   }, [workspace, state.viewer]);
+
+  useEffect(() => {
+    if (workspace) setRenameDraft(workspace.name);
+  }, [workspace?.id, workspace?.name]);
 
   const pending = workspace?.invitations.filter((entry) => entry.status === 'pending') ?? [];
   const justSent =
@@ -45,12 +60,16 @@ export function TeamMembershipManagement() {
     return <DiscordEntryScreen />;
   }
 
-  if (!workspace) {
+  if (!workspace || workspace.archived) {
     return (
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className="membership-page" id="main-content">
           <h1>Nie znaleziono przestrzeni</h1>
-          <p>Ta sesja nie ma przestrzeni o ID „{params.teamId}”.</p>
+          <p>
+            {workspace?.archived
+              ? 'Ten zespół został zamknięty.'
+              : `Ta sesja nie ma przestrzeni o ID „${params.teamId}”.`}
+          </p>
           <a className="primary-button" href="/">
             Wróć na pulpit
           </a>
@@ -58,6 +77,18 @@ export function TeamMembershipManagement() {
       </AppShell>
     );
   }
+
+  const handleRename = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!writesEnabled || !isOwner) return;
+    const trimmed = renameDraft.trim();
+    if (trimmed.length < 2) {
+      setAnnouncement('Nazwa zespołu musi mieć co najmniej 2 znaki.');
+      return;
+    }
+    renameWorkspace(workspace.id, trimmed);
+    setAnnouncement(`Zmieniono nazwę zespołu na „${trimmed}”.`);
+  };
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
@@ -67,26 +98,96 @@ export function TeamMembershipManagement() {
           <Icon name="chevron" size={13} />
           <a href={`/teams/${workspace.id}`}>{workspace.name}</a>
           <Icon name="chevron" size={13} />
-          <strong>Członkowie</strong>
+          <strong>Zarządzanie</strong>
         </nav>
 
         <WorkspaceSectionNav active="members" workspaceId={workspace.id} />
 
-        <header>
-          <h1>Członkowie i zaproszenia</h1>
-          <p>
-            Najpierw rozpoznaj Discord ID, potem wyślij. Odbiorca musi otworzyć link i zaakceptować
-            — samo wysłanie nie daje dostępu.
-          </p>
+        <header className="membership-hero">
+          <div>
+            <span className="eyebrow">Zarządzanie zespołem</span>
+            <h1>{workspace.name}</h1>
+            <p>
+              Właściciel zarządza składem, nazwą i zamknięciem zespołu. Zaproszenie daje dostęp
+              dopiero po akceptacji odbiorcy.
+            </p>
+          </div>
+          <a className="secondary-button" href={`/teams/${workspace.id}`}>
+            ← Wróć do przeglądu
+          </a>
         </header>
 
+        {announcement ? (
+          <p className="entry-status" role="status">
+            {announcement}
+          </p>
+        ) : null}
+
+        {isOwner ? (
+          <section className="panel team-manage-panel">
+            <header>
+              <h2>Nazwa zespołu</h2>
+            </header>
+            <form className="team-rename-form" onSubmit={handleRename}>
+              <label className="field">
+                <span>Nowa nazwa</span>
+                <input
+                  maxLength={64}
+                  onChange={(event) => setRenameDraft(event.target.value)}
+                  value={renameDraft}
+                />
+              </label>
+              <button
+                className="secondary-button"
+                disabled={!writesEnabled || renameDraft.trim().length < 2}
+                type="submit"
+              >
+                Zmień nazwę
+              </button>
+            </form>
+          </section>
+        ) : null}
+
         <section className="panel">
-          <h2>Obecni członkowie</h2>
-          <ul className="member-list">
+          <header>
+            <h2>Obecni członkowie</h2>
+            <span>
+              {workspace.members.length === 1
+                ? '1 osoba'
+                : `${workspace.members.length} osób`}
+            </span>
+          </header>
+          <ul className="membership-member-list">
             {workspace.members.map((member) => (
-              <li key={member.id}>
-                <strong>{member.displayName}</strong>
-                <small>{member.role === 'owner' ? 'Właściciel' : 'Członek'}</small>
+              <li className="membership-member" key={member.id}>
+                <span className="member-avatar is-idle" aria-hidden>
+                  {member.initials}
+                </span>
+                <div>
+                  <strong>{member.displayName}</strong>
+                  <span>{member.role === 'owner' ? 'Właściciel' : 'Członek'}</span>
+                </div>
+                {isOwner && member.role !== 'owner' ? (
+                  <button
+                    className="secondary-button is-danger"
+                    disabled={!writesEnabled}
+                    onClick={() => {
+                      const ok = window.confirm(
+                        `Usunąć „${member.displayName}” z zespołu ${workspace.name}?`,
+                      );
+                      if (!ok) return;
+                      removeWorkspaceMember(workspace.id, member.id);
+                      setAnnouncement(`Usunięto „${member.displayName}” z zespołu.`);
+                    }}
+                    type="button"
+                  >
+                    Usuń
+                  </button>
+                ) : (
+                  <span className={`role-badge${member.role === 'owner' ? ' is-owner' : ''}`}>
+                    {member.role === 'owner' ? 'Właściciel' : 'Członek'}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -94,7 +195,7 @@ export function TeamMembershipManagement() {
 
         {isOwner ? (
           <section className="panel">
-            <h2>Wyślij zaproszenie</h2>
+            <h2>Dodaj członka — wyślij zaproszenie</h2>
             <label className="field">
               <span>Discord ID osoby</span>
               <input onChange={(event) => setDiscordId(event.target.value)} value={discordId} />
@@ -137,6 +238,7 @@ export function TeamMembershipManagement() {
                     setJustSentDiscordId(resolved.discordUserId);
                     setDiscordId('');
                     setResolved(null);
+                    setAnnouncement(`Wysłano zaproszenie do ${resolved.displayName}.`);
                   }}
                   type="button"
                 >
@@ -152,11 +254,11 @@ export function TeamMembershipManagement() {
             ) : null}
           </section>
         ) : (
-          <p className="empty-copy">Tylko właściciel przestrzeni zarządza zaproszeniami.</p>
+          <p className="empty-copy">Tylko właściciel przestrzeni zarządza zaproszeniami i składem.</p>
         )}
 
         <section className="panel">
-          <h2>Oczekujące</h2>
+          <h2>Oczekujące zaproszenia</h2>
           {pending.length === 0 ? (
             <p className="empty-copy">Brak oczekujących zaproszeń.</p>
           ) : (
@@ -173,6 +275,34 @@ export function TeamMembershipManagement() {
             </ul>
           )}
         </section>
+
+        {isOwner ? (
+          <section className="panel team-close-panel">
+            <header>
+              <h2>Zamknij zespół</h2>
+            </header>
+            <p className="empty-copy">
+              Archiwizacja ukrywa zespół z listy aktywnych. Dane zostają lokalnie — bez usuwania
+              historii. Tylko właściciel może zamknąć zespół.
+            </p>
+            <button
+              className="secondary-button is-danger"
+              disabled={!writesEnabled}
+              onClick={() => {
+                const ok = window.confirm(
+                  `Zamknąć zespół „${workspace.name}”? Zniknie z aktywnej listy Zespół.`,
+                );
+                if (!ok) return;
+                archiveWorkspace(workspace.id);
+                setAnnouncement(`Zamknięto zespół „${workspace.name}”.`);
+                router.push('/');
+              }}
+              type="button"
+            >
+              Zamknij / archiwizuj zespół
+            </button>
+          </section>
+        ) : null}
 
         <div className="mock-notice">
           Rozpoznawanie Discord ID jest lokalną listą demo. Trwałe zaproszenia wrócą z API.

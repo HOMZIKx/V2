@@ -31,6 +31,9 @@ import {
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
+  renameWorkspace,
+  removeWorkspaceMember,
+  archiveWorkspace,
   declineIncomingInvitation,
   ensureCharacterProgressionTimers,
   markTimerDone,
@@ -76,6 +79,9 @@ interface PlayerStoreApi {
   cancelAuth: () => void;
   loadDemo: (options?: { readonly replace?: boolean }) => void;
   createWorkspace: (name: string) => string | null;
+  renameWorkspace: (workspaceId: string, name: string) => void;
+  removeWorkspaceMember: (workspaceId: string, memberId: string) => void;
+  archiveWorkspace: (workspaceId: string) => void;
   openWorkspace: (workspaceId: string, characterId?: string | null) => void;
   createCharacter: (
     workspaceId: string,
@@ -388,6 +394,15 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
           return next;
         });
         return createdId;
+      },
+      renameWorkspace: (workspaceId, name) => {
+        apply((current) => renameWorkspace(current, workspaceId, name));
+      },
+      removeWorkspaceMember: (workspaceId, memberId) => {
+        apply((current) => removeWorkspaceMember(current, workspaceId, memberId));
+      },
+      archiveWorkspace: (workspaceId) => {
+        apply((current) => archiveWorkspace(current, workspaceId));
       },
       openWorkspace: (workspaceId, characterId = null) => {
         apply((current) => touchLastOpened(current, workspaceId, characterId));

@@ -252,6 +252,8 @@ export interface WorkspaceRecord {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  /** Owner-closed / archived team — hidden from active switchers. */
+  readonly archived: boolean;
   readonly members: readonly WorkspaceMember[];
   readonly characters: readonly CharacterRecord[];
   readonly items: readonly EquipmentItem[];
@@ -886,6 +888,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
     id: 'asteria',
     name: 'Asteria',
     description: 'Wspólna przestrzeń postaci, ekwipunku i codziennych potwierdzeń zespołu.',
+    archived: false,
     revision: 19,
     updatedLabel: 'przed chwilą',
     members: [
@@ -1356,6 +1359,7 @@ export function createWorkspace(state: PlayerStoreState, name: string): PlayerSt
     id,
     name: trimmed,
     description: 'Prywatna przestrzeń gracza. Solo działa na tym samym modelu co zespół.',
+    archived: false,
     members: [
       {
         id: state.viewer.id,
@@ -1389,6 +1393,120 @@ export function createWorkspace(state: PlayerStoreState, name: string): PlayerSt
     ...state,
     workspaces: [...state.workspaces, workspace],
     lastOpenedWorkspaceId: id,
+  };
+}
+
+function isWorkspaceOwner(workspace: WorkspaceRecord, viewerId: string): boolean {
+  return workspace.members.some((member) => member.id === viewerId && member.role === 'owner');
+}
+
+/** Owner renames the team (display name only; id stays stable). */
+export function renameWorkspace(
+  state: PlayerStoreState,
+  workspaceId: string,
+  name: string,
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const trimmed = name.trim();
+  if (trimmed.length < 2) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace || workspace.archived) return state;
+  if (!isWorkspaceOwner(workspace, state.viewer.id)) return state;
+  if (workspace.name === trimmed) return state;
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    name: trimmed,
+    revision: current.revision + 1,
+    invitations: current.invitations.map((invitation) =>
+      invitation.status === 'pending' ? { ...invitation, teamName: trimmed } : invitation,
+    ),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: 'Zmieniono nazwę zespołu',
+        detail: `${current.name} → ${trimmed}`,
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+}
+
+/** Owner removes a non-owner member from the roster (D-042). */
+export function removeWorkspaceMember(
+  state: PlayerStoreState,
+  workspaceId: string,
+  memberId: string,
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace || workspace.archived) return state;
+  if (!isWorkspaceOwner(workspace, state.viewer.id)) return state;
+  const target = workspace.members.find((member) => member.id === memberId);
+  if (!target || target.role === 'owner') return state;
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    members: current.members.filter((member) => member.id !== memberId),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: `Usunięto członka: ${target.displayName}`,
+        detail: 'Właściciel usunął osobę ze składu zespołu.',
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+}
+
+/** Owner closes / archives the team. Soft-delete — data stays local, hidden from active lists. */
+export function archiveWorkspace(
+  state: PlayerStoreState,
+  workspaceId: string,
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace || workspace.archived) return state;
+  if (!isWorkspaceOwner(workspace, state.viewer.id)) return state;
+
+  const next = updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    archived: true,
+    revision: current.revision + 1,
+    invitations: current.invitations.map((invitation) =>
+      invitation.status === 'pending' ? { ...invitation, status: 'expired' as const } : invitation,
+    ),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: 'Zamknięto zespół',
+        detail: `Właściciel zarchiwizował „${current.name}”.`,
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+
+  const remainingActive = next.workspaces.filter((entry) => !entry.archived);
+  const lastStillValid =
+    next.lastOpenedWorkspaceId &&
+    remainingActive.some((entry) => entry.id === next.lastOpenedWorkspaceId);
+
+  return {
+    ...next,
+    lastOpenedWorkspaceId: lastStillValid
+      ? next.lastOpenedWorkspaceId
+      : (remainingActive[0]?.id ?? null),
+    lastOpenedCharacterId: lastStillValid ? next.lastOpenedCharacterId : null,
   };
 }
 
@@ -2778,6 +2896,7 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
       ...parsed,
       workspaces: (parsed.workspaces ?? []).map((workspace) => ({
         ...workspace,
+        archived: Boolean((workspace as { archived?: boolean }).archived),
         members: workspace.members ?? [],
         characters: (workspace.characters ?? []).map((character) => {
           const characterClass = character.characterClass;

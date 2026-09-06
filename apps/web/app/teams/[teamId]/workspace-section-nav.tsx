@@ -11,8 +11,16 @@ export function WorkspaceSectionNav({
 }) {
   const items = [
     { id: 'overview' as const, href: `/teams/${workspaceId}`, label: 'Przegląd' },
-    { id: 'characters' as const, href: '/characters', label: 'Postacie' },
-    { id: 'members' as const, href: `/teams/${workspaceId}/members`, label: 'Członkowie' },
+    {
+      id: 'characters' as const,
+      href: `/teams/${workspaceId}/characters`,
+      label: 'Postacie',
+    },
+    {
+      id: 'members' as const,
+      href: `/teams/${workspaceId}/members`,
+      label: 'Zarządzanie',
+    },
     { id: 'history' as const, href: `/teams/${workspaceId}/history`, label: 'Historia' },
   ];
 

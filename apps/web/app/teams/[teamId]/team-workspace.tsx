@@ -28,7 +28,8 @@ export function TeamWorkspace() {
   const [noteDraft, setNoteDraft] = useState('');
   const [announcement, setAnnouncement] = useState('');
 
-  const workspace = state.workspaces.find((entry) => entry.id === teamId) ?? null;
+  const workspace =
+    state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
 
   useEffect(() => {
     if (workspace) openWorkspace(workspace.id);
@@ -93,7 +94,9 @@ export function TeamWorkspace() {
         <nav aria-label="Okruszki" className="breadcrumbs">
           <a href="/">Pulpit</a>
           <Icon name="chevron" size={13} />
-          <strong>Zespół</strong>
+          <a href={`/teams/${workspace.id}/members`}>Zarządzanie</a>
+          <Icon name="chevron" size={13} />
+          <strong>Przegląd</strong>
         </nav>
 
         <section className="workspace-hero">
@@ -102,7 +105,7 @@ export function TeamWorkspace() {
             <h1>{workspace.name}</h1>
             <p>
               Notatki, zmiany i akcje. EQ w module{' '}
-              <a className="panel-text-link" href="/characters">
+              <a className="panel-text-link" href={`/teams/${workspace.id}/characters`}>
                 Postacie
               </a>
               .
@@ -123,9 +126,9 @@ export function TeamWorkspace() {
           </div>
         </section>
 
-        {state.workspaces.length > 1 ? (
+        {state.workspaces.filter((entry) => !entry.archived).length > 1 ? (
           <ul className="workspace-switcher" aria-label="Twoje zespoły">
-            {state.workspaces.map((entry) => (
+            {state.workspaces.filter((entry) => !entry.archived).map((entry) => (
               <li key={entry.id}>
                 <a
                   aria-current={entry.id === workspace.id ? 'page' : undefined}
@@ -137,6 +140,12 @@ export function TeamWorkspace() {
             ))}
           </ul>
         ) : null}
+
+        <div className="team-section-back">
+          <a className="secondary-button" href={`/teams/${workspace.id}/members`}>
+            ← Zarządzanie zespołem
+          </a>
+        </div>
 
         <WorkspaceSectionNav active="overview" workspaceId={workspace.id} />
 
@@ -367,7 +376,7 @@ export function TeamWorkspace() {
           <section className="panel">
             <header>
               <h2>Postacie</h2>
-              <a className="panel-text-link" href="/characters">
+              <a className="panel-text-link" href={`/teams/${workspace.id}/characters`}>
                 Otwórz listę
               </a>
             </header>

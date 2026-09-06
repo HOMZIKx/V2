@@ -13,6 +13,9 @@ import {
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
+  renameWorkspace,
+  removeWorkspaceMember,
+  archiveWorkspace,
   getReadyTimers,
   getSlotReadiness,
   markTimerDone,
@@ -407,4 +410,34 @@ describe('player store first-slice', () => {
   });
 
 
+});
+
+
+describe('team manage (owner)', () => {
+  it('renames workspace', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Alfa');
+    const id = state.workspaces[0]!.id;
+    state = renameWorkspace(state, id, 'Beta');
+    expect(state.workspaces[0]!.name).toBe('Beta');
+    expect(state.workspaces[0]!.history[0]!.title).toContain('nazw');
+  });
+
+  it('removes non-owner member from demo', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = seedDemoData(state, { replace: true });
+    const before = state.workspaces[0]!.members.length;
+    state = removeWorkspaceMember(state, 'asteria', 'xiaohu');
+    expect(state.workspaces[0]!.members.length).toBe(before - 1);
+    expect(state.workspaces[0]!.members.some((m) => m.id === 'xiaohu')).toBe(false);
+  });
+
+  it('archives workspace and clears last opened when needed', () => {
+    let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
+    state = createWorkspace(state, 'Do zamkniecia');
+    const id = state.workspaces[0]!.id;
+    state = archiveWorkspace(state, id);
+    expect(state.workspaces[0]!.archived).toBe(true);
+    expect(state.lastOpenedWorkspaceId).toBeNull();
+  });
 });

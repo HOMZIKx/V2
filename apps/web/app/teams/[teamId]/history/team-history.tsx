@@ -5,9 +5,25 @@ import { useMemo, useState } from 'react';
 
 import { usePlayerStore } from '../../../../src/player-store-react';
 import type { TeamHistoryResource } from '../../../../src/team-history';
-import { AppShell, Icon } from '../../../app-shell';
+import { AppShell, Icon, type IconName } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
 import { WorkspaceSectionNav } from '../workspace-section-nav';
+
+const resourceIcon: Record<TeamHistoryResource, IconName> = {
+  equipment: 'equipment',
+  timer: 'clock',
+  note: 'note',
+  character: 'character',
+  member: 'team',
+};
+
+const resourceLabel: Record<TeamHistoryResource, string> = {
+  equipment: 'EQ',
+  timer: 'Timer',
+  note: 'Notatka',
+  character: 'Postać',
+  member: 'Skład',
+};
 
 export function TeamHistory() {
   const params = useParams<{ teamId: string }>();
@@ -25,7 +41,9 @@ export function TeamHistory() {
       const queryMatches =
         normalized.length === 0 ||
         entry.title.toLocaleLowerCase('pl').includes(normalized) ||
-        entry.detail.toLocaleLowerCase('pl').includes(normalized);
+        entry.detail.toLocaleLowerCase('pl').includes(normalized) ||
+        entry.actorName.toLocaleLowerCase('pl').includes(normalized) ||
+        (entry.characterName ?? '').toLocaleLowerCase('pl').includes(normalized);
       return resourceMatches && queryMatches;
     });
   }, [workspace, query, resource]);
@@ -42,12 +60,14 @@ export function TeamHistory() {
     return <DiscordEntryScreen />;
   }
 
-  if (!workspace) {
+  if (!workspace || workspace.archived) {
     return (
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className="team-history-page" id="main-content">
           <h1>Brak przestrzeni</h1>
-          <a href="/">Wróć</a>
+          <a className="secondary-button" href="/">
+            Wróć na pulpit
+          </a>
         </main>
       </AppShell>
     );
@@ -64,68 +84,103 @@ export function TeamHistory() {
           <strong>Historia</strong>
         </nav>
 
+        <div className="team-section-back">
+          <a className="secondary-button" href={`/teams/${workspace.id}/members`}>
+            ← Zarządzanie zespołem
+          </a>
+          <a className="panel-text-link" href={`/teams/${workspace.id}`}>
+            Przegląd zespołu
+          </a>
+        </div>
+
         <WorkspaceSectionNav active="history" workspaceId={workspace.id} />
 
-        <header>
-          <span className="eyebrow">Historia przestrzeni</span>
-          <h1>Dziennik zmian</h1>
-          <p>Kto co zmienił w EQ, timerach, notatkach i członkach — bez cofania wpisów.</p>
+        <header className="history-page-header">
+          <div>
+            <span className="eyebrow">Historia przestrzeni</span>
+            <h1>Dziennik zmian</h1>
+            <p>Kto co zmienił w EQ, timerach, notatkach i członkach — bez cofania wpisów.</p>
+          </div>
         </header>
 
-        <section className="panel">
-          <label>
-            Szukaj w historii
-            <input onChange={(event) => setQuery(event.target.value)} value={query} />
-          </label>
-          <label>
-            Zasób
-            <select
-              onChange={(event) => setResource(event.target.value as TeamHistoryResource | 'all')}
-              value={resource}
-            >
-              <option value="all">Wszystkie</option>
-              <option value="equipment">EQ</option>
-              <option value="timer">Timery</option>
-              <option value="note">Notatki</option>
-              <option value="character">Postacie</option>
-              <option value="member">Członkowie</option>
-            </select>
-          </label>
-        </section>
+        <section className="panel history-log-panel">
+          <div className="history-filters">
+            <label className="history-search">
+              <span>Szukaj w historii</span>
+              <div>
+                <Icon name="search" size={14} />
+                <input
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Tytuł, osoba, postać…"
+                  value={query}
+                />
+              </div>
+            </label>
+            <label>
+              <span>Zasób</span>
+              <select
+                onChange={(event) => setResource(event.target.value as TeamHistoryResource | 'all')}
+                value={resource}
+              >
+                <option value="all">Wszystkie</option>
+                <option value="equipment">EQ</option>
+                <option value="timer">Timery</option>
+                <option value="note">Notatki</option>
+                <option value="character">Postacie</option>
+                <option value="member">Członkowie</option>
+              </select>
+            </label>
+          </div>
 
-        {!conflictResolved ? (
-          <details className="panel conflict-panel">
-            <summary>Symulator konfliktu rewizji (opcjonalny)</summary>
-            <p>
-              Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych
-              — tylko podgląd zachowania na produkcję.
-            </p>
-            <button onClick={() => setConflictResolved(true)} type="button">
-              Zachowaj mój szkic
-            </button>
-          </details>
-        ) : (
-          <p className="entry-status">Konflikt obsłużony — szkic zachowany lokalnie.</p>
-        )}
-
-        <ol className="history-timeline">
-          {entries.length === 0 ? (
-            <li>
-              <p className="empty-copy">Brak wpisów dla wybranych filtrów.</p>
-            </li>
+          {!conflictResolved ? (
+            <details className="conflict-panel">
+              <summary>Symulator konfliktu rewizji (opcjonalny)</summary>
+              <p>
+                Lokalny szkic i nowsza wersja nie nadpisują się cicho. To nie jest błąd Twoich danych
+                — tylko podgląd zachowania na produkcję.
+              </p>
+              <button onClick={() => setConflictResolved(true)} type="button">
+                Zachowaj mój szkic
+              </button>
+            </details>
           ) : (
-            entries.map((entry) => (
-              <li className={`history-timeline-entry is-${entry.resource}`} key={entry.id}>
-                <strong>{entry.title}</strong>
-                <p>{entry.detail}</p>
-                <small>
-                  {entry.actorName} · {entry.characterName ?? 'przestrzeń'} ·{' '}
-                  {entry.occurredAtLabel} · rev {entry.revision}
-                </small>
-              </li>
-            ))
+            <p className="entry-status">Konflikt obsłużony — szkic zachowany lokalnie.</p>
           )}
-        </ol>
+
+          {entries.length === 0 ? (
+            <div className="history-empty-state">
+              <Icon name="history" size={28} />
+              <strong>Brak wpisów</strong>
+              <p className="empty-copy">Brak wpisów dla wybranych filtrów.</p>
+            </div>
+          ) : (
+            <ol className="history-timeline">
+              {entries.map((entry) => (
+                <li className={`history-timeline-entry is-${entry.resource}`} key={entry.id}>
+                  <div className="history-timeline-icon" aria-hidden>
+                    <Icon name={resourceIcon[entry.resource]} size={16} />
+                  </div>
+                  <div className="history-timeline-copy">
+                    <div>
+                      <strong>{entry.title}</strong>
+                      <time>{entry.occurredAtLabel}</time>
+                    </div>
+                    <p>{entry.detail}</p>
+                    <footer>
+                      <span className="member-avatar is-idle" aria-hidden>
+                        {entry.actorInitials}
+                      </span>
+                      <span>{entry.actorName}</span>
+                      <em>{resourceLabel[entry.resource]}</em>
+                      {entry.characterName ? <em>{entry.characterName}</em> : <em>przestrzeń</em>}
+                      <small>rev {entry.revision}</small>
+                    </footer>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
 
         <div className="mock-notice">
           Dziennik tylko dopisuje wpisy (bez cofania). Live sync wróci z backendem.

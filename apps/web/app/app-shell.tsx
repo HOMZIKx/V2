@@ -91,7 +91,14 @@ export function AppShell({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { state } = usePlayerStore();
-  const primaryWorkspaceId = state.lastOpenedWorkspaceId ?? state.workspaces[0]?.id ?? null;
+  const activeWorkspaces = state.workspaces.filter((workspace) => !workspace.archived);
+  const primaryWorkspaceId =
+    (state.lastOpenedWorkspaceId &&
+    activeWorkspaces.some((workspace) => workspace.id === state.lastOpenedWorkspaceId)
+      ? state.lastOpenedWorkspaceId
+      : null) ??
+    activeWorkspaces[0]?.id ??
+    null;
   const teamsHref = primaryWorkspaceId ? `/teams/${primaryWorkspaceId}` : '/#first-use';
   const readyCount = state.workspaces.reduce(
     (count, workspace) =>
