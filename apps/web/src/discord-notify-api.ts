@@ -86,7 +86,7 @@ export async function postDiscordTimerNotify(
         ok: false,
         error: err,
         status: parsed.status,
-        detail: typeof parsed.detail === 'string' ? parsed.detail : undefined,
+        ...(typeof parsed.detail === 'string' ? { detail: parsed.detail } : {}),
       };
     }
 
