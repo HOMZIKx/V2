@@ -43,8 +43,11 @@ export default function ProfilPage() {
   const previewName = useMemo(() => {
     const trimmed = nick.trim();
     if (trimmed.length >= 1) return trimmed;
-    return state.viewer?.discordDisplayName?.trim() || 'Twój nick';
+    return state.viewer?.displayName?.trim() || 'Twój nick';
   }, [nick, state.viewer]);
+
+  const discordNick =
+    state.viewer?.discordDisplayName?.trim() || 'Discord';
 
   const monogram = useMemo(
     () =>
@@ -127,7 +130,10 @@ export default function ProfilPage() {
                 <span className="profil-pulpit-avatar">{monogram.slice(0, 1)}</span>
                 <span className="profil-pulpit-meta">
                   <strong>{previewName}</strong>
-                  <small>Discord</small>
+                  <small>
+                    <span className="profil-pulpit-discord-label">Discord</span>
+                    {discordNick}
+                  </small>
                 </span>
               </div>
             </div>
@@ -148,6 +154,9 @@ export default function ProfilPage() {
               autoComplete="nickname"
               autoFocus={isFirstSetup}
             />
+            <small className="profil-field-hint profil-field-hint-game">
+              Najlepiej ustaw nick z gry (postać), żeby wszędzie było spójnie.
+            </small>
             <small className="profil-field-hint">Min. 2 znaki · tak pojawisz się na liście i w nagłówku</small>
           </label>
 

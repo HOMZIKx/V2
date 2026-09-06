@@ -13832,8 +13832,19 @@ button:disabled {
 }
 
 .profil-pulpit-meta small {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   color: #788397;
   font-size: 10px;
+  font-weight: 500;
+}
+
+.profil-pulpit-discord-label {
+  color: #5f6b82;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .profil-nick-field {
@@ -13873,6 +13884,15 @@ button:disabled {
 .profil-field-hint {
   color: #7d879a;
   font-size: 12px;
+}
+
+.profil-field-hint-game {
+  display: block;
+  margin-top: 8px;
+  color: #9aa6bd;
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.45;
 }
 
 .profil-note-field {
