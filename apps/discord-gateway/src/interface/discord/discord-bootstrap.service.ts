@@ -27,6 +27,33 @@ import {
   TECHNIKA_CONFIG_STORE_TOKEN,
 } from './discord.tokens.js';
 
+const DESTILED_GUILD_ID = '1543972927719080016';
+const SOJUSZ_GUILD_ID = '1531318787058696424';
+
+function resolveRuntimeAllowedGuildIds(
+  config: DiscordGatewayConfig,
+  technikaStore?: VersionedConfigStore | null,
+): string[] {
+  const ids = new Set<string>([
+    config.DISCORD_TEST_GUILD_ID,
+    DESTILED_GUILD_ID,
+    SOJUSZ_GUILD_ID,
+  ]);
+
+  const botConfig = resolveActiveBotConfig(technikaStore ?? null);
+  const guilds = botConfig.guilds ?? {};
+  for (const id of Object.keys(guilds)) {
+    if (/^\d{17,20}$/.test(id)) ids.add(id);
+  }
+
+  const memberActivity = botConfig.memberActivity;
+  if (memberActivity?.guildId && /^\d{17,20}$/.test(memberActivity.guildId)) {
+    ids.add(memberActivity.guildId);
+  }
+
+  return [...ids];
+}
+
 @Injectable()
 export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
   private readonly nestLogger = new Logger(DiscordBootstrapService.name);
@@ -49,11 +76,19 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
     await this.gateway.start();
 
     if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
-      await this.gateway.putGuildCommands(
-        this.config.DISCORD_TEST_GUILD_ID,
-        guildCommandDefinitions,
-      );
-      this.nestLogger.log('Guild commands auto-registered for test guild.');
+      const guildIds = resolveRuntimeAllowedGuildIds(this.config, this.technikaStore);
+      for (const guildId of guildIds) {
+        try {
+          await this.gateway.putGuildCommands(guildId, guildCommandDefinitions);
+          this.nestLogger.log(`Guild commands auto-registered for ${guildId}.`);
+        } catch (error) {
+          this.nestLogger.warn(
+            `Guild command registration failed for ${guildId}: ${
+              error instanceof Error ? error.message : 'unknown error'
+            }`,
+          );
+        }
+      }
     }
 
     const gateway = this.gateway;
@@ -178,20 +213,7 @@ export function createDiscordGatewayOrNull(
   const gateway = new DiscordJsGatewayAdapter({
     config,
     logger,
-    getRuntimeAllowedGuildIds: () => {
-      const ids = new Set<string>([
-        config.DISCORD_TEST_GUILD_ID,
-        '1543972927719080016', // Destiled
-        '1531318787058696424', // Sojusz
-      ]);
-      const guilds = resolveActiveBotConfig(technikaStore ?? null).guilds ?? {};
-      for (const id of Object.keys(guilds)) {
-        if (/^\d{17,20}$/.test(id)) ids.add(id);
-      }
-      const ma = resolveActiveBotConfig(technikaStore ?? null).memberActivity;
-      if (ma?.guildId && /^\d{17,20}$/.test(ma.guildId)) ids.add(ma.guildId);
-      return [...ids];
-    },
+    getRuntimeAllowedGuildIds: () => resolveRuntimeAllowedGuildIds(config, technikaStore),
     memberActivityCollector: memberActivityCollector ?? null,
     onInteraction: async (interaction) => {
       if (routerHolder.current === null) {
