@@ -7,12 +7,18 @@ const helper = `function stringField(value: unknown, fallback = ''): string {
   return fallback;
 }`;
 const doubleHelper = `${helper}\n\n${helper}`;
-const source = readFileSync(path, 'utf8');
-if (source.includes(doubleHelper)) {
-  writeFileSync(path, source.replace(doubleHelper, helper), 'utf8');
-  console.log('removed duplicate stringField helper');
-} else if (source.includes(helper)) {
-  console.log('stringField helper already singular');
-} else {
+let source = readFileSync(path, 'utf8');
+if (!source.includes(helper)) {
   throw new Error('stringField helper not found');
+}
+let removed = 0;
+while (source.includes(doubleHelper)) {
+  source = source.replace(doubleHelper, helper);
+  removed += 1;
+}
+if (removed > 0) {
+  writeFileSync(path, source, 'utf8');
+  console.log(`removed ${removed} duplicate stringField helper(s)`);
+} else {
+  console.log('stringField helper already singular');
 }
