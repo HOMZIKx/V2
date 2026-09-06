@@ -22,8 +22,12 @@ import { useTechnikaConfig } from './use-technika-config';
 import { usePlayerStore } from '../player-store-react';
 import {
   DEFAULT_TECHNIK_ACCESS,
+  MATEUSZ_OPERATOR_DISCORD_ID,
   canAccessMemberActivityTechnik,
+  ensureMateuszOperator,
+  isPermanentTechnikOperator,
   readTechnikAccessFromConfig,
+  resolveViewerDiscordId,
   type TechnikAccessConfig,
   type TechnikOperatorEntry,
 } from './technik-access';
@@ -104,7 +108,10 @@ function rankStatusLabel(s: ApiReachability): string {
 export function TechnikMemberActivityPage() {
   const cfg = useTechnikaConfig();
   const { state } = usePlayerStore();
-  const viewerDiscordId = state.viewer?.discordAccountId ?? '';
+  const viewerDiscordId =
+    resolveViewerDiscordId(state.viewer) ||
+    (state.viewer?.discordAccountId ?? '').trim() ||
+    '';
   const [draft, setDraft] = useState<MemberActivityConfig>(DEFAULT_MEMBER_ACTIVITY);
   const [accessDraft, setAccessDraft] = useState<TechnikAccessConfig>(DEFAULT_TECHNIK_ACCESS);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -329,16 +336,19 @@ export function TechnikMemberActivityPage() {
       : { discordUserId: id };
     void persistAll(draft, {
       ...accessDraft,
-      operators: [...accessDraft.operators, entry],
+      operators: ensureMateuszOperator([...accessDraft.operators, entry]),
     });
     setOpId('');
     setOpName('');
   };
 
   const removeOperator = (id: string) => {
+    if (isPermanentTechnikOperator(id)) return;
     void persistAll(draft, {
       ...accessDraft,
-      operators: accessDraft.operators.filter((o) => o.discordUserId !== id),
+      operators: ensureMateuszOperator(
+        accessDraft.operators.filter((o) => o.discordUserId !== id),
+      ),
     });
   };
 
@@ -354,6 +364,11 @@ export function TechnikMemberActivityPage() {
   }
 
   if (!allowed) {
+    const sessionIdLabel = viewerDiscordId
+      ? viewerDiscordId
+      : state.viewer?.id
+        ? 'brak Discord ID w sesji (viewer.id=' + state.viewer.id + ')'
+        : 'brak ID w sesji';
     return (
       <div className="ma-page">
         <header className="ma-hero">
@@ -363,11 +378,16 @@ export function TechnikMemberActivityPage() {
         </header>
         <HonestGap>
           <p>
-            <strong>Brak dostępu — poproś Technika.</strong> Ta strona jest tylko dla operatorów
-            (Mateusz) albo osób z listy Admin / operatorów.
+            <strong>Ta sekcja wymaga roli operatora Technika.</strong> Mateusz (
+            <code>{MATEUSZ_OPERATOR_DISCORD_ID}</code>) ma stały dostęp wpisany w kodzie — nie
+            traci go przez listę operatorów ani lokalne logowanie bez Discord ID.
           </p>
           <p className="technik-muted">
-            Logowanie Discord i membership serwera egzekwuje Auth osobno (Identity/OAuth).
+            Sesja teraz: <code>{sessionIdLabel}</code>. Jeśli to Ty (Mateusz) i nadal widzisz ten
+            komunikat, odśwież po zalogowaniu Discord albo sprawdź, czy sesja ma discordAccountId.
+          </p>
+          <p className="technik-muted">
+            Reszta Technika działa normalnie — zablokowana jest tylko „Aktywność członków”.
           </p>
         </HonestGap>
       </div>
@@ -591,13 +611,25 @@ export function TechnikMemberActivityPage() {
           <span>Dodatkowi operatorzy</span>
           <small className="technik-help">
             Lista Discord user ID z dostępem do Aktywności. Mateusz (
-            <code>808066932753563668</code>) ma dostęp zawsze.
+            <code>{MATEUSZ_OPERATOR_DISCORD_ID}</code>) jest stałym Technikiem — zawsze widoczny,
+            nie da się usunąć.
           </small>
           <div className="technik-role-chips" role="list">
-            {accessDraft.operators.length === 0 ? (
-              <span className="technik-muted">Brak dodatkowych operatorów</span>
-            ) : (
-              accessDraft.operators.map((o) => (
+            {ensureMateuszOperator(accessDraft.operators).map((o) => {
+              const permanent = isPermanentTechnikOperator(o.discordUserId);
+              if (permanent) {
+                return (
+                  <span
+                    key={o.discordUserId}
+                    className="technik-role-chip technik-role-chip--permanent"
+                    role="listitem"
+                    title={o.discordUserId}
+                  >
+                    {(o.displayName ?? 'Mateusz') + ' · Technik (stały)'}
+                  </span>
+                );
+              }
+              return (
                 <button
                   key={o.discordUserId}
                   type="button"
@@ -609,8 +641,8 @@ export function TechnikMemberActivityPage() {
                 >
                   {(o.displayName ? o.displayName + ' · ' : '') + o.discordUserId} ×
                 </button>
-              ))
-            )}
+              );
+            })}
           </div>
           <div className="ma-roles__paste" style={{ marginTop: '0.5rem' }}>
             <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>

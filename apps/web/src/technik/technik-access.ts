@@ -5,6 +5,11 @@
 
 export const MATEUSZ_OPERATOR_DISCORD_ID = '808066932753563668';
 
+export const MATEUSZ_OPERATOR_ENTRY: TechnikOperatorEntry = {
+  discordUserId: MATEUSZ_OPERATOR_DISCORD_ID,
+  displayName: 'Mateusz',
+};
+
 export type TechnikOperatorEntry = {
   readonly discordUserId: string;
   readonly displayName?: string;
@@ -19,10 +24,56 @@ export type TechnikAccessConfig = {
 
 export const DEFAULT_TECHNIK_ACCESS: TechnikAccessConfig = {
   adminRoleIds: [],
-  operators: [],
+  operators: [{ ...MATEUSZ_OPERATOR_ENTRY }],
 };
 
 const SNOWFLAKE = /^\d{17,20}$/;
+
+/** Mateusz is permanent Technik operator — always present, never dropped. */
+export function ensureMateuszOperator(
+  operators: readonly TechnikOperatorEntry[],
+): TechnikOperatorEntry[] {
+  const rest = operators.filter((o) => o.discordUserId !== MATEUSZ_OPERATOR_DISCORD_ID);
+  return [{ ...MATEUSZ_OPERATOR_ENTRY }, ...rest];
+}
+
+export function isPermanentTechnikOperator(discordUserId: string): boolean {
+  return discordUserId === MATEUSZ_OPERATOR_DISCORD_ID;
+}
+
+/**
+ * Resolve Discord snowflake from viewer: discordAccountId, or id if snowflake.
+ */
+export function resolveViewerDiscordId(viewer: unknown): string {
+  if (!viewer || typeof viewer !== 'object') return '';
+  const v = viewer as Record<string, unknown>;
+  const fromAccount =
+    typeof v.discordAccountId === 'string' ? v.discordAccountId.trim() : '';
+  if (SNOWFLAKE.test(fromAccount)) return fromAccount;
+  const fromId = typeof v.id === 'string' ? v.id.trim() : '';
+  if (SNOWFLAKE.test(fromId)) return fromId;
+  return '';
+}
+
+/** Demo/local seeded owner — id is 'mateusz' without discordAccountId. */
+function viewerLooksLikeMateuszOwner(viewer: unknown): boolean {
+  if (!viewer || typeof viewer !== 'object') return false;
+  const v = viewer as Record<string, unknown>;
+  const id = typeof v.id === 'string' ? v.id.trim().toLowerCase() : '';
+  if (id === 'mateusz') return true;
+  const name =
+    typeof v.displayName === 'string'
+      ? v.displayName.trim().toLowerCase()
+      : typeof v.discordDisplayName === 'string'
+        ? v.discordDisplayName.trim().toLowerCase()
+        : '';
+  // Only when Discord id missing — avoid false positives on other Mateuszes with real ids.
+  const hasDiscord =
+    (typeof v.discordAccountId === 'string' && SNOWFLAKE.test(v.discordAccountId.trim())) ||
+    SNOWFLAKE.test(id);
+  if (!hasDiscord && name === 'mateusz' && id === 'mateusz') return true;
+  return false;
+}
 
 export function readTechnikAccessFromConfig(
   cfg: Record<string, unknown> | null | undefined,
@@ -40,7 +91,12 @@ export function readTechnikAccessFromConfig(
       ? (cfg.memberActivity as Record<string, unknown>)
       : null;
   const src = raw ?? nested;
-  if (!src) return { ...DEFAULT_TECHNIK_ACCESS };
+  if (!src) {
+    return {
+      adminRoleIds: [...DEFAULT_TECHNIK_ACCESS.adminRoleIds],
+      operators: ensureMateuszOperator(DEFAULT_TECHNIK_ACCESS.operators),
+    };
+  }
 
   const adminRoleIds = Array.isArray(src.adminRoleIds)
     ? src.adminRoleIds.map(String).filter((id) => SNOWFLAKE.test(id))
@@ -65,7 +121,7 @@ export function readTechnikAccessFromConfig(
     }
   }
 
-  return { adminRoleIds, operators };
+  return { adminRoleIds, operators: ensureMateuszOperator(operators) };
 }
 
 function readViewerRoleIds(viewer: unknown): string[] {
@@ -89,15 +145,21 @@ function readViewerRoleIds(viewer: unknown): string[] {
 
 /**
  * Client-side gate for /technik/aktywnosc.
- * Mateusz operator id always allowed; then operator list; then best-effort admin roles.
+ * Mateusz operator id always allowed; demo owner id 'mateusz' allowed;
+ * then operator list; then best-effort admin roles.
  */
 export function canAccessMemberActivityTechnik(opts: {
   readonly viewerDiscordId: string | null | undefined;
   readonly viewer?: unknown;
   readonly access: TechnikAccessConfig;
 }): boolean {
-  const uid = (opts.viewerDiscordId ?? '').trim();
+  const fromArg = (opts.viewerDiscordId ?? '').trim();
+  const fromViewer = resolveViewerDiscordId(opts.viewer);
+  const uid = SNOWFLAKE.test(fromArg) ? fromArg : fromViewer;
+
   if (uid === MATEUSZ_OPERATOR_DISCORD_ID) return true;
+  if (viewerLooksLikeMateuszOwner(opts.viewer)) return true;
+
   if (uid && opts.access.operators.some((o) => o.discordUserId === uid)) return true;
   if (opts.access.adminRoleIds.length > 0) {
     const roles = readViewerRoleIds(opts.viewer);
