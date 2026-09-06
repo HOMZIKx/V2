@@ -74,9 +74,20 @@ function mapEntry(r: Record<string, unknown>): RankingRow {
   const display =
     typeof r.displayName === 'string' && r.displayName.trim()
       ? r.displayName
-      : String(r.name ?? r.username ?? 'Gracz');
+      : typeof r.name === 'string'
+        ? r.name
+        : typeof r.username === 'string'
+          ? r.username
+          : 'Gracz';
   const row: RankingRow = {
-    discordUserId: String(r.discordUserId ?? r.userId ?? r.id ?? ''),
+    discordUserId:
+      typeof r.discordUserId === 'string'
+        ? r.discordUserId
+        : typeof r.userId === 'string'
+          ? r.userId
+          : typeof r.id === 'string'
+            ? r.id
+            : '',
     displayName: display,
     score: Number(r.score ?? r.total ?? 0),
   };

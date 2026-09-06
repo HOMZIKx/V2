@@ -9,13 +9,13 @@ vi.mock('./discord-notify-api.js', () => ({
   buildCharacterTimersDeepLinkUrl: () =>
     'http://127.0.0.1:3000/teams/asteria/characters/nerwnicht?board=timers',
   buildCharacterTimerRoomSummary: () => ['Aalpsik · Jazda konna — gotowe'],
-  postDiscordTimerNotify: vi.fn(async () => ({
+  postDiscordTimerNotify: vi.fn(() => Promise.resolve({
     ok: true,
     delivery: 'dm',
     duplicate: false,
     messageId: 'm1',
   })),
-  postDiscordTimerResetNotify: vi.fn(async () => ({ ok: true, sent: 1 })),
+  postDiscordTimerResetNotify: vi.fn(() => Promise.resolve({ ok: true, sent: 1 })),
 }));
 
 import { postDiscordTimerNotify } from './discord-notify-api.js';

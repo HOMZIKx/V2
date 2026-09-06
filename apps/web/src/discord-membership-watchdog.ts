@@ -44,7 +44,8 @@ function parseMemberBody(status: number, body: unknown): MembershipProbeResult {
   if (status === 404) {
     if (body && typeof body === 'object') {
       const o = body as Record<string, unknown>;
-      const err = String(o.error ?? o.code ?? '').toLowerCase();
+      const rawError = typeof o.error === 'string' ? o.error : typeof o.code === 'string' ? o.code : '';
+      const err = rawError.toLowerCase();
       if (
         err === 'not_a_member' ||
         err === 'member_not_found' ||

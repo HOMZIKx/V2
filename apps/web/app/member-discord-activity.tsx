@@ -86,8 +86,7 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve on account id only
-  }, [discordUserId]);
+  }, [discordUserId, viewer]);
 
   const [refreshedHint, setRefreshedHint] = useState<string | null>(null);
 

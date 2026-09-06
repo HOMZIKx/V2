@@ -101,7 +101,6 @@ export function TechnikWygladPage() {
     setWarTpl(cfg.warDraft.messageTemplate);
     setRecurring(loadRecurringAppearance());
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once on mount
   }, []);
 
   useEffect(() => {
@@ -473,7 +472,6 @@ export function TechnikWygladPage() {
                   >
                     {draft.includeBanner ? (
                       bannerUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           className="technik-discord-preview__banner-img"
                           src={bannerUrl}

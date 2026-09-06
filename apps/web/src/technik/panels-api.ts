@@ -74,13 +74,19 @@ function fail(res: Response, parsed: Record<string, unknown>, fallback: string):
   };
 }
 
+function stringField(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return fallback;
+}
+
 function mapChannels(parsed: Record<string, unknown>): PanelChannel[] {
   const raw = Array.isArray(parsed.channels) ? parsed.channels : [];
   return raw
     .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === 'object')
     .map((c) => ({
-      id: String(c.id ?? ''),
-      name: typeof c.name === 'string' ? c.name : String(c.id ?? ''),
+      id: stringField(c.id),
+      name: typeof c.name === 'string' ? c.name : stringField(c.id),
       type: typeof c.type === 'number' ? c.type : 0,
       canPublish: Boolean(c.canPublish),
     }))
@@ -96,8 +102,8 @@ function mapPanels(parsed: Record<string, unknown>, fallbackChannelId?: string):
   return raw
     .filter((p): p is Record<string, unknown> => Boolean(p) && typeof p === 'object')
     .map((p) => ({
-      messageId: String(p.messageId ?? p.id ?? p.panelId ?? ''),
-      panelId: String(p.panelId ?? p.messageId ?? p.id ?? ''),
+      messageId: stringField(p.messageId ?? p.id ?? p.panelId),
+      panelId: stringField(p.panelId ?? p.messageId ?? p.id),
       isComponentsV2: p.isComponentsV2 !== false,
       jumpUrl: typeof p.jumpUrl === 'string' ? p.jumpUrl : '',
       ...(typeof p.channelId === 'string'
@@ -255,10 +261,10 @@ function buildPublishPayload(body: PanelPublishBody): Record<string, unknown> {
   if (typeof body.bannerUrl === 'string' && body.bannerUrl.trim()) {
     payload.bannerUrl = body.bannerUrl.trim();
   }
-  if (Array.isArray(body.enabledActions)) {
+  if (body.enabledActions) {
     payload.enabledActions = [...body.enabledActions];
   }
-  if (Array.isArray(body.customButtons)) {
+  if (body.customButtons) {
     payload.customButtons = body.customButtons.map((b) => ({ ...b }));
   }
   return payload;
@@ -285,10 +291,10 @@ export async function postPanelPublish(body: PanelPublishBody): Promise<
         ok: true,
         status: gs.status,
         data: {
-          messageId: String(parsed.messageId ?? ''),
+          messageId: stringField(parsed.messageId),
           jumpUrl: typeof parsed.jumpUrl === 'string' ? parsed.jumpUrl : '',
-          channelId: String(parsed.channelId ?? body.channelId),
-          panelId: String(parsed.panelId ?? parsed.messageId ?? ''),
+          channelId: stringField(parsed.channelId, body.channelId),
+          panelId: stringField(parsed.panelId ?? parsed.messageId),
         },
       };
     }
@@ -304,9 +310,9 @@ export async function postPanelPublish(body: PanelPublishBody): Promise<
       ok: true,
       status: res.status,
       data: {
-        messageId: String(parsed.messageId ?? ''),
+        messageId: stringField(parsed.messageId),
         jumpUrl: typeof parsed.jumpUrl === 'string' ? parsed.jumpUrl : '',
-        channelId: String(parsed.channelId ?? body.channelId),
+        channelId: stringField(parsed.channelId, body.channelId),
       },
     };
   } catch (error) {
@@ -362,7 +368,7 @@ export async function postPanelRefresh(body: {
       status: res.status,
       data: {
         refreshed: true,
-        messageId: String(parsed.messageId ?? body.panelId),
+        messageId: stringField(parsed.messageId, body.panelId),
         jumpUrl: typeof parsed.jumpUrl === 'string' ? parsed.jumpUrl : '',
       },
     };
@@ -396,7 +402,7 @@ export async function deletePanelMessage(body: {
       return {
         ok: true,
         status: gs.status,
-        data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },
+        data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },
       };
     }
     const res = await fetch('/api/technik/panels', {
@@ -410,7 +416,7 @@ export async function deletePanelMessage(body: {
     return {
       ok: true,
       status: res.status,
-      data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },
+      data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },
     };
   } catch (error) {
     return {

@@ -129,7 +129,7 @@ export function useTechnikaConfig() {
     } else {
       partial.timersNotify = charTimers;
     }
-    return partial as BotConfigDraftPartial;
+    return partial;
   }, [
     warDraft,
     notifyTimerEnabled,

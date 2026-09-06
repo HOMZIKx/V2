@@ -89,7 +89,7 @@ export function createEmptyCustomButton(): AppearanceCustomButton {
 function normalizeButton(raw: unknown): AppearanceCustomButton | null {
   if (!raw || typeof raw !== 'object') return null;
   const p = raw as Record<string, unknown>;
-  const action = String(p.action ?? '');
+  const action = typeof p.action === 'string' ? p.action : '';
   const allowed: CustomButtonAction[] = [
     'create',
     'lfg',
@@ -101,7 +101,7 @@ function normalizeButton(raw: unknown): AppearanceCustomButton | null {
     'ephemeral_text',
   ];
   if (!allowed.includes(action as CustomButtonAction)) return null;
-  const styleRaw = String(p.style ?? 'secondary');
+  const styleRaw = typeof p.style === 'string' ? p.style : 'secondary';
   const style: CustomButtonStyle =
     styleRaw === 'primary' || styleRaw === 'danger' ? styleRaw : 'secondary';
   const btn: AppearanceCustomButton = {

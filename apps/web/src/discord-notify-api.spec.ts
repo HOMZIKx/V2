@@ -8,8 +8,8 @@ describe('discord-notify-api', () => {
   beforeEach(() => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        new Response(
+      vi.fn(() =>
+        Promise.resolve(new Response(
           JSON.stringify({
             ok: true,
             delivery: 'dm',
@@ -17,7 +17,7 @@ describe('discord-notify-api', () => {
             messageId: 'm1',
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
-        ),
+        )),
       ),
     );
   });
@@ -48,11 +48,11 @@ describe('discord-notify-api', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {
+        () =>
+          Promise.resolve(new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
-          }),
+          })),
       ),
     );
     const result = await postDiscordTimerNotify({

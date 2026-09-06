@@ -830,7 +830,7 @@ export function TechnikCyklicznePage() {
                       type="radio"
                       name="closeAt"
                       checked={(draft.rules.closeAt ?? 'none') === value}
-                      onChange={() => patchRules({ closeAt: value as CloseAt })}
+                      onChange={() => patchRules({ closeAt: value })}
                     />
                     {label}
                   </label>

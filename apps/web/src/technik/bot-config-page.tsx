@@ -274,9 +274,7 @@ export function TechnikBotConfigPage() {
 
   useEffect(() => {
     void load();
-    // initial load only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   const selectGuild = (id: string) => {
     setGuildSaveMsg(null);

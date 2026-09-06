@@ -1331,6 +1331,7 @@ export function updateViewerProfile(
   const nextNote =
     typeof patch.avatarNote === 'string' ? patch.avatarNote.trim() : (state.viewer.avatarNote ?? '');
   const { avatarNote: _drop, ...restViewer } = state.viewer;
+  void _drop;
   return {
     ...state,
     viewer: {

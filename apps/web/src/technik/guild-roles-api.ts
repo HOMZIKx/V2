@@ -28,7 +28,7 @@ function mapRoles(parsed: Record<string, unknown>): GuildRole[] {
   return raw
     .filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === 'object')
     .map((r) => ({
-      id: String(r.id ?? ''),
+      id: typeof r.id === 'string' ? r.id : '',
       name: typeof r.name === 'string' && r.name.trim() ? r.name : 'Rola',
       ...(typeof r.color === 'number' ? { color: r.color } : {}),
     }))

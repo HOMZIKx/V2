@@ -110,7 +110,12 @@ export function readTechnikAccessFromConfig(
         operators.push({ discordUserId: item });
       } else if (item && typeof item === 'object') {
         const o = item as Record<string, unknown>;
-        const id = String(o.discordUserId ?? o.id ?? '');
+        const id =
+          typeof o.discordUserId === 'string'
+            ? o.discordUserId
+            : typeof o.id === 'string'
+              ? o.id
+              : '';
         if (!SNOWFLAKE.test(id)) continue;
         const displayName =
           typeof o.displayName === 'string' && o.displayName.trim()
