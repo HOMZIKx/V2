@@ -80,6 +80,12 @@ function stringField(value: unknown, fallback = ''): string {
   return fallback;
 }
 
+function stringField(value: unknown, fallback = ''): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return fallback;
+}
+
 function mapChannels(parsed: Record<string, unknown>): PanelChannel[] {
   const raw = Array.isArray(parsed.channels) ? parsed.channels : [];
   return raw
