@@ -5,13 +5,13 @@ import type { ReactNode } from 'react';
 import { usePlayerStore } from '../../src/player-store-react';
 import { AppShell } from '../app-shell';
 import { DiscordEntryScreen } from '../discord-entry';
-import { TechnikShell } from '../../src/technik/technik-shell';
+import { TechnikShell, type TechnikNavId } from '../../src/technik/technik-shell';
 
 export function TechnikPageFrame({
   active,
   children,
 }: {
-  readonly active: 'status' | 'bot' | 'diagnostics';
+  readonly active: TechnikNavId;
   readonly children: ReactNode;
 }) {
   const { state, hydrated } = usePlayerStore();

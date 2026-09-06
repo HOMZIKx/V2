@@ -1,12 +1,17 @@
 'use client';
 
-import { TechnikBotConfigPage } from '../../../src/technik/bot-config-page';
+import { useEffect } from 'react';
+
 import { TechnikPageFrame } from '../technik-page-client';
 
-export default function TechnikBotRoute() {
+/** Legacy /technik/bot → overview (full IA lives in subroutes). */
+export default function TechnikBotLegacyRedirect() {
+  useEffect(() => {
+    window.location.replace('/technik');
+  }, []);
   return (
-    <TechnikPageFrame active="bot">
-      <TechnikBotConfigPage />
+    <TechnikPageFrame active="overview">
+      <p className="technik-lead">Przekierowuję do Przeglądu…</p>
     </TechnikPageFrame>
   );
 }

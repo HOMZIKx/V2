@@ -29,6 +29,7 @@ import {
   fetchGuilds,
   fetchTechnikaMeta,
   TECHNIK_TEST_GUILD_ID,
+  isTechnikGuildEditable,
   guildDisplayLabel,
   pickCharacterTimers,
   pickDefaultGuildId,
@@ -305,6 +306,12 @@ export function TechnikBotConfigPage() {
       );
       return;
     }
+    if (!isTechnikGuildEditable(selectedGuildId)) {
+      setGuildSaveMsg(
+        'Tylko Testowy — produkcyjne Discordy zablokowane. Nie zapisuje enabled/modulow dla tej guildii.',
+      );
+      return;
+    }
     setBusy(true);
     try {
       const modules: GuildModules = {
@@ -387,6 +394,13 @@ export function TechnikBotConfigPage() {
       warDraft.notifyMinutesBefore > 24 * 60
     ) {
       local.push('Przypomnienie o wojnie: podaj liczbę minut od 1 do 1440 (zwykle 30).');
+    if (
+      !Number.isInteger(warDraft.maxClaimsPerUser) ||
+      warDraft.maxClaimsPerUser < 1 ||
+      warDraft.maxClaimsPerUser > 20
+    ) {
+      local.push('Wojna: ile postaci max na osobę — podaj liczbę od 1 do 20 (zwykle 3).');
+    }
     }
     if (warDraft.enabled && warDraft.messageTemplate.trim().length < 1) {
       local.push('Przypomnienie o wojnie jest włączone — wpisz treść wiadomości.');
@@ -550,7 +564,7 @@ export function TechnikBotConfigPage() {
               reminderMinutesBefore: charTimers.reminderMinutesBefore,
               ...(testUserId.trim() ? { discordUserId: testUserId.trim() } : {}),
             };
-      const res = await postConfigTestDm(payload);
+      const res = await postConfigTestDm(payload as import("./technika-config-api").TestDmRequest);
       if (!res.ok) {
         setTestDmMsg(
           `Test PW nieudany: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`,
@@ -568,6 +582,7 @@ export function TechnikBotConfigPage() {
 
   const stepIndex = STEPPER_STEPS.findIndex((s) => s.id === step);
   const canWrite = metaLoaded && mutationsEnabled;
+  const guildEditable = Boolean(selectedGuildId && isTechnikGuildEditable(selectedGuildId));
   const canApply = canWrite && !busy;
   const canRollback = canWrite && !busy && Boolean(snapshot?.canRollback);
   const isolationDisplay =
@@ -661,11 +676,17 @@ export function TechnikBotConfigPage() {
                   ID: <code>{selectedGuild.id}</code> · źródło: {sourceLabel(selectedGuild.source)}
                   {guildsRevision !== null ? ` · rev ${guildsRevision}` : ''}
                 </p>
+                {!guildEditable ? (
+                  <p className="technik-error" role="alert" style={{ marginTop: '0.5rem' }}>
+                    Tylko Testowy — produkcyjne Discordy zablokowane. Możesz oglądać listę, ale nie włączaj ani nie zapisuj modułów.
+                  </p>
+                ) : null}
 
                 <label className="technik-check" style={{ marginTop: '0.5rem' }}>
                   <input
                     type="checkbox"
                     checked={guildEdit.enabled}
+                    disabled={!guildEditable}
                     onChange={(e) =>
                       setGuildEdit((prev) =>
                         prev ? { ...prev, enabled: e.target.checked } : prev,
@@ -681,6 +702,7 @@ export function TechnikBotConfigPage() {
                     type="text"
                     maxLength={100}
                     value={guildEdit.name}
+                    disabled={!guildEditable}
                     placeholder="np. DESTILED TEST"
                     onChange={(e) =>
                       setGuildEdit((prev) =>
@@ -701,6 +723,7 @@ export function TechnikBotConfigPage() {
                       <input
                         type="checkbox"
                         checked={guildEdit.modules[key]}
+                        disabled={!guildEditable}
                         onChange={(e) =>
                           setGuildEdit((prev) =>
                             prev
@@ -727,6 +750,7 @@ export function TechnikBotConfigPage() {
                       <input
                         type="checkbox"
                         checked={guildEdit.rights.includes(right)}
+                        disabled={!guildEditable}
                         onChange={() => toggleRight(right)}
                       />
                       <span>
@@ -739,7 +763,7 @@ export function TechnikBotConfigPage() {
                 <div className="technik-row" style={{ marginTop: '0.85rem' }}>
                   <button
                     type="button"
-                    disabled={busy || !canWrite}
+                    disabled={busy || !canWrite || !guildEditable}
                     onClick={() => void saveGuildDraft()}
                   >
                     {busy ? '…' : 'Zapisz guildię do szkicu'}
@@ -780,7 +804,7 @@ export function TechnikBotConfigPage() {
             }
           >
             {!metaLoaded
-              ? 'Sprawdzam zapis...'
+              ? 'Sprawdzam zapis…'
               : canWrite
                 ? 'Możesz zapisywać'
                 : 'Zapis zablokowany'}
@@ -1066,7 +1090,26 @@ export function TechnikBotConfigPage() {
             </span>
           </label>
 
+          
           <label className="technik-field">
+            <span>Ile postaci max może zadeklarować jedna osoba (1–20)</span>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={warDraft.maxClaimsPerUser}
+              onChange={(e) =>
+                setWarDraft((prev) => ({
+                  ...prev,
+                  maxClaimsPerUser: Number(e.target.value),
+                }))
+              }
+            />
+            <span className="technik-help">
+              Limit claimów wojny na jednego użytkownika Discord. Domyślnie 3.
+            </span>
+          </label>
+<label className="technik-field">
             <span>Treść wiadomości (duży szablon)</span>
             <textarea
               className="technik-textarea--large"

@@ -1,12 +1,16 @@
 'use client';
 
-import { TechnikDiagnosticsPage } from '../../../src/technik/diagnostics-page';
+import { useEffect } from 'react';
+
 import { TechnikPageFrame } from '../technik-page-client';
 
-export default function TechnikDiagnosticsRoute() {
+export default function TechnikDiagnosticsLegacyRedirect() {
+  useEffect(() => {
+    window.location.replace('/technik/diagnostyka');
+  }, []);
   return (
-    <TechnikPageFrame active="diagnostics">
-      <TechnikDiagnosticsPage />
+    <TechnikPageFrame active="diagnostyka">
+      <p className="technik-lead">Przekierowuję do Diagnostyki…</p>
     </TechnikPageFrame>
   );
 }
