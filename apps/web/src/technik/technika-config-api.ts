@@ -386,8 +386,6 @@ export async function postConfigRollback(): Promise<
   }
 }
 
-
-
 /** OpenAPI GuildModules — live keys + optional panels/channels (persist even if runtime later). */
 export type GuildModules = {
   readonly characterTimers: boolean;
@@ -464,37 +462,35 @@ export const DEFAULT_GUILD_RIGHTS: readonly GuildRight[] = [
   'discord.panels',
 ];
 
-/** Known TEST Discord (Mateusz) — always primary/first when present in GET /guilds. */
-/** Known TEST Discord — only this guild may be enabled / receive bot traffic from Technik. */
 export const TECHNIK_TEST_GUILD_ID = '1534228693017432124';
 
-/** Human names when Discord discovery has not filled `name` yet (HARD STOP prod still disabled). */
 export const KNOWN_GUILD_NAMES: Readonly<Record<string, string>> = {
   '1534228693017432124': 'Testowy',
   '1543972927719080016': 'Destiled',
   '1531318787058696424': 'Projekt Sojusz',
 };
 
-
-/** Known production Discord IDs — list if API returns them, but never enable from Technik. */
-export const TECHNIK_LOCKED_GUILD_IDS = [
+/** Production guilds managed from Technik together with the test guild. */
+export const TECHNIK_PRODUCTION_GUILD_IDS = [
   '1543972927719080016',
   '1531318787058696424',
 ] as const;
 
-/** Mateusz hard-stop: only Testowy may be enabled / modules on. */
+const TECHNIK_EDITABLE_GUILD_IDS = [
+  TECHNIK_TEST_GUILD_ID,
+  ...TECHNIK_PRODUCTION_GUILD_IDS,
+] as readonly string[];
+
+/** Only the explicitly known test/production guilds are mutable from Technik. */
 export function isTechnikGuildEditable(guildId: string): boolean {
-  return guildId === TECHNIK_TEST_GUILD_ID;
+  return TECHNIK_EDITABLE_GUILD_IDS.includes(guildId);
 }
 
-/** Prefer TEST first; then known locked IDs; then name hints; never invent IDs. */
+/** Prefer TEST first; then production guilds; then name hints; never invent IDs. */
 export function sortGuildsForTechnik(
   guilds: readonly TechnikaGuildDto[],
 ): TechnikaGuildDto[] {
-  const knownOrder = [
-    TECHNIK_TEST_GUILD_ID,
-    ...TECHNIK_LOCKED_GUILD_IDS,
-  ] as readonly string[];
+  const knownOrder = TECHNIK_EDITABLE_GUILD_IDS;
   const rank = (g: TechnikaGuildDto): number => {
     const knownIdx = knownOrder.indexOf(g.id);
     if (knownIdx >= 0) return knownIdx;
