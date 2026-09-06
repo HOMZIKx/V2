@@ -2,26 +2,47 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const appDirectory = path.dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production';
 
-/** Identity service origin for local rewrites (cookies via same host when using relative /identity). */
+/** Public backend origin already used by DESTILED Discord OAuth. */
+const productionBackendOrigin =
+  process.env.V2_BACKEND_PUBLIC_ORIGIN?.trim() || 'https://v2-api.zeabur.app';
+
+/** Identity service origin for server-side rewrites. */
 const identityProxyTarget =
-  process.env.IDENTITY_PROXY_TARGET?.trim() || 'http://127.0.0.1:4200';
+  process.env.IDENTITY_PROXY_TARGET?.trim() ||
+  (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4200');
 
-/** Activity service (P4 Centrum) — OpenAPI default :4400. Local player-team may also use 4400; point ACTIVITY_PROXY_TARGET if ports collide. */
+/** Activity / player-team service. Can be overridden independently on Zeabur. */
 const activityProxyTarget =
-  process.env.ACTIVITY_PROXY_TARGET?.trim() || 'http://127.0.0.1:4400';
+  process.env.ACTIVITY_PROXY_TARGET?.trim() ||
+  process.env.PLAYER_TEAM_PROXY_TARGET?.trim() ||
+  (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4400');
 
-/** Discord gateway (New Bot) — health + public reads via same-origin proxy. */
+const playerTeamProxyTarget =
+  process.env.PLAYER_TEAM_PROXY_TARGET?.trim() || activityProxyTarget;
+
+/**
+ * Discord Gateway (New Bot). Production must never silently call 127.0.0.1.
+ * If the gateway has its own Zeabur domain/private URL, set
+ * DISCORD_GATEWAY_PROXY_TARGET (preferred) or DISCORD_GATEWAY_BASE_URL.
+ */
 const discordGatewayProxyTarget =
   process.env.DISCORD_GATEWAY_PROXY_TARGET?.trim() ||
   process.env.DISCORD_GATEWAY_BASE_URL?.trim() ||
-  'http://127.0.0.1:4100';
+  (isProduction ? `${productionBackendOrigin}/discord-gateway` : 'http://127.0.0.1:4100');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.join(appDirectory, '../..'),
   async rewrites() {
     return [
+      // Identity health lives at /health/* on the Identity service, while the
+      // browser intentionally stays same-origin under /identity/*.
+      {
+        source: '/identity/health/:path*',
+        destination: `${identityProxyTarget}/health/:path*`,
+      },
       {
         source: '/identity/:path*',
         destination: `${identityProxyTarget}/identity/:path*`,
@@ -33,6 +54,10 @@ const nextConfig = {
       {
         source: '/activity/:path*',
         destination: `${activityProxyTarget}/activity/:path*`,
+      },
+      {
+        source: '/player-team/:path*',
+        destination: `${playerTeamProxyTarget}/player-team/:path*`,
       },
       {
         source: '/discord-gateway/:path*',
