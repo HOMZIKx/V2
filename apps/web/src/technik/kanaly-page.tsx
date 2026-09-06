@@ -367,11 +367,11 @@ export function TechnikKanalyPage() {
                         }}
                       />
                       <small className="technik-help">
-                        GDZIE: kanał powyżej (publishChannels.website). CO: ten URL WWW aplikacji
-                        DESTILED — trafia do szkicu D-060 jako appWebsiteUrl (Apply w Przeglądzie, bez
-                        auto-publikacji).
+                        Kanał wybierasz po prawej — tam bot przypnie link. Tutaj wpisz adres strony
+                        DESTILED. Po zapisie wejdź w Przegląd i kliknij „Zapisz i włącz” (bez
+                        automatycznej publikacji).
                         {websiteChannelId
-                          ? ' Kanał: ' + channelLabel(websiteChannelId, channels) + '.'
+                          ? ' Wybrany kanał: ' + channelLabel(websiteChannelId, channels) + '.'
                           : ' Najpierw wybierz kanał po prawej.'}
                       </small>
                     </label>

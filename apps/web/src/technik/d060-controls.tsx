@@ -31,6 +31,8 @@ type Props = {
   readonly help?: string;
   /** When false, hide numbered stepper (avoids duplicate labels above action buttons). */
   readonly showStepper?: boolean;
+  /** Shorter button labels for cramped pages (e.g. Aktywność). */
+  readonly compact?: boolean;
 };
 
 export function D060Controls({
@@ -50,6 +52,7 @@ export function D060Controls({
   onRefresh,
   help,
   showStepper = true,
+  compact = false,
 }: Props) {
   const stepIndex = D060_STEPS.findIndex((s) => s.id === step);
   const canApply = canWrite && !busy;
@@ -102,7 +105,10 @@ export function D060Controls({
         })}
       </ol>
       ) : null}
-      <div className="technik-row" style={{ marginTop: '0.85rem' }}>
+      <div
+        className={compact ? 'technik-row technik-row--compact' : 'technik-row'}
+        style={{ marginTop: compact ? '0.55rem' : '0.85rem' }}
+      >
         <button type="button" onClick={() => onStep('Draft')} disabled={busy}>
           Szkic
         </button>
@@ -110,16 +116,16 @@ export function D060Controls({
           Sprawdź
         </button>
         <button type="button" onClick={onPreview} disabled={busy}>
-          Zobacz co się zmieni
+          {compact ? 'Podgląd' : 'Zobacz co się zmieni'}
         </button>
         <button type="button" onClick={onApply} disabled={!canApply}>
-          {busy ? '…' : 'Zapisz i włącz'}
+          {busy ? '…' : compact ? 'Zapisz' : 'Zapisz i włącz'}
         </button>
         <button type="button" onClick={() => onStep('Audit')} disabled={busy}>
           Historia
         </button>
         <button type="button" onClick={onRollback} disabled={!canRollback}>
-          Cofnij ostatnią zmianę
+          {compact ? 'Cofnij' : 'Cofnij ostatnią zmianę'}
         </button>
         <button type="button" className="technik-btn-ghost" onClick={onRefresh} disabled={busy}>
           Odśwież

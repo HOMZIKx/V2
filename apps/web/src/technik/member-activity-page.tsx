@@ -36,6 +36,7 @@ function DiscordProfileLink({
   readonly displayName: string;
 }) {
   const webHref = 'https://discord.com/users/' + discordUserId;
+  // Nick only — never APP / discord:// badge next to name.
   return (
     <a className="ma-player__name" href={webHref} target="_blank" rel="noreferrer">
       {displayName}
@@ -308,7 +309,10 @@ export function TechnikMemberActivityPage() {
                 </option>
               ))}
           </select>
-          <small className="technik-help">Teraz: {sourceName}</small>
+          <small className="technik-help">
+            Ranking i role poniżej dotyczą tylko: <strong>{sourceName}</strong>. Domyślnie Destiled;
+            Sojusz i Testowy mają osobne listy.
+          </small>
         </label>
 
         <div className="technik-field ma-roles">
@@ -430,7 +434,7 @@ export function TechnikMemberActivityPage() {
 
       <section className="technik-panel technik-panel--wide ma-card ma-rank">
         <div className="technik-panel-head">
-          <h2>Ranking</h2>
+          <h2>Ranking: {sourceName}</h2>
           <span
             className={
               rankStatus === 'live'
@@ -441,6 +445,10 @@ export function TechnikMemberActivityPage() {
             {rankStatusLabel(rankStatus)}
           </span>
         </div>
+        <p className="technik-help ma-rank__help">
+          Każdy serwer ma własny ranking. Zmieniasz guildię powyżej — lista poniżej jest tylko z
+          tego serwera.
+        </p>
 
         {rankStatus === 'offline' ? (
           <HonestGap>
@@ -580,6 +588,7 @@ export function TechnikMemberActivityPage() {
           onRefresh={() => void cfg.load()}
           help="Aktywność wchodzi do szkicu powyżej, potem wspólny Apply."
           showStepper={false}
+          compact
         />
       </div>
       {cfg.actionError ? (

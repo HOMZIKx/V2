@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { usePlayerStore } from '../src/player-store-react';
 import { AppShell } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
+import { MemberDiscordActivity } from './member-discord-activity';
 
 
 export function MemberDashboard() {
@@ -98,6 +99,24 @@ export function MemberDashboard() {
             </div>
           </div>
         </section>
+
+        {state.viewer.discordAccountId ? (
+          <MemberDiscordActivity
+            discordUserId={state.viewer.discordAccountId}
+            viewer={state.viewer}
+          />
+        ) : (
+          <section className="panel ma-pulpit" aria-label="Aktywność Discord">
+            <header>
+              <span className="eyebrow">Discord</span>
+              <h2>Twoja aktywność Discord</h2>
+            </header>
+            <p className="empty-copy">
+              Połącz konto Discord, żeby zobaczyć wiadomości, VC i ranking serwera (Destiled /
+              Sojusz).
+            </p>
+          </section>
+        )}
 
         {createdId ? (
           <p className="entry-status" role="status">

@@ -138,11 +138,14 @@ export async function fetchMemberActivityRanking(opts: {
   readonly q?: string;
   /** Technika full list — proxy attaches x-technika-secret */
   readonly full?: boolean;
+  /** Public top-N (default server-side); Pulpit uses 10. */
+  readonly topN?: number;
 }): Promise<RankingResult> {
   const qs = new URLSearchParams({ window: opts.window });
   if (opts.q && opts.q.trim()) qs.set('q', opts.q.trim());
   if (opts.guildId) qs.set('guildId', opts.guildId);
   if (opts.full) qs.set('full', '1');
+  if (typeof opts.topN === 'number' && opts.topN > 0) qs.set('topN', String(Math.min(500, opts.topN)));
 
   const url = '/api/technik/member-activity/ranking?' + qs.toString();
   try {
