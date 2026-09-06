@@ -13,14 +13,10 @@ const identityProxyTarget =
   process.env.IDENTITY_PROXY_TARGET?.trim() ||
   (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4200');
 
-/** Activity / player-team service. Can be overridden independently on Zeabur. */
+/** Activity service. Can be overridden independently on Zeabur. */
 const activityProxyTarget =
   process.env.ACTIVITY_PROXY_TARGET?.trim() ||
-  process.env.PLAYER_TEAM_PROXY_TARGET?.trim() ||
   (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4400');
-
-const playerTeamProxyTarget =
-  process.env.PLAYER_TEAM_PROXY_TARGET?.trim() || activityProxyTarget;
 
 /**
  * Discord Gateway (New Bot). Production must never silently call 127.0.0.1.
@@ -61,10 +57,9 @@ const nextConfig = {
         source: '/activity/:path*',
         destination: `${activityProxyTarget}/activity/:path*`,
       },
-      {
-        source: '/player-team/:path*',
-        destination: `${playerTeamProxyTarget}/player-team/:path*`,
-      },
+      // /player-team/* is intentionally NOT rewritten directly. It is handled
+      // by app/player-team/[...path]/route.ts, which resolves the real Identity
+      // session server-side and injects the viewer id only after authentication.
       {
         source: '/discord-gateway/:path*',
         destination: `${discordGatewayProxyTarget}/:path*`,
