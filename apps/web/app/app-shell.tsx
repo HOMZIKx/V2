@@ -365,7 +365,6 @@ export function AppShell({
         </nav>
 
         <div className="topbar-actions">
-          <span className="topbar-later-pill">Targ</span>
           <NotificationsBell brandHref={brandHref} readyCount={readyCount} />
           <a aria-label="Otwórz pulpit konta" className="profile-button" href="/profil">
             <span className="profile-avatar">{viewerName.slice(0, 1).toUpperCase()}</span>
@@ -401,7 +400,6 @@ export function AppShell({
             {item.label}
           </a>
         ))}
-        <p className="drawer-later">Targ</p>
       </aside>
 
       {needsProfileSetup && activeSection !== 'profil' ? (
