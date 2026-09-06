@@ -9,20 +9,19 @@ export type PlayerTeamPutResult =
   | { readonly ok: false; readonly conflict: true; readonly actualRevision: number | null }
   | { readonly ok: false; readonly conflict: false; readonly error: string };
 
-// Production defaults to the same-origin /player-team rewrite. An explicit
-// NEXT_PUBLIC_PLAYER_TEAM_BASE_URL remains available for local/dev overrides.
-const configuredBaseUrl = (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim();
+// Production always uses same-origin /player-team, which is handled by the
+// authenticated Next server proxy. Local/dev may still override the base URL.
+const configuredBaseUrl =
+  process.env.NODE_ENV === 'production'
+    ? ''
+    : (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim();
 const baseUrl = configuredBaseUrl.replace(/\/$/, '');
-
-const demoHeaderName = (
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
-).toLowerCase();
 
 function playerTeamUrl(path: string): string {
   return `${baseUrl}${path}`;
 }
 
-/** Prefer Discord snowflake for current player-team identity key. */
+/** Prefer Discord snowflake for current player-team cache/sync key. */
 export function resolvePlayerTeamDemoViewerId(viewer: {
   readonly id: string;
   readonly discordAccountId?: string | null;
@@ -37,15 +36,13 @@ export function resolvePlayerTeamDemoViewerId(viewer: {
   return id;
 }
 
-export async function getMyPlayerTeamState(input: {
+export async function getMyPlayerTeamState(_input: {
   readonly viewerId: string;
 }): Promise<PlayerTeamOnlineStateResponse> {
   const res = await fetch(playerTeamUrl('/player-team/v1/me/state'), {
     method: 'GET',
-    headers: {
-      [demoHeaderName]: input.viewerId,
-    },
     cache: 'no-store',
+    credentials: 'include',
   });
 
   if (res.status === 404) {
@@ -82,8 +79,8 @@ export async function putMyPlayerTeamState(input: {
       method: 'PUT',
       headers: {
         'content-type': 'application/json',
-        [demoHeaderName]: input.viewerId,
       },
+      credentials: 'include',
       body: JSON.stringify({
         state: input.state,
         expectedRevision: input.expectedRevision ?? undefined,
