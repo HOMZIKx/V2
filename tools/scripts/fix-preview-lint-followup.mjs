@@ -22,3 +22,14 @@ if (removed > 0) {
 } else {
   console.log('stringField helper already singular');
 }
+
+const recurringPath = 'apps/web/src/technik/cykliczne-page.tsx';
+let recurringSource = readFileSync(recurringPath, 'utf8');
+const staleCloseAtImport = '  type CloseAt,\n';
+if (recurringSource.includes(staleCloseAtImport)) {
+  recurringSource = recurringSource.replace(staleCloseAtImport, '');
+  writeFileSync(recurringPath, recurringSource, 'utf8');
+  console.log('removed unused CloseAt import');
+} else {
+  console.log('CloseAt import already removed');
+}
