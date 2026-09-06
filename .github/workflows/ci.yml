@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   # gitleaks-action on pull_request lists commits via the Pulls API
   pull-requests: read
 
@@ -25,26 +25,6 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-      - name: Apply deterministic preview fixes
-        if: github.ref == 'refs/heads/preview/destiled-web'
-        run: |
-          node tools/scripts/fix-preview-type-errors.mjs
-          node tools/scripts/fix-preview-lint-errors.mjs
-          node tools/scripts/fix-preview-lint-followup.mjs
-
-      - name: Commit deterministic preview fixes
-        if: github.ref == 'refs/heads/preview/destiled-web'
-        run: |
-          if git diff --quiet; then
-            echo 'No preview fixes to commit.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add apps/discord-gateway apps/web
-          git commit -m 'fix: resolve preview compile and lint errors'
-          git push origin HEAD:preview/destiled-web
 
       - name: Enable Corepack
         run: |
@@ -69,6 +49,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browser
+        if: github.ref != 'refs/heads/preview/destiled-web'
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run preview compile gates
@@ -76,7 +57,6 @@ jobs:
         run: |
           pnpm typecheck
           pnpm build
-          pnpm --dir apps/web build
         env:
           CI: 'true'
 
