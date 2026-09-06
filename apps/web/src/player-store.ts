@@ -94,12 +94,67 @@ export interface PlayerIdentity {
   readonly discordAccountId?: string;
 }
 
+export interface TeamNotifyPrefs {
+  /** Discord PW for character ProgressTimers (EQ/Timer). */
+  readonly characterTimers: boolean;
+  /** Discord PW for kingdom war reminders. */
+  readonly kingdomWar: boolean;
+}
+
+export const DEFAULT_TEAM_NOTIFY_PREFS: TeamNotifyPrefs = {
+  characterTimers: true,
+  kingdomWar: true,
+};
+
+export function normalizeTeamNotifyPrefs(raw: unknown): TeamNotifyPrefs {
+  const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  return {
+    characterTimers:
+      typeof src.characterTimers === 'boolean'
+        ? src.characterTimers
+        : DEFAULT_TEAM_NOTIFY_PREFS.characterTimers,
+    kingdomWar:
+      typeof src.kingdomWar === 'boolean' ? src.kingdomWar : DEFAULT_TEAM_NOTIFY_PREFS.kingdomWar,
+  };
+}
+
+export type NotifyPrefKey = keyof TeamNotifyPrefs;
+
+/** Member override > team default > true (missing never disables). */
+export function resolveEffectiveNotifyPrefs(
+  workspace: { readonly notifyPrefs?: TeamNotifyPrefs | null },
+  member?: { readonly notifyPrefs?: TeamNotifyPrefs | null } | null,
+): TeamNotifyPrefs {
+  const team = normalizeTeamNotifyPrefs(workspace.notifyPrefs);
+  const personal = member?.notifyPrefs;
+  return {
+    characterTimers:
+      typeof personal?.characterTimers === 'boolean'
+        ? personal.characterTimers
+        : team.characterTimers,
+    kingdomWar:
+      typeof personal?.kingdomWar === 'boolean' ? personal.kingdomWar : team.kingdomWar,
+  };
+}
+
+export function isNotifyPrefEnabled(
+  workspace: { readonly notifyPrefs?: TeamNotifyPrefs | null },
+  key: NotifyPrefKey,
+  member?: { readonly notifyPrefs?: TeamNotifyPrefs | null } | null,
+): boolean {
+  return resolveEffectiveNotifyPrefs(workspace, member)[key];
+}
+
+
+
 export interface WorkspaceMember {
   readonly id: string;
   readonly displayName: string;
   readonly initials: string;
   readonly role: MembershipRole;
   readonly state: 'online' | 'away' | 'offline' | 'unknown';
+  /** Personal Discord PW override — wins over team notifyPrefs; missing = inherit/true. */
+  readonly notifyPrefs?: TeamNotifyPrefs;
 }
 
 export interface EquipmentItemNote {
@@ -262,6 +317,8 @@ export interface WorkspaceRecord {
   readonly notes: readonly WorkspaceNote[];
   readonly history: readonly HistoryEntry[];
   readonly invitations: readonly PendingInvitation[];
+  /** Team Discord PW defaults — optional; missing keys default true. Member override wins. */
+  readonly notifyPrefs?: TeamNotifyPrefs;
   readonly revision: number;
   readonly updatedLabel: string;
 }
@@ -889,6 +946,7 @@ export function buildDemoWorkspace(viewer: PlayerIdentity): WorkspaceRecord {
     name: 'Asteria',
     description: 'Wspólna przestrzeń postaci, ekwipunku i codziennych potwierdzeń zespołu.',
     archived: false,
+    notifyPrefs: { ...DEFAULT_TEAM_NOTIFY_PREFS },
     revision: 19,
     updatedLabel: 'przed chwilą',
     members: [
@@ -1360,6 +1418,7 @@ export function createWorkspace(state: PlayerStoreState, name: string): PlayerSt
     name: trimmed,
     description: 'Prywatna przestrzeń gracza. Solo działa na tym samym modelu co zespół.',
     archived: false,
+    notifyPrefs: { ...DEFAULT_TEAM_NOTIFY_PREFS },
     members: [
       {
         id: state.viewer.id,
@@ -1508,6 +1567,93 @@ export function archiveWorkspace(
       : (remainingActive[0]?.id ?? null),
     lastOpenedCharacterId: lastStillValid ? next.lastOpenedCharacterId : null,
   };
+}
+
+/** Owner updates Discord PW prefs for the team (characterTimers / kingdomWar). */
+/** Owner updates team Discord PW defaults (characterTimers / kingdomWar). */
+export function updateWorkspaceNotifyPrefs(
+  state: PlayerStoreState,
+  workspaceId: string,
+  patch: Partial<TeamNotifyPrefs>,
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace || workspace.archived) return state;
+  if (!isWorkspaceOwner(workspace, state.viewer.id)) return state;
+
+  const currentPrefs = normalizeTeamNotifyPrefs(workspace.notifyPrefs);
+  const nextPrefs = normalizeTeamNotifyPrefs({
+    ...currentPrefs,
+    ...patch,
+  });
+  if (
+    nextPrefs.characterTimers === currentPrefs.characterTimers &&
+    nextPrefs.kingdomWar === currentPrefs.kingdomWar
+  ) {
+    return state;
+  }
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    notifyPrefs: nextPrefs,
+    revision: current.revision + 1,
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: 'Zmieniono powiadomienia Discord (zespół)',
+        detail: 'PW timerów postaci: ' + (nextPrefs.characterTimers ? 'włączone' : 'wyłączone') + ' · PW wojny: ' + (nextPrefs.kingdomWar ? 'włączone' : 'wyłączone'),
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
+}
+
+/** Member updates personal Discord PW override (wins over team defaults). */
+export function updateMemberNotifyPrefs(
+  state: PlayerStoreState,
+  workspaceId: string,
+  patch: Partial<TeamNotifyPrefs>,
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
+  if (!workspace || workspace.archived) return state;
+  const member = workspace.members.find((entry) => entry.id === state.viewer!.id);
+  if (!member) return state;
+
+  const currentPrefs = normalizeTeamNotifyPrefs(member.notifyPrefs);
+  const nextPrefs = normalizeTeamNotifyPrefs({
+    ...currentPrefs,
+    ...patch,
+  });
+  if (
+    nextPrefs.characterTimers === currentPrefs.characterTimers &&
+    nextPrefs.kingdomWar === currentPrefs.kingdomWar &&
+    member.notifyPrefs
+  ) {
+    return state;
+  }
+
+  return updateWorkspace(state, workspaceId, (current, viewer) => ({
+    ...current,
+    revision: current.revision + 1,
+    members: current.members.map((entry) =>
+      entry.id === viewer.id ? { ...entry, notifyPrefs: nextPrefs } : entry,
+    ),
+    history: [
+      historyEntry(current.id, viewer, {
+        characterId: null,
+        characterName: null,
+        resource: 'member',
+        title: 'Zmieniono własne powiadomienia Discord',
+        detail: 'PW timerów postaci: ' + (nextPrefs.characterTimers ? 'włączone' : 'wyłączone') + ' · PW wojny: ' + (nextPrefs.kingdomWar ? 'włączone' : 'wyłączone'),
+        revision: current.revision + 1,
+      }),
+      ...current.history,
+    ],
+  }));
 }
 
 export function touchLastOpened(
@@ -2897,6 +3043,9 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
       workspaces: (parsed.workspaces ?? []).map((workspace) => ({
         ...workspace,
         archived: Boolean((workspace as { archived?: boolean }).archived),
+        notifyPrefs: normalizeTeamNotifyPrefs(
+          (workspace as { notifyPrefs?: unknown }).notifyPrefs,
+        ),
         members: workspace.members ?? [],
         characters: (workspace.characters ?? []).map((character) => {
           const characterClass = character.characterClass;
