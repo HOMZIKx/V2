@@ -138,7 +138,7 @@ jobs:
       - name: Migrate identity database
         run: pnpm --dir services/identity-service migrate
         env:
-          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/player_team
+          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
 
       - name: Run identity auth integration tests
         run: pnpm exec vitest run --config services/identity-service/vitest.config.ts
