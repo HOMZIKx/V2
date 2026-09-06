@@ -26,7 +26,6 @@ import {
   RSVP_LIST_PLACEHOLDER,
   RSVP_PRESET,
   SAMPLE_DUNGEON_CONTENT,
-  type CloseAt,
   type RecurringLocalDraft,
   type SeedReaction,
   countableReactions,
