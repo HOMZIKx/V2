@@ -51,12 +51,3 @@ export function MarketLaterPage() {
     />
   );
 }
-
-export function ActivityLaterPage() {
-  return (
-    <LaterModulePage
-      title="Aktywność"
-      summary="Eventy i RSVP nie zastępują historii zmian w przestrzeni (EQ, lokalizacje, timery)."
-    />
-  );
-}

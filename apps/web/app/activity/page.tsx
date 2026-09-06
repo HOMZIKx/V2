@@ -1,7 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { ActivityCenter } from './activity-center';
-
+/** WWW Activity tab removed; events stay on Discord / activity-service API. */
 export default function ActivityPage() {
-  return <ActivityCenter />;
+  redirect('/');
 }

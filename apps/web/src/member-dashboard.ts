@@ -32,7 +32,7 @@ export interface MemberNotice {
 }
 
 export interface MemberModuleAccess {
-  readonly id: 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'activity';
+  readonly id: 'teams' | 'characters' | 'timers' | 'maps' | 'market';
   readonly label: string;
   readonly description: string;
   readonly href: string | null;
@@ -127,13 +127,6 @@ export const memberDashboardFixture: MemberDashboardSnapshot = {
       description: 'Ogłoszenia i przedmioty dostępne zgodnie z uprawnieniami.',
       href: null,
       state: 'coming',
-    },
-    {
-      id: 'activity',
-      label: 'Aktywność',
-      description: 'Centrum Aktywności — shell UI; dane z activity-service (most Discord / New Bot w toku).',
-      href: '/activity',
-      state: 'available',
     },
   ],
 };
