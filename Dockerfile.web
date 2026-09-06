@@ -10,6 +10,8 @@ COPY apps/web/package.json ./apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter @v2/web...
 
 FROM deps AS build
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED=true
 COPY tsconfig.base.json ./tsconfig.base.json
 COPY packages/typescript-config ./packages/typescript-config
 COPY apps/web ./apps/web
@@ -19,6 +21,7 @@ FROM base AS runtime
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
+ENV NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED=true
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
