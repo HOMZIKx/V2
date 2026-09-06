@@ -143,6 +143,7 @@ export function TechnikWygladPage() {
       if (nextIdx < 0 || nextIdx >= prev.customButtons.length) return prev;
       const copy = [...prev.customButtons];
       const [item] = copy.splice(idx, 1);
+      if (!item) return prev;
       copy.splice(nextIdx, 0, item);
       return { ...prev, customButtons: copy };
     });

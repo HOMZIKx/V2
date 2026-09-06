@@ -135,7 +135,7 @@ describe('confirmCharacterProgressTimerFromBot EQ restart', () => {
 
     const expected = restartAfterDone('skill_book', new Date(before));
     const timers = (putBody as { state: { workspaces: Array<{ timers: Array<Record<string, unknown>> }> } })
-      .state.workspaces[0].timers;
+      .state.workspaces[0]!.timers;
     const updated = timers.find((t) => t.id === timerId)!;
     expect(updated.status).toBe('running');
     expect(updated.remainingLabel).toBe(expected.remainingLabel);
@@ -201,7 +201,7 @@ describe('snoozeCharacterProgressTimerFromBot', () => {
     }
     const updated = (
       putBody as { state: { workspaces: Array<{ timers: Array<Record<string, unknown>> }> } }
-    ).state.workspaces[0].timers.find((t) => t.id === timerId)!;
+    ).state.workspaces[0]!.timers.find((t) => t.id === timerId)!;
     expect(updated.status).toBe('ready');
     expect(updated.reminderState).toBe('on');
     expect(updated.discordReminder).toBe(true);

@@ -559,7 +559,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     }
     await guildChannel.messages.edit(input.messageId, {
       ...input.message,
-      content: input.message.content ?? null,
+      content: input.message.content ?? '',
       embeds: [],
       flags: typeof input.message.flags === 'number' ? input.message.flags : 32768,
     });

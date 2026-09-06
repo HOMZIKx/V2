@@ -555,8 +555,8 @@ export class InteractionRouter {
         return;
       }
       const who = snooze.characterName ? ` · ${snooze.characterName}` : '';
-      const minutes = snooze.reminderMinutesBefore;
-      const delayMs = minutes * 60_000;
+      const scheduledMinutes = snooze.reminderMinutesBefore;
+      const delayMs = scheduledMinutes * 60_000;
       const scheduled = scheduleCharacterTimerReminder(
         {
           discordUserId: interaction.user.id,

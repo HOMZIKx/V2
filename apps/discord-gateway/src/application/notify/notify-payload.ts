@@ -92,7 +92,7 @@ export const TestDmPayloadSchema = z.object({
   module: z.enum(['characterTimers', 'kingdomWar']),
   discordAccountId: snowflakeSchema,
   messageTemplate: z.string().trim().min(1).max(1800).optional(),
-  sampleVars: z.record(z.union([z.string(), z.number()])).optional(),
+  sampleVars: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 
 export type TestDmPayload = z.infer<typeof TestDmPayloadSchema>;
@@ -105,7 +105,7 @@ export function isCharacterProgressTimerPayload(
 
 export function formatLiveTimerStatus(timer: {
   readonly status: string;
-  readonly remainingLabel?: string;
+  readonly remainingLabel?: string | undefined;
 }): string {
   if (timer.status === 'ready') return 'gotowe';
   if (timer.status === 'running') return timer.remainingLabel?.trim() || 'w toku';

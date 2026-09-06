@@ -15,8 +15,8 @@ export type RankedMember = {
 };
 
 function shiftDay(dayKey: string, deltaDays: number): string {
-  const [y, m, d] = dayKey.split('-').map(Number);
-  const utc = Date.UTC(y, (m as number) - 1, d as number) + deltaDays * 86_400_000;
+  const [y = 1970, m = 1, d = 1] = dayKey.split('-').map(Number);
+  const utc = Date.UTC(y, m - 1, d) + deltaDays * 86_400_000;
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'UTC',
     year: 'numeric',
@@ -54,11 +54,11 @@ export class MemberActivityQuery {
   ) {}
 
   public ranking(input: {
-    readonly guildId?: string;
-    readonly window?: string;
-    readonly topN?: number;
-    readonly q?: string;
-    readonly full?: boolean;
+    readonly guildId?: string | undefined;
+    readonly window?: string | undefined;
+    readonly topN?: number | undefined;
+    readonly q?: string | undefined;
+    readonly full?: boolean | undefined;
   }) {
     const cfg = this.getConfig();
     const guildId = (input.guildId?.trim() || cfg.guildId).trim();
@@ -113,8 +113,8 @@ export class MemberActivityQuery {
 
   public me(input: {
     readonly discordUserId: string;
-    readonly guildId?: string;
-    readonly window?: string;
+    readonly guildId?: string | undefined;
+    readonly window?: string | undefined;
   }) {
     const cfg = this.getConfig();
     const full = this.ranking({ guildId: input.guildId, window: input.window, full: true });

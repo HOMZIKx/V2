@@ -43,7 +43,7 @@ type PersistedState = {
 export type VersionedConfigStoreOptions = {
   readonly dataDir: string;
   readonly fileName?: string;
-  readonly now?: () => Date;
+  readonly now?: (() => Date) | undefined;
 };
 
 export class ApplyValidationError extends Error {

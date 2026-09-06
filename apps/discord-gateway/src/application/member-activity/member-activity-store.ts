@@ -101,7 +101,7 @@ export class MemberActivityStore {
     readonly guildId: string;
     readonly discordUserId: string;
     readonly minutes: number;
-    readonly displayName?: string;
+    readonly displayName?: string | undefined;
     readonly at?: Date;
   }): void {
     if (input.minutes <= 0) return;
@@ -122,8 +122,8 @@ export class MemberActivityStore {
     readonly guildId: string;
     readonly fromDayInclusive: string;
     readonly toDayInclusive: string;
-  }): Map<string, { messageCount: number; voiceMinutes: number; displayName?: string }> {
-    const out = new Map<string, { messageCount: number; voiceMinutes: number; displayName?: string }>();
+  }): Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }> {
+    const out = new Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }>();
     for (const day of this.listDayKeys(input.guildId)) {
       if (day < input.fromDayInclusive || day > input.toDayInclusive) continue;
       const file = this.readDay(input.guildId, day);

@@ -179,5 +179,5 @@ export function serializeCustomButtons(
 export function accentHexToInt(hex: string): number | undefined {
   const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
   if (!m) return undefined;
-  return Number.parseInt(m[1], 16);
+  return Number.parseInt(m[1]!, 16);
 }

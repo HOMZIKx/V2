@@ -7,7 +7,7 @@ import { MemberActivityStore } from './member-activity-store.js';
 
 type VoiceSession = {
   readonly joinedAtMs: number;
-  readonly displayName?: string;
+  readonly displayName?: string | undefined;
 };
 
 export class MemberActivityCollector {

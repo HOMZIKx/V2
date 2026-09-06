@@ -51,7 +51,7 @@ export function pickMemberActivityGuildFromIds(memberOf: readonly string[]): Res
 }
 
 function pickFromKnownMembership(memberOf: readonly string[]): ResolvedMemberActivityGuild | null {
-  const knownIds = MEMBER_ACTIVITY_KNOWN_GUILDS.map((g) => g.id);
+  const knownIds: readonly string[] = MEMBER_ACTIVITY_KNOWN_GUILDS.map((g) => g.id);
   const hit = memberOf.filter((id) => knownIds.includes(id));
   if (hit.includes(DESTILED_GUILD_ID)) {
     return {

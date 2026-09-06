@@ -100,11 +100,12 @@ function mapPanels(parsed: Record<string, unknown>, fallbackChannelId?: string):
       panelId: String(p.panelId ?? p.messageId ?? p.id ?? ''),
       isComponentsV2: p.isComponentsV2 !== false,
       jumpUrl: typeof p.jumpUrl === 'string' ? p.jumpUrl : '',
-      channelId:
-        typeof p.channelId === 'string'
-          ? p.channelId
-          : fallbackChannelId,
-      kind: typeof p.kind === 'string' ? p.kind : undefined,
+      ...(typeof p.channelId === 'string'
+        ? { channelId: p.channelId }
+        : fallbackChannelId
+          ? { channelId: fallbackChannelId }
+          : {}),
+      ...(typeof p.kind === 'string' ? { kind: p.kind } : {}),
     }))
     .filter((p) => /^\d{17,20}$/.test(p.messageId));
 }

@@ -1701,7 +1701,7 @@ export function updateMemberNotifyPrefs(
 
   const prev =
     member.notifyPrefs && typeof member.notifyPrefs === 'object' ? member.notifyPrefs : {};
-  const nextPrefs: Partial<TeamNotifyPrefs> = { ...prev };
+  const nextPrefs: { characterTimers?: boolean; kingdomWar?: boolean } = { ...prev };
   if (typeof patch.characterTimers === 'boolean') {
     nextPrefs.characterTimers = patch.characterTimers;
   }
@@ -3148,7 +3148,7 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
             return member;
           }
           const src = rawPrefs as Record<string, unknown>;
-          const partial: Partial<TeamNotifyPrefs> = {};
+          const partial: { characterTimers?: boolean; kingdomWar?: boolean } = {};
           if (typeof src.characterTimers === "boolean") partial.characterTimers = src.characterTimers;
           if (typeof src.kingdomWar === "boolean") partial.kingdomWar = src.kingdomWar;
           return Object.keys(partial).length > 0 ? { ...member, notifyPrefs: partial } : member;
