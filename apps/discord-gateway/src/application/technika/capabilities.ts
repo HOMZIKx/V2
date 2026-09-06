@@ -177,9 +177,17 @@ export const BOT_CAPABILITIES = [
     id: 'publishChannels',
     title: 'Kanały publikacji (cel → kanał)',
     description:
-      'Mapa: centrumHub, notifications, dungeons, trade, recurring, events. Nie bare allowlist. Preferuj guild-scoped + GET channels picker.',
+      'Mapa: centrumHub, notifications, dungeons, trade, recurring, events, website (Strona WWW / link do aplikacji). Nie bare allowlist. Preferuj guild-scoped + GET channels picker. Zero auto-publish.',
     valueType: 'object',
     default: {},
+  },
+  {
+    id: 'recurringPosts',
+    title: 'Posty cykliczne (szkic / config)',
+    description:
+      'Config-only flat object: enabled/title/content/schedule{mode,daysOfWeek,timeWarsaw,horizonDays}/channelId/seedReactions/showCountsInPost/rsvpEnabled/rules. Scheduler/cron NIE zaimplementowany — uczciwa luka. Zero auto-publish.',
+    valueType: 'object',
+    default: { enabled: false, title: '', content: '', schedule: { mode: 'weekly', daysOfWeek: [1, 3, 5], timeWarsaw: '18:00', horizonDays: 90 }, channelId: '', seedReactions: [], showCountsInPost: false, rsvpEnabled: false, rules: { whoCanReact: 'everyone', closeAt: 'none' } },
   },
   {
     id: 'strict-guild-isolation',
@@ -233,6 +241,8 @@ export type GuildConfig = {
   readonly rights: readonly GuildRight[];
   readonly notes?: string;
   readonly publishChannels?: PublishChannelsMap;
+  /** Per-guild DESTILED web app URL (with publishChannels.website). Zero auto-publish. */
+  readonly appWebsiteUrl?: string;
 };
 
 export type GuildsMap = Readonly<Record<string, GuildConfig>>;
@@ -255,6 +265,7 @@ export function defaultGuildConfig(partial?: Partial<GuildConfig>): GuildConfig 
       ? [...partial.rights]
       : ['technika.config', 'discord.notify', 'discord.panels'],
     ...(partial?.notes ? { notes: partial.notes } : {}),
+    ...(partial?.appWebsiteUrl ? { appWebsiteUrl: partial.appWebsiteUrl } : {}),
   };
 }
 
@@ -273,7 +284,48 @@ export type PublishChannelPurpose =
   | 'dungeons'
   | 'trade'
   | 'recurring'
-  | 'events';
+  | 'events'
+  | 'website';
+
+
+
+export type SeedReactionRole = 'decorative' | 'rsvp_yes' | 'rsvp_no' | 'rsvp_maybe' | 'count';
+
+export type SeedReaction = {
+  readonly emoji: string;
+  readonly role: SeedReactionRole;
+  readonly label?: string;
+};
+
+export type RecurringSchedule = {
+  readonly mode: 'daily' | 'weekly' | 'days';
+  readonly daysOfWeek: readonly number[];
+  readonly timeWarsaw: string;
+  readonly horizonDays: number;
+};
+
+export type RecurringPostRules = {
+  readonly maxSlots?: number | null;
+  readonly closeAt?: 'none' | 'at_start' | 'manual';
+  readonly whoCanReact: 'everyone' | 'roles';
+  readonly roleIds?: readonly string[];
+};
+
+/** Exact New Bot recurringPosts object (config-only; no scheduler runtime).
+ * content placeholders `{{count:EMOJI}}` / `{{rsvp_list}}` resolved at publish/scheduler time.
+ */
+export type RecurringPostsConfig = {
+  readonly enabled: boolean;
+  readonly title: string;
+  /** May include {{count:✅}} / {{rsvp_list}} — not resolved at draft save. */
+  readonly content: string;
+  readonly schedule: RecurringSchedule;
+  readonly channelId: string;
+  readonly seedReactions: readonly SeedReaction[];
+  readonly showCountsInPost: boolean;
+  readonly rsvpEnabled: boolean;
+  readonly rules: RecurringPostRules;
+};
 
 /** purpose -> channelId map (not a bare allowlist). */
 export type PublishChannelsMap = Readonly<Partial<Record<PublishChannelPurpose, string>>>;
@@ -288,6 +340,7 @@ export type BotConfigValues = {
   readonly guilds: GuildsMap;
   readonly memberActivity: MemberActivityConfig;
   readonly publishChannels: PublishChannelsMap;
+  readonly recurringPosts: RecurringPostsConfig;
 };
 
 export function defaultTimersNotify(): TimersNotifyConfig {
@@ -313,6 +366,26 @@ export function defaultPublishChannels(): PublishChannelsMap {
   return {};
 }
 
+export function defaultRecurringPosts(): RecurringPostsConfig {
+  return {
+    enabled: false,
+    title: '',
+    content: '',
+    schedule: {
+      mode: 'weekly',
+      daysOfWeek: [1, 3, 5],
+      timeWarsaw: '18:00',
+      horizonDays: 90,
+    },
+    channelId: '',
+    seedReactions: [],
+    showCountsInPost: false,
+    rsvpEnabled: false,
+    rules: { whoCanReact: 'everyone', closeAt: 'none' },
+  };
+}
+
+
 export function defaultKingdomWar(): KingdomWarConfig {
   return {
     enabled: false,
@@ -336,6 +409,7 @@ export function defaultBotConfigValues(): BotConfigValues {
     guilds: {},
     memberActivity: defaultMemberActivity(),
     publishChannels: defaultPublishChannels(),
+    recurringPosts: defaultRecurringPosts(),
   };
 }
 
@@ -362,7 +436,7 @@ export function listCapabilitiesForApi(strictGuildIsolation: boolean): {
       if ('fields' in cap && cap.fields) {
         base.fields = cap.fields;
       }
-      if (cap.readOnly) {
+      if ('readOnly' in cap && cap.readOnly) {
         base.readOnly = true;
       }
       if (cap.id === 'strict-guild-isolation') {

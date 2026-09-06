@@ -11,19 +11,42 @@ import {
 } from 'discord.js';
 import { randomUUID } from 'node:crypto';
 
+import { defaultBotConfigValues, type BotConfigValues } from '../../application/technika/capabilities.js';
+import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
 import {
   authorizePanelOperator,
-  isAllowedGuild,
+  isAllowedInteractionContext,
 } from '../../application/interactions/authorization.js';
 import { claimInteractionId } from '../../application/interactions/idempotency.js';
+import {
+  claimKingdomWarCharacter,
+} from '../../application/notify/kingdom-war-claims.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { confirmTimerKillFromBot } from '../../infrastructure/player-team/confirm-timer-kill.js';
+import { confirmCharacterProgressTimerFromBot } from '../../infrastructure/player-team/confirm-character-timer.js';
+import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
 import { safeErrorMessage } from '../../infrastructure/security/secret-redaction.js';
 import {
   createSignedCustomId,
+  HUB_CUSTOM_TO_ACTION,
+  isHubAction,
+  parseHubEphemButtonId,
   panelPayload,
   parseSignedCustomId,
 } from '../../infrastructure/security/signed-custom-id.js';
+import { resolvePanelButtonMetaStore } from '../../application/technika/panel-button-meta.js';
+import { HUB_ACTION_LABELS } from '../../presentation/discord/panel-publish-appearance.js';
+import {
+  isTimerButtonAction,
+  isWarClaimAction,
+  parseTimerButtonCustomId,
+} from '../../infrastructure/security/timer-custom-id.js';
+import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
+import {
+  KINGDOM_WAR_CHARACTER_STUB,
+  renderKingdomWarReminder,
+} from '../../presentation/discord/kingdom-war-renderer.js';
 import {
   buildStatusEmbed,
   renderDeleteConfirmation,
@@ -38,6 +61,7 @@ export type InteractionRouterDeps = {
     warn(message: string, meta?: Record<string, unknown>): void;
     error(message: string, meta?: Record<string, unknown>): void;
   };
+  getBotConfig?: () => BotConfigValues;
 };
 
 export class InteractionRouter {
@@ -62,10 +86,23 @@ export class InteractionRouter {
     }
 
     try {
-      if (!isAllowedGuild(interaction.guildId, this.deps.config.DISCORD_TEST_GUILD_ID)) {
+      const allowDm =
+        interaction.isMessageComponent() || interaction.isModalSubmit()
+          ? this.isDmAllowedComponent(interaction.customId)
+          : false;
+
+      if (
+        !isAllowedInteractionContext({
+          guildId: interaction.guildId,
+          allowedGuildId: this.deps.config.DISCORD_TEST_GUILD_ID,
+          allowDm,
+        })
+      ) {
         if (interaction.isRepliable()) {
           await interaction.reply({
-            content: 'Ten bot działa wyłącznie na zatwierdzonym serwerze testowym V2.',
+            content: interaction.guildId
+              ? 'Ten bot działa wyłącznie na zatwierdzonym serwerze testowym V2.'
+              : 'Ta interakcja DM nie jest obsługiwana.',
             flags: MessageFlags.Ephemeral,
           });
         }
@@ -113,6 +150,18 @@ export class InteractionRouter {
         type: interaction.type,
         durationMs: Date.now() - started,
       });
+    }
+  }
+
+  private isDmAllowedComponent(customId: string): boolean {
+    try {
+      const parsed = parseSignedCustomId(
+        customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+      return isTimerButtonAction(parsed.action) || isWarClaimAction(parsed.action);
+    } catch {
+      return false;
     }
   }
 
@@ -208,6 +257,38 @@ export class InteractionRouter {
   }
 
   private async handleComponent(interaction: MessageComponentInteraction): Promise<void> {
+    // Character progress timer buttons (Gotowe / Przypomnij później)
+    try {
+      const characterTimer = parseCharacterTimerButtonCustomId(
+        interaction.customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+      if (interaction.isButton()) {
+        await this.handleCharacterTimerButton(
+          interaction,
+          characterTimer.operation,
+          characterTimer.payload,
+        );
+        return;
+      }
+    } catch {
+      // not a character timer button — fall through
+    }
+
+    // Legacy map-hunt timer buttons (not exposed in Technika)
+    try {
+      const timer = parseTimerButtonCustomId(
+        interaction.customId,
+        this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      );
+      if (interaction.isButton()) {
+        await this.handleTimerButton(interaction, timer.operation, timer.payload);
+        return;
+      }
+    } catch {
+      // not a timer button — fall through
+    }
+
     let parsed;
     try {
       parsed = parseSignedCustomId(
@@ -219,6 +300,17 @@ export class InteractionRouter {
         content: 'Ten panel jest nieaktualny. Użyj `/panel-test`, aby opublikować nowy.',
         flags: MessageFlags.Ephemeral,
       });
+      return;
+    }
+
+    if (isWarClaimAction(parsed.action) && interaction.isStringSelectMenu()) {
+      await this.handleWarClaim(interaction);
+      return;
+    }
+
+
+    if (isHubAction(parsed.action) && interaction.isButton()) {
+      await this.handleHubButton(interaction, parsed.action, parsed.payload);
       return;
     }
 
@@ -373,6 +465,188 @@ export class InteractionRouter {
 
     await interaction.reply({
       content: 'Nieobsługiwana akcja komponentu.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+
+
+  private async handleHubButton(
+    interaction: MessageComponentInteraction,
+    action: import('../../infrastructure/security/signed-custom-id.js').ComponentAction,
+    payload: string,
+  ): Promise<void> {
+    if (action === 'hub_ephem') {
+      const buttonId = parseHubEphemButtonId(payload);
+      const text =
+        (buttonId ? resolvePanelButtonMetaStore().getEphemeral(buttonId) : null) ??
+        'Brak tresci ephemeral dla tego przycisku.';
+      await interaction.reply({ content: text, flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    const hubId = HUB_CUSTOM_TO_ACTION[action];
+    const label =
+      hubId && hubId in HUB_ACTION_LABELS
+        ? HUB_ACTION_LABELS[hubId as keyof typeof HUB_ACTION_LABELS]
+        : 'Akcja';
+
+    const stubs: Record<string, string> = {
+      create: '**Utworz aktywnosc** - formularz Centrum (ephemeral). Szkic handlera New Bot.',
+      lfg: '**Szukam ekipy** - LFG (ephemeral). Handler gotowy.',
+      mine: '**Moje aktywnosci** - prywatna lista (ephemeral). Handler gotowy.',
+      notify: '**Powiadomienia** - skrzynka Centrum (ephemeral). Handler gotowy.',
+      profile: '**Profil** - widok profilu (ephemeral). Handler gotowy.',
+      forme: '**Dla mnie** - dopasowane aktywnosci (ephemeral). Handler gotowy.',
+    };
+
+    await interaction.reply({
+      content: stubs[hubId ?? ''] ?? (label + ' - akcja Centrum przyjeta.'),
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
+  private async handleCharacterTimerButton(
+    interaction: MessageComponentInteraction,
+    operation: 'gotowe' | 'przypomnij',
+    payload: { timerId: string },
+  ): Promise<void> {
+    const live = this.deps.getBotConfig?.() ?? defaultBotConfigValues();
+    const characterCfg = live.characterTimers ?? live.timersNotify;
+    const guildGate = evaluateGuildModuleGate({
+      config: live,
+      guildId: interaction.guildId ?? this.deps.config.DISCORD_TEST_GUILD_ID,
+      module: 'characterTimers',
+      right: 'discord.notify',
+    });
+    if (!guildGate.allowed) {
+      await interaction.reply({
+        content: `Moduł timerów postaci jest wyłączony dla tej guildii (${guildGate.reason}).`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (operation === 'przypomnij') {
+      const minutes = characterCfg.reminderMinutesBefore;
+      await interaction.reply({
+        content: `Przypomnę ponownie za ok. ${minutes} min — bez otwierania WWW.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const actorName = interaction.user.globalName ?? interaction.user.username;
+    // Canonical owner key = bare Discord snowflake (matches WWW viewer.id / x-demo-viewer-id).
+    const result = await confirmCharacterProgressTimerFromBot({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: canonicalOwnerViewerId(interaction.user.id),
+      timerId: payload.timerId,
+      actorName,
+    });
+
+    if (!result.ok) {
+      await interaction.editReply({
+        content: `Nie udało się oznaczyć timera postaci (${result.error}). Sprawdź player-team albo użyj karty postaci w DESTILED.`,
+      });
+      return;
+    }
+
+    const who = result.characterName ? ` · ${result.characterName}` : '';
+    await interaction.editReply({
+      content: `Gotowe: **${result.label}**${who} (rewizja ${result.revision}). Bez otwierania WWW.`,
+    });
+  }
+
+  private async handleTimerButton(
+    interaction: MessageComponentInteraction,
+    operation: 'zbite' | 'odloz',
+    payload: { mapKey: string; channel: number; timerKey: string },
+  ): Promise<void> {
+    if (operation === 'odloz') {
+      const minutes = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).timersNotify.reminderMinutesBefore;
+      await interaction.reply({
+        content: `Przypomnę ponownie za ok. ${minutes} min (szkielet przypomnienia — bez otwierania WWW).`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const actorName = interaction.user.globalName ?? interaction.user.username;
+    const result = await confirmTimerKillFromBot({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: canonicalOwnerViewerId(interaction.user.id),
+      mapKey: payload.mapKey,
+      channel: payload.channel,
+      timerKey: payload.timerKey,
+      actorName,
+    });
+
+    if (!result.ok) {
+      await interaction.editReply({
+        content: `Nie udało się zapisać zbicia bez WWW (${result.error}). Sprawdź player-team albo użyj Timerów w DESTILED.`,
+      });
+      return;
+    }
+
+    await interaction.editReply({
+      content: `Zapisano zbicie: **${payload.timerKey}** · ${payload.mapKey} CH${payload.channel} (rewizja ${result.revision}). Bez otwierania WWW.`,
+    });
+  }
+
+  private async handleWarClaim(interaction: MessageComponentInteraction): Promise<void> {
+    if (!interaction.isStringSelectMenu()) {
+      await interaction.reply({
+        content: 'Nieprawidłowa akcja wojny.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+    const characterId = interaction.values[0];
+    if (!characterId) {
+      await interaction.reply({
+        content: 'Nie wybrano postaci.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const warCfg = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).kingdomWar;
+    const result = claimKingdomWarCharacter({
+      characterId,
+      discordUserId: interaction.user.id,
+      maxClaimsPerUser: warCfg.maxClaimsPerUser ?? 3,
+    });
+    if (!result.ok) {
+      const content =
+        result.reason === 'max_claims'
+          ? `Limit claimów wojny: max ${warCfg.maxClaimsPerUser ?? 3} postaci na użytkownika.`
+          : 'Ta postać jest już zajęta przez kogoś innego.';
+      await interaction.reply({
+        content,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const cfg = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).kingdomWar;
+    const character = KINGDOM_WAR_CHARACTER_STUB.find((c) => c.id === characterId);
+    const updated = renderKingdomWarReminder({
+      config: cfg,
+      signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      claims: result.claims,
+    });
+
+    await interaction.update({
+      content: updated.content ?? null,
+      components: updated.components ?? [],
+    });
+    await interaction.followUp({
+      content: `Zadeklarowano: **${character?.name ?? characterId}**. Inni widzą aktualny skład.`,
       flags: MessageFlags.Ephemeral,
     });
   }

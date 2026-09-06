@@ -10,7 +10,16 @@ import {
   createSignedCustomId,
   panelPayload,
 } from '../../infrastructure/security/signed-custom-id.js';
+import { createTimerButtonCustomId } from '../../infrastructure/security/timer-custom-id.js';
 import { InteractionRouter } from './interaction-router.js';
+
+const confirmKillMock = vi.hoisted(() =>
+  vi.fn(async () => ({ ok: true as const, revision: 7 })),
+);
+
+vi.mock('../../infrastructure/player-team/confirm-timer-kill.js', () => ({
+  confirmTimerKillFromBot: confirmKillMock,
+}));
 
 const secret = 's'.repeat(32);
 const guildId = '1534228693017432124';
@@ -328,6 +337,75 @@ describe('InteractionRouter', () => {
     expect(second.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: expect.stringMatching(/już przetwarzana/) as unknown as string,
+      }),
+    );
+  });
+
+  it('handles Zbite timer button happy path without WWW (DM allowed)', async () => {
+    confirmKillMock.mockClear();
+    const gateway = {
+      getSnapshot: vi.fn(),
+      getState: vi.fn(() => 'ready'),
+      checkChannelPermissions: vi.fn(),
+    };
+    const router = new InteractionRouter({
+      config: makeConfig(),
+      gateway: gateway as never,
+      logger: createLogger(),
+    });
+    const customId = createTimerButtonCustomId(
+      'zbite',
+      { mapKey: 'a1', channel: 2, timerKey: 'metin-a1-ch2-eid1' },
+      secret,
+    );
+    const interaction = baseInteraction({
+      id: 'interaction-timer-zbite',
+      guildId: null,
+      isMessageComponent: () => true,
+      isButton: () => true,
+      customId,
+      user: { id: '222222222222222222', username: 'Tester', globalName: 'Tester' },
+    });
+    await router.handle(interaction as never);
+    expect(interaction.deferReply).toHaveBeenCalledWith({
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(confirmKillMock).toHaveBeenCalled();
+    expect(interaction.editReply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringMatching(/Zapisano zbicie/) as unknown as string,
+      }),
+    );
+  });
+
+  it('handles Odłóż timer button with Polish ephemeral ack', async () => {
+    const gateway = {
+      getSnapshot: vi.fn(),
+      getState: vi.fn(() => 'ready'),
+      checkChannelPermissions: vi.fn(),
+    };
+    const router = new InteractionRouter({
+      config: makeConfig(),
+      gateway: gateway as never,
+      logger: createLogger(),
+    });
+    const customId = createTimerButtonCustomId(
+      'odloz',
+      { mapKey: 'a1', channel: 2, timerKey: 'metin-a1-ch2-eid1' },
+      secret,
+    );
+    const interaction = baseInteraction({
+      id: 'interaction-timer-odloz',
+      guildId: null,
+      isMessageComponent: () => true,
+      isButton: () => true,
+      customId,
+    });
+    await router.handle(interaction as never);
+    expect(interaction.reply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringMatching(/Odłożono/) as unknown as string,
+        flags: MessageFlags.Ephemeral,
       }),
     );
   });

@@ -61,6 +61,9 @@ export class HealthController {
     readonly lastError: string | null;
     readonly gitCommitSha: string;
     readonly panelRenderer: string;
+    readonly joinedGuildCount: number;
+    readonly joinedGuildIds: readonly string[];
+    readonly guildCacheSize: number;
   } {
     if (!this.config.DISCORD_ENABLED || this.gateway === null) {
       return {
@@ -74,6 +77,9 @@ export class HealthController {
         lastError: null,
         gitCommitSha: this.config.GIT_COMMIT_SHA,
         panelRenderer: 'components-v2-container',
+        joinedGuildCount: 0,
+        joinedGuildIds: [],
+        guildCacheSize: 0,
       };
     }
 
@@ -89,6 +95,9 @@ export class HealthController {
       lastError: snapshot.lastError,
       gitCommitSha: this.config.GIT_COMMIT_SHA,
       panelRenderer: 'components-v2-container',
+      joinedGuildCount: snapshot.joinedGuildCount ?? 0,
+      joinedGuildIds: snapshot.joinedGuildIds ?? [],
+      guildCacheSize: snapshot.guildCacheSize ?? 0,
     };
   }
 

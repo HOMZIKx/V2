@@ -13,6 +13,7 @@ import { loadDiscordConfig } from './interface/discord/discord-bootstrap.service
 
 loadEnvFile(path.resolve(process.cwd(), '.env'));
 loadEnvFile(path.resolve(process.cwd(), 'apps/discord-gateway/.env'));
+loadEnvFile(path.resolve(process.cwd(), '../../.env'));
 
 function resolveGitCommitSha(): string {
   if (process.env.GIT_COMMIT_SHA && process.env.GIT_COMMIT_SHA !== 'unknown') {

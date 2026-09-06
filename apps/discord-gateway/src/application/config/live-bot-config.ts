@@ -10,6 +10,7 @@ export const TimersNotifyConfigSchema = z.object({
 export const KingdomWarConfigSchema = z.object({
   enabled: z.boolean(),
   warAt: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  maxClaimsPerUser: z.number().int().min(1).max(20).default(3),
   notifyMinutesBefore: z.number().int().min(0).max(24 * 60),
   messageTemplate: z.string().trim().min(1).max(1800),
   /** Stub roster until Kuzyn profile is wired — do not invent a fake roster API. */
@@ -48,6 +49,7 @@ export const DEFAULT_LIVE_BOT_CONFIG: LiveBotConfig = {
     enabled: false,
     warAt: '18:00',
     notifyMinutesBefore: 30,
+    maxClaimsPerUser: 3,
     messageTemplate:
       'Wojna królestw o {{warAt}} (Warszawa). Zostało {{minutes}} min — wybierz postać na wojnę.',
     characterRosterStub: [

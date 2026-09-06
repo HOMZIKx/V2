@@ -37,4 +37,28 @@ describe('signed custom ids', () => {
     const value = generateSigningSecret(32);
     expect(value.length).toBeGreaterThanOrEqual(40);
   });
+
+  it('supports timer and war actions', () => {
+    for (const action of ['timer_zbite', 'timer_odloz', 'war_claim'] as const) {
+      const customId = createSignedCustomId(action, 'payload1', secret);
+      expect(parseSignedCustomId(customId, secret).action).toBe(action);
+    }
+  });
+
+  it('supports hub Centrum actions under Discord length limit', () => {
+    for (const action of [
+      'hub_create',
+      'hub_lfg',
+      'hub_mine',
+      'hub_notify',
+      'hub_profile',
+      'hub_forme',
+      'hub_ephem',
+    ] as const) {
+      const payload = action === 'hub_ephem' ? 'p1bbtn_test01' : 'p1';
+      const customId = createSignedCustomId(action, payload, secret);
+      expect(customId.length).toBeLessThanOrEqual(100);
+      expect(parseSignedCustomId(customId, secret).action).toBe(action);
+    }
+  });
 });

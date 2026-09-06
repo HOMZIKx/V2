@@ -10,6 +10,9 @@ export type GatewayHealthSnapshot = {
   commandsRegistered: boolean;
   isolationOk: boolean;
   lastError: string | null;
+  joinedGuildCount?: number;
+  joinedGuildIds?: readonly string[];
+  guildCacheSize?: number;
 };
 
 export type GatewayClientPort = {

@@ -64,6 +64,11 @@ export class RollbackUnavailableError extends Error {
   }
 }
 
+function normalizeBotConfig(values: BotConfigValues): BotConfigValues {
+  const validated = validateBotConfigDraft(values);
+  return validated.ok ? validated.config : cloneBotConfig(values);
+}
+
 export class VersionedConfigStore {
   private readonly filePath: string;
   private readonly now: () => Date;
@@ -87,7 +92,7 @@ export class VersionedConfigStore {
       this.updatedAt = loaded.updatedAt;
     } else {
       this.revision = 1;
-      this.active = defaultBotConfigValues();
+      this.active = normalizeBotConfig(defaultBotConfigValues());
       this.draft = null;
       this.previous = null;
       this.updatedAt = this.now().toISOString();
@@ -212,7 +217,7 @@ export class VersionedConfigStore {
 
   public resetForTests(initial?: BotConfigValues): void {
     this.revision = 1;
-    this.active = cloneBotConfig(initial ?? defaultBotConfigValues());
+    this.active = normalizeBotConfig(initial ?? defaultBotConfigValues());
     this.draft = null;
     this.previous = null;
     this.updatedAt = this.now().toISOString();

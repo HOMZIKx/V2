@@ -28,3 +28,18 @@ export function isAllowedGuild(
 ): boolean {
   return guildId === allowedGuildId;
 }
+
+/**
+ * Timer / war DM buttons arrive with guildId=null.
+ * Allow DMs only for signed timer/war component actions; guild traffic stays isolated.
+ */
+export function isAllowedInteractionContext(input: {
+  guildId: string | null | undefined;
+  allowedGuildId: string;
+  allowDm: boolean;
+}): boolean {
+  if (input.guildId == null || input.guildId === undefined) {
+    return input.allowDm;
+  }
+  return isAllowedGuild(input.guildId, input.allowedGuildId);
+}

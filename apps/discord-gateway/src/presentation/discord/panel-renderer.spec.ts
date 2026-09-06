@@ -110,4 +110,49 @@ describe('panel renderer', () => {
     expect(embed.data.title).toBe('V2 LAB • STATUS');
     expect(JSON.stringify(embed.data)).not.toContain('token');
   });
+
+
+  it('renders Centrum publish contract fields (title/accent/actions/custom)', () => {
+    const panel = renderPanelMessage({
+      signingSecret: secret,
+      title: 'Centrum aktywnosci',
+      description: 'Opis testowy',
+      accentHex: '#112233',
+      includeBanner: false,
+      enabledActions: ['create', 'lfg', 'notify'],
+      customButtons: [
+        {
+          id: 'btn_url1',
+          label: 'WWW',
+          style: 'secondary',
+          action: 'url',
+          url: 'https://example.com/app',
+        },
+        {
+          id: 'btn_eph1',
+          label: 'Info',
+          style: 'primary',
+          action: 'ephemeral_text',
+          ephemeralText: 'Hello ephemeral',
+        },
+      ],
+    });
+
+    expect(panel.flags).toBe(MessageFlags.IsComponentsV2);
+    expect(panel.files?.length ?? 0).toBe(0);
+    const top = panel.components ?? [];
+    expect(top).toHaveLength(1);
+    const containerJson = (top[0] as ContainerBuilder).toJSON();
+    expect(containerJson.accent_color).toBe(0x112233);
+    const nested = containerJson.components ?? [];
+    const textBlocks = nested.filter((c) => c.type === ComponentType.TextDisplay);
+    const header = textBlocks[0];
+    expect(header && 'content' in header ? header.content : '').toContain('Centrum aktywnosci');
+    expect(header && 'content' in header ? header.content : '').toContain('Opis testowy');
+    const json = JSON.stringify(containerJson);
+    expect(json).toContain('Utw');
+    expect(json).toContain('Szukam ekipy');
+    expect(json).toContain('WWW');
+    expect(json).toContain('Info');
+  });
 });

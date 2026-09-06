@@ -10,6 +10,7 @@ import {
   type GuildBasedChannel,
   type GuildMember,
   type Interaction,
+  type MessageCreateOptions,
 } from 'discord.js';
 import { createHash } from 'node:crypto';
 
@@ -36,6 +37,16 @@ export type DiscordClientLifecycleDeps = {
     error(message: string, meta?: Record<string, unknown>): void;
   };
   authorizationSync?: AuthorizationSyncPort | null;
+  /**
+   * Extra guild snowflakes allowed for runtime (authz sync / panels).
+   * Always includes DISCORD_TEST_GUILD_ID. Discovery lists ALL joined guilds.
+   */
+  getRuntimeAllowedGuildIds?: () => readonly string[];
+  memberActivityCollector?: {
+    handleMessageCreate(message: import('discord.js').Message): void;
+    handleVoiceStateUpdate(before: import('discord.js').VoiceState, after: import('discord.js').VoiceState): void;
+    flushAllOpenSessions(): void;
+  } | null;
 };
 
 const REQUIRED_CHANNEL_PERMISSIONS = [
@@ -54,8 +65,40 @@ const REQUIRED_PERMISSION_NAMES = [
   'ReadMessageHistory',
 ] as const;
 
-const BASE_INTENTS = [GatewayIntentBits.Guilds] as const;
-const SYNC_INTENTS = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] as const;
+const BASE_INTENTS = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildVoiceStates,
+] as const;
+const SYNC_INTENTS = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMembers,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildVoiceStates,
+] as const;
+
+
+/** Discord REST/API: Cannot send messages to this user (DMs closed / no shared guild). */
+export function isDiscordDmClosedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const code = 'code' in error ? (error as { code: unknown }).code : undefined;
+  if (code === 50007 || code === '50007') {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /cannot send messages to this user/i.test(message);
+}
+
+export class NotifyDmClosedError extends Error {
+  public readonly code = 'dms_closed' as const;
+
+  public constructor(message = 'Discord DMs closed for this user.') {
+    super(message);
+    this.name = 'NotifyDmClosedError';
+  }
+}
 
 export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPort {
   private readonly client: Client;
@@ -69,9 +112,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   private readonly authorizationSync: AuthorizationSyncPort | null;
 
   public constructor(private readonly deps: DiscordClientLifecycleDeps) {
-    this.secrets = [deps.config.DISCORD_TOKEN, deps.config.DISCORD_COMPONENT_SIGNING_SECRET].filter(
-      (value) => value.length > 0,
-    );
+    this.secrets = [
+      deps.config.DISCORD_TOKEN,
+      deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      deps.config.DISCORD_NOTIFY_SHARED_SECRET,
+    ].filter((value) => value.length > 0);
     this.authorizationSync =
       deps.authorizationSync === undefined
         ? createAuthorizationSyncClient(deps.config, deps.logger)
@@ -94,6 +139,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 
   public getSnapshot(): GatewayHealthSnapshot {
+    const joined = this.listJoinedGuildSummaries();
     return {
       state: this.state,
       enabled: this.deps.config.DISCORD_ENABLED,
@@ -103,6 +149,9 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       commandsRegistered: this.commandsRegistered,
       isolationOk: this.isolationOk,
       lastError: this.lastError,
+      joinedGuildCount: joined.length,
+      joinedGuildIds: joined.map((g) => g.id),
+      guildCacheSize: this.client.guilds.cache.size,
     };
   }
 
@@ -160,6 +209,108 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     };
   }
 
+
+  /** REST/cache merge so Technika lists every joined guild (not only TEST). */
+  private joinedGuildRestCache: Array<{
+    id: string;
+    name: string;
+    memberCount: number | null;
+  }> = [];
+
+  /** Technika discovery: guilds the bot is a member of (cache âŞ last REST refresh). */
+  public listJoinedGuildSummaries(): ReadonlyArray<{
+    readonly id: string;
+    readonly name: string;
+    readonly memberCount: number | null;
+  }> {
+    const byId = new Map<string, { id: string; name: string; memberCount: number | null }>();
+    for (const g of this.joinedGuildRestCache) {
+      byId.set(g.id, g);
+    }
+    for (const guild of this.client.guilds.cache.values()) {
+      byId.set(guild.id, {
+        id: guild.id,
+        name: guild.name,
+        memberCount: typeof guild.memberCount === 'number' ? guild.memberCount : null,
+      });
+    }
+    return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  /**
+   * Refresh discovery from gateway guild cache, then best-effort resolve extra IDs
+   * (configured Technika guilds) via cache / guilds.fetch / REST GET /guilds/{id}.
+   * Read-only â€” never leaves, enables, publishes, or sends.
+   * Note: Bot tokens cannot call GET /users/@me/guilds (403) â€” membership is gateway-only.
+   */
+  public async refreshJoinedGuildDirectory(
+    extraGuildIds: readonly string[] = [],
+  ): Promise<
+    ReadonlyArray<{ readonly id: string; readonly name: string; readonly memberCount: number | null }>
+  > {
+    const byId = new Map<string, { id: string; name: string; memberCount: number | null }>();
+    for (const guild of this.client.guilds.cache.values()) {
+      byId.set(guild.id, {
+        id: guild.id,
+        name: guild.name,
+        memberCount: typeof guild.memberCount === 'number' ? guild.memberCount : null,
+      });
+    }
+
+    const missing = [
+      ...new Set(
+        extraGuildIds
+          .map((id) => id.trim())
+          .filter((id) => /^\d{17,20}$/.test(id) && !byId.has(id)),
+      ),
+    ];
+
+    for (const guildId of missing) {
+      try {
+        const fetched = await this.client.guilds.fetch(guildId);
+        byId.set(fetched.id, {
+          id: fetched.id,
+          name: fetched.name,
+          memberCount: typeof fetched.memberCount === 'number' ? fetched.memberCount : null,
+        });
+        continue;
+      } catch {
+        // not in gateway cache / fetch failed â€” try REST guild endpoint (bot must be member)
+      }
+      try {
+        const record = (await this.rest.get(Routes.guild(guildId))) as {
+          id?: string;
+          name?: string;
+          approximate_member_count?: number;
+        };
+        if (typeof record.id === 'string' && typeof record.name === 'string' && record.name.trim()) {
+          byId.set(record.id, {
+            id: record.id,
+            name: record.name,
+            memberCount:
+              typeof record.approximate_member_count === 'number'
+                ? record.approximate_member_count
+                : null,
+          });
+        }
+      } catch (error) {
+        this.deps.logger.warn('Failed to resolve guild display name for discovery', {
+          guildId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    this.joinedGuildRestCache = [...byId.values()].sort((a, b) => a.id.localeCompare(b.id));
+    this.deps.logger.info('Joined guild directory refreshed', {
+      count: this.joinedGuildRestCache.length,
+      guildIds: this.joinedGuildRestCache.map((g) => g.id),
+      names: this.joinedGuildRestCache.map((g) => ({ id: g.id, name: g.name })),
+      resolvedExtra: missing.length,
+    });
+    return this.listJoinedGuildSummaries();
+  }
+
   public async fetchGuild(guildId: string) {
     const guild = await this.rest.get(Routes.guild(guildId));
     const record = guild as { id: string; name: string };
@@ -207,6 +358,47 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return result.map((command) => ({ id: command.id, name: command.name }));
   }
 
+
+  public async sendTimerNotify(input: {
+    readonly discordUserId: string;
+    readonly discordChannelId?: string;
+    readonly content: string;
+    readonly components?: MessageCreateOptions['components'];
+  }): Promise<{ readonly delivery: 'dm' | 'channel'; readonly messageId: string }> {
+    const messageOptions: MessageCreateOptions = {
+      content: input.content,
+      ...(input.components && input.components.length > 0
+        ? { components: input.components }
+        : {}),
+    };
+
+    if (input.discordChannelId) {
+      const channel = await this.client.channels.fetch(input.discordChannelId);
+      if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+        throw new Error('Notify channel is missing or not a guild text channel.');
+      }
+      const guildChannel = channel as GuildBasedChannel & {
+        send(options: MessageCreateOptions): Promise<{ id: string }>;
+      };
+      if (guildChannel.guildId !== this.deps.config.DISCORD_TEST_GUILD_ID) {
+        throw new Error('Refusing notify outside configured test guild.');
+      }
+      const message = await guildChannel.send(messageOptions);
+      return { delivery: 'channel', messageId: message.id };
+    }
+
+    const user = await this.client.users.fetch(input.discordUserId);
+    try {
+      const message = await user.send(messageOptions);
+      return { delivery: 'dm', messageId: message.id };
+    } catch (error) {
+      if (isDiscordDmClosedError(error)) {
+        throw new NotifyDmClosedError();
+      }
+      throw error;
+    }
+  }
+
   public async checkChannelPermissions(guildId: string, channelId: string) {
     const channel = await this.client.channels.fetch(channelId);
     if (!channel || channel.type === ChannelType.DM) {
@@ -233,9 +425,213 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return { ok: missing.length === 0, missing };
   }
 
+  /** Technika panels: list guild text channels + bot publish permission. */
+  public async listGuildTextChannels(guildId: string): Promise<
+    ReadonlyArray<{
+      readonly id: string;
+      readonly name: string;
+      readonly type: number;
+      readonly canPublish: boolean;
+    }>
+  > {
+    this.assertPanelGuildHardStop(guildId);
+    const guild = await this.client.guilds.fetch(guildId);
+    const channels = await guild.channels.fetch();
+    const out: Array<{ id: string; name: string; type: number; canPublish: boolean }> = [];
+    for (const channel of channels.values()) {
+      if (!channel || channel.type !== ChannelType.GuildText) continue;
+      const perms = await this.checkChannelPermissions(guildId, channel.id);
+      out.push({
+        id: channel.id,
+        name: channel.name,
+        type: channel.type,
+        canPublish: perms.ok,
+      });
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+
+  /** Technika: list guild roles (read-only; no prod publish hard-stop). */
+  public async listGuildRoles(
+    guildId: string,
+  ): Promise<ReadonlyArray<{ readonly id: string; readonly name: string }>> {
+    const guild = await this.client.guilds.fetch(guildId);
+    await guild.roles.fetch();
+    return [...guild.roles.cache.values()]
+      .filter((role) => role.id !== guild.id)
+      .map((role) => ({ id: role.id, name: role.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** Technika panels: recent messages authored by this bot that look like panels. */
+  public async listRecentBotPanels(
+    guildId: string,
+    channelId: string,
+  ): Promise<
+    ReadonlyArray<{
+      readonly messageId: string;
+      readonly isComponentsV2: boolean;
+      readonly jumpUrl: string;
+    }>
+  > {
+    this.assertPanelGuildHardStop(guildId);
+    const channel = await this.client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Channel missing or not a guild text channel.');
+    }
+    const guildChannel = channel as GuildBasedChannel & {
+      messages: { fetch(options: { limit: number }): Promise<Map<string, { id: string; author: { id: string }; flags: { bitfield: number } }>> };
+      guildId: string;
+    };
+    if (guildChannel.guildId !== guildId) {
+      throw new Error('Channel does not belong to guild.');
+    }
+    const me = this.client.user?.id;
+    if (!me) {
+      throw new Error('Discord client user unavailable.');
+    }
+    const recent = await guildChannel.messages.fetch({ limit: 30 });
+    const panels: Array<{ messageId: string; isComponentsV2: boolean; jumpUrl: string }> = [];
+    for (const message of recent.values()) {
+      if (message.author.id !== me) continue;
+      const isComponentsV2 = (message.flags.bitfield & 32768) === 32768;
+      panels.push({
+        messageId: message.id,
+        isComponentsV2,
+        jumpUrl: `https://discord.com/channels/${guildId}/${channelId}/${message.id}`,
+      });
+    }
+    return panels;
+  }
+
+  /** Technika panels: publish Components V2 lab panel (TEST guild only). */
+  public async publishGuildPanel(input: {
+    readonly guildId: string;
+    readonly channelId: string;
+    readonly message: MessageCreateOptions;
+  }): Promise<{ readonly messageId: string }> {
+    this.assertPanelGuildHardStop(input.guildId);
+    if (input.guildId !== this.deps.config.DISCORD_TEST_GUILD_ID) {
+      throw new Error('Refusing panel publish outside configured test guild.');
+    }
+    const channel = await this.client.channels.fetch(input.channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Publish channel missing or not a guild text channel.');
+    }
+    const guildChannel = channel as GuildBasedChannel & {
+      send(options: MessageCreateOptions): Promise<{ id: string }>;
+      guildId: string;
+    };
+    if (guildChannel.guildId !== input.guildId) {
+      throw new Error('Publish channel does not belong to guild.');
+    }
+    const message = await guildChannel.send(input.message);
+    return { messageId: message.id };
+  }
+
+  /** Technika panels: edit/refresh bot panel message in-place (TEST guild only). */
+  public async refreshGuildPanelMessage(input: {
+    readonly guildId: string;
+    readonly channelId: string;
+    readonly messageId: string;
+    readonly message: MessageCreateOptions;
+  }): Promise<void> {
+    this.assertPanelGuildHardStop(input.guildId);
+    if (input.guildId !== this.deps.config.DISCORD_TEST_GUILD_ID) {
+      throw new Error('Refusing panel refresh outside configured test guild.');
+    }
+    const channel = await this.client.channels.fetch(input.channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Refresh channel missing or not a guild text channel.');
+    }
+    const guildChannel = channel as GuildBasedChannel & {
+      messages: {
+        edit(
+          id: string,
+          options: MessageCreateOptions & { flags?: number | bigint },
+        ): Promise<unknown>;
+      };
+      guildId: string;
+    };
+    if (guildChannel.guildId !== input.guildId) {
+      throw new Error('Refresh channel does not belong to guild.');
+    }
+    await guildChannel.messages.edit(input.messageId, {
+      ...input.message,
+      content: input.message.content ?? null,
+      embeds: [],
+      flags: typeof input.message.flags === 'number' ? input.message.flags : 32768,
+    });
+  }
+
+  /** Technika panels: delete bot panel message (TEST guild only). */
+  public async deleteGuildPanelMessage(input: {
+    readonly guildId: string;
+    readonly channelId: string;
+    readonly messageId: string;
+  }): Promise<void> {
+    this.assertPanelGuildHardStop(input.guildId);
+    if (input.guildId !== this.deps.config.DISCORD_TEST_GUILD_ID) {
+      throw new Error('Refusing panel delete outside configured test guild.');
+    }
+    const channel = await this.client.channels.fetch(input.channelId);
+    if (!channel || !channel.isTextBased() || channel.isDMBased()) {
+      throw new Error('Delete channel missing or not a guild text channel.');
+    }
+    const guildChannel = channel as GuildBasedChannel & {
+      messages: { delete(id: string): Promise<unknown> };
+      guildId: string;
+    };
+    if (guildChannel.guildId !== input.guildId) {
+      throw new Error('Delete channel does not belong to guild.');
+    }
+    await guildChannel.messages.delete(input.messageId);
+  }
+
+  private assertPanelGuildHardStop(guildId: string): void {
+    if (guildId === '1543972927719080016' || guildId === '1531318787058696424') {
+      throw new Error('prod_guild_hard_stop');
+    }
+  }
+
   private bindEvents(): void {
     this.client.once(Events.ClientReady, () => {
-      this.deps.logger.info('Discord client ready event received');
+      const cacheSize = this.client.guilds.cache.size;
+      const cacheIds = [...this.client.guilds.cache.keys()];
+      this.deps.logger.info('Discord client ready event received', {
+        guildCacheSize: cacheSize,
+        guildCacheIds: cacheIds,
+        applicationId: this.deps.config.DISCORD_APPLICATION_ID,
+        botUserId: this.client.user?.id ?? null,
+      });
+      void this.refreshJoinedGuildDirectory().then((joined) => {
+        this.deps.logger.info('Post-ready joined guild directory', {
+          count: joined.length,
+          guildIds: joined.map((g) => g.id),
+          names: joined.map((g) => ({ id: g.id, name: g.name })),
+        });
+      });
+    });
+
+    this.client.on(Events.MessageCreate, (message) => {
+      try {
+        this.deps.memberActivityCollector?.handleMessageCreate(message);
+      } catch (error: unknown) {
+        this.deps.logger.error('memberActivity MessageCreate failed', {
+          error: safeErrorMessage(error, this.secrets),
+        });
+      }
+    });
+
+    this.client.on(Events.VoiceStateUpdate, (before, after) => {
+      try {
+        this.deps.memberActivityCollector?.handleVoiceStateUpdate(before, after);
+      } catch (error: unknown) {
+        this.deps.logger.error('memberActivity VoiceStateUpdate failed', {
+          error: safeErrorMessage(error, this.secrets),
+        });
+      }
     });
 
     this.client.on(Events.InteractionCreate, (interaction) => {
@@ -352,13 +748,32 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     });
   }
 
+  private runtimeAllowedGuildIds(): Set<string> {
+    const ids = new Set<string>();
+    const testId = this.deps.config.DISCORD_TEST_GUILD_ID?.trim();
+    if (testId) ids.add(testId);
+    for (const id of this.deps.getRuntimeAllowedGuildIds?.() ?? []) {
+      const trimmed = id.trim();
+      if (/^\d{17,20}$/.test(trimmed)) ids.add(trimmed);
+    }
+    return ids;
+  }
+
+  /** Runtime gate (panels/authz). Discovery keeps ALL joined guilds. */
   private isAllowedGuild(guildId: string): boolean {
-    return guildId === this.deps.config.DISCORD_TEST_GUILD_ID;
+    return this.runtimeAllowedGuildIds().has(guildId);
   }
 
   private async handleGuildCreate(guild: Guild): Promise<void> {
+    // Never leave foreign guilds â€” Technika must list Destiled / Sojusz / TEST.
+    // Strict isolation only gates runtime sync/actions below.
     if (!this.isAllowedGuild(guild.id)) {
-      await this.handleUnauthorizedGuild(guild.id, 'guildCreate');
+      this.deps.logger.warn('Joined guild outside runtime allowlist (kept for Technika discovery)', {
+        guildId: guild.id,
+        guildName: guild.name,
+        source: 'guildCreate',
+      });
+      void this.refreshJoinedGuildDirectory();
       return;
     }
     await this.registerAndReconcile(guild);
@@ -436,7 +851,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       kind: 'member_remove' as const,
       discordUserId: member.id,
     };
-    // Transport key only — Authorization appends durable lifecycle_generation.
+    // Transport key only â€” Authorization appends durable lifecycle_generation.
     const eventKey = buildDiscordEventKey('guild_member_remove', [member.guild.id, member.id]);
     await this.authorizationSync.applyDiscordEvent({
       eventKey,
@@ -543,63 +958,55 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 
   private async assertGuildMembershipAndIsolation(): Promise<void> {
-    const allowed = this.deps.config.DISCORD_TEST_GUILD_ID;
-    const guilds = [...this.client.guilds.cache.values()];
-    const memberOfAllowed = guilds.some((guild) => guild.id === allowed);
+    const primary = this.deps.config.DISCORD_TEST_GUILD_ID;
+    await this.refreshJoinedGuildDirectory();
+    const joined = this.listJoinedGuildSummaries();
+    const memberOfPrimary = joined.some((guild) => guild.id === primary);
 
-    if (!memberOfAllowed) {
+    if (!memberOfPrimary) {
       this.isolationOk = false;
-      throw new Error(`Bot is not a member of the configured test guild ${allowed}.`);
+      throw new Error(`Bot is not a member of the configured test guild ${primary}.`);
     }
 
-    const foreign = guilds.filter((guild) => guild.id !== allowed);
-    if (foreign.length > 0 && this.deps.config.DISCORD_STRICT_GUILD_ISOLATION) {
-      this.isolationOk = false;
-      this.state = 'failed';
-      for (const guild of foreign) {
-        this.deps.logger.error('Unauthorized guild membership detected', {
-          guildId: guild.id,
-        });
-        await guild.leave();
-      }
-      throw new Error('Strict guild isolation failed: bot present on unauthorized guilds.');
+    const runtime = this.runtimeAllowedGuildIds();
+    const outsideRuntime = joined.filter((guild) => !runtime.has(guild.id));
+    if (outsideRuntime.length > 0 && this.deps.config.DISCORD_STRICT_GUILD_ISOLATION) {
+      // Keep membership for Technika GET /discord/v1/guilds; do not leave / do not exit.
+      this.deps.logger.warn(
+        'Strict isolation: extra joined guilds visible for discovery; runtime gated to allowlist',
+        {
+          primaryGuildId: primary,
+          outsideRuntimeGuildIds: outsideRuntime.map((g) => g.id),
+          runtimeAllowlist: [...runtime],
+        },
+      );
     }
 
     this.isolationOk = true;
   }
 
   private async handleUnauthorizedGuild(guildId: string, source: string): Promise<void> {
-    if (guildId === this.deps.config.DISCORD_TEST_GUILD_ID) {
+    if (this.isAllowedGuild(guildId)) {
       return;
     }
 
-    this.deps.logger.error('Unauthorized guild event', { guildId, source });
-    if (!this.deps.config.DISCORD_STRICT_GUILD_ISOLATION) {
-      return;
-    }
-
-    this.isolationOk = false;
-    this.state = 'failed';
-    const guild = this.client.guilds.cache.get(guildId);
-    if (guild) {
-      await guild.leave();
-    }
-    this.deps.logger.error('Process terminating due to unauthorized guild membership', {
+    // Legacy hook: never leave / never terminate â€” discovery must keep Destiled & Sojusz.
+    this.deps.logger.warn('Guild event outside runtime allowlist (membership retained)', {
       guildId,
+      source,
+      strict: this.deps.config.DISCORD_STRICT_GUILD_ISOLATION,
     });
-    process.exitCode = 1;
-    await this.stop();
   }
 }
 
 /**
- * Build a deterministic transport idempotency key for a Discord → Authorization event.
+ * Build a deterministic transport idempotency key for a Discord â†’ Authorization event.
  *
  * The key is `dg:{type}:{...parts}` optionally suffixed with a sha256 hash of
  * the canonical JSON of `payloadForHash`. Keys never use randomUUID.
  *
  * Lifecycle occurrence identity (leave/unavailable/detach generations) is owned
- * by Authorization DB — not by gateway process memory. Authorization rewrites
+ * by Authorization DB â€” not by gateway process memory. Authorization rewrites
  * terminating event keys using durable generations before writing processed_event.
  */
 export function buildDiscordEventKey(
@@ -653,8 +1060,8 @@ export function assertAllowedGatewayIntents(
   if (intents.length !== expected.size || intents.some((intent) => !expected.has(intent))) {
     throw new Error(
       authorizationSyncEnabled
-        ? 'Only GatewayIntentBits.Guilds and GuildMembers are permitted when authorization sync is enabled.'
-        : 'Only GatewayIntentBits.Guilds is permitted when authorization sync is disabled.',
+        ? 'Only Guilds, GuildMembers, GuildMessages, GuildVoiceStates permitted when authorization sync is enabled.'
+        : 'Only Guilds, GuildMessages, GuildVoiceStates permitted when authorization sync is disabled.',
     );
   }
 }
@@ -663,3 +1070,4 @@ export function assertAllowedGatewayIntents(
 export function assertOnlyGuildsIntent(intents: readonly number[]): void {
   assertAllowedGatewayIntents(intents, false);
 }
+

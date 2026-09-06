@@ -3,8 +3,33 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 export const CUSTOM_ID_VERSION = 'v1';
 export const PANEL_VERSION = '1';
 
+/**
+ * Signed custom_id actions (format: v1:{action}:{payload}:{sig16}).
+ *
+ * Hub / Centrum publish buttons (stable):
+ *   hub_create | hub_lfg | hub_mine | hub_notify | hub_profile | hub_forme
+ *   hub_ephem  — customButtons[].action === ephemeral_text; payload p1b{btnId}
+ * Link/url custom buttons use Discord Link style (no custom_id).
+ */
 export type ComponentAction =
-  'select' | 'refresh' | 'delete_ask' | 'delete_confirm' | 'delete_cancel' | 'modal';
+  | 'select'
+  | 'refresh'
+  | 'delete_ask'
+  | 'delete_confirm'
+  | 'delete_cancel'
+  | 'modal'
+  | 'timer_zbite'
+  | 'timer_odloz'
+  | 'ct_gotowe'
+  | 'ct_later'
+  | 'war_claim'
+  | 'hub_create'
+  | 'hub_lfg'
+  | 'hub_mine'
+  | 'hub_notify'
+  | 'hub_profile'
+  | 'hub_forme'
+  | 'hub_ephem';
 
 export type SignedCustomId = {
   version: string;
@@ -20,7 +45,38 @@ const ACTION_SET = new Set<ComponentAction>([
   'delete_confirm',
   'delete_cancel',
   'modal',
+  'timer_zbite',
+  'timer_odloz',
+  'ct_gotowe',
+  'ct_later',
+  'war_claim',
+  'hub_create',
+  'hub_lfg',
+  'hub_mine',
+  'hub_notify',
+  'hub_profile',
+  'hub_forme',
+  'hub_ephem',
 ]);
+
+export const HUB_ACTION_TO_CUSTOM: Record<string, ComponentAction> = {
+  create: 'hub_create',
+  lfg: 'hub_lfg',
+  mine: 'hub_mine',
+  notify: 'hub_notify',
+  profile: 'hub_profile',
+  forme: 'hub_forme',
+};
+
+export const HUB_CUSTOM_TO_ACTION: Record<string, string> = {
+  hub_create: 'create',
+  hub_lfg: 'lfg',
+  hub_mine: 'mine',
+  hub_notify: 'notify',
+  hub_profile: 'profile',
+  hub_forme: 'forme',
+  hub_ephem: 'ephemeral_text',
+};
 
 function base64Url(buffer: Buffer): string {
   return buffer.toString('base64').replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -94,4 +150,21 @@ export function parseSignedCustomId(raw: string, secret: string): SignedCustomId
 
 export function panelPayload(): string {
   return `p${PANEL_VERSION}`;
+}
+
+/** Payload for hub_ephem: p1b{sanitizedBtnId} */
+export function hubEphemPayload(buttonId: string): string {
+  const safe = buttonId.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40) || 'x';
+  return `${panelPayload()}b${safe}`;
+}
+
+export function parseHubEphemButtonId(payload: string): string | null {
+  const prefix = `${panelPayload()}b`;
+  if (!payload.startsWith(prefix)) return null;
+  const id = payload.slice(prefix.length);
+  return id.length > 0 ? id : null;
+}
+
+export function isHubAction(action: ComponentAction): boolean {
+  return action.startsWith('hub_');
 }

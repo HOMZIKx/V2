@@ -248,6 +248,363 @@ paths:
         '503':
           description: Discord niedostępny / wyłączony
 
+  /discord/v1/guilds/{guildId}/roles:
+    get:
+      tags: [guilds]
+      operationId: listTechnikaGuildRoles
+      summary: Lista ról guildii (id, name)
+      description: |
+        Read-only. Auth x-technika-secret. Prod publish hard-stop does NOT apply.
+        Returns roles [{id,name}] without @everyone. Zero auto-publish.
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^\d{17,20}  securitySchemes:
+    TechnikaSecret:
+      type: apiKey
+      in: header
+      name: x-technika-secret
+
+  parameters:
+    TechnikaSecretHeader:
+      name: x-technika-secret
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Shared secret === DISCORD_TECHNIKA_SHARED_SECRET
+
+  schemas:
+    CapabilityField:
+      type: object
+      required: [key, title, description, valueType, default]
+      properties:
+        key: { type: string }
+        title: { type: string }
+        description: { type: string }
+        valueType:
+          type: string
+          enum: [boolean, number, string]
+        default: {}
+
+    Capability:
+      type: object
+      required: [id, title, description, valueType, default]
+      properties:
+        id:
+          type: string
+          description: Stabilne id (kebab-case lub camelCase modułu)
+          examples: [characterTimers, timersNotify, kingdomWar, panel-test-enabled]
+        title: { type: string }
+        description: { type: string }
+        valueType:
+          type: string
+          enum: [boolean, number, string, object]
+        default: {}
+        readOnly:
+          type: boolean
+        currentDisplayValue: {}
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityField'
+
+    CapabilitiesResponse:
+      type: object
+      required: [capabilities]
+      properties:
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+
+    TimersNotify:
+      type: object
+      description: |
+        Alias produktu = characterTimers (timery postaci z karty EQ/Timer).
+        Nie dotyczy map/metin. Zachowany dla kompatybilności.
+      required: [enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Główny przełącznik (alias characterTimers.enabled)
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{title}}, {{body}}, {{otherTimersSummary}}, {{characterName}}, {{timerLabel}}, {{endsAt}}
+        reminderMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 60
+          description: Minuty przed końcem cyklu postaci (domyślnie 60)
+        resetNotifyEnabled:
+          type: boolean
+          description: Auto-DM po starcie / oznaczeniu Gotowe timera postaci
+
+    CharacterTimers:
+      type: object
+      description: |
+        Timery postaci (Księga, Kamień Duchowy, Dowodzenie, Polimorfia, Górnictwo, Jazda konna).
+        Produkt Discord Timers notify — NIE map/metin.
+      required: [enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Główny przełącznik modułu characterTimers
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{title}}, {{body}}, {{otherTimersSummary}}, {{characterName}}, {{timerLabel}}, {{endsAt}}, {{deepLinkUrl}}
+        reminderMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 60
+          description: Minuty przed końcem cyklu (domyślnie 60)
+        resetNotifyEnabled:
+          type: boolean
+          description: Auto-DM po starcie / resecie timera postaci
+
+    KingdomWar:
+      type: object
+      required: [enabled, warAt, notifyMinutesBefore, messageTemplate]
+      properties:
+        enabled:
+          type: boolean
+        warAt:
+          type: string
+          pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+          description: Godzina startu Europe/Warsaw (HH:mm), np. "18:00"
+          examples: ["18:00"]
+        notifyMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 30
+          description: Minuty przed warAt (30 → ping 17:30 przy 18:00)
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{warAt}}, {{notifyMinutesBefore}}
+
+    BotConfig:
+      type: object
+      additionalProperties: false
+      required:
+        - panel-test-enabled
+        - notify-timer-enabled
+        - timersNotify
+        - characterTimers
+        - kingdomWar
+        - notify-timer-dm-action-buttons
+      properties:
+        panel-test-enabled:
+          type: boolean
+        notify-timer-enabled:
+          type: boolean
+          description: Czy akceptować POST /notify/timer
+        characterTimers:
+          $ref: '#/components/schemas/CharacterTimers'
+        timersNotify:
+          $ref: '#/components/schemas/TimersNotify'
+        kingdomWar:
+          $ref: '#/components/schemas/KingdomWar'
+        notify-timer-dm-action-buttons:
+          type: boolean
+          description: Przyciski Gotowe / Przypomnij później w PW (timery postaci) bez WWW
+        publishChannels:
+          $ref: '#/components/schemas/PublishChannels'
+        recurringPosts:
+          $ref: '#/components/schemas/RecurringPosts'
+        guilds:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/GuildConfig'
+
+    BotConfigPartial:
+      type: object
+      description: Partial merge — brakujące klucze dziedziczone z active/draft
+      properties:
+        panel-test-enabled: { type: boolean }
+        notify-timer-enabled: { type: boolean }
+        characterTimers:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            messageTemplate: { type: string }
+            reminderMinutesBefore: { type: integer }
+            resetNotifyEnabled: { type: boolean }
+        timersNotify:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            messageTemplate: { type: string }
+            reminderMinutesBefore: { type: integer }
+            resetNotifyEnabled: { type: boolean }
+        kingdomWar:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            warAt: { type: string }
+            notifyMinutesBefore: { type: integer }
+            messageTemplate: { type: string }
+        notify-timer-dm-action-buttons: { type: boolean }
+
+    ConfigSnapshot:
+      type: object
+      required: [revision, status, config, updatedAt, hasDraft, canRollback]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        status:
+          type: string
+          enum: [active, draft]
+        config:
+          $ref: '#/components/schemas/BotConfig'
+        updatedAt:
+          type: string
+          format: date-time
+        hasDraft: { type: boolean }
+        canRollback: { type: boolean }
+        strictGuildIsolation:
+          type: boolean
+          description: Podgląd env DISCORD_STRICT_GUILD_ISOLATION (read-only)
+
+    DraftResponse:
+      type: object
+      required: [ok, revision, status, config, issues, updatedAt]
+      properties:
+        ok: { type: boolean }
+        revision: { type: integer }
+        status: { type: string, enum: [draft] }
+        config:
+          $ref: '#/components/schemas/BotConfig'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        updatedAt:
+          type: string
+          format: date-time
+
+    ValidationIssue:
+      type: object
+      required: [path, message]
+      properties:
+        path: { type: string }
+        message: { type: string }
+
+    ValidationResponse:
+      type: object
+      required: [ok, issues]
+      properties:
+        ok: { type: boolean }
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/BotConfig'
+            - type: 'null'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+
+    PreviewResponse:
+      type: object
+      required: [ok, revision, status, active, draft, wouldBecomeRevision, issues, updatedAt]
+      properties:
+        ok: { type: boolean }
+        revision: { type: integer }
+        status:
+          type: string
+          enum: [active, draft]
+        active:
+          $ref: '#/components/schemas/BotConfig'
+        draft:
+          oneOf:
+            - $ref: '#/components/schemas/BotConfig'
+            - type: 'null'
+        wouldBecomeRevision:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        updatedAt:
+          type: string
+          format: date-time
+
+    TestDmRequest:
+      type: object
+      required: [module, discordAccountId]
+      properties:
+        module:
+          type: string
+          enum: [characterTimers, kingdomWar]
+        discordAccountId:
+          type: string
+          pattern: '^\d{17,20}$'
+          description: Discord snowflake odbiorcy testowej PW
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Opcjonalny override szablonu (domyślnie z active config)
+        sampleVars:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+          description: Placeholdery do renderu (title, body, warAt, …)
+
+    TestDmResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        delivery:
+          type: string
+          enum: [dm]
+        messageId:
+          oneOf:
+            - type: string
+            - type: 'null'
+        skipped:
+          type: string
+          enum: [dms_closed]
+        renderedPreview:
+          type: string
+          description: Treść po renderze (do podglądu w Technice)
+
+      responses:
+        '200':
+          description: Role guildii
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, guildId, roles]
+                properties:
+                  ok: { type: boolean }
+                  guildId: { type: string }
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+        '401':
+          description: unauthorized
+
 components:
   securitySchemes:
     TechnikaSecret:
@@ -558,3 +915,192 @@ components:
         renderedPreview:
           type: string
           description: Treść po renderze (do podglądu w Technice)
+
+    RecurringPosts:
+      type: object
+      description: |
+        Config-only recurring post (exact Technika UI / New Bot shape).
+        Scheduler/cron NOT implemented — honest gap. Zero auto-publish.
+      additionalProperties: false
+      properties:
+        enabled: { type: boolean, default: false }
+        title: { type: string, maxLength: 100 }
+        content:
+          type: string
+          maxLength: 2000
+          description: |
+            Post body. Optional placeholders resolved later at publish/scheduler time
+            (not at draft save): `{{count:EMOJI}}` (e.g. `{{count:✅}}`) from seedReactions
+            with role count/rsvp_*; `{{rsvp_list}}` when rsvpEnabled. Driven by existing
+            showCountsInPost + rsvpEnabled + seedReactions — no extra schema fields.
+        schedule:
+          $ref: '#/components/schemas/RecurringSchedule'
+        channelId:
+          type: string
+          description: Empty string or Discord channel snowflake
+        seedReactions:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/SeedReaction'
+        showCountsInPost: { type: boolean, default: false }
+        rsvpEnabled: { type: boolean, default: false }
+        rules:
+          $ref: '#/components/schemas/RecurringPostRules'
+    RecurringSchedule:
+      type: object
+      required: [mode, daysOfWeek, timeWarsaw, horizonDays]
+      additionalProperties: false
+      properties:
+        mode: { type: string, enum: [daily, weekly, days] }
+        daysOfWeek:
+          type: array
+          items: { type: integer, minimum: 0, maximum: 6 }
+        timeWarsaw:
+          type: string
+          pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+          description: Europe/Warsaw wall clock HH:mm
+        horizonDays: { type: integer, minimum: 1, maximum: 90 }
+    SeedReaction:
+      type: object
+      required: [emoji, role]
+      additionalProperties: false
+      properties:
+        emoji: { type: string }
+        role: { type: string, enum: [decorative, rsvp_yes, rsvp_no, rsvp_maybe, count] }
+        label: { type: string, maxLength: 80 }
+    RecurringPostRules:
+      type: object
+      additionalProperties: false
+      properties:
+        maxSlots: { type: integer, minimum: 1, maximum: 9999, nullable: true }
+        closeAt: { type: string, enum: [none, at_start, manual] }
+        whoCanReact: { type: string, enum: [everyone, roles], default: everyone }
+        roleIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^\d{17,20}$' }
+
+    GuildConfig:
+      type: object
+      additionalProperties: false
+      required: [enabled, modules, rights]
+      properties:
+        enabled: { type: boolean }
+        displayName: { type: string, maxLength: 100 }
+        modules:
+          type: object
+          additionalProperties: false
+          properties:
+            characterTimers: { type: boolean }
+            kingdomWar: { type: boolean }
+            panels: { type: boolean }
+            channels: { type: boolean }
+        rights:
+          type: array
+          items: { type: string }
+        notes: { type: string, maxLength: 500 }
+        publishChannels:
+          $ref: '#/components/schemas/PublishChannels'
+        appWebsiteUrl:
+          type: string
+          maxLength: 500
+          description: Per-guild DESTILED web app URL (with publishChannels.website). Zero auto-publish.
+ }
+        horizonDays: { type: integer, minimum: 1, maximum: 90 }
+    SeedReaction:
+      type: object
+      required: [emoji, role]
+      additionalProperties: false
+      properties:
+        emoji: { type: string }
+        role: { type: string, enum: [decorative, rsvp_yes, rsvp_no, rsvp_maybe, count] }
+        label: { type: string, maxLength: 80 }
+    RecurringPostRules:
+      type: object
+      additionalProperties: false
+      properties:
+        maxSlots: { type: integer, minimum: 1, maximum: 9999, nullable: true }
+        closeAt: { type: string, enum: [none, at_start, manual] }
+        whoCanReact: { type: string, enum: [everyone, roles], default: everyone }
+        roleIds:
+          type: array
+          maxItems: 50
+          items: { type: string, pattern: '^\d{17,20}
+      type: object
+      additionalProperties: false
+      description: purpose -> channelId map (not bare allowlist). Zero auto-publish.
+      properties:
+        centrumHub: { type: string, pattern: '^\d{17,20}$' }
+        notifications: { type: string, pattern: '^\d{17,20}$' }
+        dungeons: { type: string, pattern: '^\d{17,20}$' }
+        trade: { type: string, pattern: '^\d{17,20}$' }
+        recurring: { type: string, pattern: '^\d{17,20}$' }
+        events: { type: string, pattern: '^\d{17,20}$' }
+        website: { type: string, pattern: '^\d{17,20}$', description: 'Strona WWW / link do aplikacji' }
+
+    GuildConfig:
+      type: object
+      additionalProperties: false
+      required: [enabled, modules, rights]
+      properties:
+        enabled: { type: boolean }
+        displayName: { type: string, maxLength: 100 }
+        modules:
+          type: object
+          additionalProperties: false
+          properties:
+            characterTimers: { type: boolean }
+            kingdomWar: { type: boolean }
+            panels: { type: boolean }
+            channels: { type: boolean }
+        rights:
+          type: array
+          items: { type: string }
+        notes: { type: string, maxLength: 500 }
+        publishChannels:
+          $ref: '#/components/schemas/PublishChannels'
+        appWebsiteUrl:
+          type: string
+          maxLength: 500
+          description: Per-guild DESTILED web app URL (with publishChannels.website). Zero auto-publish.
+ }
+
+    PublishChannels:
+      type: object
+      additionalProperties: false
+      description: purpose -> channelId map (not bare allowlist). Zero auto-publish.
+      properties:
+        centrumHub: { type: string, pattern: '^\d{17,20}$' }
+        notifications: { type: string, pattern: '^\d{17,20}$' }
+        dungeons: { type: string, pattern: '^\d{17,20}$' }
+        trade: { type: string, pattern: '^\d{17,20}$' }
+        recurring: { type: string, pattern: '^\d{17,20}$' }
+        events: { type: string, pattern: '^\d{17,20}$' }
+        website: { type: string, pattern: '^\d{17,20}$', description: 'Strona WWW / link do aplikacji' }
+
+    GuildConfig:
+      type: object
+      additionalProperties: false
+      required: [enabled, modules, rights]
+      properties:
+        enabled: { type: boolean }
+        displayName: { type: string, maxLength: 100 }
+        modules:
+          type: object
+          additionalProperties: false
+          properties:
+            characterTimers: { type: boolean }
+            kingdomWar: { type: boolean }
+            panels: { type: boolean }
+            channels: { type: boolean }
+        rights:
+          type: array
+          items: { type: string }
+        notes: { type: string, maxLength: 500 }
+        publishChannels:
+          $ref: '#/components/schemas/PublishChannels'
+        appWebsiteUrl:
+          type: string
+          maxLength: 500
+          description: Per-guild DESTILED web app URL (with publishChannels.website). Zero auto-publish.

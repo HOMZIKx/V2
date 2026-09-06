@@ -4,7 +4,7 @@ import {
 } from './capabilities.js';
 import type { VersionedConfigStore } from './versioned-config-store.js';
 
-/** Resolve active Technika bot config (timersNotify.* / kingdomWar.*). */
+/** Resolve active Technika bot config (characterTimers.* / timersNotify alias / kingdomWar.*). */
 export function resolveActiveBotConfig(
   store: VersionedConfigStore | null | undefined,
 ): BotConfigValues {
