@@ -28,7 +28,9 @@ jobs:
 
       - name: Apply deterministic preview fixes
         if: github.ref == 'refs/heads/preview/destiled-web'
-        run: node tools/scripts/fix-preview-type-errors.mjs
+        run: |
+          node tools/scripts/fix-preview-type-errors.mjs
+          node tools/scripts/fix-preview-lint-errors.mjs
 
       - name: Commit deterministic preview fixes
         if: github.ref == 'refs/heads/preview/destiled-web'
@@ -40,7 +42,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add apps/discord-gateway apps/web
-          git commit -m 'fix: resolve preview TypeScript compile errors'
+          git commit -m 'fix: resolve preview compile and lint errors'
           git push origin HEAD:preview/destiled-web
 
       - name: Enable Corepack
@@ -136,7 +138,7 @@ jobs:
       - name: Migrate identity database
         run: pnpm --dir services/identity-service migrate
         env:
-          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/identity
+          IDENTITY_DATABASE_URL: postgresql://identity:identity_dev_password@127.0.0.1:5432/player_team
 
       - name: Run identity auth integration tests
         run: pnpm exec vitest run --config services/identity-service/vitest.config.ts
