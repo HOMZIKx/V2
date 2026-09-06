@@ -125,14 +125,14 @@ async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Pro
   upstreamUrl.search = request.nextUrl.search;
 
   const method = request.method.toUpperCase();
-  const requestBody = method === 'GET' || method === 'HEAD' ? undefined : await request.arrayBuffer();
+  const requestBody = method === 'GET' || method === 'HEAD' ? null : await request.arrayBuffer();
 
   let upstream: Response;
   try {
     upstream = await fetch(upstreamUrl, {
       method,
       headers: createUpstreamHeaders(request, viewerId),
-      body: requestBody,
+      ...(requestBody !== null ? { body: requestBody } : {}),
       cache: 'no-store',
       redirect: 'manual',
     });
