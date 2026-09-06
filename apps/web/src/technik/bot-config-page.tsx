@@ -144,6 +144,8 @@ export function TechnikBotConfigPage() {
   const [snapshot, setSnapshot] = useState<ConfigSnapshot | null>(null);
   const [capabilities, setCapabilities] = useState<readonly BotCapability[]>([]);
   const [mutationsEnabled, setMutationsEnabled] = useState(false);
+  const [metaLoaded, setMetaLoaded] = useState(false);
+  const [writeBlockReason, setWriteBlockReason] = useState<string | null>(null);
   const [gatewayLabel, setGatewayLabel] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -223,8 +225,20 @@ export function TechnikBotConfigPage() {
       fetchCapabilities(),
     ]);
     if (meta.ok) {
+      setMetaLoaded(true);
       setMutationsEnabled(meta.data.mutationsEnabled);
       setGatewayLabel(meta.data.gateway);
+      setWriteBlockReason(
+        meta.data.mutationsEnabled
+          ? null
+          : 'Zapis zablokowany - brak DISCORD_TECHNIKA_SHARED_SECRET na WWW (nie NEXT_PUBLIC_). Uzupelnij apps/web/.env.local i zrestartuj Next.',
+      );
+    } else {
+      setMetaLoaded(false);
+      setMutationsEnabled(false);
+      setWriteBlockReason(
+        'Nie udalo sie sprawdzic uprawnien zapisu: ' + meta.error + (meta.detail ? ' - ' + meta.detail : '') + '. To nie jest automatycznie brak klucza.',
+      );
     }
     if (caps.ok) {
       setCapabilities(caps.data.capabilities);
@@ -553,8 +567,9 @@ export function TechnikBotConfigPage() {
   };
 
   const stepIndex = STEPPER_STEPS.findIndex((s) => s.id === step);
-  const canApply = mutationsEnabled && !busy;
-  const canRollback = mutationsEnabled && !busy && Boolean(snapshot?.canRollback);
+  const canWrite = metaLoaded && mutationsEnabled;
+  const canApply = canWrite && !busy;
+  const canRollback = canWrite && !busy && Boolean(snapshot?.canRollback);
   const isolationDisplay =
     snapshot?.strictGuildIsolation ??
     capabilities.find((c) => c.id === 'strict-guild-isolation')?.currentDisplayValue;
@@ -724,7 +739,7 @@ export function TechnikBotConfigPage() {
                 <div className="technik-row" style={{ marginTop: '0.85rem' }}>
                   <button
                     type="button"
-                    disabled={busy || !mutationsEnabled}
+                    disabled={busy || !canWrite}
                     onClick={() => void saveGuildDraft()}
                   >
                     {busy ? '…' : 'Zapisz guildię do szkicu'}
@@ -759,14 +774,23 @@ export function TechnikBotConfigPage() {
           <h2>Jak zapisać (D-060)</h2>
           <span
             className={
-              mutationsEnabled
+              canWrite
                 ? 'technik-pill technik-pill--live'
                 : 'technik-pill technik-pill--pending'
             }
           >
-            {mutationsEnabled ? 'Możesz zapisywać' : 'Zapis zablokowany (brak klucza)'}
+            {!metaLoaded
+              ? 'Sprawdzam zapis...'
+              : canWrite
+                ? 'Możesz zapisywać'
+                : 'Zapis zablokowany'}
           </span>
         </div>
+        {writeBlockReason ? (
+          <p className="technik-error" role="alert" style={{ marginTop: '0.5rem' }}>
+            {writeBlockReason}
+          </p>
+        ) : null}
         <p className="technik-help">
           Dotyczy szkicu guildii <strong>oraz</strong> treści PW poniżej. Po „Zapisz guildię do
           szkicu” nadal kliknij Sprawdź → Zapisz i włącz.
@@ -775,7 +799,7 @@ export function TechnikBotConfigPage() {
           {STEPPER_STEPS.map((item, index) => {
             const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
             const locked =
-              (!mutationsEnabled && (item.id === 'Apply' || item.id === 'Rollback')) ||
+              (!canWrite && (item.id === 'Apply' || item.id === 'Rollback')) ||
               (item.id === 'Rollback' && !snapshot?.canRollback);
             return (
               <li
@@ -985,7 +1009,7 @@ export function TechnikBotConfigPage() {
           <div className="technik-row" style={{ marginTop: '0.75rem' }}>
             <button
               type="button"
-              disabled={busy || !mutationsEnabled}
+              disabled={busy || !canWrite}
               onClick={() => void runTestDm('characterTimers')}
             >
               Wyślij testową PW (timery)
@@ -1060,7 +1084,7 @@ export function TechnikBotConfigPage() {
           <div className="technik-row" style={{ marginTop: '0.75rem' }}>
             <button
               type="button"
-              disabled={busy || !mutationsEnabled}
+              disabled={busy || !canWrite}
               onClick={() => void runTestDm('kingdomWar')}
             >
               Wyślij testową PW (wojna)
