@@ -36,9 +36,13 @@ export function resolvePlayerTeamDemoViewerId(viewer: {
   return id;
 }
 
-export async function getMyPlayerTeamState(_input: {
+export async function getMyPlayerTeamState(input: {
   readonly viewerId: string;
 }): Promise<PlayerTeamOnlineStateResponse> {
+  // viewerId remains in the client API for cache/call-site compatibility.
+  // Production identity is derived by the authenticated server proxy, never by the browser.
+  void input.viewerId;
+
   const res = await fetch(playerTeamUrl('/player-team/v1/me/state'), {
     method: 'GET',
     cache: 'no-store',
