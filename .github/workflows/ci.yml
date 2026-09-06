@@ -51,7 +51,17 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Run preview compile gates
+        if: github.ref == 'refs/heads/preview/destiled-web'
+        run: |
+          pnpm typecheck
+          pnpm build
+          pnpm --dir apps/web build
+        env:
+          CI: 'true'
+
       - name: Run complete validation
+        if: github.ref != 'refs/heads/preview/destiled-web'
         run: pnpm validate
         env:
           CI: 'true'
