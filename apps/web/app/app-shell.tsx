@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { getReadyTimers } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
+import { progressionTimerLabels } from '../src/project-hard-progression';
 
 export type AppSection =
   'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
@@ -84,6 +86,148 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   );
 }
 
+function timerKindLabel(timer: {
+  readonly kind?: keyof typeof progressionTimerLabels;
+  readonly label: string;
+}): string {
+  if (timer.kind && progressionTimerLabels[timer.kind]) {
+    return progressionTimerLabels[timer.kind];
+  }
+  return timer.label;
+}
+
+function NotificationsBell({
+  brandHref,
+  readyCount,
+}: {
+  brandHref: string;
+  readyCount: number;
+}) {
+  const router = useRouter();
+  const { state } = usePlayerStore();
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const readyTimers = useMemo(() => getReadyTimers(state), [state]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (rootRef.current && target && !rootRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const openTimer = (workspaceId: string, characterId: string) => {
+    setOpen(false);
+    router.push(`/teams/${workspaceId}/characters/${characterId}?view=timers`);
+  };
+
+  return (
+    <div className="notification-menu" ref={rootRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-label={
+          readyCount > 0
+            ? `Powiadomienia: ${readyCount} gotowych timerów`
+            : 'Powiadomienia — brak gotowych timerów'
+        }
+        className="icon-button notification-button"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <Icon name="bell" />
+        {readyCount > 0 ? <span className="notification-dot" /> : null}
+      </button>
+
+      {open ? (
+        <div
+          aria-label="Lista powiadomień"
+          className="notifications-popover"
+          role="dialog"
+        >
+          <header className="notifications-popover-header">
+            <div>
+              <strong>Powiadomienia</strong>
+              <span>
+                {readyTimers.length > 0
+                  ? 'Timery gotowe — kliknij, żeby od razu przejść do postaci'
+                  : 'Tu pojawią się gotowe timery z Twoich zespołów'}
+              </span>
+            </div>
+            {readyTimers.length > 0 ? (
+              <em className="notifications-popover-count">{readyTimers.length}</em>
+            ) : null}
+          </header>
+
+          {readyTimers.length === 0 ? (
+            <div className="notifications-empty">
+              <p>Na razie cicho. Żaden timer nie woła o uwagę.</p>
+              <a
+                className="notifications-empty-link"
+                href={brandHref}
+                onClick={() => setOpen(false)}
+              >
+                Idź na Pulpit
+              </a>
+            </div>
+          ) : (
+            <ul className="notifications-list">
+              {readyTimers.map((entry) => {
+                const kindLabel = timerKindLabel(entry.timer);
+                const href = `/teams/${entry.workspaceId}/characters/${entry.timer.characterId}?view=timers`;
+                return (
+                  <li key={`${entry.workspaceId}:${entry.timer.id}`}>
+                    <a
+                      className="notifications-item"
+                      href={href}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        openTimer(entry.workspaceId, entry.timer.characterId);
+                      }}
+                    >
+                      <span className="notifications-item-icon" aria-hidden="true">
+                        {entry.timer.iconPath ? (
+                          <img alt="" src={entry.timer.iconPath} />
+                        ) : (
+                          <Icon name="clock" size={16} />
+                        )}
+                      </span>
+                      <span className="notifications-item-copy">
+                        <strong>{entry.characterName}</strong>
+                        <span>
+                          {kindLabel} — gotowe do ogarnięcia
+                          {entry.workspaceName ? ` · ${entry.workspaceName}` : ''}
+                        </span>
+                      </span>
+                      <span className="notifications-item-jump">Otwórz</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AppShell({
   activeSection,
   children,
@@ -118,11 +262,16 @@ export function AppShell({
   const charactersHref = primaryWorkspaceId
     ? `/teams/${primaryWorkspaceId}/characters`
     : '/#first-use';
-  const readyCount = state.workspaces.reduce(
-    (count, workspace) =>
-      count + workspace.timers.filter((timer) => timer.status === 'ready').length,
-    0,
+  const readyCount = useMemo(
+    () =>
+      state.workspaces.reduce(
+        (count, workspace) =>
+          count + workspace.timers.filter((timer) => timer.status === 'ready').length,
+        0,
+      ),
+    [state.workspaces],
   );
+  const discordNick = state.viewer?.discordDisplayName?.trim() || 'Discord';
 
   const playerTeamOnlineEnabled =
     process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED === 'true' ||
@@ -216,26 +365,13 @@ export function AppShell({
         </nav>
 
         <div className="topbar-actions">
-          <span className="topbar-later-pill" title="Późniejsze moduły poza pierwszym slice">
-            Targ — później
-          </span>
-          <a
-            aria-label={
-              readyCount > 0
-                ? `Pulpit: ${readyCount} gotowych timerów`
-                : 'Pulpit — brak gotowych timerów'
-            }
-            className="icon-button notification-button"
-            href={brandHref}
-          >
-            <Icon name="bell" />
-            {readyCount > 0 ? <span className="notification-dot" /> : null}
-          </a>
+          <span className="topbar-later-pill">Targ</span>
+          <NotificationsBell brandHref={brandHref} readyCount={readyCount} />
           <a aria-label="Otwórz pulpit konta" className="profile-button" href="/profil">
             <span className="profile-avatar">{viewerName.slice(0, 1).toUpperCase()}</span>
             <span className="profile-copy">
               <strong>{viewerName}</strong>
-              <small>Discord</small>
+              <small>{discordNick}</small>
             </span>
             <Icon name="chevron" size={15} />
           </a>
@@ -265,7 +401,7 @@ export function AppShell({
             {item.label}
           </a>
         ))}
-        <p className="drawer-later">Targ wróci w kolejnych etapach.</p>
+        <p className="drawer-later">Targ</p>
       </aside>
 
       {needsProfileSetup && activeSection !== 'profil' ? (
