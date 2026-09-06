@@ -2,6 +2,16 @@
 
 import type { ReactNode } from 'react';
 
+/** Short Polish note: what this Technik page is for. */
+export function PageJobNote({ children }: { readonly children: ReactNode }) {
+  return (
+    <aside className="technik-page-job" aria-label="Co robi ta strona">
+      <strong>Co robi ta strona</strong>
+      <div>{children}</div>
+    </aside>
+  );
+}
+
 /** Short Polish note: what the player sees on Discord when this is on. */
 export function PlayerSeesNote({ children }: { readonly children: ReactNode }) {
   return (
@@ -24,8 +34,8 @@ export function ReactionsForbiddenNote() {
   return (
     <HonestGap>
       <p>
-        <strong>Reakcje emoji jako nawigacja / RSVP są wyłączone produktowo</strong> (D-023).
-        Nie ma przełącznika „włącz reakcje RSVP” — panele używają przycisków Components V2.
+        <strong>Reakcje emoji jako nawigacja / RSVP są wyłączone produktowo.</strong> Panele używają
+        przycisków Components V2 — nie ma przełącznika „włącz reakcje RSVP”.
       </p>
     </HonestGap>
   );

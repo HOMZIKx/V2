@@ -19,8 +19,6 @@ function technikaSecret(): string {
 
 type RouteCtx = { params: Promise<{ path?: string[] }> };
 
-const MUTATING = new Set(['PUT', 'POST', 'PATCH', 'DELETE']);
-
 async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
   const { path: segments = [] } = await ctx.params;
   const joined = segments.join('/');
@@ -42,21 +40,39 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'config/rollback',
     'config/test-dm',
     'guilds',
+    'panels',
   ]);
-  // feature-detect panels: guilds/{id}/panels|channels + panels/publish|refresh|delete (via guilds/ prefix)
-const allowedPrefix = (p: string) => p === 'guilds' || p.startsWith('guilds/');
+  // guilds/{id}… + panels/channels|publish|preview (+ nested guilds panels if added later)
+  const allowedPrefix = (path: string) =>
+    path === 'guilds' ||
+    path.startsWith('guilds/') ||
+    path === 'panels' ||
+    path.startsWith('panels/') ||
+    path === 'member-activity' ||
+    path.startsWith('member-activity/');
 
   if (!allowedExact.has(joined) && !allowedPrefix(joined)) {
     return NextResponse.json({ ok: false, error: 'not_found', path: joined }, { status: 404 });
   }
 
   const method = request.method.toUpperCase();
+  // GET guilds list is public; guild-scoped channels/panels need Technika secret.
+  const incomingEarly = new URL(request.url);
+  const rankingFull =
+    joined === 'member-activity/ranking' &&
+    (incomingEarly.searchParams.get('full') === '1' ||
+      incomingEarly.searchParams.get('full') === 'true');
   const publicRead =
     method === 'GET' &&
+    !rankingFull &&
     (joined === 'config' ||
       joined === 'capabilities' ||
       joined === 'guilds' ||
-      joined.startsWith('guilds/'));
+      joined === 'member-activity/ranking' ||
+      joined === 'member-activity/me' ||
+      (joined.startsWith('guilds/') &&
+        !joined.includes('/channels') &&
+        !joined.includes('/panels')));
 
   if (!publicRead) {
     const secret = technikaSecret();
@@ -72,7 +88,7 @@ const allowedPrefix = (p: string) => p === 'guilds' || p.startsWith('guilds/');
     }
   }
 
-  const url = `${gatewayBaseUrl()}/discord/v1/${joined}`;
+  const url = `${gatewayBaseUrl()}/discord/v1/${joined}${incomingEarly.search}`;
   const headers: Record<string, string> = { Accept: 'application/json' };
 
   if (!publicRead) {
@@ -131,5 +147,9 @@ export async function PUT(request: Request, ctx: RouteCtx): Promise<Response> {
 }
 
 export async function POST(request: Request, ctx: RouteCtx): Promise<Response> {
+  return handle(request, ctx);
+}
+
+export async function DELETE(request: Request, ctx: RouteCtx): Promise<Response> {
   return handle(request, ctx);
 }

@@ -1,14 +1,19 @@
 /**
- * Technik nav — operable IA (Centrum Aktywności deferred).
- * Live: overview/D-060, guilds, characterTimers, kingdomWar, diagnostics, panel-test if cap, Owner note.
+ * Technik nav — intentional IA (quality over speed).
+ * Publish: Wygląd → Centrum → Kanały → Cykliczne → Panele lab.
  */
 
 export type TechnikNavId =
   | 'overview'
   | 'discordy'
+  | 'wyglad'
+  | 'centrum'
+  | 'kanaly'
+  | 'cykliczne'
+  | 'panele'
   | 'timers'
   | 'wojna'
-  | 'panele'
+  | 'aktywnosc'
   | 'diagnostyka'
   | 'audit'
   | 'owner';
@@ -28,23 +33,33 @@ export const TECHNIK_NAV_GROUPS: readonly TechnikNavGroup[] = [
   {
     title: 'Start',
     items: [
-      { href: '/technik', label: 'Przegląd / rewizja', id: 'overview' },
-      { href: '/technik/discordy', label: 'Discordy / guildie', id: 'discordy' },
+      { href: '/technik', label: 'Przegląd', id: 'overview' },
+      { href: '/technik/discordy', label: 'Discordy', id: 'discordy' },
     ],
   },
   {
-    title: 'Co bot wysyła graczom',
+    title: 'Publikacja Discord',
     items: [
-      { href: '/technik/timery', label: 'Timery postaci (PW)', id: 'timers' },
-      { href: '/technik/wojna', label: 'Wojna Królestw (PW)', id: 'wojna' },
-      { href: '/technik/panele', label: 'Panele lab Discord', id: 'panele' },
+      { href: '/technik/wyglad', label: 'Wygląd postów', id: 'wyglad' },
+      { href: '/technik/centrum', label: 'Centrum panel', id: 'centrum' },
+      { href: '/technik/kanaly', label: 'Kanały', id: 'kanaly' },
+      { href: '/technik/cykliczne', label: 'Cykliczne', id: 'cykliczne' },
+      { href: '/technik/panele', label: 'Panele lab', id: 'panele' },
+    ],
+  },
+  {
+    title: 'PW do graczy',
+    items: [
+      { href: '/technik/timery', label: 'Timery postaci', id: 'timers' },
+      { href: '/technik/wojna', label: 'Wojna Królestw', id: 'wojna' },
     ],
   },
   {
     title: 'Ops',
     items: [
+      { href: '/technik/aktywnosc', label: 'Aktywność członków', id: 'aktywnosc' },
       { href: '/technik/diagnostyka', label: 'Diagnostyka', id: 'diagnostyka' },
-      { href: '/technik/audit', label: 'Audyt i rollback', id: 'audit' },
+      { href: '/technik/audit', label: 'Audyt', id: 'audit' },
       { href: '/technik/owner', label: 'Poza zakresem (Owner)', id: 'owner' },
     ],
   },

@@ -110,6 +110,7 @@ export const BOT_CAPABILITIES = [
       enabled: false,
       warAt: '18:00',
       notifyMinutesBefore: 30,
+      maxClaimsPerUser: 3,
       messageTemplate:
         '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min start ({{warAt}} Europe/Warsaw).',
     },
@@ -136,6 +137,13 @@ export const BOT_CAPABILITIES = [
         default: 30,
       },
       {
+        key: 'maxClaimsPerUser',
+        title: 'Max claimów / user',
+        description: 'Ile postaci wojny może zająć jeden użytkownik Discord (domyślnie 3).',
+        valueType: 'number',
+        default: 3,
+      },
+      {
         key: 'messageTemplate',
         title: 'Szablon wiadomości',
         description: 'Szablon PL z {{warAt}}, {{notifyMinutesBefore}}. Bez sekretów infrastrukturalnych.',
@@ -144,6 +152,34 @@ export const BOT_CAPABILITIES = [
           '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min start ({{warAt}} Europe/Warsaw).',
       },
     ],
+  },
+  {
+    id: 'memberActivity',
+    title: 'Aktywność członków (ranking)',
+    description:
+      'Collector MessageCreate + voice minutes per user/guild/day. Dashboard 7d/14d/30d top10 + /me; Technika full+q+since_bot.',
+    valueType: 'object',
+    default: {
+      enabled: true,
+      guildId: '1543972927719080016',
+      memberRoleIds: [],
+      windowDays: 7,
+      topN: 10,
+    },
+    fields: [
+      { key: 'enabled', title: 'Włączony', description: 'Włącza collector aktywności.', valueType: 'boolean', default: true },
+      { key: 'guildId', title: 'Guildia źródłowa', description: 'Domyślnie Destiled.', valueType: 'string', default: '1543972927719080016' },
+      { key: 'windowDays', title: 'Okno (dni)', description: '7, 14 lub 30.', valueType: 'number', default: 7 },
+      { key: 'topN', title: 'Top N', description: 'Dashboard top (10).', valueType: 'number', default: 10 },
+    ],
+  },
+  {
+    id: 'publishChannels',
+    title: 'Kanały publikacji (cel → kanał)',
+    description:
+      'Mapa: centrumHub, notifications, dungeons, trade, recurring, events. Nie bare allowlist. Preferuj guild-scoped + GET channels picker.',
+    valueType: 'object',
+    default: {},
   },
   {
     id: 'strict-guild-isolation',
@@ -170,8 +206,77 @@ export type KingdomWarConfig = {
   readonly enabled: boolean;
   readonly warAt: string;
   readonly notifyMinutesBefore: number;
+  readonly maxClaimsPerUser: number;
   readonly messageTemplate: string;
 };
+
+
+export type GuildModuleFlags = {
+  readonly characterTimers: boolean;
+  readonly kingdomWar: boolean;
+  readonly panels: boolean;
+  readonly channels: boolean;
+};
+
+export type GuildRight =
+  | 'technika.config'
+  | 'technika.apply'
+  | 'technika.rollback'
+  | 'discord.notify'
+  | 'discord.panels'
+  | 'discord.commands';
+
+export type GuildConfig = {
+  readonly enabled: boolean;
+  readonly displayName?: string;
+  readonly modules: GuildModuleFlags;
+  readonly rights: readonly GuildRight[];
+  readonly notes?: string;
+  readonly publishChannels?: PublishChannelsMap;
+};
+
+export type GuildsMap = Readonly<Record<string, GuildConfig>>;
+
+export function defaultGuildModules(): GuildModuleFlags {
+  return {
+    characterTimers: true,
+    kingdomWar: false,
+    panels: true,
+    channels: false,
+  };
+}
+
+export function defaultGuildConfig(partial?: Partial<GuildConfig>): GuildConfig {
+  return {
+    enabled: partial?.enabled ?? false,
+    ...(partial?.displayName ? { displayName: partial.displayName } : {}),
+    modules: { ...defaultGuildModules(), ...(partial?.modules ?? {}) },
+    rights: partial?.rights
+      ? [...partial.rights]
+      : ['technika.config', 'discord.notify', 'discord.panels'],
+    ...(partial?.notes ? { notes: partial.notes } : {}),
+  };
+}
+
+
+export type MemberActivityConfig = {
+  readonly enabled: boolean;
+  readonly guildId: string;
+  readonly memberRoleIds: readonly string[];
+  readonly windowDays: number;
+  readonly topN: number;
+};
+
+export type PublishChannelPurpose =
+  | 'centrumHub'
+  | 'notifications'
+  | 'dungeons'
+  | 'trade'
+  | 'recurring'
+  | 'events';
+
+/** purpose -> channelId map (not a bare allowlist). */
+export type PublishChannelsMap = Readonly<Partial<Record<PublishChannelPurpose, string>>>;
 
 export type BotConfigValues = {
   readonly 'panel-test-enabled': boolean;
@@ -180,6 +285,9 @@ export type BotConfigValues = {
   readonly characterTimers: CharacterTimersConfig;
   readonly kingdomWar: KingdomWarConfig;
   readonly 'notify-timer-dm-action-buttons': boolean;
+  readonly guilds: GuildsMap;
+  readonly memberActivity: MemberActivityConfig;
+  readonly publishChannels: PublishChannelsMap;
 };
 
 export function defaultTimersNotify(): TimersNotifyConfig {
@@ -190,11 +298,27 @@ export function defaultCharacterTimers(): CharacterTimersConfig {
   return { ...CHARACTER_TIMERS_DEFAULT };
 }
 
+
+export function defaultMemberActivity(): MemberActivityConfig {
+  return {
+    enabled: true,
+    guildId: '1543972927719080016',
+    memberRoleIds: [],
+    windowDays: 7,
+    topN: 10,
+  };
+}
+
+export function defaultPublishChannels(): PublishChannelsMap {
+  return {};
+}
+
 export function defaultKingdomWar(): KingdomWarConfig {
   return {
     enabled: false,
     warAt: '18:00',
     notifyMinutesBefore: 30,
+    maxClaimsPerUser: 3,
     messageTemplate:
       '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min start ({{warAt}} Europe/Warsaw).',
   };
@@ -209,6 +333,9 @@ export function defaultBotConfigValues(): BotConfigValues {
     characterTimers: timers,
     kingdomWar: defaultKingdomWar(),
     'notify-timer-dm-action-buttons': true,
+    guilds: {},
+    memberActivity: defaultMemberActivity(),
+    publishChannels: defaultPublishChannels(),
   };
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { HonestGap, ReactionsForbiddenNote } from './ui-notes';
+import { HonestGap, PageJobNote, ReactionsForbiddenNote, PlayerSeesNote } from './ui-notes';
 
 export function TechnikOwnerPage() {
   return (
@@ -11,7 +11,18 @@ export function TechnikOwnerPage() {
         panelu Technika (WEB_ACCESS / D-060).
       </p>
 
-      <section className="technik-panel technik-panel--wide">
+      
+      <PageJobNote>
+        <p>
+          Informacja, czego Technik tu nie konfiguruje: tokeny, sekrety, allowlista Ownera. Bez
+          formularzy — te rzeczy są poza zakresem.
+        </p>
+      </PageJobNote>
+      <PlayerSeesNote>
+        <p>Gracz nie widzi tej strony. Sekrety i allowlista Ownera nigdy nie trafiają do UI Technika.</p>
+      </PlayerSeesNote>
+
+<section className="technik-panel technik-panel--wide">
         <h2>Czego Technika nie rusza</h2>
         <ul className="technik-message-list">
           <li>

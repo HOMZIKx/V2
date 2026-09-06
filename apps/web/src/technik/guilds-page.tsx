@@ -19,7 +19,7 @@ import {
   putGuild,
   sortGuildsForTechnik,
 } from './technika-config-api';
-import { HonestGap, PlayerSeesNote } from './ui-notes';
+import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 const MODULE_META: Record<
@@ -229,7 +229,14 @@ export function TechnikGuildsPage() {
         są na liście, ale zablokowane przed enable.
       </p>
 
-      <PlayerSeesNote>
+      
+      <PageJobNote>
+        <p>
+          Wybierasz serwer Discord (Testowy vs prod) i włączasz moduły bota per guildia. Publish na
+          Destiled/Sojusz zostaje zablokowany do Twojego Apply.
+        </p>
+      </PageJobNote>
+<PlayerSeesNote>
         <p>
           Gdy guildia jest włączona i moduł timerów/wojny jest ON + po Apply: członkowie tej guildii
           mogą dostać PW od bota. Wyłączona guildia = bot milczy dla tego serwera.

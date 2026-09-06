@@ -19,7 +19,7 @@ export function TechnikShell({
         <div className="technik-brand">
           <strong>DESTILED · Technik</strong>
           <span>
-            Pełny panel — żywe API, bez atrap. Najpierw Discord testowy, potem treści PW, potem Apply.
+            Konfiguracja bota Discord — jeden jasny cel na zakładkę. Najpierw Testowy, potem Apply.
           </span>
         </div>
         <nav className="technik-subnav">

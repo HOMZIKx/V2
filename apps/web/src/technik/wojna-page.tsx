@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { D060Controls } from './d060-controls';
 import { computeNotifyAt, postConfigTestDm } from './technika-config-api';
-import { PlayerSeesNote } from './ui-notes';
+import { PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 const LIVELY_WAR_TEMPLATE =
@@ -61,7 +61,14 @@ export function TechnikWojnaPage() {
         17:30. Limit claimów postaci na osobę: 1–20 (domyślnie 3).
       </p>
 
-      <PlayerSeesNote>
+      
+      <PageJobNote>
+        <p>
+          Ustawiasz godzinę wojny królestw, ile minut wcześniej bot przypomina i treść prywatnej
+          wiadomości — z testem PW.
+        </p>
+      </PageJobNote>
+<PlayerSeesNote>
         <p>
           Gracz dostaje prywatną wiadomość przed wojną. Może zająć (claim) postać — limit{' '}
           <strong>maxClaimsPerUser</strong> chroni przed zajęciem całej listy przez jedną osobę.

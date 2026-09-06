@@ -15,7 +15,7 @@ import {
 } from './discord-gateway-health';
 import { HealthErrorPanel } from './health-error-panel';
 import { StatusBadge } from './status-badge';
-import { HonestGap, PlayerSeesNote, ReactionsForbiddenNote } from './ui-notes';
+import { HonestGap, PageJobNote, PlayerSeesNote, ReactionsForbiddenNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 const AUTO_REFRESH_MS = 15_000;
@@ -89,7 +89,14 @@ export function TechnikOverviewPage() {
         (szkic → sprawdź → podgląd → Ty klikasz Apply).
       </p>
 
-      <PlayerSeesNote>
+      
+      <PageJobNote>
+        <p>
+          Widzisz stan bota, aktywną rewizję konfiguracji i skrót cyklu: szkic → sprawdź → podgląd →
+          zapisz i włącz → cofnij.
+        </p>
+      </PageJobNote>
+<PlayerSeesNote>
         <p>
           Gracz na Discordzie nie widzi tego panelu. Widzi skutki: PW o timerach postaci, PW o wojnie,
           ewentualnie panel lab na guildii testowej — dopiero po Twoim Apply.

@@ -1,7 +1,7 @@
 'use client';
 
 import { D060Controls } from './d060-controls';
-import { HonestGap, PlayerSeesNote } from './ui-notes';
+import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 function formatLocalTime(iso: string | null | undefined): string {
@@ -24,7 +24,13 @@ export function TechnikAuditPage() {
         audit log — jeśli brak endpointu, mówimy o tym wprost.
       </p>
 
-      <PlayerSeesNote>
+      
+      <PageJobNote>
+        <p>
+          Podgląd audytu zmian konfiguracji i cofnięcie ostatniego Apply, gdy coś pójdzie nie tak.
+        </p>
+      </PageJobNote>
+<PlayerSeesNote>
         <p>
           Rollback przywraca poprzednią konfigurację bota. Gracze znowu dostają (lub przestają
           dostawać) PW / panele zgodnie z przywróconą rewizją — po Twoim kliknięciu Cofnij.

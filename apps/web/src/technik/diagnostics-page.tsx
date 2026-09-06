@@ -14,6 +14,7 @@ import {
 } from './discord-gateway-health';
 import { HealthErrorPanel } from './health-error-panel';
 import { StatusBadge } from './status-badge';
+import { PageJobNote, PlayerSeesNote } from './ui-notes';
 
 type DiagnosticsState = {
   readonly live: HealthFetchResult<LiveHealth> | null;
@@ -164,7 +165,17 @@ export function TechnikDiagnosticsPage() {
         Surowy podgląd dla ciekawskich. Na co dzień wystarczy zakładka Status — tu masz pełne JSON-y.
       </p>
 
-      <div className="technik-row">
+      
+      <PageJobNote>
+        <p>
+          Sprawdzasz zdrowie bota i zależności (live / ready / Discord). Tu nie zmieniasz treści
+          postów — tylko diagnozujesz.
+        </p>
+      </PageJobNote>
+      <PlayerSeesNote>
+        <p>Z tej strony gracz nic nie dostaje — to tylko podgląd zdrowia bota dla Technika.</p>
+      </PlayerSeesNote>
+<div className="technik-row">
         <StatusBadge label={badge.label} tone={badge.tone} />
         <button type="button" onClick={() => void refresh()} disabled={loading}>
           {loading ? 'Odświeżam…' : 'Odśwież'}

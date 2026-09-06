@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { D060Controls } from './d060-controls';
 import { postConfigTestDm } from './technika-config-api';
-import { PlayerSeesNote } from './ui-notes';
+import { PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 const LIVELY_TIMER_TEMPLATE =
@@ -64,7 +64,14 @@ export function TechnikTimersPage() {
         Górnictwo, Jazda konna. <strong>To nie są metiny na mapie</strong> — bez Zbite/Odłóż.
       </p>
 
-      <PlayerSeesNote>
+      
+      <PageJobNote>
+        <p>
+          Ustawiasz, czy bot wysyła prywatne wiadomości o timerach postaci, treść szablonu i test PW.
+          To nie timery map / metinów.
+        </p>
+      </PageJobNote>
+<PlayerSeesNote>
         <p>
           Po starcie timera na WWW gracz dostaje prywatną wiadomość od bota ze skrótem innych timerów
           oraz przyciskami <strong>Gotowe</strong> / <strong>Przypomnij później</strong>. Gotowe w DM
