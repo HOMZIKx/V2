@@ -2,6 +2,9 @@
  * Browser client for Technika bot config (D-060).
  * Calls same-origin /api/technik/* — server holds DISCORD_TECHNIKA_SHARED_SECRET.
  * Never expose the secret via NEXT_PUBLIC_*.
+ *
+ * OpenAPI keys today: timersNotify, kingdomWar, panel-test-enabled, …
+ * Upcoming: characterTimers (Timery postaci / Księga) — preferred when present.
  */
 
 export type TimersNotifyConfig = {
@@ -10,6 +13,9 @@ export type TimersNotifyConfig = {
   readonly reminderMinutesBefore: number;
   readonly resetNotifyEnabled: boolean;
 };
+
+/** Alias for Timery postaci (character progress — not map metins). */
+export type CharacterTimersConfig = TimersNotifyConfig;
 
 export type KingdomWarConfig = {
   readonly enabled: boolean;
@@ -23,7 +29,8 @@ export type BotConfigValues = {
   readonly 'notify-timer-enabled': boolean;
   readonly timersNotify: TimersNotifyConfig;
   readonly kingdomWar: KingdomWarConfig;
-  readonly 'notify-timer-dm-action-buttons': boolean;
+  /** Upcoming OpenAPI module — present when gateway exposes it. */
+  readonly characterTimers?: CharacterTimersConfig;
 };
 
 export type ConfigSnapshot = {
@@ -34,6 +41,25 @@ export type ConfigSnapshot = {
   readonly hasDraft: boolean;
   readonly canRollback: boolean;
   readonly strictGuildIsolation?: boolean;
+};
+
+export type CapabilityField = {
+  readonly key: string;
+  readonly title: string;
+  readonly description: string;
+  readonly valueType: 'boolean' | 'number' | 'string';
+  readonly default: boolean | number | string;
+};
+
+export type BotCapability = {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly valueType: 'boolean' | 'number' | 'string' | 'object';
+  readonly default: unknown;
+  readonly readOnly?: boolean;
+  readonly currentDisplayValue?: unknown;
+  readonly fields?: readonly CapabilityField[];
 };
 
 export type ValidationIssue = {
@@ -65,6 +91,14 @@ export const DEFAULT_TIMERS_NOTIFY: TimersNotifyConfig = {
   resetNotifyEnabled: true,
 };
 
+export const DEFAULT_CHARACTER_TIMERS: CharacterTimersConfig = {
+  enabled: false,
+  messageTemplate:
+    '**DESTILED · Timer postaci**\n{{title}}\n\n{{body}}\n\nInne: {{otherTimersSummary}}',
+  reminderMinutesBefore: 60,
+  resetNotifyEnabled: true,
+};
+
 export const DEFAULT_KINGDOM_WAR: KingdomWarConfig = {
   enabled: false,
   warAt: '18:00',
@@ -72,6 +106,28 @@ export const DEFAULT_KINGDOM_WAR: KingdomWarConfig = {
   messageTemplate:
     '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min ({{warAt}}).',
 };
+
+/**
+ * Prefer upcoming characterTimers module; fall back to timersNotify (same shape).
+ * UI always labels this as Timery postaci (not map metins).
+ */
+export function pickCharacterTimers(
+  config: BotConfigValues | null | undefined,
+): { values: CharacterTimersConfig; apiKey: 'characterTimers' | 'timersNotify' } {
+  if (config?.characterTimers && typeof config.characterTimers === 'object') {
+    return {
+      values: { ...DEFAULT_CHARACTER_TIMERS, ...config.characterTimers },
+      apiKey: 'characterTimers',
+    };
+  }
+  if (config?.timersNotify && typeof config.timersNotify === 'object') {
+    return {
+      values: { ...DEFAULT_TIMERS_NOTIFY, ...config.timersNotify },
+      apiKey: 'timersNotify',
+    };
+  }
+  return { values: { ...DEFAULT_CHARACTER_TIMERS }, apiKey: 'timersNotify' };
+}
 
 async function parseJson(
   res: Response,
@@ -105,7 +161,12 @@ function failFrom(
     ok: false,
     error: err,
     status: res.status,
-    detail: typeof parsed.detail === 'string' ? parsed.detail : typeof parsed.hint === 'string' ? parsed.hint : undefined,
+    detail:
+      typeof parsed.detail === 'string'
+        ? parsed.detail
+        : typeof parsed.hint === 'string'
+          ? parsed.hint
+          : undefined,
     issues,
     body: parsed,
   };
@@ -136,6 +197,29 @@ export async function fetchTechnikaMeta(): Promise<TechnikaApiResult<TechnikaMet
   }
 }
 
+export async function fetchCapabilities(): Promise<
+  TechnikaApiResult<{ capabilities: readonly BotCapability[] }>
+> {
+  try {
+    const res = await fetch('/api/technik/capabilities', { cache: 'no-store' });
+    const { parsed } = await parseJson(res);
+    if (!res.ok) {
+      return failFrom(res, parsed, `http_${res.status}`);
+    }
+    const list = Array.isArray(parsed.capabilities)
+      ? (parsed.capabilities as BotCapability[])
+      : [];
+    return { ok: true, status: res.status, data: { capabilities: list } };
+  } catch (error) {
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
+  }
+}
+
 export async function fetchActiveConfig(): Promise<TechnikaApiResult<ConfigSnapshot>> {
   try {
     const res = await fetch('/api/technik/config', { cache: 'no-store' });
@@ -154,8 +238,16 @@ export async function fetchActiveConfig(): Promise<TechnikaApiResult<ConfigSnaps
   }
 }
 
+export type BotConfigDraftPartial = {
+  readonly timersNotify?: Partial<TimersNotifyConfig>;
+  readonly characterTimers?: Partial<CharacterTimersConfig>;
+  readonly kingdomWar?: Partial<KingdomWarConfig>;
+  readonly 'panel-test-enabled'?: boolean;
+  readonly 'notify-timer-enabled'?: boolean;
+} & Record<string, unknown>;
+
 export async function putConfigDraft(
-  partial: { readonly timersNotify?: Partial<TimersNotifyConfig>; readonly kingdomWar?: Partial<KingdomWarConfig> } & Record<string, unknown>,
+  partial: BotConfigDraftPartial,
 ): Promise<TechnikaApiResult<Record<string, unknown>>> {
   try {
     const res = await fetch('/api/technik/config/draft', {
@@ -247,7 +339,11 @@ export async function postConfigApply(): Promise<TechnikaApiResult<ConfigSnapsho
     if (!res.ok) {
       return failFrom(res, parsed, `http_${res.status}`);
     }
-    return { ok: true, status: res.status, data: parsed as unknown as ConfigSnapshot & { ok: true } };
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as ConfigSnapshot & { ok: true },
+    };
   } catch (error) {
     return {
       ok: false,
@@ -258,7 +354,9 @@ export async function postConfigApply(): Promise<TechnikaApiResult<ConfigSnapsho
   }
 }
 
-export async function postConfigRollback(): Promise<TechnikaApiResult<ConfigSnapshot & { ok: true }>> {
+export async function postConfigRollback(): Promise<
+  TechnikaApiResult<ConfigSnapshot & { ok: true }>
+> {
   try {
     const res = await fetch('/api/technik/config/rollback', {
       method: 'POST',
@@ -270,7 +368,60 @@ export async function postConfigRollback(): Promise<TechnikaApiResult<ConfigSnap
     if (!res.ok) {
       return failFrom(res, parsed, `http_${res.status}`);
     }
-    return { ok: true, status: res.status, data: parsed as unknown as ConfigSnapshot & { ok: true } };
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as ConfigSnapshot & { ok: true },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
+  }
+}
+
+
+export type TestDmModule = 'timersNotify' | 'characterTimers' | 'kingdomWar';
+
+export type TestDmRequest = {
+  readonly module: TestDmModule;
+  readonly discordUserId?: string;
+  readonly messageTemplate?: string;
+  readonly reminderMinutesBefore?: number;
+  readonly warAt?: string;
+  readonly notifyMinutesBefore?: number;
+};
+
+export type TestDmResponse = {
+  readonly ok: true;
+  readonly delivery: 'dm';
+  readonly messageId: string;
+  readonly module: TestDmModule;
+  readonly discordUserId: string;
+};
+
+export async function postConfigTestDm(
+  body: TestDmRequest,
+): Promise<TechnikaApiResult<TestDmResponse>> {
+  try {
+    const res = await fetch('/api/technik/config/test-dm', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+    const { parsed } = await parseJson(res);
+    if (!res.ok) {
+      return failFrom(res, parsed, `http_${res.status}`);
+    }
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as TestDmResponse,
+    };
   } catch (error) {
     return {
       ok: false,

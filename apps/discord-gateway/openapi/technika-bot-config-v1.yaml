@@ -1,0 +1,560 @@
+openapi: 3.1.0
+info:
+  title: Discord Gateway — Technika bot config (D-060)
+  version: 1.0.0
+  description: |
+    Versioned, safe bot configuration for Technika (Technician role).
+    No tokens, OAuth secrets, allowlists, or infrastructure credentials (WEB_ACCESS).
+
+    Flow for Kuzyn UI: GET capabilities → GET config → PUT draft → POST validate →
+    POST preview → POST apply (optional POST rollback).
+
+    Mutating endpoints require header `x-technika-secret` matching
+    `DISCORD_TECHNIKA_SHARED_SECRET`. Health endpoints stay public and unchanged.
+servers:
+  - url: http://127.0.0.1:4100
+    description: Local discord-gateway
+tags:
+  - name: capabilities
+  - name: config
+paths:
+  /discord/v1/capabilities:
+    get:
+      tags: [capabilities]
+      operationId: listBotCapabilities
+      summary: Lista capability bota (schema do formularza Technika)
+      description: |
+        Read-only. Identyfikatory stabilne (kebab-case / camelCase module ids).
+        Opisy PL. Brak sekretów w odpowiedzi.
+      responses:
+        '200':
+          description: Katalog capability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
+
+  /discord/v1/config:
+    get:
+      tags: [config]
+      operationId: getActiveBotConfig
+      summary: Aktywna konfiguracja + revision
+      responses:
+        '200':
+          description: Active snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigSnapshot'
+
+  /discord/v1/config/draft:
+    put:
+      tags: [config]
+      operationId: putBotConfigDraft
+      summary: Zapisz draft (partial merge z active/draft)
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/BotConfig'
+                - type: object
+                  required: [config]
+                  properties:
+                    config:
+                      $ref: '#/components/schemas/BotConfigPartial'
+            examples:
+              characterTimersAndWar:
+                summary: Włącz characterTimers + kingdomWar
+                value:
+                  characterTimers:
+                    enabled: true
+                    messageTemplate: "**DESTILED · Timer postaci**\n{{title}}\n\n{{body}}"
+                    reminderMinutesBefore: 60
+                    resetNotifyEnabled: true
+                  timersNotify:
+                    enabled: true
+                    messageTemplate: "**DESTILED · Timer postaci**\n{{title}}\n\n{{body}}"
+                    reminderMinutesBefore: 60
+                    resetNotifyEnabled: true
+                  kingdomWar:
+                    enabled: true
+                    warAt: "18:00"
+                    notifyMinutesBefore: 30
+                    messageTemplate: "**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min ({{warAt}})."
+      responses:
+        '200':
+          description: Draft zapisany
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftResponse'
+        '400':
+          description: Walidacja nieudana
+        '401':
+          description: Brak / zły x-technika-secret
+
+  /discord/v1/config/validate:
+    post:
+      tags: [config]
+      operationId: validateBotConfig
+      summary: Waliduj body lub bieżący draft
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/BotConfig'
+                - type: object
+                  properties:
+                    config:
+                      $ref: '#/components/schemas/BotConfig'
+      responses:
+        '200':
+          description: Wynik walidacji (ok true/false)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResponse'
+        '401':
+          description: Brak / zły secret
+
+  /discord/v1/config/preview:
+    post:
+      tags: [config]
+      operationId: previewBotConfig
+      summary: Podgląd active vs draft przed apply
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      responses:
+        '200':
+          description: Preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviewResponse'
+        '401':
+          description: Brak / zły secret
+
+  /discord/v1/config/apply:
+    post:
+      tags: [config]
+      operationId: applyBotConfig
+      summary: Promuj draft → active (revision++)
+      description: |
+        Idempotentne — bez draftu lub gdy draft == active nie zwiększa revision.
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      responses:
+        '200':
+          description: Active po apply
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean, const: true }
+                  - $ref: '#/components/schemas/ConfigSnapshot'
+        '400':
+          description: Draft nie przeszedł walidacji
+        '401':
+          description: Brak / zły secret
+
+  /discord/v1/config/rollback:
+    post:
+      tags: [config]
+      operationId: rollbackBotConfig
+      summary: Cofnij do poprzedniej rewizji (jeśli dostępna)
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      responses:
+        '200':
+          description: Active po rollback
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [ok]
+                    properties:
+                      ok: { type: boolean, const: true }
+                  - $ref: '#/components/schemas/ConfigSnapshot'
+        '401':
+          description: Brak / zły secret
+        '409':
+          description: Brak poprzedniej rewizji
+
+  /discord/v1/config/test-dm:
+    post:
+      tags: [config]
+      operationId: postBotConfigTestDm
+      summary: Wyślij testową PW Discord (szablon modułu)
+      description: |
+        Renderuje messageTemplate z sampleVars i wysyła DM do discordAccountId.
+        Soft-fail gdy DMs zamknięte (`skipped: dms_closed`).
+        Auth: `x-technika-secret`.
+      security:
+        - TechnikaSecret: []
+      parameters:
+        - $ref: '#/components/parameters/TechnikaSecretHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestDmRequest'
+            examples:
+              characterTimers:
+                summary: Test PW timerów postaci
+                value:
+                  module: characterTimers
+                  discordAccountId: "123456789012345678"
+                  messageTemplate: "**DESTILED · Timer postaci**\n{{title}}\n\n{{body}}"
+                  sampleVars:
+                    title: "Księga umiejętności · NerwNicht"
+                    body: "Cykl kończy się za ~60 min."
+                    otherTimersSummary: "Jazda konna — gotowe"
+                    characterName: NerwNicht
+                    timerLabel: Księga umiejętności
+      responses:
+        '200':
+          description: Wysłano lub soft-skip
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestDmResponse'
+        '400':
+          description: Walidacja nieudana
+        '401':
+          description: Brak / zły x-technika-secret
+        '503':
+          description: Discord niedostępny / wyłączony
+
+components:
+  securitySchemes:
+    TechnikaSecret:
+      type: apiKey
+      in: header
+      name: x-technika-secret
+
+  parameters:
+    TechnikaSecretHeader:
+      name: x-technika-secret
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Shared secret === DISCORD_TECHNIKA_SHARED_SECRET
+
+  schemas:
+    CapabilityField:
+      type: object
+      required: [key, title, description, valueType, default]
+      properties:
+        key: { type: string }
+        title: { type: string }
+        description: { type: string }
+        valueType:
+          type: string
+          enum: [boolean, number, string]
+        default: {}
+
+    Capability:
+      type: object
+      required: [id, title, description, valueType, default]
+      properties:
+        id:
+          type: string
+          description: Stabilne id (kebab-case lub camelCase modułu)
+          examples: [characterTimers, timersNotify, kingdomWar, panel-test-enabled]
+        title: { type: string }
+        description: { type: string }
+        valueType:
+          type: string
+          enum: [boolean, number, string, object]
+        default: {}
+        readOnly:
+          type: boolean
+        currentDisplayValue: {}
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapabilityField'
+
+    CapabilitiesResponse:
+      type: object
+      required: [capabilities]
+      properties:
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+
+    TimersNotify:
+      type: object
+      description: |
+        Alias produktu = characterTimers (timery postaci z karty EQ/Timer).
+        Nie dotyczy map/metin. Zachowany dla kompatybilności.
+      required: [enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Główny przełącznik (alias characterTimers.enabled)
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{title}}, {{body}}, {{otherTimersSummary}}, {{characterName}}, {{timerLabel}}, {{endsAt}}
+        reminderMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 60
+          description: Minuty przed końcem cyklu postaci (domyślnie 60)
+        resetNotifyEnabled:
+          type: boolean
+          description: Auto-DM po starcie / oznaczeniu Gotowe timera postaci
+
+    CharacterTimers:
+      type: object
+      description: |
+        Timery postaci (Księga, Kamień Duchowy, Dowodzenie, Polimorfia, Górnictwo, Jazda konna).
+        Produkt Discord Timers notify — NIE map/metin.
+      required: [enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled]
+      properties:
+        enabled:
+          type: boolean
+          description: Główny przełącznik modułu characterTimers
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{title}}, {{body}}, {{otherTimersSummary}}, {{characterName}}, {{timerLabel}}, {{endsAt}}, {{deepLinkUrl}}
+        reminderMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 60
+          description: Minuty przed końcem cyklu (domyślnie 60)
+        resetNotifyEnabled:
+          type: boolean
+          description: Auto-DM po starcie / resecie timera postaci
+
+    KingdomWar:
+      type: object
+      required: [enabled, warAt, notifyMinutesBefore, messageTemplate]
+      properties:
+        enabled:
+          type: boolean
+        warAt:
+          type: string
+          pattern: '^([01]\d|2[0-3]):([0-5]\d)$'
+          description: Godzina startu Europe/Warsaw (HH:mm), np. "18:00"
+          examples: ["18:00"]
+        notifyMinutesBefore:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 30
+          description: Minuty przed warAt (30 → ping 17:30 przy 18:00)
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Szablon PL — {{warAt}}, {{notifyMinutesBefore}}
+
+    BotConfig:
+      type: object
+      additionalProperties: false
+      required:
+        - panel-test-enabled
+        - notify-timer-enabled
+        - timersNotify
+        - characterTimers
+        - kingdomWar
+        - notify-timer-dm-action-buttons
+      properties:
+        panel-test-enabled:
+          type: boolean
+        notify-timer-enabled:
+          type: boolean
+          description: Czy akceptować POST /notify/timer
+        characterTimers:
+          $ref: '#/components/schemas/CharacterTimers'
+        timersNotify:
+          $ref: '#/components/schemas/TimersNotify'
+        kingdomWar:
+          $ref: '#/components/schemas/KingdomWar'
+        notify-timer-dm-action-buttons:
+          type: boolean
+          description: Przyciski Gotowe / Przypomnij później w PW (timery postaci) bez WWW
+
+    BotConfigPartial:
+      type: object
+      description: Partial merge — brakujące klucze dziedziczone z active/draft
+      properties:
+        panel-test-enabled: { type: boolean }
+        notify-timer-enabled: { type: boolean }
+        characterTimers:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            messageTemplate: { type: string }
+            reminderMinutesBefore: { type: integer }
+            resetNotifyEnabled: { type: boolean }
+        timersNotify:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            messageTemplate: { type: string }
+            reminderMinutesBefore: { type: integer }
+            resetNotifyEnabled: { type: boolean }
+        kingdomWar:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            warAt: { type: string }
+            notifyMinutesBefore: { type: integer }
+            messageTemplate: { type: string }
+        notify-timer-dm-action-buttons: { type: boolean }
+
+    ConfigSnapshot:
+      type: object
+      required: [revision, status, config, updatedAt, hasDraft, canRollback]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        status:
+          type: string
+          enum: [active, draft]
+        config:
+          $ref: '#/components/schemas/BotConfig'
+        updatedAt:
+          type: string
+          format: date-time
+        hasDraft: { type: boolean }
+        canRollback: { type: boolean }
+        strictGuildIsolation:
+          type: boolean
+          description: Podgląd env DISCORD_STRICT_GUILD_ISOLATION (read-only)
+
+    DraftResponse:
+      type: object
+      required: [ok, revision, status, config, issues, updatedAt]
+      properties:
+        ok: { type: boolean }
+        revision: { type: integer }
+        status: { type: string, enum: [draft] }
+        config:
+          $ref: '#/components/schemas/BotConfig'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        updatedAt:
+          type: string
+          format: date-time
+
+    ValidationIssue:
+      type: object
+      required: [path, message]
+      properties:
+        path: { type: string }
+        message: { type: string }
+
+    ValidationResponse:
+      type: object
+      required: [ok, issues]
+      properties:
+        ok: { type: boolean }
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/BotConfig'
+            - type: 'null'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+
+    PreviewResponse:
+      type: object
+      required: [ok, revision, status, active, draft, wouldBecomeRevision, issues, updatedAt]
+      properties:
+        ok: { type: boolean }
+        revision: { type: integer }
+        status:
+          type: string
+          enum: [active, draft]
+        active:
+          $ref: '#/components/schemas/BotConfig'
+        draft:
+          oneOf:
+            - $ref: '#/components/schemas/BotConfig'
+            - type: 'null'
+        wouldBecomeRevision:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        issues:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationIssue'
+        updatedAt:
+          type: string
+          format: date-time
+
+    TestDmRequest:
+      type: object
+      required: [module, discordAccountId]
+      properties:
+        module:
+          type: string
+          enum: [characterTimers, kingdomWar]
+        discordAccountId:
+          type: string
+          pattern: '^\d{17,20}$'
+          description: Discord snowflake odbiorcy testowej PW
+        messageTemplate:
+          type: string
+          maxLength: 1800
+          description: Opcjonalny override szablonu (domyślnie z active config)
+        sampleVars:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+          description: Placeholdery do renderu (title, body, warAt, …)
+
+    TestDmResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        delivery:
+          type: string
+          enum: [dm]
+        messageId:
+          oneOf:
+            - type: string
+            - type: 'null'
+        skipped:
+          type: string
+          enum: [dms_closed]
+        renderedPreview:
+          type: string
+          description: Treść po renderze (do podglądu w Technice)

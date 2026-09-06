@@ -40,6 +40,7 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'config/preview',
     'config/apply',
     'config/rollback',
+    'config/test-dm',
   ]);
 
   if (!allowed.has(joined)) {

@@ -1,6 +1,6 @@
 ﻿# Mapa możliwości — Konfigurator Technika (bot)
 
-- **Status:** research / capability map (bez pełnej przebudowy UI)
+- **Status:** apps/web Technik `/technik/bot` — live timers + kingdomWar + test-dm (bez atrap wkrótce)
 - **Branch:** `preview/destiled-web`
 - **Data:** 2026-09-06
 - **Cel:** kompletny katalog tego, co Discord bot + app już mają **albo** mają w docs, żeby UI Technika dało się zaprojektować end-to-end (D-060).
@@ -347,4 +347,26 @@ Rejestracja: **guild-only** (zakaz global commands) — ADR-0007 / D-029.
 | Role model | `docs/product/WEB_ACCESS_AND_ROLE_MODEL.md` |
 | Centrum product | `docs/product/CENTRUM_AKTYWNOSCI.md` |
 | Discord UX | `docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md`, `docs/ux/DISCORD_POST_INTERACTION_STANDARD.md` |
+
+
+---
+
+
+---
+
+## 10. Exposed in UI — apps/web Technik `/technik/bot` (2026-09-06)
+
+**Zasada:** tylko live, użyteczne ustawienia (bez atrap „wkrótce”). D-060 + Test DM.
+
+| Obszar | UI | Klucze |
+| --- | --- | --- |
+| D-060 draft→validate→preview→apply→rollback | ✅ | `/api/technik/*` |
+| **Timery postaci** (nie map metins) | ✅ pełny formularz + duży textarea + **Test DM** | `timersNotify.*`; prefer `characterTimers` gdy capability |
+| `notify-timer-enabled` / DM buttons | ✅ | live |
+| **Wojna królestw** | ✅ pełny formularz + duży textarea + **Test DM** | `kingdomWar.*` |
+| Test DM | ✅ | `POST /discord/v1/config/test-dm` |
+| Panel lab `/panel-test` | ✅ tylko jeśli capability `panel-test-enabled` | inaczej jedna linia „New Bot dopina API” |
+| Kanały / pingi / katalogi / slash / motyw | ❌ poza primary UI | jedna notka „New Bot dopina API” |
+| Reakcje / Owner secrets | ❌ | krótki komunikat |
+| `strict-guild-isolation` | ✅ read-only jeśli w config/capabilities | |
 

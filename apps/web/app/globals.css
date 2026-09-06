@@ -12224,6 +12224,44 @@ button:disabled {
 .technik-field textarea {
   resize: vertical;
   min-height: 4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.technik-field--message {
+  width: 100%;
+}
+.technik-field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+.technik-message-template {
+  width: 100%;
+  min-height: 16rem;
+  max-width: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  padding: 0.75rem 0.85rem;
+}
+.technik-test-dm-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.technik-test-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+}
+.technik-test-status--ok {
+  color: color-mix(in srgb, #3ecf8e 85%, var(--text));
+}
+.technik-test-status--warn {
+  color: color-mix(in srgb, #e6b84d 90%, var(--text));
+}
+.technik-test-status--err {
+  color: color-mix(in srgb, #ff6b6b 90%, var(--text));
 }
 .technik-field input[type='number'],
 .technik-field input[type='time'] {
@@ -12355,4 +12393,11 @@ button:disabled {
   border: 1px dashed color-mix(in srgb, var(--amber) 45%, var(--line));
   border-radius: 0.45rem;
   background: color-mix(in srgb, var(--amber) 6%, transparent);
+}
+
+.technik-textarea--large {
+  min-height: 14rem;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
