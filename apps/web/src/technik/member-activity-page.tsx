@@ -28,6 +28,27 @@ const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: 'since_bot', label: 'Od startu bota' },
 ];
 
+function DiscordProfileLink({
+  discordUserId,
+  displayName,
+}: {
+  readonly discordUserId: string;
+  readonly displayName: string;
+}) {
+  const webHref = 'https://discord.com/users/' + discordUserId;
+  const appHref = 'discord://-/users/' + discordUserId;
+  return (
+    <>
+      <a href={webHref} target="_blank" rel="noreferrer">
+        {displayName}
+      </a>{' '}
+      <a href={appHref} className="technik-muted" title="Otwórz w aplikacji Discord">
+        app
+      </a>
+    </>
+  );
+}
+
 function readMemberActivityFromConfig(
   cfg: Record<string, unknown> | null | undefined,
 ): MemberActivityConfig {
@@ -96,7 +117,7 @@ export function TechnikMemberActivityPage() {
       } else if (res.unavailable) {
         setGuildRoles([]);
         setRolesApiNote(
-          'Lista ról z Discorda jeszcze nie jest w API — dodajesz role z listy chipów / ręcznie, bez surowego wklejania jako jedynej opcji.',
+          'Lista nazwanych ról niedostępna — na razie dodajesz ręcznie. Gdy API ról odpowie 200, wybierasz po nazwie z listy.',
         );
       } else {
         setGuildRoles([]);
@@ -472,7 +493,14 @@ export function TechnikMemberActivityPage() {
             </div>
             {myRow ? (
               <p className="technik-help">
-                Ty: <strong>{myRow.displayName}</strong> — wynik {myRow.score}
+                Ty:{' '}
+                <strong>
+                  <DiscordProfileLink
+                    discordUserId={myRow.discordUserId}
+                    displayName={myRow.displayName}
+                  />
+                </strong>{' '}
+                — wynik {myRow.score}
                 {typeof myRow.messages === 'number' ? ' · wiadomości ' + String(myRow.messages) : ''}
                 {typeof myRow.voiceMinutes === 'number'
                   ? ' · VC ' + String(myRow.voiceMinutes) + ' min'
@@ -499,7 +527,12 @@ export function TechnikMemberActivityPage() {
                   {rows.map((r, i) => (
                     <tr key={r.discordUserId + String(i)}>
                       <td>{r.rank ?? i + 1}</td>
-                      <td title={r.discordUserId}>{r.displayName}</td>
+                      <td>
+                        <DiscordProfileLink
+                          discordUserId={r.discordUserId}
+                          displayName={r.displayName}
+                        />
+                      </td>
                       <td>{r.score}</td>
                       <td>{r.messages ?? '—'}</td>
                       <td>{r.voiceMinutes ?? '—'}</td>

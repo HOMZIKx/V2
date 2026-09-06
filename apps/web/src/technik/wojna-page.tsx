@@ -57,21 +57,22 @@ export function TechnikWojnaPage() {
     <>
       <h1>Wojna Królestw (PW)</h1>
       <p className="technik-lead">
-        Przypomnienie przed wojną w czasie Europe/Warsaw. Domyślnie 18:00, ping 30 min wcześniej →
-        17:30. Limit claimów postaci na osobę: 1–20 (domyślnie 3).
+        Przypomnienie przed wojną (czas Warszawa). Domyślnie 18:00, ping 30 min wcześniej → 17:30.
+        Jedna osoba może zająć max kilka postaci (domyślnie 3, zakres 1–20).
       </p>
 
-      
       <PageJobNote>
         <p>
-          Ustawiasz godzinę wojny królestw, ile minut wcześniej bot przypomina i treść prywatnej
-          wiadomości — z testem PW.
+          Tu ustawiasz godzinę wojny, ile minut wcześniej bot przypomina i treść PW. Placeholdery
+          (np. godzina wojny, ile minut do startu) uzupełnia New Bot z żywego harmonogramu. Przyciski
+          zajmowania postaci w PW obsługuje New Bot / gateway — WWW tylko konfiguruje.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
-          Gracz dostaje prywatną wiadomość przed wojną. Może zająć (claim) postać — limit{' '}
-          <strong>maxClaimsPerUser</strong> chroni przed zajęciem całej listy przez jedną osobę.
+          Gracz dostaje prywatną wiadomość przed wojną z możliwością zajęcia postaci (przyciski w
+          PW). Limit to zwykle <strong>max 3 postacie</strong> na osobę — żeby nikt nie zajął całej
+          listy. Egzekucja przycisków claim = New Bot / gateway.
         </p>
       </PlayerSeesNote>
 
@@ -134,7 +135,7 @@ export function TechnikWojnaPage() {
               }))
             }
           />
-          <span className="technik-help">Domyślnie 3. Zgodne ze schematem OpenAPI maxClaimsPerUser.</span>
+          <span className="technik-help">Domyślnie 3 postacie na osobę — tyle samo co przyciski claim w PW wojny.</span>
         </label>
 
         <label className="technik-field technik-field--message">
@@ -159,7 +160,8 @@ export function TechnikWojnaPage() {
             }
           />
           <span className="technik-help">
-            Placeholdery: {'{{warAt}}'}, {'{{notifyMinutesBefore}}'}. Bez sekretów.
+            Placeholdery z żywego harmonogramu: {'{{warAt}}'}, {'{{notifyMinutesBefore}}'}. New Bot
+            wstawia wartości przy wysyłce — bez sekretów.
           </span>
         </label>
       </section>

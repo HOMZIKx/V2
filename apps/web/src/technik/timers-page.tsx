@@ -60,22 +60,25 @@ export function TechnikTimersPage() {
     <>
       <h1>Timery postaci (PW)</h1>
       <p className="technik-lead">
-        Powiadomienia o timerach z karty EQ/Timer: Księga, Kamień Duchowy, Dowodzenie, Polimorfia,
-        Górnictwo, Jazda konna. <strong>To nie są metiny na mapie</strong> — bez Zbite/Odłóż.
+        Prywatne przypomnienia o timerach z karty postaci (EQ/Timer): Księga, Kamień Duchowy,
+        Dowodzenie, Polimorfia, Górnictwo, Jazda konna. <strong>To nie metiny na mapie</strong> — bez
+        Zbite/Odłóż.
       </p>
 
-      
       <PageJobNote>
         <p>
-          Ustawiasz, czy bot wysyła prywatne wiadomości o timerach postaci, treść szablonu i test PW.
-          To nie timery map / metinów.
+          Tu ustawiasz: czy bot wysyła PW o timerach postaci, treść szablonu i testową PW. Placeholdery
+          w szablonie biorą dane z <strong>prawdziwej karty timera</strong> (nazwa postaci, etykieta,
+          koniec) — New Bot uzupełnia je z żywego stanu.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
-          Po starcie timera na WWW gracz dostaje prywatną wiadomość od bota ze skrótem innych timerów
-          oraz przyciskami <strong>Gotowe</strong> / <strong>Przypomnij później</strong>. Gotowe w DM
-          aktualizuje stan w zespole bez otwierania WWW.
+          Po starcie timera na WWW gracz dostaje PW ze skrótem innych timerów oraz przyciskami{' '}
+          <strong>Gotowe</strong> / <strong>Przypomnij później</strong>. <strong>Gotowe</strong> ma
+          zaktualizować timer w aplikacji (zespół/EQ) <em>bez</em> otwierania WWW — tak ma działać
+          produkt. Egzekucja przycisków = New Bot / gateway (ta strona WWW tylko konfiguruje treść i
+          włączniki).
         </p>
       </PlayerSeesNote>
 
@@ -171,9 +174,9 @@ export function TechnikTimersPage() {
             }
           />
           <span className="technik-help">
-            Placeholdery: {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'},{' '}
-            {'{{characterName}}'}, {'{{timerLabel}}'}, {'{{endsAt}}'}, {'{{deepLinkUrl}}'}. Bez
-            sekretów.
+            Placeholdery z żywej karty timera: {'{{characterName}}'}, {'{{timerLabel}}'},{' '}
+            {'{{endsAt}}'}, {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'},{' '}
+            {'{{deepLinkUrl}}'}. Bot/New Bot wstawia wartości z aktualnego stanu — bez sekretów.
           </span>
         </label>
       </section>

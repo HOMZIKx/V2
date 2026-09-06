@@ -183,24 +183,26 @@ export function TechnikPanelePage() {
 
   return (
     <>
-      <h1>Panele Discord (bot)</h1>
+      <h1>Panele lab (test)</h1>
       <p className="technik-lead">
-        Lab Components V2 na <strong>Testowym</strong>. Najpierw włącz globalny lab + moduł guildii,
-        Apply — potem publikuj panel z tej strony (albo komendą <code>/panel-test</code>).
+        To <strong>tylko piaskownica</strong> pod komendę <code>/panel-test</code> na guildii{' '}
+        <strong>Testowy</strong>. Nie jest to Centrum, nie publikuje postów produkcyjnych i nie jest
+        dla graczy. Do codziennego hubu użyj <a href="/technik/centrum">Centrum panel</a>.
       </p>
 
-      
       <PageJobNote>
         <p>
-          Laboratorium panelu testowego (/panel-test): publikacja i odświeżanie bez ruszania
-          produkcyjnego Centrum. Do codziennego hubu użyj Centrum panel.
+          Tutaj włączasz lab, publikujesz i odświeżasz <strong>wyłącznie</strong> panel testowy
+          (<code>/panel-test</code>). Zero wpływu na Centrum i kanały produkcyjne — to warsztat
+          Components V2, nie strona dla graczy.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
-          Na kanale guildii testowej pojawia się panel z przyciskami Odśwież / Usuń. Bot edytuje ten
-          sam post (bez spamu). Wymaga: guildia włączona, <code>modules.panels</code> ON w{' '}
-          <a href="/technik/discordy">Discordach</a>, oraz <code>panel-test-enabled</code> po Apply.
+          Gracze <strong>nie powinni</strong> tu zaglądać. Na kanale Testowego pojawia się tylko panel
+          lab z przyciskami Odśwież / Usuń (bot edytuje ten sam post). Wymaga: guildia Testowy,{' '}
+          <code>modules.panels</code> ON w <a href="/technik/discordy">Discordach</a> oraz{' '}
+          <code>panel-test-enabled</code> po Apply.
         </p>
       </PlayerSeesNote>
 

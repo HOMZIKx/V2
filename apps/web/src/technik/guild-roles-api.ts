@@ -1,6 +1,6 @@
 /**
  * Optional guild roles for Technika pickers.
- * Tries guild-scoped route; returns empty if New Bot has no /roles yet.
+ * Guild-scoped roles via web proxy. Named pickers use this when ok.
  */
 
 export type GuildRole = {
@@ -35,7 +35,7 @@ function mapRoles(parsed: Record<string, unknown>): GuildRole[] {
     .filter((r) => /^\d{17,20}$/.test(r.id) && r.name !== '@everyone');
 }
 
-/** GET /api/technik/guilds/{guildId}/roles — may 404 until New Bot ships it. */
+/** GET /api/technik/guilds/{guildId}/roles — proxy forwards Technika secret; 404/501 = unavailable. */
 export async function fetchGuildRoles(guildId: string): Promise<GuildRolesResult> {
   try {
     const res = await fetch('/api/technik/guilds/' + encodeURIComponent(guildId) + '/roles', {

@@ -127,7 +127,7 @@ export function TechnikCyklicznePage() {
       } else if (res.unavailable) {
         setGuildRoles([]);
         setRolesNote(
-          'Lista ról z Discorda jeszcze nie jest w API — możesz dodać rolę ręcznie (identyfikator), albo wrócić tu później.',
+          'Lista nazwanych ról niedostępna — możesz dodać rolę ręcznie. Gdy API ról odpowie 200, wybierasz po nazwie.',
         );
       } else {
         setGuildRoles([]);

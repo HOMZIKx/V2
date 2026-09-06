@@ -1,6 +1,6 @@
 /**
  * Technik nav — intentional IA (quality over speed).
- * Publish: Wygląd → Centrum → Kanały → Cykliczne → Panele lab.
+ * Publish: Wygląd → Centrum → Kanały → Cykliczne → Panele lab (test).
  */
 
 export type TechnikNavId =
@@ -44,7 +44,7 @@ export const TECHNIK_NAV_GROUPS: readonly TechnikNavGroup[] = [
       { href: '/technik/centrum', label: 'Centrum panel', id: 'centrum' },
       { href: '/technik/kanaly', label: 'Kanały', id: 'kanaly' },
       { href: '/technik/cykliczne', label: 'Cykliczne', id: 'cykliczne' },
-      { href: '/technik/panele', label: 'Panele lab', id: 'panele' },
+      { href: '/technik/panele', label: 'Panele lab (test)', id: 'panele' },
     ],
   },
   {

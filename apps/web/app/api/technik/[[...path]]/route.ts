@@ -62,6 +62,7 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     joined === 'member-activity/ranking' &&
     (incomingEarly.searchParams.get('full') === '1' ||
       incomingEarly.searchParams.get('full') === 'true');
+  // guilds/{id}/roles requires Technika secret (New Bot LIVE) — do NOT treat as public.
   const publicRead =
     method === 'GET' &&
     !rankingFull &&
@@ -72,7 +73,8 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
       joined === 'member-activity/me' ||
       (joined.startsWith('guilds/') &&
         !joined.includes('/channels') &&
-        !joined.includes('/panels')));
+        !joined.includes('/panels') &&
+        !joined.includes('/roles')));
 
   if (!publicRead) {
     const secret = technikaSecret();
