@@ -1,5 +1,5 @@
 import { StatusBadge } from '@v2/design-system';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   type DiscordHealth,
@@ -13,6 +13,8 @@ import {
 } from './discord-gateway-health.js';
 import { HealthErrorPanel } from './health-error-panel.js';
 import { adminStatusMessage } from './status.js';
+
+const AUTO_REFRESH_MS = 15_000;
 
 type StatusState = {
   readonly live: HealthFetchResult<LiveHealth> | null;
@@ -67,27 +69,62 @@ function formatDiscordField(
   return String(value);
 }
 
+function formatLocalTime(iso: string | null): string {
+  if (!iso) {
+    return '—';
+  }
+  try {
+    return new Date(iso).toLocaleString('pl-PL', { timeZone: 'Europe/Warsaw' });
+  } catch {
+    return iso;
+  }
+}
+
 export function AdminStatusPage() {
   const [state, setState] = useState<StatusState>({
     live: null,
     ready: null,
     discord: null,
   });
+  const [loading, setLoading] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
   const baseUrl = resolveDiscordGatewayBaseUrl();
+  const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
-    setState({ live: null, ready: null, discord: null });
-    const [live, ready, discord] = await Promise.all([
-      fetchLiveHealth(),
-      fetchReadyHealth(),
-      fetchDiscordHealth(),
-    ]);
-    setState({ live, ready, discord });
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
+    setLoading(true);
+    try {
+      const [live, ready, discord] = await Promise.all([
+        fetchLiveHealth(),
+        fetchReadyHealth(),
+        fetchDiscordHealth(),
+      ]);
+      setState({ live, ready, discord });
+      setLastFetchedAt(new Date().toISOString());
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!autoRefresh) {
+      return;
+    }
+    const id = window.setInterval(() => {
+      void refresh();
+    }, AUTO_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [autoRefresh, refresh]);
 
   const badge = toneFromResults(state);
   const error = firstError(state);
@@ -96,22 +133,42 @@ export function AdminStatusPage() {
     <>
       <h1>{adminStatusMessage()}</h1>
       <p className="admin-lead">
-        Most Discord jest własnością New Bot (discord-gateway). Status pochodzi z{' '}
-        <code>{baseUrl}</code> — bez wymyślania wartości przy błędzie sieci/CORS.
+        Status New Bot (discord-gateway). Karty live / ready / discord pochodzą wyłącznie z{' '}
+        <code>{baseUrl}</code> (zmienna <code>VITE_DISCORD_GATEWAY_BASE_URL</code>). Bez wymyślania
+        wartości przy błędzie sieci lub CORS.
       </p>
 
       <div className="admin-row">
         <StatusBadge label={badge.label} tone={badge.tone} />
-        <button type="button" onClick={() => void refresh()}>
-          Odśwież
+        <button type="button" onClick={() => void refresh()} disabled={loading}>
+          {loading ? 'Odświeżanie…' : 'Odśwież'}
         </button>
+        <label className="admin-toggle">
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+          />
+          Auto-odświeżanie (~15 s)
+        </label>
+        <span className="admin-muted">
+          Ostatnie pobranie: {formatLocalTime(lastFetchedAt)}
+          {autoRefresh ? ' · następne ~15 s' : ''}
+        </span>
       </div>
+
+      <p className="admin-meta">
+        Gateway: <code>{baseUrl}</code>
+      </p>
 
       {error ? <HealthErrorPanel error={error} /> : null}
 
-      <div className="admin-panel-grid" style={{ marginTop: '1rem' }}>
+      <div className="admin-panel-grid admin-panel-grid--status">
         <section className="admin-panel">
-          <h2>GET /health/live</h2>
+          <div className="admin-panel-head">
+            <h2>GET /health/live</h2>
+            <span className="admin-pill admin-pill--live">live</span>
+          </div>
           {state.live === null ? (
             <p>Ładowanie…</p>
           ) : state.live.ok ? (
@@ -125,7 +182,10 @@ export function AdminStatusPage() {
         </section>
 
         <section className="admin-panel">
-          <h2>GET /health/ready</h2>
+          <div className="admin-panel-head">
+            <h2>GET /health/ready</h2>
+            <span className="admin-pill admin-pill--live">live</span>
+          </div>
           {state.ready === null ? (
             <p>Ładowanie…</p>
           ) : state.ready.ok ? (
@@ -147,7 +207,10 @@ export function AdminStatusPage() {
         </section>
 
         <section className="admin-panel">
-          <h2>GET /health/discord</h2>
+          <div className="admin-panel-head">
+            <h2>GET /health/discord</h2>
+            <span className="admin-pill admin-pill--live">live</span>
+          </div>
           {state.discord === null ? (
             <p>Ładowanie…</p>
           ) : state.discord.ok ? (

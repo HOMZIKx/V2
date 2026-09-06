@@ -1,5 +1,5 @@
 import { StatusBadge } from '@v2/design-system';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   type DiscordHealth,
@@ -44,6 +44,39 @@ function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function payloadForCopy(result: HealthFetchResult<unknown>): string {
+  if (result.ok) {
+    return prettyJson(result.data);
+  }
+  return prettyJson({
+    error: result.error,
+    kind: result.kind,
+    httpStatus: result.httpStatus,
+    body: result.body,
+    curlTip: result.curlTip,
+  });
+}
+
+function CopyButton({ text, label = 'Kopiuj JSON' }: { readonly text: string; readonly label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className="admin-btn-ghost"
+      disabled={!text}
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1600);
+        });
+      }}
+    >
+      {copied ? 'Skopiowano' : label}
+    </button>
+  );
+}
+
 function RawJsonPanel({
   title,
   result,
@@ -51,13 +84,21 @@ function RawJsonPanel({
   readonly title: string;
   readonly result: HealthFetchResult<unknown> | null;
 }) {
+  const text = result ? payloadForCopy(result) : '';
+
   return (
-    <section className="admin-panel">
-      <h2>{title}</h2>
+    <section className="admin-panel admin-panel--wide">
+      <div className="admin-panel-head">
+        <h2>{title}</h2>
+        <div className="admin-panel-actions">
+          <span className="admin-pill admin-pill--live">live</span>
+          <CopyButton text={text} />
+        </div>
+      </div>
       {result === null ? (
         <p className="admin-muted">Ładowanie…</p>
       ) : result.ok ? (
-        <code className="admin-code">{prettyJson(result.data)}</code>
+        <code className="admin-code admin-code--tall">{prettyJson(result.data)}</code>
       ) : (
         <>
           <p className="admin-muted">{result.error}</p>
@@ -77,16 +118,27 @@ export function DiagnosticsPage() {
     ready: null,
     discord: null,
   });
+  const [loading, setLoading] = useState(false);
   const baseUrl = resolveDiscordGatewayBaseUrl();
+  const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
-    setState({ live: null, ready: null, discord: null });
-    const [live, ready, discord] = await Promise.all([
-      fetchLiveHealth(),
-      fetchReadyHealth(),
-      fetchDiscordHealth(),
-    ]);
-    setState({ live, ready, discord });
+    if (inFlight.current) {
+      return;
+    }
+    inFlight.current = true;
+    setLoading(true);
+    try {
+      const [live, ready, discord] = await Promise.all([
+        fetchLiveHealth(),
+        fetchReadyHealth(),
+        fetchDiscordHealth(),
+      ]);
+      setState({ live, ready, discord });
+    } finally {
+      inFlight.current = false;
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -98,25 +150,40 @@ export function DiagnosticsPage() {
     (r): r is NonNullable<typeof r> & { ok: false } => r !== null && !r.ok,
   );
 
+  const allJson =
+    state.live && state.ready && state.discord
+      ? prettyJson({
+          baseUrl,
+          live: state.live.ok ? state.live.data : { error: state.live.error },
+          ready: state.ready.ok ? state.ready.data : { error: state.ready.error },
+          discord: state.discord.ok ? state.discord.data : { error: state.discord.error },
+        })
+      : '';
+
   return (
     <>
       <h1>Diagnostyka</h1>
       <p className="admin-lead">
-        Surowy JSON zdrowia New Bot (<code>{baseUrl}</code>):{' '}
-        <code>/health/live</code>, <code>/health/ready</code>, <code>/health/discord</code>. Brak
-        Activity REST — bez wymyślania wartości.
+        Surowy JSON zdrowia New Bot (<code>{baseUrl}</code>): <code>/health/live</code>,{' '}
+        <code>/health/ready</code>, <code>/health/discord</code>. Bez Activity REST i bez
+        wymyślania wartości.
       </p>
 
       <div className="admin-row">
         <StatusBadge label={badge.label} tone={badge.tone} />
-        <button type="button" onClick={() => void refresh()}>
-          Odśwież
+        <button type="button" onClick={() => void refresh()} disabled={loading}>
+          {loading ? 'Odświeżanie…' : 'Odśwież'}
         </button>
+        <CopyButton text={allJson} label="Kopiuj wszystko" />
       </div>
+
+      <p className="admin-meta">
+        Gateway: <code>{baseUrl}</code>
+      </p>
 
       {firstFail ? <HealthErrorPanel error={firstFail} /> : null}
 
-      <div className="admin-panel-grid" style={{ marginTop: '1rem' }}>
+      <div className="admin-stack" style={{ marginTop: '1rem' }}>
         <RawJsonPanel title="GET /health/live" result={state.live} />
         <RawJsonPanel title="GET /health/ready" result={state.ready} />
         <RawJsonPanel title="GET /health/discord" result={state.discord} />

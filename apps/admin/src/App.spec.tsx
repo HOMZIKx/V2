@@ -22,7 +22,7 @@ function renderAt(path: string): string {
 }
 
 describe('Admin App', () => {
-  it('renders Status route with Technician shell nav', () => {
+  it('renders Status route with Technician shell nav and live health cards', () => {
     const markup = renderAt('/');
     expect(markup).toContain('V2 Admin is running');
     expect(markup).toContain('Status');
@@ -31,24 +31,36 @@ describe('Admin App', () => {
     expect(markup).toContain('/health/live');
     expect(markup).toContain('/health/ready');
     expect(markup).toContain('/health/discord');
+    expect(markup).toContain('Auto-odświeżanie');
+    expect(markup).toContain('Odśwież');
   });
 
-  it('renders Konfiguracja bota placeholders without inventing live controls', () => {
+  it('renders D-060 Konfiguracja with Timers + PW live-config and disabled apply', () => {
     const markup = renderAt('/bot');
     expect(markup).toContain('Konfiguracja bota');
-    expect(markup).toContain('szkielet — API od gateway w drodze');
+    expect(markup).toContain('Cykl D-060');
+    expect(markup).toContain('Powiadomienia Discord z Timerów');
+    expect(markup).toContain('Wojna królestw (PW)');
+    expect(markup).toContain('reminderMinutesBefore');
+    expect(markup).toContain('notifyMinutesBefore');
+    expect(markup).toContain('17:30');
     expect(markup).toContain('Rodzaje aktywności');
     expect(markup).toContain('Kanały publikacji');
-    expect(markup).toContain('Cykl D-060');
+    expect(markup).toContain('Panele Discord');
+    expect(markup).toContain('Apply (niedostępne)');
+    expect(markup).toContain('Rollback (niedostępne)');
+    expect(markup).toContain('/discord/v1/capabilities');
+    expect(markup).toContain('activity/v1/admin/guilds');
     expect(markup).not.toContain('type="submit"');
   });
 
-  it('renders Diagnostyka with raw JSON panels and refresh', () => {
+  it('renders Diagnostyka with raw JSON panels, copy and refresh', () => {
     const markup = renderAt('/diagnostics');
     expect(markup).toContain('Diagnostyka');
     expect(markup).toContain('/health/live');
     expect(markup).toContain('/health/ready');
     expect(markup).toContain('/health/discord');
     expect(markup).toContain('Odśwież');
+    expect(markup).toContain('Kopiuj');
   });
 });
