@@ -1335,6 +1335,7 @@ export function updateViewerProfile(
   void _drop;
   void _drop;
   void _drop;
+  void _drop;
   return {
     ...state,
     viewer: {
