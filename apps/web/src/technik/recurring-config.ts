@@ -307,35 +307,89 @@ export function countableReactions(
   );
 }
 
+/** Canonical count token: {{count:EMOJI}} (no spaces). Spaces around count: / emoji also match in preview. */
+export function formatCountPlaceholder(emoji: string): string {
+  return '{{count:' + emoji.trim() + '}}';
+}
+
+/** Canonical RSVP list token in post body (no new gateway field — content only). */
+export const RSVP_LIST_PLACEHOLDER = '{{rsvp_list}}';
+
 /**
- * Preview how numbers appear when showCountsInPost is on.
- * Replaces {{count:emoji}} placeholders; otherwise appends a short line.
+ * Sensible PL dungeon starter — includes count + rsvp_list placeholders.
+ * Pair with RSVP preset reactions and showCountsInPost + rsvpEnabled.
+ */
+export const SAMPLE_DUNGEON_CONTENT =
+  '🏰 Cotygodniowy dungeon — zbieramy ekipę!\n\n' +
+  'Zapisy: ✅ {{count:✅}}  ·  ❌ {{count:❌}}  ·  ❓ {{count:❓}}\n\n' +
+  'Lista zapisanych:\n{{rsvp_list}}\n\n' +
+  'Start według harmonogramu. Limit miejsc ustawisz w regułach (gdy włączysz zapis).';
+
+/** Reactions with RSVP tak/nie/może roles (for warnings / insert buttons). */
+export function rsvpRoleReactions(
+  draft: RecurringLocalDraft,
+): readonly SeedReaction[] {
+  if (!draft.reactionsEnabled) return [];
+  return draft.seedReactions.filter(
+    (r) =>
+      r.emoji.trim() &&
+      (r.role === 'rsvp_yes' ||
+        r.role === 'rsvp_no' ||
+        r.role === 'rsvp_maybe'),
+  );
+}
+
+/**
+ * Preview how numbers / lista zapisów appear when placeholders or showCountsInPost are used.
+ *
+ * Placeholder grammar (exactly as implemented):
+ * - Count: `{{count:EMOJI}}` — also accepts spaces: `{{ count: ✅ }}`, `{{count: ✅}}`.
+ *   EMOJI is trimmed; must match a countable reaction emoji (Licznik / RSVP: tak|nie|może).
+ * - RSVP list: `{{rsvp_list}}` — also `{{ rsvp_list }}`. Content-only; New Bot resolves
+ *   when rsvpEnabled + seedReactions with RSVP roles when scheduler lives. No gateway flag.
+ * - If showCountsInPost and no {{count:…}} token matched any countable emoji → short 📊
+ *   appendix is appended at the bottom (preview mirrors that).
  */
 export function previewCountsInContent(
   content: string,
   reactions: readonly SeedReaction[],
   sampleCounts?: ReadonlyMap<string, number>,
-): { body: string; usedPlaceholders: boolean; appendix: string } {
+): {
+  body: string;
+  usedPlaceholders: boolean;
+  usedRsvpList: boolean;
+  appendix: string;
+} {
   const counts = new Map<string, number>();
   reactions.forEach((r, i) => {
-    const key = r.emoji;
+    const key = r.emoji.trim();
+    if (!key) return;
     const sample = sampleCounts?.get(key);
     counts.set(key, typeof sample === 'number' ? sample : (i + 1) * 2);
   });
 
   let usedPlaceholders = false;
   let body = content;
-  for (const [emoji, n] of counts) {
-    const token = '{{count:' + emoji + '}}';
-    if (body.includes(token)) {
+  // Optional spaces: {{count:✅}} | {{ count: ✅ }} | {{count: ✅}}
+  body = body.replace(/\{\{\s*count\s*:\s*(.+?)\s*\}\}/gu, (full, emojiRaw: string) => {
+    const emoji = String(emojiRaw).trim();
+    if (counts.has(emoji)) {
       usedPlaceholders = true;
-      body = body.split(token).join(String(n));
+      return String(counts.get(emoji));
     }
+    return full;
+  });
+
+  let usedRsvpList = false;
+  if (/\{\{\s*rsvp_list\s*\}\}/i.test(body)) {
+    usedRsvpList = true;
+    const sampleList = ['✅ Anna, Bartek', '❌ Celina', '❓ Darek'].join('\n');
+    body = body.replace(/\{\{\s*rsvp_list\s*\}\}/gi, sampleList);
   }
 
   const appendix = reactions
     .map((r) => {
-      const n = counts.get(r.emoji) ?? 0;
+      const n = counts.get(r.emoji.trim()) ?? 0;
       const name = r.label?.trim() || r.emoji;
       return r.emoji + ' ' + name + ': **' + String(n) + '**';
     })
@@ -345,7 +399,7 @@ export function previewCountsInContent(
     body = (body.trimEnd() ? body.trimEnd() + '\n\n' : '') + '📊 ' + appendix;
   }
 
-  return { body, usedPlaceholders, appendix };
+  return { body, usedPlaceholders, usedRsvpList, appendix };
 }
 
 export function newReactionRow(): SeedReaction {

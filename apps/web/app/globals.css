@@ -13143,3 +13143,167 @@ button:disabled {
   );
 }
 
+
+/* Cykliczne configurator (choice cards + reaction rows) */
+.technik-day-pills,
+.technik-choice-pills,
+.technik-emoji-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.45rem 0 0.65rem;
+}
+.technik-day-pill {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: #0c1017;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.28rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.technik-day-pill.is-on {
+  border-color: color-mix(in srgb, var(--blue) 55%, var(--line));
+  background: color-mix(in srgb, var(--blue) 18%, #0c1017);
+  color: var(--text);
+  font-weight: 600;
+}
+.technik-choice-card {
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, var(--line));
+  background: color-mix(in srgb, var(--panel-strong) 88%, #070a10);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+.technik-choice-card__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  cursor: pointer;
+  user-select: none;
+}
+.technik-choice-card__toggle input {
+  margin-top: 0.2rem;
+  accent-color: var(--blue);
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+}
+.technik-choice-card__toggle strong {
+  display: block;
+  font-size: 0.95rem;
+}
+.technik-choice-card__toggle .technik-help {
+  display: block;
+  margin-top: 0.2rem;
+}
+.technik-choice-card__body {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+.technik-cykl-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+@media (max-width: 980px) {
+  .technik-cykl-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.technik-cykl-col__title {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.technik-reaction-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.technik-reaction-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.1fr) minmax(140px, 1fr) minmax(120px, 0.9fr) auto;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--blue) 6%, #0a0e14);
+}
+@media (max-width: 900px) {
+  .technik-reaction-row {
+    grid-template-columns: 1fr;
+  }
+}
+.technik-emoji-quick .technik-day-pill {
+  padding: 0.2rem 0.45rem;
+  font-size: 1rem;
+}
+.technik-count-preview {
+  white-space: pre-wrap;
+  max-height: 14rem;
+  margin: 0.4rem 0 0;
+}
+.technik-collapse-head {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+/* Cykliczne template coach + inline warns */
+.technik-template-coach {
+  border: 1px solid color-mix(in srgb, var(--blue) 32%, var(--line));
+  background: color-mix(in srgb, var(--blue) 9%, #0a0e14);
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  margin: 0 0 0.75rem;
+}
+.technik-template-coach > strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.88rem;
+}
+.technik-template-coach__steps {
+  margin: 0 0 0.55rem;
+  padding-left: 1.15rem;
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.technik-template-coach__steps li {
+  margin: 0.2rem 0;
+}
+.technik-template-coach__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.technik-inline-warn {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, #e6a23c 45%, var(--line));
+  background: color-mix(in srgb, #e6a23c 12%, #0c1017);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}

@@ -23,14 +23,18 @@ import {
   DEFAULT_RECURRING,
   EMOJI_QUICK,
   REACTION_ROLE_OPTIONS,
+  RSVP_LIST_PLACEHOLDER,
   RSVP_PRESET,
+  SAMPLE_DUNGEON_CONTENT,
   type CloseAt,
   type RecurringLocalDraft,
   type SeedReaction,
   countableReactions,
+  formatCountPlaceholder,
   loadRecurringDraft,
   newReactionRow,
   previewCountsInContent,
+  rsvpRoleReactions,
   saveRecurringDraft,
   scheduleSummary,
   toRecurringPostsPayload,
@@ -209,6 +213,34 @@ export function TechnikCyklicznePage() {
     }, 'Wstawiono preset RSVP ✅❌❓ i włączono zapis.');
   };
 
+  const appendToContent = (snippet: string, note?: string) => {
+    const cur = draft.content ?? '';
+    const needsSpace = cur.length > 0 && !/\s$/.test(cur);
+    const next = cur + (needsSpace ? ' ' : '') + snippet;
+    persist(
+      { ...draft, content: next.slice(0, 2000) },
+      note ?? 'Dodano fragment do treści.',
+    );
+  };
+
+  const applySampleTemplate = () => {
+    persist(
+      {
+        ...draft,
+        title: draft.title.trim() || 'Cotygodniowy dungeon',
+        content: SAMPLE_DUNGEON_CONTENT,
+        reactionsEnabled: true,
+        rsvpEnabled: true,
+        showCountsInPost: true,
+        seedReactions:
+          draft.seedReactions.length > 0
+            ? draft.seedReactions
+            : RSVP_PRESET.map((r) => ({ ...r })),
+      },
+      'Wstawiono przykładowy szablon dungeon + włączono zapis i licznik w treści.',
+    );
+  };
+
   const addRoleId = (id: string) => {
     if (!/^\d{17,20}$/.test(id)) return;
     const cur = draft.rules.roleIds ?? [];
@@ -225,11 +257,24 @@ export function TechnikCyklicznePage() {
 
   const whenSummary = scheduleSummary(draft.schedule, draft.enabled);
   const countable = countableReactions(draft);
+  const rsvpRows = rsvpRoleReactions(draft);
   const countPreview = useMemo(
     () => previewCountsInContent(draft.content || '_(brak treści)_', countable),
     [draft.content, countable],
   );
   const payload = useMemo(() => toRecurringPostsPayload(draft), [draft]);
+
+  const insertCountButtons = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { emoji: string; token: string }[] = [];
+    for (const r of countable) {
+      const em = r.emoji.trim();
+      if (!em || seen.has(em)) continue;
+      seen.add(em);
+      out.push({ emoji: em, token: formatCountPlaceholder(em) });
+    }
+    return out;
+  }, [countable]);
 
   const playerSeesBits: string[] = [];
   if (draft.reactionsEnabled && draft.seedReactions.length) {
@@ -245,7 +290,7 @@ export function TechnikCyklicznePage() {
   }
   if (draft.showCountsInPost && countable.length) {
     playerSeesBits.push(
-      'w treści postu pojawią się liczby (placeholdery {{count:emoji}} albo krótki dodatek na dole)',
+      'w treści postu pojawią się liczby (placeholdery liczników albo krótki dodatek na dole)',
     );
   }
 
@@ -328,6 +373,73 @@ export function TechnikCyklicznePage() {
                 placeholder="np. Cotygodniowy dungeon"
               />
             </label>
+
+            <div className="technik-template-coach" role="region" aria-label="Jak napisać treść">
+              <strong>Jak napisać treść, żeby liczniki działały</strong>
+              <ol className="technik-template-coach__steps">
+                <li>
+                  Włącz <em>„4. Licznik w treści”</em> oraz (dla zapisów){' '}
+                  <em>„3. Zapis / RSVP”</em> z reakcjami Tak / Nie / Może w sekcji 2.
+                </li>
+                <li>
+                  Wklej placeholdery przyciskami poniżej <strong>albo</strong> zostaw treść bez nich —
+                  wtedy bot doda krótki dodatek z liczbami na dole postu.
+                </li>
+                <li>
+                  Lista zapisów powstaje z kliknięć w reakcje. Wstaw{' '}
+                  <code>{RSVP_LIST_PLACEHOLDER}</code> w treści, żeby pokazać listę w poście (gdy
+                  runtime żyje). To tylko tekst w treści — bez osobnego pola w bramce.
+                </li>
+              </ol>
+              <div className="technik-template-coach__btns" role="group" aria-label="Wstaw placeholdery">
+                {insertCountButtons.length === 0 ? (
+                  <span className="technik-muted">
+                    Brak emoji do licznika — dodaj w sekcji 2 reakcje z rolą Licznik albo RSVP
+                    (Tak/Nie/Może), albo użyj presetu.
+                  </span>
+                ) : (
+                  insertCountButtons.map((b) => (
+                    <button
+                      key={b.token}
+                      type="button"
+                      className="technik-btn-ghost"
+                      title={'Wstaw ' + b.token}
+                      onClick={() =>
+                        appendToContent(b.token, 'Wstawiono placeholder licznika ' + b.emoji)
+                      }
+                    >
+                      Licznik {b.emoji}
+                    </button>
+                  ))
+                )}
+                <button
+                  type="button"
+                  className="technik-btn-ghost"
+                  title={'Wstaw ' + RSVP_LIST_PLACEHOLDER}
+                  onClick={() =>
+                    appendToContent(
+                      RSVP_LIST_PLACEHOLDER,
+                      'Wstawiono placeholder listy zapisów.',
+                    )
+                  }
+                >
+                  Lista zapisów
+                </button>
+                <button
+                  type="button"
+                  className="technik-btn-ghost"
+                  onClick={applySampleTemplate}
+                >
+                  Przykładowy szablon dungeon
+                </button>
+              </div>
+              <p className="technik-help" style={{ marginTop: '0.45rem', marginBottom: 0 }}>
+                Format placeholdera licznika: <code>{'{{count:✅}}'}</code> (emoji z Twoich
+                reakcji). Spacje w stylu <code>{'{{ count: ✅ }}'}</code> też zadziałają w
+                podglądzie. Lista: <code>{RSVP_LIST_PLACEHOLDER}</code>.
+              </p>
+            </div>
+
             <label className="technik-field">
               <span>Treść / opis (szablon)</span>
               <textarea
@@ -337,7 +449,7 @@ export function TechnikCyklicznePage() {
                 onChange={(e) => patch({ content: e.target.value })}
                 maxLength={2000}
                 placeholder={
-                  'Tekst na poście. Możesz wstawić {{count:✅}} — przy włączonym liczniku bot podmieni na liczbę.'
+                  'Tekst na poście. Możesz wstawić {{count:✅}} albo {{rsvp_list}} — przyciski powyżej pomagają.'
                 }
               />
             </label>
@@ -469,7 +581,8 @@ export function TechnikCyklicznePage() {
           <span>
             <strong>2. Reakcje pod postem</strong>
             <small className="technik-help">
-              Emotki pod każdym terminem serii. Rola mówi, czy to tylko ozdoba, RSVP, czy licznik.
+              Emotki pod każdym terminem serii. Rola mówi, czy to tylko ozdoba, zapis (RSVP), czy
+              licznik w treści.
             </small>
           </span>
         </label>
@@ -594,10 +707,17 @@ export function TechnikCyklicznePage() {
             <strong>3. Zapis / RSVP</strong>
             <small className="technik-help">
               Gdy włączone: reakcje z rolą „RSVP: tak / nie / może” budują listę zapisanych.
-              Gracz widzi, kto kliknął — nie tylko samą emotkę.
+              Gracz widzi, kto kliknął — nie tylko samą emotkę. W treści możesz wstawić{' '}
+              <code>{RSVP_LIST_PLACEHOLDER}</code>, żeby lista była też w poście.
             </small>
           </span>
         </label>
+        {draft.rsvpEnabled && rsvpRows.length === 0 ? (
+          <p className="technik-inline-warn" role="status">
+            Włączono zapis, ale nie ma reakcji z rolą Tak / Nie / Może. Dodaj je w sekcji 2 albo
+            kliknij „Preset: RSVP ✅❌❓” — inaczej lista zapisów będzie pusta.
+          </p>
+        ) : null}
       </section>
 
       {/* ——— 4. Licznik ——— */}
@@ -611,8 +731,8 @@ export function TechnikCyklicznePage() {
           <span>
             <strong>4. Licznik w treści</strong>
             <small className="technik-help">
-              Wstrzykuje / aktualizuje liczby dla reakcji <code>count</code> i <code>rsvp_*</code>.
-              Placeholdery: <code>{'{{count:✅}}'}</code> — albo automatyczny dodatek na dole.
+              Pokazuje liczby kliknięć przy reakcjach „Licznik” oraz RSVP (tak / nie / może).
+              Wklej placeholdery w treści albo zostaw puste — bot doda krótki dodatek na dole.
             </small>
           </span>
         </label>
@@ -620,8 +740,9 @@ export function TechnikCyklicznePage() {
         {draft.showCountsInPost ? (
           <div className="technik-choice-card__body">
             {countable.length === 0 ? (
-              <p className="technik-muted">
-                Brak reakcji z rolą licznik / RSVP — dodaj je w sekcji 2, żeby było co liczyć.
+              <p className="technik-inline-warn" role="status">
+                Brak reakcji do policzenia — dodaj w sekcji 2 rolę „Licznik” albo RSVP (Tak/Nie/Może),
+                żeby było co pokazać w treści.
               </p>
             ) : (
               <>
@@ -629,7 +750,8 @@ export function TechnikCyklicznePage() {
                   Podgląd (przykładowe liczby):{' '}
                   {countPreview.usedPlaceholders
                     ? 'placeholdery w treści podmienione'
-                    : 'brak placeholderów → dodatek na dole postu'}
+                    : 'brak dopasowanych placeholderów licznika → dodatek na dole postu'}
+                  {countPreview.usedRsvpList ? ' · lista zapisów w treści podmieniona' : ''}
                 </p>
                 <pre className="technik-code technik-count-preview" tabIndex={0}>
                   {countPreview.body}
@@ -656,7 +778,7 @@ export function TechnikCyklicznePage() {
           <div className="technik-choice-card__body" style={{ marginTop: '0.75rem' }}>
             <div className="technik-row">
               <label className="technik-field">
-                <span>Limit miejsc (maxSlots)</span>
+                <span>Ile osób max może się zapisać (puste = bez limitu)</span>
                 <input
                   type="number"
                   min={0}
@@ -682,11 +804,20 @@ export function TechnikCyklicznePage() {
                     });
                   }}
                 />
-                <small className="technik-help">0 / puste = unlimited</small>
+                {!draft.rsvpEnabled ? (
+                  <small className="technik-help">
+                    Limit miejsc ma sens dopiero przy włączonym zapisie (sekcja 3). Bez RSVP pole
+                    możesz zostawić puste.
+                  </small>
+                ) : (
+                  <small className="technik-help">
+                    Puste pole = bez limitu. Liczy się zapis „będę” (gdy runtime żyje).
+                  </small>
+                )}
               </label>
 
               <fieldset className="technik-fieldset" style={{ flex: 1 }}>
-                <legend>Zamknięcie zapisów (closeAt)</legend>
+                <legend>Zamknięcie zapisów</legend>
                 {(
                   [
                     ['none', 'Bez auto-zamknięcia'],
@@ -708,7 +839,7 @@ export function TechnikCyklicznePage() {
             </div>
 
             <fieldset className="technik-fieldset" style={{ marginTop: '0.75rem' }}>
-              <legend>Kto może reagować (whoCanReact)</legend>
+              <legend>Kto może reagować</legend>
               <label className="technik-check">
                 <input
                   type="radio"
@@ -731,7 +862,7 @@ export function TechnikCyklicznePage() {
 
             {draft.rules.whoCanReact === 'roles' ? (
               <div className="technik-field" style={{ marginTop: '0.65rem' }}>
-                <span>Role (roleIds)</span>
+                <span>Wybrane role Discord</span>
                 {rolesNote ? <p className="technik-muted">{rolesNote}</p> : null}
                 <div className="technik-role-chips" role="list">
                   {(draft.rules.roleIds ?? []).length === 0 ? (
