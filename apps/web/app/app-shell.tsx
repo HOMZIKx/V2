@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+import { useRouter } from 'next/navigation';
 
 import { usePlayerStore } from '../src/player-store-react';
 
@@ -92,7 +94,18 @@ export function AppShell({
   viewerName: string;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
   const { state } = usePlayerStore();
+  const needsProfileSetup =
+    state.authStatus === 'authenticated' &&
+    Boolean(state.viewer) &&
+    !state.viewer?.profileSetupDone;
+
+  useEffect(() => {
+    if (!needsProfileSetup) return;
+    if (activeSection === 'profil') return;
+    router.replace('/profil');
+  }, [needsProfileSetup, activeSection, router]);
   const activeWorkspaces = state.workspaces.filter((workspace) => !workspace.archived);
   const primaryWorkspaceId =
     (state.lastOpenedWorkspaceId &&
@@ -144,6 +157,7 @@ export function AppShell({
               detail: 'Brak aktywnego połączenia z backendem.',
             };
 
+  const brandHref = needsProfileSetup ? '/profil' : '/';
   const navigation = [
     { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
     { id: 'profil' as const, label: 'Mój profil', icon: 'character' as const, href: '/profil' },
@@ -165,6 +179,10 @@ export function AppShell({
     { id: 'technik' as const, label: 'Technik', icon: 'settings' as const, href: '/technik' },
   ];
 
+  const visibleNavigation = needsProfileSetup
+    ? navigation.filter((item) => item.id === 'profil')
+    : navigation;
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -178,13 +196,13 @@ export function AppShell({
           <Icon name={mobileMenuOpen ? 'x' : 'menu'} />
         </button>
 
-        <a aria-label="DESTILED — pulpit" className="brand" href="/">
+        <a aria-label="DESTILED — pulpit" className="brand" href={brandHref}>
           <img alt="" className="brand-mark" src="/brand/destiled-mark.jpg" />
           <span className="brand-word">DESTILED</span>
         </a>
 
         <nav aria-label="Główna nawigacja" className="global-nav">
-          {navigation.map((item) => (
+          {visibleNavigation.map((item) => (
             <a
               aria-current={item.id === activeSection ? 'page' : undefined}
               className="global-nav-item"
@@ -208,7 +226,7 @@ export function AppShell({
                 : 'Pulpit — brak gotowych timerów'
             }
             className="icon-button notification-button"
-            href="/"
+            href={brandHref}
           >
             <Icon name="bell" />
             {readyCount > 0 ? <span className="notification-dot" /> : null}
@@ -236,7 +254,7 @@ export function AppShell({
       </div>
 
       <aside className={`mobile-drawer${mobileMenuOpen ? ' is-open' : ''}`}>
-        {navigation.map((item) => (
+        {visibleNavigation.map((item) => (
           <a
             aria-current={item.id === activeSection ? 'page' : undefined}
             className="drawer-item"
@@ -250,7 +268,13 @@ export function AppShell({
         <p className="drawer-later">Targ wróci w kolejnych etapach.</p>
       </aside>
 
-      {children}
+      {needsProfileSetup && activeSection !== 'profil' ? (
+        <main className="discord-entry" id="main-content">
+          <p className="entry-status">Ustaw nick na profilu, żeby wejść do aplikacji…</p>
+        </main>
+      ) : (
+        children
+      )}
     </div>
   );
 }
