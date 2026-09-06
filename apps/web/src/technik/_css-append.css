@@ -293,7 +293,7 @@
   font-size: 0.84rem;
   line-height: 1.4;
 }
-/* Member activity — distilled ranking + config (2026-09-06) */
+/* Member activity — tip-top controls + ranking (2026-09-06) */
 .ma-page {
   display: flex;
   flex-direction: column;
@@ -351,19 +351,190 @@
     grid-template-columns: 1fr;
   }
 }
-.ma-roles__note {
-  margin: 0.25rem 0 0.35rem;
-}
-.ma-roles__pick {
-  margin-top: 0.45rem;
-}
-.ma-roles__paste {
+
+/* Unified DESTILED control surface (~40px) */
+.ma-control-row,
+.ma-toolbar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.55rem;
-  align-items: flex-end;
-  margin-top: 0.45rem;
+  margin: 0.35rem 0 0;
 }
+.ma-toolbar {
+  margin: 0 0 0.65rem;
+}
+.ma-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+}
+.ma-control--grow {
+  flex: 1 1 10rem;
+}
+.ma-control__cap {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a95a8;
+}
+.ma-field .ma-input,
+.ma-field select.ma-input,
+.ma-field input.ma-input {
+  width: 100%;
+}
+.ma-input,
+.ma-page .technik-field input,
+.ma-page .technik-field select,
+.ma-pulpit input.ma-input,
+.ma-pulpit select.ma-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 180, 213, 0.28);
+  background:
+    linear-gradient(180deg, rgba(18, 22, 34, 0.96), rgba(6, 9, 16, 0.96));
+  color: #eef0f5;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 8px 20px rgba(0, 0, 0, 0.18);
+  appearance: none;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.ma-input::placeholder,
+.ma-page .technik-field input::placeholder {
+  color: #6f7a8d;
+  opacity: 1;
+}
+.ma-input:hover:not(:disabled),
+.ma-page .technik-field input:hover:not(:disabled),
+.ma-page .technik-field select:hover:not(:disabled) {
+  border-color: rgba(57, 136, 255, 0.42);
+}
+.ma-input:focus,
+.ma-page .technik-field input:focus,
+.ma-page .technik-field select:focus {
+  border-color: rgba(57, 136, 255, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(57, 136, 255, 0.16),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+.ma-input:disabled,
+.ma-page .technik-field input:disabled,
+.ma-page .technik-field select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+select.ma-input,
+.ma-page .technik-field select {
+  padding-right: 2rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #8a95a8 50%),
+    linear-gradient(135deg, #8a95a8 50%, transparent 50%),
+    linear-gradient(180deg, rgba(18, 22, 34, 0.96), rgba(6, 9, 16, 0.96));
+  background-position:
+    calc(100% - 14px) calc(50% - 2px),
+    calc(100% - 9px) calc(50% - 2px),
+    0 0;
+  background-size: 5px 5px, 5px 5px, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.ma-btn {
+  appearance: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 180, 213, 0.28);
+  background: color-mix(in srgb, var(--panel-strong) 82%, black);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  line-height: 1;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.ma-control-row > .ma-btn {
+  align-self: flex-end;
+}
+.ma-toolbar > .ma-btn {
+  align-self: center;
+}
+.ma-btn--primary {
+  background: color-mix(in srgb, var(--blue) 24%, var(--panel-strong));
+  border-color: color-mix(in srgb, var(--blue) 48%, var(--line));
+}
+.ma-btn:hover:not(:disabled),
+.ma-btn--primary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--blue) 60%, var(--line));
+}
+.ma-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ma-access__help {
+  margin: 0 0 0.85rem;
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.ma-access__block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+.ma-access__block:first-of-type {
+  border-top: 0;
+  padding-top: 0.15rem;
+}
+.ma-access__label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.ma-mateusz-chip,
+.technik-role-chip--permanent {
+  cursor: default;
+  pointer-events: none;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
+  background:
+    linear-gradient(120deg, rgba(57, 136, 255, 0.16), rgba(124, 72, 220, 0.12));
+  color: #e8eefc;
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.ma-roles__note {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+
 .ma-seg {
   display: inline-flex;
   flex-wrap: wrap;
@@ -392,47 +563,10 @@
   font-weight: 600;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 40%, transparent);
 }
-.ma-search {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-  align-items: stretch;
-  margin: 0 0 0.75rem;
-}
-.ma-search__field {
-  flex: 1 1 14rem;
-  margin-top: 0;
-  min-width: 0;
-}
-.ma-search__field input {
-  width: 100%;
-  min-height: 2.35rem;
-}
-.ma-btn {
-  appearance: none;
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel-strong) 80%, black);
-  color: var(--text);
-  border-radius: 0.45rem;
-  padding: 0.45rem 0.85rem;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  align-self: stretch;
-  white-space: nowrap;
-}
-.ma-btn--primary {
-  background: color-mix(in srgb, var(--blue) 22%, var(--panel-strong));
-  border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
-  font-weight: 600;
-}
-.ma-btn:hover:not(:disabled),
-.ma-btn--primary:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--blue) 55%, var(--line));
-}
-.ma-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.ma-refresh-hint {
+  margin: -0.25rem 0 0.55rem;
+  color: #7d879a;
+  font-size: 0.78rem;
 }
 .ma-me {
   margin: 0 0 0.45rem;
@@ -445,6 +579,10 @@
 }
 .ma-rank__meta {
   margin: 0 0 0.55rem;
+}
+.ma-rank__help {
+  margin: 0.15rem 0 0.55rem;
+  max-width: 62ch;
 }
 .ma-table-wrap {
   overflow: auto;
@@ -474,7 +612,7 @@
   text-align: left;
 }
 .ma-rank-table tbody td {
-  padding: 0.5rem 0.7rem;
+  padding: 0.55rem 0.7rem;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
   color: var(--text);
   vertical-align: middle;
@@ -522,20 +660,17 @@
   color: color-mix(in srgb, var(--blue) 70%, var(--text));
   border-bottom-color: color-mix(in srgb, var(--blue) 70%, transparent);
 }
-.ma-player__app {
-  color: color-mix(in srgb, var(--muted) 75%, transparent);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-decoration: none;
-  opacity: 0.55;
-}
-.ma-player__app:hover {
-  opacity: 0.9;
-  color: var(--muted);
-}
 .ma-d060 {
   margin-top: 0.15rem;
+}
+.ma-d060 .technik-row--compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.ma-d060 .technik-row--compact > button {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
 }
 .ma-sr-only {
   position: absolute;
@@ -548,10 +683,81 @@
   white-space: nowrap;
   border: 0;
 }
-/* Permanent Mateusz Technik operator chip (Aktywnosc) */
-.technik-role-chip--permanent {
-  cursor: default;
-  opacity: 0.95;
-  border-style: dashed;
-  pointer-events: none;
+
+/* Pulpit — Discord activity card */
+.ma-pulpit {
+  margin-top: 1rem;
+}
+.ma-pulpit__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.65rem;
+}
+.ma-pulpit__head h2 {
+  margin: 0.15rem 0 0.35rem;
+}
+.ma-pulpit__lead {
+  margin: 0;
+  max-width: 54ch;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.ma-pulpit__guild {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+}
+.ma-pulpit__guild-hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.ma-pulpit__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+.ma-pulpit__stats article {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: #070a10;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.ma-pulpit__stats article strong {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+.ma-pulpit__stats article span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+@media (max-width: 640px) {
+  .ma-pulpit__stats {
+    grid-template-columns: 1fr;
+  }
+}
+.ma-pulpit__top h3 {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+}
+.ma-pulpit__table {
+  max-height: min(22rem, 55vh);
+}
+.ma-pulpit__empty {
+  border: 1px dashed color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 0.55rem;
+  padding: 0.85rem 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  max-width: 62ch;
+}
+.ma-player__app {
+  display: none !important;
 }

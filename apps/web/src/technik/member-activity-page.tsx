@@ -39,6 +39,8 @@ const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: 'since_bot', label: 'Od startu bota' },
 ];
 
+const RANKING_REFRESH_MS = 30 * 60 * 1000;
+
 const GUILD_OVERRIDE_KEY = 'technik.memberActivity.guildOverride';
 
 function readGuildOverride(): string | null {
@@ -133,6 +135,7 @@ export function TechnikMemberActivityPage() {
   const [pasteAdminRole, setPasteAdminRole] = useState('');
   const [opId, setOpId] = useState('');
   const [opName, setOpName] = useState('');
+  const [refreshedHint, setRefreshedHint] = useState<string | null>(null);
 
   const allowed = canAccessMemberActivityTechnik({
     viewerDiscordId,
@@ -216,9 +219,12 @@ export function TechnikMemberActivityPage() {
     };
   }, []);
 
-  const loadRanking = useCallback(async () => {
-    setBusy(true);
-    setMsg(null);
+  const loadRanking = useCallback(async (opts?: { readonly silent?: boolean }) => {
+    const silent = Boolean(opts?.silent);
+    if (!silent) {
+      setBusy(true);
+      setMsg(null);
+    }
     try {
       const res = await fetchMemberActivityRanking({
         window: windowId,
@@ -227,19 +233,27 @@ export function TechnikMemberActivityPage() {
         full: true,
       });
       if (!res.ok) {
-        setRows([]);
-        setTotalMembers(null);
-        if (res.offline) setRankStatus('offline');
-        setMsg(
-          (res.offline ? 'Gateway offline: ' : 'Ranking: ') +
-            res.error +
-            (res.detail ? ' — ' + res.detail : '') +
-            (res.status ? ' (HTTP ' + String(res.status) + ')' : ''),
-        );
+        if (!silent) {
+          setRows([]);
+          setTotalMembers(null);
+          if (res.offline) setRankStatus('offline');
+          setMsg(
+            (res.offline ? 'Gateway offline: ' : 'Ranking: ') +
+              res.error +
+              (res.detail ? ' — ' + res.detail : '') +
+              (res.status ? ' (HTTP ' + String(res.status) + ')' : ''),
+          );
+        }
       } else {
         setRankStatus('live');
         setRows(res.rows);
         setTotalMembers(typeof res.totalMembers === 'number' ? res.totalMembers : null);
+        if (silent) {
+          const t = new Date();
+          const hh = String(t.getHours()).padStart(2, '0');
+          const mm = String(t.getMinutes()).padStart(2, '0');
+          setRefreshedHint('odświeżono ' + hh + ':' + mm);
+        }
       }
       if (viewerDiscordId) {
         const me = await fetchMyRanking({
@@ -248,12 +262,12 @@ export function TechnikMemberActivityPage() {
           guildId: draft.guildId,
         });
         if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
-        else setMyRow(null);
-      } else {
+        else if (!silent) setMyRow(null);
+      } else if (!silent) {
         setMyRow(null);
       }
     } finally {
-      setBusy(false);
+      if (!silent) setBusy(false);
     }
   }, [windowId, q, draft.guildId, viewerDiscordId]);
 
@@ -261,6 +275,25 @@ export function TechnikMemberActivityPage() {
     if (!allowed) return;
     if (rankStatus === 'live') void loadRanking();
   }, [rankStatus, loadRanking, allowed]);
+
+  useEffect(() => {
+    if (!allowed) return;
+    if (rankStatus !== 'live') return;
+    const refresh = () => {
+      void loadRanking({ silent: true });
+    };
+    const id = window.setInterval(refresh, RANKING_REFRESH_MS);
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [allowed, rankStatus, loadRanking]);
 
   const persistAll = async (
     nextActivity: MemberActivityConfig,
@@ -452,9 +485,10 @@ export function TechnikMemberActivityPage() {
           Włącz zbieranie aktywności
         </label>
 
-        <label className="technik-field">
+        <label className="technik-field ma-field">
           <span>Guildia źródłowa</span>
           <select
+            className="ma-input"
             value={draft.guildId}
             disabled={busy}
             onChange={(e) => changeGuild(e.target.value)}
@@ -477,9 +511,10 @@ export function TechnikMemberActivityPage() {
         </label>
 
         <div className="ma-config-grid">
-          <label className="technik-field">
+          <label className="technik-field ma-field">
             <span>Domyślne okno</span>
             <select
+              className="ma-input"
               value={String(draft.windowDays)}
               disabled={busy}
               onChange={(e) => {
@@ -496,9 +531,10 @@ export function TechnikMemberActivityPage() {
               <option value="30">30 dni</option>
             </select>
           </label>
-          <label className="technik-field">
+          <label className="technik-field ma-field">
             <span>Top N (dashboard)</span>
             <input
+              className="ma-input"
               type="number"
               min={1}
               max={500}
@@ -524,19 +560,15 @@ export function TechnikMemberActivityPage() {
         ) : null}
       </section>
 
-      <section className="technik-panel technik-panel--live-config ma-card">
+      <section className="technik-panel technik-panel--live-config ma-card ma-access">
         <h2>Dostęp do Technika (Aktywność)</h2>
-        <p className="technik-help">
-          To NIE jest filtr rankingu — tylko kto widzi tę stronę w Technik. Auth Discord / membership
-          serwera egzekwuje Identity osobno.
+        <p className="ma-access__help">
+          Kto widzi tę stronę w Technik — nie filtr rankingu. Kick z serwerów bota = utrata dostępu
+          do aplikacji (Identity + web watchdog). Pełna egzekucja guild-kick = Identity/OAuth.
         </p>
 
-        <div className="technik-field ma-roles">
-          <span>Ranga Admin (Discord role IDs)</span>
-          <small className="technik-help">
-            Role, które odblokowują „Aktywność członków” w Technik dla posiadaczy (best-effort).
-          </small>
-          {rolesApiNote ? <p className="technik-muted ma-roles__note">{rolesApiNote}</p> : null}
+        <div className="ma-access__block">
+          <div className="ma-access__label">Ranga Admin</div>
           <div className="technik-role-chips" role="list">
             {accessDraft.adminRoleIds.length === 0 ? (
               <span className="technik-muted">Brak rang Admin</span>
@@ -556,33 +588,38 @@ export function TechnikMemberActivityPage() {
               ))
             )}
           </div>
+          {rolesApiNote ? <p className="technik-muted ma-roles__note">{rolesApiNote}</p> : null}
           {rolesLive ? (
-            <label className="technik-field ma-roles__pick">
-              <span>Dodaj rangę Admin</span>
-              <select
-                value={adminRolePick}
-                disabled={busy}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setAdminRolePick(id);
-                  if (id) addAdminRoleId(id);
-                }}
-              >
-                <option value="">— wybierz po nazwie —</option>
-                {guildRoles
-                  .filter((r) => !accessDraft.adminRoleIds.includes(r.id))
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
+            <div className="ma-control-row">
+              <label className="ma-control ma-control--grow">
+                <span className="ma-sr-only">Dodaj rangę Admin</span>
+                <select
+                  className="ma-input"
+                  value={adminRolePick}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setAdminRolePick(id);
+                    if (id) addAdminRoleId(id);
+                  }}
+                >
+                  <option value="">— wybierz rangę Admin —</option>
+                  {guildRoles
+                    .filter((r) => !accessDraft.adminRoleIds.includes(r.id))
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
           ) : rolesOffline ? (
-            <div className="ma-roles__paste">
-              <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
-                <span>Dodaj Admin (ID Discord)</span>
+            <div className="ma-control-row">
+              <label className="ma-control ma-control--grow">
+                <span className="ma-control__cap">Admin ID</span>
                 <input
+                  className="ma-input"
                   value={pasteAdminRole}
                   disabled={busy}
                   onChange={(e) => setPasteAdminRole(e.target.value)}
@@ -592,7 +629,7 @@ export function TechnikMemberActivityPage() {
               </label>
               <button
                 type="button"
-                className="technik-btn-ghost ma-btn"
+                className="ma-btn ma-btn--primary"
                 disabled={busy}
                 onClick={() => {
                   const id = pasteAdminRole.trim();
@@ -607,13 +644,8 @@ export function TechnikMemberActivityPage() {
           )}
         </div>
 
-        <div className="technik-field ma-roles" style={{ marginTop: '1rem' }}>
-          <span>Dodatkowi operatorzy</span>
-          <small className="technik-help">
-            Lista Discord user ID z dostępem do Aktywności. Mateusz (
-            <code>{MATEUSZ_OPERATOR_DISCORD_ID}</code>) jest stałym Technikiem — zawsze widoczny,
-            nie da się usunąć.
-          </small>
+        <div className="ma-access__block">
+          <div className="ma-access__label">Operatorzy</div>
           <div className="technik-role-chips" role="list">
             {ensureMateuszOperator(accessDraft.operators).map((o) => {
               const permanent = isPermanentTechnikOperator(o.discordUserId);
@@ -621,7 +653,7 @@ export function TechnikMemberActivityPage() {
                 return (
                   <span
                     key={o.discordUserId}
-                    className="technik-role-chip technik-role-chip--permanent"
+                    className="technik-role-chip technik-role-chip--permanent ma-mateusz-chip"
                     role="listitem"
                     title={o.discordUserId}
                   >
@@ -644,10 +676,11 @@ export function TechnikMemberActivityPage() {
               );
             })}
           </div>
-          <div className="ma-roles__paste" style={{ marginTop: '0.5rem' }}>
-            <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
-              <span>Discord user ID</span>
+          <div className="ma-control-row">
+            <label className="ma-control ma-control--grow">
+              <span className="ma-control__cap">Discord ID</span>
               <input
+                className="ma-input"
                 value={opId}
                 disabled={busy}
                 onChange={(e) => setOpId(e.target.value)}
@@ -655,18 +688,19 @@ export function TechnikMemberActivityPage() {
                 inputMode="numeric"
               />
             </label>
-            <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
-              <span>Nazwa (opcjonalnie)</span>
+            <label className="ma-control ma-control--grow">
+              <span className="ma-control__cap">Nazwa</span>
               <input
+                className="ma-input"
                 value={opName}
                 disabled={busy}
                 onChange={(e) => setOpName(e.target.value)}
-                placeholder="np. XiaoHu"
+                placeholder="opcjonalnie"
               />
             </label>
             <button
               type="button"
-              className="technik-btn-ghost ma-btn"
+              className="ma-btn ma-btn--primary"
               disabled={busy}
               onClick={addOperator}
             >
@@ -725,10 +759,11 @@ export function TechnikMemberActivityPage() {
               ))}
             </div>
 
-            <div className="ma-search">
-              <label className="technik-field ma-search__field">
+            <div className="ma-toolbar">
+              <label className="ma-control ma-control--grow">
                 <span className="ma-sr-only">Szukaj nicku</span>
                 <input
+                  className="ma-input"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   onKeyDown={(e) => {
@@ -746,6 +781,11 @@ export function TechnikMemberActivityPage() {
                 {busy ? '…' : 'Szukaj / odśwież'}
               </button>
             </div>
+            {refreshedHint ? (
+              <p className="ma-refresh-hint" role="status">
+                {refreshedHint}
+              </p>
+            ) : null}
 
             {myRow ? (
               <p className="ma-me">
