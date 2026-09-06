@@ -92,6 +92,10 @@ export interface PlayerIdentity {
   readonly initials: string;
   /** Discord snowflake when known — for later DMs / gateway; id stays V2 UUID. */
   readonly discordAccountId?: string;
+  /** First-login / Mój profil — nick setup done. */
+  readonly profileSetupDone?: boolean;
+  /** Optional note about avatar (Discord avatar later). */
+  readonly avatarNote?: string;
 }
 
 export interface TeamNotifyPrefs {
@@ -1310,6 +1314,32 @@ export function completeDiscordAuth(
     workspaces: outcome === 'revoked' ? [] : state.workspaces,
     lastOpenedWorkspaceId: outcome === 'revoked' ? null : state.lastOpenedWorkspaceId,
     lastOpenedCharacterId: outcome === 'revoked' ? null : state.lastOpenedCharacterId,
+  };
+}
+
+export function updateViewerProfile(
+  state: PlayerStoreState,
+  patch: {
+    readonly displayName: string;
+    readonly avatarNote?: string;
+    readonly profileSetupDone?: boolean;
+  },
+): PlayerStoreState {
+  if (!state.viewer) return state;
+  const displayName = patch.displayName.trim();
+  if (displayName.length < 2) return state;
+  const nextNote =
+    typeof patch.avatarNote === 'string' ? patch.avatarNote.trim() : (state.viewer.avatarNote ?? '');
+  const { avatarNote: _drop, ...restViewer } = state.viewer;
+  return {
+    ...state,
+    viewer: {
+      ...restViewer,
+      displayName,
+      initials: initialsFromDisplayName(displayName),
+      profileSetupDone: patch.profileSetupDone ?? state.viewer.profileSetupDone ?? true,
+      ...(nextNote ? { avatarNote: nextNote } : {}),
+    },
   };
 }
 

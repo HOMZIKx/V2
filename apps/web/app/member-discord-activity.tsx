@@ -26,6 +26,7 @@ function DiscordNick({
   readonly discordUserId: string;
   readonly displayName: string;
 }) {
+  // Nick only — never APP / discord:// badge.
   return (
     <a
       className="ma-player__name"
@@ -57,6 +58,16 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
     void (async () => {
       setResolving(true);
       setError(null);
+      if (!/^\d{17,20}$/.test(discordUserId)) {
+        if (!cancelled) {
+          setResolved(null);
+          setResolving(false);
+          setError('Brak poprawnego Discord user ID w sesji — zaloguj się ponownie przez Discord.');
+          setMyRow(null);
+          setTop([]);
+        }
+        return;
+      }
       const g = await resolveMemberActivityGuild({
         discordUserId,
         viewer,
@@ -73,7 +84,6 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
     return () => {
       cancelled = true;
     };
-    // viewer object identity may change; membership fields are read inside resolve
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve on account id only
   }, [discordUserId]);
 
@@ -98,18 +108,39 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
           }),
         ]);
         if (cancelled) return;
+
+        const parts: string[] = [];
         if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
-        else setMyRow(null);
+        else {
+          setMyRow(null);
+          if (!me.ok) {
+            parts.push(
+              'Twoja aktywność: ' +
+                me.error +
+                (me.detail ? ' — ' + me.detail : '') +
+                (me.status ? ' (HTTP ' + String(me.status) + ')' : ''),
+            );
+          }
+        }
+
         if (ranking.ok) {
           setTop(ranking.rows.slice(0, 10));
         } else {
           setTop([]);
           if (ranking.offline) {
-            setError('Discord gateway offline — aktywność chwilowo niedostępna.');
+            parts.push('Discord gateway offline — ranking chwilowo niedostępny.');
           } else {
-            setError('Nie udało się wczytać rankingu: ' + ranking.error);
+            parts.push(
+              'Ranking: ' +
+                ranking.error +
+                (ranking.detail ? ' — ' + ranking.detail : '') +
+                (ranking.status ? ' (HTTP ' + String(ranking.status) + ')' : ''),
+            );
           }
         }
+
+        if (parts.length) setError(parts.join(' '));
+        else setError(null);
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -151,9 +182,11 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
       ) : !resolved ? (
         <div className="ma-pulpit__empty">
           <p>
-            Nie widzę Cię na Destiled ani na Projekt Sojusz (albo bot jeszcze nie zbiera
-            aktywności). Gdy dołączysz do jednego z tych serwerów i bot Cię zobaczy, tu pojawi się
-            Twój wynik.
+            {error ??
+              'Nie widzę Cię na Destiled ani na Projekt Sojusz (albo bot jeszcze nie zbiera aktywności).'}
+          </p>
+          <p className="empty-copy">
+            Logowanie Discord ograniczone do serwerów z botem — egzekucja Auth osobno.
           </p>
         </div>
       ) : (
@@ -163,9 +196,17 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
             <span className="ma-pulpit__guild-hint">
               {resolved.method === 'viewer_guilds'
                 ? ' · z Twojego konta'
-                : ' · wykryty po aktywności'}
+                : resolved.method === 'fallback_destiled'
+                  ? ' · domyślny Destiled (sprawdzam ranking)'
+                  : ' · wykryty po aktywności'}
             </span>
           </p>
+
+          {error ? (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          ) : null}
 
           <div className="ma-pulpit__stats">
             {myRow ? (
@@ -187,18 +228,15 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
               <p className="empty-copy">
                 {busy
                   ? 'Ładuję Twoją aktywność…'
-                  : 'Jesteś na serwerze, ale w tym oknie nie ma jeszcze punktów — napisz coś lub wejdź na VC.'}
+                  : error
+                    ? 'Nie udało się wczytać Twojej aktywności (szczegóły powyżej).'
+                    : 'Jesteś na serwerze, ale w tym oknie nie ma jeszcze punktów — napisz coś lub wejdź na VC.'}
               </p>
             )}
           </div>
 
           <div className="ma-pulpit__top">
             <h3>Top 10 — {resolved.guildName}</h3>
-            {error ? (
-              <p className="field-error" role="alert">
-                {error}
-              </p>
-            ) : null}
             {top.length === 0 && !error ? (
               <p className="empty-copy">
                 {busy ? 'Ładuję ranking…' : 'Brak wpisów w rankingu dla tego okna.'}

@@ -1,11 +1,12 @@
 /**
  * Resolve which Discord guild to show on member Pulpit for activity/ranking.
  * Priority (Mateusz): Destiled > only Sojusz > only one known > empty.
- * Best-effort: viewer guild list if present, else probe /member-activity/me.
+ * Best-effort: viewer guild list if present, else probe /member-activity/me + ranking.
  */
 
 import {
   DEFAULT_MEMBER_ACTIVITY_GUILD_ID,
+  fetchMemberActivityRanking,
   fetchMyRanking,
   type RankingWindow,
 } from './technik/member-activity-api';
@@ -23,7 +24,7 @@ export type ResolvedMemberActivityGuild = {
   readonly guildId: string;
   readonly guildName: string;
   /** How we decided — shown lightly in UI. */
-  readonly method: 'viewer_guilds' | 'probe_me';
+  readonly method: 'viewer_guilds' | 'probe_me' | 'fallback_destiled';
 };
 
 function readViewerGuildIds(viewer: unknown): string[] {
@@ -81,16 +82,27 @@ async function probeMeOnGuild(
   discordUserId: string,
   guildId: string,
   window: RankingWindow,
-): Promise<boolean> {
+): Promise<'self' | 'reachable' | 'miss'> {
   const me = await fetchMyRanking({ window, discordUserId, guildId });
-  if (!me.ok) return false;
-  // Self row present ⇒ tracked on that guild (even score 0).
-  return me.rows.some((r) => r.discordUserId === discordUserId);
+  if (!me.ok) {
+    // Offline / hard fail — try public ranking as reachability signal.
+    const rank = await fetchMemberActivityRanking({
+      window,
+      guildId,
+      topN: 10,
+      full: false,
+    });
+    if (rank.ok) return 'reachable';
+    return 'miss';
+  }
+  if (me.rows.some((r) => r.discordUserId === discordUserId)) return 'self';
+  return 'reachable';
 }
 
 /**
  * Resolve guild for Pulpit activity.
- * Returns null when we cannot honestly pick a single known guild.
+ * Prefer viewer membership; else probe Destiled then Sojusz; else Destiled fallback
+ * when ranking API is live so Pulpit can still show top10 / honest empty.
  */
 export async function resolveMemberActivityGuild(opts: {
   readonly discordUserId: string;
@@ -103,20 +115,28 @@ export async function resolveMemberActivityGuild(opts: {
   const fromViewer = pickFromKnownMembership(readViewerGuildIds(opts.viewer));
   if (fromViewer) return fromViewer;
 
-  // Probe Destiled first (priority), then Sojusz only if Destiled miss.
-  if (await probeMeOnGuild(opts.discordUserId, DESTILED_GUILD_ID, window)) {
+  const destiled = await probeMeOnGuild(opts.discordUserId, DESTILED_GUILD_ID, window);
+  if (destiled === 'self' || destiled === 'reachable') {
     return {
       guildId: DESTILED_GUILD_ID,
       guildName: KNOWN_GUILD_NAMES[DESTILED_GUILD_ID] ?? 'Destiled',
       method: 'probe_me',
     };
   }
-  if (await probeMeOnGuild(opts.discordUserId, SOJUSZ_GUILD_ID, window)) {
+
+  const sojusz = await probeMeOnGuild(opts.discordUserId, SOJUSZ_GUILD_ID, window);
+  if (sojusz === 'self' || sojusz === 'reachable') {
     return {
       guildId: SOJUSZ_GUILD_ID,
       guildName: KNOWN_GUILD_NAMES[SOJUSZ_GUILD_ID] ?? 'Projekt Sojusz',
       method: 'probe_me',
     };
   }
-  return null;
+
+  // Last resort: Destiled as default source guild so Pulpit can render errors/empty honestly.
+  return {
+    guildId: DESTILED_GUILD_ID,
+    guildName: KNOWN_GUILD_NAMES[DESTILED_GUILD_ID] ?? 'Destiled',
+    method: 'fallback_destiled',
+  };
 }

@@ -23,6 +23,7 @@ import {
   assignItemToSet,
   cancelDiscordAuth,
   completeDiscordAuth,
+  updateViewerProfile,
   confirmItemLocation,
   createCharacter,
   createEquipmentItem,
@@ -211,6 +212,11 @@ interface PlayerStoreApi {
   acceptInvitation: (invitationId: string) => void;
   declineInvitation: (invitationId: string) => void;
   returnToEntry: () => void;
+  updateViewerProfile: (patch: {
+    readonly displayName: string;
+    readonly avatarNote?: string;
+    readonly profileSetupDone?: boolean;
+  }) => void;
   resetStore: () => void;
 }
 
@@ -556,6 +562,9 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
           authStatus: 'unauthenticated',
           connection: 'offline',
         }));
+      },
+      updateViewerProfile: (patch) => {
+        apply((current) => updateViewerProfile(current, patch));
       },
       resetStore: () => {
         window.localStorage.removeItem(PLAYER_STORE_KEY);

@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { usePlayerStore } from '../src/player-store-react';
 
 export type AppSection =
-  'dashboard' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
+  'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
 
 export type IconName =
   | 'activity'
@@ -15,6 +15,7 @@ export type IconName =
   | 'chevron'
   | 'clock'
   | 'equipment'
+  | 'flag'
   | 'history'
   | 'home'
   | 'map'
@@ -35,6 +36,7 @@ const iconPaths: Record<IconName, readonly string[]> = {
   chevron: ['m9 18 6-6-6-6'],
   clock: ['M12 7v5l3 2', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
   equipment: ['M14.5 4.5 19 9l-10 10H5v-4L15 5', 'm13 7 4 4'],
+  flag: ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 22V15'],
   history: ['M3 12a9 9 0 1 0 3-6.7L3 8', 'M3 3v5h5', 'M12 7v5l4 2'],
   home: ['M3 11 12 3l9 8', 'M5 10v10h14V10', 'M9 20v-6h6v6'],
   map: ['m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z', 'M9 3v15', 'M15 6v15'],
@@ -144,6 +146,13 @@ export function AppShell({
 
   const navigation = [
     { id: 'dashboard' as const, label: 'Pulpit', icon: 'home' as const, href: '/' },
+    { id: 'profil' as const, label: 'Mój profil', icon: 'character' as const, href: '/profil' },
+    {
+      id: 'generaly-metki' as const,
+      label: 'Generały/Metki',
+      icon: 'flag' as const,
+      href: '/generaly-metki',
+    },
     { id: 'teams' as const, label: 'Zespół', icon: 'team' as const, href: teamsHref },
     {
       id: 'characters' as const,
@@ -204,7 +213,7 @@ export function AppShell({
             <Icon name="bell" />
             {readyCount > 0 ? <span className="notification-dot" /> : null}
           </a>
-          <a aria-label="Otwórz pulpit konta" className="profile-button" href="/">
+          <a aria-label="Otwórz pulpit konta" className="profile-button" href="/profil">
             <span className="profile-avatar">{viewerName.slice(0, 1).toUpperCase()}</span>
             <span className="profile-copy">
               <strong>{viewerName}</strong>

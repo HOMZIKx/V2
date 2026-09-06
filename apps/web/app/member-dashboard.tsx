@@ -100,6 +100,25 @@ export function MemberDashboard() {
           </div>
         </section>
 
+        {!state.viewer.profileSetupDone ? (
+          <section className="panel" role="status">
+            <header>
+              <span className="eyebrow">Pierwsze logowanie</span>
+              <h2>Uzupełnij Mój profil</h2>
+            </header>
+            <p className="empty-copy">
+              Ustaw nick wyświetlany, żeby inni widzieli Cię na Pulpicie i w zespole.
+            </p>
+            <a className="primary-button" href="/profil">
+              Otwórz Mój profil
+            </a>
+          </section>
+        ) : null}
+
+        <p className="empty-copy" role="note">
+          Logowanie Discord ograniczone do serwerów z botem — egzekucja Auth osobno.
+        </p>
+
         {state.viewer.discordAccountId ? (
           <MemberDiscordActivity
             discordUserId={state.viewer.discordAccountId}

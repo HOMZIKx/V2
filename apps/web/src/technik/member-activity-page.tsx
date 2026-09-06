@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { D060Controls } from './d060-controls';
 import {
@@ -20,6 +20,13 @@ import { HonestGap } from './ui-notes';
 import { KNOWN_GUILD_NAMES, putConfigDraft } from './technika-config-api';
 import { useTechnikaConfig } from './use-technika-config';
 import { usePlayerStore } from '../player-store-react';
+import {
+  DEFAULT_TECHNIK_ACCESS,
+  canAccessMemberActivityTechnik,
+  readTechnikAccessFromConfig,
+  type TechnikAccessConfig,
+  type TechnikOperatorEntry,
+} from './technik-access';
 
 const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: '7d', label: '7 dni' },
@@ -27,6 +34,28 @@ const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: '30d', label: '30 dni' },
   { id: 'since_bot', label: 'Od startu bota' },
 ];
+
+const GUILD_OVERRIDE_KEY = 'technik.memberActivity.guildOverride';
+
+function readGuildOverride(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = window.localStorage.getItem(GUILD_OVERRIDE_KEY);
+    return v && /^\d{17,20}$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeGuildOverride(id: string | null): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!id) window.localStorage.removeItem(GUILD_OVERRIDE_KEY);
+    else window.localStorage.setItem(GUILD_OVERRIDE_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
 
 function DiscordProfileLink({
   discordUserId,
@@ -36,7 +65,6 @@ function DiscordProfileLink({
   readonly displayName: string;
 }) {
   const webHref = 'https://discord.com/users/' + discordUserId;
-  // Nick only — never APP / discord:// badge next to name.
   return (
     <a className="ma-player__name" href={webHref} target="_blank" rel="noreferrer">
       {displayName}
@@ -52,9 +80,6 @@ function readMemberActivityFromConfig(
       ? (cfg.memberActivity as Record<string, unknown>)
       : null;
   if (!raw) return { ...DEFAULT_MEMBER_ACTIVITY };
-  const roles = Array.isArray(raw.memberRoleIds)
-    ? raw.memberRoleIds.map(String).filter((id) => /^\d{17,20}$/.test(id))
-    : [];
   const windowDays =
     raw.windowDays === 14 || raw.windowDays === 30 ? Number(raw.windowDays) : 7;
   return {
@@ -63,7 +88,7 @@ function readMemberActivityFromConfig(
       typeof raw.guildId === 'string' && /^\d{17,20}$/.test(raw.guildId)
         ? raw.guildId
         : DEFAULT_MEMBER_ACTIVITY_GUILD_ID,
-    memberRoleIds: roles,
+    memberRoleIds: [],
     windowDays,
     topN: typeof raw.topN === 'number' && raw.topN > 0 ? Math.min(500, raw.topN) : 10,
   };
@@ -81,6 +106,10 @@ export function TechnikMemberActivityPage() {
   const { state } = usePlayerStore();
   const viewerDiscordId = state.viewer?.discordAccountId ?? '';
   const [draft, setDraft] = useState<MemberActivityConfig>(DEFAULT_MEMBER_ACTIVITY);
+  const [accessDraft, setAccessDraft] = useState<TechnikAccessConfig>(DEFAULT_TECHNIK_ACCESS);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [seenRevision, setSeenRevision] = useState<number | null>(null);
+  const stickyGuildRef = useRef<string | null>(null);
   const [hasCap, setHasCap] = useState(false);
   const [rankStatus, setRankStatus] = useState<ApiReachability>('checking');
   const [windowId, setWindowId] = useState<RankingWindow>('7d');
@@ -90,23 +119,60 @@ export function TechnikMemberActivityPage() {
   const [totalMembers, setTotalMembers] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pasteRole, setPasteRole] = useState('');
   const [guildRoles, setGuildRoles] = useState<readonly GuildRole[]>([]);
   const [rolesOffline, setRolesOffline] = useState(false);
   const [rolesApiNote, setRolesApiNote] = useState<string | null>(null);
-  const [rolePick, setRolePick] = useState('');
+  const [adminRolePick, setAdminRolePick] = useState('');
+  const [pasteAdminRole, setPasteAdminRole] = useState('');
+  const [opId, setOpId] = useState('');
+  const [opName, setOpName] = useState('');
+
+  const allowed = canAccessMemberActivityTechnik({
+    viewerDiscordId,
+    viewer: state.viewer,
+    access: accessDraft,
+  });
 
   useEffect(() => {
     const hit = cfg.capabilities.some(
       (c) => c.id === 'memberActivity' || c.id === 'member-activity',
     );
     setHasCap(hit);
-    const fromSnap = readMemberActivityFromConfig(
-      cfg.snapshot?.config as unknown as Record<string, unknown> | undefined,
-    );
-    setDraft(fromSnap);
-    setWindowId(windowDaysToRankingWindow(fromSnap.windowDays));
-  }, [cfg.capabilities, cfg.snapshot]);
+    const snapCfg = cfg.snapshot?.config as unknown as Record<string, unknown> | undefined;
+    const fromSnap = readMemberActivityFromConfig(snapCfg);
+    const accessFromSnap = readTechnikAccessFromConfig(snapCfg);
+    const revision = cfg.snapshot?.revision ?? null;
+
+    if (!draftHydrated) {
+      const override = readGuildOverride();
+      const guildId = override ?? fromSnap.guildId;
+      stickyGuildRef.current = guildId;
+      setDraft({ ...fromSnap, guildId, memberRoleIds: [] });
+      setAccessDraft(accessFromSnap);
+      setWindowId(windowDaysToRankingWindow(fromSnap.windowDays));
+      setSeenRevision(revision);
+      setDraftHydrated(true);
+      return;
+    }
+
+    if (revision !== null && seenRevision !== null && revision !== seenRevision) {
+      const override = readGuildOverride();
+      let guildId = fromSnap.guildId;
+      if (override && override !== fromSnap.guildId) {
+        guildId = override;
+      } else {
+        writeGuildOverride(null);
+        guildId = fromSnap.guildId;
+      }
+      stickyGuildRef.current = guildId;
+      setDraft({ ...fromSnap, guildId, memberRoleIds: [] });
+      setAccessDraft(accessFromSnap);
+      setWindowId(windowDaysToRankingWindow(fromSnap.windowDays));
+      setSeenRevision(revision);
+      return;
+    }
+    // Snapshot refresh after putConfigDraft/load — do NOT clobber local draft.guildId.
+  }, [cfg.capabilities, cfg.snapshot, draftHydrated, seenRevision]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +186,7 @@ export function TechnikMemberActivityPage() {
       } else if (res.unavailable) {
         setGuildRoles([]);
         setRolesOffline(true);
-        setRolesApiNote('Lista ról offline — wklej ID tylko jako zapas.');
+        setRolesApiNote('Lista ról offline — wklej ID Admin tylko jako zapas.');
       } else {
         setGuildRoles([]);
         setRolesOffline(true);
@@ -185,11 +251,17 @@ export function TechnikMemberActivityPage() {
   }, [windowId, q, draft.guildId, viewerDiscordId]);
 
   useEffect(() => {
+    if (!allowed) return;
     if (rankStatus === 'live') void loadRanking();
-  }, [rankStatus, loadRanking]);
+  }, [rankStatus, loadRanking, allowed]);
 
-  const persistDraft = async (next: MemberActivityConfig) => {
-    setDraft(next);
+  const persistAll = async (
+    nextActivity: MemberActivityConfig,
+    nextAccess: TechnikAccessConfig,
+  ) => {
+    const activity = { ...nextActivity, memberRoleIds: [] as const };
+    setDraft(activity);
+    setAccessDraft(nextAccess);
     if (!hasCap) {
       setMsg(
         'Brak możliwości „aktywność członków” w capabilities — UI lokalne do czasu gateway.',
@@ -203,13 +275,17 @@ export function TechnikMemberActivityPage() {
     setBusy(true);
     try {
       const base = cfg.buildDraftPartial();
-      const res = await putConfigDraft({ ...base, memberActivity: next });
+      const res = await putConfigDraft({
+        ...base,
+        memberActivity: activity,
+        technikAccess: nextAccess,
+      });
       if (!res.ok) {
         setMsg('Szkic: ' + res.error + (res.detail ? ' — ' + res.detail : ''));
         return;
       }
       setMsg('Zapisano do szkicu — Sprawdź → Zobacz → Zapisz i włącz.');
-      cfg.setLastAction('draft memberActivity');
+      cfg.setLastAction('draft memberActivity + technikAccess');
       cfg.setStep('Draft');
       await cfg.load();
     } finally {
@@ -217,23 +293,86 @@ export function TechnikMemberActivityPage() {
     }
   };
 
-  const addRoleId = (id: string) => {
-    if (!/^\d{17,20}$/.test(id)) return;
-    if (draft.memberRoleIds.includes(id)) return;
-    void persistDraft({ ...draft, memberRoleIds: [...draft.memberRoleIds, id] });
-    setRolePick('');
-    setPasteRole('');
+  const changeGuild = (guildId: string) => {
+    writeGuildOverride(guildId);
+    stickyGuildRef.current = guildId;
+    void persistAll({ ...draft, guildId, memberRoleIds: [] }, accessDraft);
   };
 
-  const removeRoleId = (id: string) => {
-    void persistDraft({
-      ...draft,
-      memberRoleIds: draft.memberRoleIds.filter((x) => x !== id),
+  const addAdminRoleId = (id: string) => {
+    if (!/^\d{17,20}$/.test(id)) return;
+    if (accessDraft.adminRoleIds.includes(id)) return;
+    void persistAll(draft, {
+      ...accessDraft,
+      adminRoleIds: [...accessDraft.adminRoleIds, id],
+    });
+    setAdminRolePick('');
+    setPasteAdminRole('');
+  };
+
+  const removeAdminRoleId = (id: string) => {
+    void persistAll(draft, {
+      ...accessDraft,
+      adminRoleIds: accessDraft.adminRoleIds.filter((x) => x !== id),
+    });
+  };
+
+  const addOperator = () => {
+    const id = opId.trim();
+    if (!/^\d{17,20}$/.test(id)) {
+      setMsg('ID operatora musi być snowflake Discord (17–20 cyfr).');
+      return;
+    }
+    if (accessDraft.operators.some((o) => o.discordUserId === id)) return;
+    const entry: TechnikOperatorEntry = opName.trim()
+      ? { discordUserId: id, displayName: opName.trim() }
+      : { discordUserId: id };
+    void persistAll(draft, {
+      ...accessDraft,
+      operators: [...accessDraft.operators, entry],
+    });
+    setOpId('');
+    setOpName('');
+  };
+
+  const removeOperator = (id: string) => {
+    void persistAll(draft, {
+      ...accessDraft,
+      operators: accessDraft.operators.filter((o) => o.discordUserId !== id),
     });
   };
 
   const sourceName = KNOWN_GUILD_NAMES[draft.guildId] ?? 'źródłowa guildia';
   const rolesLive = guildRoles.length > 0;
+
+  if (!draftHydrated) {
+    return (
+      <div className="ma-page">
+        <p className="technik-muted">Ładowanie ustawień…</p>
+      </div>
+    );
+  }
+
+  if (!allowed) {
+    return (
+      <div className="ma-page">
+        <header className="ma-hero">
+          <div className="ma-hero__titles">
+            <h1>Aktywność członków</h1>
+          </div>
+        </header>
+        <HonestGap>
+          <p>
+            <strong>Brak dostępu — poproś Technika.</strong> Ta strona jest tylko dla operatorów
+            (Mateusz) albo osób z listy Admin / operatorów.
+          </p>
+          <p className="technik-muted">
+            Logowanie Discord i membership serwera egzekwuje Auth osobno (Identity/OAuth).
+          </p>
+        </HonestGap>
+      </div>
+    );
+  }
 
   return (
     <div className="ma-page">
@@ -241,8 +380,8 @@ export function TechnikMemberActivityPage() {
         <div className="ma-hero__titles">
           <h1>Aktywność członków</h1>
           <p className="technik-lead ma-hero__lead">
-            Zbieranie aktywności z Destiled i pełny ranking ops. Okna 7 / 14 / 30 dni albo od startu
-            bota — bez spamu na kanale.
+            Zbieranie aktywności z wybranego serwera i pełny ranking ops. Okna 7 / 14 / 30 dni albo od
+            startu bota — bez spamu na kanale.
           </p>
         </div>
         <div className="ma-hero__pills">
@@ -266,8 +405,8 @@ export function TechnikMemberActivityPage() {
       </header>
 
       <p className="ma-strip" role="note">
-        <strong>Ops.</strong> Włączasz zbieranie, wskazujesz guildię i role, przeglądasz ranking.
-        Gracze nie dostają publicznego rankingu na kanale — DM tylko według powiadomień zespołu.
+        <strong>Ops.</strong> Włączasz zbieranie, wskazujesz guildię, przeglądasz ranking. Zakres
+        liczenia = cały wybrany serwer. Dostęp do tej strony = sekcja Admin / operatorzy poniżej.
       </p>
 
       {!hasCap ? (
@@ -286,7 +425,9 @@ export function TechnikMemberActivityPage() {
             type="checkbox"
             checked={draft.enabled}
             disabled={busy}
-            onChange={(e) => void persistDraft({ ...draft, enabled: e.target.checked })}
+            onChange={(e) =>
+              void persistAll({ ...draft, enabled: e.target.checked, memberRoleIds: [] }, accessDraft)
+            }
           />
           Włącz zbieranie aktywności
         </label>
@@ -296,7 +437,7 @@ export function TechnikMemberActivityPage() {
           <select
             value={draft.guildId}
             disabled={busy}
-            onChange={(e) => void persistDraft({ ...draft, guildId: e.target.value })}
+            onChange={(e) => changeGuild(e.target.value)}
           >
             <option value={DEFAULT_MEMBER_ACTIVITY_GUILD_ID}>
               {KNOWN_GUILD_NAMES[DEFAULT_MEMBER_ACTIVITY_GUILD_ID] ?? 'Destiled'}
@@ -310,86 +451,10 @@ export function TechnikMemberActivityPage() {
               ))}
           </select>
           <small className="technik-help">
-            Ranking i role poniżej dotyczą tylko: <strong>{sourceName}</strong>. Domyślnie Destiled;
-            Sojusz i Testowy mają osobne listy.
+            Ranking dotyczy tylko: <strong>{sourceName}</strong>. Wybór zostaje sticky do Apply — nie
+            wraca sam do Destiled po zapisie szkicu.
           </small>
         </label>
-
-        <div className="technik-field ma-roles">
-          <span>Role członków</span>
-          <small className="technik-help">
-            Puste = wszyscy na guildii. Wybierz po nazwie; klik chipa usuwa.
-          </small>
-          {rolesApiNote ? <p className="technik-muted ma-roles__note">{rolesApiNote}</p> : null}
-          <div className="technik-role-chips" role="list">
-            {draft.memberRoleIds.length === 0 ? (
-              <span className="technik-muted">Brak filtra ról</span>
-            ) : (
-              draft.memberRoleIds.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="technik-role-chip"
-                  role="listitem"
-                  disabled={busy}
-                  title={id}
-                  onClick={() => removeRoleId(id)}
-                >
-                  {roleLabel(id, guildRoles)} ×
-                </button>
-              ))
-            )}
-          </div>
-          {rolesLive ? (
-            <label className="technik-field ma-roles__pick">
-              <span>Dodaj rolę</span>
-              <select
-                value={rolePick}
-                disabled={busy}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setRolePick(id);
-                  if (id) addRoleId(id);
-                }}
-              >
-                <option value="">— wybierz po nazwie —</option>
-                {guildRoles
-                  .filter((r) => !draft.memberRoleIds.includes(r.id))
-                  .map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          ) : rolesOffline ? (
-            <div className="ma-roles__paste">
-              <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
-                <span>Dodaj rolę (ID Discord)</span>
-                <input
-                  value={pasteRole}
-                  disabled={busy}
-                  onChange={(e) => setPasteRole(e.target.value)}
-                  placeholder="np. 123456789012345678"
-                  inputMode="numeric"
-                />
-              </label>
-              <button
-                type="button"
-                className="technik-btn-ghost ma-btn"
-                disabled={busy}
-                onClick={() => {
-                  const id = pasteRole.trim();
-                  if (/^\d{17,20}$/.test(id)) addRoleId(id);
-                }}
-              >
-                Dodaj
-              </button>
-            </div>
-          ) : (
-            <p className="technik-muted">Ładuję listę ról…</p>
-          )}
-        </div>
 
         <div className="ma-config-grid">
           <label className="technik-field">
@@ -399,7 +464,10 @@ export function TechnikMemberActivityPage() {
               disabled={busy}
               onChange={(e) => {
                 const days = Number(e.target.value);
-                void persistDraft({ ...draft, windowDays: days });
+                void persistAll(
+                  { ...draft, windowDays: days, memberRoleIds: [] },
+                  accessDraft,
+                );
                 setWindowId(windowDaysToRankingWindow(days));
               }}
             >
@@ -417,10 +485,14 @@ export function TechnikMemberActivityPage() {
               value={draft.topN}
               disabled={busy}
               onChange={(e) =>
-                void persistDraft({
-                  ...draft,
-                  topN: Math.min(500, Math.max(1, Number(e.target.value) || 10)),
-                })
+                void persistAll(
+                  {
+                    ...draft,
+                    topN: Math.min(500, Math.max(1, Number(e.target.value) || 10)),
+                    memberRoleIds: [],
+                  },
+                  accessDraft,
+                )
               }
             />
           </label>
@@ -430,6 +502,146 @@ export function TechnikMemberActivityPage() {
             {msg}
           </p>
         ) : null}
+      </section>
+
+      <section className="technik-panel technik-panel--live-config ma-card">
+        <h2>Dostęp do Technika (Aktywność)</h2>
+        <p className="technik-help">
+          To NIE jest filtr rankingu — tylko kto widzi tę stronę w Technik. Auth Discord / membership
+          serwera egzekwuje Identity osobno.
+        </p>
+
+        <div className="technik-field ma-roles">
+          <span>Ranga Admin (Discord role IDs)</span>
+          <small className="technik-help">
+            Role, które odblokowują „Aktywność członków” w Technik dla posiadaczy (best-effort).
+          </small>
+          {rolesApiNote ? <p className="technik-muted ma-roles__note">{rolesApiNote}</p> : null}
+          <div className="technik-role-chips" role="list">
+            {accessDraft.adminRoleIds.length === 0 ? (
+              <span className="technik-muted">Brak rang Admin</span>
+            ) : (
+              accessDraft.adminRoleIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="technik-role-chip"
+                  role="listitem"
+                  disabled={busy}
+                  title={id}
+                  onClick={() => removeAdminRoleId(id)}
+                >
+                  {roleLabel(id, guildRoles)} ×
+                </button>
+              ))
+            )}
+          </div>
+          {rolesLive ? (
+            <label className="technik-field ma-roles__pick">
+              <span>Dodaj rangę Admin</span>
+              <select
+                value={adminRolePick}
+                disabled={busy}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setAdminRolePick(id);
+                  if (id) addAdminRoleId(id);
+                }}
+              >
+                <option value="">— wybierz po nazwie —</option>
+                {guildRoles
+                  .filter((r) => !accessDraft.adminRoleIds.includes(r.id))
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : rolesOffline ? (
+            <div className="ma-roles__paste">
+              <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
+                <span>Dodaj Admin (ID Discord)</span>
+                <input
+                  value={pasteAdminRole}
+                  disabled={busy}
+                  onChange={(e) => setPasteAdminRole(e.target.value)}
+                  placeholder="np. 123456789012345678"
+                  inputMode="numeric"
+                />
+              </label>
+              <button
+                type="button"
+                className="technik-btn-ghost ma-btn"
+                disabled={busy}
+                onClick={() => {
+                  const id = pasteAdminRole.trim();
+                  if (/^\d{17,20}$/.test(id)) addAdminRoleId(id);
+                }}
+              >
+                Dodaj
+              </button>
+            </div>
+          ) : (
+            <p className="technik-muted">Ładuję listę ról…</p>
+          )}
+        </div>
+
+        <div className="technik-field ma-roles" style={{ marginTop: '1rem' }}>
+          <span>Dodatkowi operatorzy</span>
+          <small className="technik-help">
+            Lista Discord user ID z dostępem do Aktywności. Mateusz (
+            <code>808066932753563668</code>) ma dostęp zawsze.
+          </small>
+          <div className="technik-role-chips" role="list">
+            {accessDraft.operators.length === 0 ? (
+              <span className="technik-muted">Brak dodatkowych operatorów</span>
+            ) : (
+              accessDraft.operators.map((o) => (
+                <button
+                  key={o.discordUserId}
+                  type="button"
+                  className="technik-role-chip"
+                  role="listitem"
+                  disabled={busy}
+                  title={o.discordUserId}
+                  onClick={() => removeOperator(o.discordUserId)}
+                >
+                  {(o.displayName ? o.displayName + ' · ' : '') + o.discordUserId} ×
+                </button>
+              ))
+            )}
+          </div>
+          <div className="ma-roles__paste" style={{ marginTop: '0.5rem' }}>
+            <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
+              <span>Discord user ID</span>
+              <input
+                value={opId}
+                disabled={busy}
+                onChange={(e) => setOpId(e.target.value)}
+                placeholder="8080…"
+                inputMode="numeric"
+              />
+            </label>
+            <label className="technik-field" style={{ flex: 1, marginTop: 0 }}>
+              <span>Nazwa (opcjonalnie)</span>
+              <input
+                value={opName}
+                disabled={busy}
+                onChange={(e) => setOpName(e.target.value)}
+                placeholder="np. XiaoHu"
+              />
+            </label>
+            <button
+              type="button"
+              className="technik-btn-ghost ma-btn"
+              disabled={busy}
+              onClick={addOperator}
+            >
+              Dodaj
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="technik-panel technik-panel--wide ma-card ma-rank">
@@ -446,8 +658,8 @@ export function TechnikMemberActivityPage() {
           </span>
         </div>
         <p className="technik-help ma-rank__help">
-          Każdy serwer ma własny ranking. Zmieniasz guildię powyżej — lista poniżej jest tylko z
-          tego serwera.
+          Każdy serwer ma własny ranking. Zmieniasz guildię powyżej — lista tylko z tego serwera
+          (wszyscy na guildii).
         </p>
 
         {rankStatus === 'offline' ? (
@@ -586,7 +798,7 @@ export function TechnikMemberActivityPage() {
           onApply={() => void cfg.runApply()}
           onRollback={() => void cfg.runRollback()}
           onRefresh={() => void cfg.load()}
-          help="Aktywność wchodzi do szkicu powyżej, potem wspólny Apply."
+          help="Aktywność i dostęp wchodzą do szkicu powyżej, potem wspólny Apply."
           showStepper={false}
           compact
         />
