@@ -1,12 +1,14 @@
 /**
  * publishChannels — purpose → Discord channel mapping (Technika draft).
  * Centrum hub channel = publishChannels.centrumHub.
+ * Website link channel = publishChannels.website (+ appWebsiteUrl).
  */
 
 import { TECHNIK_TEST_GUILD_ID } from './technika-config-api';
 
 export type PublishPurposeId =
   | 'centrumHub'
+  | 'website'
   | 'notifications'
   | 'dungeons'
   | 'trade'
@@ -24,6 +26,12 @@ export const PUBLISH_PURPOSES: readonly PublishPurpose[] = [
     id: 'centrumHub',
     label: 'Centrum',
     description: 'Stały panel Centrum aktywności (hub) — jeden kanał na guildię.',
+  },
+  {
+    id: 'website',
+    label: 'Strona WWW / link do aplikacji',
+    description:
+      'Stały post / pin z adresem aplikacji DESTILED (link do WWW) — jeden kanał na guildię.',
   },
   {
     id: 'notifications',
@@ -55,9 +63,11 @@ export const PUBLISH_PURPOSES: readonly PublishPurpose[] = [
 export type PublishChannelsMap = Partial<Record<PublishPurposeId, string>>;
 
 const STORAGE_KEY = 'technik.publishChannels.v1';
+const WEBSITE_URL_STORAGE_KEY = 'technik.appWebsiteUrl.v1';
 const LEGACY_HUB_PREFIX = 'technik.hubChannelId.';
 
 type Store = Record<string, PublishChannelsMap>;
+type WebsiteUrlStore = Record<string, string>;
 
 function readStore(): Store {
   try {
@@ -75,13 +85,29 @@ function writeStore(store: Store): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function readWebsiteUrlStore(): WebsiteUrlStore {
+  try {
+    const raw = localStorage.getItem(WEBSITE_URL_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed as WebsiteUrlStore;
+  } catch {
+    return {};
+  }
+}
+
+function writeWebsiteUrlStore(store: WebsiteUrlStore): void {
+  localStorage.setItem(WEBSITE_URL_STORAGE_KEY, JSON.stringify(store));
+}
+
 export function loadPublishChannels(guildId: string = TECHNIK_TEST_GUILD_ID): PublishChannelsMap {
   const store = readStore();
   const current = { ...(store[guildId] ?? {}) };
   if (!current.centrumHub) {
     try {
       const legacy = localStorage.getItem(LEGACY_HUB_PREFIX + guildId);
-      if (legacy && /^\d{17,20}$/.test(legacy)) {
+      if (legacy && /^d{17,20}$/.test(legacy)) {
         current.centrumHub = legacy;
         savePublishChannels(guildId, current);
       }
@@ -121,6 +147,22 @@ export function setPublishChannel(
   else next[purpose] = channelId;
   savePublishChannels(guildId, next);
   return next;
+}
+
+/** Per-guild https URL of the DESTILED web app (posted on publishChannels.website). */
+export function loadAppWebsiteUrl(guildId: string = TECHNIK_TEST_GUILD_ID): string {
+  const store = readWebsiteUrlStore();
+  const v = store[guildId];
+  return typeof v === 'string' ? v : '';
+}
+
+export function saveAppWebsiteUrl(guildId: string, url: string): string {
+  const store = readWebsiteUrlStore();
+  const trimmed = url.trim();
+  if (!trimmed) delete store[guildId];
+  else store[guildId] = trimmed;
+  writeWebsiteUrlStore(store);
+  return trimmed;
 }
 
 export function channelLabel(

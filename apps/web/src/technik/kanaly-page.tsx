@@ -11,7 +11,9 @@ import {
 import {
   PUBLISH_PURPOSES,
   channelLabel,
+  loadAppWebsiteUrl,
   loadPublishChannels,
+  saveAppWebsiteUrl,
   savePublishChannels,
   setPublishChannel,
   type PublishChannelsMap,
@@ -35,6 +37,17 @@ const GUILD_OPTIONS = [
   })),
 ];
 
+function looksLikeHttpsUrl(value: string): boolean {
+  const t = value.trim();
+  if (!t) return true;
+  try {
+    const u = new URL(t);
+    return u.protocol === 'https:' || u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Kanały — purpose → channel rows (publishChannels).
  */
@@ -45,6 +58,7 @@ export function TechnikKanalyPage() {
   const [apiStatus, setApiStatus] = useState<PanelsApiStatus>('checking');
   const [channels, setChannels] = useState<readonly PanelChannel[]>([]);
   const [map, setMap] = useState<PublishChannelsMap>({});
+  const [appWebsiteUrl, setAppWebsiteUrl] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [channelsErr, setChannelsErr] = useState<string | null>(null);
 
@@ -77,18 +91,59 @@ export function TechnikKanalyPage() {
 
   useEffect(() => {
     const local = loadPublishChannels(guildId);
+    const localUrl = loadAppWebsiteUrl(guildId);
+    const snapCfg = cfg.snapshot?.config as
+      | { publishChannels?: Record<string, string>; appWebsiteUrl?: string; websiteUrl?: string }
+      | undefined;
     const fromCfg =
-      cfg.snapshot &&
-      typeof (cfg.snapshot.config as { publishChannels?: unknown }).publishChannels === 'object'
-        ? ((cfg.snapshot.config as { publishChannels?: Record<string, string> }).publishChannels ?? {})
-        : {};
+      snapCfg && typeof snapCfg.publishChannels === 'object' ? (snapCfg.publishChannels ?? {}) : {};
     const merged = editable ? { ...local, ...fromCfg } : { ...fromCfg, ...local };
     setMap(merged);
+    const fromCfgUrl =
+      typeof snapCfg?.appWebsiteUrl === 'string'
+        ? snapCfg.appWebsiteUrl
+        : typeof snapCfg?.websiteUrl === 'string'
+          ? snapCfg.websiteUrl
+          : '';
+    const nextUrl = editable ? fromCfgUrl || localUrl : localUrl || fromCfgUrl;
+    setAppWebsiteUrl(nextUrl);
     if (editable && Object.keys(fromCfg).length) {
       savePublishChannels(guildId, merged);
     }
+    if (editable && fromCfgUrl) {
+      saveAppWebsiteUrl(guildId, fromCfgUrl);
+    }
     void reload();
   }, [guildId, reload, cfg.snapshot, editable]);
+
+  const pushDraftWith = async (
+    nextMap: PublishChannelsMap,
+    nextUrl: string,
+    successHint: string,
+  ) => {
+    const hasPubCap = cfg.capabilities.some((c) => c.id === 'publishChannels');
+    if (!(hasPubCap && cfg.canWrite)) return false;
+    const base = cfg.buildDraftPartial();
+    const trimmed = nextUrl.trim();
+    const payload: Record<string, unknown> = {
+      ...base,
+      publishChannels: nextMap,
+    };
+    if (trimmed) {
+      payload.appWebsiteUrl = trimmed;
+    }
+    const res = await putConfigDraft(payload);
+    if (res.ok) {
+      setMsg(successHint + ' · szkic D-060 (publishChannels' + (trimmed ? ' + appWebsiteUrl' : '') + '). Przejdź do Przeglądu i kliknij Apply.');
+      cfg.setLastAction('draft publishChannels');
+      cfg.setStep('Draft');
+      return true;
+    }
+    setMsg(
+      'Lokalnie OK, ale szkic D-060: ' + res.error + (res.detail ? ' — ' + res.detail : ''),
+    );
+    return false;
+  };
 
   const onPick = (purpose: PublishPurposeId, channelId: string) => {
     if (!editable) {
@@ -103,29 +158,36 @@ export function TechnikKanalyPage() {
         ? 'Zapisano lokalnie: ' + purposeLabel + ' → ' + channelLabel(channelId, channels) + '.'
         : 'Wyczyszczono: ' + purposeLabel + '.',
     );
-    const hasPubCap = cfg.capabilities.some((c) => c.id === 'publishChannels');
-    if (hasPubCap && cfg.canWrite) {
-      void (async () => {
-        const base = cfg.buildDraftPartial();
-        const res = await putConfigDraft({ ...base, publishChannels: next });
-        if (res.ok) {
-          setMsg(
-            (channelId
-              ? 'Zapisano: ' + purposeLabel + ' → ' + channelLabel(channelId, channels)
-              : 'Wyczyszczono: ' + purposeLabel) +
-              ' · szkic D-060 (publishChannels). Przejdź do Przeglądu i kliknij Apply.',
-          );
-          cfg.setLastAction('draft publishChannels');
-          cfg.setStep('Draft');
-        } else {
-          setMsg(
-            'Lokalnie OK, ale szkic D-060: ' +
-              res.error +
-              (res.detail ? ' — ' + res.detail : ''),
-          );
-        }
-      })();
+    void pushDraftWith(
+      next,
+      appWebsiteUrl,
+      channelId
+        ? 'Zapisano: ' + purposeLabel + ' → ' + channelLabel(channelId, channels)
+        : 'Wyczyszczono: ' + purposeLabel,
+    );
+  };
+
+  const onWebsiteUrlChange = (value: string) => {
+    setAppWebsiteUrl(value);
+  };
+
+  const onWebsiteUrlCommit = () => {
+    if (!editable) {
+      setMsg('Tylko serwer Testowy — Destiled/Sojusz bez zapisu URL (podgląd).');
+      return;
     }
+    if (!looksLikeHttpsUrl(appWebsiteUrl)) {
+      setMsg('Adres aplikacji: podaj poprawny URL (https://…).');
+      return;
+    }
+    const saved = saveAppWebsiteUrl(guildId, appWebsiteUrl);
+    setAppWebsiteUrl(saved);
+    setMsg(saved ? 'Zapisano lokalnie adres aplikacji.' : 'Wyczyszczono adres aplikacji.');
+    void pushDraftWith(
+      map,
+      saved,
+      saved ? 'Zapisano adres aplikacji' : 'Wyczyszczono adres aplikacji',
+    );
   };
 
   const pushDraft = async () => {
@@ -137,38 +199,60 @@ export function TechnikKanalyPage() {
       setMsg('Brak sekretu Technika — nie zapiszę publishChannels do szkicu.');
       return;
     }
+    if (!looksLikeHttpsUrl(appWebsiteUrl)) {
+      setMsg('Adres aplikacji: podaj poprawny URL (https://…) przed zapisem szkicu.');
+      return;
+    }
+    const savedUrl = saveAppWebsiteUrl(guildId, appWebsiteUrl);
+    setAppWebsiteUrl(savedUrl);
     const base = cfg.buildDraftPartial();
-    const res = await putConfigDraft({ ...base, publishChannels: map });
+    const payload: Record<string, unknown> = {
+      ...base,
+      publishChannels: map,
+    };
+    if (savedUrl) {
+      payload.appWebsiteUrl = savedUrl;
+    }
+    const res = await putConfigDraft(payload);
     if (!res.ok) {
       setMsg('Szkic: ' + res.error + (res.detail ? ' — ' + res.detail : ''));
       return;
     }
     cfg.setLastAction('draft publishChannels');
     cfg.setStep('Draft');
-    setMsg('Szkic D-060 zaktualizowany (publishChannels). Otwórz Przegląd → Apply.');
+    setMsg(
+      'Szkic D-060 zaktualizowany (publishChannels' +
+        (savedUrl ? ' + appWebsiteUrl' : '') +
+        '). Otwórz Przegląd → Apply.',
+    );
     await cfg.load();
   };
 
   const guildName = KNOWN_GUILD_NAMES[guildId] ?? 'serwer';
+  const websiteChannelId = map.website ?? '';
 
   return (
     <>
       <h1>Kanały</h1>
       <p className="technik-lead">
         Powiąż cel publikacji z konkretnym kanałem Discorda. Centrum panel czyta kanał „Centrum”.
+        Strona WWW: wybierz <strong>gdzie</strong> bot pinuje link oraz <strong>jaki</strong> adres
+        aplikacji DESTILED.
       </p>
 
       <PageJobNote>
         <p>
           Jedna tabela: po lewej po co bot publikuje, po prawej na który kanał. Bez surowych ID w
-          etykietach — wybierasz nazwę kanału z listy (#nazwa).
+          etykietach — wybierasz nazwę kanału z listy (#nazwa). Dla „Strona WWW / link do aplikacji”
+          dodatkowo podajesz URL WWW — to jest treść stałego posta / pina (nie auto-publish; Apply w
+          Przeglądzie).
         </p>
       </PageJobNote>
 
       <PlayerSeesNote>
         <p>
-          Gracz widzi posty i panel Centrum tylko na kanałach, które tu przypiszesz. Inne kanały bot
-          zostawia w spokoju.
+          Gracz widzi posty i panel Centrum tylko na kanałach, które tu przypiszesz. Link do aplikacji
+          zobaczy na kanale „Strona WWW”, jeśli go tu ustawisz. Inne kanały bot zostawia w spokoju.
         </p>
       </PlayerSeesNote>
 
@@ -243,6 +327,16 @@ export function TechnikKanalyPage() {
           </p>
         ) : null}
 
+        {apiStatus === 'live' && channels.length === 0 && !channelsErr ? (
+          <HonestGap>
+            <p>
+              API live, ale lista ma 0 kanałów. Sprawdź: bot jest na tej guildii, ma uprawnienia do
+              odczytu kanałów (View Channel), a sekret Technika jest poprawny — potem kliknij
+              „Odśwież listę”. Bez listy nie ustawisz pickerów #nazwa.
+            </p>
+          </HonestGap>
+        ) : null}
+
         <ul className="technik-purpose-list">
           {PUBLISH_PURPOSES.map((purpose) => {
             const selected = map[purpose.id] ?? '';
@@ -254,6 +348,34 @@ export function TechnikKanalyPage() {
                   <span className="technik-muted">
                     Teraz: {channelLabel(selected || undefined, channels)}
                   </span>
+                  {purpose.id === 'website' ? (
+                    <label className="technik-field" style={{ marginTop: '0.55rem' }}>
+                      <span>Adres aplikacji (URL)</span>
+                      <input
+                        type="url"
+                        inputMode="url"
+                        placeholder="https://…"
+                        value={appWebsiteUrl}
+                        disabled={!editable}
+                        onChange={(e) => onWebsiteUrlChange(e.target.value)}
+                        onBlur={() => onWebsiteUrlCommit()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            onWebsiteUrlCommit();
+                          }
+                        }}
+                      />
+                      <small className="technik-help">
+                        GDZIE: kanał powyżej (publishChannels.website). CO: ten URL WWW aplikacji
+                        DESTILED — trafia do szkicu D-060 jako appWebsiteUrl (Apply w Przeglądzie, bez
+                        auto-publikacji).
+                        {websiteChannelId
+                          ? ' Kanał: ' + channelLabel(websiteChannelId, channels) + '.'
+                          : ' Najpierw wybierz kanał po prawej.'}
+                      </small>
+                    </label>
+                  ) : null}
                 </div>
                 <label className="technik-field technik-purpose-row__pick">
                   <span className="sr-only">Kanał dla {purpose.label}</span>
@@ -300,13 +422,14 @@ export function TechnikKanalyPage() {
       {apiStatus === 'live' ? (
         <p className="technik-help" style={{ marginTop: '1rem' }}>
           Po zapisie mapowania wejdź w <a href="/technik">Przegląd</a> i kliknij Apply — bez
-          auto-publikacji. Centrum czyta kanał „Centrum” z tego mapowania.
+          auto-publikacji. Centrum czyta kanał „Centrum”; Strona WWW — kanał website + URL aplikacji.
         </p>
       ) : (
         <HonestGap>
           <p>
             Gdy API kanałów będzie live, zapiszesz mapowanie do szkicu i włączysz je Apply w
-            Przeglądzie. Do tego czasu lokalny szkic i tak zasila Centrum (kanał hub).
+            Przeglądzie. Do tego czasu lokalny szkic i tak zasila Centrum (kanał hub) oraz lokalny URL
+            WWW.
           </p>
         </HonestGap>
       )}
