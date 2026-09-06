@@ -21,6 +21,7 @@ export type KingdomWarConfig = {
   readonly enabled: boolean;
   readonly warAt: string;
   readonly notifyMinutesBefore: number;
+  readonly maxClaimsPerUser: number;
   readonly messageTemplate: string;
 };
 
@@ -94,7 +95,7 @@ export const DEFAULT_TIMERS_NOTIFY: TimersNotifyConfig = {
 export const DEFAULT_CHARACTER_TIMERS: CharacterTimersConfig = {
   enabled: false,
   messageTemplate:
-    '**DESTILED · Timer postaci**\n{{title}}\n\n{{body}}\n\nInne: {{otherTimersSummary}}',
+    '**DESTILED · Timer postaci**\nHej! **{{title}}** zaraz się kończy — nie przegap resetu!\n\n{{body}}\n\nInne twoje timery: {{otherTimersSummary}}\n{{deepLinkUrl}}',
   reminderMinutesBefore: 60,
   resetNotifyEnabled: true,
 };
@@ -103,6 +104,7 @@ export const DEFAULT_KINGDOM_WAR: KingdomWarConfig = {
   enabled: false,
   warAt: '18:00',
   notifyMinutesBefore: 30,
+  maxClaimsPerUser: 3,
   messageTemplate:
     '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min ({{warAt}}).',
 };
@@ -462,18 +464,49 @@ export const DEFAULT_GUILD_RIGHTS: readonly GuildRight[] = [
 ];
 
 /** Known TEST Discord (Mateusz) — always primary/first when present in GET /guilds. */
+/** Known TEST Discord — only this guild may be enabled / receive bot traffic from Technik. */
 export const TECHNIK_TEST_GUILD_ID = '1534228693017432124';
 
-/** Prefer known TEST guild ID first; then name/notes hints; MAIN later; never invent IDs. */
+/** Human names when Discord discovery has not filled `name` yet (HARD STOP prod still disabled). */
+export const KNOWN_GUILD_NAMES: Readonly<Record<string, string>> = {
+  '1534228693017432124': 'Testowy',
+  '1543972927719080016': 'Destiled',
+  '1531318787058696424': 'Projekt Sojusz',
+};
+
+
+/** Known production Discord IDs — list if API returns them, but never enable from Technik. */
+export const TECHNIK_LOCKED_GUILD_IDS = [
+  '1543972927719080016',
+  '1531318787058696424',
+] as const;
+
+export const TECHNIK_KNOWN_GUILD_LABELS: Readonly<Record<string, string>> = {
+  '1534228693017432124': 'TESTOWY',
+  '1543972927719080016': 'Destiled',
+  '1531318787058696424': 'Projekt Sojusz',
+};
+
+/** Mateusz hard-stop: only Testowy may be enabled / modules on. */
+export function isTechnikGuildEditable(guildId: string): boolean {
+  return guildId === TECHNIK_TEST_GUILD_ID;
+}
+
+/** Prefer TEST first; then known locked IDs; then name hints; never invent IDs. */
 export function sortGuildsForTechnik(
   guilds: readonly TechnikaGuildDto[],
 ): TechnikaGuildDto[] {
+  const knownOrder = [
+    TECHNIK_TEST_GUILD_ID,
+    ...TECHNIK_LOCKED_GUILD_IDS,
+  ] as readonly string[];
   const rank = (g: TechnikaGuildDto): number => {
-    if (g.id === TECHNIK_TEST_GUILD_ID) return 0;
+    const knownIdx = knownOrder.indexOf(g.id);
+    if (knownIdx >= 0) return knownIdx;
     const blob = ((g.name ?? '') + ' ' + (g.notes ?? '')).toLowerCase();
-    if (/\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)) return 1;
-    if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) return 3;
-    return 2;
+    if (/\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)) return 10;
+    if (/\bmain\b|prod\b|produk|głowny|glowny|primary/.test(blob)) return 30;
+    return 20;
   };
   return [...guilds].sort((a, b) => {
     const d = rank(a) - rank(b);
@@ -485,22 +518,29 @@ export function sortGuildsForTechnik(
 }
 
 export function guildDisplayLabel(g: TechnikaGuildDto): string {
-  const name = (g.name ?? '').trim();
-  const blob = (name + ' ' + (g.notes ?? '')).toLowerCase();
+  const apiName = (g.name ?? '').trim();
+  const known = KNOWN_GUILD_NAMES[g.id] ?? '';
+  const name = apiName || known;
+  const blob = (name + ' ' + (g.notes ?? '') + ' ' + known).toLowerCase();
   let tag = '';
   if (
     g.id === TECHNIK_TEST_GUILD_ID ||
     /\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)
   ) {
     tag = 'testowy';
-  } else if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) {
-    tag = 'MAIN';
+  } else if (
+    g.id === '1543972927719080016' ||
+    g.id === '1531318787058696424' ||
+    /\bmain\b|prod\b|produk|destiled|sojusz|glowny|primary/.test(blob)
+  ) {
+    tag = 'zablokowany';
   }
   if (tag && name) return tag + ' · ' + name;
-  if (tag) return tag + ' · ' + g.id;
+  if (tag) return tag + ' · ' + (known || g.id);
   if (name) return name;
-  return g.id;
+  return known || g.id;
 }
+
 /** Default selection: known TEST guild when present, else first after sort. */
 export function pickDefaultGuildId(
   guilds: readonly TechnikaGuildDto[],
@@ -511,7 +551,6 @@ export function pickDefaultGuildId(
   if (sorted.some((g) => g.id === TECHNIK_TEST_GUILD_ID)) return TECHNIK_TEST_GUILD_ID;
   return sorted[0]?.id ?? null;
 }
-
 
 export async function fetchGuilds(): Promise<TechnikaApiResult<GuildsListResponse>> {
   try {
