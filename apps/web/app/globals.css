@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color-scheme: dark;
   --bg: #07080b;
   --bg-elevated: #0d1016;
@@ -9545,17 +9545,30 @@ button:disabled {
 }
 .character-note-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
+  margin: 0;
+  position: relative;
 }
 .character-note-form label {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
+  margin: 0;
   color: var(--muted-strong);
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  position: static;
 }
 .character-note-form textarea {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   min-height: 96px;
+  margin: 0;
   resize: vertical;
   padding: 10px 12px;
   border: 1px solid var(--line);
@@ -9563,15 +9576,38 @@ button:disabled {
   background: rgba(0, 0, 0, 0.22);
   color: var(--text);
   font: inherit;
+  line-height: 1.45;
+  position: static;
 }
 .character-note-form-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .character-note-form-actions small {
   color: var(--muted);
+}
+.character-note-form-actions .primary-button,
+.character-choice-notes .character-note-form .primary-button {
+  width: auto;
+  min-width: 96px;
+  margin: 0;
+  min-height: 36px;
+  padding: 0 16px;
+  justify-content: center;
+  border: 1px solid rgba(64, 129, 250, 0.45);
+  background: linear-gradient(135deg, rgba(180, 35, 61, 0.45), rgba(31, 95, 191, 0.55));
+  color: #eef3fb;
+  font-size: 13px;
+  font-weight: 650;
+}
+.character-note-form-actions .primary-button:disabled,
+.character-choice-notes .character-note-form .primary-button:disabled {
+  opacity: 0.55;
+  color: #eef3fb;
+  cursor: not-allowed;
 }
 .character-note-list {
   display: grid;
@@ -11542,7 +11578,8 @@ button:disabled {
 }
 .character-choice-notes {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
   padding-top: 4px;
   border-top: 1px solid rgba(168, 178, 198, 0.14);
 }
@@ -11552,6 +11589,9 @@ button:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8b96ab;
+}
+.character-choice-notes > .character-note-form {
+  margin-top: 2px;
 }
 .character-choice-notes ul {
   margin: 0;

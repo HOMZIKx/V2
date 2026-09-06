@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -299,6 +299,7 @@ export function TeamCharacters() {
               <section className="character-choice-notes">
                 <h3>Notatki postaci</h3>
                 <form
+                  className="character-note-form"
                   onSubmit={(event) => {
                     event.preventDefault();
                     if (!writesEnabled || noteDraft.trim().length === 0) return;
@@ -316,9 +317,16 @@ export function TeamCharacters() {
                       value={noteDraft}
                     />
                   </label>
-                  <button disabled={!writesEnabled || noteDraft.trim().length === 0} type="submit">
-                    Dodaj
-                  </button>
+                  <div className="character-note-form-actions">
+                    <small>{noteDraft.trim().length}/280</small>
+                    <button
+                      className="primary-button"
+                      disabled={!writesEnabled || noteDraft.trim().length === 0}
+                      type="submit"
+                    >
+                      Dodaj
+                    </button>
+                  </div>
                 </form>
                 {choiceNotes.length === 0 ? (
                   <p className="empty-copy">Brak notatek przy tej postaci.</p>
