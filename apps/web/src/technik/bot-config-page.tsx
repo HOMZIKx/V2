@@ -140,7 +140,7 @@ export function TechnikBotConfigPage() {
   const [warDraft, setWarDraft] = useState<KingdomWarConfig>(DEFAULT_KINGDOM_WAR);
   const [panelTestEnabled, setPanelTestEnabled] = useState(true);
   const [notifyTimerEnabled, setNotifyTimerEnabled] = useState(true);
-  const [testUserId, setTestUserId] = useState('');
+  const [testUserId, setTestUserId] = useState('808066932753563668');
   const [snapshot, setSnapshot] = useState<ConfigSnapshot | null>(null);
   const [capabilities, setCapabilities] = useState<readonly BotCapability[]>([]);
   const [mutationsEnabled, setMutationsEnabled] = useState(false);
