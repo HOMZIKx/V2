@@ -37,6 +37,12 @@ const nextConfig = {
   outputFileTracingRoot: path.join(appDirectory, '../..'),
   async rewrites() {
     return [
+      // DiscordEntry probes /health/live. In production that check belongs to
+      // Identity, not to the Next.js process.
+      {
+        source: '/health/live',
+        destination: `${identityProxyTarget}/health/live`,
+      },
       // Identity health lives at /health/* on the Identity service, while the
       // browser intentionally stays same-origin under /identity/*.
       {
