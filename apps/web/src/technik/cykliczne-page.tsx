@@ -1,7 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import {
+  fetchGuildRoles,
+  roleLabel,
+  type GuildRole,
+} from './guild-roles-api';
 import {
   type PanelChannel,
   type PanelsApiStatus,
@@ -13,67 +18,63 @@ import {
   loadPublishChannels,
   setPublishChannel,
 } from './publish-channels';
+import {
+  DAY_LABELS,
+  DEFAULT_RECURRING,
+  EMOJI_QUICK,
+  REACTION_ROLE_OPTIONS,
+  RSVP_PRESET,
+  type CloseAt,
+  type RecurringLocalDraft,
+  type SeedReaction,
+  countableReactions,
+  loadRecurringDraft,
+  newReactionRow,
+  previewCountsInContent,
+  saveRecurringDraft,
+  scheduleSummary,
+  toRecurringPostsPayload,
+} from './recurring-config';
 import { TECHNIK_TEST_GUILD_ID } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
-const STORAGE_KEY = 'technik.recurring.v1';
-
-type RecurringDraft = {
-  enabled: boolean;
-  title: string;
-  content: string;
-  mode: 'daily' | 'weekly' | 'days';
-  daysOfWeek: number[];
-  timeWarsaw: string;
-  horizonDays: number;
-  channelId: string;
-};
-
-const DEFAULT_DRAFT: RecurringDraft = {
-  enabled: false,
-  title: '',
-  content: '',
-  mode: 'weekly',
-  daysOfWeek: [1, 3, 5],
-  timeWarsaw: '18:00',
-  horizonDays: 90,
-  channelId: '',
-};
-
-const DAY_LABELS = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
-
-function load(): RecurringDraft {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_DRAFT };
-    const p = JSON.parse(raw) as Partial<RecurringDraft>;
-    return {
-      ...DEFAULT_DRAFT,
-      ...p,
-      daysOfWeek: Array.isArray(p.daysOfWeek) ? p.daysOfWeek.map(Number) : DEFAULT_DRAFT.daysOfWeek,
-    };
-  } catch {
-    return { ...DEFAULT_DRAFT };
-  }
-}
-
 export function TechnikCyklicznePage() {
   const cfg = useTechnikaConfig();
   const guildId = TECHNIK_TEST_GUILD_ID;
-  const [draft, setDraft] = useState<RecurringDraft>(DEFAULT_DRAFT);
+  const [draft, setDraft] = useState<RecurringLocalDraft>(() => ({
+    ...DEFAULT_RECURRING,
+    schedule: {
+      ...DEFAULT_RECURRING.schedule,
+      daysOfWeek: [...DEFAULT_RECURRING.schedule.daysOfWeek],
+    },
+    rules: { ...DEFAULT_RECURRING.rules, roleIds: [] },
+    seedReactions: [],
+  }));
   const [msg, setMsg] = useState<string | null>(null);
   const [schemaHasRecurring, setSchemaHasRecurring] = useState(false);
   const [apiStatus, setApiStatus] = useState<PanelsApiStatus>('checking');
   const [channels, setChannels] = useState<readonly PanelChannel[]>([]);
+  const [guildRoles, setGuildRoles] = useState<readonly GuildRole[]>([]);
+  const [rolesNote, setRolesNote] = useState<string | null>(null);
+  const [rolePick, setRolePick] = useState('');
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [payloadPeek, setPayloadPeek] = useState(false);
 
   useEffect(() => {
-    const initial = load();
+    const initial = loadRecurringDraft();
     const pub = loadPublishChannels(guildId);
     if (!initial.channelId && pub.recurring) {
       initial.channelId = pub.recurring;
     }
     setDraft(initial);
+    if (
+      initial.rules.whoCanReact === 'roles' ||
+      (initial.rules.maxSlots != null && initial.rules.maxSlots > 0) ||
+      (initial.rules.closeAt && initial.rules.closeAt !== 'none')
+    ) {
+      setRulesOpen(true);
+    }
   }, [guildId]);
 
   useEffect(() => {
@@ -111,195 +112,719 @@ export function TechnikCyklicznePage() {
     };
   }, [guildId]);
 
-  const persist = (next: RecurringDraft) => {
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchGuildRoles(guildId);
+      if (cancelled) return;
+      if (res.ok) {
+        setGuildRoles(res.roles);
+        setRolesNote(null);
+      } else if (res.unavailable) {
+        setGuildRoles([]);
+        setRolesNote(
+          'Lista ról z Discorda jeszcze nie jest w API — możesz dodać rolę ręcznie (identyfikator), albo wrócić tu później.',
+        );
+      } else {
+        setGuildRoles([]);
+        setRolesNote('Role: ' + res.error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [guildId]);
+
+  const persist = (next: RecurringLocalDraft, note?: string) => {
     setDraft(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    saveRecurringDraft(next);
     if (next.channelId) {
       setPublishChannel(guildId, 'recurring', next.channelId);
     }
     setMsg(
-      schemaHasRecurring
-        ? 'Zapisano szkic cyklicznych — gdy klucz będzie w config, wejdzie do Apply.'
-        : 'Zapisano szkic — bot jeszcze bez schedulera. Nic nie wyśle się samo; kanał sync do publishChannels.recurring.',
+      note ??
+        (schemaHasRecurring
+          ? 'Zapisano szkic cyklicznych lokalnie — gdy Apply będzie gotowy, wejdzie jako recurringPosts.'
+          : 'Zapisano szkic lokalnie. Scheduler jeszcze nie żyje — nic nie wyśle się samo. Kanał sync → publishChannels.recurring.'),
     );
   };
 
-  const toggleDay = (d: number) => {
-    const set = new Set(draft.daysOfWeek);
-    if (set.has(d)) set.delete(d);
-    else set.add(d);
-    persist({ ...draft, daysOfWeek: [...set].sort() });
+  const patch = (partial: Partial<RecurringLocalDraft>, note?: string) => {
+    persist({ ...draft, ...partial }, note);
   };
 
-  const whenSummary = (() => {
-    if (!draft.enabled) return 'wyłączone';
-    if (draft.mode === 'daily') return 'codziennie o ' + draft.timeWarsaw + ' (Warszawa)';
-    const days = draft.daysOfWeek.map((i) => DAY_LABELS[i] ?? '?').join(', ');
-    return (draft.mode === 'weekly' ? 'co tydzień' : 'w wybrane dni') + ' · ' + days + ' · ' + draft.timeWarsaw;
-  })();
+  const patchSchedule = (
+    partial: Partial<RecurringLocalDraft['schedule']>,
+    note?: string,
+  ) => {
+    persist(
+      { ...draft, schedule: { ...draft.schedule, ...partial } },
+      note,
+    );
+  };
+
+  const patchRules = (
+    partial: Partial<RecurringLocalDraft['rules']>,
+    note?: string,
+  ) => {
+    persist({ ...draft, rules: { ...draft.rules, ...partial } }, note);
+  };
+
+  const toggleDay = (d: number) => {
+    const set = new Set(draft.schedule.daysOfWeek);
+    if (set.has(d)) set.delete(d);
+    else set.add(d);
+    const days = [...set].sort((a, b) => a - b);
+    patchSchedule({ daysOfWeek: days.length ? days : [d] });
+  };
+
+  const updateReaction = (index: number, partial: Partial<SeedReaction>) => {
+    const seedReactions = draft.seedReactions.map((r, i) =>
+      i === index ? { ...r, ...partial } : r,
+    );
+    persist({ ...draft, seedReactions });
+  };
+
+  const removeReaction = (index: number) => {
+    persist({
+      ...draft,
+      seedReactions: draft.seedReactions.filter((_, i) => i !== index),
+    });
+  };
+
+  const addReaction = () => {
+    persist({
+      ...draft,
+      reactionsEnabled: true,
+      seedReactions: [...draft.seedReactions, newReactionRow()],
+    });
+  };
+
+  const applyRsvpPreset = () => {
+    persist({
+      ...draft,
+      reactionsEnabled: true,
+      rsvpEnabled: true,
+      seedReactions: RSVP_PRESET.map((r) => ({ ...r })),
+    }, 'Wstawiono preset RSVP ✅❌❓ i włączono zapis.');
+  };
+
+  const addRoleId = (id: string) => {
+    if (!/^\d{17,20}$/.test(id)) return;
+    const cur = draft.rules.roleIds ?? [];
+    if (cur.includes(id)) return;
+    patchRules({ whoCanReact: 'roles', roleIds: [...cur, id] });
+    setRolePick('');
+  };
+
+  const removeRoleId = (id: string) => {
+    patchRules({
+      roleIds: (draft.rules.roleIds ?? []).filter((x) => x !== id),
+    });
+  };
+
+  const whenSummary = scheduleSummary(draft.schedule, draft.enabled);
+  const countable = countableReactions(draft);
+  const countPreview = useMemo(
+    () => previewCountsInContent(draft.content || '_(brak treści)_', countable),
+    [draft.content, countable],
+  );
+  const payload = useMemo(() => toRecurringPostsPayload(draft), [draft]);
+
+  const playerSeesBits: string[] = [];
+  if (draft.reactionsEnabled && draft.seedReactions.length) {
+    playerSeesBits.push(
+      'pod postem zobaczy reakcje: ' +
+        draft.seedReactions.map((r) => r.emoji).join(' '),
+    );
+  }
+  if (draft.rsvpEnabled) {
+    playerSeesBits.push(
+      'klik w ✅/❌/❓ buduje listę zapisów (tak / nie / może) — widać kto się zapisał',
+    );
+  }
+  if (draft.showCountsInPost && countable.length) {
+    playerSeesBits.push(
+      'w treści postu pojawią się liczby (placeholdery {{count:emoji}} albo krótki dodatek na dole)',
+    );
+  }
 
   return (
     <>
       <h1>Cykliczne</h1>
       <p className="technik-lead">
-        Co publikować, kiedy i na którym kanale — szkic harmonogramu (max 90 dni). Bez schedulera w
-        bocie posty <strong>nie odpalą się same</strong>.
+        Konfigurator serii postów: co, kiedy, kanał, reakcje i zapis. Wybierasz przełącznikami —
+        bez ściany identycznych pól. To <strong>szkic przygotowawczy</strong>: nic nie publikuje się
+        samo.
       </p>
 
       <PageJobNote>
         <p>
-          Definiujesz treść i rytm postów cyklicznych. Zwykły członek nie tworzy cykli — to ustawienie
-          Technika / uprawnionych ról.
+          Ustawiasz treść i rytm cykli oraz opcjonalne reakcje / RSVP / limity. Zwykły członek nie
+          tworzy cykli — to Technika. Zapis lokalny + sync kanału do mapy Kanałów; Apply do bota
+          dopiero gdy Ty klikniesz (gdy runtime będzie gotowy).
         </p>
       </PageJobNote>
 
       <PlayerSeesNote>
         <p>
-          Gracz widzi kolejne terminy serii jako zwykłe posty wydarzeń (ten sam układ V2). Edycja
-          serii: tylko ten termin / ten i kolejne / cała seria.
+          Gracz widzi kolejne terminy jako zwykłe posty wydarzeń.
+          {playerSeesBits.length
+            ? ' Dodatkowo: ' + playerSeesBits.join('; ') + '.'
+            : ' Bez włączonych reakcji / RSVP / licznika — sam tekst i termin.'}{' '}
+          Edycja serii (gdy runtime): tylko ten termin / ten i kolejne / cała seria.
         </p>
       </PlayerSeesNote>
 
       {!schemaHasRecurring ? (
         <HonestGap>
           <p>
-            <strong>Szkic — bot jeszcze bez schedulera.</strong> New Bot nie wystawia możliwości
-            „posty cykliczne” ani crona. Ten formularz to tylko przygotowanie treści i kanału —
-            <em>nic nie zostanie wysłane automatycznie</em>, dopóki scheduler nie powstanie. Kanał
-            syncuje się do publishChannels.recurring (mapa w Kanałach).
+            <strong>Szkic — scheduler jeszcze nie żyje.</strong> New Bot nie odpala crona ani
+            automatycznych wysyłek. Ten formularz przygotowuje obiekt{' '}
+            <code>recurringPosts</code> (treść, kanał, reakcje, reguły) —{' '}
+            <em>nic nie zostanie wysłane automatycznie</em>. Kanał syncuje się do{' '}
+            <code>publishChannels.recurring</code> (zakładka Kanały).
           </p>
         </HonestGap>
       ) : (
-        <p className="technik-pill technik-pill--live">Możliwość cyklicznych wykryta w capabilities</p>
+        <p className="technik-pill technik-pill--live">
+          Możliwość recurringPosts wykryta — nadal bez auto-publikacji; tylko szkic → Apply
+        </p>
       )}
 
-      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
-        <h2>Co</h2>
-        <label className="technik-check">
+      {/* ——— Choice: master enable ——— */}
+      <section className="technik-choice-card" style={{ marginTop: '1rem' }}>
+        <label className="technik-choice-card__toggle">
           <input
             type="checkbox"
             checked={draft.enabled}
-            onChange={(e) => persist({ ...draft, enabled: e.target.checked })}
+            onChange={(e) => patch({ enabled: e.target.checked })}
           />
-          Włącz serie cykliczne (gdy runtime będzie gotowy)
-        </label>
-        <label className="technik-field">
-          <span>Tytuł / nazwa serii</span>
-          <input
-            value={draft.title}
-            onChange={(e) => persist({ ...draft, title: e.target.value })}
-            maxLength={100}
-            placeholder="np. Cotygodniowy dungeon"
-          />
-        </label>
-        <label className="technik-field">
-          <span>Treść / opis</span>
-          <textarea
-            className="technik-textarea"
-            rows={4}
-            value={draft.content}
-            onChange={(e) => persist({ ...draft, content: e.target.value })}
-            maxLength={1000}
-            placeholder="Tekst, który gracz zobaczy na poście (szkic)"
-          />
+          <span>
+            <strong>Włącz serię cykliczną</strong>
+            <small className="technik-help">
+              Gdy runtime będzie gotowy — bot będzie mógł brać ten szkic. Dziś: tylko lokalny draft.
+            </small>
+          </span>
         </label>
       </section>
 
-      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
-        <h2>Kiedy</h2>
-        <fieldset className="technik-fieldset">
-          <legend>Tryb</legend>
-          {(
-            [
-              ['daily', 'Codziennie'],
-              ['weekly', 'Co tydzień'],
-              ['days', 'Wybrane dni tygodnia'],
-            ] as const
-          ).map(([value, label]) => (
-            <label key={value} className="technik-check">
-              <input
-                type="radio"
-                name="recurring-mode"
-                checked={draft.mode === value}
-                onChange={() => persist({ ...draft, mode: value })}
-              />
-              {label}
-            </label>
-          ))}
-        </fieldset>
+      {/* ——— 1. Co / Kiedy / Kanał ——— */}
+      <section className="technik-panel technik-panel--wide technik-panel--live-config" style={{ marginTop: '1rem' }}>
+        <div className="technik-panel-head">
+          <h2>1. Co / Kiedy / Kanał</h2>
+          <span className="technik-pill">{whenSummary}</span>
+        </div>
 
-        {draft.mode !== 'daily' ? (
-          <div className="technik-day-pills" role="group" aria-label="Dni tygodnia">
-            {DAY_LABELS.map((label, idx) => (
-              <button
-                key={label}
-                type="button"
-                className={draft.daysOfWeek.includes(idx) ? 'technik-day-pill is-on' : 'technik-day-pill'}
-                onClick={() => toggleDay(idx)}
+        <div className="technik-cykl-grid">
+          <div className="technik-cykl-col">
+            <h3 className="technik-cykl-col__title">Co</h3>
+            <label className="technik-field">
+              <span>Tytuł / nazwa serii</span>
+              <input
+                value={draft.title}
+                onChange={(e) => patch({ title: e.target.value })}
+                maxLength={100}
+                placeholder="np. Cotygodniowy dungeon"
+              />
+            </label>
+            <label className="technik-field">
+              <span>Treść / opis (szablon)</span>
+              <textarea
+                className="technik-textarea"
+                rows={5}
+                value={draft.content}
+                onChange={(e) => patch({ content: e.target.value })}
+                maxLength={2000}
+                placeholder={
+                  'Tekst na poście. Możesz wstawić {{count:✅}} — przy włączonym liczniku bot podmieni na liczbę.'
+                }
+              />
+            </label>
+          </div>
+
+          <div className="technik-cykl-col">
+            <h3 className="technik-cykl-col__title">Kiedy</h3>
+            <div className="technik-choice-pills" role="radiogroup" aria-label="Tryb harmonogramu">
+              {(
+                [
+                  ['daily', 'Codziennie'],
+                  ['weekly', 'Co tydzień'],
+                  ['days', 'Wybrane dni'],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    draft.schedule.mode === value
+                      ? 'technik-day-pill is-on'
+                      : 'technik-day-pill'
+                  }
+                  aria-pressed={draft.schedule.mode === value}
+                  onClick={() => patchSchedule({ mode: value })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {draft.schedule.mode !== 'daily' ? (
+              <div className="technik-day-pills" role="group" aria-label="Dni tygodnia">
+                {DAY_LABELS.map((label, idx) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={
+                      draft.schedule.daysOfWeek.includes(idx)
+                        ? 'technik-day-pill is-on'
+                        : 'technik-day-pill'
+                    }
+                    aria-pressed={draft.schedule.daysOfWeek.includes(idx)}
+                    onClick={() => toggleDay(idx)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="technik-row">
+              <label className="technik-field">
+                <span>Godzina (Europe/Warsaw)</span>
+                <input
+                  value={draft.schedule.timeWarsaw}
+                  onChange={(e) => patchSchedule({ timeWarsaw: e.target.value })}
+                  placeholder="18:00"
+                />
+              </label>
+              <label className="technik-field">
+                <span>Horyzont (dni, max 90)</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={draft.schedule.horizonDays}
+                  onChange={(e) =>
+                    patchSchedule({
+                      horizonDays: Math.min(
+                        90,
+                        Math.max(1, Number(e.target.value) || 1),
+                      ),
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <p className="technik-help">Podsumowanie: {whenSummary}</p>
+          </div>
+
+          <div className="technik-cykl-col">
+            <h3 className="technik-cykl-col__title">Kanał</h3>
+            <p className="technik-help">
+              Domyślnie z mapowania „Cykliczne” w{' '}
+              <a href="/technik/kanaly">Kanałach</a>. Wybór poniżej nadpisuje i syncuje mapę.
+            </p>
+            <label className="technik-field">
+              <span>Kanał publikacji</span>
+              <select
+                value={draft.channelId}
+                disabled={apiStatus !== 'live' || channels.length === 0}
+                onChange={(e) => patch({ channelId: e.target.value })}
               >
-                {label}
+                <option value="">— nie wybrano —</option>
+                {channels.map((ch) => (
+                  <option key={ch.id} value={ch.id}>
+                    #{ch.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="technik-muted">
+              Wybrane: {channelLabel(draft.channelId || undefined, channels)}
+              {apiStatus !== 'live' ? ' · lista kanałów jeszcze niedostępna' : ''}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ——— 2. Reakcje ——— */}
+      <section className="technik-choice-card" style={{ marginTop: '1rem' }}>
+        <label className="technik-choice-card__toggle">
+          <input
+            type="checkbox"
+            checked={draft.reactionsEnabled}
+            onChange={(e) => {
+              const on = e.target.checked;
+              persist({
+                ...draft,
+                reactionsEnabled: on,
+                seedReactions:
+                  on && draft.seedReactions.length === 0
+                    ? [newReactionRow()]
+                    : draft.seedReactions,
+              });
+            }}
+          />
+          <span>
+            <strong>2. Reakcje pod postem</strong>
+            <small className="technik-help">
+              Emotki pod każdym terminem serii. Rola mówi, czy to tylko ozdoba, RSVP, czy licznik.
+            </small>
+          </span>
+        </label>
+
+        {draft.reactionsEnabled ? (
+          <div className="technik-choice-card__body">
+            <div className="technik-row" style={{ marginBottom: '0.65rem' }}>
+              <button type="button" className="technik-btn-ghost" onClick={applyRsvpPreset}>
+                Preset: RSVP ✅❌❓
               </button>
-            ))}
+              <button type="button" className="technik-btn-ghost" onClick={addReaction}>
+                + Dodaj reakcję
+              </button>
+            </div>
+
+            {draft.seedReactions.length === 0 ? (
+              <p className="technik-muted">Brak wierszy — dodaj reakcję albo użyj presetu.</p>
+            ) : (
+              <ul className="technik-reaction-list">
+                {draft.seedReactions.map((row, index) => (
+                  <li key={'rx-' + String(index)} className="technik-reaction-row">
+                    <div className="technik-reaction-row__emoji">
+                      <label className="technik-field">
+                        <span>Emoji</span>
+                        <input
+                          value={row.emoji}
+                          maxLength={16}
+                          onChange={(e) =>
+                            updateReaction(index, { emoji: e.target.value })
+                          }
+                          aria-label={'Emoji wiersza ' + String(index + 1)}
+                        />
+                      </label>
+                      <div className="technik-emoji-quick" role="group" aria-label="Szybkie emoji">
+                        {EMOJI_QUICK.map((em) => (
+                          <button
+                            key={em}
+                            type="button"
+                            className={
+                              row.emoji === em
+                                ? 'technik-day-pill is-on'
+                                : 'technik-day-pill'
+                            }
+                            onClick={() => updateReaction(index, { emoji: em })}
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <label className="technik-field">
+                      <span>Rola reakcji</span>
+                      <select
+                        value={row.role}
+                        onChange={(e) =>
+                          updateReaction(index, {
+                            role: e.target.value as SeedReaction['role'],
+                          })
+                        }
+                      >
+                        {REACTION_ROLE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <small className="technik-help">
+                        {REACTION_ROLE_OPTIONS.find((o) => o.value === row.role)?.hint}
+                      </small>
+                    </label>
+                    <label className="technik-field">
+                      <span>Etykieta (opcjonalnie)</span>
+                      <input
+                        value={row.label ?? ''}
+                        maxLength={40}
+                        placeholder="np. Będę"
+                        onChange={(e) =>
+                          updateReaction(index, { label: e.target.value })
+                        }
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="technik-btn-ghost"
+                      style={{ alignSelf: 'end' }}
+                      onClick={() => removeReaction(index)}
+                    >
+                      Usuń
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ) : null}
-
-        <div className="technik-row">
-          <label className="technik-field">
-            <span>Godzina (Europe/Warsaw)</span>
-            <input
-              value={draft.timeWarsaw}
-              onChange={(e) => persist({ ...draft, timeWarsaw: e.target.value })}
-              placeholder="18:00"
-            />
-          </label>
-          <label className="technik-field">
-            <span>Horyzont (dni, max 90)</span>
-            <input
-              type="number"
-              min={1}
-              max={90}
-              value={draft.horizonDays}
-              onChange={(e) =>
-                persist({
-                  ...draft,
-                  horizonDays: Math.min(90, Math.max(1, Number(e.target.value) || 1)),
-                })
-              }
-            />
-          </label>
-        </div>
-        <p className="technik-help">Podsumowanie: {whenSummary}</p>
       </section>
 
-      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
-        <h2>Na którym kanale</h2>
-        <p className="technik-help">
-          Domyślnie z mapowania „Cykliczne” w <a href="/technik/kanaly">Kanałach</a>. Możesz też
-          wybrać poniżej.
-        </p>
-        <label className="technik-field">
-          <span>Kanał publikacji</span>
-          <select
-            value={draft.channelId}
-            disabled={apiStatus !== 'live' || channels.length === 0}
-            onChange={(e) => persist({ ...draft, channelId: e.target.value })}
-          >
-            <option value="">— nie wybrano —</option>
-            {channels.map((ch) => (
-              <option key={ch.id} value={ch.id}>
-                #{ch.name}
-              </option>
-            ))}
-          </select>
+      {/* ——— 3. RSVP ——— */}
+      <section className="technik-choice-card" style={{ marginTop: '0.75rem' }}>
+        <label className="technik-choice-card__toggle">
+          <input
+            type="checkbox"
+            checked={draft.rsvpEnabled}
+            onChange={(e) => {
+              const on = e.target.checked;
+              if (on && !draft.reactionsEnabled) {
+                persist({
+                  ...draft,
+                  rsvpEnabled: true,
+                  reactionsEnabled: true,
+                  seedReactions:
+                    draft.seedReactions.length > 0
+                      ? draft.seedReactions
+                      : RSVP_PRESET.map((r) => ({ ...r })),
+                }, 'Włączono zapis RSVP i reakcje (preset, jeśli brakowało wierszy).');
+              } else {
+                patch({ rsvpEnabled: on });
+              }
+            }}
+          />
+          <span>
+            <strong>3. Zapis / RSVP</strong>
+            <small className="technik-help">
+              Gdy włączone: reakcje z rolą „RSVP: tak / nie / może” budują listę zapisanych.
+              Gracz widzi, kto kliknął — nie tylko samą emotkę.
+            </small>
+          </span>
         </label>
-        <p className="technik-muted">
-          Wybrane: {channelLabel(draft.channelId || undefined, channels)}
-          {apiStatus !== 'live' ? ' · lista kanałów jeszcze niedostępna' : ''}
+      </section>
+
+      {/* ——— 4. Licznik ——— */}
+      <section className="technik-choice-card" style={{ marginTop: '0.75rem' }}>
+        <label className="technik-choice-card__toggle">
+          <input
+            type="checkbox"
+            checked={draft.showCountsInPost}
+            onChange={(e) => patch({ showCountsInPost: e.target.checked })}
+          />
+          <span>
+            <strong>4. Licznik w treści</strong>
+            <small className="technik-help">
+              Wstrzykuje / aktualizuje liczby dla reakcji <code>count</code> i <code>rsvp_*</code>.
+              Placeholdery: <code>{'{{count:✅}}'}</code> — albo automatyczny dodatek na dole.
+            </small>
+          </span>
+        </label>
+
+        {draft.showCountsInPost ? (
+          <div className="technik-choice-card__body">
+            {countable.length === 0 ? (
+              <p className="technik-muted">
+                Brak reakcji z rolą licznik / RSVP — dodaj je w sekcji 2, żeby było co liczyć.
+              </p>
+            ) : (
+              <>
+                <p className="technik-help">
+                  Podgląd (przykładowe liczby):{' '}
+                  {countPreview.usedPlaceholders
+                    ? 'placeholdery w treści podmienione'
+                    : 'brak placeholderów → dodatek na dole postu'}
+                </p>
+                <pre className="technik-code technik-count-preview" tabIndex={0}>
+                  {countPreview.body}
+                </pre>
+              </>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      {/* ——— 5. Reguły ——— */}
+      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
+        <button
+          type="button"
+          className="technik-collapse-head"
+          aria-expanded={rulesOpen}
+          onClick={() => setRulesOpen((v) => !v)}
+        >
+          <h2 style={{ margin: 0 }}>5. Reguły</h2>
+          <span className="technik-muted">{rulesOpen ? 'zwiń' : 'rozwiń — limity, kto może, zamknięcie'}</span>
+        </button>
+
+        {rulesOpen ? (
+          <div className="technik-choice-card__body" style={{ marginTop: '0.75rem' }}>
+            <div className="technik-row">
+              <label className="technik-field">
+                <span>Limit miejsc (maxSlots)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={9999}
+                  placeholder="puste = bez limitu"
+                  value={
+                    draft.rules.maxSlots == null || draft.rules.maxSlots <= 0
+                      ? ''
+                      : draft.rules.maxSlots
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    if (!raw) {
+                      patchRules({ maxSlots: null });
+                      return;
+                    }
+                    const n = Number(raw);
+                    patchRules({
+                      maxSlots:
+                        Number.isFinite(n) && n > 0
+                          ? Math.min(9999, Math.floor(n))
+                          : null,
+                    });
+                  }}
+                />
+                <small className="technik-help">0 / puste = unlimited</small>
+              </label>
+
+              <fieldset className="technik-fieldset" style={{ flex: 1 }}>
+                <legend>Zamknięcie zapisów (closeAt)</legend>
+                {(
+                  [
+                    ['none', 'Bez auto-zamknięcia'],
+                    ['at_start', 'Przy starcie terminu'],
+                    ['manual', 'Tylko ręcznie'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label key={value} className="technik-check">
+                    <input
+                      type="radio"
+                      name="closeAt"
+                      checked={(draft.rules.closeAt ?? 'none') === value}
+                      onChange={() => patchRules({ closeAt: value as CloseAt })}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+
+            <fieldset className="technik-fieldset" style={{ marginTop: '0.75rem' }}>
+              <legend>Kto może reagować (whoCanReact)</legend>
+              <label className="technik-check">
+                <input
+                  type="radio"
+                  name="whoCanReact"
+                  checked={draft.rules.whoCanReact === 'everyone'}
+                  onChange={() => patchRules({ whoCanReact: 'everyone' })}
+                />
+                Wszyscy na kanale
+              </label>
+              <label className="technik-check">
+                <input
+                  type="radio"
+                  name="whoCanReact"
+                  checked={draft.rules.whoCanReact === 'roles'}
+                  onChange={() => patchRules({ whoCanReact: 'roles' })}
+                />
+                Tylko wybrane role
+              </label>
+            </fieldset>
+
+            {draft.rules.whoCanReact === 'roles' ? (
+              <div className="technik-field" style={{ marginTop: '0.65rem' }}>
+                <span>Role (roleIds)</span>
+                {rolesNote ? <p className="technik-muted">{rolesNote}</p> : null}
+                <div className="technik-role-chips" role="list">
+                  {(draft.rules.roleIds ?? []).length === 0 ? (
+                    <span className="technik-muted">Brak ról — dodaj poniżej</span>
+                  ) : (
+                    (draft.rules.roleIds ?? []).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="technik-role-chip"
+                        role="listitem"
+                        title={id}
+                        onClick={() => removeRoleId(id)}
+                      >
+                        {roleLabel(id, guildRoles)} ×
+                      </button>
+                    ))
+                  )}
+                </div>
+                {guildRoles.length > 0 ? (
+                  <label className="technik-field" style={{ marginTop: '0.5rem' }}>
+                    <span>Dodaj rolę z listy</span>
+                    <select
+                      value={rolePick}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setRolePick(id);
+                        if (id) addRoleId(id);
+                      }}
+                    >
+                      <option value="">— wybierz rolę —</option>
+                      {guildRoles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <div className="technik-row" style={{ marginTop: '0.5rem' }}>
+                    <label className="technik-field" style={{ flex: 1 }}>
+                      <span>Dodaj rolę (identyfikator Discord)</span>
+                      <input
+                        value={rolePick}
+                        onChange={(e) => setRolePick(e.target.value)}
+                        placeholder="17–20 cyfr"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="technik-btn-ghost"
+                      style={{ alignSelf: 'end' }}
+                      onClick={() => {
+                        const id = rolePick.trim();
+                        if (/^\d{17,20}$/.test(id)) addRoleId(id);
+                        else setMsg('To nie wygląda na identyfikator roli Discord.');
+                      }}
+                    >
+                      Dodaj
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      {/* ——— Persist status + payload peek ——— */}
+      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
+        <div className="technik-panel-head">
+          <h2>Szkic lokalny</h2>
+          <button
+            type="button"
+            className="technik-btn-ghost"
+            onClick={() => setPayloadPeek((v) => !v)}
+          >
+            {payloadPeek ? 'Ukryj JSON' : 'Pokaż JSON (recurringPosts)'}
+          </button>
+        </div>
+        <p className="technik-help">
+          Zapis przy każdej zmianie → <code>localStorage</code>. Kanał →{' '}
+          <code>publishChannels.recurring</code>. Zero auto-publish / zero Apply bez Ciebie.
         </p>
         {msg ? (
           <p className="technik-test-status" role="status">
             {msg}
           </p>
+        ) : null}
+        {payloadPeek ? (
+          <pre className="technik-code technik-code--tall" tabIndex={0}>
+            {JSON.stringify(payload, null, 2)}
+          </pre>
         ) : null}
       </section>
     </>
