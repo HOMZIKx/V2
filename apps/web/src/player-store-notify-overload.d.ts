@@ -4,12 +4,18 @@ declare module './player-store' {
   /**
    * Workspace members store personal notification overrides as Partial<TeamNotifyPrefs>.
    * The runtime resolver already handles missing keys by inheriting team defaults;
-   * this overload exposes that real contract to TypeScript callers.
+   * these overloads expose that real contract to TypeScript callers using
+   * exactOptionalPropertyTypes.
    */
+  export function resolveEffectiveNotifyPrefs(
+    workspace: { readonly notifyPrefs?: TeamNotifyPrefs | null | undefined },
+    member?: { readonly notifyPrefs?: Partial<TeamNotifyPrefs> | null | undefined } | null,
+  ): TeamNotifyPrefs;
+
   export function isNotifyPrefEnabled(
-    workspace: { readonly notifyPrefs?: TeamNotifyPrefs | null },
+    workspace: { readonly notifyPrefs?: TeamNotifyPrefs | null | undefined },
     key: NotifyPrefKey,
-    member?: { readonly notifyPrefs?: Partial<TeamNotifyPrefs> | null } | null,
+    member?: { readonly notifyPrefs?: Partial<TeamNotifyPrefs> | null | undefined } | null,
   ): boolean;
 }
 
