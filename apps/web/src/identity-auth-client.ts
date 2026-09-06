@@ -10,7 +10,7 @@
 import type { PlayerIdentity } from './player-store';
 import { initialsFromDisplayName } from './player-store';
 
-const DEFAULT_IDENTITY_BASE = 'http://127.0.0.1:4200';
+const DEV_IDENTITY_BASE = 'http://127.0.0.1:4200';
 
 export interface IdentityUserView {
   readonly id: string;
@@ -39,11 +39,17 @@ export interface ResolvedIdentityViewer {
 }
 
 export function getIdentityAuthBaseUrl(): string {
-  const raw =
-    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL) ||
-    DEFAULT_IDENTITY_BASE;
-  const trimmed = String(raw).trim().replace(/\/$/, '');
-  return trimmed.length > 0 ? trimmed : DEFAULT_IDENTITY_BASE;
+  const configured =
+    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL) || '';
+  const trimmed = String(configured).trim().replace(/\/$/, '');
+  if (trimmed) return trimmed;
+
+  // Production uses same-origin /identity rewrites. This avoids browser calls to
+  // 127.0.0.1 and keeps Identity cookies on the application origin.
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+    return window.location.origin;
+  }
+  return DEV_IDENTITY_BASE;
 }
 
 /** Fake Mateusz / state simulator — only when explicitly enabled. */
@@ -148,7 +154,7 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
 }
 
 /**
- * Top-level navigate to Identity Discord OAuth start (sets state cookie on :4200).
+ * Top-level navigate to Identity Discord OAuth start (sets state cookie on Identity).
  * returnTo → Identity web-bridge → web `/auth/callback` with viewer query.
  */
 export function startDiscordOAuthRedirect(
