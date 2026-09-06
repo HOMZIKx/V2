@@ -24,22 +24,22 @@ type DiagnosticsState = {
 function badgeFor(state: DiagnosticsState): { label: string; tone: 'ok' | 'warn' | 'error' } {
   const { live, ready, discord } = state;
   if (!live || !ready || !discord) {
-    return { label: 'Pobieranie health…', tone: 'warn' };
+    return { label: 'Sprawdzam bota…', tone: 'warn' };
   }
   const anyNetworkFail = [live, ready, discord].some((r) => !r.ok && r.kind === 'network');
   if (anyNetworkFail) {
-    return { label: 'Diagnostyka niedostępna (sieć/CORS)', tone: 'error' };
+    return { label: 'Bot ma problem', tone: 'error' };
   }
   if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
-    return { label: 'Discord ready', tone: 'ok' };
+    return { label: 'Bot działa', tone: 'ok' };
   }
   if (!live.ok || !ready.ok || !discord.ok) {
-    return { label: 'Częściowy błąd health', tone: 'warn' };
+    return { label: 'Bot ma problem', tone: 'warn' };
   }
   if (discord.ok) {
-    return { label: `Stan: ${discord.data.state}`, tone: 'warn' };
+    return { label: 'Bot ma problem', tone: 'warn' };
   }
-  return { label: 'Diagnostyka', tone: 'warn' };
+  return { label: 'Bot ma problem', tone: 'warn' };
 }
 
 function prettyJson(value: unknown): string {
@@ -80,9 +80,11 @@ function CopyButton({ text, label = 'Kopiuj JSON' }: { readonly text: string; re
 
 function RawJsonPanel({
   title,
+  hint,
   result,
 }: {
   readonly title: string;
+  readonly hint: string;
   readonly result: HealthFetchResult<unknown> | null;
 }) {
   const text = result ? payloadForCopy(result) : '';
@@ -91,10 +93,11 @@ function RawJsonPanel({
       <div className="technik-panel-head">
         <h2>{title}</h2>
         <div className="technik-panel-actions">
-          <span className="technik-pill technik-pill--live">live</span>
+          <span className="technik-pill technik-pill--live">na żywo</span>
           <CopyButton text={text} />
         </div>
       </div>
+      <p className="technik-help">{hint}</p>
       {result === null ? (
         <p className="technik-muted">Ładowanie…</p>
       ) : result.ok ? (
@@ -158,28 +161,39 @@ export function TechnikDiagnosticsPage() {
     <>
       <h1>Diagnostyka</h1>
       <p className="technik-lead">
-        Surowy JSON zdrowia New Bot (<code>{baseUrl}</code>): <code>/health/live</code>,{' '}
-        <code>/health/ready</code>, <code>/health/discord</code>.
+        Surowy podgląd dla ciekawskich. Na co dzień wystarczy zakładka Status — tu masz pełne JSON-y.
       </p>
 
       <div className="technik-row">
         <StatusBadge label={badge.label} tone={badge.tone} />
         <button type="button" onClick={() => void refresh()} disabled={loading}>
-          {loading ? 'Odświeżanie…' : 'Odśwież'}
+          {loading ? 'Odświeżam…' : 'Odśwież'}
         </button>
         <CopyButton text={allJson} label="Kopiuj wszystko" />
       </div>
 
       <p className="technik-meta">
-        Gateway: <code>{baseUrl}</code>
+        Adres bramki: <code>{baseUrl}</code>
       </p>
 
       {firstFail ? <HealthErrorPanel error={firstFail} /> : null}
 
       <div className="technik-stack" style={{ marginTop: '1rem' }}>
-        <RawJsonPanel title="GET /health/live" result={state.live} />
-        <RawJsonPanel title="GET /health/ready" result={state.ready} />
-        <RawJsonPanel title="GET /health/discord" result={state.discord} />
+        <RawJsonPanel
+          title="Czy bot żyje"
+          hint="Odpowiedź z /health/live — prosty sygnał życia procesu."
+          result={state.live}
+        />
+        <RawJsonPanel
+          title="Czy bot jest gotowy"
+          hint="Odpowiedź z /health/ready — czy bot może obsługiwać gildię."
+          result={state.ready}
+        />
+        <RawJsonPanel
+          title="Połączenie z Discord"
+          hint="Odpowiedź z /health/discord — szczegóły łącza z Discordem."
+          result={state.discord}
+        />
       </div>
     </>
   );

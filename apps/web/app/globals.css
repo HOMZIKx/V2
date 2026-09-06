@@ -12171,6 +12171,24 @@ button:disabled {
 .technik-check input {
   accent-color: var(--green);
 }
+.technik-help {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.technik-field .technik-help {
+  margin-top: 0.15rem;
+}
+.technik-field-block {
+  margin-top: 0.55rem;
+}
+.technik-field-block .technik-check {
+  margin-bottom: 0.1rem;
+}
+.technik-field-block .technik-help {
+  margin-left: 1.55rem;
+}
 .technik-status-badge {
   display: inline-flex;
   align-items: center;

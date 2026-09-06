@@ -20,7 +20,7 @@ export function TechnikShell({
       <aside className="technik-sidebar" aria-label="Nawigacja Technika">
         <div className="technik-brand">
           <strong>DESTILED · Technik</strong>
-          <span>Panel Technika (bot) — pełna bramka ról P3 później</span>
+          <span>Tu ustawisz bota Discord dla gildii</span>
         </div>
         <nav className="technik-subnav">
           {TABS.map((tab) => {

@@ -23,8 +23,16 @@ import {
   putConfigDraft,
 } from './technika-config-api';
 
-const STEPPER_STEPS = ['Draft', 'Validate', 'Preview', 'Apply', 'Audit', 'Rollback'] as const;
-type StepId = (typeof STEPPER_STEPS)[number];
+const STEPPER_STEPS = [
+  { id: 'Draft', label: 'Szkic' },
+  { id: 'Validate', label: 'Sprawdź' },
+  { id: 'Preview', label: 'Zobacz co się zmieni' },
+  { id: 'Apply', label: 'Zapisz i włącz' },
+  { id: 'Audit', label: 'Historia' },
+  { id: 'Rollback', label: 'Cofnij ostatnią zmianę' },
+] as const;
+
+type StepId = (typeof STEPPER_STEPS)[number]['id'];
 
 const WAR_AT_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -70,7 +78,9 @@ export function TechnikBotConfigPage() {
         setWarDraft({ ...DEFAULT_KINGDOM_WAR, ...cfg.kingdomWar });
       }
     } else {
-      setActionError(`Nie udało się pobrać config: ${active.error}${active.detail ? ` — ${active.detail}` : ''}`);
+      setActionError(
+        `Nie udało się pobrać ustawień: ${active.error}${active.detail ? ` — ${active.detail}` : ''}`,
+      );
     }
   }, []);
 
@@ -87,40 +97,40 @@ export function TechnikBotConfigPage() {
       timersDraft.reminderMinutesBefore < 1 ||
       timersDraft.reminderMinutesBefore > 24 * 60
     ) {
-      local.push('timersNotify.reminderMinutesBefore: liczba całkowita 1–1440 (domyślnie 60).');
+      local.push('Przypomnienie timerów: podaj liczbę minut od 1 do 1440 (zwykle 60).');
     }
     if (timersDraft.enabled && timersDraft.messageTemplate.trim().length < 1) {
-      local.push('timersNotify: przy włączeniu wymagany jest szablon wiadomości.');
+      local.push('Powiadomienia z timerów są włączone — wpisz treść wiadomości.');
     }
     if (looksLikeSecret(timersDraft.messageTemplate)) {
-      local.push('timersNotify.messageTemplate: wygląda na sekret — usuń tokeny/hasła.');
+      local.push('Treść wiadomości timerów wygląda na sekret — usuń tokeny i hasła.');
     }
     if (!WAR_AT_RE.test(warDraft.warAt)) {
-      local.push('kingdomWar.warAt: format HH:MM (24h, Europe/Warsaw).');
+      local.push('Godzina wojny: użyj formatu HH:MM (czas warszawski, 24h).');
     }
     if (
       !Number.isInteger(warDraft.notifyMinutesBefore) ||
       warDraft.notifyMinutesBefore < 1 ||
       warDraft.notifyMinutesBefore > 24 * 60
     ) {
-      local.push('kingdomWar.notifyMinutesBefore: liczba całkowita 1–1440 (domyślnie 30).');
+      local.push('Przypomnienie o wojnie: podaj liczbę minut od 1 do 1440 (zwykle 30).');
     }
     if (warDraft.enabled && warDraft.messageTemplate.trim().length < 1) {
-      local.push('kingdomWar: przy włączeniu wymagany jest szablon wiadomości.');
+      local.push('Przypomnienie o wojnie jest włączone — wpisz treść wiadomości.');
     }
     if (looksLikeSecret(warDraft.messageTemplate)) {
-      local.push('kingdomWar.messageTemplate: wygląda na sekret — usuń tokeny/hasła.');
+      local.push('Treść wiadomości o wojnie wygląda na sekret — usuń tokeny i hasła.');
     }
     if (warNotifyAt) {
       local.push(
-        `kingdomWar: powiadomienie lokalne o ${warNotifyAt} (Europe/Warsaw), wojna o ${warDraft.warAt}.`,
+        `Wojna o ${warDraft.warAt} — bot przypomni o ${warNotifyAt} (czas warszawski).`,
       );
     }
 
     if (!mutationsEnabled) {
       setValidationMessages([
         ...local,
-        'Mutacje wyłączone — ustaw DISCORD_TECHNIKA_SHARED_SECRET na serwerze web (nie NEXT_PUBLIC_).',
+        'Zapis jest wyłączony — na serwerze web brakuje klucza DISCORD_TECHNIKA_SHARED_SECRET (nie NEXT_PUBLIC_).',
       ]);
       setStep('Validate');
       return;
@@ -136,7 +146,7 @@ export function TechnikBotConfigPage() {
         const issueLines = (draftRes.issues ?? []).map((i) => `${i.path}: ${i.message}`);
         setValidationMessages([
           ...local,
-          `PUT draft nieudany: ${draftRes.error}`,
+          `Nie udało się zapisać szkicu: ${draftRes.error}`,
           ...(draftRes.detail ? [draftRes.detail] : []),
           ...issueLines,
         ]);
@@ -148,7 +158,7 @@ export function TechnikBotConfigPage() {
       if (!valRes.ok) {
         setValidationMessages([
           ...local,
-          `Validate API: ${valRes.error}`,
+          `Sprawdzanie nieudane: ${valRes.error}`,
           ...(valRes.detail ? [valRes.detail] : []),
           ...(valRes.issues ?? []).map((i) => `${i.path}: ${i.message}`),
         ]);
@@ -159,10 +169,10 @@ export function TechnikBotConfigPage() {
       const apiIssues = valRes.data.issues.map((i) => `${i.path}: ${i.message}`);
       setValidationMessages([
         ...local,
-        valRes.data.ok ? 'Validate API: OK' : 'Validate API: błędy',
+        valRes.data.ok ? 'Sprawdzanie: wszystko OK' : 'Sprawdzanie: są błędy',
         ...apiIssues,
       ]);
-      setLastAction('draft+validate');
+      setLastAction('zapisano szkic i sprawdzono');
       setStep('Validate');
       await load();
     } finally {
@@ -176,7 +186,7 @@ export function TechnikBotConfigPage() {
       setPreviewText(
         pretty({
           mode: 'local-only',
-          warning: 'Brak DISCORD_TECHNIKA_SHARED_SECRET — brak podglądu z gateway.',
+          warning: 'Brak klucza na serwerze — podgląd tylko lokalny, bez bramki.',
           timersNotify: timersDraft,
           kingdomWar: { ...warDraft, notifyAtWarsaw: warNotifyAt },
         }),
@@ -188,11 +198,11 @@ export function TechnikBotConfigPage() {
     try {
       const res = await postConfigPreview();
       if (!res.ok) {
-        setActionError(`Preview: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
+        setActionError(`Podgląd: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
         setPreviewText(pretty(res.body ?? { error: res.error }));
       } else {
         setPreviewText(pretty(res.data));
-        setLastAction('preview');
+        setLastAction('podgląd zmian');
       }
       setStep('Preview');
     } finally {
@@ -207,12 +217,12 @@ export function TechnikBotConfigPage() {
     try {
       const res = await postConfigApply();
       if (!res.ok) {
-        setActionError(`Apply: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
+        setActionError(`Zapisz i włącz: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
         setStep('Apply');
         return;
       }
       setSnapshot(res.data);
-      setLastAction(`apply revision=${res.data.revision}`);
+      setLastAction(`zapisano i włączono (wersja ${res.data.revision})`);
       setStep('Apply');
       await load();
     } finally {
@@ -227,12 +237,12 @@ export function TechnikBotConfigPage() {
     try {
       const res = await postConfigRollback();
       if (!res.ok) {
-        setActionError(`Rollback: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
+        setActionError(`Cofnij: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
         setStep('Rollback');
         return;
       }
       setSnapshot(res.data);
-      setLastAction(`rollback revision=${res.data.revision}`);
+      setLastAction(`cofnięto do wersji ${res.data.revision}`);
       setStep('Rollback');
       await load();
     } finally {
@@ -240,7 +250,7 @@ export function TechnikBotConfigPage() {
     }
   };
 
-  const stepIndex = STEPPER_STEPS.indexOf(step);
+  const stepIndex = STEPPER_STEPS.findIndex((s) => s.id === step);
   const canApply = mutationsEnabled && !busy;
   const canRollback = mutationsEnabled && !busy && Boolean(snapshot?.canRollback);
 
@@ -248,34 +258,33 @@ export function TechnikBotConfigPage() {
     <>
       <h1>Konfiguracja bota</h1>
       <p className="technik-lead">
-        D-060: draft → validate → preview → apply → audit → rollback. Klucze OpenAPI:{' '}
-        <code>timersNotify</code>, <code>kingdomWar</code>. Sekrety tylko po stronie serwera web (
-        <code>DISCORD_TECHNIKA_SHARED_SECRET</code>).
+        Ustaw powiadomienia Discord dla gildii. Najpierw zrób szkic, sprawdź go, zobacz co się
+        zmieni, a potem zapisz i włącz. Jak coś pójdzie nie tak — cofnij ostatnią zmianę.
       </p>
 
       <section className="technik-panel technik-panel--wide">
         <div className="technik-panel-head">
-          <h2>Cykl D-060</h2>
+          <h2>Jak zapisać zmiany</h2>
           <span className={mutationsEnabled ? 'technik-pill technik-pill--live' : 'technik-pill technik-pill--pending'}>
-            {mutationsEnabled ? 'apply gotowe (secret OK)' : 'apply zablokowane (brak secret)'}
+            {mutationsEnabled ? 'Możesz zapisywać' : 'Zapis zablokowany (brak klucza)'}
           </span>
         </div>
-        <ol className="technik-stepper" aria-label="Kroki D-060">
-          {STEPPER_STEPS.map((name, index) => {
+        <ol className="technik-stepper" aria-label="Kroki zapisu ustawień">
+          {STEPPER_STEPS.map((item, index) => {
             const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
             const locked =
-              (!mutationsEnabled && (name === 'Apply' || name === 'Rollback')) ||
-              (name === 'Rollback' && !snapshot?.canRollback);
+              (!mutationsEnabled && (item.id === 'Apply' || item.id === 'Rollback')) ||
+              (item.id === 'Rollback' && !snapshot?.canRollback);
             return (
-              <li key={name} className={`technik-stepper__item technik-stepper__item--${stateCls}`}>
+              <li key={item.id} className={`technik-stepper__item technik-stepper__item--${stateCls}`}>
                 <button
                   type="button"
                   className="technik-stepper__btn"
-                  disabled={locked && (name === 'Apply' || name === 'Rollback')}
-                  onClick={() => setStep(name)}
+                  disabled={locked && (item.id === 'Apply' || item.id === 'Rollback')}
+                  onClick={() => setStep(item.id)}
                 >
                   <span className="technik-stepper__idx">{index + 1}</span>
-                  <span>{name}</span>
+                  <span>{item.label}</span>
                 </button>
               </li>
             );
@@ -283,42 +292,50 @@ export function TechnikBotConfigPage() {
         </ol>
         <div className="technik-row" style={{ marginTop: '0.85rem' }}>
           <button type="button" onClick={() => setStep('Draft')} disabled={busy}>
-            Draft
+            Szkic
           </button>
           <button type="button" onClick={() => void runValidate()} disabled={busy}>
-            Validate
+            Sprawdź
           </button>
           <button type="button" onClick={() => void runPreview()} disabled={busy}>
-            Preview
+            Zobacz co się zmieni
           </button>
           <button
             type="button"
             onClick={() => void runApply()}
             disabled={!canApply}
-            title={mutationsEnabled ? 'POST /discord/v1/config/apply' : 'Wymaga DISCORD_TECHNIKA_SHARED_SECRET'}
+            title={
+              mutationsEnabled
+                ? 'Zapisze szkic jako aktywne ustawienia bota'
+                : 'Potrzebny klucz DISCORD_TECHNIKA_SHARED_SECRET na serwerze'
+            }
           >
-            {busy ? '…' : 'Apply'}
+            {busy ? '…' : 'Zapisz i włącz'}
           </button>
           <button type="button" onClick={() => setStep('Audit')} disabled={busy}>
-            Audit
+            Historia
           </button>
           <button
             type="button"
             onClick={() => void runRollback()}
             disabled={!canRollback}
-            title={snapshot?.canRollback ? 'POST /discord/v1/config/rollback' : 'Brak poprzedniej rewizji'}
+            title={
+              snapshot?.canRollback
+                ? 'Przywróci poprzednie działające ustawienia'
+                : 'Nie ma wcześniejszej wersji do cofnięcia'
+            }
           >
-            Rollback
+            Cofnij ostatnią zmianę
           </button>
         </div>
         <p className="technik-muted" style={{ marginTop: '0.65rem' }}>
-          Aktywna rewizja: <code>{snapshot?.revision ?? '—'}</code>
-          {snapshot?.hasDraft ? ' · draft oczekuje' : ''}
-          {snapshot?.canRollback ? ' · rollback dostępny' : ''}
-          {lastAction ? ` · ostatnia akcja: ${lastAction}` : ''}
+          Wersja aktywna: <code>{snapshot?.revision ?? '—'}</code>
+          {snapshot?.hasDraft ? ' · masz niewłączony szkic' : ''}
+          {snapshot?.canRollback ? ' · możesz cofnąć' : ''}
+          {lastAction ? ` · ostatnio: ${lastAction}` : ''}
         </p>
         <p className="technik-meta">
-          Gateway: <code>{gatewayLabel || '—'}</code> · proxy <code>/api/technik/*</code>
+          Bramka: <code>{gatewayLabel || '—'}</code>
         </p>
         {actionError ? (
           <p className="technik-muted" role="alert">
@@ -330,10 +347,10 @@ export function TechnikBotConfigPage() {
       {step === 'Validate' || step === 'Preview' || step === 'Apply' || step === 'Rollback' ? (
         <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
           <h2>
-            {step === 'Validate' && 'Validate'}
-            {step === 'Preview' && 'Preview — active vs draft'}
-            {step === 'Apply' && 'Apply'}
-            {step === 'Rollback' && 'Rollback'}
+            {step === 'Validate' && 'Wynik sprawdzania'}
+            {step === 'Preview' && 'Co się zmieni (aktywne vs szkic)'}
+            {step === 'Apply' && 'Zapisano i włączono'}
+            {step === 'Rollback' && 'Cofnięto ostatnią zmianę'}
           </h2>
           {step === 'Validate' ? (
             <ul className="technik-message-list">
@@ -346,7 +363,7 @@ export function TechnikBotConfigPage() {
             previewText ? (
               <code className="technik-code technik-code--tall">{previewText}</code>
             ) : (
-              <p className="technik-muted">Uruchom Preview.</p>
+              <p className="technik-muted">Kliknij „Zobacz co się zmieni”, żeby zobaczyć różnice.</p>
             )
           ) : null}
           {(step === 'Apply' || step === 'Rollback') && snapshot ? (
@@ -357,11 +374,11 @@ export function TechnikBotConfigPage() {
 
       {step === 'Audit' ? (
         <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
-          <h2>Audit</h2>
+          <h2>Historia zmian</h2>
           <div className="technik-empty">
             <p>
-              Audyt apply na gateway — gap (mapa możliwości). Lokalnie widać rewizję i timestamp z GET
-              config.
+              Pełna lista zapisów pojawi się później. Na razie widać wersję aktywną i czas ostatniej
+              aktualizacji.
             </p>
             {snapshot ? (
               <code className="technik-code">{pretty({
@@ -371,44 +388,57 @@ export function TechnikBotConfigPage() {
                 canRollback: snapshot.canRollback,
               })}</code>
             ) : (
-              <p className="technik-muted">Brak snapshotu.</p>
+              <p className="technik-muted">Brak danych o wersji.</p>
             )}
           </div>
         </section>
       ) : null}
 
       <div className="technik-row" style={{ marginTop: '1.25rem' }}>
-        <h2 className="technik-section-title">Live-config Technika</h2>
+        <h2 className="technik-section-title">Ustawienia powiadomień</h2>
         <button type="button" onClick={() => void load()} disabled={busy}>
-          Odśwież GET config
+          Odśwież ustawienia
         </button>
       </div>
 
       <div className="technik-panel-grid technik-panel-grid--status">
         <section className="technik-panel technik-panel--live-config">
-          <span className="technik-pill technik-pill--live">timersNotify</span>
-          <h2>Powiadomienia Discord z Timerów</h2>
-          <p>OpenAPI <code>timersNotify</code> — bez sekretów S2S.</p>
-          <label className="technik-check">
-            <input
-              type="checkbox"
-              checked={timersDraft.enabled}
-              onChange={(e) => setTimersDraft((prev) => ({ ...prev, enabled: e.target.checked }))}
-            />
-            Włącz timersNotify
-          </label>
-          <label className="technik-check">
-            <input
-              type="checkbox"
-              checked={timersDraft.resetNotifyEnabled}
-              onChange={(e) =>
-                setTimersDraft((prev) => ({ ...prev, resetNotifyEnabled: e.target.checked }))
-              }
-            />
-            resetNotifyEnabled (auto-DM po resecie)
-          </label>
+          <span className="technik-pill technik-pill--live">timery</span>
+          <h2>Powiadomienia z timerów</h2>
+          <p className="technik-help">
+            Wyślij wiadomość na Discord przed odnowieniem timera — gildia nie przegapi respawnu.
+          </p>
+
+          <div className="technik-field-block">
+            <label className="technik-check">
+              <input
+                type="checkbox"
+                checked={timersDraft.enabled}
+                onChange={(e) => setTimersDraft((prev) => ({ ...prev, enabled: e.target.checked }))}
+              />
+              Włącz powiadomienia z timerów
+            </label>
+            <p className="technik-help">Gdy włączone, bot przypomina o timerach na Discordzie.</p>
+          </div>
+
+          <div className="technik-field-block">
+            <label className="technik-check">
+              <input
+                type="checkbox"
+                checked={timersDraft.resetNotifyEnabled}
+                onChange={(e) =>
+                  setTimersDraft((prev) => ({ ...prev, resetNotifyEnabled: e.target.checked }))
+                }
+              />
+              Powiadom po resecie timera
+            </label>
+            <p className="technik-help">
+              Po resecie bot wyśle krótką wiadomość prywatną (DM), że timer wystartował od nowa.
+            </p>
+          </div>
+
           <label className="technik-field">
-            <span>reminderMinutesBefore (domyślnie 60)</span>
+            <span>Ile minut przed odnowieniem przypomnieć</span>
             <input
               type="number"
               min={1}
@@ -421,9 +451,13 @@ export function TechnikBotConfigPage() {
                 }))
               }
             />
+            <span className="technik-help">
+              Np. 60 = wiadomość godzinę przed odnowieniem. Zakres 1–1440.
+            </span>
           </label>
+
           <label className="technik-field">
-            <span>messageTemplate</span>
+            <span>Treść wiadomości</span>
             <textarea
               rows={4}
               value={timersDraft.messageTemplate}
@@ -431,36 +465,45 @@ export function TechnikBotConfigPage() {
                 setTimersDraft((prev) => ({ ...prev, messageTemplate: e.target.value }))
               }
             />
+            <span className="technik-help">
+              Możesz użyć: {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'},{' '}
+              {'{{deepLinkUrl}}'}.
+            </span>
           </label>
-          <p className="technik-muted">
-            Placeholdery: {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'}, {'{{deepLinkUrl}}'}.
-          </p>
         </section>
 
         <section className="technik-panel technik-panel--live-config">
-          <span className="technik-pill technik-pill--live">kingdomWar</span>
+          <span className="technik-pill technik-pill--live">wojna</span>
           <h2>Wojna królestw (PW)</h2>
-          <p>
-            OpenAPI <code>kingdomWar</code> — Europe/Warsaw. Domyślnie 18:00 / 30 min → 17:30.
+          <p className="technik-help">
+            Przypomnij o wojnie wcześniej — domyślnie wojna o 18:00, przypomnienie 30 min wcześniej
+            (17:30, czas warszawski).
           </p>
-          <label className="technik-check">
-            <input
-              type="checkbox"
-              checked={warDraft.enabled}
-              onChange={(e) => setWarDraft((prev) => ({ ...prev, enabled: e.target.checked }))}
-            />
-            Włącz kingdomWar
-          </label>
+
+          <div className="technik-field-block">
+            <label className="technik-check">
+              <input
+                type="checkbox"
+                checked={warDraft.enabled}
+                onChange={(e) => setWarDraft((prev) => ({ ...prev, enabled: e.target.checked }))}
+              />
+              Włącz przypomnienie o wojnie
+            </label>
+            <p className="technik-help">Bot wyśle wiadomość na Discord przed startem wojny.</p>
+          </div>
+
           <label className="technik-field">
-            <span>warAt (Warszawa)</span>
+            <span>Godzina wojny (Warszawa)</span>
             <input
               type="time"
               value={warDraft.warAt}
               onChange={(e) => setWarDraft((prev) => ({ ...prev, warAt: e.target.value }))}
             />
+            <span className="technik-help">O której godzinie zaczyna się wojna królestw.</span>
           </label>
+
           <label className="technik-field">
-            <span>notifyMinutesBefore (domyślnie 30)</span>
+            <span>Ile minut wcześniej przypomnieć</span>
             <input
               type="number"
               min={1}
@@ -473,12 +516,14 @@ export function TechnikBotConfigPage() {
                 }))
               }
             />
+            <span className="technik-help">
+              Przypomnij o wojnie {warDraft.notifyMinutesBefore || '—'} min wcześniej
+              {warNotifyAt ? ` (czyli o ${warNotifyAt})` : ''}.
+            </span>
           </label>
-          <p className="technik-muted">
-            Wyliczone powiadomienie: <strong>{warNotifyAt ?? '—'}</strong> Europe/Warsaw.
-          </p>
+
           <label className="technik-field">
-            <span>messageTemplate</span>
+            <span>Treść wiadomości</span>
             <textarea
               rows={4}
               value={warDraft.messageTemplate}
@@ -486,10 +531,10 @@ export function TechnikBotConfigPage() {
                 setWarDraft((prev) => ({ ...prev, messageTemplate: e.target.value }))
               }
             />
+            <span className="technik-help">
+              Możesz użyć: {'{{warAt}}'}, {'{{notifyMinutesBefore}}'}.
+            </span>
           </label>
-          <p className="technik-muted">
-            Placeholdery: {'{{warAt}}'}, {'{{notifyMinutesBefore}}'}.
-          </p>
         </section>
       </div>
     </>
