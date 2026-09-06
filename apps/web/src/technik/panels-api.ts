@@ -225,15 +225,19 @@ export type PanelPublishBody = {
   readonly guildId: string;
   readonly channelId: string;
   readonly kind?: string;
-  /** Panel title (Centrum appearance). Gateway may ignore until New Bot accepts it. */
+  /** Panel title (Centrum appearance). */
   readonly title?: string;
   /** Short description under title. */
   readonly description?: string;
   /** Accent color as #RRGGBB. */
   readonly accentHex?: string;
   readonly includeBanner?: boolean;
-  /** Enabled hub action ids (create/lfg/mine/…). */
+  /** Banner image URL when includeBanner is true. */
+  readonly bannerUrl?: string;
+  /** Enabled hub action ids (create/lfg/mine/notify/profile/forme). */
   readonly enabledActions?: readonly string[];
+  /** Extra buttons under the post: [{id,label,style,action,...}]. */
+  readonly customButtons?: readonly Record<string, string>[];
 };
 
 function buildPublishPayload(body: PanelPublishBody): Record<string, unknown> {
@@ -247,8 +251,14 @@ function buildPublishPayload(body: PanelPublishBody): Record<string, unknown> {
   if (typeof body.accentHex === 'string' && body.accentHex.trim()) {
     payload.accentHex = body.accentHex.trim();
   }
+  if (typeof body.bannerUrl === 'string' && body.bannerUrl.trim()) {
+    payload.bannerUrl = body.bannerUrl.trim();
+  }
   if (Array.isArray(body.enabledActions)) {
     payload.enabledActions = [...body.enabledActions];
+  }
+  if (Array.isArray(body.customButtons)) {
+    payload.customButtons = body.customButtons.map((b) => ({ ...b }));
   }
   return payload;
 }

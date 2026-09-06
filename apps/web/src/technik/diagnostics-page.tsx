@@ -90,7 +90,7 @@ function RawJsonPanel({
 }) {
   const text = result ? payloadForCopy(result) : '';
   return (
-    <section className="technik-panel technik-panel--wide">
+    <section className="technik-panel technik-panel--wide technik-panel--diag">
       <div className="technik-panel-head">
         <h2>{title}</h2>
         <div className="technik-panel-actions">

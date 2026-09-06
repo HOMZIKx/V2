@@ -12983,3 +12983,163 @@ button:disabled {
   border-top: 1px dashed color-mix(in srgb, #5865f2 30%, transparent);
 }
 
+/* Technik notes polish + Wygląd kind tabs + custom buttons (2026-09-06) */
+.technik-page-job {
+  border: 1px solid color-mix(in srgb, var(--blue) 45%, var(--line));
+  background: color-mix(in srgb, var(--blue) 12%, var(--panel-strong));
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  margin: 0 0 0.65rem;
+}
+.technik-page-job strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--blue) 70%, var(--silver));
+}
+.technik-page-job p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.technik-player-sees {
+  border: 1px solid color-mix(in srgb, #2dd4bf 40%, var(--line));
+  background: color-mix(in srgb, #2dd4bf 10%, var(--panel-strong));
+  border-radius: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  margin: 0 0 1rem;
+}
+.technik-player-sees strong {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, #2dd4bf 75%, var(--silver));
+}
+.technik-player-sees p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.technik-honest-gap {
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, var(--line));
+  background: color-mix(in srgb, var(--amber) 8%, var(--panel-strong));
+  border-radius: 0.55rem;
+  padding: 0.7rem 0.85rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.technik-honest-gap p { margin: 0; }
+.technik-honest-gap a { color: var(--text); }
+.technik-info-chip {
+  display: inline-block;
+  margin: 0.75rem 0 0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--silver) 35%, var(--line));
+  background: color-mix(in srgb, var(--silver) 8%, transparent);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  max-width: 100%;
+}
+.technik-info-chip strong { color: var(--silver); font-weight: 600; }
+.technik-panel--path {
+  border-color: color-mix(in srgb, var(--blue) 28%, var(--line));
+}
+.technik-kind-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+.technik-kind-tabs button {
+  appearance: none;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #0c1017;
+  color: var(--muted);
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.technik-kind-tabs button strong {
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.technik-kind-tabs button small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.technik-kind-tabs button.is-active,
+.technik-kind-tabs button[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+  background: color-mix(in srgb, var(--red) 12%, #0c1017);
+}
+.technik-custom-btn-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.technik-custom-btn-card {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.75rem;
+  background: #0c1017;
+}
+.technik-discord-preview__banner-img {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.technik-discord-preview__btn--primary {
+  background: #5865f2;
+  border-color: #4752c4;
+}
+.technik-discord-preview__btn--danger {
+  background: #da373c;
+  border-color: #a12828;
+}
+.technik-dm-preview {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #2b2d31;
+  border: 1px solid #1e1f22;
+  color: #dbdee1;
+  white-space: pre-wrap;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.technik-code {
+  background: #0a0c10;
+  border: 1px solid color-mix(in srgb, var(--blue) 22%, var(--line));
+  color: #d7dde8;
+}
+.technik-panel--diag {
+  border-color: color-mix(in srgb, var(--blue) 22%, var(--line));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--blue) 6%, var(--panel-strong)),
+    var(--panel-strong)
+  );
+}
+

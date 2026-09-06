@@ -24,19 +24,18 @@ export function PlayerSeesNote({ children }: { readonly children: ReactNode }) {
 
 export function HonestGap({ children }: { readonly children: ReactNode }) {
   return (
-    <div className="technik-empty" role="note">
+    <div className="technik-honest-gap" role="note">
       {children}
     </div>
   );
 }
 
+/** Compact product note — not a giant empty brick. */
 export function ReactionsForbiddenNote() {
   return (
-    <HonestGap>
-      <p>
-        <strong>Reakcje emoji jako nawigacja / RSVP są wyłączone produktowo.</strong> Panele używają
-        przycisków Components V2 — nie ma przełącznika „włącz reakcje RSVP”.
-      </p>
-    </HonestGap>
+    <p className="technik-info-chip" role="note">
+      <strong>Reakcje emoji / RSVP wyłączone.</strong> Panele używają przycisków Components V2 — bez
+      przełącznika „włącz reakcje RSVP”.
+    </p>
   );
 }

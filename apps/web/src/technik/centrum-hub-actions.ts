@@ -101,3 +101,15 @@ export function loadEnabledHubActions(): CentrumHubActionId[] {
 export function saveEnabledHubActions(enabled: readonly CentrumHubActionId[]): void {
   localStorage.setItem(MODULES_KEY, JSON.stringify({ enabled: [...enabled] }));
 }
+
+
+/** Map UI hub ids → New Bot publish enabledActions (inbox→notify, forMe→forme). */
+export function mapHubActionsForPublish(
+  ids: readonly CentrumHubActionId[],
+): readonly string[] {
+  return ids.map((id) => {
+    if (id === 'inbox') return 'notify';
+    if (id === 'forMe') return 'forme';
+    return id;
+  });
+}

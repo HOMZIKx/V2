@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { loadAppearance } from './appearance';
+import { loadAppearance, serializeCustomButtons } from './appearance';
 import {
   CENTRUM_HUB_ACTIONS,
   loadEnabledHubActions,
+  mapHubActionsForPublish,
   saveEnabledHubActions,
   type CentrumHubActionId,
 } from './centrum-hub-actions';
@@ -123,7 +124,9 @@ export function TechnikCentrumPage() {
         description: appearance.panelDescription,
         accentHex: appearance.accentHex,
         includeBanner: appearance.includeBanner,
-        enabledActions: enabled,
+        bannerUrl: appearance.bannerUrl,
+        enabledActions: mapHubActionsForPublish(enabled),
+        customButtons: serializeCustomButtons(appearance.customButtons),
       });
       if (!res.ok) {
         setOpsMsg(
@@ -225,10 +228,10 @@ export function TechnikCentrumPage() {
           </dd>
           <dt>Wygląd</dt>
           <dd>
-            <a href="/technik/wyglad">Tytuł, opis, akcent, banner →</a>
+            <a href="/technik/wyglad">Tytuł, opis, akcent, bannerUrl, własne przyciski →</a>
             <br />
             <span className="technik-muted">
-              Opublikuj wyśle te pola razem z włączonymi akcjami (bez auto-publikacji).
+              Opublikuj wyśle title/description/accentHex/includeBanner/bannerUrl/enabledActions/customButtons (bez auto-publikacji).
             </span>
           </dd>
         </dl>

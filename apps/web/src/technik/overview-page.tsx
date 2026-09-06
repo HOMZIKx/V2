@@ -15,7 +15,7 @@ import {
 } from './discord-gateway-health';
 import { HealthErrorPanel } from './health-error-panel';
 import { StatusBadge } from './status-badge';
-import { HonestGap, PageJobNote, PlayerSeesNote, ReactionsForbiddenNote } from './ui-notes';
+import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
 
 const AUTO_REFRESH_MS = 15_000;
@@ -217,25 +217,30 @@ export function TechnikOverviewPage() {
         </p>
       ) : null}
 
-      <section className="technik-panel" style={{ marginTop: '1rem' }}>
+      <section className="technik-panel technik-panel--path" style={{ marginTop: '1rem' }}>
         <h2>Szybka ścieżka</h2>
         <ol className="technik-message-list">
           <li>
             <a href="/technik/discordy">Discordy</a> — włącz tylko Testowy, moduły i prawa
           </li>
           <li>
-            <a href="/technik/timery">Timery postaci</a> — treść PW + Test DM
+            <a href="/technik/kanaly">Kanały</a> — powiąż hub / lab / cykliczne
           </li>
           <li>
-            <a href="/technik/wojna">Wojna</a> — godzina, claimy, Test DM
+            <a href="/technik/wyglad">Wygląd</a> — tytuł, banner, własne przyciski (Centrum) lub
+            szablony PW
           </li>
-          <li>Tu: Sprawdź → Zobacz → Ty klikasz Zapisz i włącz</li>
+          <li>
+            <a href="/technik/centrum">Centrum</a> — włącz akcje hubu → Opublikuj
+          </li>
+          <li>
+            <a href="/technik/timery">Timery</a> / <a href="/technik/wojna">Wojna</a> — treść PW +
+            Test DM
+          </li>
+          <li>Tu: Sprawdź → Zobacz → Ty klikasz Zapisz i włącz (Apply)</li>
         </ol>
       </section>
 
-      <div style={{ marginTop: '1rem' }}>
-        <ReactionsForbiddenNote />
-      </div>
       {cfg.isolationDisplay !== undefined ? (
         <p className="technik-muted" style={{ marginTop: '0.75rem' }}>
           Izolacja guildii (tylko podgląd):{' '}
@@ -244,10 +249,13 @@ export function TechnikOverviewPage() {
       ) : null}
       <HonestGap>
         <p>
-          Centrum Aktywności (katalogi, kanały, hub, limity) — <strong>odroczone</strong>. Ten panel
-          skupia się na guildiach i powiadomieniach bota.
+          <strong>WWW player Activity Center</strong> (katalogi wydarzeń / activity-service) —
+          odroczone. <strong>Discord Centrum</strong> jest w zakresie: panel +{' '}
+          <a href="/technik/kanaly">Kanały</a> + <a href="/technik/wyglad">Wygląd</a> — publikacja w{' '}
+          <a href="/technik/centrum">Centrum</a>.
         </p>
       </HonestGap>
+
     </>
   );
 }

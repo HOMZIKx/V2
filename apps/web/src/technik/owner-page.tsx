@@ -1,6 +1,6 @@
 'use client';
 
-import { HonestGap, PageJobNote, ReactionsForbiddenNote, PlayerSeesNote } from './ui-notes';
+import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 
 export function TechnikOwnerPage() {
   return (
@@ -48,15 +48,12 @@ export function TechnikOwnerPage() {
         </p>
       </section>
 
-      <div style={{ marginTop: '1rem' }}>
-        <ReactionsForbiddenNote />
-      </div>
-
-      <HonestGap>
+<HonestGap>
         <p>
-          Centrum Aktywności (katalogi typów, RSVP, hub, kanały publikacji activity-service) —
-          osobny produkt, <strong>odroczone</strong>. Technik skupia się na tym, co bot Discord
-          publikuje i wysyła w PW.
+          <strong>WWW Activity Center</strong> (katalogi typów / activity-service) — osobny produkt,
+          odroczone. <strong>Discord Centrum</strong> (panel hub, kanały, wygląd, Opublikuj) jest w
+          zakresie Technika — patrz <a href="/technik/centrum">Centrum</a>,{' '}
+          <a href="/technik/wyglad">Wygląd</a>, <a href="/technik/kanaly">Kanały</a>.
         </p>
       </HonestGap>
     </>
