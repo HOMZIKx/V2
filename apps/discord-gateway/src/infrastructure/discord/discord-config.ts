@@ -55,6 +55,15 @@ export const DiscordGatewayConfigSchema = z
     DISCORD_STRICT_GUILD_ISOLATION: z.preprocess((value) => parseBoolean(value, true), z.boolean()),
     DISCORD_STARTUP_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
     DISCORD_TEST_CHANNEL_ID: z.string().optional().default(''),
+    /** Service-to-service secret for POST /notify/timer (header x-notify-secret). */
+    DISCORD_NOTIFY_SHARED_SECRET: z.string().optional().default(''),
+    /** player-team base URL for Discord button → confirm-kill (no WWW). */
+    PLAYER_TEAM_BASE_URL: z.string().optional().default('http://127.0.0.1:4400'),
+    PLAYER_TEAM_DEMO_VIEWER_HEADER: z.string().optional().default('x-demo-viewer-id'),
+    /** Technika (D-060) shared secret for /discord/v1/config/* (header x-technika-secret). */
+    DISCORD_TECHNIKA_SHARED_SECRET: z.string().optional().default(''),
+    /** Optional override for Technika versioned config persistence directory. */
+    DISCORD_GATEWAY_DATA_DIR: z.string().optional().default(''),
     DISCORD_AUTHORIZATION_SYNC_ENABLED: z.preprocess(
       (value) => parseBoolean(value, false),
       z.boolean(),
