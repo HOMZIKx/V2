@@ -32,7 +32,7 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     });
   }
 
-  const allowed = new Set([
+  const allowedExact = new Set([
     'capabilities',
     'config',
     'config/draft',
@@ -41,14 +41,21 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'config/apply',
     'config/rollback',
     'config/test-dm',
+    'guilds',
   ]);
+  const allowedPrefix = (p: string) => p === 'guilds' || p.startsWith('guilds/');
 
-  if (!allowed.has(joined)) {
+  if (!allowedExact.has(joined) && !allowedPrefix(joined)) {
     return NextResponse.json({ ok: false, error: 'not_found', path: joined }, { status: 404 });
   }
 
   const method = request.method.toUpperCase();
-  const publicRead = method === 'GET' && (joined === 'config' || joined === 'capabilities');
+  const publicRead =
+    method === 'GET' &&
+    (joined === 'config' ||
+      joined === 'capabilities' ||
+      joined === 'guilds' ||
+      joined.startsWith('guilds/'));
 
   if (!publicRead) {
     const secret = technikaSecret();

@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Technik bot configurator (D-060) — only live useful settings.
- * Timery postaci (timersNotify / characterTimers) + Wojna królestw + Test DM.
+ * Technik bot configurator (D-060) — live only.
+ * 1) Discord guilds (TEST first when distinguishable, then MAIN)
+ * 2) characterTimers + kingdomWar + Test DM
  * Mutations via /api/technik/* (server holds DISCORD_TECHNIKA_SHARED_SECRET).
  */
 
@@ -10,22 +11,35 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   DEFAULT_CHARACTER_TIMERS,
+  DEFAULT_GUILD_MODULES,
+  DEFAULT_GUILD_RIGHTS,
   DEFAULT_KINGDOM_WAR,
+  GUILD_MODULE_KEYS,
+  GUILD_RIGHTS,
   type BotCapability,
   type CharacterTimersConfig,
   type ConfigSnapshot,
+  type GuildModules,
+  type GuildRight,
   type KingdomWarConfig,
+  type TechnikaGuildDto,
   computeNotifyAt,
   fetchActiveConfig,
   fetchCapabilities,
+  fetchGuilds,
   fetchTechnikaMeta,
+  TECHNIK_TEST_GUILD_ID,
+  guildDisplayLabel,
   pickCharacterTimers,
+  pickDefaultGuildId,
   postConfigApply,
   postConfigPreview,
   postConfigRollback,
   postConfigTestDm,
   postConfigValidate,
   putConfigDraft,
+  putGuild,
+  sortGuildsForTechnik,
 } from './technika-config-api';
 
 const STEPPER_STEPS = [
@@ -41,6 +55,37 @@ type StepId = (typeof STEPPER_STEPS)[number]['id'];
 
 const WAR_AT_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const MODULE_META: Record<
+  (typeof GUILD_MODULE_KEYS)[number],
+  { title: string; help: string }
+> = {
+  characterTimers: {
+    title: 'Timery postaci',
+    help: 'Żywy moduł — PW o timerach postaci (np. Księga).',
+  },
+  kingdomWar: {
+    title: 'Wojna królestw',
+    help: 'Żywy moduł — PW przed wojną.',
+  },
+  panels: {
+    title: 'Panele Discord',
+    help: 'Zapis w config działa już teraz; egzekwowanie runtime dopina New Bot.',
+  },
+  channels: {
+    title: 'Kanały / publikacja',
+    help: 'Zapis w config działa już teraz; egzekwowanie runtime dopina New Bot.',
+  },
+};
+
+const RIGHT_META: Record<GuildRight, string> = {
+  'technika.config': 'Technika: konfiguracja',
+  'technika.apply': 'Technika: włączanie (apply)',
+  'technika.rollback': 'Technika: cofanie',
+  'discord.notify': 'Discord: powiadomienia (PW)',
+  'discord.panels': 'Discord: panele',
+  'discord.commands': 'Discord: komendy',
+};
+
 function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
@@ -49,11 +94,48 @@ function looksLikeSecret(value: string): boolean {
   return /token|secret|password|api[_-]?key|Bearer\s|mongodb(\+srv)?:\/\//i.test(value);
 }
 
+function sourceLabel(source: TechnikaGuildDto['source']): string {
+  if (source === 'both') return 'w config + bot online';
+  if (source === 'configured') return 'tylko w config';
+  if (source === 'discovered') return 'bot widzi (jeszcze bez config)';
+  return '—';
+}
+
+type GuildEditState = {
+  enabled: boolean;
+  name: string;
+  modules: {
+    characterTimers: boolean;
+    kingdomWar: boolean;
+    panels: boolean;
+    channels: boolean;
+  };
+  rights: GuildRight[];
+};
+
+function toEditState(g: TechnikaGuildDto): GuildEditState {
+  const m = { ...DEFAULT_GUILD_MODULES, ...g.modules };
+  const rights = (g.rights ?? []).filter((r): r is GuildRight =>
+    (GUILD_RIGHTS as readonly string[]).includes(r),
+  );
+  return {
+    enabled: Boolean(g.enabled),
+    name: g.name ?? '',
+    modules: {
+      characterTimers: Boolean(m.characterTimers),
+      kingdomWar: Boolean(m.kingdomWar),
+      panels: Boolean(m.panels ?? true),
+      channels: Boolean(m.channels ?? false),
+    },
+    rights: rights.length > 0 ? rights : [...DEFAULT_GUILD_RIGHTS],
+  };
+}
+
 export function TechnikBotConfigPage() {
   const [step, setStep] = useState<StepId>('Draft');
   const [charTimers, setCharTimers] = useState<CharacterTimersConfig>(DEFAULT_CHARACTER_TIMERS);
   const [timersApiKey, setTimersApiKey] = useState<'characterTimers' | 'timersNotify'>(
-    'timersNotify',
+    'characterTimers',
   );
   const [warDraft, setWarDraft] = useState<KingdomWarConfig>(DEFAULT_KINGDOM_WAR);
   const [panelTestEnabled, setPanelTestEnabled] = useState(true);
@@ -70,6 +152,14 @@ export function TechnikBotConfigPage() {
   const [lastAction, setLastAction] = useState<string | null>(null);
   const [testDmMsg, setTestDmMsg] = useState<string | null>(null);
 
+  const [guilds, setGuilds] = useState<TechnikaGuildDto[]>([]);
+  const [guildsRevision, setGuildsRevision] = useState<number | null>(null);
+  const [guildsBotReady, setGuildsBotReady] = useState<boolean | null>(null);
+  const [guildsError, setGuildsError] = useState<string | null>(null);
+  const [selectedGuildId, setSelectedGuildId] = useState<string | null>(null);
+  const [guildEdit, setGuildEdit] = useState<GuildEditState | null>(null);
+  const [guildSaveMsg, setGuildSaveMsg] = useState<string | null>(null);
+
   const warNotifyAt = useMemo(
     () => computeNotifyAt(warDraft.warAt, warDraft.notifyMinutesBefore),
     [warDraft.warAt, warDraft.notifyMinutesBefore],
@@ -84,6 +174,47 @@ export function TechnikBotConfigPage() {
     () => capabilities.some((c) => c.id === 'panel-test-enabled'),
     [capabilities],
   );
+
+  const orderedGuilds = useMemo(() => sortGuildsForTechnik(guilds), [guilds]);
+
+  const selectedGuild = useMemo(
+    () => orderedGuilds.find((g) => g.id === selectedGuildId) ?? null,
+    [orderedGuilds, selectedGuildId],
+  );
+
+  const loadGuilds = useCallback(async (preferId?: string | null) => {
+    setGuildsError(null);
+    const res = await fetchGuilds();
+    if (!res.ok) {
+      setGuilds([]);
+      setGuildsRevision(null);
+      setGuildsBotReady(null);
+      setSelectedGuildId(null);
+      setGuildEdit(null);
+      const unreachable =
+        res.error === 'gateway_unreachable' || res.error === 'network_error';
+      setGuildsError(
+        unreachable
+          ? `Brak połączenia z bramką Discord (${res.error})${
+              res.detail ? ` — ${res.detail}` : ''
+            }. Uruchom discord-gateway lokalnie albo sprawdź DISCORD_GATEWAY_BASE_URL.`
+          : `Nie udało się pobrać listy Discordów: ${res.error}${
+              res.detail ? ` — ${res.detail}` : ''
+            }`,
+      );
+      return;
+    }
+    const sorted = sortGuildsForTechnik(res.data.guilds);
+    setGuilds(sorted);
+    setGuildsRevision(res.data.revision);
+    setGuildsBotReady(
+      typeof res.data.botReady === 'boolean' ? res.data.botReady : null,
+    );
+    const keep = pickDefaultGuildId(sorted, preferId);
+    setSelectedGuildId(keep);
+    const pick = sorted.find((g) => g.id === keep);
+    setGuildEdit(pick ? toEditState(pick) : null);
+  }, []);
 
   const load = useCallback(async () => {
     const [meta, active, caps] = await Promise.all([
@@ -100,6 +231,7 @@ export function TechnikBotConfigPage() {
     }
     if (active.ok) {
       setSnapshot(active.data);
+      setActionError(null);
       const cfg = active.data.config;
       const picked = pickCharacterTimers(cfg);
       setCharTimers(picked.values);
@@ -122,11 +254,81 @@ export function TechnikBotConfigPage() {
         }`,
       );
     }
-  }, []);
+    await loadGuilds(selectedGuildId);
+  }, [loadGuilds, selectedGuildId]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // initial load only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectGuild = (id: string) => {
+    setGuildSaveMsg(null);
+    setSelectedGuildId(id);
+    const g = orderedGuilds.find((x) => x.id === id);
+    setGuildEdit(g ? toEditState(g) : null);
+  };
+
+  const toggleRight = (right: GuildRight) => {
+    setGuildEdit((prev) => {
+      if (!prev) return prev;
+      const has = prev.rights.includes(right);
+      return {
+        ...prev,
+        rights: has ? prev.rights.filter((r) => r !== right) : [...prev.rights, right],
+      };
+    });
+  };
+
+  const saveGuildDraft = async () => {
+    if (!selectedGuildId || !guildEdit) return;
+    setGuildSaveMsg(null);
+    setActionError(null);
+    if (!mutationsEnabled) {
+      setGuildSaveMsg(
+        'Zapis zablokowany — na serwerze web brakuje DISCORD_TECHNIKA_SHARED_SECRET (nie NEXT_PUBLIC_).',
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      const modules: GuildModules = {
+        characterTimers: guildEdit.modules.characterTimers,
+        kingdomWar: guildEdit.modules.kingdomWar,
+        panels: guildEdit.modules.panels,
+        channels: guildEdit.modules.channels,
+      };
+      const res = await putGuild(selectedGuildId, {
+        enabled: guildEdit.enabled,
+        ...(guildEdit.name.trim() ? { name: guildEdit.name.trim() } : {}),
+        modules,
+        rights: guildEdit.rights,
+      });
+      if (!res.ok) {
+        const issues = (res.issues ?? []).map((i) => `${i.path}: ${i.message}`).join('; ');
+        setGuildSaveMsg(
+          `Nie zapisano szkicu guildii: ${res.error}${
+            res.detail ? ` — ${res.detail}` : ''
+          }${issues ? ` (${issues})` : ''}`,
+        );
+        return;
+      }
+      setGuildSaveMsg(
+        `Zapisano szkic Discorda „${guildDisplayLabel(res.data.guild)}”. ` +
+          `To jeszcze NIE działa na produkcji — użyj kroków Sprawdź → Zobacz → Zapisz i włącz poniżej.`,
+      );
+      setLastAction(`szkic guildii ${res.data.guild.id} (rev draft)`);
+      setSnapshot((prev) =>
+        prev
+          ? { ...prev, hasDraft: true, revision: res.data.revision }
+          : prev,
+      );
+      await loadGuilds(selectedGuildId);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const buildDraftPartial = () => {
     const partial: Record<string, unknown> = {
@@ -361,11 +563,198 @@ export function TechnikBotConfigPage() {
     <>
       <h1>Konfiguracja bota</h1>
       <p className="technik-lead">
-        Ustaw PW Discord: timery postaci (np. Księga) i wojnę królestw. Szkic → sprawdź → zapisz.
-        Możesz wysłać testową PW, zanim włączysz na stałe.
+        Najpierw wybierz Discordy, które obsługujemy (TEST, potem MAIN), włącz funkcje i prawa.
+        Potem ustaw treści PW (timery postaci, wojna). Szkic guildii / ustawień → Sprawdź → Zapisz i
+        włącz.
       </p>
 
       <section className="technik-panel technik-panel--wide">
+        <div className="technik-panel-head">
+          <h2>Discordy (guildie)</h2>
+          <span
+            className={
+              guildsError
+                ? 'technik-pill technik-pill--pending'
+                : 'technik-pill technik-pill--live'
+            }
+          >
+            {guildsError
+              ? 'API niedostępne'
+              : guildsBotReady === false
+                ? 'lista z config (bot offline)'
+                : 'GUILDS LIVE'}
+          </span>
+        </div>
+        <p className="technik-help">
+          Tu konfigurujesz <strong>które serwery Discord</strong> obsługujemy oraz które funkcje i
+          prawa na nich działają. Najpierw ustaw <strong>testowy</strong> Discord (<code>1534228693017432124</code>) — logowanie + funkcje bota (timery postaci),
+          potem <strong>MAIN</strong>. Zapis guildii idzie do <strong>szkicu</strong> — żeby weszło
+          na produkcję, użyj kroków D-060 poniżej (Sprawdź → Zapisz i włącz).
+        </p>
+
+        {guildsError ? (
+          <div className="technik-error" role="alert" style={{ marginTop: '0.75rem' }}>
+            <p>
+              <strong>Nie pokażemy atrapy listy.</strong> {guildsError}
+            </p>
+            <div className="technik-row" style={{ marginTop: '0.5rem' }}>
+              <button type="button" onClick={() => void loadGuilds(selectedGuildId)} disabled={busy}>
+                Spróbuj ponownie
+              </button>
+            </div>
+          </div>
+        ) : orderedGuilds.length === 0 ? (
+          <p className="technik-muted" style={{ marginTop: '0.75rem' }}>
+            API zwróciło pustą listę. Gdy bot jest online albo masz wpisy w config /{' '}
+            <code>DISCORD_TEST_GUILD_ID</code>, pojawią się tutaj.
+          </p>
+        ) : (
+          <div className="technik-guild-layout" style={{ marginTop: '0.85rem' }}>
+            <ul className="technik-guild-list" aria-label="Lista Discordów">
+              {orderedGuilds.map((g, index) => {
+                const label = guildDisplayLabel(g);
+                const active = g.id === selectedGuildId;
+                return (
+                  <li key={g.id}>
+                    <button
+                      type="button"
+                      className={
+                        active
+                          ? 'technik-guild-list__btn technik-guild-list__btn--active'
+                          : 'technik-guild-list__btn'
+                      }
+                      onClick={() => selectGuild(g.id)}
+                    >
+                      <span className="technik-guild-list__order">{index + 1}</span>
+                      <span className="technik-guild-list__body">
+                        <strong>{label}</strong>
+                        <span className="technik-muted">
+                          {g.id === TECHNIK_TEST_GUILD_ID ? 'priorytet TEST · ' : ''}{g.enabled ? 'włączony' : 'wyłączony'} · {sourceLabel(g.source)} ·{' '}
+                          <code>{g.id}</code>
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {selectedGuild && guildEdit ? (
+              <div className="technik-guild-editor">
+                <h3>{guildDisplayLabel(selectedGuild)}</h3>
+                <p className="technik-meta">
+                  ID: <code>{selectedGuild.id}</code> · źródło: {sourceLabel(selectedGuild.source)}
+                  {guildsRevision !== null ? ` · rev ${guildsRevision}` : ''}
+                </p>
+
+                <label className="technik-check" style={{ marginTop: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={guildEdit.enabled}
+                    onChange={(e) =>
+                      setGuildEdit((prev) =>
+                        prev ? { ...prev, enabled: e.target.checked } : prev,
+                      )
+                    }
+                  />
+                  Włącz obsługę tego Discorda (bot + Technika)
+                </label>
+
+                <label className="technik-field" style={{ marginTop: '0.65rem' }}>
+                  <span>Nazwa / etykieta (opcjonalnie)</span>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={guildEdit.name}
+                    placeholder="np. DESTILED TEST"
+                    onChange={(e) =>
+                      setGuildEdit((prev) =>
+                        prev ? { ...prev, name: e.target.value } : prev,
+                      )
+                    }
+                  />
+                  <span className="technik-help">
+                    Podpowiedź: w nazwie użyj „TEST” albo „MAIN”, żeby lista sortowała się czytelnie
+                    (TEST pierwszy).
+                  </span>
+                </label>
+
+                <fieldset className="technik-fieldset" style={{ marginTop: '0.85rem' }}>
+                  <legend>Funkcje na tym Discordzie</legend>
+                  {GUILD_MODULE_KEYS.map((key) => (
+                    <label key={key} className="technik-check">
+                      <input
+                        type="checkbox"
+                        checked={guildEdit.modules[key]}
+                        onChange={(e) =>
+                          setGuildEdit((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  modules: { ...prev.modules, [key]: e.target.checked },
+                                }
+                              : prev,
+                          )
+                        }
+                      />
+                      <span>
+                        <strong>{MODULE_META[key].title}</strong>
+                        <span className="technik-help"> — {MODULE_META[key].help}</span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <fieldset className="technik-fieldset" style={{ marginTop: '0.85rem' }}>
+                  <legend>Prawa (z OpenAPI)</legend>
+                  {GUILD_RIGHTS.map((right) => (
+                    <label key={right} className="technik-check">
+                      <input
+                        type="checkbox"
+                        checked={guildEdit.rights.includes(right)}
+                        onChange={() => toggleRight(right)}
+                      />
+                      <span>
+                        {RIGHT_META[right]} <code>{right}</code>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <div className="technik-row" style={{ marginTop: '0.85rem' }}>
+                  <button
+                    type="button"
+                    disabled={busy || !mutationsEnabled}
+                    onClick={() => void saveGuildDraft()}
+                  >
+                    {busy ? '…' : 'Zapisz guildię do szkicu'}
+                  </button>
+                  <button
+                    type="button"
+                    className="technik-btn-ghost"
+                    disabled={busy}
+                    onClick={() => void loadGuilds(selectedGuildId)}
+                  >
+                    Odśwież listę
+                  </button>
+                </div>
+                {guildSaveMsg ? (
+                  <p className="technik-muted" role="status" style={{ marginTop: '0.5rem' }}>
+                    {guildSaveMsg}
+                  </p>
+                ) : (
+                  <p className="technik-help" style={{ marginTop: '0.5rem' }}>
+                    Przycisk zapisuje tylko szkic <code>config.guilds[id]</code>. Produkcja = „Zapisz
+                    i włącz” w stepperze D-060.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
         <div className="technik-panel-head">
           <h2>Jak zapisać (D-060)</h2>
           <span
@@ -378,6 +767,10 @@ export function TechnikBotConfigPage() {
             {mutationsEnabled ? 'Możesz zapisywać' : 'Zapis zablokowany (brak klucza)'}
           </span>
         </div>
+        <p className="technik-help">
+          Dotyczy szkicu guildii <strong>oraz</strong> treści PW poniżej. Po „Zapisz guildię do
+          szkicu” nadal kliknij Sprawdź → Zapisz i włącz.
+        </p>
         <ol className="technik-stepper" aria-label="Kroki zapisu ustawień">
           {STEPPER_STEPS.map((item, index) => {
             const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
@@ -518,7 +911,8 @@ export function TechnikBotConfigPage() {
           </span>
           <h2>Timery postaci (PW)</h2>
           <p className="technik-help">
-            Przypomnienia o timerach postaci (np. Księga). To nie są metiny na mapie.
+            Przypomnienia o timerach postaci (np. Księga). To nie są metiny na mapie. Działa globalnie;
+            per-Discord włączasz powyżej w module „Timery postaci”.
           </p>
 
           <div className="technik-field-block">
@@ -592,7 +986,7 @@ export function TechnikBotConfigPage() {
             <button
               type="button"
               disabled={busy || !mutationsEnabled}
-              onClick={() => void runTestDm('timersNotify')}
+              onClick={() => void runTestDm('characterTimers')}
             >
               Wyślij testową PW (timery)
             </button>
@@ -603,7 +997,8 @@ export function TechnikBotConfigPage() {
           <span className="technik-pill technik-pill--live">kingdomWar</span>
           <h2>Wojna królestw (PW)</h2>
           <p className="technik-help">
-            Domyślnie wojna 18:00, ping 30 min wcześniej → 17:30 (Warszawa).
+            Domyślnie wojna 18:00, ping 30 min wcześniej → 17:30 (Warszawa). Per-Discord włączasz
+            powyżej w module „Wojna królestw”.
           </p>
 
           <div className="technik-field-block">
@@ -687,15 +1082,10 @@ export function TechnikBotConfigPage() {
             Włącz komendę /panel-test (lab)
           </label>
           <p className="technik-help">
-            Jedyny live przełącznik paneli w OpenAPI Technika. Hub / motyw / katalogi — gdy New Bot
-            dopnie API.
+            Globalny przełącznik paneli z OpenAPI. Per-Discord flaga „Panele” jest w sekcji guildii.
           </p>
         </section>
-      ) : (
-        <p className="technik-muted" style={{ marginTop: '1rem' }}>
-          Panele Discord: brak live capability w API — New Bot dopina później.
-        </p>
-      )}
+      ) : null}
 
       {isolationDisplay !== undefined ? (
         <p className="technik-muted" style={{ marginTop: '0.75rem' }}>
@@ -705,9 +1095,8 @@ export function TechnikBotConfigPage() {
       ) : null}
 
       <p className="technik-help" style={{ marginTop: '1rem' }}>
-        Reakcje emoji jako nawigacja/RSVP — wyłączone produktowo. Tokeny, sekrety i allowlista —
-        poza Technika (Owner). Kanały, pingi, katalogi Centrum: New Bot dopina API — bez atrap w tym
-        ekranie.
+        Tokeny, sekrety i allowlista — poza Techniką (Owner). Bez atrap: jeśli API guildii nie
+        odpowie, lista się nie pojawia.
       </p>
     </>
   );

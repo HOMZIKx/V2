@@ -3,8 +3,8 @@
  * Calls same-origin /api/technik/* — server holds DISCORD_TECHNIKA_SHARED_SECRET.
  * Never expose the secret via NEXT_PUBLIC_*.
  *
- * OpenAPI keys today: timersNotify, kingdomWar, panel-test-enabled, …
- * Upcoming: characterTimers (Timery postaci / Księga) — preferred when present.
+ * Live: guilds, characterTimers, kingdomWar, test-dm, capabilities, D-060 draft flow.
+ * Prefer characterTimers over timersNotify alias.
  */
 
 export type TimersNotifyConfig = {
@@ -383,6 +383,196 @@ export async function postConfigRollback(): Promise<
   }
 }
 
+
+
+/** OpenAPI GuildModules — live keys + optional panels/channels (persist even if runtime later). */
+export type GuildModules = {
+  readonly characterTimers: boolean;
+  readonly kingdomWar: boolean;
+  readonly panels?: boolean;
+  readonly channels?: boolean;
+};
+
+/** OpenAPI GuildConfig.rights enum — do not invent beyond these. */
+export const GUILD_RIGHTS = [
+  'technika.config',
+  'technika.apply',
+  'technika.rollback',
+  'discord.notify',
+  'discord.panels',
+  'discord.commands',
+] as const;
+
+export type GuildRight = (typeof GUILD_RIGHTS)[number];
+
+export const GUILD_MODULE_KEYS = [
+  'characterTimers',
+  'kingdomWar',
+  'panels',
+  'channels',
+] as const;
+
+export type GuildModuleKey = (typeof GUILD_MODULE_KEYS)[number];
+
+export type TechnikaGuildDto = {
+  readonly id: string;
+  readonly name?: string;
+  readonly enabled: boolean;
+  readonly modules: GuildModules;
+  readonly rights: readonly string[];
+  readonly source?: 'configured' | 'discovered' | 'both';
+  readonly notes?: string;
+};
+
+export type GuildsListResponse = {
+  readonly guilds: readonly TechnikaGuildDto[];
+  readonly revision: number;
+  readonly botReady?: boolean;
+  readonly hasDraft?: boolean;
+};
+
+export type PutGuildBody = {
+  readonly enabled: boolean;
+  readonly name?: string;
+  readonly modules: GuildModules;
+  readonly rights: readonly string[];
+  readonly notes?: string;
+};
+
+export type PutGuildResponse = {
+  readonly ok: true;
+  readonly guild: TechnikaGuildDto;
+  readonly revision: number;
+  readonly status: 'draft';
+  readonly hasDraft: true;
+  readonly updatedAt: string;
+};
+
+export const DEFAULT_GUILD_MODULES: GuildModules = {
+  characterTimers: true,
+  kingdomWar: false,
+  panels: true,
+  channels: false,
+};
+
+export const DEFAULT_GUILD_RIGHTS: readonly GuildRight[] = [
+  'technika.config',
+  'discord.notify',
+  'discord.panels',
+];
+
+/** Known TEST Discord (Mateusz) — always primary/first when present in GET /guilds. */
+export const TECHNIK_TEST_GUILD_ID = '1534228693017432124';
+
+/** Prefer known TEST guild ID first; then name/notes hints; MAIN later; never invent IDs. */
+export function sortGuildsForTechnik(
+  guilds: readonly TechnikaGuildDto[],
+): TechnikaGuildDto[] {
+  const rank = (g: TechnikaGuildDto): number => {
+    if (g.id === TECHNIK_TEST_GUILD_ID) return 0;
+    const blob = ${g.name ?? ''}  .toLowerCase();
+    if (/\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)) return 1;
+    if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) return 3;
+    return 2;
+  };
+  return [...guilds].sort((a, b) => {
+    const d = rank(a) - rank(b);
+    if (d !== 0) return d;
+    const an = (a.name ?? a.id).localeCompare(b.name ?? b.id, 'pl');
+    if (an !== 0) return an;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+export function guildDisplayLabel(g: TechnikaGuildDto): string {
+  const name = (g.name ?? '').trim();
+  const blob = ${name} .toLowerCase();
+  let tag = '';
+  if (
+    g.id === TECHNIK_TEST_GUILD_ID ||
+    /\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)
+  ) {
+    tag = 'testowy';
+  } else if (/\bmain\b|prod\b|produk|główny|glowny|primary/.test(blob)) {
+    tag = 'MAIN';
+  }
+  if (tag && name) return ${tag} · ;
+  if (tag) return ${tag} · ;
+  if (name) return name;
+  return g.id;
+}
+
+/** Default selection: known TEST guild when present, else first after sort. */
+export function pickDefaultGuildId(
+  guilds: readonly TechnikaGuildDto[],
+  preferId?: string | null,
+): string | null {
+  const sorted = sortGuildsForTechnik(guilds);
+  if (preferId && sorted.some((g) => g.id === preferId)) return preferId;
+  if (sorted.some((g) => g.id === TECHNIK_TEST_GUILD_ID)) return TECHNIK_TEST_GUILD_ID;
+  return sorted[0]?.id ?? null;
+}
+
+
+export async function fetchGuilds(): Promise<TechnikaApiResult<GuildsListResponse>> {
+  try {
+    const res = await fetch('/api/technik/guilds', { cache: 'no-store' });
+    const { parsed } = await parseJson(res);
+    if (!res.ok) {
+      return failFrom(res, parsed, `http_${res.status}`);
+    }
+    const list = Array.isArray(parsed.guilds)
+      ? (parsed.guilds as TechnikaGuildDto[])
+      : [];
+    return {
+      ok: true,
+      status: res.status,
+      data: {
+        guilds: list,
+        revision: typeof parsed.revision === 'number' ? parsed.revision : 0,
+        botReady: typeof parsed.botReady === 'boolean' ? parsed.botReady : undefined,
+        hasDraft: typeof parsed.hasDraft === 'boolean' ? parsed.hasDraft : undefined,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
+  }
+}
+
+export async function putGuild(
+  guildId: string,
+  body: PutGuildBody,
+): Promise<TechnikaApiResult<PutGuildResponse>> {
+  try {
+    const res = await fetch(`/api/technik/guilds/${encodeURIComponent(guildId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+    const { parsed } = await parseJson(res);
+    if (!res.ok) {
+      return failFrom(res, parsed, `http_${res.status}`);
+    }
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as PutGuildResponse,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
+  }
+}
 
 export type TestDmModule = 'timersNotify' | 'characterTimers' | 'kingdomWar';
 
