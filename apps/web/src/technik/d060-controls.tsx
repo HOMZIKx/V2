@@ -29,6 +29,8 @@ type Props = {
   readonly onRollback: () => void;
   readonly onRefresh: () => void;
   readonly help?: string;
+  /** When false, hide numbered stepper (avoids duplicate labels above action buttons). */
+  readonly showStepper?: boolean;
 };
 
 export function D060Controls({
@@ -47,6 +49,7 @@ export function D060Controls({
   onRollback,
   onRefresh,
   help,
+  showStepper = true,
 }: Props) {
   const stepIndex = D060_STEPS.findIndex((s) => s.id === step);
   const canApply = canWrite && !busy;
@@ -73,6 +76,7 @@ export function D060Controls({
         {help ??
           'Zmiany najpierw idą do szkicu. Ty klikasz „Zapisz i włącz” — agent nigdy nie robi Apply za Ciebie.'}
       </p>
+      {showStepper ? (
       <ol className="technik-stepper" aria-label="Kroki zapisu ustawień">
         {D060_STEPS.map((item, index) => {
           const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
@@ -97,6 +101,7 @@ export function D060Controls({
           );
         })}
       </ol>
+      ) : null}
       <div className="technik-row" style={{ marginTop: '0.85rem' }}>
         <button type="button" onClick={() => onStep('Draft')} disabled={busy}>
           Szkic
