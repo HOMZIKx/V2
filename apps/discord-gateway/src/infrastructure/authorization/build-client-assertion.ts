@@ -19,7 +19,8 @@ export async function buildDiscordToAuthzAssertion(
   config: DiscordToAuthzAssertionConfig,
 ): Promise<string> {
   const ttl = Math.min(Math.max(1, config.ttlSeconds), 60);
-  const key = await importPKCS8(config.privateKeyPem, 'EdDSA');
+  const normalizedPrivateKeyPem = config.privateKeyPem.replace(/\\n/g, '\n');
+  const key = await importPKCS8(normalizedPrivateKeyPem, 'EdDSA');
   return new SignJWT({ jti: randomUUID() })
     .setProtectedHeader({ alg: 'EdDSA', kid: config.activeKid })
     .setIssuer(config.clientId)
