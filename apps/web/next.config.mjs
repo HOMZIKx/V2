@@ -11,6 +11,12 @@ const identityProxyTarget =
 const activityProxyTarget =
   process.env.ACTIVITY_PROXY_TARGET?.trim() || 'http://127.0.0.1:4400';
 
+/** Discord gateway (New Bot) — health + public reads via same-origin proxy. */
+const discordGatewayProxyTarget =
+  process.env.DISCORD_GATEWAY_PROXY_TARGET?.trim() ||
+  process.env.DISCORD_GATEWAY_BASE_URL?.trim() ||
+  'http://127.0.0.1:4100';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.join(appDirectory, '../..'),
@@ -27,6 +33,10 @@ const nextConfig = {
       {
         source: '/activity/:path*',
         destination: `${activityProxyTarget}/activity/:path*`,
+      },
+      {
+        source: '/discord-gateway/:path*',
+        destination: `${discordGatewayProxyTarget}/:path*`,
       },
     ];
   },

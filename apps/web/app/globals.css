@@ -11800,3 +11800,405 @@ button:disabled {
 .eq-inventory-slot.glow-plus-9 em {
   text-shadow: 0 0 6px rgba(255, 210, 120, 0.55);
 }
+/* ===== Technik panel (embedded in DESTILED web) ===== */
+.technik-page {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 20px 0 56px;
+}
+.technik-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
+  min-height: 60vh;
+}
+.technik-sidebar {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: 1rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  height: fit-content;
+  position: sticky;
+  top: 12px;
+}
+.technik-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0 0.4rem;
+}
+.technik-brand strong {
+  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  color: var(--silver);
+}
+.technik-brand span {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.technik-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.technik-subnav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+}
+.technik-subnav a:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.technik-subnav a[aria-current='page'],
+.technik-subnav a.is-active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--red) 16%, transparent),
+    color-mix(in srgb, var(--blue) 10%, transparent)
+  );
+}
+.technik-main {
+  min-width: 0;
+}
+.technik-main h1 {
+  margin: 0 0 0.45rem;
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+  font-weight: 500;
+}
+.technik-section-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.technik-lead {
+  margin: 0 0 1.1rem;
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 62ch;
+  font-size: 0.92rem;
+}
+.technik-meta {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.technik-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.technik-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.technik-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+.technik-panel-grid--status {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.technik-panel {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 1rem 1.1rem;
+}
+.technik-panel--wide {
+  grid-column: 1 / -1;
+}
+.technik-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.technik-panel-head h2 {
+  margin: 0;
+}
+.technik-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.technik-panel h2,
+.technik-panel h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.98rem;
+}
+.technik-panel p,
+.technik-panel li {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.technik-pill {
+  display: inline-block;
+  margin-bottom: 0.55rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--silver);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+}
+.technik-pill--live {
+  color: #bbf7d0;
+  border-color: color-mix(in srgb, var(--green) 45%, var(--line));
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+}
+.technik-pill--pending {
+  color: #fde68a;
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+  background: color-mix(in srgb, var(--amber) 12%, transparent);
+}
+.technik-kv {
+  display: grid;
+  grid-template-columns: minmax(8rem, 12rem) 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+}
+.technik-kv dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.technik-kv dd {
+  margin: 0;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--text);
+  word-break: break-word;
+}
+.technik-error {
+  border-color: color-mix(in srgb, #f87171 55%, var(--line));
+  background: color-mix(in srgb, #f87171 10%, var(--panel-strong));
+}
+.technik-error strong {
+  color: #f87171;
+}
+.technik-code {
+  display: block;
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.4rem;
+  background: #05070b;
+  border: 1px solid var(--line);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--silver);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.technik-code--tall {
+  max-height: 22rem;
+  overflow: auto;
+}
+.technik-muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.technik-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.technik-toggle input {
+  accent-color: var(--blue);
+}
+.technik-row button,
+.technik-btn-ghost {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--blue) 16%, var(--panel-strong));
+  color: var(--text);
+  border-radius: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.technik-btn-ghost {
+  background: color-mix(in srgb, var(--panel-strong) 80%, black);
+  padding: 0.28rem 0.55rem;
+  font-size: 0.75rem;
+}
+.technik-row button:hover:not(:disabled),
+.technik-btn-ghost:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--blue) 50%, var(--line));
+}
+.technik-row button:disabled,
+.technik-btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.technik-main code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.85em;
+}
+.technik-stepper {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.technik-stepper__btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  background: #0c1017;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.technik-stepper__item--current .technik-stepper__btn {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--blue) 55%, var(--line));
+  background: color-mix(in srgb, var(--blue) 16%, transparent);
+}
+.technik-stepper__item--done .technik-stepper__btn {
+  color: #bbf7d0;
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+}
+.technik-stepper__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.technik-stepper__idx {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--silver) 16%, transparent);
+  font-size: 0.7rem;
+}
+.technik-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.technik-field textarea,
+.technik-field input[type='number'],
+.technik-field input[type='time'],
+.technik-field input[type='text'] {
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: #05070b;
+  color: var(--text);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.technik-field textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+.technik-field input[type='number'],
+.technik-field input[type='time'] {
+  max-width: 12rem;
+}
+.technik-field textarea:focus,
+.technik-field input:focus {
+  outline: 1px solid color-mix(in srgb, var(--blue) 55%, transparent);
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
+}
+.technik-message-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+}
+.technik-message-list li {
+  margin-bottom: 0.35rem;
+}
+.technik-empty {
+  border: 1px dashed var(--line);
+  border-radius: 0.55rem;
+  padding: 0.85rem;
+  background: color-mix(in srgb, var(--panel-strong) 70%, black);
+}
+.technik-panel--live-config {
+  border-color: color-mix(in srgb, var(--green) 28%, var(--line));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--green) 6%, var(--panel-strong)),
+    var(--panel-strong)
+  );
+}
+.technik-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0.35rem;
+  color: var(--text);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.technik-check input {
+  accent-color: var(--green);
+}
+.technik-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--technik-status-badge-color, #64748b) 55%, var(--line));
+  background: color-mix(in srgb, var(--technik-status-badge-color, #64748b) 18%, transparent);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.technik-status-badge::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--technik-status-badge-color, #64748b);
+}
+@media (max-width: 800px) {
+  .technik-layout {
+    grid-template-columns: 1fr;
+  }
+  .technik-sidebar {
+    position: static;
+  }
+  .technik-subnav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

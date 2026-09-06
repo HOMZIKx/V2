@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { usePlayerStore } from '../src/player-store-react';
 
 export type AppSection =
-  'dashboard' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'later';
+  'dashboard' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
 
 export type IconName =
   | 'activity'
@@ -143,6 +143,7 @@ export function AppShell({
     },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
+    { id: 'technik' as const, label: 'Technik', icon: 'settings' as const, href: '/technik' },
   ];
 
   return (
