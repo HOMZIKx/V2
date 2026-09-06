@@ -31,6 +31,7 @@ jobs:
         run: |
           node tools/scripts/fix-preview-type-errors.mjs
           node tools/scripts/fix-preview-lint-errors.mjs
+          node tools/scripts/fix-preview-lint-followup.mjs
 
       - name: Commit deterministic preview fixes
         if: github.ref == 'refs/heads/preview/destiled-web'
