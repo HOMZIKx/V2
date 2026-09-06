@@ -3,6 +3,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 function replaceOnce(path, from, to) {
   const before = readFileSync(path, 'utf8');
   if (!before.includes(from)) {
+    if (before.includes(to)) {
+      console.log(`already fixed ${path}`);
+      return;
+    }
     throw new Error(`Expected pattern not found in ${path}: ${from.slice(0, 120)}`);
   }
   const after = before.replace(from, to);
