@@ -1333,6 +1333,7 @@ export function updateViewerProfile(
   const { avatarNote: _drop, ...restViewer } = state.viewer;
   void _drop;
   void _drop;
+  void _drop;
   return {
     ...state,
     viewer: {
