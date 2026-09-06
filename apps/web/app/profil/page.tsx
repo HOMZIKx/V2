@@ -81,7 +81,7 @@ export default function ProfilPage() {
     const wasFirstSetup = isFirstSetup;
     updateViewerProfile({
       displayName: trimmed,
-      avatarNote: avatarNote.trim() || undefined,
+      avatarNote: avatarNote.trim(),
       profileSetupDone: true,
     });
     setError(null);
