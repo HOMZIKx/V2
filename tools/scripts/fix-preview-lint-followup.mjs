@@ -23,6 +23,17 @@ if (removed > 0) {
   console.log('stringField helper already singular');
 }
 
+const playerStorePath = 'apps/web/src/player-store.ts';
+let playerStoreSource = readFileSync(playerStorePath, 'utf8');
+const repeatedDrop = /(?:  void _drop;\n){2,}/g;
+if (repeatedDrop.test(playerStoreSource)) {
+  playerStoreSource = playerStoreSource.replace(repeatedDrop, '  void _drop;\n');
+  writeFileSync(playerStorePath, playerStoreSource, 'utf8');
+  console.log('collapsed duplicate _drop statements');
+} else {
+  console.log('_drop statement already singular');
+}
+
 const recurringPath = 'apps/web/src/technik/cykliczne-page.tsx';
 let recurringSource = readFileSync(recurringPath, 'utf8');
 const staleCloseAtImport = '  type CloseAt,\n';
