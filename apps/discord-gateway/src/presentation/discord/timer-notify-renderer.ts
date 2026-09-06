@@ -27,20 +27,57 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
 
   if (isCharacterProgressTimerPayload(payload) && payload.timerId) {
     try {
-      const buttonPayload = { timerId: payload.timerId };
-      const gotowe = new ButtonBuilder()
-        .setCustomId(createCharacterTimerButtonCustomId('gotowe', buttonPayload, signingSecret))
-        .setLabel('Gotowe')
-        .setStyle(ButtonStyle.Success);
+      const live = (payload.liveTimers ?? []).slice(0, 10);
+      const focusId = payload.timerId;
+      const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
-      const later = new ButtonBuilder()
-        .setCustomId(createCharacterTimerButtonCustomId('przypomnij', buttonPayload, signingSecret))
-        .setLabel('Przypomnij później')
-        .setStyle(ButtonStyle.Secondary);
+      if (live.length > 0) {
+        // Numbered Gotowe buttons 1..N — each updates that timer on the EQ card.
+        for (let i = 0; i < live.length; i += 5) {
+          const chunk = live.slice(i, i + 5);
+          const row = new ActionRowBuilder<ButtonBuilder>();
+          chunk.forEach((timer, offset) => {
+            const n = i + offset + 1;
+            const ready = timer.status === 'ready' || timer.status === 'done';
+            row.addComponents(
+              new ButtonBuilder()
+                .setCustomId(
+                  createCharacterTimerButtonCustomId(
+                    'gotowe',
+                    { timerId: timer.id },
+                    signingSecret,
+                  ),
+                )
+                .setLabel(String(n))
+                .setStyle(ready ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setDisabled(!ready),
+            );
+          });
+          rows.push(row);
+        }
+      } else {
+        rows.push(
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(
+                createCharacterTimerButtonCustomId('gotowe', { timerId: focusId }, signingSecret),
+              )
+              .setLabel('Gotowe')
+              .setStyle(ButtonStyle.Success),
+          ),
+        );
+      }
 
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(gotowe, later);
+      const aux = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(
+            createCharacterTimerButtonCustomId('przypomnij', { timerId: focusId }, signingSecret),
+          )
+          .setLabel('Przypomnij później')
+          .setStyle(ButtonStyle.Secondary),
+      );
       try {
-        row.addComponents(
+        aux.addComponents(
           new ButtonBuilder()
             .setStyle(ButtonStyle.Link)
             .setLabel('Otwórz kartę')
@@ -49,7 +86,8 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
       } catch {
         // invalid deep link
       }
-      return { content, components: [row] };
+      rows.push(aux);
+      return { content, components: rows.slice(0, 5) };
     } catch {
       return { content };
     }

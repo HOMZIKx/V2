@@ -6,6 +6,9 @@ import { guildCommandDefinitions } from '../../application/commands/command-defi
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
 import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import { getKingdomWarClaims } from '../../application/notify/kingdom-war-claims.js';
+import { startCharacterTimerReminderWorker } from '../../application/notify/character-timer-reminders.js';
+import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
+import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import { listKingdomWarRecipients } from '../../application/notify/kingdom-war-recipients.js';
 import { KingdomWarScheduler } from '../../application/notify/kingdom-war-scheduler.js';
 import { InteractionRouter } from './interaction-router.js';
@@ -112,6 +115,38 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       },
     });
     this.warScheduler.start();
+
+    // Reload durable "Przypomnij później" queue after restart.
+    startCharacterTimerReminderWorker({
+      logger: createLogger('character-timer-reminders'),
+      send: async (job) => {
+        const body = {
+          discordUserId: job.discordUserId,
+          title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
+          body: `Przypomnienie: timer postaci kończy się / czeka na Ciebie. Oznacz numer na liście LIVE albo Gotowe na karcie.`,
+          deepLinkUrl: 'https://destiled.app/timers',
+          timerId: job.timerId,
+          timerLabel: job.label,
+          ...(job.characterId ? { characterId: job.characterId } : { workspaceId: 'team' }),
+          ...(job.characterName ? { characterName: job.characterName } : {}),
+          kind: 'reminder' as const,
+          includeButtons: true,
+          idempotencyKey: `char-timer-later:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
+        };
+        const content = formatTimerNotifyContent(body);
+        const message = renderTimerNotifyMessage({
+          payload: body,
+          content,
+          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
+          includeButtons: true,
+        });
+        await gateway.sendTimerNotify({
+          discordUserId: job.discordUserId,
+          content: message.content ?? content,
+          ...(message.components ? { components: message.components } : {}),
+        });
+      },
+    });
   }
 
   public async onModuleDestroy(): Promise<void> {

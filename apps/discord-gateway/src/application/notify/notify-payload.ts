@@ -28,6 +28,19 @@ export const TimerNotifyPayloadSchema = z.object({
   /** reset = start/confirm; reminder = ~Nh before end; manual = Technika test / ad-hoc. */
   kind: z.enum(['manual', 'reset', 'reminder']).optional(),
   actorName: z.string().trim().min(1).max(80).optional(),
+  /** LIVE EQ card timers (numbered Discord buttons 1..N). */
+  liveTimers: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(128),
+        label: z.string().trim().min(1).max(120),
+        status: z.string().trim().min(1).max(32),
+        remainingLabel: z.string().trim().max(80).optional(),
+        detail: z.string().trim().max(200).optional(),
+      }),
+    )
+    .max(12)
+    .optional(),
 });
 
 export type TimerNotifyPayload = z.infer<typeof TimerNotifyPayloadSchema>;
@@ -58,6 +71,19 @@ export const TimerResetNotifyPayloadSchema = z.object({
   roomSummary: z.array(z.string().trim().min(1).max(120)).max(12).optional(),
   recipientDiscordUserIds: z.array(snowflakeSchema).max(40).optional(),
   idempotencyKey: z.string().trim().min(1).max(200).optional(),
+  /** LIVE EQ card timers (numbered Discord buttons 1..N). */
+  liveTimers: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(128),
+        label: z.string().trim().min(1).max(120),
+        status: z.string().trim().min(1).max(32),
+        remainingLabel: z.string().trim().max(80).optional(),
+        detail: z.string().trim().max(200).optional(),
+      }),
+    )
+    .max(12)
+    .optional(),
 });
 
 export type TimerResetNotifyPayload = z.infer<typeof TimerResetNotifyPayloadSchema>;
@@ -77,9 +103,21 @@ export function isCharacterProgressTimerPayload(
   return Boolean(payload.timerId && (payload.characterId || payload.workspaceId));
 }
 
+export function formatLiveTimerStatus(timer: {
+  readonly status: string;
+  readonly remainingLabel?: string;
+}): string {
+  if (timer.status === 'ready') return 'gotowe';
+  if (timer.status === 'running') return timer.remainingLabel?.trim() || 'w toku';
+  if (timer.status === 'done') return 'oznaczone';
+  return timer.remainingLabel?.trim() || timer.status;
+}
+
 export function formatTimerNotifyContent(payload: TimerNotifyPayload): string {
   const isCharacter = isCharacterProgressTimerPayload(payload);
-  const header = isCharacter ? '**DESTILED · Timer postaci**' : '**DESTILED · Timer**';
+  const header = isCharacter
+    ? `**DESTILED · Karta postaci${payload.characterName ? ` · ${payload.characterName}` : ''}**`
+    : '**DESTILED · Timer**';
   const lines = [header, payload.title, '', payload.body];
   if (payload.actorName) {
     lines.push('', `Kto: ${payload.actorName}`);
@@ -88,11 +126,24 @@ export function formatTimerNotifyContent(payload: TimerNotifyPayload): string {
     if (payload.characterName) {
       lines.push('', `Postać: ${payload.characterName}`);
     }
-    if (payload.timerLabel || payload.timerId) {
-      lines.push(`Timer: ${payload.timerLabel ?? payload.timerId}`);
-    }
-    if (payload.endsAt) {
-      lines.push(`Koniec: ${payload.endsAt}`);
+    const live = payload.liveTimers ?? [];
+    if (live.length > 0) {
+      const done = live.filter((t) => t.status === 'ready' || t.status === 'done').length;
+      lines.push('', `**LIVE karta EQ** (${done}/${live.length} gotowe/oznaczone):`);
+      live.forEach((timer, index) => {
+        const n = index + 1;
+        const status = formatLiveTimerStatus(timer);
+        const detail = timer.detail?.trim() ? ` — ${timer.detail.trim().slice(0, 80)}` : '';
+        lines.push(`**${n}.** ${timer.label} — ${status}${detail}`);
+      });
+      lines.push('', '_Kliknij numer poniżej = Gotowe na karcie postaci._');
+    } else {
+      if (payload.timerLabel || payload.timerId) {
+        lines.push(`Timer: ${payload.timerLabel ?? payload.timerId}`);
+      }
+      if (payload.endsAt) {
+        lines.push(`Koniec: ${payload.endsAt}`);
+      }
     }
   } else if (payload.mapKey) {
     const ch = payload.channel !== undefined ? ` · CH${payload.channel}` : '';
@@ -101,8 +152,8 @@ export function formatTimerNotifyContent(payload: TimerNotifyPayload): string {
       lines.push(`Timer: ${payload.timerKey}`);
     }
   }
-  if (payload.roomSummary && payload.roomSummary.length > 0) {
-    lines.push('', isCharacter ? 'Inne timery postaci:' : 'Inne timery w pokoju:');
+  if ((!payload.liveTimers || payload.liveTimers.length === 0) && payload.roomSummary && payload.roomSummary.length > 0) {
+    lines.push('', isCharacter ? 'Pozostałe na tej karcie:' : 'Inne timery w pokoju:');
     for (const line of payload.roomSummary.slice(0, 8)) {
       lines.push(`• ${line}`);
     }

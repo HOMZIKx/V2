@@ -21,10 +21,19 @@ import { claimInteractionId } from '../../application/interactions/idempotency.j
 import {
   claimKingdomWarCharacter,
 } from '../../application/notify/kingdom-war-claims.js';
+import {
+  cancelCharacterTimerReminder,
+  scheduleCharacterTimerReminder,
+} from '../../application/notify/character-timer-reminders.js';
+import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
+import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import { confirmTimerKillFromBot } from '../../infrastructure/player-team/confirm-timer-kill.js';
-import { confirmCharacterProgressTimerFromBot } from '../../infrastructure/player-team/confirm-character-timer.js';
+import {
+  confirmCharacterProgressTimerFromBot,
+  snoozeCharacterProgressTimerFromBot,
+} from '../../infrastructure/player-team/confirm-character-timer.js';
 import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
 import { safeErrorMessage } from '../../infrastructure/security/secret-redaction.js';
 import {
@@ -528,15 +537,85 @@ export class InteractionRouter {
     }
 
     if (operation === 'przypomnij') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const minutes = characterCfg.reminderMinutesBefore;
-      await interaction.reply({
-        content: `Przypomnę ponownie za ok. ${minutes} min — bez otwierania WWW.`,
-        flags: MessageFlags.Ephemeral,
+      const actorName = interaction.user.globalName ?? interaction.user.username;
+      const snooze = await snoozeCharacterProgressTimerFromBot({
+        baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+        demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+        viewerId: canonicalOwnerViewerId(interaction.user.id),
+        timerId: payload.timerId,
+        actorName,
+        reminderMinutesBefore: minutes,
+      });
+      if (!snooze.ok) {
+        await interaction.editReply({
+          content: `Nie udało się zapisać „Przypomnij później” (${snooze.error}). Sprawdź player-team albo kartę postaci w DESTILED.`,
+        });
+        return;
+      }
+      const who = snooze.characterName ? ` · ${snooze.characterName}` : '';
+      const minutes = snooze.reminderMinutesBefore;
+      const delayMs = minutes * 60_000;
+      const scheduled = scheduleCharacterTimerReminder(
+        {
+          discordUserId: interaction.user.id,
+          timerId: payload.timerId,
+          label: snooze.label,
+          characterName: snooze.characterName,
+          characterId: snooze.characterId,
+          delayMs,
+        },
+        {
+          logger: this.deps.logger,
+          send: async (job) => {
+            const body = {
+              discordUserId: job.discordUserId,
+              title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
+              body: `Przypomnienie: timer postaci kończy się / czeka na Ciebie. Oznacz Gotowe w Discord albo na karcie postaci.`,
+              deepLinkUrl: 'https://destiled.app/timers',
+              timerId: job.timerId,
+              timerLabel: job.label,
+              ...(job.characterId ? { characterId: job.characterId } : { workspaceId: 'team' }),
+              ...(job.characterName ? { characterName: job.characterName } : {}),
+              kind: 'reminder' as const,
+              includeButtons: true,
+              idempotencyKey: `char-timer-later:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
+            };
+            const content = formatTimerNotifyContent(body);
+            const message = renderTimerNotifyMessage({
+              payload: body,
+              content,
+              signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+              includeButtons: true,
+            });
+            await this.deps.gateway.sendTimerNotify({
+              discordUserId: job.discordUserId,
+              content: message.content ?? content,
+              ...(message.components ? { components: message.components } : {}),
+            });
+          },
+        },
+      );
+      const scheduleNote = scheduled.ok
+        ? ` PW przypomnienia zapisane (~${minutes} min, przeżywa restart bota).`
+        : '';
+      await interaction.editReply({
+        content: `Przypomnę ponownie za ok. ${minutes} min: **${snooze.label}**${who} (rewizja ${snooze.revision}).${scheduleNote} Bez otwierania WWW.`,
       });
       return;
     }
 
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    // Update the DM in place so the LIVE 1..N list stays current after Gotowe.
+    const canUpdateMessage =
+      Boolean(interaction.message) &&
+      interaction.message.author?.id === interaction.client.user?.id;
+    if (canUpdateMessage) {
+      await interaction.deferUpdate();
+    } else {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
+
     const actorName = interaction.user.globalName ?? interaction.user.username;
     // Canonical owner key = bare Discord snowflake (matches WWW viewer.id / x-demo-viewer-id).
     const result = await confirmCharacterProgressTimerFromBot({
@@ -548,16 +627,61 @@ export class InteractionRouter {
     });
 
     if (!result.ok) {
-      await interaction.editReply({
-        content: `Nie udało się oznaczyć timera postaci (${result.error}). Sprawdź player-team albo użyj karty postaci w DESTILED.`,
-      });
+      const err = `Nie udało się oznaczyć timera postaci (${result.error}). Sprawdź player-team albo użyj karty postaci w DESTILED.`;
+      if (canUpdateMessage) {
+        await interaction.followUp({ content: err, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.editReply({ content: err });
+      }
       return;
     }
 
+    cancelCharacterTimerReminder(interaction.user.id, payload.timerId);
+
     const who = result.characterName ? ` · ${result.characterName}` : '';
-    await interaction.editReply({
-      content: `Gotowe: **${result.label}**${who} (rewizja ${result.revision}). Bez otwierania WWW.`,
-    });
+    const ack = `Gotowe: **${result.label}**${who} (rewizja ${result.revision}). Bez otwierania WWW.`;
+
+    if (canUpdateMessage && result.liveTimers.length > 0) {
+      const deepLinkUrl =
+        result.characterId
+          ? `https://destiled.app/teams/team/characters/${encodeURIComponent(result.characterId)}?view=timers`
+          : 'https://destiled.app/timers';
+      const body = {
+        discordUserId: interaction.user.id,
+        title: result.characterName
+          ? `Karta EQ · ${result.characterName}`
+          : 'Karta EQ · timery postaci',
+        body: `Zaktualizowano: **${result.label}**. Lista poniżej = LIVE timery TYLKO tej postaci.`,
+        deepLinkUrl,
+        timerId: payload.timerId,
+        timerLabel: result.label,
+        ...(result.characterId ? { characterId: result.characterId } : { workspaceId: 'team' }),
+        ...(result.characterName ? { characterName: result.characterName } : {}),
+        liveTimers: [...result.liveTimers],
+        includeButtons: true,
+        kind: 'manual' as const,
+        actorName,
+      };
+      const content = formatTimerNotifyContent(body);
+      const message = renderTimerNotifyMessage({
+        payload: body,
+        content,
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        includeButtons: true,
+      });
+      await interaction.editReply({
+        content: message.content ?? content,
+        components: message.components ?? [],
+      });
+      await interaction.followUp({ content: ack, flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    if (canUpdateMessage) {
+      await interaction.followUp({ content: ack, flags: MessageFlags.Ephemeral });
+    } else {
+      await interaction.editReply({ content: ack });
+    }
   }
 
   private async handleTimerButton(

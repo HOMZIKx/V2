@@ -204,17 +204,22 @@ export class NotifyController {
     const recipients = isCharacterTimerPath
       ? (payload.recipientDiscordUserIds ?? [])
       : (payload.recipientDiscordUserIds ??
-          listTimerRoomWatchersExcept({
-            mapKey: payload.mapKey,
-            channel: payload.channel,
-            exceptDiscordUserId: payload.actorDiscordUserId,
-          }));
+          (payload.mapKey && payload.channel !== undefined
+            ? listTimerRoomWatchersExcept({
+                mapKey: payload.mapKey,
+                channel: payload.channel,
+                exceptDiscordUserId: payload.actorDiscordUserId,
+              })
+            : []));
 
-    registerTimerRoomWatcher({
-      mapKey: payload.mapKey,
-      channel: payload.channel,
-      discordUserId: payload.actorDiscordUserId,
-    });
+    // Legacy map rooms only — never register character EQ timers as map watchers.
+    if (payload.mapKey && payload.channel !== undefined) {
+      registerTimerRoomWatcher({
+        mapKey: payload.mapKey,
+        channel: payload.channel,
+        discordUserId: payload.actorDiscordUserId,
+      });
+    }
 
     if (recipients.length === 0) {
       return { ok: true, sent: 0, skipped: 0, duplicate: false };
@@ -223,7 +228,9 @@ export class NotifyController {
     const gateway = this.assertGatewayReady();
     let sent = 0;
     let skipped = 0;
-    const wantButtons = live['notify-timer-dm-action-buttons'];
+    const wantButtons = isCharacterTimerPath
+      ? true
+      : live['notify-timer-dm-action-buttons'];
 
     for (const discordUserId of recipients) {
       const single: TimerNotifyPayload = {
@@ -234,10 +241,17 @@ export class NotifyController {
         mapKey: payload.mapKey,
         channel: payload.channel,
         timerKey: payload.timerKey,
+        workspaceId: payload.workspaceId,
+        characterId: payload.characterId,
+        characterName: payload.characterName,
+        timerId: payload.timerId,
+        timerLabel: payload.timerLabel,
+        endsAt: payload.endsAt,
         kind: 'reset',
         includeButtons: wantButtons,
         ...(payload.actorName ? { actorName: payload.actorName } : {}),
         ...(payload.roomSummary ? { roomSummary: payload.roomSummary } : {}),
+        ...(payload.liveTimers ? { liveTimers: payload.liveTimers } : {}),
       };
       const content = formatTimerNotifyContent(single);
       const message = renderTimerNotifyMessage({

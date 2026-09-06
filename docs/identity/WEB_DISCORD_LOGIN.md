@@ -46,9 +46,10 @@ http://127.0.0.1:4200/api/auth/callback/discord
 3. Start web on port 3000 (pps/web dev).
 4. Open http://127.0.0.1:3000 → **Kontynuuj z Discord**.
 
-## Stretch (not built)
+## Stretch → Timers notify (built MVP)
 
-Timers Discord notify via gateway can reuse discordAccountId later.
+Timers Discord notify reuses `discordAccountId` from OAuth.
+See `docs/product/TIMERS_DISCORD_NOTIFY.md` (`POST /notify/timer`, web `/api/discord-notify`).
 
 ## Files
 

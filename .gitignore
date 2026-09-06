@@ -23,3 +23,9 @@ pnpm-debug.log*
 .vscode/*
 !.vscode/extensions.json
 *.tsbuildinfo
+
+# Technika MVP versioned bot config store
+apps/discord-gateway/data/
+
+# Generaly/Metki room file store (single-host launch)
+.data/

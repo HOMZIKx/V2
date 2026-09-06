@@ -1,9 +1,19 @@
-/** In-memory war character claims for the day (stub until Kuzyn roster). */
+/** War character claims for the day — file-backed so restart keeps tonight's claims. */
+
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 type ClaimMap = Record<string, string>; // characterId -> discordUserId
 
+type PersistShape = {
+  readonly dayKey: string;
+  readonly claims: ClaimMap;
+};
+
 let claims: ClaimMap = {};
 let claimDayKey = '';
+let loaded = false;
 
 function warsawDayKey(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -14,11 +24,43 @@ function warsawDayKey(now = new Date()): string {
   }).format(now);
 }
 
+function persistPath(): string {
+  const dir = join(tmpdir(), 'destiled-kingdom-war');
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  return join(dir, 'claims.json');
+}
+
+function loadFromDisk(): void {
+  if (loaded) return;
+  loaded = true;
+  try {
+    const raw = readFileSync(persistPath(), 'utf8');
+    const parsed = JSON.parse(raw) as PersistShape;
+    if (parsed && typeof parsed.dayKey === 'string' && parsed.claims && typeof parsed.claims === 'object') {
+      claimDayKey = parsed.dayKey;
+      claims = { ...parsed.claims };
+    }
+  } catch {
+    /* fresh */
+  }
+}
+
+function saveToDisk(): void {
+  try {
+    const payload: PersistShape = { dayKey: claimDayKey, claims: { ...claims } };
+    writeFileSync(persistPath(), JSON.stringify(payload), 'utf8');
+  } catch {
+    /* memory still works */
+  }
+}
+
 function ensureDay(): void {
+  loadFromDisk();
   const key = warsawDayKey();
   if (key !== claimDayKey) {
     claimDayKey = key;
     claims = {};
+    saveToDisk();
   }
 }
 
@@ -59,10 +101,17 @@ export function claimKingdomWarCharacter(input: {
     return { ok: false, reason: 'max_claims' };
   }
   claims = { ...claims, [input.characterId]: input.discordUserId };
+  saveToDisk();
   return { ok: true, claims: { ...claims } };
 }
 
 export function resetKingdomWarClaimsForTests(): void {
   claims = {};
   claimDayKey = '';
+  loaded = false;
+  try {
+    writeFileSync(persistPath(), JSON.stringify({ dayKey: '', claims: {} }), 'utf8');
+  } catch {
+    /* ignore */
+  }
 }

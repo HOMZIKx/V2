@@ -30,7 +30,13 @@ export class PlayerTeamStateUseCases {
     if (demoHeaderValue === undefined || demoHeaderValue.trim().length === 0) {
       throw new PlayerTeamError('UNAUTHORIZED', 'missing demo viewer header');
     }
-    return demoHeaderValue.trim();
+    // Canonical owner key: bare Discord snowflake (strip legacy discord: prefix).
+    const trimmed = demoHeaderValue.trim();
+    const prefixed = /^discord:(\d{17,20})$/i.exec(trimmed);
+    if (prefixed?.[1]) {
+      return prefixed[1];
+    }
+    return trimmed;
   }
 
   public async getViewerSnapshot(ownerUserId: string): Promise<ViewerSnapshotRecord | null> {

@@ -39,6 +39,13 @@ describe('PlayerTeamStateUseCases', () => {
     expect(useCases.assertDemoAccess('  mateusz  ')).toBe('mateusz');
   });
 
+  it('strips discord: prefix to bare snowflake', () => {
+    const useCases = new PlayerTeamStateUseCases(createRepository(), { allowDemoWrite: true });
+
+    expect(useCases.assertDemoAccess('discord:808066932753563668')).toBe('808066932753563668');
+    expect(useCases.assertDemoAccess('808066932753563668')).toBe('808066932753563668');
+  });
+
   it('throws NOT_FOUND when snapshot is missing', async () => {
     const useCases = new PlayerTeamStateUseCases(createRepository(), { allowDemoWrite: true });
 

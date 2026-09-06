@@ -9,10 +9,13 @@ import type { KingdomWarConfig } from '../../application/technika/capabilities.j
 import { createSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
 
 /** Stub roster until Kuzyn profile is the SoT — not a fake roster API. */
+/** Clear tonight labels — stub until Kuzyn roster SoT. Claims still durable (max 3 / user). */
 export const KINGDOM_WAR_CHARACTER_STUB = [
-  { id: 'stub-1', name: 'Postać A (stub)' },
-  { id: 'stub-2', name: 'Postać B (stub)' },
-  { id: 'stub-3', name: 'Postać C (stub)' },
+  { id: 'stub-1', name: 'Postać 1 · deklaracja na wojnę' },
+  { id: 'stub-2', name: 'Postać 2 · deklaracja na wojnę' },
+  { id: 'stub-3', name: 'Postać 3 · deklaracja na wojnę' },
+  { id: 'stub-4', name: 'Postać 4 · deklaracja na wojnę' },
+  { id: 'stub-5', name: 'Postać 5 · deklaracja na wojnę' },
 ] as const;
 
 export function renderKingdomWarReminder(input: {
@@ -31,7 +34,7 @@ export function renderKingdomWarReminder(input: {
       notifyAt,
     }),
     '',
-    'Wybierz postać, którą bierzesz na wojnę (stub — SoT: Kuzyn):',
+    'Wybierz postać na wojnę (lista tymczasowa na dziś — claimy trzymane do końca dnia PL):',
   ];
 
   const claims = input.claims ?? {};

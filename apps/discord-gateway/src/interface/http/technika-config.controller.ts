@@ -244,11 +244,13 @@ export class TechnikaConfigController {
         });
       }
       const filled = applyMessageTemplate(timers.messageTemplate, {
-        title: 'Księga (test)',
-        body: 'To jest testowa PW z Technika — timer postaci.',
-        otherTimersSummary: 'brak innych',
-        mapKey: '—',
-        deepLinkUrl: 'https://destiled.app/timers',
+        title: 'Ksiega umiejetnosci · Oak',
+        body: 'To jest testowa PW z Technika — timer postaci (EQ/Timer), nie mapa/metin.',
+        characterName: 'Oak',
+        timerLabel: 'Ksiega umiejetnosci',
+        endsAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+        otherTimersSummary: 'Oak · Kamien Duchowy — gotowe; Oak · Jazda konna — 23 h',
+        deepLinkUrl: 'http://127.0.0.1:3000/teams/demo/characters/char-1?view=timers',
         minutes: timers.reminderMinutesBefore,
         reminderMinutesBefore: timers.reminderMinutesBefore,
       });
