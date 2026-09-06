@@ -1,0 +1,131 @@
+
+/* Technik IA nav groups + player-sees (2026-09-06) */
+.technik-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.85rem;
+}
+.technik-nav-group__title {
+  margin: 0 0 0.2rem;
+  padding: 0 0.7rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.technik-player-sees {
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+  background: color-mix(in srgb, var(--blue) 10%, var(--panel-strong));
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0 0 1rem;
+}
+.technik-player-sees strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.technik-player-sees p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.technik-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  padding: 0.65rem 0.85rem 0.85rem;
+  margin: 0;
+}
+.technik-fieldset legend {
+  padding: 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--silver);
+}
+.technik-check--block {
+  align-items: flex-start;
+}
+.technik-check--block .technik-help {
+  display: block;
+  margin-left: 0;
+}
+.technik-guild-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1rem;
+}
+@media (max-width: 900px) {
+  .technik-guild-layout {
+    grid-template-columns: 1fr;
+  }
+  .technik-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.technik-guild-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.technik-guild-list__btn {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  gap: 0.55rem;
+  border: 1px solid var(--line);
+  background: #0c1017;
+  color: var(--text);
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  font: inherit;
+}
+.technik-guild-list__btn--active {
+  border-color: color-mix(in srgb, var(--red) 45%, var(--line));
+  background: color-mix(in srgb, var(--red) 12%, #0c1017);
+}
+.technik-guild-list__order {
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--silver) 16%, transparent);
+}
+.technik-guild-list__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.technik-guild-editor h3 {
+  margin: 0 0 0.35rem;
+}
+.technik-field select {
+  border-radius: 0.45rem;
+  border: 1px solid var(--line);
+  background: #05070b;
+  color: var(--text);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  max-width: 100%;
+}
+.technik-sidebar {
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}
+.technik-textarea--large,
+.technik-message-template {
+  min-height: 16rem;
+}

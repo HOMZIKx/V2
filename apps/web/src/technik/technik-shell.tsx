@@ -2,17 +2,15 @@
 
 import type { ReactNode } from 'react';
 
-const TABS = [
-  { href: '/technik', label: 'Status', id: 'status' as const },
-  { href: '/technik/bot', label: 'Konfiguracja bota', id: 'bot' as const },
-  { href: '/technik/diagnostics', label: 'Diagnostyka', id: 'diagnostics' as const },
-] as const;
+import { TECHNIK_NAV_GROUPS, type TechnikNavId } from './technik-nav';
+
+export type { TechnikNavId };
 
 export function TechnikShell({
   active,
   children,
 }: {
-  readonly active: 'status' | 'bot' | 'diagnostics';
+  readonly active: TechnikNavId;
   readonly children: ReactNode;
 }) {
   return (
@@ -20,22 +18,29 @@ export function TechnikShell({
       <aside className="technik-sidebar" aria-label="Nawigacja Technika">
         <div className="technik-brand">
           <strong>DESTILED · Technik</strong>
-          <span>Tu ustawisz bota Discord dla gildii</span>
+          <span>
+            Pełny panel — żywe API, bez atrap. Najpierw Discord testowy, potem treści PW, potem Apply.
+          </span>
         </div>
         <nav className="technik-subnav">
-          {TABS.map((tab) => {
-            const current = tab.id === active;
-            return (
-              <a
-                key={tab.href}
-                href={tab.href}
-                aria-current={current ? 'page' : undefined}
-                className={current ? 'is-active' : undefined}
-              >
-                {tab.label}
-              </a>
-            );
-          })}
+          {TECHNIK_NAV_GROUPS.map((group) => (
+            <div key={group.title} className="technik-nav-group">
+              <p className="technik-nav-group__title">{group.title}</p>
+              {group.items.map((tab) => {
+                const current = tab.id === active;
+                return (
+                  <a
+                    key={tab.href}
+                    href={tab.href}
+                    aria-current={current ? 'page' : undefined}
+                    className={current ? 'is-active' : undefined}
+                  >
+                    {tab.label}
+                  </a>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </aside>
       <div className="technik-main">{children}</div>

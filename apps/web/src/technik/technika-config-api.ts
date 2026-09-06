@@ -95,7 +95,7 @@ export const DEFAULT_TIMERS_NOTIFY: TimersNotifyConfig = {
 export const DEFAULT_CHARACTER_TIMERS: CharacterTimersConfig = {
   enabled: false,
   messageTemplate:
-    '**DESTILED · Timer postaci**\nHej! **{{title}}** zaraz się kończy — nie przegap resetu!\n\n{{body}}\n\nInne twoje timery: {{otherTimersSummary}}\n{{deepLinkUrl}}',
+    '**DESTILED · Timer postaci**\nHej! **{{title}}** zaraz się kończy — nie przegap resetu!\n\n{{body}}\n\nInne Twoje timery: {{otherTimersSummary}}\n{{deepLinkUrl}}',
   reminderMinutesBefore: 60,
   resetNotifyEnabled: true,
 };
@@ -106,7 +106,7 @@ export const DEFAULT_KINGDOM_WAR: KingdomWarConfig = {
   notifyMinutesBefore: 30,
   maxClaimsPerUser: 3,
   messageTemplate:
-    '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min ({{warAt}}).',
+    '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min start wojny ({{warAt}} Europe/Warsaw).\nZajmij postać — nie zostawiaj slotu pustego!',
 };
 
 /**
@@ -159,17 +159,18 @@ function failFrom(
       : typeof parsed.message === 'string'
         ? parsed.message
         : fallback;
+  const detail =
+    typeof parsed.detail === 'string'
+      ? parsed.detail
+      : typeof parsed.hint === 'string'
+        ? parsed.hint
+        : undefined;
   return {
     ok: false,
     error: err,
     status: res.status,
-    detail:
-      typeof parsed.detail === 'string'
-        ? parsed.detail
-        : typeof parsed.hint === 'string'
-          ? parsed.hint
-          : undefined,
-    issues,
+    ...(detail ? { detail } : {}),
+    ...(issues ? { issues } : {}),
     body: parsed,
   };
 }
@@ -481,12 +482,6 @@ export const TECHNIK_LOCKED_GUILD_IDS = [
   '1531318787058696424',
 ] as const;
 
-export const TECHNIK_KNOWN_GUILD_LABELS: Readonly<Record<string, string>> = {
-  '1534228693017432124': 'TESTOWY',
-  '1543972927719080016': 'Destiled',
-  '1531318787058696424': 'Projekt Sojusz',
-};
-
 /** Mateusz hard-stop: only Testowy may be enabled / modules on. */
 export function isTechnikGuildEditable(guildId: string): boolean {
   return guildId === TECHNIK_TEST_GUILD_ID;
@@ -528,11 +523,7 @@ export function guildDisplayLabel(g: TechnikaGuildDto): string {
     /\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)
   ) {
     tag = 'testowy';
-  } else if (
-    g.id === '1543972927719080016' ||
-    g.id === '1531318787058696424' ||
-    /\bmain\b|prod\b|produk|destiled|sojusz|glowny|primary/.test(blob)
-  ) {
+  } else if (!isTechnikGuildEditable(g.id)) {
     tag = 'zablokowany';
   }
   if (tag && name) return tag + ' · ' + name;
@@ -568,8 +559,8 @@ export async function fetchGuilds(): Promise<TechnikaApiResult<GuildsListRespons
       data: {
         guilds: list,
         revision: typeof parsed.revision === 'number' ? parsed.revision : 0,
-        botReady: typeof parsed.botReady === 'boolean' ? parsed.botReady : undefined,
-        hasDraft: typeof parsed.hasDraft === 'boolean' ? parsed.hasDraft : undefined,
+        ...(typeof parsed.botReady === 'boolean' ? { botReady: parsed.botReady } : {}),
+        ...(typeof parsed.hasDraft === 'boolean' ? { hasDraft: parsed.hasDraft } : {}),
       },
     };
   } catch (error) {

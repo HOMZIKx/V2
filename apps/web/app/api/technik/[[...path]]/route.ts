@@ -43,7 +43,8 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'config/test-dm',
     'guilds',
   ]);
-  const allowedPrefix = (p: string) => p === 'guilds' || p.startsWith('guilds/');
+  // feature-detect panels: guilds/{id}/panels|channels + panels/publish|refresh|delete (via guilds/ prefix)
+const allowedPrefix = (p: string) => p === 'guilds' || p.startsWith('guilds/');
 
   if (!allowedExact.has(joined) && !allowedPrefix(joined)) {
     return NextResponse.json({ ok: false, error: 'not_found', path: joined }, { status: 404 });
@@ -91,12 +92,15 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
   }
 
   try {
-    const upstream = await fetch(url, {
+    const init: RequestInit = {
       method,
       headers,
-      body: body && method !== 'GET' ? body : undefined,
       cache: 'no-store',
-    });
+    };
+    if (body && method !== 'GET' && method !== 'HEAD') {
+      init.body = body;
+    }
+    const upstream = await fetch(url, init);
     const text = await upstream.text();
     const contentType = upstream.headers.get('content-type') ?? 'application/json';
     return new Response(text || JSON.stringify({ ok: false, error: 'empty_upstream' }), {
