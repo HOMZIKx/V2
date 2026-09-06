@@ -36,6 +36,7 @@ import {
   archiveWorkspace,
   updateWorkspaceNotifyPrefs,
   updateMemberNotifyPrefs,
+  listTeamNotifyDiscordRecipients,
   declineIncomingInvitation,
   ensureCharacterProgressionTimers,
   markTimerDone,
@@ -68,6 +69,7 @@ import type { CharacterAppearanceLook } from './character-profile';
 import { getMyPlayerTeamState, putMyPlayerTeamState, resolvePlayerTeamDemoViewerId } from './player-team-online-api';
 import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
 import { preserveHuntFieldsOnPut } from './hunt-snapshot';
+import { syncKingdomWarRecipients } from './discord-notify-api';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
@@ -378,6 +380,18 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     state.authStatus === 'authenticated' &&
     (state.connection === 'connected' || state.connection === 'reconnecting');
 
+
+  const syncWarRecipientsFromState = useCallback((next: PlayerStoreState) => {
+    const ids = new Set<string>();
+    for (const workspace of next.workspaces) {
+      if (workspace.archived) continue;
+      for (const id of listTeamNotifyDiscordRecipients(workspace, 'kingdomWar', next.viewer)) {
+        ids.add(id);
+      }
+    }
+    void syncKingdomWarRecipients([...ids]);
+  }, []);
+
   const api = useMemo<PlayerStoreApi>(
     () => ({
       state,
@@ -415,10 +429,18 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         apply((current) => archiveWorkspace(current, workspaceId));
       },
       updateNotifyPrefs: (workspaceId, patch) => {
-        apply((current) => updateWorkspaceNotifyPrefs(current, workspaceId, patch));
+        apply((current) => {
+          const next = updateWorkspaceNotifyPrefs(current, workspaceId, patch);
+          syncWarRecipientsFromState(next);
+          return next;
+        });
       },
       updateMyNotifyPrefs: (workspaceId, patch) => {
-        apply((current) => updateMemberNotifyPrefs(current, workspaceId, patch));
+        apply((current) => {
+          const next = updateMemberNotifyPrefs(current, workspaceId, patch);
+          syncWarRecipientsFromState(next);
+          return next;
+        });
       },
       openWorkspace: (workspaceId, characterId = null) => {
         apply((current) => touchLastOpened(current, workspaceId, characterId));
@@ -540,7 +562,7 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         setState(createInitialPlayerStore());
       },
     }),
-    [state, hydrated, writesEnabled, apply],
+    [state, hydrated, writesEnabled, apply, syncWarRecipientsFromState],
   );
 
   return <PlayerStoreContext.Provider value={api}>{children}</PlayerStoreContext.Provider>;

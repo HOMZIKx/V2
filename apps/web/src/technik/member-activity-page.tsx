@@ -15,6 +15,7 @@ import {
   fetchMyRanking,
   windowDaysToRankingWindow,
 } from './member-activity-api';
+import { fetchGuildRoles, roleLabel, type GuildRole } from './guild-roles-api';
 import { KNOWN_GUILD_NAMES, putConfigDraft } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
@@ -67,6 +68,9 @@ export function TechnikMemberActivityPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [rolesText, setRolesText] = useState('');
+  const [guildRoles, setGuildRoles] = useState<readonly GuildRole[]>([]);
+  const [rolesApiNote, setRolesApiNote] = useState<string | null>(null);
+  const [rolePick, setRolePick] = useState('');
 
   useEffect(() => {
     const hit = cfg.capabilities.some(
@@ -80,6 +84,29 @@ export function TechnikMemberActivityPage() {
     setRolesText(fromSnap.memberRoleIds.join(', '));
     setWindowId(windowDaysToRankingWindow(fromSnap.windowDays));
   }, [cfg.capabilities, cfg.snapshot]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchGuildRoles(draft.guildId);
+      if (cancelled) return;
+      if (res.ok) {
+        setGuildRoles(res.roles);
+        setRolesApiNote(null);
+      } else if (res.unavailable) {
+        setGuildRoles([]);
+        setRolesApiNote(
+          'Lista ról z Discorda jeszcze nie jest w API — dodajesz role z listy chipów / ręcznie, bez surowego wklejania jako jedynej opcji.',
+        );
+      } else {
+        setGuildRoles([]);
+        setRolesApiNote('Role: ' + res.error + ' (HTTP ' + String(res.status) + ')');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.guildId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +202,20 @@ export function TechnikMemberActivityPage() {
     void persistDraft({ ...draft, memberRoleIds: ids });
   };
 
+  const addRoleId = (id: string) => {
+    if (!/^\d{17,20}$/.test(id)) return;
+    if (draft.memberRoleIds.includes(id)) return;
+    void persistDraft({ ...draft, memberRoleIds: [...draft.memberRoleIds, id] });
+    setRolePick('');
+  };
+
+  const removeRoleId = (id: string) => {
+    void persistDraft({
+      ...draft,
+      memberRoleIds: draft.memberRoleIds.filter((x) => x !== id),
+    });
+  };
+
   const sourceName = KNOWN_GUILD_NAMES[draft.guildId] ?? 'źródłowa guildia';
 
   return (
@@ -241,16 +282,83 @@ export function TechnikMemberActivityPage() {
           </select>
           <small className="technik-help">Teraz: {sourceName}</small>
         </label>
-        <label className="technik-field">
-          <span>Role członków (opcjonalnie, ID oddzielone przecinkiem)</span>
-          <input
-            value={rolesText}
-            disabled={busy}
-            onChange={(e) => setRolesText(e.target.value)}
-            onBlur={() => applyRolesText()}
-            placeholder="puste = wszyscy na guildii źródłowej"
-          />
-        </label>
+        <div className="technik-field">
+          <span>Role członków (opcjonalnie)</span>
+          <p className="technik-help">
+            Puste = wszyscy na guildii źródłowej. Wybierasz po nazwie, gdy API ról jest live; inaczej
+            dodajesz chipami (bez pokazywania pełnego ID jako głównej etykiety).
+          </p>
+          {rolesApiNote ? <p className="technik-muted">{rolesApiNote}</p> : null}
+          <div className="technik-role-chips" role="list">
+            {draft.memberRoleIds.length === 0 ? (
+              <span className="technik-muted">Brak filtra ról</span>
+            ) : (
+              draft.memberRoleIds.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="technik-role-chip"
+                  role="listitem"
+                  disabled={busy}
+                  title={id}
+                  onClick={() => removeRoleId(id)}
+                >
+                  {roleLabel(id, guildRoles)} ×
+                </button>
+              ))
+            )}
+          </div>
+          {guildRoles.length > 0 ? (
+            <label className="technik-field" style={{ marginTop: '0.5rem' }}>
+              <span>Dodaj rolę z listy</span>
+              <select
+                value={rolePick}
+                disabled={busy}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setRolePick(id);
+                  if (id) addRoleId(id);
+                }}
+              >
+                <option value="">— wybierz rolę —</option>
+                {guildRoles.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="technik-row" style={{ marginTop: '0.5rem' }}>
+              <label className="technik-field" style={{ flex: 1 }}>
+                <span>Dodaj rolę (identyfikator Discord)</span>
+                <input
+                  value={rolesText}
+                  disabled={busy}
+                  onChange={(e) => setRolesText(e.target.value)}
+                  placeholder="wklej i Dodaj — etykieta to skrót, nie surowe ID w chipie"
+                />
+              </label>
+              <button
+                type="button"
+                className="technik-btn-ghost"
+                disabled={busy}
+                style={{ alignSelf: 'end' }}
+                onClick={() => {
+                  const id = rolesText.trim();
+                  if (/^\d{17,20}$/.test(id)) {
+                    addRoleId(id);
+                    setRolesText('');
+                  } else {
+                    applyRolesText();
+                  }
+                }}
+              >
+                Dodaj
+              </button>
+            </div>
+          )}
+        </div>
         <div className="technik-row">
           <label className="technik-field">
             <span>Domyślne okno (dni)</span>

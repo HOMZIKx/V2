@@ -20,6 +20,7 @@ import {
   updateMemberNotifyPrefs,
   resolveEffectiveNotifyPrefs,
   isNotifyPrefEnabled,
+  listTeamNotifyDiscordRecipients,
   getReadyTimers,
   getSlotReadiness,
   markTimerDone,
@@ -477,5 +478,43 @@ describe('notifyPrefs', () => {
       resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).characterTimers,
     ).toBe(false);
     expect(resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).kingdomWar).toBe(false);
+  });
+  it('lists ONLY team members with prefs true and discord ids (never invents guild)', () => {
+    const workspace = {
+      notifyPrefs: { characterTimers: true, kingdomWar: true },
+      members: [
+        {
+          id: 'a',
+          displayName: 'A',
+          initials: 'A',
+          role: 'owner' as const,
+          state: 'unknown' as const,
+          discordAccountId: '111111111111111111',
+        },
+        {
+          id: 'b',
+          displayName: 'B',
+          initials: 'B',
+          role: 'member' as const,
+          state: 'unknown' as const,
+          discordAccountId: '222222222222222222',
+          notifyPrefs: { characterTimers: false, kingdomWar: true },
+        },
+        {
+          id: 'c',
+          displayName: 'C',
+          initials: 'C',
+          role: 'member' as const,
+          state: 'unknown' as const,
+        },
+      ],
+    };
+    expect(listTeamNotifyDiscordRecipients(workspace, 'characterTimers')).toEqual([
+      '111111111111111111',
+    ]);
+    expect(listTeamNotifyDiscordRecipients(workspace, 'kingdomWar')).toEqual([
+      '111111111111111111',
+      '222222222222222222',
+    ]);
   });
 });

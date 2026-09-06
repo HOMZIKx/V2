@@ -221,25 +221,49 @@ export async function fetchGuildPanels(
   }
 }
 
-export async function postPanelPublish(body: {
+export type PanelPublishBody = {
   readonly guildId: string;
   readonly channelId: string;
   readonly kind?: string;
+  /** Panel title (Centrum appearance). Gateway may ignore until New Bot accepts it. */
+  readonly title?: string;
+  /** Short description under title. */
+  readonly description?: string;
+  /** Accent color as #RRGGBB. */
+  readonly accentHex?: string;
   readonly includeBanner?: boolean;
-}): Promise<
+  /** Enabled hub action ids (create/lfg/mine/…). */
+  readonly enabledActions?: readonly string[];
+};
+
+function buildPublishPayload(body: PanelPublishBody): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    channelId: body.channelId,
+    kind: body.kind ?? 'lab',
+    includeBanner: body.includeBanner !== false,
+  };
+  if (typeof body.title === 'string' && body.title.trim()) payload.title = body.title.trim();
+  if (typeof body.description === 'string') payload.description = body.description;
+  if (typeof body.accentHex === 'string' && body.accentHex.trim()) {
+    payload.accentHex = body.accentHex.trim();
+  }
+  if (Array.isArray(body.enabledActions)) {
+    payload.enabledActions = [...body.enabledActions];
+  }
+  return payload;
+}
+
+export async function postPanelPublish(body: PanelPublishBody): Promise<
   PanelsApiResult<{ messageId: string; jumpUrl: string; channelId: string; panelId?: string }>
 > {
   try {
+    const publishBody = buildPublishPayload(body);
     const gs = await fetch(
       '/api/technik/guilds/' + encodeURIComponent(body.guildId) + '/panels/publish',
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          channelId: body.channelId,
-          kind: body.kind ?? 'lab',
-          includeBanner: body.includeBanner !== false,
-        }),
+        body: JSON.stringify(publishBody),
         cache: 'no-store',
       },
     );
@@ -260,7 +284,7 @@ export async function postPanelPublish(body: {
     const res = await fetch('/api/technik/panels/publish', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...publishBody, guildId: body.guildId }),
       cache: 'no-store',
     });
     const parsed = await parseJson(res);

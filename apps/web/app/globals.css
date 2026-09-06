@@ -12805,3 +12805,181 @@ button:disabled {
   border: 0;
 }
 
+/* Technik finish — Discord preview + role chips + tokens (2026-09-06) */
+.technik-accent-row {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+.technik-accent-swatch {
+  width: 2.4rem;
+  height: 2.2rem;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: transparent;
+  cursor: pointer;
+}
+.technik-discord-preview {
+  border: 1px solid color-mix(in srgb, #5865f2 28%, var(--line));
+  border-radius: 0.75rem;
+  background: #313338;
+  color: #dbdee1;
+  overflow: hidden;
+}
+.technik-discord-preview__chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.85rem;
+  background: #2b2d31;
+  border-bottom: 1px solid #1e1f22;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.technik-discord-preview__hash {
+  color: #80848e;
+}
+.technik-discord-preview__msg {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem 1.1rem;
+}
+.technik-discord-preview__avatar {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #5865f2, #3ba55d);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.technik-discord-preview__body {
+  min-width: 0;
+  flex: 1;
+}
+.technik-discord-preview__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+.technik-discord-preview__bot {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: #5865f2;
+  color: #fff;
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+}
+.technik-discord-preview__container {
+  border-left: 4px solid #5865f2;
+  background: #2b2d31;
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.85rem;
+}
+.technik-discord-preview__banner {
+  border-radius: 0.4rem;
+  padding: 1.4rem 0.75rem;
+  margin-bottom: 0.65rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: #e3e5e8;
+  border: 1px dashed color-mix(in srgb, #fff 25%, transparent);
+}
+.technik-discord-preview__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  color: #f2f3f5;
+}
+.technik-discord-preview__desc {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #dbdee1;
+}
+.technik-discord-preview__sep {
+  border: 0;
+  border-top: 1px solid #3f4147;
+  margin: 0.7rem 0;
+}
+.technik-discord-preview__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.technik-discord-preview__action-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+.technik-discord-preview__action-row strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #f2f3f5;
+}
+.technik-discord-preview__action-row small {
+  display: block;
+  color: #b5bac1;
+  font-size: 0.75rem;
+}
+.technik-discord-preview__btn {
+  flex-shrink: 0;
+  border-radius: 0.35rem;
+  background: #4e5058;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #1e1f22;
+}
+.technik-role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0.2rem;
+}
+.technik-role-chip {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--blue) 35%, var(--line));
+  background: color-mix(in srgb, var(--blue) 14%, #0c1017);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.28rem 0.65rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.technik-role-chip:hover {
+  border-color: color-mix(in srgb, var(--red) 40%, var(--line));
+}
+.technik-panel {
+  border-radius: 0.75rem;
+}
+.technik-panel--wide {
+  box-shadow: 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+.team-notify-prefs-panel {
+  border: 1px solid color-mix(in srgb, #5865f2 28%, var(--line, #2a3140));
+  background: color-mix(in srgb, #5865f2 6%, var(--panel, #0c1017));
+}
+.team-notify-prefs-panel header h2 {
+  margin: 0;
+}
+.team-notify-toggle {
+  border-radius: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  background: color-mix(in srgb, #000 25%, transparent);
+}
+.team-notify-team-defaults {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed color-mix(in srgb, #5865f2 30%, transparent);
+}
+

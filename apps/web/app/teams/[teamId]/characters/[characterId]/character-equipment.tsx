@@ -40,6 +40,8 @@ import {
 import {
   equipmentSlots,
   getSlotReadiness,
+  isNotifyPrefEnabled,
+  listTeamNotifyDiscordRecipients,
   slotLabels,
   type CharacterRecord,
   type EquipmentItem,
@@ -48,6 +50,11 @@ import {
   type SetReadiness,
   type WorkspaceRecord,
 } from '../../../../../src/player-store';
+
+import {
+  notifyCharacterProgressTimer,
+  scheduleCharacterTimerReminder,
+} from '../../../../../src/character-timer-discord-notify';
 import { usePlayerStore } from '../../../../../src/player-store-react';
 import {
   inferProgressionKind,
@@ -1216,6 +1223,69 @@ export function CharacterEquipment() {
         setAnnouncement(
           `${characterName}: ${label} — czas ruszył.${timer ? ` ${completionHint(timer)}` : ''}`,
         );
+        // Discord PW for character ProgressTimers (not map/metin). Additive; EQ UI unchanged.
+        // HARD: ONLY team members with notifyPrefs.characterTimers (default true) — never guild.
+        const discordAccountId = state.viewer?.discordAccountId?.trim();
+        const myMember = workspace?.members.find((m) => m.id === state.viewer?.id);
+        const timersPwAllowed = workspace
+          ? isNotifyPrefEnabled(workspace, 'characterTimers', myMember)
+          : true;
+        const teamTimerRecipients = workspace
+          ? listTeamNotifyDiscordRecipients(workspace, 'characterTimers', state.viewer)
+          : [];
+        if (timer && workspace && teamTimerRecipients.length > 0) {
+          const after = {
+            ...timer,
+            status: 'running' as const,
+            operationId,
+          };
+          void notifyCharacterProgressTimer({
+            workspace,
+            timer: after,
+            viewer: state.viewer,
+            actorName: state.viewer?.displayName ?? 'Gracz',
+            kind: 'reset',
+          }).then((result) => {
+            if (result.sent > 0) {
+              setAnnouncement(
+                (prev) =>
+                  `${prev} Wysłano PW Discord (${result.sent}).`,
+              );
+            } else if (!discordAccountId) {
+              /* no-op */
+            } else if (result.results.some((r) => !r.ok)) {
+              const err = result.results.find((r) => !r.ok);
+              if (err && !err.ok) {
+                setAnnouncement(
+                  (prev) => `${prev} Discord PW: ${err.error}.`,
+                );
+              }
+            }
+          });
+          const endsAt =
+            timer.readyAtIso ??
+            new Date(Date.now() + 60 * 60_000).toISOString();
+          scheduleCharacterTimerReminder({
+            endsAtIso: endsAt,
+            reminderMinutesBefore: 60,
+            fire: () => {
+              void notifyCharacterProgressTimer({
+                workspace,
+                timer: { ...after, readyAtIso: endsAt },
+                viewer: state.viewer,
+                actorName: state.viewer?.displayName ?? 'Gracz',
+                kind: 'reminder',
+              });
+            },
+          });
+        } else if (teamTimerRecipients.length === 0 && !timersPwAllowed) {
+          setAnnouncement((prev) => `${prev} (PW timerów postaci wyłączone w ustawieniach zespołu.)`);
+        } else if (teamTimerRecipients.length === 0) {
+          setAnnouncement(
+            (prev) =>
+              `${prev} (Brak członków zespołu z Discord do PW timerów — OAuth + notifyPrefs.)`,
+          );
+        }
       }}
       onRemoveTimer={(timerId, label, characterName) => {
         removeTimer(workspace.id, timerId);

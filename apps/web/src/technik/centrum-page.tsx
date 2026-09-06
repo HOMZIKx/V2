@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { loadAppearance } from './appearance';
 import {
   CENTRUM_HUB_ACTIONS,
   loadEnabledHubActions,
@@ -106,24 +107,23 @@ export function TechnikCentrumPage() {
       setOpsMsg('Brak sekretu Technika na serwerze — publikacja zablokowana.');
       return;
     }
+    if (enabled.length === 0) {
+      setOpsMsg('Włącz choć jedną akcję hubu przed publikacją.');
+      return;
+    }
     setOpsBusy(true);
     setOpsMsg(null);
     try {
-      let includeBanner = true;
-      try {
-        const raw = localStorage.getItem('technik.appearance.v1');
-        if (raw) {
-          const p = JSON.parse(raw) as { includeBanner?: boolean };
-          if (typeof p.includeBanner === 'boolean') includeBanner = p.includeBanner;
-        }
-      } catch {
-        /* ignore */
-      }
+      const appearance = loadAppearance();
       const res = await postPanelPublish({
         guildId,
         channelId: hubChannelId,
         kind: 'centrum',
-        includeBanner,
+        title: appearance.panelTitle,
+        description: appearance.panelDescription,
+        accentHex: appearance.accentHex,
+        includeBanner: appearance.includeBanner,
+        enabledActions: enabled,
       });
       if (!res.ok) {
         setOpsMsg(
@@ -132,12 +132,12 @@ export function TechnikCentrumPage() {
             (res.detail ? ' — ' + res.detail : '') +
             ' (HTTP ' +
             String(res.status) +
-            ')',
+            '). Jeśli New Bot nie zna jeszcze pól wyglądu (title/accent/enabledActions), to uczciwy błąd — nie lokalny teatr.',
         );
         return;
       }
       setOpsMsg(
-        'Opublikowano panel Centrum' +
+        'Opublikowano panel Centrum (tytuł, opis, akcent, banner, akcje w payloadzie)' +
           (res.data.jumpUrl ? ' — otwórz na Discordzie: ' + res.data.jumpUrl : '.'),
       );
       cfg.setLastAction('publish centrum');
@@ -225,7 +225,11 @@ export function TechnikCentrumPage() {
           </dd>
           <dt>Wygląd</dt>
           <dd>
-            <a href="/technik/wyglad">Tytuł, opis, banner →</a>
+            <a href="/technik/wyglad">Tytuł, opis, akcent, banner →</a>
+            <br />
+            <span className="technik-muted">
+              Opublikuj wyśle te pola razem z włączonymi akcjami (bez auto-publikacji).
+            </span>
           </dd>
         </dl>
       </section>

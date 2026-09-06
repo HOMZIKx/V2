@@ -120,7 +120,7 @@ export function TechnikCyklicznePage() {
     setMsg(
       schemaHasRecurring
         ? 'Zapisano szkic cyklicznych — gdy klucz będzie w config, wejdzie do Apply.'
-        : 'Zapisano lokalny szkic. Scheduler cyklicznych jeszcze nie jest w capabilities bota.',
+        : 'Zapisano szkic — bot jeszcze bez schedulera. Nic nie wyśle się samo; kanał sync do publishChannels.recurring.',
     );
   };
 
@@ -142,7 +142,8 @@ export function TechnikCyklicznePage() {
     <>
       <h1>Cykliczne</h1>
       <p className="technik-lead">
-        Co publikować, kiedy i na którym kanale — prosty harmonogram serii (max 90 dni naprzód).
+        Co publikować, kiedy i na którym kanale — szkic harmonogramu (max 90 dni). Bez schedulera w
+        bocie posty <strong>nie odpalą się same</strong>.
       </p>
 
       <PageJobNote>
@@ -162,8 +163,10 @@ export function TechnikCyklicznePage() {
       {!schemaHasRecurring ? (
         <HonestGap>
           <p>
-            Bot jeszcze nie wystawia możliwości „posty cykliczne” w capabilities. Formularz zapisuje
-            lokalny szkic — Apply podłączymy, gdy klucz pojawi się po stronie New Bot.
+            <strong>Szkic — bot jeszcze bez schedulera.</strong> New Bot nie wystawia możliwości
+            „posty cykliczne” ani crona. Ten formularz to tylko przygotowanie treści i kanału —
+            <em>nic nie zostanie wysłane automatycznie</em>, dopóki scheduler nie powstanie. Kanał
+            syncuje się do publishChannels.recurring (mapa w Kanałach).
           </p>
         </HonestGap>
       ) : (
