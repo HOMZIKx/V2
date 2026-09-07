@@ -43,6 +43,10 @@ export type RankingResult =
       readonly window: RankingWindow;
       readonly status: number;
       readonly totalMembers?: number;
+      readonly guildId?: string;
+      readonly collectorStartedAt?: string;
+      readonly fromDayInclusive?: string;
+      readonly toDayInclusive?: string;
       readonly offline?: false;
     }
   | {
@@ -97,8 +101,7 @@ function mapEntry(r: Record<string, unknown>): RankingRow {
       : typeof r.messages === 'number'
         ? r.messages
         : undefined;
-  const voice =
-    typeof r.voiceMinutes === 'number' ? r.voiceMinutes : undefined;
+  const voice = typeof r.voiceMinutes === 'number' ? r.voiceMinutes : undefined;
   const rank = typeof r.rank === 'number' ? r.rank : undefined;
   return {
     ...row,
@@ -122,6 +125,23 @@ function mapEntries(parsed: Record<string, unknown>): RankingRow[] {
     .filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === 'object')
     .map(mapEntry)
     .filter((r) => /^\d{17,20}$/.test(r.discordUserId));
+}
+
+function coverageFields(parsed: Record<string, unknown>) {
+  return {
+    ...(typeof parsed.guildId === 'string' && parsed.guildId.trim()
+      ? { guildId: parsed.guildId }
+      : {}),
+    ...(typeof parsed.collectorStartedAt === 'string' && parsed.collectorStartedAt.trim()
+      ? { collectorStartedAt: parsed.collectorStartedAt }
+      : {}),
+    ...(typeof parsed.fromDayInclusive === 'string' && parsed.fromDayInclusive.trim()
+      ? { fromDayInclusive: parsed.fromDayInclusive }
+      : {}),
+    ...(typeof parsed.toDayInclusive === 'string' && parsed.toDayInclusive.trim()
+      ? { toDayInclusive: parsed.toDayInclusive }
+      : {}),
+  };
 }
 
 /** Feature-detect: ranking without full (no secret). Offline vs 404 vs live. */
@@ -170,7 +190,7 @@ export async function fetchMemberActivityRanking(opts: {
         detail:
           typeof parsed.detail === 'string'
             ? parsed.detail
-            : 'Gateway :4100 nie odpowiada — uruchom discord-gateway.',
+            : 'Gateway Discord nie odpowiada.',
         offline: true,
       };
     }
@@ -189,13 +209,13 @@ export async function fetchMemberActivityRanking(opts: {
       return fail;
     }
     const rows = mapEntries(parsed);
-    const total =
-      typeof parsed.totalMembers === 'number' ? parsed.totalMembers : undefined;
+    const total = typeof parsed.totalMembers === 'number' ? parsed.totalMembers : undefined;
     return {
       ok: true,
       rows,
       window: opts.window,
       status: res.status,
+      ...coverageFields(parsed),
       ...(total !== undefined ? { totalMembers: total } : {}),
     };
   } catch (e) {
@@ -232,7 +252,7 @@ export async function fetchMyRanking(opts: {
         ok: false,
         error: 'gateway_unreachable',
         status: res.status,
-        detail: 'Gateway :4100 nie odpowiada.',
+        detail: 'Gateway Discord nie odpowiada.',
         offline: true,
       };
     }
@@ -255,8 +275,16 @@ export async function fetchMyRanking(opts: {
         ? mapEntry(parsed.self as Record<string, unknown>)
         : null;
     const top = mapEntries({ top: parsed.top });
-    const rows = self ? [self, ...top.filter((r) => r.discordUserId !== self.discordUserId)] : top;
-    return { ok: true, rows, window: opts.window, status: res.status };
+    const rows = self
+      ? [self, ...top.filter((r) => r.discordUserId !== self.discordUserId)]
+      : top;
+    return {
+      ok: true,
+      rows,
+      window: opts.window,
+      status: res.status,
+      ...coverageFields(parsed),
+    };
   } catch (e) {
     return {
       ok: false,
