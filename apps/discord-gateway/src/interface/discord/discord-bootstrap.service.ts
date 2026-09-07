@@ -19,6 +19,7 @@ import {
   type DiscordGatewayConfig,
 } from '../../infrastructure/discord/discord-config.js';
 import { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
 import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import { renderKingdomWarReminder } from '../../presentation/discord/kingdom-war-renderer.js';
 import {
@@ -241,18 +242,28 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
     });
     this.warScheduler.start();
 
-    // Reload durable "Przypomnij później" queue after restart.
+    // Reload durable character-timer queue after restart.
     startCharacterTimerReminderWorker({
       logger: createLogger('character-timer-reminders'),
       send: async (job) => {
+        if (job.workspaceId) {
+          await markCharacterTimerReadyInWorkspace({
+            baseUrl: config.PLAYER_TEAM_BASE_URL,
+            demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+            viewerId: job.discordUserId,
+            workspaceId: job.workspaceId,
+            timerId: job.timerId,
+          }).catch(() => false);
+        }
         const body = {
           discordUserId: job.discordUserId,
           title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
           body: `Przypomnienie: timer postaci kończy się / czeka na Ciebie. Oznacz numer na liście LIVE albo Gotowe na karcie.`,
-          deepLinkUrl: 'https://destiled.app/timers',
+          deepLinkUrl: job.deepLinkUrl ?? 'https://desapp.zeabur.app/timers',
           timerId: job.timerId,
           timerLabel: job.label,
-          ...(job.characterId ? { characterId: job.characterId } : { workspaceId: 'team' }),
+          ...(job.workspaceId ? { workspaceId: job.workspaceId } : {}),
+          ...(job.characterId ? { characterId: job.characterId } : {}),
           ...(job.characterName ? { characterName: job.characterName } : {}),
           kind: 'reminder' as const,
           includeButtons: true,
