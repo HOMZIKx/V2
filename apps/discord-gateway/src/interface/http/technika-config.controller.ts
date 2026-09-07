@@ -44,12 +44,12 @@ export class TechnikaConfigController {
     private readonly gateway: DiscordJsGatewayAdapter | null = null,
   ) {}
 
-  /** Active config + revision. Public read for Technika discovery (no secrets). */
+  /** Current Technika snapshot. Draft is shown when present; runtime stays on active until Apply. */
   @Get()
   public getActive(): ReturnType<VersionedConfigStore['getActiveSnapshot']> & {
     readonly strictGuildIsolation: boolean;
   } {
-    const snap = this.store.getActiveSnapshot();
+    const snap = this.store.getDraftSnapshot() ?? this.store.getActiveSnapshot();
     return {
       ...snap,
       strictGuildIsolation: this.envConfig.DISCORD_STRICT_GUILD_ISOLATION,
@@ -226,7 +226,6 @@ export class TechnikaConfigController {
       content = `**[TEST Technika]**\n${rendered.content ?? ''}`.slice(0, 1900);
       components = rendered.components;
     } else {
-      // timersNotify / characterTimers — Timery postaci (not map metins)
       const timers = {
         ...cfg.timersNotify,
         ...(parsed.messageTemplate
@@ -373,4 +372,3 @@ export class TechnikaConfigController {
     assertTechnikaSecret(secret, this.envConfig.DISCORD_TECHNIKA_SHARED_SECRET);
   }
 }
-
