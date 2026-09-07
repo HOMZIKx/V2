@@ -104,7 +104,7 @@ export class TechnikaGuildsController {
     readonly botReady: boolean;
     readonly hasDraft: boolean;
   }> {
-    const snap = this.store.getActiveSnapshot();
+    const snap = this.store.getDraftSnapshot() ?? this.store.getActiveSnapshot();
     const configured = snap.config.guilds ?? {};
     const testId = this.envConfig.DISCORD_TEST_GUILD_ID?.trim();
     const resolveIds = [
