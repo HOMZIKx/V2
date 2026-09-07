@@ -1,0 +1,55 @@
+name: Temporary post-eslint formatter
+
+on:
+  push:
+    branches:
+      - 'maintenance/restore-green-ci-20260907'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.ref == 'refs/heads/maintenance/restore-green-ci-20260907'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: maintenance/restore-green-ci-20260907
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format eslint-touched files
+        run: |
+          pnpm exec prettier --write \
+            apps/discord-gateway/src/infrastructure/discord/discord-js-adapter.ts \
+            apps/discord-gateway/src/infrastructure/player-team/confirm-character-timer.spec.ts \
+            apps/discord-gateway/src/interface/http/technika-config.controller.ts \
+            apps/discord-gateway/src/presentation/discord/panel-publish-appearance.ts \
+            apps/discord-gateway/src/presentation/discord/panel-renderer.ts
+
+      - name: Remove workflow and commit
+        run: |
+          git rm .github/workflows/post-eslint-format-temp.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/discord-gateway/src/infrastructure/discord/discord-js-adapter.ts \
+            apps/discord-gateway/src/infrastructure/player-team/confirm-character-timer.spec.ts \
+            apps/discord-gateway/src/interface/http/technika-config.controller.ts \
+            apps/discord-gateway/src/presentation/discord/panel-publish-appearance.ts \
+            apps/discord-gateway/src/presentation/discord/panel-renderer.ts
+          git commit -m "style: format eslint-autofixed files and remove temporary workflow"
+          git push origin HEAD:maintenance/restore-green-ci-20260907
