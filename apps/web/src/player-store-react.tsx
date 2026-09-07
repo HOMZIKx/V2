@@ -64,6 +64,7 @@ import {
   type PlayerStoreState,
   type ProgressionKind,
   type TaskOutcome,
+  type WorkspaceRecord,
 } from './player-store';
 import type { CharacterAppearanceLook } from './character-profile';
 
@@ -71,6 +72,11 @@ import { getMyPlayerTeamState, putMyPlayerTeamState, resolvePlayerTeamDemoViewer
 import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
 import { preserveHuntFieldsOnPut } from './hunt-snapshot';
 import { syncKingdomWarRecipients } from './discord-notify-api';
+import {
+  getSharedWorkspaceState,
+  putSharedWorkspaceState,
+  subscribeSharedWorkspaceState,
+} from './player-team-workspace-live-api';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
@@ -222,6 +228,16 @@ interface PlayerStoreApi {
 
 const PlayerStoreContext = createContext<PlayerStoreApi | null>(null);
 
+function parseSharedWorkspace(
+  current: PlayerStoreState,
+  workspaceId: string,
+  raw: Record<string, unknown>,
+): WorkspaceRecord | null {
+  const parsed = parsePlayerStore(JSON.stringify({ ...current, workspaces: [raw] }));
+  const workspace = parsed?.workspaces[0] ?? null;
+  return workspace?.id === workspaceId ? workspace : null;
+}
+
 export function PlayerStoreProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<PlayerStoreState>(() => createInitialPlayerStore());
   const [hydrated, setHydrated] = useState(false);
@@ -233,6 +249,11 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
   const serverHydratedRef = useRef(false);
   const serverRevisionRef = useRef<number | null>(null);
   const pendingSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workspaceRevisionRef = useRef<Map<string, number>>(new Map());
+  const workspaceSerializedRef = useRef<Map<string, string>>(new Map());
+  const workspaceStreamsRef = useRef<Map<string, EventSource>>(new Map());
+  const workspaceSyncTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const workspaceIdsKey = state.workspaces.map((workspace) => workspace.id).sort().join('|');
 
   useEffect(() => {
     const raw = window.localStorage.getItem(PLAYER_STORE_KEY);
@@ -250,7 +271,6 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     if (!state.viewer) return;
     const viewerId = resolvePlayerTeamDemoViewerId(state.viewer);
 
-    // Avoid repeated fetch after we already loaded for this viewer.
     if (serverHydratedViewerIdRef.current === viewerId && serverHydratedRef.current) return;
 
     serverHydratedRef.current = false;
@@ -279,7 +299,6 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
           serverRevisionRef.current = response.revision;
         }
       } catch (e) {
-        // Keep local state as source of truth when server fails.
         console.error('player-team: sync-from-server failed', e);
       } finally {
         serverHydratedViewerIdRef.current = viewerId;
@@ -308,13 +327,12 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         let stateSnapshot = localSnapshot;
         try {
           const latest = await getMyPlayerTeamState({ viewerId });
-          // Preserve mapHunt/partyHunt from server when local EQ put would omit them.
           stateSnapshot = preserveHuntFieldsOnPut(localSnapshot, latest.state);
           if (latest.revision !== null) {
             serverRevisionRef.current = latest.revision;
           }
         } catch {
-          // Fall back to local-only put if GET fails.
+          // Fall back to local-only put if GET fails. Backend revision protection still applies.
         }
 
         const result = await putMyPlayerTeamState({
@@ -329,7 +347,6 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
         }
 
         if (result.conflict) {
-          // Revision conflict: re-GET, preserve hunt fields, retry once with fresh revision.
           try {
             const latest = await getMyPlayerTeamState({ viewerId });
             const merged = preserveHuntFieldsOnPut(localSnapshot, latest.state);
@@ -341,15 +358,8 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
             if (retry.ok && retry.revision !== null) {
               serverRevisionRef.current = retry.revision;
             } else if (!retry.ok && retry.conflict) {
-              const blind = await putMyPlayerTeamState({
-                viewerId,
-                state: merged,
-                expectedRevision: null,
-              });
-              if (blind.ok && blind.revision !== null) {
-                serverRevisionRef.current = blind.revision;
-              }
-            } else if (!retry.ok && !retry.conflict) {
+              console.warn('player-team: repeated viewer snapshot conflict; refusing blind overwrite');
+            } else if (!retry.ok) {
               console.error('player-team: conflict-retry sync-to-server failed', retry.error);
             }
           } catch (e) {
@@ -370,6 +380,142 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
     };
   }, [hydrated, onlineEnabled, state, state.authStatus, state.viewer]);
 
+  const applySharedWorkspace = useCallback(
+    (workspaceId: string, raw: Record<string, unknown>, revision: number) => {
+      setState((current) => {
+        const incoming = parseSharedWorkspace(current, workspaceId, raw);
+        if (!incoming) return current;
+        const existing = current.workspaces.find((workspace) => workspace.id === workspaceId);
+        if (!existing) return current;
+
+        const serialized = JSON.stringify(incoming);
+        workspaceRevisionRef.current.set(workspaceId, revision);
+        workspaceSerializedRef.current.set(workspaceId, serialized);
+
+        if (JSON.stringify(existing) === serialized) return current;
+
+        const next = {
+          ...current,
+          workspaces: current.workspaces.map((workspace) =>
+            workspace.id === workspaceId ? incoming : workspace,
+          ),
+        };
+        window.localStorage.setItem(PLAYER_STORE_KEY, serializePlayerStore(next));
+        return next;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const streams = workspaceStreamsRef.current;
+    const ids = new Set(state.workspaces.map((workspace) => workspace.id));
+
+    if (
+      !onlineEnabled ||
+      !hydrated ||
+      state.authStatus !== 'authenticated' ||
+      !state.viewer
+    ) {
+      for (const stream of streams.values()) stream.close();
+      streams.clear();
+      workspaceRevisionRef.current.clear();
+      workspaceSerializedRef.current.clear();
+      return;
+    }
+
+    for (const [workspaceId, stream] of streams) {
+      if (ids.has(workspaceId)) continue;
+      stream.close();
+      streams.delete(workspaceId);
+      workspaceRevisionRef.current.delete(workspaceId);
+      workspaceSerializedRef.current.delete(workspaceId);
+    }
+
+    for (const workspaceId of ids) {
+      if (streams.has(workspaceId)) continue;
+      const stream = subscribeSharedWorkspaceState(workspaceId, (snapshot) => {
+        const knownRevision = workspaceRevisionRef.current.get(workspaceId);
+        if (knownRevision !== undefined && snapshot.revision <= knownRevision) return;
+        applySharedWorkspace(workspaceId, snapshot.state, snapshot.revision);
+      });
+      streams.set(workspaceId, stream);
+    }
+  }, [applySharedWorkspace, hydrated, onlineEnabled, state.authStatus, state.viewer, workspaceIdsKey]);
+
+  useEffect(() => {
+    if (
+      !onlineEnabled ||
+      !hydrated ||
+      state.authStatus !== 'authenticated' ||
+      !state.viewer
+    ) {
+      return;
+    }
+
+    const timers = workspaceSyncTimersRef.current;
+    const currentIds = new Set(state.workspaces.map((workspace) => workspace.id));
+    for (const [workspaceId, timer] of timers) {
+      if (currentIds.has(workspaceId)) continue;
+      clearTimeout(timer);
+      timers.delete(workspaceId);
+    }
+
+    for (const workspace of state.workspaces) {
+      const expectedRevision = workspaceRevisionRef.current.get(workspace.id);
+      if (expectedRevision === undefined) continue;
+      const serialized = JSON.stringify(workspace);
+      if (workspaceSerializedRef.current.get(workspace.id) === serialized) continue;
+
+      const previousTimer = timers.get(workspace.id);
+      if (previousTimer) clearTimeout(previousTimer);
+
+      const timer = setTimeout(() => {
+        timers.delete(workspace.id);
+        void (async () => {
+          const latestExpectedRevision = workspaceRevisionRef.current.get(workspace.id);
+          if (latestExpectedRevision === undefined) return;
+
+          const result = await putSharedWorkspaceState({
+            workspace,
+            expectedRevision: latestExpectedRevision,
+          });
+          if (result.ok) {
+            workspaceRevisionRef.current.set(workspace.id, result.snapshot.revision);
+            workspaceSerializedRef.current.set(
+              workspace.id,
+              JSON.stringify(result.snapshot.state),
+            );
+            return;
+          }
+
+          if (result.conflict) {
+            try {
+              const latest = await getSharedWorkspaceState(workspace.id);
+              applySharedWorkspace(workspace.id, latest.state, latest.revision);
+            } catch (error) {
+              console.error('player-team: live workspace conflict refresh failed', error);
+            }
+            return;
+          }
+
+          console.error('player-team: live workspace write failed', result.error);
+        })();
+      }, 120);
+      timers.set(workspace.id, timer);
+    }
+  }, [applySharedWorkspace, hydrated, onlineEnabled, state.authStatus, state.viewer, state.workspaces]);
+
+  useEffect(
+    () => () => {
+      for (const stream of workspaceStreamsRef.current.values()) stream.close();
+      workspaceStreamsRef.current.clear();
+      for (const timer of workspaceSyncTimersRef.current.values()) clearTimeout(timer);
+      workspaceSyncTimersRef.current.clear();
+    },
+    [],
+  );
+
   const apply = useCallback((updater: (current: PlayerStoreState) => PlayerStoreState) => {
     let snapshot: PlayerStoreState | null = null;
     setState((current) => {
@@ -385,7 +531,6 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
   const writesEnabled =
     state.authStatus === 'authenticated' &&
     (state.connection === 'connected' || state.connection === 'reconnecting');
-
 
   const syncWarRecipientsFromState = useCallback((next: PlayerStoreState) => {
     const ids = new Set<string>();
