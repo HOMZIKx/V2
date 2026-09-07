@@ -19,7 +19,7 @@ const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: '30d', label: '30 dni' },
 ];
 
-const RANKING_REFRESH_MS = 30 * 60 * 1000;
+const RANKING_REFRESH_MS = 60 * 1000;
 
 function DiscordNick({
   discordUserId,
@@ -28,7 +28,6 @@ function DiscordNick({
   readonly discordUserId: string;
   readonly displayName: string;
 }) {
-  // Nick only — never APP / discord:// badge.
   return (
     <a
       className="ma-player__name"
@@ -114,27 +113,25 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
         ]);
 
         const parts: string[] = [];
-        if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
-        else if (!silent) {
+        if (me.ok) {
+          const self = me.rows.find((row) => row.discordUserId === discordUserId) ?? null;
+          setMyRow(self);
+        } else if (!silent) {
           setMyRow(null);
-          if (!me.ok) {
-            parts.push(
-              'Twoja aktywność: ' +
-                me.error +
-                (me.detail ? ' — ' + me.detail : '') +
-                (me.status ? ' (HTTP ' + String(me.status) + ')' : ''),
-            );
-          }
+          parts.push(
+            'Twoja aktywność: ' +
+              me.error +
+              (me.detail ? ' — ' + me.detail : '') +
+              (me.status ? ' (HTTP ' + String(me.status) + ')' : ''),
+          );
         }
 
         if (ranking.ok) {
           setTop(ranking.rows.slice(0, 10));
-          if (silent) {
-            const t = new Date();
-            const hh = String(t.getHours()).padStart(2, '0');
-            const mm = String(t.getMinutes()).padStart(2, '0');
-            setRefreshedHint('odświeżono ' + hh + ':' + mm);
-          }
+          const t = new Date();
+          const hh = String(t.getHours()).padStart(2, '0');
+          const mm = String(t.getMinutes()).padStart(2, '0');
+          setRefreshedHint('odświeżono ' + hh + ':' + mm);
         } else if (!silent) {
           setTop([]);
           if (ranking.offline) {
