@@ -13,7 +13,9 @@ import {
 import { createTimerButtonCustomId } from '../../infrastructure/security/timer-custom-id.js';
 import { InteractionRouter } from './interaction-router.js';
 
-const confirmKillMock = vi.hoisted(() => vi.fn(async () => ({ ok: true as const, revision: 7 })));
+const confirmKillMock = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ ok: true as const, revision: 7 })),
+);
 
 vi.mock('../../infrastructure/player-team/confirm-timer-kill.js', () => ({
   confirmTimerKillFromBot: confirmKillMock,

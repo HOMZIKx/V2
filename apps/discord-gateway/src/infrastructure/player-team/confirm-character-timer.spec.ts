@@ -35,6 +35,7 @@ describe('confirmCharacterProgressTimerFromBot viewer aliases', () => {
     };
 
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      await Promise.resolve();
       const headers = init?.headers as Record<string, string>;
       const viewer = headers?.['x-demo-viewer-id'];
       if (init?.method === 'GET' || !init?.method) {
@@ -108,8 +109,9 @@ describe('confirmCharacterProgressTimerFromBot EQ restart', () => {
 
     let putBody: unknown = null;
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      await Promise.resolve();
       if (init?.method === 'PUT') {
-        putBody = JSON.parse(String(init.body));
+        putBody = JSON.parse(typeof init.body === 'string' ? init.body : '');
         return new Response(JSON.stringify({ revision: 8 }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -173,8 +175,9 @@ describe('snoozeCharacterProgressTimerFromBot', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (_url: string, init?: RequestInit) => {
+        await Promise.resolve();
         if (init?.method === 'PUT') {
-          putBody = JSON.parse(String(init.body));
+          putBody = JSON.parse(typeof init.body === 'string' ? init.body : '');
           return new Response(JSON.stringify({ revision: 2 }), {
             status: 200,
             headers: { 'content-type': 'application/json' },

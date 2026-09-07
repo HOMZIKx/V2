@@ -26,6 +26,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async createPartyRoom(input: CreatePartyRoomInput): Promise<PartyRoomRecord> {
+    await Promise.resolve();
     const id = `party-${this.parties.size + 1}`;
     const joinCode = String(1000 + this.parties.size);
     const members: PartyRoomMember[] = [
@@ -52,6 +53,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async joinPartyRoom(input: JoinPartyRoomInput): Promise<PartyRoomRecord> {
+    await Promise.resolve();
     const roomId = this.joinIndex.get(input.joinCode.trim());
     if (roomId === undefined) {
       throw new PlayerTeamError('NOT_FOUND', 'party room not found for join code');
@@ -72,10 +74,12 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async getPartyRoom(roomId: string): Promise<PartyRoomRecord | null> {
+    await Promise.resolve();
     return this.parties.get(roomId) ?? null;
   }
 
   public async leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null> {
+    await Promise.resolve();
     const current = this.parties.get(roomId);
     if (!current) return null;
     const nextMembers = current.members.filter((m) => m.id !== viewerId);
@@ -101,6 +105,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord> {
+    await Promise.resolve();
     const current = this.parties.get(input.roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     if (current.revision !== input.expectedRevision) {
@@ -122,6 +127,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord> {
+    await Promise.resolve();
     const current = this.parties.get(roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     const pins = [...current.pins.filter((p) => p.id !== pin.id), { ...pin, partyId: roomId }];
@@ -136,6 +142,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   }
 
   public async removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord> {
+    await Promise.resolve();
     const current = this.parties.get(roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     const next: PartyRoomRecord = {
@@ -153,6 +160,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
     channel: number,
     roomCode: string | null,
   ): Promise<TimerRoomSnapshot> {
+    await Promise.resolve();
     const id = this.timerId(mapKey, channel, roomCode);
     const existing = this.timers.get(id);
     if (existing) return existing;

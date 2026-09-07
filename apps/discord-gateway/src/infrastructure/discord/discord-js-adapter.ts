@@ -89,7 +89,7 @@ export function isDiscordDmClosedError(error: unknown): boolean {
   if (code === 50007 || code === '50007') {
     return true;
   }
-  const message = error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : '';
   return /cannot send messages to this user/i.test(message);
 }
 
@@ -998,6 +998,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }
 
   private async handleUnauthorizedGuild(guildId: string, source: string): Promise<void> {
+    await Promise.resolve();
     if (this.isAllowedGuild(guildId)) {
       return;
     }

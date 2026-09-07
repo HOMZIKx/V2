@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { Pool } from 'pg';
+import { Pool, type QueryResultRow } from 'pg';
 
 import { createLogger } from '@v2/observability';
 
@@ -20,6 +20,33 @@ import {
 } from '../../domain/ports/hunt-rooms.port.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
 import { type PlayerTeamEnv } from '../config/player-team-env.js';
+
+type PartyRoomDbRow = QueryResultRow & {
+  id: string;
+  join_code: string;
+  name: string;
+  leader_id: string;
+  visibility: 'open' | 'closed';
+  map_key: string;
+  active_channel: number;
+  session_kills: number;
+  members: PartyRoomMember[];
+  requests: PartyRoomRequest[];
+  pins: PartyRoomPin[];
+  revision: number;
+  updated_at: string | Date;
+};
+
+type TimerRoomDbRow = QueryResultRow & {
+  id: string;
+  map_key: string;
+  channel: number;
+  room_code: string | null;
+  timers: Record<string, TimerRoomRecord>;
+  applied_ops: string[];
+  revision: number;
+  updated_at: string | Date;
+};
 
 function newId(prefix: string): string {
   return `${prefix}-${randomBytes(6).toString('hex')}`;
@@ -49,21 +76,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     return this.pool;
   }
 
-  private mapPartyRow(row: {
-    id: string;
-    join_code: string;
-    name: string;
-    leader_id: string;
-    visibility: 'open' | 'closed';
-    map_key: string;
-    active_channel: number;
-    session_kills: number;
-    members: PartyRoomMember[];
-    requests: PartyRoomRequest[];
-    pins: PartyRoomPin[];
-    revision: number;
-    updated_at: string | Date;
-  }): PartyRoomRecord {
+  private mapPartyRow(row: PartyRoomDbRow): PartyRoomRecord {
     return {
       id: row.id,
       joinCode: row.join_code,
@@ -81,16 +94,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     };
   }
 
-  private mapTimerRow(row: {
-    id: string;
-    map_key: string;
-    channel: number;
-    room_code: string | null;
-    timers: Record<string, TimerRoomRecord>;
-    applied_ops: string[];
-    revision: number;
-    updated_at: string | Date;
-  }): TimerRoomSnapshot {
+  private mapTimerRow(row: TimerRoomDbRow): TimerRoomSnapshot {
     return {
       id: row.id,
       mapKey: row.map_key,
@@ -109,7 +113,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     const members: PartyRoomMember[] = [
       { id: input.leaderId, displayName: input.displayName, role: 'leader' },
     ];
-    const result = await this.db.query({
+    const result = await this.db.query<PartyRoomDbRow>({
       text: `INSERT INTO player_team_party_rooms
         (id, join_code, name, leader_id, visibility, map_key, active_channel, session_kills, members, requests, pins, revision, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 0, $8::jsonb, '[]'::jsonb, '[]'::jsonb, 0, NOW())
@@ -130,7 +134,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
 
   public async joinPartyRoom(input: JoinPartyRoomInput): Promise<PartyRoomRecord> {
     const code = input.joinCode.trim();
-    const found = await this.db.query(
+    const found = await this.db.query<PartyRoomDbRow>(
       `SELECT * FROM player_team_party_rooms WHERE join_code = $1`,
       [code],
     );
@@ -149,7 +153,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       { id: input.viewerId, displayName: input.displayName, role: 'member' as const },
     ];
 
-    const updated = await this.db.query(
+    const updated = await this.db.query<PartyRoomDbRow>(
       `UPDATE player_team_party_rooms
        SET members = $2::jsonb,
            revision = revision + 1,
@@ -162,9 +166,10 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
   }
 
   public async getPartyRoom(roomId: string): Promise<PartyRoomRecord | null> {
-    const result = await this.db.query(`SELECT * FROM player_team_party_rooms WHERE id = $1`, [
-      roomId,
-    ]);
+    const result = await this.db.query<PartyRoomDbRow>(
+      `SELECT * FROM player_team_party_rooms WHERE id = $1`,
+      [roomId],
+    );
     const row = result.rows[0];
     return row === undefined ? null : this.mapPartyRow(row);
   }
@@ -185,7 +190,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       nextMembers[0] = { ...nextMembers[0]!, role: 'leader' };
     }
 
-    const updated = await this.db.query(
+    const updated = await this.db.query<PartyRoomDbRow>(
       `UPDATE player_team_party_rooms
        SET members = $2::jsonb,
            leader_id = $3,
@@ -214,7 +219,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
     }
 
-    const updated = await this.db.query(
+    const updated = await this.db.query<PartyRoomDbRow>(
       `UPDATE player_team_party_rooms
        SET map_key = COALESCE($2, map_key),
            active_channel = COALESCE($3, active_channel),
@@ -248,7 +253,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     }
     const pins = [...current.pins.filter((p) => p.id !== pin.id), { ...pin, partyId: roomId }];
-    const updated = await this.db.query(
+    const updated = await this.db.query<PartyRoomDbRow>(
       `UPDATE player_team_party_rooms
        SET pins = $2::jsonb,
            revision = revision + 1,
@@ -266,7 +271,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     }
     const pins = current.pins.filter((p) => p.id !== pinId);
-    const updated = await this.db.query(
+    const updated = await this.db.query<PartyRoomDbRow>(
       `UPDATE player_team_party_rooms
        SET pins = $2::jsonb,
            revision = revision + 1,
@@ -291,14 +296,15 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     const normalizedCode = roomCode && roomCode.trim().length > 0 ? roomCode.trim() : null;
     const id = this.timerRoomId(mapKey, channel, normalizedCode);
 
-    const existing = await this.db.query(`SELECT * FROM player_team_timer_rooms WHERE id = $1`, [
-      id,
-    ]);
+    const existing = await this.db.query<TimerRoomDbRow>(
+      `SELECT * FROM player_team_timer_rooms WHERE id = $1`,
+      [id],
+    );
     if (existing.rows[0] !== undefined) {
       return this.mapTimerRow(existing.rows[0]);
     }
 
-    const inserted = await this.db.query(
+    const inserted = await this.db.query<TimerRoomDbRow>(
       `INSERT INTO player_team_timer_rooms
         (id, map_key, channel, room_code, timers, applied_ops, revision, updated_at)
        VALUES ($1, $2, $3, $4, '{}'::jsonb, '[]'::jsonb, 0, NOW())
@@ -334,7 +340,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     };
     const appliedOps = [...room.appliedOps, input.operationId].slice(-500);
 
-    const updated = await this.db.query(
+    const updated = await this.db.query<TimerRoomDbRow>(
       `UPDATE player_team_timer_rooms
        SET timers = $2::jsonb,
            applied_ops = $3::jsonb,

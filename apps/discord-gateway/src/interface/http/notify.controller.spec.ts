@@ -114,10 +114,13 @@ describe('NotifyController', () => {
   });
 
   it('sends DM and ignores duplicate idempotency key', async () => {
-    const sendTimerNotify = vi.fn(async (_input: { readonly content: string }) => ({
-      delivery: 'dm' as const,
-      messageId: 'm1',
-    }));
+    const sendTimerNotify = vi.fn((input: { readonly content: string }) => {
+      void input;
+      return Promise.resolve({
+        delivery: 'dm' as const,
+        messageId: 'm1',
+      });
+    });
     const controller = new NotifyController(enabledConfig(), {
       getSnapshot: () => ({ state: 'ready' }),
       sendTimerNotify,
@@ -143,9 +146,7 @@ describe('NotifyController', () => {
   it('fails gracefully when Discord DMs are closed', async () => {
     const { NotifyDmClosedError } =
       await import('../../infrastructure/discord/discord-js-adapter.js');
-    const sendTimerNotify = vi.fn(async () => {
-      throw new NotifyDmClosedError();
-    });
+    const sendTimerNotify = vi.fn(() => Promise.reject(new NotifyDmClosedError()));
     const controller = new NotifyController(enabledConfig(), {
       getSnapshot: () => ({ state: 'ready' }),
       sendTimerNotify,
@@ -165,7 +166,7 @@ describe('NotifyController', () => {
   });
 
   it('registers watchers and fans out reset notify with buttons', async () => {
-    const sendTimerNotify = vi.fn(async () => ({ delivery: 'dm', messageId: 'm-reset' }));
+    const sendTimerNotify = vi.fn(() => Promise.resolve({ delivery: 'dm', messageId: 'm-reset' }));
     const controller = new NotifyController(
       enabledConfig(),
       {
@@ -175,7 +176,7 @@ describe('NotifyController', () => {
       mockTechnikaStore() as never,
     );
 
-    await controller.watchTimerRoom(SECRET, {
+    controller.watchTimerRoom(SECRET, {
       discordUserId: '222222222222222222',
       mapKey: 'a1',
       channel: 1,
@@ -196,7 +197,7 @@ describe('NotifyController', () => {
     expect(sendTimerNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         discordUserId: '222222222222222222',
-        components: expect.any(Array),
+        components: expect.any(Array) as unknown as readonly unknown[],
       }),
     );
   });

@@ -198,7 +198,7 @@ export class TechnikaConfigController {
     }
 
     const parsed = this.parseTestDmBody(body);
-    const cfg = this.resolveConfigForTest(parsed);
+    const cfg = this.resolveConfigForTest();
     const discordUserId = this.resolveTestUserId(parsed.discordUserId);
 
     let content: string;
@@ -342,7 +342,7 @@ export class TechnikaConfigController {
     };
   }
 
-  private resolveConfigForTest(parsed: { readonly module: TestDmModule }): BotConfigValues {
+  private resolveConfigForTest(): BotConfigValues {
     const draft = this.store.getDraftSnapshot();
     if (draft) {
       return draft.config;
