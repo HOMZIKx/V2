@@ -141,7 +141,6 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'guilds',
     'panels',
   ]);
-  // guilds/{id}… + panels/channels|publish|preview (+ nested guilds panels if added later)
   const allowedPrefix = (path: string) =>
     path === 'guilds' ||
     path.startsWith('guilds/') ||
@@ -155,16 +154,17 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
   }
 
   const method = request.method.toUpperCase();
-  // GET guilds list is public; guild-scoped channels/panels need Technika secret.
   const incomingEarly = new URL(request.url);
   const rankingFull =
     joined === 'member-activity/ranking' &&
     (incomingEarly.searchParams.get('full') === '1' ||
       incomingEarly.searchParams.get('full') === 'true');
-  // guilds/{id}/roles requires Technika secret (New Bot LIVE) — do NOT treat as public.
+  const membershipMatch = /^guilds\/(\d{17,20})\/members\/(\d{17,20})$/.exec(joined);
+  const selfMembershipRead = method === 'GET' && membershipMatch !== null;
   const publicRead =
     method === 'GET' &&
     !rankingFull &&
+    !selfMembershipRead &&
     (joined === 'config' ||
       joined === 'capabilities' ||
       joined === 'guilds' ||
@@ -173,9 +173,33 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
       (joined.startsWith('guilds/') &&
         !joined.includes('/channels') &&
         !joined.includes('/panels') &&
-        !joined.includes('/roles')));
+        !joined.includes('/roles') &&
+        !joined.includes('/members/')));
 
-  if (!publicRead) {
+  if (selfMembershipRead) {
+    const session = await resolveAuthenticatedDiscordSession(request);
+    if (!session.ok) {
+      return NextResponse.json(
+        { ok: false, error: session.error },
+        { status: session.status },
+      );
+    }
+
+    const requestedUserId = membershipMatch?.[2];
+    if (!requestedUserId || session.discordUserId !== requestedUserId) {
+      return NextResponse.json(
+        { ok: false, error: 'membership_probe_forbidden' },
+        { status: 403 },
+      );
+    }
+
+    if (!technikaSecret()) {
+      return NextResponse.json(
+        { ok: false, error: 'technika_not_configured' },
+        { status: 503 },
+      );
+    }
+  } else if (!publicRead) {
     const session = await resolveAuthenticatedDiscordSession(request);
     if (!session.ok) {
       return NextResponse.json(
