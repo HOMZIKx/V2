@@ -266,6 +266,38 @@ export function useTechnikaConfig() {
     setBusy(true);
     setActionError(null);
     try {
+      // Apply must always persist the current form first. Previously it only
+      // applied whatever draft happened to exist on the gateway, so toggling
+      // Timery/Wojna and pressing "Zapisz i włącz" could re-apply stale values.
+      const draftRes = await putConfigDraft(buildDraftPartial());
+      if (!draftRes.ok) {
+        const details = [
+          draftRes.error,
+          ...(draftRes.detail ? [draftRes.detail] : []),
+          ...(draftRes.issues ?? []).map((i) => i.path + ': ' + i.message),
+        ];
+        setActionError('Zapisz i włącz: nie udało się zapisać aktualnych zmian — ' + details.join(' — '));
+        setStep('Apply');
+        return;
+      }
+
+      const validation = await postConfigValidate();
+      if (!validation.ok || !validation.data.ok) {
+        const details = validation.ok
+          ? validation.data.issues.map((i) => i.path + ': ' + i.message)
+          : [
+              validation.error,
+              ...(validation.detail ? [validation.detail] : []),
+              ...(validation.issues ?? []).map((i) => i.path + ': ' + i.message),
+            ];
+        setActionError(
+          'Zapisz i włącz: aktualne zmiany nie przeszły walidacji' +
+            (details.length > 0 ? ' — ' + details.join(' — ') : ''),
+        );
+        setStep('Apply');
+        return;
+      }
+
       const res = await postConfigApply();
       if (!res.ok) {
         setActionError('Zapisz i włącz: ' + res.error + (res.detail ? ' — ' + res.detail : ''));
@@ -279,7 +311,7 @@ export function useTechnikaConfig() {
     } finally {
       setBusy(false);
     }
-  }, [mutationsEnabled, load]);
+  }, [mutationsEnabled, buildDraftPartial, load]);
 
   const runRollback = useCallback(async () => {
     if (!mutationsEnabled) return;
