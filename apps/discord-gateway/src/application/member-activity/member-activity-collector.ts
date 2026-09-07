@@ -10,6 +10,19 @@ type VoiceSession = {
   readonly displayName?: string | undefined;
 };
 
+function isAfkVoiceState(state: VoiceState): boolean {
+  if (state.channelId === null) return false;
+
+  // Discord's configured AFK channel is always excluded.
+  if (state.guild.afkChannelId && state.channelId === state.guild.afkChannelId) {
+    return true;
+  }
+
+  // Also exclude explicitly named AFK voice channels (e.g. "AFK", "💤・AFK").
+  const channelName = state.channel?.name ?? '';
+  return /(^|[^a-z0-9])afk([^a-z0-9]|$)/i.test(channelName);
+}
+
 export class MemberActivityCollector {
   private readonly voiceJoined = new Map<string, VoiceSession>();
 
@@ -46,21 +59,24 @@ export class MemberActivityCollector {
     if (!this.memberEligible(member, cfg.memberRoleIds)) return;
 
     const key = `${guildId}:${member.id}`;
-    const wasIn = before.channelId !== null;
-    const isIn = after.channelId !== null;
+    const wasCounted = before.channelId !== null && !isAfkVoiceState(before);
+    const isCounted = after.channelId !== null && !isAfkVoiceState(after);
     const displayName = member.displayName || member.user.username;
 
-    if (!wasIn && isIn) {
+    // Join a normal voice channel OR move from AFK → normal voice.
+    if (!wasCounted && isCounted) {
       this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName });
       return;
     }
 
-    if (wasIn && !isIn) {
+    // Leave voice OR move from normal voice → AFK. Only the normal-channel time is saved.
+    if (wasCounted && !isCounted) {
       this.flushVoice(key, guildId, member.id, displayName);
       return;
     }
 
-    if (wasIn && isIn && before.channelId !== after.channelId) {
+    // Switching between two normal voice channels keeps one continuous counted session.
+    if (wasCounted && isCounted && before.channelId !== after.channelId) {
       if (!this.voiceJoined.has(key)) {
         this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName });
       }
