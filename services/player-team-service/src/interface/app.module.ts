@@ -9,6 +9,8 @@ import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-stat
 import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { PlayerTeamController } from './player-team.controller.js';
+import { WorkspaceLiveBus } from './workspace-live.bus.js';
+import { WorkspaceLiveController } from './workspace-live.controller.js';
 import {
   HUNT_ROOMS_USE_CASES,
   PLAYER_TEAM_ENV,
@@ -16,7 +18,7 @@ import {
 } from './player-team.tokens.js';
 
 @Module({
-  controllers: [HealthController, PlayerTeamController, HuntRoomsController],
+  controllers: [HealthController, PlayerTeamController, HuntRoomsController, WorkspaceLiveController],
   providers: [
     PlayerTeamEnvProvider,
     {
@@ -26,6 +28,7 @@ import {
     },
     PlayerTeamStateRepository,
     HuntRoomsRepository,
+    WorkspaceLiveBus,
     {
       provide: PLAYER_TEAM_STATE_USE_CASES,
       useFactory: (

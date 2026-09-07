@@ -9,6 +9,8 @@ import {
   type ViewerSnapshotRecord,
   type ViewerSnapshotUpsertInput,
   type ViewerSnapshotUpsertResult,
+  type WorkspaceSnapshotRecord,
+  type WorkspaceSnapshotUpsertInput,
 } from '../../domain/ports/player-team-state.port.js';
 import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
@@ -139,6 +141,109 @@ export class PlayerTeamStateRepository implements PlayerTeamStateRepositoryPort,
     throw new PlayerTeamError(
       'REVISION_CONFLICT',
       `viewer snapshot revision mismatch: expected ${input.expectedRevision}, actual ${actual}`,
+      { actualRevision: actual },
+    );
+  }
+
+  public async getWorkspaceSnapshot(workspaceId: string): Promise<WorkspaceSnapshotRecord | null> {
+    const result = await this.db.query<{
+      workspace_id: string;
+      state: Record<string, unknown>;
+      revision: number;
+      updated_by_user_id: string;
+      updated_at: string;
+    }>(
+      `SELECT workspace_id, state, revision, updated_by_user_id, updated_at
+       FROM player_team_workspace_snapshots
+       WHERE workspace_id = $1`,
+      [workspaceId],
+    );
+
+    const row = result.rows[0];
+    if (row === undefined) return null;
+
+    return {
+      workspaceId: row.workspace_id,
+      state: row.state,
+      revision: Number(row.revision),
+      updatedByUserId: row.updated_by_user_id,
+      updatedAtIso: new Date(row.updated_at).toISOString(),
+    };
+  }
+
+  public async upsertWorkspaceSnapshot(
+    input: WorkspaceSnapshotUpsertInput,
+  ): Promise<WorkspaceSnapshotRecord> {
+    const stateJson = JSON.stringify(input.state);
+
+    if (input.expectedRevision === null) {
+      const insert = await this.db.query<{
+        workspace_id: string;
+        state: Record<string, unknown>;
+        revision: number;
+        updated_by_user_id: string;
+        updated_at: string;
+      }>(
+        `INSERT INTO player_team_workspace_snapshots
+           (workspace_id, state, revision, updated_by_user_id, updated_at)
+         VALUES ($1, $2::jsonb, 0, $3, NOW())
+         ON CONFLICT DO NOTHING
+         RETURNING workspace_id, state, revision, updated_by_user_id, updated_at`,
+        [input.workspaceId, stateJson, input.updatedByUserId],
+      );
+      const row = insert.rows[0];
+      if (row !== undefined) {
+        return {
+          workspaceId: row.workspace_id,
+          state: row.state,
+          revision: Number(row.revision),
+          updatedByUserId: row.updated_by_user_id,
+          updatedAtIso: new Date(row.updated_at).toISOString(),
+        };
+      }
+
+      const current = await this.getWorkspaceSnapshot(input.workspaceId);
+      const actual = current?.revision ?? null;
+      throw new PlayerTeamError(
+        'REVISION_CONFLICT',
+        `workspace snapshot already exists: expected no revision, actual ${actual}`,
+        { actualRevision: actual },
+      );
+    }
+
+    const update = await this.db.query<{
+      workspace_id: string;
+      state: Record<string, unknown>;
+      revision: number;
+      updated_by_user_id: string;
+      updated_at: string;
+    }>(
+      `UPDATE player_team_workspace_snapshots
+       SET state = $2::jsonb,
+           revision = revision + 1,
+           updated_by_user_id = $3,
+           updated_at = NOW()
+       WHERE workspace_id = $1
+         AND revision = $4
+       RETURNING workspace_id, state, revision, updated_by_user_id, updated_at`,
+      [input.workspaceId, stateJson, input.updatedByUserId, input.expectedRevision],
+    );
+    const row = update.rows[0];
+    if (row !== undefined) {
+      return {
+        workspaceId: row.workspace_id,
+        state: row.state,
+        revision: Number(row.revision),
+        updatedByUserId: row.updated_by_user_id,
+        updatedAtIso: new Date(row.updated_at).toISOString(),
+      };
+    }
+
+    const current = await this.getWorkspaceSnapshot(input.workspaceId);
+    const actual = current?.revision ?? null;
+    throw new PlayerTeamError(
+      'REVISION_CONFLICT',
+      `workspace snapshot revision mismatch: expected ${input.expectedRevision}, actual ${actual}`,
       { actualRevision: actual },
     );
   }
