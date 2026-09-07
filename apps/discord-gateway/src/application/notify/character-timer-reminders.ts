@@ -31,9 +31,13 @@ let sendDeps: CharacterTimerReminderDeps | null = null;
 let loaded = false;
 
 function dataDir(): string {
-  const fromEnv = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  if (fromEnv) return fromEnv;
-  // Repo-root .data (same family as generaly-metki) when cwd is apps/discord-gateway or monorepo root.
+  const gatewayDataDir = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
+  if (gatewayDataDir) return join(gatewayDataDir, 'character-timer-reminders');
+
+  const legacyDataDir = (process.env.DESTILED_DATA_DIR ?? '').trim();
+  if (legacyDataDir) return join(legacyDataDir, 'character-timer-reminders');
+
+  // Repo-root .data when running locally from apps/discord-gateway or monorepo root.
   const candidates = [
     join(process.cwd(), '.data', 'character-timer-reminders'),
     join(process.cwd(), '..', '..', '.data', 'character-timer-reminders'),
