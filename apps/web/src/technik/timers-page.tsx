@@ -76,9 +76,8 @@ export function TechnikTimersPage() {
         <p>
           Po starcie timera na WWW gracz dostaje PW ze skrótem innych timerów oraz przyciskami{' '}
           <strong>Gotowe</strong> / <strong>Przypomnij później</strong>. <strong>Gotowe</strong> ma
-          zaktualizować timer w aplikacji (zespół/EQ) <em>bez</em> otwierania WWW — tak ma działać
-          produkt. Egzekucja przycisków = New Bot / gateway (ta strona WWW tylko konfiguruje treść i
-          włączniki).
+          zaktualizować timer w aplikacji (zespół/EQ) <em>bez</em> otwierania WWW. Koniec odliczania
+          jest obsługiwany przez scheduler gatewaya, więc końcowa PW nie wymaga otwartej karty WWW.
         </p>
       </PlayerSeesNote>
 
@@ -147,8 +146,7 @@ export function TechnikTimersPage() {
             }
           />
           <span className="technik-help">
-            Reminder w przeglądarce jest best-effort (karta musi być otwarta). Scheduler gateway =
-            później — nie udajemy E2E green.
+            Końcowa PW jest planowana po stronie gatewaya i nie wymaga otwartej karty WWW.
           </span>
         </label>
 
@@ -179,6 +177,23 @@ export function TechnikTimersPage() {
             {'{{deepLinkUrl}}'}. Bot/New Bot wstawia wartości z aktualnego stanu — bez sekretów.
           </span>
         </label>
+
+        <div className="technik-row" style={{ marginTop: '1rem' }}>
+          <button
+            type="button"
+            className="technik-test-dm-btn"
+            disabled={cfg.busy || !cfg.canWrite}
+            onClick={() => void cfg.runApply()}
+          >
+            {cfg.busy ? 'Zapisuję…' : 'Zapisz ustawienia timerów'}
+          </button>
+          {cfg.lastAction ? <span className="technik-muted">{cfg.lastAction}</span> : null}
+        </div>
+        {cfg.actionError ? (
+          <p className="technik-error" role="alert" style={{ marginTop: '0.75rem' }}>
+            {cfg.actionError}
+          </p>
+        ) : null}
       </section>
 
       <section className="technik-panel" style={{ marginTop: '1rem' }}>
@@ -229,7 +244,7 @@ export function TechnikTimersPage() {
           onApply={() => void cfg.runApply()}
           onRollback={() => void cfg.runRollback()}
           onRefresh={() => void cfg.load()}
-          help="Po edycji szablonu: Sprawdź → Zobacz → Ty klikasz Zapisz i włącz. Per-guild włączasz w Discordach."
+          help="Zmiany możesz zapisać przyciskiem przy ustawieniach. Tutaj masz dodatkowo walidację, podgląd, historię i cofanie."
         />
       </div>
       {cfg.step === 'Validate' ? (
@@ -241,11 +256,6 @@ export function TechnikTimersPage() {
       ) : null}
       {cfg.step === 'Preview' && cfg.previewText ? (
         <code className="technik-code technik-code--tall">{cfg.previewText}</code>
-      ) : null}
-      {cfg.actionError ? (
-        <p className="technik-error" role="alert">
-          {cfg.actionError}
-        </p>
       ) : null}
     </>
   );
