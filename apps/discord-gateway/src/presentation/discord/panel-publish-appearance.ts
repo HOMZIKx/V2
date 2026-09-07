@@ -50,7 +50,7 @@ export function accentHexToInt(hex: string | undefined): number | undefined {
 }
 
 function normalizeStyle(raw: unknown): PanelButtonStyle {
-  const s = String(raw ?? 'secondary');
+  const s = typeof raw === 'string' ? raw : 'secondary';
   if (s === 'primary' || s === 'danger') return s;
   return 'secondary';
 }
@@ -58,7 +58,7 @@ function normalizeStyle(raw: unknown): PanelButtonStyle {
 function normalizeCustomButton(raw: unknown): PanelCustomButton | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const p = raw as Record<string, unknown>;
-  const action = String(p.action ?? '');
+  const action = typeof p.action === 'string' ? p.action : '';
   if (!CUSTOM_ACTION_SET.has(action)) return null;
   const id = typeof p.id === 'string' && p.id.trim() ? p.id.trim() : '';
   if (!id) return null;
