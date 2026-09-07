@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 import { resolveDiscordViewerFromSession } from '../../../src/identity-auth-client';
 import { usePlayerStore } from '../../../src/player-store-react';

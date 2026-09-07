@@ -3,8 +3,8 @@
  *
  * OAuth start uses top-level navigation to Identity
  * `GET /identity/web-oauth/discord` (never fetch→redirect alone — that risks
- * `state_mismatch`). After Discord, Identity `/identity/web-bridge` reads
- * `/identity/me` same-origin and sends the viewer to web `/auth/callback`.
+ * `state_mismatch`). After Discord, Identity `/identity/web-bridge` returns
+ * to web `/auth/callback`, which independently verifies the active Identity session.
  */
 
 import type { PlayerIdentity } from './player-store';
@@ -147,7 +147,8 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
   let discordAccountId: string | null = null;
   try {
     const accounts = await fetchIdentityAccounts();
-    discordAccountId = accounts.find((account) => account.provider === 'discord')?.accountId ?? null;
+    discordAccountId =
+      accounts.find((account) => account.provider === 'discord')?.accountId ?? null;
   } catch {
     // me succeeded; accounts optional
   }
@@ -167,8 +168,9 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
  * returnTo → Identity web-bridge → web `/auth/callback` with viewer query.
  */
 export function startDiscordOAuthRedirect(
-  webOrigin: string =
-    typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000',
+  webOrigin: string = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'http://127.0.0.1:3000',
 ): void {
   const identityBase = getIdentityAuthBaseUrl();
   const bridgeReturnTo = `${identityBase}/identity/web-bridge?to=${encodeURIComponent(webOrigin)}`;
@@ -178,8 +180,9 @@ export function startDiscordOAuthRedirect(
 
 /** @deprecated alias — prefer startDiscordOAuthRedirect */
 export function beginDiscordSignInRedirect(
-  callbackURL: string =
-    typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://127.0.0.1:3000/',
+  callbackURL: string = typeof window !== 'undefined'
+    ? `${window.location.origin}/`
+    : 'http://127.0.0.1:3000/',
 ): void {
   let origin = 'http://127.0.0.1:3000';
   try {
@@ -188,17 +191,4 @@ export function beginDiscordSignInRedirect(
     // keep default
   }
   startDiscordOAuthRedirect(origin);
-}
-
-export function viewerFromCallbackSearchParams(params: URLSearchParams): PlayerIdentity | null {
-  const viewerId = params.get('viewerId')?.trim();
-  const displayName = params.get('displayName')?.trim();
-  if (!viewerId || !displayName) return null;
-  const discordAccountId = params.get('discordAccountId')?.trim() || null;
-  // Bridge sends V2 uuid as viewerId + optional discordAccountId.
-  return toPlayerIdentityFromSession({
-    displayName,
-    v2UserId: viewerId,
-    discordAccountId,
-  });
 }

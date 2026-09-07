@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  toPlayerIdentityFromSession,
-  viewerFromCallbackSearchParams,
-} from './identity-auth-client';
-import {
-  completeDiscordAuth,
-  createInitialPlayerStore,
-  initialsFromDisplayName,
-} from './player-store';
+import { toPlayerIdentityFromSession } from './identity-auth-client';
+import { completeDiscordAuth, createInitialPlayerStore } from './player-store';
 
 describe('identity session → viewer', () => {
   it('maps Discord snowflake as viewer id when present', () => {
@@ -32,17 +25,6 @@ describe('identity session → viewer', () => {
     expect(viewer.discordAccountId).toBeUndefined();
   });
 
-  it('parses auth callback query params (bridge)', () => {
-    const params = new URLSearchParams({
-      viewerId: 'uuid-1',
-      displayName: 'Destiled',
-      discordAccountId: '999',
-    });
-    const viewer = viewerFromCallbackSearchParams(params);
-    expect(viewer?.id).toBe('999');
-    expect(viewer?.discordAccountId).toBe('999');
-  });
-
   it('completeDiscordAuth accepts PlayerIdentity from OAuth callback', () => {
     const identity = toPlayerIdentityFromSession({
       displayName: 'Oak Leaf',
@@ -53,10 +35,19 @@ describe('identity session → viewer', () => {
     expect(state.viewer).toEqual(identity);
   });
 
-  it('keeps Mateusz demo when completeDiscordAuth has no identity', () => {
-    const state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
-    expect(state.viewer?.id).toBe('mateusz');
-    expect(state.viewer?.displayName).toBe('Mateusz');
-    expect(initialsFromDisplayName('Mateusz')).toBe('M');
+  it('refuses authenticated transition without a verified identity', () => {
+    const initial = createInitialPlayerStore();
+    const state = completeDiscordAuth(initial, 'authenticated');
+    expect(state).toBe(initial);
+    expect(state.authStatus).not.toBe('authenticated');
+    expect(state.viewer).toBeNull();
+  });
+
+  it('refuses authenticated transition without a stable identity id', () => {
+    const initial = createInitialPlayerStore();
+    const state = completeDiscordAuth(initial, 'authenticated', { displayName: 'Fake' });
+    expect(state).toBe(initial);
+    expect(state.authStatus).not.toBe('authenticated');
+    expect(state.viewer).toBeNull();
   });
 });
