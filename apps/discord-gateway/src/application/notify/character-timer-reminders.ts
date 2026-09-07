@@ -1,4 +1,4 @@
-/** File-backed "Przypomnij później" queue — survives discord-gateway restart. */
+/** File-backed character timer reminder queue — survives discord-gateway restart. */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,6 +10,8 @@ export type CharacterTimerReminderJob = {
   readonly label: string;
   readonly characterName: string | null;
   readonly characterId: string | null;
+  readonly workspaceId: string | null;
+  readonly deepLinkUrl: string | null;
   readonly fireAtMs: number;
 };
 
@@ -90,6 +92,8 @@ function loadFromDisk(): void {
         label: typeof job.label === 'string' ? job.label : job.timerId,
         characterName: job.characterName ?? null,
         characterId: job.characterId ?? null,
+        workspaceId: job.workspaceId ?? null,
+        deepLinkUrl: job.deepLinkUrl ?? null,
         fireAtMs: job.fireAtMs,
       });
     }
@@ -152,6 +156,8 @@ export function scheduleCharacterTimerReminder(
     readonly label: string;
     readonly characterName?: string | null;
     readonly characterId?: string | null;
+    readonly workspaceId?: string | null;
+    readonly deepLinkUrl?: string | null;
     readonly delayMs: number;
   },
   deps: CharacterTimerReminderDeps,
@@ -168,6 +174,8 @@ export function scheduleCharacterTimerReminder(
     label: input.label,
     characterName: input.characterName ?? null,
     characterId: input.characterId ?? null,
+    workspaceId: input.workspaceId ?? null,
+    deepLinkUrl: input.deepLinkUrl ?? null,
     fireAtMs,
   };
   metaByKey.set(key, job);
