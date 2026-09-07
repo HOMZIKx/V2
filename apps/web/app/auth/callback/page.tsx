@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
+  callbackClaimsMatchResolvedSession,
   resolveDiscordViewerFromSession,
-  viewerFromCallbackSearchParams,
 } from '../../../src/identity-auth-client';
 import { usePlayerStore } from '../../../src/player-store-react';
 
 /**
  * Landing after Identity web-bridge redirect.
- * Query: viewerId, displayName, optional discordAccountId.
+ * Query values are non-authoritative hints; the live Identity session decides
+ * who is authenticated.
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -25,13 +26,6 @@ export default function AuthCallbackPage() {
 
     const complete = async (): Promise<void> => {
       const params = new URLSearchParams(window.location.search);
-      const callbackViewer = viewerFromCallbackSearchParams(params);
-
-      if (callbackViewer) {
-        finishAuthRef.current('authenticated', callbackViewer);
-        router.replace('/');
-        return;
-      }
 
       try {
         const resolved = await resolveDiscordViewerFromSession();
@@ -40,6 +34,11 @@ export default function AuthCallbackPage() {
           setError('Brak aktywnej sesji Discord. Wróć i spróbuj ponownie.');
           return;
         }
+        if (!callbackClaimsMatchResolvedSession(params, resolved)) {
+          setError('Dane logowania nie pasują do aktywnej sesji Discord. Spróbuj ponownie.');
+          return;
+        }
+
         finishAuthRef.current('authenticated', resolved.viewer);
         router.replace('/');
       } catch {
