@@ -94,13 +94,26 @@ export function expandMapMetins(
   return expanded;
 }
 
-/** Timers entity list: metins only. Bosses never included. */
+/**
+ * Map timer entity list used by Generały/Metki: fixed catalog generals/bosses
+ * plus metins expanded using the per-type slot overrides.
+ */
 export function buildMapTimerRecords(
   map: RespawnMap,
   channel: number,
   overrides: MetinCountOverrides = {},
 ): readonly RespawnRecord[] {
-  return expandMapMetins(map, overrides).map((entity) => ({
+  const generals: RespawnRecord[] = map.bosses.map((entity) => ({
+    key: respawnKey('boss', map.key, channel, entity.id),
+    mapKey: map.key,
+    channel,
+    kind: 'boss' as const,
+    entity,
+    confirmedAt: null,
+    confirmedBy: null,
+    location: null,
+  }));
+  const metins: RespawnRecord[] = expandMapMetins(map, overrides).map((entity) => ({
     key: respawnKey('metin', map.key, channel, entity.id),
     mapKey: map.key,
     channel,
@@ -110,6 +123,7 @@ export function buildMapTimerRecords(
     confirmedBy: null,
     location: null,
   }));
+  return [...generals, ...metins];
 }
 
 export function mergeTimerRecordState(
