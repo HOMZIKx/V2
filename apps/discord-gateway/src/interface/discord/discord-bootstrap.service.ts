@@ -29,6 +29,24 @@ import {
 
 const DESTILED_GUILD_ID = '1543972927719080016';
 const SOJUSZ_GUILD_ID = '1531318787058696424';
+const AUTHORIZATION_SYNC_RETRY_MS = 30_000;
+
+type RuntimeGuild = { readonly id: string };
+type GatewayAuthorizationSyncInternals = {
+  readonly client: {
+    readonly guilds: {
+      readonly cache: ReadonlyMap<string, RuntimeGuild>;
+    };
+  };
+  runtimeAllowedGuildIds(): Set<string>;
+  registerAndReconcile(guild: RuntimeGuild): Promise<void>;
+  syncAllowedGuildOnReady(): Promise<void>;
+};
+
+type GatewaySyncLogger = {
+  info(message: string, meta?: Record<string, unknown>): void;
+  warn(message: string, meta?: Record<string, unknown>): void;
+};
 
 function resolveRuntimeAllowedGuildIds(
   config: DiscordGatewayConfig,
@@ -52,6 +70,65 @@ function resolveRuntimeAllowedGuildIds(
   }
 
   return [...ids];
+}
+
+/**
+ * Startup Discord connectivity and Authorization membership synchronization are
+ * separate concerns. A temporary Authz outage must not tear down the connected
+ * Discord client. Also reconcile every joined runtime guild, not only the legacy
+ * DISCORD_TEST_GUILD_ID, so existing Destiled/Sojusz members can log in.
+ *
+ * The adapter currently keeps these hooks private; install the production startup
+ * policy on the instance until the adapter exposes a first-class sync supervisor.
+ */
+function installResilientAuthorizationStartupSync(
+  gateway: DiscordJsGatewayAdapter,
+  logger: GatewaySyncLogger,
+): void {
+  const internals = gateway as unknown as GatewayAuthorizationSyncInternals;
+  let retryTimer: NodeJS.Timeout | null = null;
+
+  const syncRuntimeGuilds = async (): Promise<void> => {
+    let failed = false;
+    let synced = 0;
+
+    for (const guildId of internals.runtimeAllowedGuildIds()) {
+      const guild = internals.client.guilds.cache.get(guildId);
+      if (guild === undefined) {
+        continue;
+      }
+
+      try {
+        await internals.registerAndReconcile(guild);
+        synced += 1;
+      } catch (error) {
+        failed = true;
+        logger.warn('Authorization guild sync failed; Discord gateway stays online', {
+          guildId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    if (!failed) {
+      if (synced > 0) {
+        logger.info('Authorization startup sync completed for runtime guilds', { synced });
+      }
+      return;
+    }
+
+    if (retryTimer !== null) {
+      return;
+    }
+
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void syncRuntimeGuilds();
+    }, AUTHORIZATION_SYNC_RETRY_MS);
+    retryTimer.unref?.();
+  };
+
+  internals.syncAllowedGuildOnReady = syncRuntimeGuilds;
 }
 
 @Injectable()
@@ -222,6 +299,8 @@ export function createDiscordGatewayOrNull(
       await routerHolder.current.handle(interaction);
     },
   });
+
+  installResilientAuthorizationStartupSync(gateway, logger);
 
   routerHolder.current = new InteractionRouter({
     config,
