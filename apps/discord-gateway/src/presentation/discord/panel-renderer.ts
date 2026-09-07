@@ -26,7 +26,6 @@ import {
   HUB_ACTION_TO_CUSTOM,
   hubEphemPayload,
   panelPayload,
-  type ComponentAction,
 } from '../../infrastructure/security/signed-custom-id.js';
 import {
   accentHexToInt,
