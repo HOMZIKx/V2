@@ -38,7 +38,7 @@ import {
   setMetinSlotCount,
   type MetinCountOverrides,
 } from '../../src/timers-metin-counts';
-import { AppShell, Icon } from '../app-shell';
+import { AppShell, Icon, type AppSection } from '../app-shell';
 import styles from './map-hunting.module.css';
 
 type Filter = 'all' | 'active';
@@ -51,6 +51,9 @@ const filters: ReadonlyArray<{ readonly id: Filter; readonly label: string }> = 
 const MINI_MODE_STORAGE_KEY = 'destiled:timers-mini-mode:v1';
 const TIMER_STATE_STORAGE_KEY = 'destiled:map-hunting-state:v2';
 
+function isHuntRecord(record: { kind?: string } | null | undefined): boolean {
+  return Boolean(record && (record.kind === 'metin' || record.kind === 'boss'));
+}
 
 function MapPinGlyph({ scout = false }: { readonly scout?: boolean }) {
   return (
@@ -114,8 +117,12 @@ function recordsForScope(
 
 export function MapHunting({
   initialSnapshot,
+  shellSection = 'timers',
+  title = 'Timery',
 }: {
   readonly initialSnapshot: MapHuntingSnapshot;
+  readonly shellSection?: AppSection;
+  readonly title?: string;
 }) {
   const [mapKey, setMapKey] = useState(respawnMaps[0]?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
@@ -139,18 +146,19 @@ export function MapHunting({
   const scope = scopeKey(map?.key ?? '', channel);
   const records = map ? recordsForScope(map, channel, metinCounts, store) : [];
   const metinTypes = useMemo(() => (map ? listMetinTypes(map) : []), [map]);
+  const generalsAndMetinsView = shellSection === 'generaly-metki';
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(TIMER_STATE_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as RecordStore;
-        const metinOnly: RecordStore = {};
+        const huntOnly: RecordStore = {};
         for (const [key, list] of Object.entries(parsed)) {
           if (!Array.isArray(list)) continue;
-          metinOnly[key] = list.filter((record: { kind?: string } | null | undefined) => !!record && record.kind === 'metin');
+          huntOnly[key] = list.filter(isHuntRecord) as readonly RespawnRecord[];
         }
-        setStore((current) => ({ ...current, ...metinOnly }));
+        setStore((current) => ({ ...current, ...huntOnly }));
       }
       const countsRaw = window.localStorage.getItem(METIN_COUNTS_STORAGE_KEY);
       if (countsRaw) setMetinCounts(parseMetinCountOverrides(JSON.parse(countsRaw)));
@@ -169,11 +177,11 @@ export function MapHunting({
     if (snap.filter) setFilter(snap.filter);
     setMiniMode(snap.miniMode === true);
     setMetinCounts(snap.metinCounts);
-    const metinOnly: RecordStore = {};
+    const huntOnly: RecordStore = {};
     for (const [key, list] of Object.entries(snap.store)) {
-      metinOnly[key] = list.filter((record: { kind?: string } | null | undefined) => !!record && record.kind === 'metin');
+      huntOnly[key] = list.filter(isHuntRecord) as readonly RespawnRecord[];
     }
-    setStore((current) => ({ ...current, ...metinOnly }));
+    setStore((current) => ({ ...current, ...huntOnly }));
     setTimeout(() => {
       applyingRemoteRef.current = false;
     }, 0);
@@ -479,6 +487,7 @@ export function MapHunting({
       countingDown &&
       shouldMinimizeCountdown(record, now) &&
       !expandedMiniKeys.includes(record.key);
+    const kindLabel = record.kind === 'boss' ? 'Generał' : 'Metin';
     return (
       <article
         className={`respawn-record is-${display.phase}${countingDown ? ' is-counting' : ''}${
@@ -508,7 +517,7 @@ export function MapHunting({
           {!minimized ? (
             <span>
               <em className="respawn-window-chip">{formatWindow(record)}</em>
-              Metin · CH{record.channel}
+              {kindLabel} · CH{record.channel}
               {record.location
                 ? ` · pinezka ${Math.round(record.location.x)}/${Math.round(record.location.y)}`
                 : ' · bez pinezki'}
@@ -541,17 +550,19 @@ export function MapHunting({
   };
 
   return (
-    <AppShell activeSection="timers" viewerName={displayName || initialSnapshot.viewerName}>
+    <AppShell activeSection={shellSection} viewerName={displayName || initialSnapshot.viewerName}>
       <main className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`} id="main-content">
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
-            <h1>Timery</h1>
+            <h1>{title}</h1>
             {!miniMode ? (
               <p>
-                Mapa + respawn z katalogu. <b>Zbite</b> otwiera mini-mapę pinezki. Zbity cel
-                zjeżdża na dół z odliczaniem. Gdy okno wchodzi w ostatnie 20% na innym kanale —
-                ten CH się podświetla.
+                {generalsAndMetinsView
+                  ? 'Mapa + respawn generałów i metinów z katalogu. '
+                  : 'Mapa + respawn z katalogu. '}
+                <b>Zbite</b> otwiera mini-mapę pinezki. Zbity cel zjeżdża na dół z odliczaniem.
+                Gdy okno wchodzi w ostatnie 20% na innym kanale — ten CH się podświetla.
               </p>
             ) : (
               <p className="respawn-mini-lead">
@@ -563,7 +574,7 @@ export function MapHunting({
             <span
               className={`respawn-sync-status is-${connectionStatus}`}
               data-testid="timers-sync-status"
-              title={viewerId ? `viewer ${viewerId}` : 'Brak demo viewer id — tylko lokalnie'}
+              title={viewerId ? `viewer ${viewerId}` : 'Brak viewer id — tylko lokalnie'}
             >
               {huntStatusLabel(connectionStatus)}
             </span>
@@ -672,7 +683,7 @@ export function MapHunting({
           ) : null}
           <div className="respawn-controls-stat">
             <strong>{records.length}</strong>
-            <span>timerów na tej mapie</span>
+            <span>celów na tej mapie</span>
           </div>
           <div className="respawn-controls-stat">
             <strong>{activeTimerCount}</strong>
@@ -693,7 +704,7 @@ export function MapHunting({
                 <span className="section-kicker">
                   {map?.key} · CH{channel}
                 </span>
-                <h2>Lista timerów</h2>
+                <h2>{generalsAndMetinsView ? 'Generały i metiny' : 'Lista timerów'}</h2>
                 {!miniMode ? (
                   <p className="respawn-list-lead">
                     {available.length} dostępnych · {counting.length} w odliczaniu · pinezka =
@@ -748,7 +759,7 @@ export function MapHunting({
         </p>
         {!miniMode ? (
           <p className="respawn-data-note">
-            Timery metinów — katalog dump dobry-temat.{' '}
+            Generały i metiny — katalog dump dobry-temat.{' '}
             {connectionStatus === 'online'
               ? 'Wspólny pokój mapy/CH przez player-team (poll). localStorage = cache offline.'
               : 'Tryb lokalny / offline — localStorage jako cache.'}
@@ -804,7 +815,7 @@ export function MapHunting({
                 )}
                 {modalDraftLocation ? (
                   <span
-                    className="respawn-map-marker respawn-map-pin is-metin is-selected"
+                    className={`respawn-map-marker respawn-map-pin ${modalRecord.kind === 'boss' ? 'is-boss' : 'is-metin'} is-selected`}
                     style={{
                       left: `${modalDraftLocation.x}%`,
                       top: `${modalDraftLocation.y}%`,
