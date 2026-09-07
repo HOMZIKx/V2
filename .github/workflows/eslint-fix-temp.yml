@@ -1,0 +1,49 @@
+name: Temporary eslint autofix
+
+on:
+  push:
+    branches:
+      - 'maintenance/restore-green-ci-20260907'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.ref == 'refs/heads/maintenance/restore-green-ci-20260907'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: maintenance/restore-green-ci-20260907
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Autofix lint-safe rules
+        run: |
+          pnpm exec eslint --fix services/player-team-service/src apps/discord-gateway/src apps/admin/src || true
+
+      - name: Remove temporary workflow and commit
+        run: |
+          git rm .github/workflows/eslint-fix-temp.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/player-team-service/src apps/discord-gateway/src apps/admin/src
+          if git diff --cached --quiet; then
+            echo "No autofix changes; workflow removal only."
+          fi
+          git commit -m "chore(ci): apply eslint autofixes and remove temporary workflow"
+          git push origin HEAD:maintenance/restore-green-ci-20260907
