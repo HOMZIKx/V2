@@ -40,7 +40,7 @@ describe('health fetchers', () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ status: 'ok' }),
+      json: () => Promise.resolve({ status: 'ok' }),
     });
 
     const result = await fetchLiveHealth('http://127.0.0.1:4100', fetchImpl);
@@ -63,7 +63,7 @@ describe('health fetchers', () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: false,
       status: 503,
-      json: async () => body,
+      json: () => Promise.resolve(body),
     });
 
     const result = await fetchReadyHealth('http://127.0.0.1:4100', fetchImpl);
@@ -103,7 +103,7 @@ describe('health fetchers', () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => payload,
+      json: () => Promise.resolve(payload),
     });
 
     const result = await fetchDiscordHealth('http://127.0.0.1:4100', fetchImpl);
