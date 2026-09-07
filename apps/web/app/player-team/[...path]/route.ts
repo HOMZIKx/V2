@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const DEFAULT_PRODUCTION_BACKEND_ORIGIN = 'https://v2-api.zeabur.app';
+
 type RouteContext = {
   readonly params: Promise<{ readonly path: string[] }>;
 };
@@ -17,8 +19,26 @@ function normalizeTarget(value: string | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+function productionBackendOrigin(): string {
+  return normalizeTarget(process.env.V2_BACKEND_PUBLIC_ORIGIN) ?? DEFAULT_PRODUCTION_BACKEND_ORIGIN;
+}
+
+function resolveIdentityTarget(): string | null {
+  return (
+    normalizeTarget(process.env.IDENTITY_PROXY_TARGET) ??
+    (process.env.NODE_ENV === 'production' ? productionBackendOrigin() : null)
+  );
+}
+
+function resolvePlayerTeamTarget(): string | null {
+  return (
+    normalizeTarget(process.env.PLAYER_TEAM_PROXY_TARGET) ??
+    (process.env.NODE_ENV === 'production' ? productionBackendOrigin() : null)
+  );
+}
+
 async function resolveDiscordViewerId(request: NextRequest): Promise<string | null> {
-  const identityTarget = normalizeTarget(process.env.IDENTITY_PROXY_TARGET);
+  const identityTarget = resolveIdentityTarget();
   if (!identityTarget) {
     throw new Error('IDENTITY_PROXY_TARGET is not configured');
   }
@@ -93,7 +113,7 @@ function createClientHeaders(upstream: Response): Headers {
 }
 
 async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Promise<NextResponse> {
-  const playerTeamTarget = normalizeTarget(process.env.PLAYER_TEAM_PROXY_TARGET);
+  const playerTeamTarget = resolvePlayerTeamTarget();
   if (!playerTeamTarget) {
     return NextResponse.json(
       { error: 'player_team_unavailable', message: 'PLAYER_TEAM_PROXY_TARGET is not configured' },
