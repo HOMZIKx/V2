@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { viewerFromCallbackSearchParams } from '../../../src/identity-auth-client';
+import {
+  resolveDiscordViewerFromSession,
+  viewerFromCallbackSearchParams,
+} from '../../../src/identity-auth-client';
 import { usePlayerStore } from '../../../src/player-store-react';
 
 /**
@@ -12,26 +15,44 @@ import { usePlayerStore } from '../../../src/player-store-react';
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const { finishAuth, hydrated } = usePlayerStore();
+  const { finishAuth } = usePlayerStore();
+  const finishAuthRef = useRef(finishAuth);
+  finishAuthRef.current = finishAuth;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hydrated) return;
-    const params = new URLSearchParams(window.location.search);
-    const viewer = viewerFromCallbackSearchParams(params);
-    if (!viewer) {
-      setError('Brak danych sesji po Discord. Wróć i spróbuj ponownie.');
-      return;
-    }
-    const snowflake =
-      params.get('discordAccountId')?.trim() || viewer.discordAccountId || undefined;
-    finishAuth('authenticated', {
-      displayName: viewer.displayName,
-      v2UserId: params.get('viewerId')?.trim() || viewer.id,
-      ...(snowflake ? { discordUserId: snowflake } : {}),
-    });
-    router.replace('/');
-  }, [hydrated, finishAuth, router]);
+    let cancelled = false;
+
+    const complete = async (): Promise<void> => {
+      const params = new URLSearchParams(window.location.search);
+      const callbackViewer = viewerFromCallbackSearchParams(params);
+
+      if (callbackViewer) {
+        finishAuthRef.current('authenticated', callbackViewer);
+        router.replace('/');
+        return;
+      }
+
+      try {
+        const resolved = await resolveDiscordViewerFromSession();
+        if (cancelled) return;
+        if (!resolved) {
+          setError('Brak aktywnej sesji Discord. Wróć i spróbuj ponownie.');
+          return;
+        }
+        finishAuthRef.current('authenticated', resolved.viewer);
+        router.replace('/');
+      } catch {
+        if (cancelled) return;
+        setError('Nie udało się potwierdzić sesji Discord. Wróć i spróbuj ponownie.');
+      }
+    };
+
+    void complete();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   return (
     <main className="discord-entry" id="main-content">
