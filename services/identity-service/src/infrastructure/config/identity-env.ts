@@ -316,11 +316,22 @@ function assertAuthorizationRequirements(
 
   const isProduction = config.NODE_ENV === 'production';
   if (config.IDENTITY_AUTHORIZATION_BASE_URL !== undefined) {
+    let isPrivateZeaburUrl = false;
+    try {
+      isPrivateZeaburUrl = new URL(config.IDENTITY_AUTHORIZATION_BASE_URL).hostname.endsWith(
+        '.zeabur.internal',
+      );
+    } catch {
+      // assertValidOriginUrl below reports malformed URLs.
+    }
     assertValidOriginUrl(
       config.IDENTITY_AUTHORIZATION_BASE_URL,
       'IDENTITY_AUTHORIZATION_BASE_URL',
       addIssue,
-      { requireHttps: isProduction, rejectLocalhost: isProduction },
+      {
+        requireHttps: isProduction && !isPrivateZeaburUrl,
+        rejectLocalhost: isProduction,
+      },
     );
   }
 }
