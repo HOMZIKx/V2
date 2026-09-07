@@ -1,0 +1,40 @@
+name: Temporary format eslint touched files
+
+on:
+  pull_request:
+    branches:
+      - 'preview/destiled-web'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.head_ref == 'maintenance/restore-green-ci-20260907'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Format touched files
+        run: pnpm exec prettier --write apps/discord-gateway/src/infrastructure/discord/discord-js-adapter.ts apps/discord-gateway/src/infrastructure/player-team/confirm-character-timer.spec.ts apps/discord-gateway/src/interface/http/technika-config.controller.ts apps/discord-gateway/src/presentation/discord/panel-publish-appearance.ts apps/discord-gateway/src/presentation/discord/panel-renderer.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/discord-gateway/src/infrastructure/discord/discord-js-adapter.ts apps/discord-gateway/src/infrastructure/player-team/confirm-character-timer.spec.ts apps/discord-gateway/src/interface/http/technika-config.controller.ts apps/discord-gateway/src/presentation/discord/panel-publish-appearance.ts apps/discord-gateway/src/presentation/discord/panel-renderer.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "style: format eslint-touched files"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
