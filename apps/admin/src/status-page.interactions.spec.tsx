@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const hookState = vi.hoisted(() => ({
   effects: [] as Array<() => void | (() => void)>,
   intervalCallback: null as (() => void) | null,
+  fetchMock: vi.fn(),
+  setIntervalMock: vi.fn(),
+  clearIntervalMock: vi.fn(),
 }));
 
 vi.mock('react', async () => {
@@ -47,20 +50,23 @@ describe('AdminStatusPage interactions', () => {
   beforeEach(() => {
     hookState.effects.length = 0;
     hookState.intervalCallback = null;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ status: 'ok' }),
-      }),
-    );
+    hookState.fetchMock.mockReset();
+    hookState.fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ status: 'ok' }),
+    });
+    hookState.setIntervalMock.mockReset();
+    hookState.setIntervalMock.mockImplementation((callback: () => void) => {
+      hookState.intervalCallback = callback;
+      return 1;
+    });
+    hookState.clearIntervalMock.mockReset();
+
+    vi.stubGlobal('fetch', hookState.fetchMock);
     vi.stubGlobal('window', {
-      setInterval: vi.fn((callback: () => void) => {
-        hookState.intervalCallback = callback;
-        return 1;
-      }),
-      clearInterval: vi.fn(),
+      setInterval: hookState.setIntervalMock,
+      clearInterval: hookState.clearIntervalMock,
     });
   });
 
@@ -89,9 +95,9 @@ describe('AdminStatusPage interactions', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(fetch).toHaveBeenCalled();
-    expect(window.setInterval).toHaveBeenCalled();
+    expect(hookState.fetchMock).toHaveBeenCalled();
+    expect(hookState.setIntervalMock).toHaveBeenCalled();
     if (typeof cleanup === 'function') cleanup();
-    expect(window.clearInterval).toHaveBeenCalledWith(1);
+    expect(hookState.clearIntervalMock).toHaveBeenCalledWith(1);
   });
 });
