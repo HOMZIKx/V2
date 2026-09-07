@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
+const TECHNIKA_ADMIN_DISCORD_ID = '808066932753563668';
 
 function trimTrailingSlash(value: string): string {
   return value.trim().replace(/\/$/, '');
@@ -180,6 +181,13 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
       return NextResponse.json(
         { ok: false, error: session.error },
         { status: session.status },
+      );
+    }
+
+    if (session.discordUserId !== TECHNIKA_ADMIN_DISCORD_ID) {
+      return NextResponse.json(
+        { ok: false, error: 'technik_forbidden' },
+        { status: 403 },
       );
     }
 
