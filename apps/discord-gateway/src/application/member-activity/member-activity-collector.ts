@@ -1,9 +1,42 @@
 /** Live Discord → daily buckets collector (MessageCreate + voice minutes). */
 
-import type { GuildMember, Message, VoiceState } from 'discord.js';
-
 import type { MemberActivityConfig } from '../technika/capabilities.js';
 import { MemberActivityStore } from './member-activity-store.js';
+
+type ActivityMember = {
+  readonly id: string;
+  readonly displayName: string;
+  readonly user: {
+    readonly id: string;
+    readonly bot: boolean;
+    readonly username: string;
+  };
+  readonly roles: {
+    readonly cache: {
+      has(roleId: string): boolean;
+    };
+  };
+};
+
+type ActivityMessage = {
+  readonly guildId: string | null;
+  readonly author: {
+    readonly id: string;
+    readonly bot: boolean;
+    readonly username: string;
+  };
+  readonly member: ActivityMember | null;
+};
+
+type ActivityVoiceState = {
+  readonly channelId: string | null;
+  readonly guild: {
+    readonly id: string;
+    readonly afkChannelId: string | null;
+  };
+  readonly channel: { readonly name: string } | null;
+  readonly member: ActivityMember | null;
+};
 
 type VoiceSession = {
   readonly joinedAtMs: number;
@@ -12,7 +45,7 @@ type VoiceSession = {
 
 const LIVE_VOICE_FLUSH_MS = 60_000;
 
-function isAfkVoiceState(state: VoiceState): boolean {
+function isAfkVoiceState(state: ActivityVoiceState): boolean {
   if (state.channelId === null) return false;
 
   // Discord's configured AFK channel is always excluded.
@@ -42,7 +75,7 @@ export class MemberActivityCollector {
     this.liveFlushTimer.unref();
   }
 
-  public handleMessageCreate(message: Message): void {
+  public handleMessageCreate(message: ActivityMessage): void {
     const cfg = this.getConfig();
     if (!cfg.enabled) return;
     if (!message.guildId || message.guildId !== cfg.guildId) return;
@@ -58,7 +91,7 @@ export class MemberActivityCollector {
     });
   }
 
-  public handleVoiceStateUpdate(before: VoiceState, after: VoiceState): void {
+  public handleVoiceStateUpdate(before: ActivityVoiceState, after: ActivityVoiceState): void {
     const cfg = this.getConfig();
     if (!cfg.enabled) return;
 
@@ -134,7 +167,7 @@ export class MemberActivityCollector {
     });
   }
 
-  private memberEligible(member: GuildMember, memberRoleIds: readonly string[]): boolean {
+  private memberEligible(member: ActivityMember, memberRoleIds: readonly string[]): boolean {
     if (memberRoleIds.length === 0) return true;
     return memberRoleIds.some((roleId) => member.roles.cache.has(roleId));
   }
