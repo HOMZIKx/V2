@@ -164,6 +164,23 @@ export function TechnikWojnaPage() {
             wstawia wartości przy wysyłce — bez sekretów.
           </span>
         </label>
+
+        <div className="technik-row" style={{ marginTop: '1rem' }}>
+          <button
+            type="button"
+            className="technik-test-dm-btn"
+            disabled={cfg.busy || !cfg.canWrite}
+            onClick={() => void cfg.runApply()}
+          >
+            {cfg.busy ? 'Zapisuję…' : 'Zapisz ustawienia wojny'}
+          </button>
+          {cfg.lastAction ? <span className="technik-muted">{cfg.lastAction}</span> : null}
+        </div>
+        {cfg.actionError ? (
+          <p className="technik-error" role="alert" style={{ marginTop: '0.75rem' }}>
+            {cfg.actionError}
+          </p>
+        ) : null}
       </section>
 
       <section className="technik-panel" style={{ marginTop: '1rem' }}>
@@ -210,6 +227,7 @@ export function TechnikWojnaPage() {
           onApply={() => void cfg.runApply()}
           onRollback={() => void cfg.runRollback()}
           onRefresh={() => void cfg.load()}
+          help="Zmiany możesz zapisać przyciskiem przy harmonogramie. Tutaj masz dodatkowo walidację, podgląd, historię i cofanie."
         />
       </div>
       {cfg.step === 'Validate' ? (
@@ -218,11 +236,6 @@ export function TechnikWojnaPage() {
             <li key={m}>{m}</li>
           ))}
         </ul>
-      ) : null}
-      {cfg.actionError ? (
-        <p className="technik-error" role="alert">
-          {cfg.actionError}
-        </p>
       ) : null}
     </>
   );
