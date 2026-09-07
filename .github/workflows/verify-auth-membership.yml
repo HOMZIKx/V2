@@ -1,0 +1,45 @@
+name: Verify auth membership fixes
+
+on:
+  push:
+    branches:
+      - 'verify/auth-membership-20260907'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  targeted-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test web auth and membership policy
+        run: >-
+          pnpm exec vitest run
+          --config apps/web/vitest.config.ts
+          apps/web/src/identity-auth-client.spec.ts
+          apps/web/src/technik-membership-route.spec.ts
+
+      - name: Test Discord member probe
+        run: >-
+          pnpm exec vitest run
+          --config apps/discord-gateway/vitest.config.ts
+          apps/discord-gateway/src/infrastructure/discord/discord-member-probe.spec.ts
+          apps/discord-gateway/src/interface/http/technika-guilds.controller.spec.ts
