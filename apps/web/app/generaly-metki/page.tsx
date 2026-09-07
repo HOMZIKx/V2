@@ -1,14 +1,8 @@
 'use client';
 
 import { mapHuntingFixture } from '../../src/map-hunting';
-import { MapHunting } from '../maps/map-hunting';
+import { PartyHunt } from '../maps/party-hunt';
 
 export default function GeneralsMetinsPage() {
-  return (
-    <MapHunting
-      initialSnapshot={mapHuntingFixture}
-      shellSection="generaly-metki"
-      title="Generały / Metki"
-    />
-  );
+  return <PartyHunt initialSnapshot={mapHuntingFixture} />;
 }
