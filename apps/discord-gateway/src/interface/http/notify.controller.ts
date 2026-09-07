@@ -9,6 +9,7 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { createLogger } from '@v2/observability';
 import { timingSafeEqual } from 'node:crypto';
 
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
@@ -27,6 +28,10 @@ import {
   TimerWatchPayloadSchema,
   type TimerNotifyPayload,
 } from '../../application/notify/notify-payload.js';
+import {
+  scheduleCharacterTimerReminder,
+  type CharacterTimerReminderDeps,
+} from '../../application/notify/character-timer-reminders.js';
 import {
   listTimerRoomWatchersExcept,
   registerTimerRoomWatcher,
@@ -48,6 +53,7 @@ import {
 } from '../discord/discord.tokens.js';
 
 const HEADER_NAME = 'x-notify-secret';
+const reminderLogger = createLogger('character-timer-reminders');
 
 function secretsMatch(provided: string | undefined, expected: string): boolean {
   if (!provided || expected.length === 0) {
@@ -76,6 +82,65 @@ export class NotifyController {
     return resolveActiveBotConfig(this.technikaStore);
   }
 
+  private reminderDeps(gateway: DiscordJsGatewayAdapter): CharacterTimerReminderDeps {
+    return {
+      logger: reminderLogger,
+      send: async (job) => {
+        const payload: TimerNotifyPayload = {
+          discordUserId: job.discordUserId,
+          title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
+          body: 'Timer zakończony — możesz rozpocząć kolejny cykl.',
+          deepLinkUrl: job.deepLinkUrl ?? 'https://desapp.zeabur.app/timers',
+          ...(job.workspaceId ? { workspaceId: job.workspaceId } : {}),
+          ...(job.characterId ? { characterId: job.characterId } : {}),
+          ...(job.characterName ? { characterName: job.characterName } : {}),
+          timerId: job.timerId,
+          timerLabel: job.label,
+          endsAt: new Date(job.fireAtMs).toISOString(),
+          kind: 'reminder',
+          includeButtons: true,
+          idempotencyKey: `char-timer-ready:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
+        };
+        const content = formatTimerNotifyContent(payload);
+        const message = renderTimerNotifyMessage({
+          payload,
+          content,
+          signingSecret: this.config.DISCORD_COMPONENT_SIGNING_SECRET,
+          includeButtons: true,
+        });
+        await gateway.sendTimerNotify({
+          discordUserId: job.discordUserId,
+          content: message.content ?? content,
+          ...(message.components ? { components: message.components } : {}),
+        });
+      },
+    };
+  }
+
+  private scheduleCompletionDm(
+    gateway: DiscordJsGatewayAdapter,
+    payload: TimerNotifyPayload,
+  ): void {
+    if (payload.kind !== 'reset' || !payload.timerId || !payload.endsAt) return;
+    const endsAtMs = Date.parse(payload.endsAt);
+    if (!Number.isFinite(endsAtMs)) return;
+    const delayMs = endsAtMs - Date.now();
+    if (delayMs <= 0 || delayMs > 24 * 3_600_000) return;
+
+    scheduleCharacterTimerReminder(
+      {
+        discordUserId: payload.discordUserId,
+        timerId: payload.timerId,
+        label: payload.timerLabel ?? payload.title,
+        characterName: payload.characterName ?? null,
+        characterId: payload.characterId ?? null,
+        workspaceId: payload.workspaceId ?? null,
+        deepLinkUrl: payload.deepLinkUrl,
+        delayMs,
+      },
+      this.reminderDeps(gateway),
+    );
+  }
 
   private assertNotifySecret(notifySecret: string | undefined): void {
     if (!secretsMatch(notifySecret, this.config.DISCORD_NOTIFY_SHARED_SECRET)) {
@@ -266,6 +331,7 @@ export class NotifyController {
           content: message.content ?? content,
           ...(message.components ? { components: message.components } : {}),
         });
+        this.scheduleCompletionDm(gateway, single);
         sent += 1;
       } catch (error) {
         if (error instanceof NotifyDmClosedError) {
@@ -395,6 +461,8 @@ export class NotifyController {
         ...(payload.discordChannelId ? { discordChannelId: payload.discordChannelId } : {}),
         ...(message.components ? { components: message.components } : {}),
       });
+
+      this.scheduleCompletionDm(gateway, payload);
 
       return {
         ok: true,
