@@ -23,7 +23,6 @@ import { TechnikaGuildPanelsController } from './http/technika-guild-panels.cont
 import { TechnikaGuildsController } from './http/technika-guilds.controller.js';
 import { TechnikaPanelsController } from './http/technika-panels.controller.js';
 import { MemberActivityController } from './http/member-activity.controller.js';
-import { GuildMembershipController } from './http/guild-membership.controller.js';
 import { MemberActivityStore } from '../application/member-activity/member-activity-store.js';
 import { MemberActivityCollector } from '../application/member-activity/member-activity-collector.js';
 import { resolveActiveBotConfig } from '../application/technika/active-bot-config.js';
@@ -46,7 +45,6 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
     TechnikaCapabilitiesController,
     TechnikaConfigController,
     TechnikaGuildsController,
-    GuildMembershipController,
     TechnikaGuildPanelsController,
     TechnikaPanelsController,
     MemberActivityController,
