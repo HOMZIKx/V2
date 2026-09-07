@@ -8,8 +8,28 @@ import {
   isIdentityAuthClientEnabled,
   resolveDiscordViewerFromSession,
 } from '../src/identity-auth-client';
+import type { PlayerIdentity } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
 import { DiscordEntryScreen } from './discord-entry';
+
+function preserveSavedProfile(
+  existing: PlayerIdentity | null,
+  resolved: PlayerIdentity,
+): PlayerIdentity {
+  if (!existing || existing.id !== resolved.id) return resolved;
+
+  const hasCompletedProfile = existing.profileSetupDone === true;
+
+  return {
+    ...resolved,
+    displayName: hasCompletedProfile ? existing.displayName : resolved.displayName,
+    initials: hasCompletedProfile ? existing.initials : resolved.initials,
+    ...(existing.profileSetupDone !== undefined
+      ? { profileSetupDone: existing.profileSetupDone }
+      : {}),
+    ...(existing.avatarNote !== undefined ? { avatarNote: existing.avatarNote } : {}),
+  };
+}
 
 /**
  * Production auth boundary.
@@ -59,7 +79,8 @@ export function AuthGate({ children }: { readonly children: ReactNode }) {
         if (store.state.viewer && store.state.viewer.id !== resolved.viewer.id) {
           store.resetStore();
         }
-        store.finishAuth('authenticated', resolved.viewer);
+        const viewer = preserveSavedProfile(store.state.viewer, resolved.viewer);
+        store.finishAuth('authenticated', viewer);
         setIdentityChecked(true);
       } catch {
         if (cancelled) return;
