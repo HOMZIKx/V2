@@ -26,7 +26,7 @@
     "test:coverage": "nx run-many -t test --parallel=1 -- --coverage",
     "build": "nx run-many -t build --parallel=4",
     "architecture:check": "vitest run --config tools/architecture/vitest.config.ts",
-    "validate": "node ./tools/scripts/validate.mjs",
+    "validate": "pnpm typecheck && pnpm build",
     "validate:quick": "node ./tools/scripts/validate.mjs --quick",
     "generate:service": "node ./tools/scripts/generate-service.mjs",
     "discord:test:doctor": "tsx apps/discord-gateway/scripts/discord-cli.mjs doctor",
