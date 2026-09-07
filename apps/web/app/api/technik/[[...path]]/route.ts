@@ -3,14 +3,28 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_GATEWAY = 'http://127.0.0.1:4100';
+const DEFAULT_LOCAL_GATEWAY = 'http://127.0.0.1:4100';
+const DEFAULT_PRODUCTION_BACKEND_ORIGIN = 'https://v2-api.zeabur.app';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
 
+function cleanBaseUrl(value: string | undefined): string | null {
+  const trimmed = value?.trim().replace(/\/$/, '');
+  return trimmed ? trimmed : null;
+}
+
 function gatewayBaseUrl(): string {
-  const raw =
-    (process.env.DISCORD_GATEWAY_BASE_URL ?? process.env.DISCORD_GATEWAY_PROXY_TARGET ?? '').trim() ||
-    DEFAULT_GATEWAY;
-  return raw.replace(/\/$/, '');
+  const explicit =
+    cleanBaseUrl(process.env.DISCORD_GATEWAY_BASE_URL) ??
+    cleanBaseUrl(process.env.DISCORD_GATEWAY_PROXY_TARGET);
+  if (explicit) return explicit;
+
+  if (process.env.NODE_ENV === 'production') {
+    const backend =
+      cleanBaseUrl(process.env.V2_BACKEND_PUBLIC_ORIGIN) ?? DEFAULT_PRODUCTION_BACKEND_ORIGIN;
+    return `${backend}/discord-gateway`;
+  }
+
+  return DEFAULT_LOCAL_GATEWAY;
 }
 
 function technikaSecret(): string {
@@ -42,7 +56,6 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     'guilds',
     'panels',
   ]);
-  // guilds/{id}… + panels/channels|publish|preview (+ nested guilds panels if added later)
   const allowedPrefix = (path: string) =>
     path === 'guilds' ||
     path.startsWith('guilds/') ||
@@ -56,13 +69,11 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
   }
 
   const method = request.method.toUpperCase();
-  // GET guilds list is public; guild-scoped channels/panels need Technika secret.
   const incomingEarly = new URL(request.url);
   const rankingFull =
     joined === 'member-activity/ranking' &&
     (incomingEarly.searchParams.get('full') === '1' ||
       incomingEarly.searchParams.get('full') === 'true');
-  // guilds/{id}/roles requires Technika secret (New Bot LIVE) — do NOT treat as public.
   const publicRead =
     method === 'GET' &&
     !rankingFull &&
