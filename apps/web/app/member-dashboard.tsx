@@ -7,7 +7,6 @@ import { AppShell } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
 import { MemberDiscordActivity } from './member-discord-activity';
 
-
 export function MemberDashboard() {
   const { state, hydrated, createWorkspace, loadDemo, resetStore, writesEnabled } =
     usePlayerStore();
@@ -94,9 +93,9 @@ export function MemberDashboard() {
               <strong>{state.viewer.discordDisplayName}</strong>
               <span>
                 {state.connection === 'connected'
-                  ? 'Zalogowany · sync zespołu + zapis lokalny'
+                  ? 'Zalogowany · zapis i synchronizacja online'
                   : state.connection === 'reconnecting'
-                    ? 'Ponowne łączenie z sync zespołu…'
+                    ? 'Ponowne łączenie i synchronizacja…'
                     : `Sesja · ${state.connection}`}
               </span>
             </div>
@@ -117,10 +116,6 @@ export function MemberDashboard() {
             </a>
           </section>
         ) : null}
-
-        <p className="empty-copy" role="note">
-          Logowanie Discord ograniczone do serwerów z botem — egzekucja Auth osobno.
-        </p>
 
         {state.viewer.discordAccountId ? (
           <MemberDiscordActivity
