@@ -45,6 +45,7 @@ import {
   NotifyDmClosedError,
   type DiscordJsGatewayAdapter,
 } from '../../infrastructure/discord/discord-js-adapter.js';
+import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
 import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import {
   DISCORD_CONFIG_TOKEN,
@@ -86,6 +87,22 @@ export class NotifyController {
     return {
       logger: reminderLogger,
       send: async (job) => {
+        if (job.workspaceId) {
+          const stateUpdated = await markCharacterTimerReadyInWorkspace({
+            baseUrl: this.config.PLAYER_TEAM_BASE_URL,
+            demoViewerHeader: this.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+            viewerId: job.discordUserId,
+            workspaceId: job.workspaceId,
+            timerId: job.timerId,
+          }).catch(() => false);
+          if (!stateUpdated) {
+            reminderLogger.warn('Character timer reached ready time but shared state update failed', {
+              workspaceId: job.workspaceId,
+              timerId: job.timerId,
+            });
+          }
+        }
+
         const payload: TimerNotifyPayload = {
           discordUserId: job.discordUserId,
           title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
@@ -325,13 +342,13 @@ export class NotifyController {
         signingSecret: this.config.DISCORD_COMPONENT_SIGNING_SECRET,
         includeButtons: wantButtons && shouldIncludeTimerButtons(single),
       });
+      this.scheduleCompletionDm(gateway, single);
       try {
         await gateway.sendTimerNotify({
           discordUserId,
           content: message.content ?? content,
           ...(message.components ? { components: message.components } : {}),
         });
-        this.scheduleCompletionDm(gateway, single);
         sent += 1;
       } catch (error) {
         if (error instanceof NotifyDmClosedError) {
@@ -454,6 +471,7 @@ export class NotifyController {
       includeButtons: wantButtons,
     });
 
+    this.scheduleCompletionDm(gateway, payload);
     try {
       const result = await gateway.sendTimerNotify({
         discordUserId: payload.discordUserId,
@@ -461,8 +479,6 @@ export class NotifyController {
         ...(payload.discordChannelId ? { discordChannelId: payload.discordChannelId } : {}),
         ...(message.components ? { components: message.components } : {}),
       });
-
-      this.scheduleCompletionDm(gateway, payload);
 
       return {
         ok: true,
