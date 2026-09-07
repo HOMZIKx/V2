@@ -1,4 +1,4 @@
-/** Live Discord → daily buckets collector (MessageCreate + VoiceStateUpdate). */
+/** Live Discord → daily buckets collector (MessageCreate + voice minutes). */
 
 import type { GuildMember, Message, VoiceState } from 'discord.js';
 
@@ -9,6 +9,8 @@ type VoiceSession = {
   readonly joinedAtMs: number;
   readonly displayName?: string | undefined;
 };
+
+const LIVE_VOICE_FLUSH_MS = 60_000;
 
 function isAfkVoiceState(state: VoiceState): boolean {
   if (state.channelId === null) return false;
@@ -25,11 +27,20 @@ function isAfkVoiceState(state: VoiceState): boolean {
 
 export class MemberActivityCollector {
   private readonly voiceJoined = new Map<string, VoiceSession>();
+  private readonly liveFlushTimer: ReturnType<typeof setInterval>;
 
   public constructor(
     private readonly store: MemberActivityStore,
     private readonly getConfig: () => MemberActivityConfig,
-  ) {}
+  ) {
+    // Keep the dashboard current even while a user remains on VC for hours.
+    // Advancing sessions by full persisted minutes preserves the sub-minute
+    // remainder instead of discarding it on every periodic flush.
+    this.liveFlushTimer = setInterval(() => {
+      this.flushAllOpenSessions();
+    }, LIVE_VOICE_FLUSH_MS);
+    this.liveFlushTimer.unref();
+  }
 
   public handleMessageCreate(message: Message): void {
     const cfg = this.getConfig();
@@ -84,10 +95,11 @@ export class MemberActivityCollector {
   }
 
   public flushAllOpenSessions(): void {
+    const now = Date.now();
     for (const [key, session] of [...this.voiceJoined.entries()]) {
       const [guildId, userId] = key.split(':');
       if (!guildId || !userId) continue;
-      const minutes = Math.max(0, Math.floor((Date.now() - session.joinedAtMs) / 60_000));
+      const minutes = Math.max(0, Math.floor((now - session.joinedAtMs) / 60_000));
       if (minutes > 0) {
         this.store.addVoiceMinutes({
           guildId,
@@ -95,8 +107,11 @@ export class MemberActivityCollector {
           minutes,
           displayName: session.displayName,
         });
+        this.voiceJoined.set(key, {
+          joinedAtMs: session.joinedAtMs + minutes * 60_000,
+          displayName: session.displayName,
+        });
       }
-      this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName: session.displayName });
     }
   }
 
