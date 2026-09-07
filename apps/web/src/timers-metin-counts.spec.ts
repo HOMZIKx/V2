@@ -9,14 +9,15 @@ import {
 } from './timers-metin-counts.js';
 
 describe('timers metin counts', () => {
-  it('builds metin-only timer records (no bosses)', () => {
+  it('builds timer records for catalog bosses and metins', () => {
     const map =
       respawnMaps.find((entry) => entry.key === 'M2') ??
       respawnMaps.find((entry) => entry.metins.length > 0)!;
     expect(map.metins.length).toBeGreaterThan(0);
     const records = buildMapTimerRecords(map, 1);
-    expect(records.length).toBeGreaterThan(0);
-    expect(records.every((entry) => entry.kind === 'metin')).toBe(true);
+    expect(records).toHaveLength(map.bosses.length + map.metins.length);
+    expect(records.filter((entry) => entry.kind === 'boss')).toHaveLength(map.bosses.length);
+    expect(records.filter((entry) => entry.kind === 'metin')).toHaveLength(map.metins.length);
   });
 
   it('expands a metin type beyond catalog default with stable ids', () => {

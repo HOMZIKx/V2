@@ -98,20 +98,18 @@ describe('HuntRoomsRepository', () => {
 
   it('adds a new member when joining by code', async () => {
     const { query, repository } = setup();
-    query
-      .mockResolvedValueOnce({ rows: [partyRow()], rowCount: 1 })
-      .mockResolvedValueOnce({
-        rows: [
-          partyRow({
-            members: [
-              { id: 'u1', displayName: 'Mateusz', role: 'leader' },
-              { id: 'u2', displayName: 'Kolega', role: 'member' },
-            ],
-            revision: 2,
-          }),
-        ],
-        rowCount: 1,
-      });
+    query.mockResolvedValueOnce({ rows: [partyRow()], rowCount: 1 }).mockResolvedValueOnce({
+      rows: [
+        partyRow({
+          members: [
+            { id: 'u1', displayName: 'Mateusz', role: 'leader' },
+            { id: 'u2', displayName: 'Kolega', role: 'member' },
+          ],
+          revision: 2,
+        }),
+      ],
+      rowCount: 1,
+    });
 
     const room = await repository.joinPartyRoom({
       joinCode: '1234',
@@ -286,9 +284,11 @@ describe('HuntRoomsRepository', () => {
     created.query
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })
       .mockResolvedValueOnce({ rows: [timerRow({ room_code: 'ABCD' })], rowCount: 1 });
-    await expect(created.repository.getOrCreateTimerRoom('M2', 1, ' ABCD ')).resolves.toMatchObject({
-      roomCode: 'ABCD',
-    });
+    await expect(created.repository.getOrCreateTimerRoom('M2', 1, ' ABCD ')).resolves.toMatchObject(
+      {
+        roomCode: 'ABCD',
+      },
+    );
   });
 
   it('confirms timer kills idempotently and guards revision conflicts', async () => {
@@ -333,18 +333,16 @@ describe('HuntRoomsRepository', () => {
     ).rejects.toBeInstanceOf(PlayerTeamError);
 
     const update = setup();
-    update.query
-      .mockResolvedValueOnce({ rows: [timerRow()], rowCount: 1 })
-      .mockResolvedValueOnce({
-        rows: [
-          timerRow({
-            revision: 2,
-            applied_ops: ['op-3'],
-            timers: { [record.key]: { ...record, operationId: 'op-3' } },
-          }),
-        ],
-        rowCount: 1,
-      });
+    update.query.mockResolvedValueOnce({ rows: [timerRow()], rowCount: 1 }).mockResolvedValueOnce({
+      rows: [
+        timerRow({
+          revision: 2,
+          applied_ops: ['op-3'],
+          timers: { [record.key]: { ...record, operationId: 'op-3' } },
+        }),
+      ],
+      rowCount: 1,
+    });
     await expect(
       update.repository.confirmTimerKill({
         mapKey: 'M2',

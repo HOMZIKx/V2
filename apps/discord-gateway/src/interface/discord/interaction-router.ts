@@ -690,7 +690,7 @@ export class InteractionRouter {
       const minutes = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).timersNotify
         .reminderMinutesBefore;
       await interaction.reply({
-        content: `Przypomnę ponownie za ok. ${minutes} min (szkielet przypomnienia — bez otwierania WWW).`,
+        content: `Odłożono. Przypomnę ponownie za ok. ${minutes} min (szkielet przypomnienia — bez otwierania WWW).`,
         flags: MessageFlags.Ephemeral,
       });
       return;

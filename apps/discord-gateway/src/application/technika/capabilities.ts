@@ -202,7 +202,7 @@ export const BOT_CAPABILITIES = [
     id: 'publishChannels',
     title: 'Kanały publikacji (cel → kanał)',
     description:
-      'Mapa: centrumHub, notifications, dungeons, trade, recurring, events, website (Strona WWW / link do aplikacji). Nie bare allowlist. Preferuj guild-scoped + GET channels picker. Zero auto-publish.',
+      'Mapa: centrumHub, notifications, dungeons, trade, recurring, events, website (Strona WWW / link do aplikacji). To nie jest lista dozwolonych ID. Preferuj guild-scoped + GET channels picker. Zero auto-publish.',
     valueType: 'object',
     default: {},
   },
