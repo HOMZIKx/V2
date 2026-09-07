@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 
+import { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import { MemberActivityQuery } from '../../application/member-activity/member-activity-query.js';
 import { MemberActivityStore } from '../../application/member-activity/member-activity-store.js';
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
@@ -20,6 +21,7 @@ import type { VersionedConfigStore } from '../../application/technika/versioned-
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import {
   DISCORD_CONFIG_TOKEN,
+  MEMBER_ACTIVITY_COLLECTOR_TOKEN,
   MEMBER_ACTIVITY_STORE_TOKEN,
   TECHNIKA_CONFIG_STORE_TOKEN,
 } from '../discord/discord.tokens.js';
@@ -38,6 +40,8 @@ export class MemberActivityController {
     @Inject(DISCORD_CONFIG_TOKEN) private readonly envConfig: DiscordGatewayConfig,
     @Inject(TECHNIKA_CONFIG_STORE_TOKEN) private readonly store: VersionedConfigStore,
     @Inject(MEMBER_ACTIVITY_STORE_TOKEN) private readonly activityStore: MemberActivityStore,
+    @Inject(MEMBER_ACTIVITY_COLLECTOR_TOKEN)
+    private readonly activityCollector: MemberActivityCollector,
   ) {}
 
   private cfg(): MemberActivityConfig {
@@ -46,6 +50,13 @@ export class MemberActivityController {
 
   private query(): MemberActivityQuery {
     return new MemberActivityQuery(this.activityStore, () => this.cfg());
+  }
+
+  private flushLiveVoiceMinutes(): void {
+    // A user can stay on VC for hours without emitting another VoiceStateUpdate.
+    // Flush open sessions before reading stats so the dashboard does not show 0
+    // until that user finally disconnects from voice.
+    this.activityCollector.flushAllOpenSessions();
   }
 
   /** Dashboard: top N + own stats. Windows: 7d|14d|30d|since_bot. */
@@ -59,6 +70,7 @@ export class MemberActivityController {
     if (!/^\d{17,20}$/.test(discordUserId)) {
       throw new BadRequestException({ ok: false, error: 'invalid_discord_user_id' });
     }
+    this.flushLiveVoiceMinutes();
     return this.query().me({ discordUserId, guildId, window });
   }
 
@@ -83,6 +95,7 @@ export class MemberActivityController {
       }
     }
     const topN = topNRaw && /^\d+$/.test(topNRaw) ? Number(topNRaw) : undefined;
+    this.flushLiveVoiceMinutes();
     return this.query().ranking({ guildId, window, topN, q, full: wantFull });
   }
 }
