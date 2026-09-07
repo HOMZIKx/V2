@@ -156,7 +156,7 @@ export function MapHunting({
         const huntOnly: RecordStore = {};
         for (const [key, list] of Object.entries(parsed)) {
           if (!Array.isArray(list)) continue;
-          huntOnly[key] = list.filter(isHuntRecord) as readonly RespawnRecord[];
+          huntOnly[key] = list.filter(isHuntRecord);
         }
         setStore((current) => ({ ...current, ...huntOnly }));
       }
@@ -179,7 +179,7 @@ export function MapHunting({
     setMetinCounts(snap.metinCounts);
     const huntOnly: RecordStore = {};
     for (const [key, list] of Object.entries(snap.store)) {
-      huntOnly[key] = list.filter(isHuntRecord) as readonly RespawnRecord[];
+      huntOnly[key] = list.filter(isHuntRecord);
     }
     setStore((current) => ({ ...current, ...huntOnly }));
     setTimeout(() => {
