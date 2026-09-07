@@ -1,7 +1,8 @@
 /**
  * Resolve which Discord guild to show on member Pulpit for activity/ranking.
- * Priority (Mateusz): Destiled > only Sojusz > only one known > empty.
- * Best-effort: viewer guild list if present, else probe /member-activity/me + ranking.
+ * Priority: Destiled > only Sojusz > honest fallback.
+ * Viewer membership wins. Without it, /me must actually contain the user — a
+ * reachable empty endpoint is not proof of guild membership.
  */
 
 import {
@@ -85,7 +86,6 @@ async function probeMeOnGuild(
 ): Promise<'self' | 'reachable' | 'miss'> {
   const me = await fetchMyRanking({ window, discordUserId, guildId });
   if (!me.ok) {
-    // Offline / hard fail — try public ranking as reachability signal.
     const rank = await fetchMemberActivityRanking({
       window,
       guildId,
@@ -101,8 +101,8 @@ async function probeMeOnGuild(
 
 /**
  * Resolve guild for Pulpit activity.
- * Prefer viewer membership; else probe Destiled then Sojusz; else Destiled fallback
- * when ranking API is live so Pulpit can still show top10 / honest empty.
+ * A successful empty API response only proves that the route works. It no longer
+ * masquerades as membership in Destiled and prevents probing the other guild.
  */
 export async function resolveMemberActivityGuild(opts: {
   readonly discordUserId: string;
@@ -116,7 +116,7 @@ export async function resolveMemberActivityGuild(opts: {
   if (fromViewer) return fromViewer;
 
   const destiled = await probeMeOnGuild(opts.discordUserId, DESTILED_GUILD_ID, window);
-  if (destiled === 'self' || destiled === 'reachable') {
+  if (destiled === 'self') {
     return {
       guildId: DESTILED_GUILD_ID,
       guildName: KNOWN_GUILD_NAMES[DESTILED_GUILD_ID] ?? 'Destiled',
@@ -125,7 +125,7 @@ export async function resolveMemberActivityGuild(opts: {
   }
 
   const sojusz = await probeMeOnGuild(opts.discordUserId, SOJUSZ_GUILD_ID, window);
-  if (sojusz === 'self' || sojusz === 'reachable') {
+  if (sojusz === 'self') {
     return {
       guildId: SOJUSZ_GUILD_ID,
       guildName: KNOWN_GUILD_NAMES[SOJUSZ_GUILD_ID] ?? 'Projekt Sojusz',
@@ -133,7 +133,9 @@ export async function resolveMemberActivityGuild(opts: {
     };
   }
 
-  // Last resort: Destiled as default source guild so Pulpit can render errors/empty honestly.
+  // The current collector is configured with Destiled as its default source.
+  // If neither /me contains the user, keep the dashboard deterministic instead
+  // of claiming a membership that was never proven.
   return {
     guildId: DESTILED_GUILD_ID,
     guildName: KNOWN_GUILD_NAMES[DESTILED_GUILD_ID] ?? 'Destiled',
