@@ -163,6 +163,30 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
 }
 
 /**
+ * Query-string values emitted by the bridge are hints only. Authentication is
+ * authoritative only when the live Identity session resolves and any ids that
+ * were supplied in the callback agree with that session.
+ */
+export function callbackClaimsMatchResolvedSession(
+  params: URLSearchParams,
+  resolved: ResolvedIdentityViewer,
+): boolean {
+  const claimedV2UserId = params.get('viewerId')?.trim() || null;
+  const claimedDiscordAccountId = params.get('discordAccountId')?.trim() || null;
+
+  if (claimedV2UserId !== null && claimedV2UserId !== resolved.v2UserId) {
+    return false;
+  }
+  if (
+    claimedDiscordAccountId !== null &&
+    claimedDiscordAccountId !== (resolved.discordAccountId ?? '')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Top-level navigate to Identity Discord OAuth start (sets state cookie on Identity).
  * returnTo → Identity web-bridge → web `/auth/callback` with viewer query.
  */
