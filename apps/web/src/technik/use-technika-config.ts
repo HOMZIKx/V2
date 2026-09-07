@@ -222,11 +222,11 @@ export function useTechnikaConfig() {
       ]);
       setLastAction('zapisano szkic i sprawdzono');
       setStep('Validate');
-      await load();
+      setSnapshot((prev) => (prev ? { ...prev, hasDraft: true } : prev));
     } finally {
       setBusy(false);
     }
-  }, [charTimers, warDraft, mutationsEnabled, buildDraftPartial, load]);
+  }, [charTimers, warDraft, mutationsEnabled, buildDraftPartial]);
 
   const runPreview = useCallback(async () => {
     setActionError(null);
