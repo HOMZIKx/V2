@@ -3,14 +3,29 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_GATEWAY = 'http://127.0.0.1:4100';
+const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
 
+function trimTrailingSlash(value: string): string {
+  return value.trim().replace(/\/$/, '');
+}
+
+function productionBackendOrigin(): string {
+  return trimTrailingSlash(
+    process.env.V2_BACKEND_PUBLIC_ORIGIN?.trim() || 'https://v2-api.zeabur.app',
+  );
+}
+
 function gatewayBaseUrl(): string {
-  const raw =
-    (process.env.DISCORD_GATEWAY_BASE_URL ?? process.env.DISCORD_GATEWAY_PROXY_TARGET ?? '').trim() ||
-    DEFAULT_GATEWAY;
-  return raw.replace(/\/$/, '');
+  const configured =
+    process.env.DISCORD_GATEWAY_PROXY_TARGET?.trim() ||
+    process.env.DISCORD_GATEWAY_BASE_URL?.trim();
+
+  if (configured) return trimTrailingSlash(configured);
+
+  return process.env.NODE_ENV === 'production'
+    ? `${productionBackendOrigin()}/discord-gateway`
+    : LOCAL_GATEWAY;
 }
 
 function technikaSecret(): string {
