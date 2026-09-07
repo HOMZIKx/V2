@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 
+import {
+  canProbeOwnDiscordMembership,
+  parseTechnikMembershipProbePath,
+} from '../../../../src/technik-membership-route';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -159,8 +164,8 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
     joined === 'member-activity/ranking' &&
     (incomingEarly.searchParams.get('full') === '1' ||
       incomingEarly.searchParams.get('full') === 'true');
-  const membershipMatch = /^guilds\/(\d{17,20})\/members\/(\d{17,20})$/.exec(joined);
-  const selfMembershipRead = method === 'GET' && membershipMatch !== null;
+  const membershipTarget = parseTechnikMembershipProbePath(joined);
+  const selfMembershipRead = method === 'GET' && membershipTarget !== null;
   const publicRead =
     method === 'GET' &&
     !rankingFull &&
@@ -185,8 +190,7 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
       );
     }
 
-    const requestedUserId = membershipMatch?.[2];
-    if (!requestedUserId || session.discordUserId !== requestedUserId) {
+    if (!canProbeOwnDiscordMembership(joined, session.discordUserId)) {
       return NextResponse.json(
         { ok: false, error: 'membership_probe_forbidden' },
         { status: 403 },
