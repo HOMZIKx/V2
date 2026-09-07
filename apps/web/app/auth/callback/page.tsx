@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import {
-  resolveDiscordViewerFromSession,
-  viewerFromCallbackSearchParams,
-} from '../../../src/identity-auth-client';
+import { resolveDiscordViewerFromSession } from '../../../src/identity-auth-client';
 import { usePlayerStore } from '../../../src/player-store-react';
 
 /**
  * Landing after Identity web-bridge redirect.
- * Query: viewerId, displayName, optional discordAccountId.
+ *
+ * Security boundary: callback query parameters are never trusted as proof of
+ * authentication. The browser must still present a valid Identity session and
+ * the viewer is always rebuilt from that authoritative session.
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -24,15 +24,6 @@ export default function AuthCallbackPage() {
     let cancelled = false;
 
     const complete = async (): Promise<void> => {
-      const params = new URLSearchParams(window.location.search);
-      const callbackViewer = viewerFromCallbackSearchParams(params);
-
-      if (callbackViewer) {
-        finishAuthRef.current('authenticated', callbackViewer);
-        router.replace('/');
-        return;
-      }
-
       try {
         const resolved = await resolveDiscordViewerFromSession();
         if (cancelled) return;
@@ -65,7 +56,7 @@ export default function AuthCallbackPage() {
           </p>
         ) : (
           <p className="entry-status" role="status">
-            Przetwarzanie sesji Discord…
+            Weryfikacja sesji Discord…
           </p>
         )}
         {error ? (
