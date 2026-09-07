@@ -14,7 +14,7 @@ import { timingSafeEqual } from 'node:crypto';
 
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
 import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
-import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
+import { evaluateTeamScopedModuleGate } from '../../application/technika/guild-module-gate.js';
 import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import {
   claimNotifyIdempotencyKey,
@@ -251,9 +251,8 @@ export class NotifyController {
     if (!live['notify-timer-enabled'] || !characterTimers.enabled || !characterTimers.resetNotifyEnabled) {
       return { ok: true, sent: 0, skipped: 0, duplicate: false };
     }
-    const resetGate = evaluateGuildModuleGate({
+    const resetGate = evaluateTeamScopedModuleGate({
       config: live,
-      guildId: this.config.DISCORD_TEST_GUILD_ID,
       module: 'characterTimers',
       right: 'discord.notify',
     });
@@ -406,37 +405,31 @@ export class NotifyController {
     const characterTimers = resolveCharacterTimersConfig(live);
     const isCharacter = Boolean(payload.timerId && (payload.characterId || payload.workspaceId));
     if (isCharacter || payload.kind === 'reset' || payload.kind === 'reminder') {
-      const gate = evaluateGuildModuleGate({
+      const gate = evaluateTeamScopedModuleGate({
         config: live,
-        guildId: this.config.DISCORD_TEST_GUILD_ID,
         module: 'characterTimers',
         right: 'discord.notify',
       });
       if (!gate.allowed) {
-        return {
-          ok: true,
-          delivery: payload.discordChannelId ? 'channel' : 'dm',
-          duplicate: false,
-          messageId: null,
-        };
+        throw new ServiceUnavailableException({
+          ok: false,
+          error: 'character_timers_guild_gate_blocked',
+          reason: gate.reason,
+        });
       }
     }
     if (payload.kind === 'reset' || payload.kind === 'reminder') {
       if (!characterTimers.enabled) {
-        return {
-          ok: true,
-          delivery: payload.discordChannelId ? 'channel' : 'dm',
-          duplicate: false,
-          messageId: null,
-        };
+        throw new ServiceUnavailableException({
+          ok: false,
+          error: 'character_timers_disabled',
+        });
       }
       if (payload.kind === 'reset' && !characterTimers.resetNotifyEnabled) {
-        return {
-          ok: true,
-          delivery: payload.discordChannelId ? 'channel' : 'dm',
-          duplicate: false,
-          messageId: null,
-        };
+        throw new ServiceUnavailableException({
+          ok: false,
+          error: 'character_timer_reset_notify_disabled',
+        });
       }
     }
 
