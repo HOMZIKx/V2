@@ -84,19 +84,25 @@ export class PlayerTeamStateRepository implements PlayerTeamStateRepositoryPort,
     const stateJson = JSON.stringify(input.state);
 
     if (input.expectedRevision === null) {
-      const result = await this.db.query<{ revision: number }>(
+      const insertResult = await this.db.query<{ revision: number }>(
         `INSERT INTO player_team_viewer_snapshots (owner_user_id, state, revision, updated_at)
          VALUES ($1, $2::jsonb, 0, NOW())
-         ON CONFLICT (owner_user_id)
-         DO UPDATE SET
-           state      = EXCLUDED.state,
-           revision   = player_team_viewer_snapshots.revision + 1,
-           updated_at = NOW()
+         ON CONFLICT DO NOTHING
          RETURNING revision`,
         [input.ownerUserId, stateJson],
       );
 
-      return { revision: Number(result.rows[0]?.revision ?? 0) };
+      if ((insertResult.rowCount ?? 0) > 0) {
+        return { revision: Number(insertResult.rows[0]?.revision ?? 0) };
+      }
+
+      const current = await this.getViewerSnapshot(input.ownerUserId);
+      const actual = current?.revision ?? null;
+      throw new PlayerTeamError(
+        'REVISION_CONFLICT',
+        `viewer snapshot already exists: expected no revision, actual ${actual}`,
+        { actualRevision: actual },
+      );
     }
 
     const result = await this.db.query<{ revision: number }>(
