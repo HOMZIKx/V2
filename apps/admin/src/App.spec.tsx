@@ -9,7 +9,7 @@ vi.stubGlobal(
   vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: async () => ({ status: 'ok' }),
+    json: () => Promise.resolve({ status: 'ok' }),
   }),
 );
 
