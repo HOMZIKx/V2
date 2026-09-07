@@ -104,7 +104,11 @@ export class TechnikaGuildsController {
     readonly botReady: boolean;
     readonly hasDraft: boolean;
   }> {
-    const snap = this.store.getActiveSnapshot();
+    // Technika edits a versioned draft. If a draft exists, show that draft back
+    // to the technician instead of immediately replacing the UI with stale
+    // active values after a successful PUT. Runtime still uses active config
+    // until the explicit Apply step.
+    const snap = this.store.getDraftSnapshot() ?? this.store.getActiveSnapshot();
     const configured = snap.config.guilds ?? {};
     const testId = this.envConfig.DISCORD_TEST_GUILD_ID?.trim();
     const resolveIds = [
