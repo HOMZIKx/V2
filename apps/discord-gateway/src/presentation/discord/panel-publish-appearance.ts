@@ -82,9 +82,9 @@ function normalizeCustomButton(raw: unknown): PanelCustomButton | null {
   if (
     btn.action === 'ephemeral_text' &&
     typeof p.ephemeral_text === 'string' &&
-    (p.ephemeral_text as string).trim()
+    (p.ephemeral_text).trim()
   ) {
-    return { ...btn, ephemeralText: (p.ephemeral_text as string).trim() };
+    return { ...btn, ephemeralText: (p.ephemeral_text).trim() };
   }
   return btn;
 }

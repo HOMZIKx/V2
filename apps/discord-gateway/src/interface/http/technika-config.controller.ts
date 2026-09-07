@@ -74,7 +74,7 @@ export class TechnikaConfigController {
     this.requireSecret(secret);
     const payload =
       body !== null && typeof body === 'object' && !Array.isArray(body) && 'config' in body
-        ? (body as { config: unknown }).config
+        ? (body).config
         : body;
     const result = this.store.putDraft(payload);
     if (!result.ok) {
@@ -111,13 +111,13 @@ export class TechnikaConfigController {
       !(
         typeof body === 'object' &&
         !Array.isArray(body) &&
-        Object.keys(body as object).length === 0
+        Object.keys(body).length === 0
       );
     let input: unknown = undefined;
     if (hasBody) {
       input =
         typeof body === 'object' && body !== null && !Array.isArray(body) && 'config' in body
-          ? (body as { config: unknown }).config
+          ? (body).config
           : body;
     }
     const result = this.store.validate(input);

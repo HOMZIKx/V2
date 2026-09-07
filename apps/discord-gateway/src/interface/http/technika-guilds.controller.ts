@@ -219,11 +219,7 @@ export class TechnikaGuildsController {
   }
 
   private async refreshDiscovery(extraGuildIds: readonly string[] = []): Promise<void> {
-    const gateway = this.gateway as
-      | (DiscordJsGatewayAdapter & {
-          refreshJoinedGuildDirectory?: (extraGuildIds?: readonly string[]) => Promise<unknown>;
-        })
-      | null;
+    const gateway = this.gateway;
     if (gateway && typeof gateway.refreshJoinedGuildDirectory === 'function') {
       try {
         await gateway.refreshJoinedGuildDirectory(extraGuildIds);
@@ -235,15 +231,7 @@ export class TechnikaGuildsController {
 
   private discoverJoinedGuilds(): Map<string, { name: string; memberCount: number | null }> {
     const map = new Map<string, { name: string; memberCount: number | null }>();
-    const gateway = this.gateway as
-      | (DiscordJsGatewayAdapter & {
-          listJoinedGuildSummaries?: () => ReadonlyArray<{
-            id: string;
-            name: string;
-            memberCount: number | null;
-          }>;
-        })
-      | null;
+    const gateway = this.gateway;
     if (!gateway || typeof gateway.listJoinedGuildSummaries !== 'function') {
       return map;
     }

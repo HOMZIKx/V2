@@ -207,7 +207,7 @@ export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload
       );
       continue;
     }
-    const customAction = HUB_ACTION_TO_CUSTOM[btn.action] as ComponentAction | undefined;
+    const customAction = HUB_ACTION_TO_CUSTOM[btn.action];
     if (!customAction) continue;
     customBuilders.push(
       new ButtonBuilder()

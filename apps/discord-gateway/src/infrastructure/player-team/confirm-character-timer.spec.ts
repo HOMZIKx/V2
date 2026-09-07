@@ -74,7 +74,7 @@ describe('confirmCharacterProgressTimerFromBot viewer aliases', () => {
       expect(result.label).toBe('Ksiega');
     }
     const getViewers = fetchMock.mock.calls
-      .filter((c) => (c[1] as RequestInit | undefined)?.method !== 'PUT')
+      .filter((c) => (c[1])?.method !== 'PUT')
       .map((c) => (c[1] as RequestInit).headers as Record<string, string>)
       .map((h) => h['x-demo-viewer-id']);
     expect(getViewers[0]).toBe(snowflake);

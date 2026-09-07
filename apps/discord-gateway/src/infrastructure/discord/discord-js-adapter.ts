@@ -85,7 +85,7 @@ export function isDiscordDmClosedError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
     return false;
   }
-  const code = 'code' in error ? (error as { code: unknown }).code : undefined;
+  const code = 'code' in error ? (error).code : undefined;
   if (code === 50007 || code === '50007') {
     return true;
   }

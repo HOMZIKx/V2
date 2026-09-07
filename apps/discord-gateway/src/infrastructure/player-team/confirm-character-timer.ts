@@ -319,7 +319,7 @@ export async function confirmCharacterProgressTimerFromBot(
       characterName,
       characterId,
       resolvedViewerId: viewerId,
-      liveTimers: snapshotLiveTimers(nextTimers.filter(Boolean) as LooseTimer[], characterId),
+      liveTimers: snapshotLiveTimers(nextTimers.filter(Boolean), characterId),
     };
   } catch (error) {
     return {

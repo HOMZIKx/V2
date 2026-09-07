@@ -108,10 +108,10 @@ describe('VersionedConfigStore', () => {
 
   it('rejects secret-like keys and read-only strict-guild-isolation', () => {
     const store = createStore();
-    const secrets = store.putDraft({ discordToken: 'nope' } as never);
+    const secrets = store.putDraft({ discordToken: 'nope' });
     expect(secrets.ok).toBe(false);
 
-    const readOnly = store.putDraft({ 'strict-guild-isolation': false } as never);
+    const readOnly = store.putDraft({ 'strict-guild-isolation': false });
     expect(readOnly.ok).toBe(false);
   });
 
