@@ -20,26 +20,25 @@ import { DiscordEntryScreen } from './discord-entry';
  */
 export function AuthGate({ children }: { readonly children: ReactNode }) {
   const pathname = usePathname();
-  const { state, hydrated, finishAuth, resetStore } = usePlayerStore();
+  const { state, finishAuth, resetStore } = usePlayerStore();
   const [identityChecked, setIdentityChecked] = useState(false);
-  const checkedPathRef = useRef<string | null>(null);
+  const storeRef = useRef({ state, finishAuth, resetStore });
+  storeRef.current = { state, finishAuth, resetStore };
 
   const isCallback = pathname === '/auth/callback';
 
   useEffect(() => {
-    if (!hydrated || isCallback) return;
-    if (checkedPathRef.current === 'session') return;
-    checkedPathRef.current = 'session';
+    if (isCallback) return;
 
-    // The simulator is a development-only escape hatch. Production always
-    // requires a real Identity/Discord session.
+    setIdentityChecked(false);
+
     if (process.env.NODE_ENV !== 'production' && isDiscordAuthSimulateEnabled()) {
       setIdentityChecked(true);
       return;
     }
 
     if (!isIdentityAuthClientEnabled()) {
-      resetStore();
+      storeRef.current.resetStore();
       setIdentityChecked(true);
       return;
     }
@@ -50,23 +49,21 @@ export function AuthGate({ children }: { readonly children: ReactNode }) {
         const resolved = await resolveDiscordViewerFromSession();
         if (cancelled) return;
 
+        const store = storeRef.current;
         if (!resolved) {
-          // A cached `authenticated` flag must never bypass Discord OAuth.
-          resetStore();
+          store.resetStore();
           setIdentityChecked(true);
           return;
         }
 
-        // Never expose one Discord user's cached team data to another user on
-        // the same browser profile.
-        if (state.viewer && state.viewer.id !== resolved.viewer.id) {
-          resetStore();
+        if (store.state.viewer && store.state.viewer.id !== resolved.viewer.id) {
+          store.resetStore();
         }
-        finishAuth('authenticated', resolved.viewer);
+        store.finishAuth('authenticated', resolved.viewer);
         setIdentityChecked(true);
       } catch {
         if (cancelled) return;
-        resetStore();
+        storeRef.current.resetStore();
         setIdentityChecked(true);
       }
     })();
@@ -74,11 +71,11 @@ export function AuthGate({ children }: { readonly children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [finishAuth, hydrated, isCallback, resetStore, state.viewer]);
+  }, [isCallback]);
 
   if (isCallback) return children;
 
-  if (!hydrated || !identityChecked) {
+  if (!identityChecked) {
     return (
       <main className="discord-entry" id="main-content">
         <p className="entry-status">Sprawdzanie sesji Discord…</p>
