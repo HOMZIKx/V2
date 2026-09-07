@@ -33,6 +33,7 @@ export const sharedTestConfig: NonNullable<UserConfig['test']> = {
 export function createProjectTestConfig(options: {
   testInclude: string[];
   coverageInclude: string[];
+  coverageExclude?: string[];
 }): UserConfig {
   return {
     test: {
@@ -50,7 +51,7 @@ export function createProjectTestConfig(options: {
           branches: 50,
           statements: 60,
         },
-        exclude: [...sharedCoverageExcludes],
+        exclude: [...sharedCoverageExcludes, ...(options.coverageExclude ?? [])],
         include: options.coverageInclude,
       },
     },
