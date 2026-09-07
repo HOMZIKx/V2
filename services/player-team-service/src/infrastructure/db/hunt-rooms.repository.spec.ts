@@ -250,8 +250,8 @@ describe('HuntRoomsRepository', () => {
       mapKey: 'M2',
       channel: 1,
       kind: 'metin',
-      x: 12,
-      y: 34,
+      location: { x: 12, y: 34 },
+      label: 'Metin',
       placedAt: 1_788_000_000_000,
       placedBy: 'Mateusz',
     };
@@ -297,15 +297,10 @@ describe('HuntRoomsRepository', () => {
       mapKey: 'M2',
       channel: 1,
       kind: 'metin',
+      entityName: 'Metin',
       confirmedAt: 1_788_000_000_000,
       confirmedBy: 'Mateusz',
       location: { x: 10, y: 20 },
-      entity: {
-        id: '1',
-        name: 'Metin',
-        respawnTimeMin: 20,
-        respawnTimeMax: 30,
-      },
     };
 
     const idempotent = setup();
