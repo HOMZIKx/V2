@@ -19,6 +19,7 @@ import {
   type WorkspaceRecord,
   type PlayerIdentity,
 } from './player-store';
+import { inferProgressionKind, restartAfterDone } from './project-hard-progression';
 
 export type CharacterTimerNotifyContext = {
   readonly workspace: WorkspaceRecord;
@@ -49,6 +50,25 @@ function recipientIds(ctx: CharacterTimerNotifyContext): string[] {
     return out;
   }
   return [...allowed];
+}
+
+/**
+ * React store updates are asynchronous. The caller can still hold the old readyAtIso
+ * immediately after pressing Start. Recompute the just-started cycle here so Discord
+ * and the gateway scheduler always receive the NEW end time, never the previous one.
+ */
+function timerForNotify(ctx: CharacterTimerNotifyContext): ProgressTimer {
+  if (ctx.kind !== 'reset') return ctx.timer;
+  const kind = ctx.timer.kind ?? inferProgressionKind(ctx.timer.label);
+  const restart = restartAfterDone(kind, new Date(), ctx.timer.durationMinutes);
+  return {
+    ...ctx.timer,
+    ...(kind ? { kind } : {}),
+    status: 'running',
+    readyAtIso: restart.readyAtIso,
+    remainingLabel: restart.remainingLabel,
+    progressPercent: 4,
+  };
 }
 
 export function buildCharacterTimerNotifyCopy(input: {
@@ -88,20 +108,20 @@ export async function notifyCharacterProgressTimer(
     return { sent: 0, results: [] };
   }
 
+  const timer = timerForNotify(ctx);
   const characterName =
-    ctx.workspace.characters.find((c) => c.id === ctx.timer.characterId)?.name ??
-    ctx.timer.characterId;
+    ctx.workspace.characters.find((c) => c.id === timer.characterId)?.name ?? timer.characterId;
   const { title, body } = buildCharacterTimerNotifyCopy({
     characterName,
-    timer: ctx.timer,
+    timer,
     actorName: ctx.actorName,
     kind: ctx.kind,
   });
-  const deepLinkUrl = buildCharacterTimersDeepLinkUrl(ctx.workspace.id, ctx.timer.characterId);
+  const deepLinkUrl = buildCharacterTimersDeepLinkUrl(ctx.workspace.id, timer.characterId);
   const roomSummary = buildCharacterTimerRoomSummary(
     ctx.workspace.timers,
     ctx.workspace.characters,
-    ctx.timer.id,
+    timer.id,
   );
 
   const results: DiscordTimerNotifyResult[] = [];
@@ -124,14 +144,14 @@ export async function notifyCharacterProgressTimer(
         body,
         deepLinkUrl,
         workspaceId: ctx.workspace.id,
-        characterId: ctx.timer.characterId,
+        characterId: timer.characterId,
         characterName,
-        timerId: ctx.timer.id,
-        timerLabel: ctx.timer.label,
-        ...(ctx.timer.readyAtIso ? { endsAt: ctx.timer.readyAtIso } : {}),
+        timerId: timer.id,
+        timerLabel: timer.label,
+        ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
         roomSummary,
         recipientDiscordUserIds: others,
-        idempotencyKey: `char-timer-reset:${ctx.timer.id}:${ctx.timer.operationId ?? Date.now()}`,
+        idempotencyKey: `char-timer-reset:${timer.id}:${timer.operationId ?? Date.now()}`,
       });
       if (reset.ok) sent += reset.sent ?? 0;
     }
@@ -151,16 +171,16 @@ export async function notifyCharacterProgressTimer(
       body,
       deepLinkUrl,
       workspaceId: ctx.workspace.id,
-      characterId: ctx.timer.characterId,
+      characterId: timer.characterId,
       characterName,
-      timerId: ctx.timer.id,
-      timerLabel: ctx.timer.label,
-      ...(ctx.timer.readyAtIso ? { endsAt: ctx.timer.readyAtIso } : {}),
+      timerId: timer.id,
+      timerLabel: timer.label,
+      ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
       roomSummary,
       includeButtons: true,
       kind: ctx.kind,
       actorName: ctx.actorName,
-      idempotencyKey: `char-timer:${ctx.kind}:${ctx.timer.id}:${discordUserId}:${ctx.timer.operationId ?? Math.floor(Date.now() / 30_000)}`,
+      idempotencyKey: `char-timer:${ctx.kind}:${timer.id}:${discordUserId}:${timer.operationId ?? Math.floor(Date.now() / 30_000)}`,
     });
     results.push(result);
     if (result.ok && !result.duplicate && result.skipped !== 'dms_closed') {
