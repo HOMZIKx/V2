@@ -17,11 +17,27 @@ function normalizeTarget(value: string | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+const productionBackendOrigin =
+  normalizeTarget(process.env.V2_BACKEND_PUBLIC_ORIGIN) ?? 'https://v2-api.zeabur.app';
+
+function identityTarget(): string {
+  return (
+    normalizeTarget(process.env.IDENTITY_PROXY_TARGET) ??
+    (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4200')
+  );
+}
+
+function playerTeamTarget(): string {
+  return (
+    normalizeTarget(process.env.PLAYER_TEAM_PROXY_TARGET) ??
+    normalizeTarget(process.env.ACTIVITY_PROXY_TARGET) ??
+    (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4400')
+  );
+}
+
 async function resolveDiscordViewerId(request: NextRequest): Promise<string | null> {
-  const identityTarget = normalizeTarget(process.env.IDENTITY_PROXY_TARGET);
-  if (!identityTarget) {
-    throw new Error('IDENTITY_PROXY_TARGET is not configured');
-  }
+  const identityBaseUrl = identityTarget();
 
   const cookie = request.headers.get('cookie');
   if (!cookie) return null;
@@ -31,7 +47,7 @@ async function resolveDiscordViewerId(request: NextRequest): Promise<string | nu
     cookie,
   });
 
-  const meResponse = await fetch(`${identityTarget}/identity/me`, {
+  const meResponse = await fetch(`${identityBaseUrl}/identity/me`, {
     method: 'GET',
     headers: identityHeaders,
     cache: 'no-store',
@@ -42,7 +58,7 @@ async function resolveDiscordViewerId(request: NextRequest): Promise<string | nu
     throw new Error(`identity /me failed: ${meResponse.status}`);
   }
 
-  const accountsResponse = await fetch(`${identityTarget}/identity/accounts`, {
+  const accountsResponse = await fetch(`${identityBaseUrl}/identity/accounts`, {
     method: 'GET',
     headers: identityHeaders,
     cache: 'no-store',
@@ -93,13 +109,7 @@ function createClientHeaders(upstream: Response): Headers {
 }
 
 async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Promise<NextResponse> {
-  const playerTeamTarget = normalizeTarget(process.env.PLAYER_TEAM_PROXY_TARGET);
-  if (!playerTeamTarget) {
-    return NextResponse.json(
-      { error: 'player_team_unavailable', message: 'PLAYER_TEAM_PROXY_TARGET is not configured' },
-      { status: 503 },
-    );
-  }
+  const playerTeamBaseUrl = playerTeamTarget();
 
   let viewerId: string | null;
   try {
@@ -121,7 +131,7 @@ async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Pro
 
   const { path } = await context.params;
   const encodedPath = path.map((segment) => encodeURIComponent(segment)).join('/');
-  const upstreamUrl = new URL(`${playerTeamTarget}/player-team/${encodedPath}`);
+  const upstreamUrl = new URL(`${playerTeamBaseUrl}/player-team/${encodedPath}`);
   upstreamUrl.search = request.nextUrl.search;
 
   const method = request.method.toUpperCase();
