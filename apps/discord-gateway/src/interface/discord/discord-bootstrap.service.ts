@@ -150,7 +150,20 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.gateway.start();
+    try {
+      await this.gateway.start();
+    } catch (error) {
+      // The HTTP gateway must remain live even when the Discord session cannot
+      // start (bad token/intents, Discord outage, guild configuration). Health
+      // endpoints expose the adapter's failed state and lastError so deployment
+      // diagnostics do not turn into a process crash / opaque HTTP 500.
+      this.nestLogger.error(
+        `Discord bot startup failed; HTTP gateway remains online: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return;
+    }
 
     if (this.config.DISCORD_AUTO_REGISTER_GUILD_COMMANDS) {
       const guildIds = resolveRuntimeAllowedGuildIds(this.config, this.technikaStore);
