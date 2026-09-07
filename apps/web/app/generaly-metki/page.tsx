@@ -8,7 +8,7 @@ export default function GeneralsMetinsPage() {
     <MapHunting
       initialSnapshot={mapHuntingFixture}
       shellSection="generaly-metki"
-      title="Generały / Metki"
+      title="Generały / Metiny"
     />
   );
 }
