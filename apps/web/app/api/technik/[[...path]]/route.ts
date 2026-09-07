@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
+const PRODUCTION_GATEWAY = 'http://discord-gateway.zeabur.internal:4100';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
 const TECHNIKA_ADMIN_DISCORD_ID = '808066932753563668';
@@ -30,9 +31,7 @@ function gatewayBaseUrl(): string {
 
   if (configured) return trimTrailingSlash(configured);
 
-  return process.env.NODE_ENV === 'production'
-    ? `${productionBackendOrigin()}/discord-gateway`
-    : LOCAL_GATEWAY;
+  return process.env.NODE_ENV === 'production' ? PRODUCTION_GATEWAY : LOCAL_GATEWAY;
 }
 
 function identityBaseUrl(): string {

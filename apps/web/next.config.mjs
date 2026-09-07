@@ -19,14 +19,15 @@ const activityProxyTarget =
   (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4400');
 
 /**
- * Discord Gateway (New Bot). Production must never silently call 127.0.0.1.
- * If the gateway has its own Zeabur domain/private URL, set
- * DISCORD_GATEWAY_PROXY_TARGET (preferred) or DISCORD_GATEWAY_BASE_URL.
+ * Discord Gateway (New Bot). Prefer an explicit deployment target; otherwise
+ * use the private Zeabur hostname of the dedicated discord-gateway service.
  */
 const discordGatewayProxyTarget =
   process.env.DISCORD_GATEWAY_PROXY_TARGET?.trim() ||
   process.env.DISCORD_GATEWAY_BASE_URL?.trim() ||
-  (isProduction ? `${productionBackendOrigin}/discord-gateway` : 'http://127.0.0.1:4100');
+  (isProduction
+    ? 'http://discord-gateway.zeabur.internal:4100'
+    : 'http://127.0.0.1:4100');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
