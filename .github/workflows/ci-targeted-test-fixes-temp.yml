@@ -22,6 +22,7 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@10.14.0 --activate
+          pnpm install --frozen-lockfile
           pnpm exec prettier --write \
             apps/discord-gateway/src/infrastructure/discord/discord-js-adapter.spec.ts \
             apps/discord-gateway/src/interface/discord/interaction-router.ts \
