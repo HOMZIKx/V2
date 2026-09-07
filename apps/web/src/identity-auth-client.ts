@@ -11,6 +11,7 @@ import type { PlayerIdentity } from './player-store';
 import { initialsFromDisplayName } from './player-store';
 
 const DEV_IDENTITY_BASE = 'http://127.0.0.1:4200';
+const IDENTITY_REQUEST_TIMEOUT_MS = 10_000;
 
 export interface IdentityUserView {
   readonly id: string;
@@ -93,16 +94,24 @@ async function identityFetch(path: string, init: RequestInit = {}): Promise<Resp
   if (init.body !== undefined && !headers.has('content-type')) {
     headers.set('content-type', 'application/json');
   }
-  return fetch(`${base}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers,
-  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IDENTITY_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(`${base}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function probeIdentityLive(): Promise<boolean> {
   try {
-    const res = await fetch(`${getIdentityAuthBaseUrl()}/health/live`, {
+    const res = await identityFetch('/health/live', {
       method: 'GET',
       cache: 'no-store',
     });
