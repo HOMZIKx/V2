@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  callbackClaimsMatchResolvedSession,
   toPlayerIdentityFromSession,
   viewerFromCallbackSearchParams,
 } from './identity-auth-client';
@@ -41,6 +42,54 @@ describe('identity session → viewer', () => {
     const viewer = viewerFromCallbackSearchParams(params);
     expect(viewer?.id).toBe('999');
     expect(viewer?.discordAccountId).toBe('999');
+  });
+
+  it('accepts callback ids only when they agree with the live Identity session', () => {
+    const viewer = toPlayerIdentityFromSession({
+      displayName: 'Destiled',
+      v2UserId: 'uuid-1',
+      discordAccountId: '999999999999999999',
+    });
+    const resolved = {
+      viewer,
+      v2UserId: 'uuid-1',
+      discordAccountId: '999999999999999999',
+    };
+
+    expect(
+      callbackClaimsMatchResolvedSession(
+        new URLSearchParams({
+          viewerId: 'uuid-1',
+          displayName: 'anything',
+          discordAccountId: '999999999999999999',
+        }),
+        resolved,
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects forged callback ids even when the URL otherwise looks valid', () => {
+    const viewer = toPlayerIdentityFromSession({
+      displayName: 'Destiled',
+      v2UserId: 'uuid-real',
+      discordAccountId: '999999999999999999',
+    });
+    const resolved = {
+      viewer,
+      v2UserId: 'uuid-real',
+      discordAccountId: '999999999999999999',
+    };
+
+    expect(
+      callbackClaimsMatchResolvedSession(
+        new URLSearchParams({
+          viewerId: 'uuid-attacker',
+          displayName: 'Forged',
+          discordAccountId: '111111111111111111',
+        }),
+        resolved,
+      ),
+    ).toBe(false);
   });
 
   it('completeDiscordAuth accepts PlayerIdentity from OAuth callback', () => {
