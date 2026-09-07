@@ -24,7 +24,6 @@ import {
   TECHNIK_TEST_GUILD_ID,
   KNOWN_GUILD_NAMES,
   isTechnikGuildEditable,
-  putConfigDraft,
 } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
@@ -45,6 +44,55 @@ function looksLikeHttpsUrl(value: string): boolean {
     return u.protocol === 'https:' || u.protocol === 'http:';
   } catch {
     return false;
+  }
+}
+
+type GuildPublishDraftResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: string; readonly detail?: string };
+
+async function putGuildPublishDraft(
+  guildId: string,
+  publishChannels: PublishChannelsMap,
+  appWebsiteUrl: string,
+): Promise<GuildPublishDraftResult> {
+  try {
+    const res = await fetch(`/api/technik/guilds/${encodeURIComponent(guildId)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        publishChannels,
+        appWebsiteUrl: appWebsiteUrl.trim(),
+      }),
+      cache: 'no-store',
+    });
+
+    const raw = await res.text();
+    let parsed: Record<string, unknown> = {};
+    if (raw.trim()) {
+      try {
+        parsed = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        parsed = { detail: raw.slice(0, 200) };
+      }
+    }
+
+    if (!res.ok) {
+      const error =
+        typeof parsed.error === 'string' ? parsed.error : `http_${String(res.status)}`;
+      const detail =
+        typeof parsed.detail === 'string'
+          ? parsed.detail
+          : typeof parsed.hint === 'string'
+            ? parsed.hint
+            : undefined;
+      return detail ? { ok: false, error, detail } : { ok: false, error };
+    }
+
+    return { ok: true };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'unknown';
+    return { ok: false, error: 'network_error', detail };
   }
 }
 
@@ -74,7 +122,6 @@ export function TechnikKanalyPage() {
     const res = await fetchPanelChannels(guildId);
     if (!res.ok) {
       setChannels([]);
-      // 401/403 with secret missing elsewhere = show honest auth error, NOT "API not ready"
       const hint =
         res.status === 401 || res.status === 403
           ? 'Brak uprawnień / sekretu — proxy Technika powinien dołączyć x-technika-secret.'
@@ -82,7 +129,12 @@ export function TechnikKanalyPage() {
             ? 'Sekret Technika nieustawiony na serwerze WWW (DISCORD_TECHNIKA_SHARED_SECRET).'
             : res.detail || '';
       setChannelsErr(
-        'Nie udało się pobrać kanałów: ' + res.error + (hint ? ' — ' + hint : '') + ' (HTTP ' + String(res.status) + ')',
+        'Nie udało się pobrać kanałów: ' +
+          res.error +
+          (hint ? ' — ' + hint : '') +
+          ' (HTTP ' +
+          String(res.status) +
+          ')',
       );
       return;
     }
@@ -93,24 +145,61 @@ export function TechnikKanalyPage() {
     const local = loadPublishChannels(guildId);
     const localUrl = loadAppWebsiteUrl(guildId);
     const snapCfg = cfg.snapshot?.config as
-      | { publishChannels?: Record<string, string>; appWebsiteUrl?: string; websiteUrl?: string }
+      | {
+          publishChannels?: Record<string, string>;
+          appWebsiteUrl?: string;
+          websiteUrl?: string;
+          guilds?: Record<
+            string,
+            {
+              publishChannels?: Record<string, string>;
+              appWebsiteUrl?: string;
+            }
+          >;
+        }
       | undefined;
-    const fromCfg =
-      snapCfg && typeof snapCfg.publishChannels === 'object' ? (snapCfg.publishChannels ?? {}) : {};
-    const merged = editable ? { ...local, ...fromCfg } : { ...fromCfg, ...local };
+
+    const guildCfg = snapCfg?.guilds?.[guildId];
+    const scopedChannels =
+      guildCfg && typeof guildCfg.publishChannels === 'object'
+        ? guildCfg.publishChannels
+        : undefined;
+    const legacyGlobalChannels =
+      snapCfg && typeof snapCfg.publishChannels === 'object' ? snapCfg.publishChannels : undefined;
+    const fromCfg = scopedChannels ?? legacyGlobalChannels ?? {};
+    const snapshotLoaded = cfg.snapshot !== null;
+    const hasPendingDraft = Boolean(cfg.snapshot?.hasDraft);
+    const serverHasChannels = Object.keys(fromCfg).length > 0;
+
+    const merged = !snapshotLoaded
+      ? local
+      : hasPendingDraft
+        ? { ...fromCfg, ...local }
+        : serverHasChannels
+          ? { ...fromCfg }
+          : local;
     setMap(merged);
-    const fromCfgUrl =
+
+    const scopedUrl =
+      typeof guildCfg?.appWebsiteUrl === 'string' ? guildCfg.appWebsiteUrl : '';
+    const legacyUrl =
       typeof snapCfg?.appWebsiteUrl === 'string'
         ? snapCfg.appWebsiteUrl
         : typeof snapCfg?.websiteUrl === 'string'
           ? snapCfg.websiteUrl
           : '';
-    const nextUrl = editable ? fromCfgUrl || localUrl : localUrl || fromCfgUrl;
+    const fromCfgUrl = scopedUrl || legacyUrl;
+    const nextUrl = !snapshotLoaded
+      ? localUrl
+      : hasPendingDraft
+        ? localUrl || fromCfgUrl
+        : fromCfgUrl || localUrl;
     setAppWebsiteUrl(nextUrl);
-    if (editable && Object.keys(fromCfg).length) {
+
+    if (editable && snapshotLoaded && !hasPendingDraft && serverHasChannels) {
       savePublishChannels(guildId, merged);
     }
-    if (editable && fromCfgUrl) {
+    if (editable && snapshotLoaded && !hasPendingDraft && fromCfgUrl) {
       saveAppWebsiteUrl(guildId, fromCfgUrl);
     }
     void reload();
@@ -121,33 +210,36 @@ export function TechnikKanalyPage() {
     nextUrl: string,
     successHint: string,
   ) => {
-    const hasPubCap = cfg.capabilities.some((c) => c.id === 'publishChannels');
-    if (!(hasPubCap && cfg.canWrite)) return false;
-    const base = cfg.buildDraftPartial();
-    const trimmed = nextUrl.trim();
-    const payload: Record<string, unknown> = {
-      ...base,
-      publishChannels: nextMap,
-    };
-    if (trimmed) {
-      payload.appWebsiteUrl = trimmed;
+    if (!cfg.canWrite) {
+      setMsg('Lokalnie zapisano, ale zapis serwerowy jest niedostępny — sprawdź sekret Technika.');
+      return false;
     }
-    const res = await putConfigDraft(payload);
+
+    const trimmed = nextUrl.trim();
+    const res = await putGuildPublishDraft(guildId, nextMap, trimmed);
     if (res.ok) {
-      setMsg(successHint + ' · szkic D-060 (publishChannels' + (trimmed ? ' + appWebsiteUrl' : '') + '). Przejdź do Przeglądu i kliknij Apply.');
-      cfg.setLastAction('draft publishChannels');
+      setMsg(
+        successHint +
+          ' · zapisano do szkicu gildii' +
+          (trimmed ? ' + adres aplikacji' : '') +
+          '. Przejdź do Przeglądu i kliknij Apply.',
+      );
+      cfg.setLastAction('draft guild publishChannels');
       cfg.setStep('Draft');
       return true;
     }
+
     setMsg(
-      'Lokalnie OK, ale szkic D-060: ' + res.error + (res.detail ? ' — ' + res.detail : ''),
+      'Lokalnie OK, ale szkic serwerowy: ' +
+        res.error +
+        (res.detail ? ' — ' + res.detail : ''),
     );
     return false;
   };
 
   const onPick = (purpose: PublishPurposeId, channelId: string) => {
     if (!editable) {
-      setMsg('Tylko serwer Testowy — Destiled/Sojusz bez zapisu kanałów (podgląd).');
+      setMsg('Ten serwer jest tylko do podglądu — zapis kanałów jest zablokowany.');
       return;
     }
     const next = setPublishChannel(guildId, purpose, channelId);
@@ -173,7 +265,7 @@ export function TechnikKanalyPage() {
 
   const onWebsiteUrlCommit = () => {
     if (!editable) {
-      setMsg('Tylko serwer Testowy — Destiled/Sojusz bez zapisu URL (podgląd).');
+      setMsg('Ten serwer jest tylko do podglądu — zapis URL jest zablokowany.');
       return;
     }
     if (!looksLikeHttpsUrl(appWebsiteUrl)) {
@@ -192,36 +284,30 @@ export function TechnikKanalyPage() {
 
   const pushDraft = async () => {
     if (!editable) {
-      setMsg('Zapis szkicu tylko na Testowym.');
+      setMsg('Ten serwer jest tylko do podglądu.');
       return;
     }
     if (!cfg.canWrite) {
-      setMsg('Brak sekretu Technika — nie zapiszę publishChannels do szkicu.');
+      setMsg('Brak sekretu Technika — nie zapiszę ustawień kanałów do szkicu.');
       return;
     }
     if (!looksLikeHttpsUrl(appWebsiteUrl)) {
       setMsg('Adres aplikacji: podaj poprawny URL (https://…) przed zapisem szkicu.');
       return;
     }
+
     const savedUrl = saveAppWebsiteUrl(guildId, appWebsiteUrl);
     setAppWebsiteUrl(savedUrl);
-    const base = cfg.buildDraftPartial();
-    const payload: Record<string, unknown> = {
-      ...base,
-      publishChannels: map,
-    };
-    if (savedUrl) {
-      payload.appWebsiteUrl = savedUrl;
-    }
-    const res = await putConfigDraft(payload);
+    const res = await putGuildPublishDraft(guildId, map, savedUrl);
     if (!res.ok) {
       setMsg('Szkic: ' + res.error + (res.detail ? ' — ' + res.detail : ''));
       return;
     }
-    cfg.setLastAction('draft publishChannels');
+
+    cfg.setLastAction('draft guild publishChannels');
     cfg.setStep('Draft');
     setMsg(
-      'Szkic D-060 zaktualizowany (publishChannels' +
+      'Szkic gildii zaktualizowany (publishChannels' +
         (savedUrl ? ' + appWebsiteUrl' : '') +
         '). Otwórz Przegląd → Apply.',
     );
@@ -279,7 +365,7 @@ export function TechnikKanalyPage() {
             {GUILD_OPTIONS.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
-                {g.id === TECHNIK_TEST_GUILD_ID ? ' · edytowalny' : ' · zablokowany (prod)'}
+                {isTechnikGuildEditable(g.id) ? ' · edytowalny' : ' · tylko podgląd'}
               </option>
             ))}
           </select>
@@ -298,8 +384,7 @@ export function TechnikKanalyPage() {
         </dl>
         {!editable ? (
           <p className="technik-help">
-            Destiled / Sojusz: możesz zobaczyć listę (gdy API pozwoli), ale zapis publishChannels i
-            publish są zablokowane z Technika.
+            Ten serwer można przeglądać, ale zapis publishChannels i publikacja są zablokowane.
           </p>
         ) : null}
       </section>
@@ -315,8 +400,8 @@ export function TechnikKanalyPage() {
         {apiStatus === 'unavailable' ? (
           <HonestGap>
             <p>
-              Endpoint listy kanałów nie odpowiada (404/501). To nie jest „brak sekretu” — gdy trasa
-              wróci, wiersze poniżej odżyją z pickerami #nazwa.
+              Endpoint listy kanałów nie odpowiada (404/501). Gdy trasa wróci, wiersze poniżej
+              odżyją z pickerami #nazwa.
             </p>
           </HonestGap>
         ) : null}
@@ -330,9 +415,8 @@ export function TechnikKanalyPage() {
         {apiStatus === 'live' && channels.length === 0 && !channelsErr ? (
           <HonestGap>
             <p>
-              API live, ale lista ma 0 kanałów. Sprawdź: bot jest na tej guildii, ma uprawnienia do
-              odczytu kanałów (View Channel), a sekret Technika jest poprawny — potem kliknij
-              „Odśwież listę”. Bez listy nie ustawisz pickerów #nazwa.
+              API live, ale lista ma 0 kanałów. Sprawdź, czy bot jest na tej guildii i ma View
+              Channel, a potem kliknij „Odśwież listę”.
             </p>
           </HonestGap>
         ) : null}
@@ -368,8 +452,7 @@ export function TechnikKanalyPage() {
                       />
                       <small className="technik-help">
                         Kanał wybierasz po prawej — tam bot przypnie link. Tutaj wpisz adres strony
-                        DESTILED. Po zapisie wejdź w Przegląd i kliknij „Zapisz i włącz” (bez
-                        automatycznej publikacji).
+                        DESTILED. Po zapisie wejdź w Przegląd i kliknij „Zapisz i włącz”.
                         {websiteChannelId
                           ? ' Wybrany kanał: ' + channelLabel(websiteChannelId, channels) + '.'
                           : ' Najpierw wybierz kanał po prawej.'}
@@ -422,14 +505,13 @@ export function TechnikKanalyPage() {
       {apiStatus === 'live' ? (
         <p className="technik-help" style={{ marginTop: '1rem' }}>
           Po zapisie mapowania wejdź w <a href="/technik">Przegląd</a> i kliknij Apply — bez
-          auto-publikacji. Centrum czyta kanał „Centrum”; Strona WWW — kanał website + URL aplikacji.
+          auto-publikacji. Ustawienia są zapisywane w szkicu wybranej gildii.
         </p>
       ) : (
         <HonestGap>
           <p>
             Gdy API kanałów będzie live, zapiszesz mapowanie do szkicu i włączysz je Apply w
-            Przeglądzie. Do tego czasu lokalny szkic i tak zasila Centrum (kanał hub) oraz lokalny URL
-            WWW.
+            Przeglądzie. Lokalny cache pozostaje tylko awaryjnym podglądem formularza.
           </p>
         </HonestGap>
       )}
