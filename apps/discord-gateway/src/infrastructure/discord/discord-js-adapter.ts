@@ -244,9 +244,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
    * Read-only â€” never leaves, enables, publishes, or sends.
    * Note: Bot tokens cannot call GET /users/@me/guilds (403) â€” membership is gateway-only.
    */
-  public async refreshJoinedGuildDirectory(
-    extraGuildIds: readonly string[] = [],
-  ): Promise<
+  public async refreshJoinedGuildDirectory(extraGuildIds: readonly string[] = []): Promise<
     ReadonlyArray<{
       readonly id: string;
       readonly name: string;
