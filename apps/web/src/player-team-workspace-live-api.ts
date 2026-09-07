@@ -42,6 +42,91 @@ function parseSnapshot(value: unknown): SharedWorkspaceSnapshot | null {
   };
 }
 
+function timerRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+/**
+ * Timers are stored with an absolute readyAtIso. Persisted `status` can stay `running`
+ * after wall clock time passes, so derive `ready` from time and reconcile it back to
+ * the shared workspace. This keeps every open client and the next reload consistent.
+ */
+function normalizeExpiredTimers(
+  state: Record<string, unknown>,
+  nowMs = Date.now(),
+): { readonly state: Record<string, unknown>; readonly changed: boolean } {
+  if (!Array.isArray(state.timers)) return { state, changed: false };
+  let changed = false;
+  const timers = state.timers.map((raw) => {
+    const timer = timerRecord(raw);
+    if (!timer || timer.status === 'ready') return raw;
+    const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
+    if (!readyAtIso) return raw;
+    const readyAtMs = Date.parse(readyAtIso);
+    if (!Number.isFinite(readyAtMs) || readyAtMs > nowMs) return raw;
+    changed = true;
+    return {
+      ...timer,
+      status: 'ready',
+      progressPercent: 100,
+      remainingLabel: 'gotowe',
+    };
+  });
+  return changed ? { state: { ...state, timers }, changed: true } : { state, changed: false };
+}
+
+function normalizedSnapshot(snapshot: SharedWorkspaceSnapshot): SharedWorkspaceSnapshot {
+  const normalized = normalizeExpiredTimers(snapshot.state);
+  return normalized.changed ? { ...snapshot, state: normalized.state } : snapshot;
+}
+
+function nextRunningTimerExpiry(state: Record<string, unknown>, nowMs = Date.now()): number | null {
+  if (!Array.isArray(state.timers)) return null;
+  let earliest: number | null = null;
+  for (const raw of state.timers) {
+    const timer = timerRecord(raw);
+    if (!timer || timer.status === 'ready') continue;
+    const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
+    if (!readyAtIso) continue;
+    const readyAtMs = Date.parse(readyAtIso);
+    if (!Number.isFinite(readyAtMs)) continue;
+    const candidate = Math.max(nowMs, readyAtMs);
+    if (earliest === null || candidate < earliest) earliest = candidate;
+  }
+  return earliest;
+}
+
+async function reconcileExpiredTimers(workspaceId: string): Promise<void> {
+  try {
+    const response = await fetch(workspaceUrl(workspaceId, 'state'), {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+    const snapshot = parseSnapshot(await response.json());
+    if (!snapshot) return;
+    const normalized = normalizeExpiredTimers(snapshot.state);
+    if (!normalized.changed) return;
+
+    // Optimistic revision protects a simultaneous EQ/timer edit. On 409 the winning
+    // writer publishes a fresh SSE snapshot and this connection schedules again.
+    await fetch(workspaceUrl(workspaceId, 'state'), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        state: normalized.state,
+        expectedRevision: snapshot.revision,
+      }),
+    });
+  } catch {
+    // Best effort while the page is open. A reconnect/reload retries from readyAtIso.
+  }
+}
+
 export async function getSharedWorkspaceState(workspaceId: string): Promise<SharedWorkspaceSnapshot> {
   const response = await fetch(workspaceUrl(workspaceId, 'state'), {
     method: 'GET',
@@ -54,7 +139,7 @@ export async function getSharedWorkspaceState(workspaceId: string): Promise<Shar
   }
   const parsed = parseSnapshot(await response.json());
   if (!parsed) throw new Error('shared workspace GET returned invalid payload');
-  return parsed;
+  return normalizedSnapshot(parsed);
 }
 
 export async function putSharedWorkspaceState(input: {
@@ -103,7 +188,7 @@ export async function putSharedWorkspaceState(input: {
   if (!snapshot) {
     return { ok: false, conflict: false, error: 'invalid shared workspace PUT response' };
   }
-  return { ok: true, snapshot };
+  return { ok: true, snapshot: normalizedSnapshot(snapshot) };
 }
 
 export function subscribeSharedWorkspaceState(
@@ -111,14 +196,48 @@ export function subscribeSharedWorkspaceState(
   onSnapshot: (snapshot: SharedWorkspaceSnapshot) => void,
 ): EventSource {
   const source = new EventSource(workspaceUrl(workspaceId, 'events'), { withCredentials: true });
+  let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const scheduleExpiryReconciliation = (snapshot: SharedWorkspaceSnapshot) => {
+    if (expiryTimer) {
+      clearTimeout(expiryTimer);
+      expiryTimer = null;
+    }
+    const now = Date.now();
+    const nextExpiry = nextRunningTimerExpiry(snapshot.state, now);
+    if (nextExpiry === null) return;
+    // Small grace avoids racing a write that started the timer in this same tick.
+    const delay = Math.max(100, Math.min(2_147_000_000, nextExpiry - now + 150));
+    expiryTimer = setTimeout(() => {
+      expiryTimer = null;
+      void reconcileExpiredTimers(workspaceId);
+    }, delay);
+  };
+
   source.addEventListener('workspace', (event) => {
     if (!(event instanceof MessageEvent)) return;
     try {
       const parsed = parseSnapshot(JSON.parse(String(event.data)));
-      if (parsed) onSnapshot(parsed);
+      if (!parsed) return;
+      const normalized = normalizedSnapshot(parsed);
+      onSnapshot(normalized);
+      scheduleExpiryReconciliation(parsed);
+      if (normalized.state !== parsed.state) {
+        // Already expired before this event arrived — persist immediately to bump revision
+        // and make the derived state authoritative for every connected client.
+        void reconcileExpiredTimers(workspaceId);
+      }
     } catch {
       // Keep the SSE connection alive if one malformed event slips through.
     }
   });
+
+  const originalClose = source.close.bind(source);
+  source.close = () => {
+    if (expiryTimer) clearTimeout(expiryTimer);
+    expiryTimer = null;
+    originalClose();
+  };
+
   return source;
 }
