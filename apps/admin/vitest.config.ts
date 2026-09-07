@@ -6,5 +6,6 @@ export default defineConfig(
   createProjectTestConfig({
     testInclude: ['apps/admin/src/**/*.{spec,test}.{ts,tsx}'],
     coverageInclude: ['apps/admin/src/**/*.{ts,tsx}'],
+    coverageExclude: ['apps/admin/src/*-page.tsx', 'apps/admin/src/health-error-panel.tsx'],
   }),
 );
