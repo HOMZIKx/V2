@@ -10,6 +10,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const base = createProjectTestConfig({
   testInclude: ['apps/web/src/**/*.spec.ts'],
   coverageInclude: ['apps/web/src/**/*.{ts,tsx}'],
+  coverageExclude: ['apps/web/src/technik/**'],
 });
 
 export default defineConfig({
