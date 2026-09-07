@@ -9,6 +9,7 @@ import {
   Optional,
   Param,
   Put,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 
 import { upsertGuildInConfig } from '../../application/technika/bot-config.schema.js';
@@ -21,6 +22,7 @@ import {
 import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { probeDiscordGuildMember } from '../../infrastructure/discord/discord-member-probe.js';
 import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
@@ -142,6 +144,62 @@ export class TechnikaGuildsController {
       botReady,
       hasDraft: snap.hasDraft,
     };
+  }
+
+  @Get(':guildId/members/:userId')
+  public async getGuildMember(
+    @Headers(TECHNIKA_SECRET_HEADER) secret: string | undefined,
+    @Param('guildId') guildId: string,
+    @Param('userId') userId: string,
+  ): Promise<{
+    readonly guildId: string;
+    readonly userId: string;
+    readonly member: boolean;
+  }> {
+    assertTechnikaSecret(secret, this.envConfig.DISCORD_TECHNIKA_SHARED_SECRET);
+
+    if (!/^\d{17,20}$/.test(guildId)) {
+      throw new BadRequestException({ ok: false, error: 'invalid_guild_id' });
+    }
+    if (!/^\d{17,20}$/.test(userId)) {
+      throw new BadRequestException({ ok: false, error: 'invalid_user_id' });
+    }
+    if (
+      !this.envConfig.DISCORD_ENABLED ||
+      this.gateway === null ||
+      this.gateway.getSnapshot().state !== 'ready'
+    ) {
+      throw new ServiceUnavailableException({
+        ok: false,
+        error: 'discord_gateway_unavailable',
+      });
+    }
+
+    try {
+      await this.gateway.refreshJoinedGuildDirectory([guildId]);
+    } catch {
+      // Cache may still be authoritative enough to decide whether the bot is joined.
+    }
+
+    const joined = this.gateway.listJoinedGuildSummaries().some((guild) => guild.id === guildId);
+    if (!joined) {
+      throw new ServiceUnavailableException({
+        ok: false,
+        error: 'guild_membership_unavailable',
+        guildId,
+      });
+    }
+
+    try {
+      const member = await probeDiscordGuildMember(this.envConfig, guildId, userId);
+      return { guildId, userId, member };
+    } catch {
+      throw new ServiceUnavailableException({
+        ok: false,
+        error: 'discord_member_probe_failed',
+        guildId,
+      });
+    }
   }
 
   @Get(':guildId')
