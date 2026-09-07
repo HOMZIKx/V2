@@ -3,11 +3,19 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_GATEWAY = 'http://127.0.0.1:4100';
+const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
+const PRODUCTION_GATEWAY = 'http://discord-gateway.zeabur.internal:4100';
+
+function trimTrailingSlash(value: string): string {
+  return value.trim().replace(/\/$/, '');
+}
 
 function gatewayBaseUrl(): string {
-  const raw = (process.env.DISCORD_GATEWAY_BASE_URL ?? '').trim() || DEFAULT_GATEWAY;
-  return raw.replace(/\/$/, '');
+  const configured =
+    process.env.DISCORD_GATEWAY_PROXY_TARGET?.trim() ||
+    process.env.DISCORD_GATEWAY_BASE_URL?.trim();
+  if (configured) return trimTrailingSlash(configured);
+  return process.env.NODE_ENV === 'production' ? PRODUCTION_GATEWAY : LOCAL_GATEWAY;
 }
 
 function notifySecret(): string {
