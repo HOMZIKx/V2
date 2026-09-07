@@ -3,23 +3,23 @@ import { createLogger } from '@v2/observability';
 
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
-import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
-import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
-import { getKingdomWarClaims } from '../../application/notify/kingdom-war-claims.js';
 import { startCharacterTimerReminderWorker } from '../../application/notify/character-timer-reminders.js';
-import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
-import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
+import { getKingdomWarClaims } from '../../application/notify/kingdom-war-claims.js';
 import { listKingdomWarRecipients } from '../../application/notify/kingdom-war-recipients.js';
 import { KingdomWarScheduler } from '../../application/notify/kingdom-war-scheduler.js';
+import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
+import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
+import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
+import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import { InteractionRouter } from './interaction-router.js';
 
+import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
   type DiscordGatewayConfig,
 } from '../../infrastructure/discord/discord-config.js';
 import { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
-import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import { renderKingdomWarReminder } from '../../presentation/discord/kingdom-war-renderer.js';
 import {
   DISCORD_CONFIG_TOKEN,
@@ -34,11 +34,7 @@ function resolveRuntimeAllowedGuildIds(
   config: DiscordGatewayConfig,
   technikaStore?: VersionedConfigStore | null,
 ): string[] {
-  const ids = new Set<string>([
-    config.DISCORD_TEST_GUILD_ID,
-    DESTILED_GUILD_ID,
-    SOJUSZ_GUILD_ID,
-  ]);
+  const ids = new Set<string>([config.DISCORD_TEST_GUILD_ID, DESTILED_GUILD_ID, SOJUSZ_GUILD_ID]);
 
   const botConfig = resolveActiveBotConfig(technikaStore ?? null);
   const guilds = botConfig.guilds ?? {};

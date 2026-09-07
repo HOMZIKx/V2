@@ -1,14 +1,11 @@
 import {
-  getMyPlayerTeamState,
-  putMyPlayerTeamState,
-} from './player-team-online-api';
-import {
   mergeHuntFieldsIntoState,
   parseMapHuntSnapshot,
   parsePartyHuntSnapshot,
   type MapHuntSnapshotV1,
   type PartyHuntSnapshotV1,
 } from './hunt-snapshot';
+import { getMyPlayerTeamState, putMyPlayerTeamState } from './player-team-online-api';
 
 export type HuntFieldSyncResult =
   | { readonly ok: true; readonly revision: number | null }
@@ -74,9 +71,7 @@ export async function putPartyHuntField(input: {
   return putMergedField({ viewerId: input.viewerId, partyHunt: input.partyHunt });
 }
 
-export async function loadHuntFieldsFromServer(input: {
-  readonly viewerId: string;
-}): Promise<{
+export async function loadHuntFieldsFromServer(input: { readonly viewerId: string }): Promise<{
   readonly mapHunt: MapHuntSnapshotV1 | null;
   readonly partyHunt: PartyHuntSnapshotV1 | null;
   readonly revision: number | null;

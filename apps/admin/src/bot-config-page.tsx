@@ -151,14 +151,7 @@ const CAPABILITY_AREAS: readonly CapabilityArea[] = [
   },
 ] as const;
 
-const STEPPER_STEPS = [
-  'Draft',
-  'Validate',
-  'Preview',
-  'Apply',
-  'Audit',
-  'Rollback',
-] as const;
+const STEPPER_STEPS = ['Draft', 'Validate', 'Preview', 'Apply', 'Audit', 'Rollback'] as const;
 
 type StepId = (typeof STEPPER_STEPS)[number];
 
@@ -211,7 +204,9 @@ export function BotConfigPage() {
 
   const [step, setStep] = useState<StepId>('Draft');
   const [draftNotes, setDraftNotes] = useState<DraftNotes>({});
-  const [timersDraft, setTimersDraft] = useState<TimersDiscordNotifyDraft>(DEFAULT_TIMERS_DISCORD_NOTIFY);
+  const [timersDraft, setTimersDraft] = useState<TimersDiscordNotifyDraft>(
+    DEFAULT_TIMERS_DISCORD_NOTIFY,
+  );
   const [warDraft, setWarDraft] = useState<KingdomWarPwDraft>(DEFAULT_KINGDOM_WAR_PW);
   const [validationMessages, setValidationMessages] = useState<string[]>([]);
   const [previewText, setPreviewText] = useState<string>('');
@@ -289,7 +284,9 @@ export function BotConfigPage() {
     }
 
     if (!WAR_AT_RE.test(warDraft.warAt)) {
-      messages.push('Wojna królestw (PW): „Godzina wojny” musi być w formacie HH:MM (24h, Warszawa).');
+      messages.push(
+        'Wojna królestw (PW): „Godzina wojny” musi być w formacie HH:MM (24h, Warszawa).',
+      );
     }
     if (
       !Number.isInteger(warDraft.notifyMinutesBefore) ||
@@ -424,8 +421,8 @@ export function BotConfigPage() {
           </button>
         </div>
         <p className="admin-muted" style={{ marginTop: '0.65rem' }}>
-          Aktywna rewizja (placeholder): <code>null</code> — bot jeszcze nie potwierdza rewizji przez
-          API. Oczekiwane: <code>GET /discord/v1/config/active-revision</code>.
+          Aktywna rewizja (placeholder): <code>null</code> — bot jeszcze nie potwierdza rewizji
+          przez API. Oczekiwane: <code>GET /discord/v1/config/active-revision</code>.
         </p>
       </section>
 
@@ -521,7 +518,9 @@ export function BotConfigPage() {
               }
             />
           </label>
-          <p className="admin-muted">Placeholdery: {'{{title}}'}, {'{{minutes}}'}, {'{{deepLink}}'}.</p>
+          <p className="admin-muted">
+            Placeholdery: {'{{title}}'}, {'{{minutes}}'}, {'{{deepLink}}'}.
+          </p>
         </section>
 
         <section className="admin-panel admin-panel--live-config">
@@ -563,8 +562,7 @@ export function BotConfigPage() {
             />
           </label>
           <p className="admin-muted">
-            Wyliczone powiadomienie:{' '}
-            <strong>{warNotifyAt ?? '—'}</strong> Europe/Warsaw
+            Wyliczone powiadomienie: <strong>{warNotifyAt ?? '—'}</strong> Europe/Warsaw
             {warDraft.warAt === '18:00' && warDraft.notifyMinutesBefore === 30
               ? ' (domyślnie 17:30)'
               : ''}
@@ -581,7 +579,9 @@ export function BotConfigPage() {
               }
             />
           </label>
-          <p className="admin-muted">Placeholdery: {'{{warAt}}'}, {'{{minutes}}'}, {'{{notifyAt}}'}.</p>
+          <p className="admin-muted">
+            Placeholdery: {'{{warAt}}'}, {'{{minutes}}'}, {'{{notifyAt}}'}.
+          </p>
         </section>
       </div>
 
@@ -658,9 +658,8 @@ export function BotConfigPage() {
         <h2>Oczekiwane ścieżki API</h2>
         <p className="admin-muted">
           Udokumentowane kontrakty — Admin nie wywołuje apply/rollback, dopóki New Bot nie
-          opublikuje OpenAPI. Live-config Timerów/PW trafi do{' '}
-          <code>PUT /discord/v1/config</code> (klucze <code>timersDiscordNotify</code>,{' '}
-          <code>kingdomWarPw</code>).
+          opublikuje OpenAPI. Live-config Timerów/PW trafi do <code>PUT /discord/v1/config</code>{' '}
+          (klucze <code>timersDiscordNotify</code>, <code>kingdomWarPw</code>).
         </p>
         <div className="admin-two-col">
           <div>

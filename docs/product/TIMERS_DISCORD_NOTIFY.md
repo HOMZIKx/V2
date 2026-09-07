@@ -15,40 +15,40 @@
 
 ### Owner identity (WWW ↔ bot) — CRITICAL
 
-| Ścieżka | Klucz `x-demo-viewer-id` |
-| --- | --- |
-| Web → player-team | `resolvePlayerTeamDemoViewerId` = `discordAccountId` (bare snowflake) gdy znany |
-| Bot Gotowe | `canonicalOwnerViewerId(interaction.user.id)` = bare snowflake |
-| Legacy alias | `discord:<snowflake>` jest normalizowany w player-team `assertDemoAccess` oraz próbowany w confirm |
+| Ścieżka           | Klucz `x-demo-viewer-id`                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------- |
+| Web → player-team | `resolvePlayerTeamDemoViewerId` = `discordAccountId` (bare snowflake) gdy znany                    |
+| Bot Gotowe        | `canonicalOwnerViewerId(interaction.user.id)` = bare snowflake                                     |
+| Legacy alias      | `discord:<snowflake>` jest normalizowany w player-team `assertDemoAccess` oraz próbowany w confirm |
 
 Bez zgodnego snowflake Gotowe zwraca `timer_not_found` (stan leży pod innym owner key).
 
 ## Technika (OpenAPI)
 
-| Klucz | Znaczenie |
-| --- | --- |
-| `characterTimers` | Moduł docelowy (enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled) |
-| `timersNotify` | Alias tej samej semantyki (kompatybilność) |
-| `kingdomWar` | Wojna królestw (bez zmian) |
-| `notify-timer-enabled` | S2S gate na `/notify/timer` |
-| `guilds[guildId].modules.characterTimers` | Per-guild enforce na notify + DM Gotowe (po Apply) |
-| `guilds[guildId].rights` | Wymaga `discord.notify` gdy mapa guildii niepusta |
+| Klucz                                     | Znaczenie                                                                            |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| `characterTimers`                         | Moduł docelowy (enabled, messageTemplate, reminderMinutesBefore, resetNotifyEnabled) |
+| `timersNotify`                            | Alias tej samej semantyki (kompatybilność)                                           |
+| `kingdomWar`                              | Wojna królestw (bez zmian)                                                           |
+| `notify-timer-enabled`                    | S2S gate na `/notify/timer`                                                          |
+| `guilds[guildId].modules.characterTimers` | Per-guild enforce na notify + DM Gotowe (po Apply)                                   |
+| `guilds[guildId].rights`                  | Wymaga `discord.notify` gdy mapa guildii niepusta                                    |
 
 `notify-timer-dm-action-buttons` / Zbite/Odłóż **nie są** w katalogu capabilities Technika.
 
 ## Env (bez wartości sekretów)
 
-| Zmienna | Gdzie | Uwagi |
-| --- | --- | --- |
-| `DISCORD_NOTIFY_SHARED_SECRET` | web server + discord-gateway | header `x-notify-secret` |
-| `DISCORD_TECHNIKA_SHARED_SECRET` | web server + discord-gateway | header `x-technika-secret` (Apply / guilds PUT / test-dm) |
-| `DISCORD_COMPONENT_SIGNING_SECRET` | discord-gateway | ≥32 bajty |
-| `DISCORD_TEST_GUILD_ID` | discord-gateway | **1534228693017432124** (TEST only) |
-| `DISCORD_TEST_OPERATOR_IDS` | discord-gateway | m.in. Mateusz `808066932753563668` |
-| `PLAYER_TEAM_BASE_URL` | discord-gateway | domyślnie `http://127.0.0.1:4400` |
-| `PLAYER_TEAM_DEMO_VIEWER_HEADER` / `NEXT_PUBLIC_…` | gateway + web | `x-demo-viewer-id` |
-| `NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL` | web | Identity `:4200` |
-| Discord OAuth redirect | Developer Portal | `http://127.0.0.1:4200/api/auth/callback/discord` |
+| Zmienna                                            | Gdzie                        | Uwagi                                                     |
+| -------------------------------------------------- | ---------------------------- | --------------------------------------------------------- |
+| `DISCORD_NOTIFY_SHARED_SECRET`                     | web server + discord-gateway | header `x-notify-secret`                                  |
+| `DISCORD_TECHNIKA_SHARED_SECRET`                   | web server + discord-gateway | header `x-technika-secret` (Apply / guilds PUT / test-dm) |
+| `DISCORD_COMPONENT_SIGNING_SECRET`                 | discord-gateway              | ≥32 bajty                                                 |
+| `DISCORD_TEST_GUILD_ID`                            | discord-gateway              | **1534228693017432124** (TEST only)                       |
+| `DISCORD_TEST_OPERATOR_IDS`                        | discord-gateway              | m.in. Mateusz `808066932753563668`                        |
+| `PLAYER_TEAM_BASE_URL`                             | discord-gateway              | domyślnie `http://127.0.0.1:4400`                         |
+| `PLAYER_TEAM_DEMO_VIEWER_HEADER` / `NEXT_PUBLIC_…` | gateway + web                | `x-demo-viewer-id`                                        |
+| `NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL`               | web                          | Identity `:4200`                                          |
+| Discord OAuth redirect                             | Developer Portal             | `http://127.0.0.1:4200/api/auth/callback/discord`         |
 
 ## Reminder durability (honest)
 
@@ -68,7 +68,6 @@ Ports: web `:3000`, discord-gateway `:4100`, identity `:4200`, player-team `:440
 8. Main guild = później; `DISCORD_STRICT_GUILD_ISOLATION=true`.
 
 Zamknięte DM: `{ ok: true, skipped: "dms_closed" }`.
-
 
 ## notifyPrefs (HARD)
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 import { usePlayerStore } from '../../src/player-store-react';
 import { AppShell } from '../app-shell';
@@ -46,8 +46,7 @@ export default function ProfilPage() {
     return state.viewer?.displayName?.trim() || 'Twój nick';
   }, [nick, state.viewer]);
 
-  const discordNick =
-    state.viewer?.discordDisplayName?.trim() || 'Discord';
+  const discordNick = state.viewer?.discordDisplayName?.trim() || 'Discord';
 
   const monogram = useMemo(
     () =>
@@ -157,7 +156,9 @@ export default function ProfilPage() {
             <small className="profil-field-hint profil-field-hint-game">
               Najlepiej ustaw nick z gry (postać), żeby wszędzie było spójnie.
             </small>
-            <small className="profil-field-hint">Min. 2 znaki · tak pojawisz się na liście i w nagłówku</small>
+            <small className="profil-field-hint">
+              Min. 2 znaki · tak pojawisz się na liście i w nagłówku
+            </small>
           </label>
 
           <label className="field profil-note-field">
@@ -193,7 +194,9 @@ export default function ProfilPage() {
                 Wróć na Pulpit
               </a>
             ) : (
-              <span className="profil-gate-hint">Najpierw zapisz nick — potem otworzy się Pulpit.</span>
+              <span className="profil-gate-hint">
+                Najpierw zapisz nick — potem otworzy się Pulpit.
+              </span>
             )}
           </div>
         </section>

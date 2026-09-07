@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildCharacterTimerNotifyCopy,
@@ -9,12 +9,14 @@ vi.mock('./discord-notify-api.js', () => ({
   buildCharacterTimersDeepLinkUrl: () =>
     'http://127.0.0.1:3000/teams/asteria/characters/nerwnicht?board=timers',
   buildCharacterTimerRoomSummary: () => ['Aalpsik · Jazda konna — gotowe'],
-  postDiscordTimerNotify: vi.fn(() => Promise.resolve({
-    ok: true,
-    delivery: 'dm',
-    duplicate: false,
-    messageId: 'm1',
-  })),
+  postDiscordTimerNotify: vi.fn(() =>
+    Promise.resolve({
+      ok: true,
+      delivery: 'dm',
+      duplicate: false,
+      messageId: 'm1',
+    }),
+  ),
   postDiscordTimerResetNotify: vi.fn(() => Promise.resolve({ ok: true, sent: 1 })),
 }));
 

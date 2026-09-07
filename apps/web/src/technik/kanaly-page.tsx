@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
-  type PanelChannel,
-  type PanelsApiStatus,
   detectPanelsApi,
   fetchPanelChannels,
+  type PanelChannel,
+  type PanelsApiStatus,
 } from './panels-api';
 import {
   PUBLISH_PURPOSES,
@@ -20,9 +20,9 @@ import {
   type PublishPurposeId,
 } from './publish-channels';
 import {
+  KNOWN_GUILD_NAMES,
   TECHNIK_LOCKED_GUILD_IDS,
   TECHNIK_TEST_GUILD_ID,
-  KNOWN_GUILD_NAMES,
   isTechnikGuildEditable,
 } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
@@ -48,8 +48,7 @@ function looksLikeHttpsUrl(value: string): boolean {
 }
 
 type GuildPublishDraftResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly error: string; readonly detail?: string };
+  { readonly ok: true } | { readonly ok: false; readonly error: string; readonly detail?: string };
 
 async function putGuildPublishDraft(
   guildId: string,
@@ -78,8 +77,7 @@ async function putGuildPublishDraft(
     }
 
     if (!res.ok) {
-      const error =
-        typeof parsed.error === 'string' ? parsed.error : `http_${String(res.status)}`;
+      const error = typeof parsed.error === 'string' ? parsed.error : `http_${String(res.status)}`;
       const detail =
         typeof parsed.detail === 'string'
           ? parsed.detail
@@ -180,8 +178,7 @@ export function TechnikKanalyPage() {
           : local;
     setMap(merged);
 
-    const scopedUrl =
-      typeof guildCfg?.appWebsiteUrl === 'string' ? guildCfg.appWebsiteUrl : '';
+    const scopedUrl = typeof guildCfg?.appWebsiteUrl === 'string' ? guildCfg.appWebsiteUrl : '';
     const legacyUrl =
       typeof snapCfg?.appWebsiteUrl === 'string'
         ? snapCfg.appWebsiteUrl
@@ -230,9 +227,7 @@ export function TechnikKanalyPage() {
     }
 
     setMsg(
-      'Lokalnie OK, ale szkic serwerowy: ' +
-        res.error +
-        (res.detail ? ' — ' + res.detail : ''),
+      'Lokalnie OK, ale szkic serwerowy: ' + res.error + (res.detail ? ' — ' + res.detail : ''),
     );
     return false;
   };
@@ -337,8 +332,9 @@ export function TechnikKanalyPage() {
 
       <PlayerSeesNote>
         <p>
-          Gracz widzi posty i panel Centrum tylko na kanałach, które tu przypiszesz. Link do aplikacji
-          zobaczy na kanale „Strona WWW”, jeśli go tu ustawisz. Inne kanały bot zostawia w spokoju.
+          Gracz widzi posty i panel Centrum tylko na kanałach, które tu przypiszesz. Link do
+          aplikacji zobaczy na kanale „Strona WWW”, jeśli go tu ustawisz. Inne kanały bot zostawia w
+          spokoju.
         </p>
       </PlayerSeesNote>
 

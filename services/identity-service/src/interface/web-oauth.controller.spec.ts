@@ -61,8 +61,7 @@ describe('WebOauthController', () => {
       null,
     );
     const reply = mockReply();
-    const returnTo =
-      'http://127.0.0.1:4200/identity/web-bridge?to=http%3A%2F%2F127.0.0.1%3A3000';
+    const returnTo = 'http://127.0.0.1:4200/identity/web-bridge?to=http%3A%2F%2F127.0.0.1%3A3000';
     await controller.startDiscord(returnTo, reply as never);
     expect(signInSocial).toHaveBeenCalledWith({
       body: { provider: 'discord', callbackURL: returnTo },

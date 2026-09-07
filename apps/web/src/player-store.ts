@@ -24,13 +24,13 @@ import {
   type CharacterSkillPath,
 } from './character-profile';
 import {
+  clampAverageDamagePercent,
   clampEnhancement,
+  clampSkillDamagePercent,
   equipmentSlotForCategory,
   findGameItemByCardName,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
-  clampAverageDamagePercent,
-  clampSkillDamagePercent,
   mergeItemBonusStorage,
   parseEnhancementFromName,
   resolveItemBonuses,
@@ -136,8 +136,7 @@ export function resolveEffectiveNotifyPrefs(
       typeof personal?.characterTimers === 'boolean'
         ? personal.characterTimers
         : team.characterTimers,
-    kingdomWar:
-      typeof personal?.kingdomWar === 'boolean' ? personal.kingdomWar : team.kingdomWar,
+    kingdomWar: typeof personal?.kingdomWar === 'boolean' ? personal.kingdomWar : team.kingdomWar,
   };
 }
 
@@ -148,7 +147,6 @@ export function isNotifyPrefEnabled(
 ): boolean {
   return resolveEffectiveNotifyPrefs(workspace, member)[key];
 }
-
 
 export function isDiscordSnowflakeId(value: string | null | undefined): boolean {
   return typeof value === 'string' && /^\d{17,20}$/.test(value.trim());
@@ -189,9 +187,6 @@ export function listTeamNotifyDiscordRecipients(
   }
   return [...ids];
 }
-
-
-
 
 export interface WorkspaceMember {
   readonly id: string;
@@ -1329,7 +1324,9 @@ export function updateViewerProfile(
   const displayName = patch.displayName.trim();
   if (displayName.length < 2) return state;
   const nextNote =
-    typeof patch.avatarNote === 'string' ? patch.avatarNote.trim() : (state.viewer.avatarNote ?? '');
+    typeof patch.avatarNote === 'string'
+      ? patch.avatarNote.trim()
+      : (state.viewer.avatarNote ?? '');
   const { avatarNote: _drop, ...restViewer } = state.viewer;
   void _drop;
   return {
@@ -1604,10 +1601,7 @@ export function removeWorkspaceMember(
 }
 
 /** Owner closes / archives the team. Soft-delete — data stays local, hidden from active lists. */
-export function archiveWorkspace(
-  state: PlayerStoreState,
-  workspaceId: string,
-): PlayerStoreState {
+export function archiveWorkspace(state: PlayerStoreState, workspaceId: string): PlayerStoreState {
   if (!state.viewer) return state;
   const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
   if (!workspace || workspace.archived) return state;
@@ -1680,7 +1674,11 @@ export function updateWorkspaceNotifyPrefs(
         characterName: null,
         resource: 'member',
         title: 'Zmieniono powiadomienia Discord (zespół)',
-        detail: 'PW timerów postaci: ' + (nextPrefs.characterTimers ? 'włączone' : 'wyłączone') + ' · PW wojny: ' + (nextPrefs.kingdomWar ? 'włączone' : 'wyłączone'),
+        detail:
+          'PW timerów postaci: ' +
+          (nextPrefs.characterTimers ? 'włączone' : 'wyłączone') +
+          ' · PW wojny: ' +
+          (nextPrefs.kingdomWar ? 'włączone' : 'wyłączone'),
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -1733,13 +1731,13 @@ export function updateMemberNotifyPrefs(
         characterId: null,
         characterName: null,
         resource: 'member',
-        title: "Zmieniono własne powiadomienia Discord",
+        title: 'Zmieniono własne powiadomienia Discord',
         detail:
-          "PW timerów postaci: " +
-          (effective.characterTimers ? "włączone" : "wyłączone") +
-          " · " +
+          'PW timerów postaci: ' +
+          (effective.characterTimers ? 'włączone' : 'wyłączone') +
+          ' · ' +
           'PW wojny: ' +
-          (effective.kingdomWar ? "włączone" : "wyłączone"),
+          (effective.kingdomWar ? 'włączone' : 'wyłączone'),
         revision: current.revision + 1,
       }),
       ...current.history,
@@ -1946,11 +1944,7 @@ export function updateCharacter(
         level: input.level,
         responsibleMemberId: input.responsibleMemberId,
         note: (input.note ?? '').trim(),
-        imagePath: getApprovedCharacterRender(
-          input.characterClass,
-          input.gender,
-          appearanceLook,
-        ),
+        imagePath: getApprovedCharacterRender(input.characterClass, input.gender, appearanceLook),
         revision: character.revision + 1,
       };
     });
@@ -2069,8 +2063,7 @@ export function addWorkspaceNote(
 ): PlayerStoreState {
   const trimmed = body.trim();
   if (!trimmed) return state;
-  const resolvedScope: WorkspaceNote['scope'] =
-    scope ?? (characterId ? 'character' : 'workspace');
+  const resolvedScope: WorkspaceNote['scope'] = scope ?? (characterId ? 'character' : 'workspace');
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const note: WorkspaceNote = {
       id: createId('note'),
@@ -2096,7 +2089,8 @@ export function addWorkspaceNote(
         historyEntry(workspace.id, viewer, {
           characterId: note.characterId,
           characterName: note.characterId
-            ? (workspace.characters.find((character) => character.id === note.characterId)?.name ?? null)
+            ? (workspace.characters.find((character) => character.id === note.characterId)?.name ??
+              null)
             : null,
           resource: 'note',
           title,
@@ -2305,7 +2299,6 @@ export function assignItemToSet(
     };
   });
 }
-
 
 /** Clear itemId from every character set assignment — item stays in shared bag inventory. */
 export function unequipItemToBag(
@@ -2630,7 +2623,11 @@ export function addProgressionTimer(
   state: PlayerStoreState,
   workspaceId: string,
   characterId: string,
-  input: { readonly kind?: ProgressionKind; readonly label?: string; readonly durationMinutes?: number },
+  input: {
+    readonly kind?: ProgressionKind;
+    readonly label?: string;
+    readonly durationMinutes?: number;
+  },
 ): PlayerStoreState {
   const workspace = state.workspaces.find((entry) => entry.id === workspaceId);
   if (!workspace) return state;
@@ -2663,7 +2660,7 @@ export function addProgressionTimer(
     }));
   }
 
-    const label = input.label?.trim() ?? '';
+  const label = input.label?.trim() ?? '';
   if (label.length < 2) return state;
   const rawMinutes = input.durationMinutes;
   const durationMinutes =
@@ -2954,7 +2951,6 @@ export function updateEquipmentItemWeaponStats(
   });
 }
 
-
 export function acceptIncomingInvitation(
   state: PlayerStoreState,
   invitationId: string,
@@ -3033,9 +3029,7 @@ export function acceptIncomingInvitation(
                 initials: viewer.initials,
                 role: 'member',
                 state: 'unknown',
-                ...(viewer.discordAccountId
-                  ? { discordAccountId: viewer.discordAccountId }
-                  : {}),
+                ...(viewer.discordAccountId ? { discordAccountId: viewer.discordAccountId } : {}),
               },
             ],
         invitations: workspace.invitations.map((entry) =>
@@ -3140,18 +3134,17 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
       workspaces: (parsed.workspaces ?? []).map((workspace) => ({
         ...workspace,
         archived: Boolean((workspace as { archived?: boolean }).archived),
-        notifyPrefs: normalizeTeamNotifyPrefs(
-          (workspace as { notifyPrefs?: unknown }).notifyPrefs,
-        ),
+        notifyPrefs: normalizeTeamNotifyPrefs((workspace as { notifyPrefs?: unknown }).notifyPrefs),
         members: (workspace.members ?? []).map((member) => {
           const rawPrefs = (member as { notifyPrefs?: unknown }).notifyPrefs;
-          if (!rawPrefs || typeof rawPrefs !== "object") {
+          if (!rawPrefs || typeof rawPrefs !== 'object') {
             return member;
           }
           const src = rawPrefs as Record<string, unknown>;
           const partial: { characterTimers?: boolean; kingdomWar?: boolean } = {};
-          if (typeof src.characterTimers === "boolean") partial.characterTimers = src.characterTimers;
-          if (typeof src.kingdomWar === "boolean") partial.kingdomWar = src.kingdomWar;
+          if (typeof src.characterTimers === 'boolean')
+            partial.characterTimers = src.characterTimers;
+          if (typeof src.kingdomWar === 'boolean') partial.kingdomWar = src.kingdomWar;
           return Object.keys(partial).length > 0 ? { ...member, notifyPrefs: partial } : member;
         }),
         characters: (workspace.characters ?? []).map((character) => {
@@ -3168,11 +3161,7 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
             ...character,
             skillPath,
             appearanceLook,
-            imagePath: getApprovedCharacterRender(
-              characterClass,
-              character.gender,
-              appearanceLook,
-            ),
+            imagePath: getApprovedCharacterRender(characterClass, character.gender, appearanceLook),
             sets: character.sets ?? [],
           };
         }),

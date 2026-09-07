@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   Headers,
@@ -8,18 +9,20 @@ import {
   Optional,
   Post,
   Put,
-  ConflictException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 
 import { applyMessageTemplate } from '../../application/config/live-bot-config.js';
+import type { BotConfigValues } from '../../application/technika/capabilities.js';
 import {
   ApplyValidationError,
   RollbackUnavailableError,
   type VersionedConfigStore,
 } from '../../application/technika/versioned-config-store.js';
-import type { BotConfigValues } from '../../application/technika/capabilities.js';
-import { parseOperatorIds, type DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
+import {
+  parseOperatorIds,
+  type DiscordGatewayConfig,
+} from '../../infrastructure/discord/discord-config.js';
 import {
   NotifyDmClosedError,
   type DiscordJsGatewayAdapter,
@@ -105,7 +108,11 @@ export class TechnikaConfigController {
     const hasBody =
       body !== undefined &&
       body !== null &&
-      !(typeof body === 'object' && !Array.isArray(body) && Object.keys(body as object).length === 0);
+      !(
+        typeof body === 'object' &&
+        !Array.isArray(body) &&
+        Object.keys(body as object).length === 0
+      );
     let input: unknown = undefined;
     if (hasBody) {
       input =
@@ -204,9 +211,7 @@ export class TechnikaConfigController {
     if (parsed.module === 'kingdomWar') {
       const war = {
         ...cfg.kingdomWar,
-        ...(parsed.messageTemplate
-          ? { messageTemplate: parsed.messageTemplate }
-          : {}),
+        ...(parsed.messageTemplate ? { messageTemplate: parsed.messageTemplate } : {}),
         ...(parsed.warAt ? { warAt: parsed.warAt } : {}),
         ...(parsed.notifyMinutesBefore !== undefined
           ? { notifyMinutesBefore: parsed.notifyMinutesBefore }
@@ -229,9 +234,7 @@ export class TechnikaConfigController {
       // timersNotify / characterTimers — Timery postaci (not map metins)
       const timers = {
         ...cfg.timersNotify,
-        ...(parsed.messageTemplate
-          ? { messageTemplate: parsed.messageTemplate }
-          : {}),
+        ...(parsed.messageTemplate ? { messageTemplate: parsed.messageTemplate } : {}),
         ...(parsed.reminderMinutesBefore !== undefined
           ? { reminderMinutesBefore: parsed.reminderMinutesBefore }
           : {}),
@@ -343,9 +346,7 @@ export class TechnikaConfigController {
     };
   }
 
-  private resolveConfigForTest(parsed: {
-    readonly module: TestDmModule;
-  }): BotConfigValues {
+  private resolveConfigForTest(parsed: { readonly module: TestDmModule }): BotConfigValues {
     const draft = this.store.getDraftSnapshot();
     if (draft) {
       return draft.config;
@@ -364,8 +365,7 @@ export class TechnikaConfigController {
     throw new BadRequestException({
       ok: false,
       error: 'no_test_recipient',
-      hint:
-        'Podaj discordUserId w body albo ustaw DISCORD_TEST_OPERATOR_IDS na bramce (pierwszy ID dostanie testową PW).',
+      hint: 'Podaj discordUserId w body albo ustaw DISCORD_TEST_OPERATOR_IDS na bramce (pierwszy ID dostanie testową PW).',
     });
   }
 
@@ -373,4 +373,3 @@ export class TechnikaConfigController {
     assertTechnikaSecret(secret, this.envConfig.DISCORD_TECHNIKA_SHARED_SECRET);
   }
 }
-

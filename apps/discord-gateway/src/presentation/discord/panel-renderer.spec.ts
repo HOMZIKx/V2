@@ -111,7 +111,6 @@ describe('panel renderer', () => {
     expect(JSON.stringify(embed.data)).not.toContain('token');
   });
 
-
   it('renders Centrum publish contract fields (title/accent/actions/custom)', () => {
     const panel = renderPanelMessage({
       signingSecret: secret,

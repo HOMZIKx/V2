@@ -16,6 +16,7 @@ Brak produkcyjnego logowania nie blokuje: do czasu właściwego auth wiring
 stosujemy dev-safe demo-header.
 
 Decyzje z NON_NEGOTIABLES:
+
 - każda usługa jest właścicielem swoich danych;
 - usługi nie importują wzajemnie logiki biznesowej;
 - komunikacja synchroniczna: REST + OpenAPI;
@@ -27,6 +28,7 @@ Decyzje z NON_NEGOTIABLES:
 
 `player-team-service` (`@v2/player-team-service`, baza PostgreSQL `player_team`)
 jest jedynym właścicielem danych zespołów graczy:
+
 - przestrzenie robocze (workspaces)
 - postacie
 - przedmioty EQ i sety
@@ -40,6 +42,7 @@ Bot (`discord-gateway`) i Web korzystają wyłącznie z API tej usługi.
 ### 2. Schema
 
 Relacyjna — osobne tabele:
+
 - `player_team_workspaces`
 - `player_team_characters`
 - `player_team_equipment_items`
@@ -58,6 +61,7 @@ Migracje zarządza własny runner (`player_team_schema_migrations`).
 Prefix: `/player-team/v1`
 
 MVP (snapshot sync):
+
 - `GET  /player-team/v1/me/state` — zwraca ostatnio zapisany snapshot
 - `PUT  /player-team/v1/me/state` — zapisuje snapshot z OCC (`expectedRevision`)
 
@@ -67,6 +71,7 @@ timers, notes — wg OpenAPI kontrakt v1 (osobny plik).
 ### 4. Auth — dev-safe bridge
 
 Do czasu właściwego auth wiring (nie dotyczy tego PR):
+
 - demo-header `x-demo-viewer-id` niesie `viewerId` (identity demo mode)
 - `PLAYER_TEAM_ALLOW_DEMO_WRITE=true` (domyślnie true w dev)
 - w produkcji header zamieniamy na internal JWT od Identity Service

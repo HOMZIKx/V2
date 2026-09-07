@@ -3,9 +3,9 @@
 import type { ReactNode } from 'react';
 
 import { usePlayerStore } from '../../src/player-store-react';
+import { TechnikShell, type TechnikNavId } from '../../src/technik/technik-shell';
 import { AppShell } from '../app-shell';
 import { DiscordEntryScreen } from '../discord-entry';
-import { TechnikShell, type TechnikNavId } from '../../src/technik/technik-shell';
 
 export function TechnikPageFrame({
   active,

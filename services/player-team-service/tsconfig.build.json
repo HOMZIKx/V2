@@ -6,4 +6,3 @@
   },
   "exclude": ["src/**/*.spec.ts"]
 }
-

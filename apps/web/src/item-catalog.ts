@@ -1,11 +1,11 @@
 import type { CharacterClass } from './character-profile';
 import catalogDocument from './data/dobry-temat-item-catalog.json';
-import phItemIconMap from './data/ph-item-icon-map.json';
-import wikiBonusOverrides from './data/wiki-item-bonus-overrides.json';
-import phEquipmentBonusOverrides from './data/ph-equipment-bonus-overrides.json';
-import phItemBonusOverrides from './data/ph-item-bonus-overrides.json';
 import additionalBonusPoolsDocument from './data/metin2-additional-bonus-pools.json';
 import weaponCharacteristicLevels from './data/metin2-weapon-characteristic-levels.json';
+import phEquipmentBonusOverrides from './data/ph-equipment-bonus-overrides.json';
+import phItemBonusOverrides from './data/ph-item-bonus-overrides.json';
+import phItemIconMap from './data/ph-item-icon-map.json';
+import wikiBonusOverrides from './data/wiki-item-bonus-overrides.json';
 import wikiImageMap from './data/wiki-item-image-map.json';
 import wikiWeaponCharacteristicLevels from './data/wiki-weapon-characteristic-levels.json';
 
@@ -54,7 +54,9 @@ const phItemBonusDocument = phItemBonusOverrides as {
   readonly upgradeByTitle?: Readonly<Record<string, string>>;
   readonly requireLevelByTitle?: Readonly<Record<string, number>>;
 };
-const characteristicWeaponLevels = wikiWeaponCharacteristicLevels as Readonly<Record<string, number>>;
+const characteristicWeaponLevels = wikiWeaponCharacteristicLevels as Readonly<
+  Record<string, number>
+>;
 
 /** Dump wiki_upgrade is often cut at ~201 chars and lacks usable BonusN ladders. */
 export function isTruncatedWikiUpgrade(upgrade: string | null | undefined): boolean {
@@ -450,8 +452,6 @@ export function catalogBonusEntriesForItem(
   return entries;
 }
 
-
-
 interface WeaponCharacteristicLevelsDocument {
   readonly byTitle: Readonly<Record<string, number>>;
   readonly phPresentation?: {
@@ -634,7 +634,8 @@ export function mergeItemBonusStorage(
   slot?: EquipmentSlotId,
 ): readonly string[] {
   const builtin = catalogBonusEntriesForItem(cardName, enhancement).map((entry) => entry.line);
-  const resolvedSlot = slot ?? equipmentSlotForCategory(findGameItemByCardName(cardName)?.category ?? '') ?? 'weapon';
+  const resolvedSlot =
+    slot ?? equipmentSlotForCategory(findGameItemByCardName(cardName)?.category ?? '') ?? 'weapon';
   const maxAdditional = maxAdditionalBonusesForItem(cardName, resolvedSlot);
   const builtinSet = new Set(builtin);
   // Strip builtins BEFORE slicing to max 5 — otherwise a pre-merged payload
@@ -682,7 +683,6 @@ export function isItemCompatibleWithClass(
   return allowed.includes(characterClass);
 }
 
-
 export const AVERAGE_DAMAGE_BONUS_NAME = 'Średnie Obrażenia';
 export const SKILL_DAMAGE_BONUS_NAME = 'Obrażenia Umiejętności';
 export const AVERAGE_DAMAGE_RANGE = { min: -60, max: 60 } as const;
@@ -723,13 +723,19 @@ export function readAverageSkillDamage(bonuses: readonly string[]): {
 }
 
 export function formatAverageDamageLine(percent: number): string {
-  const value = Math.min(AVERAGE_DAMAGE_RANGE.max, Math.max(AVERAGE_DAMAGE_RANGE.min, Math.trunc(percent)));
+  const value = Math.min(
+    AVERAGE_DAMAGE_RANGE.max,
+    Math.max(AVERAGE_DAMAGE_RANGE.min, Math.trunc(percent)),
+  );
   const sign = value > 0 ? '+' : '';
   return `${AVERAGE_DAMAGE_BONUS_NAME} ${sign}${value}%`;
 }
 
 export function formatSkillDamageLine(percent: number): string {
-  const value = Math.min(SKILL_DAMAGE_RANGE.max, Math.max(SKILL_DAMAGE_RANGE.min, Math.trunc(percent)));
+  const value = Math.min(
+    SKILL_DAMAGE_RANGE.max,
+    Math.max(SKILL_DAMAGE_RANGE.min, Math.trunc(percent)),
+  );
   const sign = value > 0 ? '+' : '';
   return `${SKILL_DAMAGE_BONUS_NAME} ${sign}${value}%`;
 }
@@ -737,7 +743,10 @@ export function formatSkillDamageLine(percent: number): string {
 /** Persist editable Średnie Obrażenia / Obrażenia Umiejętności on the card (characteristic Metin2). */
 export function withAverageSkillDamage(
   bonuses: readonly string[],
-  next: { readonly averageDamagePercent: number | null; readonly skillDamagePercent: number | null },
+  next: {
+    readonly averageDamagePercent: number | null;
+    readonly skillDamagePercent: number | null;
+  },
 ): readonly string[] {
   const without = bonuses.filter((line) => {
     return (

@@ -69,14 +69,14 @@ function fillTimerPreview(tpl: string): string {
 }
 
 function fillWarPreview(tpl: string): string {
-  return tpl
-    .replaceAll('{{notifyMinutesBefore}}', '30')
-    .replaceAll('{{warAt}}', '18:00');
+  return tpl.replaceAll('{{notifyMinutesBefore}}', '30').replaceAll('{{warAt}}', '18:00');
 }
 
 function btnClass(style: CustomButtonStyle): string {
-  if (style === 'primary') return 'technik-discord-preview__btn technik-discord-preview__btn--primary';
-  if (style === 'danger') return 'technik-discord-preview__btn technik-discord-preview__btn--danger';
+  if (style === 'primary')
+    return 'technik-discord-preview__btn technik-discord-preview__btn--primary';
+  if (style === 'danger')
+    return 'technik-discord-preview__btn technik-discord-preview__btn--danger';
   return 'technik-discord-preview__btn';
 }
 
@@ -347,14 +347,21 @@ export function TechnikWygladPage() {
               profile / forme / url / ephemeral_text. Style: primary / secondary / danger.
             </p>
             {draft.customButtons.length === 0 ? (
-              <p className="technik-muted">Brak własnych przycisków — hub pokazuje tylko akcje z Centrum.</p>
+              <p className="technik-muted">
+                Brak własnych przycisków — hub pokazuje tylko akcje z Centrum.
+              </p>
             ) : (
               <ul className="technik-custom-btn-list">
                 {draft.customButtons.map((b, i) => (
                   <li key={b.id} className="technik-custom-btn-card">
                     <div className="technik-row">
                       <strong>#{i + 1}</strong>
-                      <button type="button" className="technik-btn-ghost" disabled={i === 0} onClick={() => moveButton(b.id, -1)}>
+                      <button
+                        type="button"
+                        className="technik-btn-ghost"
+                        disabled={i === 0}
+                        onClick={() => moveButton(b.id, -1)}
+                      >
                         ↑
                       </button>
                       <button
@@ -448,7 +455,8 @@ export function TechnikWygladPage() {
           <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
             <h2>Podgląd Discord (Centrum)</h2>
             <p className="technik-help">
-              Akcje hubu pochodzą z zakładki Centrum (tylko podgląd). Własne przyciski — z tej strony.
+              Akcje hubu pochodzą z zakładki Centrum (tylko podgląd). Własne przyciski — z tej
+              strony.
             </p>
             <div className="technik-discord-preview" aria-label="Podgląd panelu Centrum">
               <div className="technik-discord-preview__chrome">
@@ -491,9 +499,7 @@ export function TechnikWygladPage() {
                     <h3 className="technik-discord-preview__title">
                       {draft.panelTitle || 'Centrum aktywności'}
                     </h3>
-                    <p className="technik-discord-preview__desc">
-                      {draft.panelDescription || '—'}
-                    </p>
+                    <p className="technik-discord-preview__desc">{draft.panelDescription || '—'}</p>
                     <hr className="technik-discord-preview__sep" />
                     {previewActions.length === 0 ? (
                       <p className="technik-muted">
@@ -546,8 +552,9 @@ export function TechnikWygladPage() {
         <section className="technik-panel technik-panel--wide" style={{ marginTop: '1rem' }}>
           <h2>Szablon PW — Timery postaci</h2>
           <p className="technik-help">
-            Placeholdery: {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'}, {'{{deepLinkUrl}}'}.
-            Pełne włączanie modułu i Test DM: <a href="/technik/timery">Timery postaci</a>.
+            Placeholdery: {'{{title}}'}, {'{{body}}'}, {'{{otherTimersSummary}}'},{' '}
+            {'{{deepLinkUrl}}'}. Pełne włączanie modułu i Test DM:{' '}
+            <a href="/technik/timery">Timery postaci</a>.
           </p>
           <label className="technik-field technik-field--message">
             <span>messageTemplate</span>
@@ -659,13 +666,13 @@ export function TechnikWygladPage() {
         <p>
           {kind === 'centrum' ? (
             <>
-              Katalog zatwierdzonych bannerów i finalny kolor akcentu to decyzja Ownera. Ten szkic nie
-              wysyła nic sam — dopiero ręczne <strong>Opublikuj</strong> w Centrum.
+              Katalog zatwierdzonych bannerów i finalny kolor akcentu to decyzja Ownera. Ten szkic
+              nie wysyła nic sam — dopiero ręczne <strong>Opublikuj</strong> w Centrum.
             </>
           ) : (
             <>
-              Wygląd PW / cyklicznych zapisujesz jako szkic. Wysłanie na Discord zawsze wymaga osobnej
-              akcji (Apply D-060 albo publikacja cykliczna) — zero auto-publish.
+              Wygląd PW / cyklicznych zapisujesz jako szkic. Wysłanie na Discord zawsze wymaga
+              osobnej akcji (Apply D-060 albo publikacja cykliczna) — zero auto-publish.
             </>
           )}
         </p>

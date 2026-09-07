@@ -18,24 +18,18 @@ import { PanelRegistry } from '../../application/technika/panel-registry.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import {
-  appearanceToRenderInput,
-  renderPanelMessage,
-} from '../../presentation/discord/panel-renderer.js';
-import {
   parsePanelPublishAppearance,
   type PanelPublishAppearance,
 } from '../../presentation/discord/panel-publish-appearance.js';
 import {
-  DISCORD_CONFIG_TOKEN,
-  DISCORD_GATEWAY_TOKEN,
-} from '../discord/discord.tokens.js';
+  appearanceToRenderInput,
+  renderPanelMessage,
+} from '../../presentation/discord/panel-renderer.js';
+import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
 import { assertTechnikaSecret, TECHNIKA_SECRET_HEADER } from './technika-auth.js';
 
 /** Hard-stop: never publish/list-mutate Destiled / Sojusz via Technika panels API. */
-const PROD_GUILD_HARD_STOP = new Set<string>([
-  '1543972927719080016',
-  '1531318787058696424',
-]);
+const PROD_GUILD_HARD_STOP = new Set<string>(['1543972927719080016', '1531318787058696424']);
 
 function requireSnowflake(value: unknown, field: string): string {
   if (typeof value !== 'string' || !/^\d{17,20}$/.test(value.trim())) {
@@ -191,9 +185,7 @@ export class TechnikaGuildPanelsController {
         : {};
     const channelId = requireSnowflake(record.channelId, 'channelId');
     const kind =
-      typeof record.kind === 'string' && record.kind.trim().length > 0
-        ? record.kind.trim()
-        : 'lab';
+      typeof record.kind === 'string' && record.kind.trim().length > 0 ? record.kind.trim() : 'lab';
     const gateway = this.requireGateway();
 
     const perms = await gateway.checkChannelPermissions(guildId, channelId);
@@ -333,7 +325,6 @@ export class TechnikaGuildPanelsController {
       messageId: located.messageId,
     };
   }
-
 
   /** GET /discord/v1/guilds/{guildId}/roles — read-only; prod hard-stop does NOT apply. */
   @Get('roles')

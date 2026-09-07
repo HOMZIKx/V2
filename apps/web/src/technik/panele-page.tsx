@@ -40,8 +40,12 @@ export function TechnikPanelePage() {
     if (!res.ok) {
       setChannels([]);
       setOpsMsg(
-        'Kanały: ' + res.error + (res.detail ? ' — ' + res.detail : '') +
-          ' (HTTP ' + String(res.status) + ')',
+        'Kanały: ' +
+          res.error +
+          (res.detail ? ' — ' + res.detail : '') +
+          ' (HTTP ' +
+          String(res.status) +
+          ')',
       );
       return;
     }
@@ -54,22 +58,29 @@ export function TechnikPanelePage() {
     });
   }, [guildId]);
 
-  const reloadPanels = useCallback(async (ch: string) => {
-    if (!ch) {
-      setPanels([]);
-      return;
-    }
-    const res = await fetchGuildPanels(guildId, ch);
-    if (!res.ok) {
-      setPanels([]);
-      setOpsMsg(
-        'Lista paneli: ' + res.error + (res.detail ? ' — ' + res.detail : '') +
-          ' (HTTP ' + String(res.status) + ')',
-      );
-      return;
-    }
-    setPanels(res.data.panels);
-  }, [guildId]);
+  const reloadPanels = useCallback(
+    async (ch: string) => {
+      if (!ch) {
+        setPanels([]);
+        return;
+      }
+      const res = await fetchGuildPanels(guildId, ch);
+      if (!res.ok) {
+        setPanels([]);
+        setOpsMsg(
+          'Lista paneli: ' +
+            res.error +
+            (res.detail ? ' — ' + res.detail : '') +
+            ' (HTTP ' +
+            String(res.status) +
+            ')',
+        );
+        return;
+      }
+      setPanels(res.data.panels);
+    },
+    [guildId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -106,8 +117,12 @@ export function TechnikPanelePage() {
       const res = await postPanelPublish({ guildId, channelId });
       if (!res.ok) {
         setOpsMsg(
-          'Publish nieudany: ' + res.error + (res.detail ? ' — ' + res.detail : '') +
-            ' (HTTP ' + String(res.status) + ')',
+          'Publish nieudany: ' +
+            res.error +
+            (res.detail ? ' — ' + res.detail : '') +
+            ' (HTTP ' +
+            String(res.status) +
+            ')',
         );
         return;
       }
@@ -156,8 +171,12 @@ export function TechnikPanelePage() {
       const res = await deletePanelMessage({ guildId, channelId, messageId });
       if (!res.ok) {
         setOpsMsg(
-          'Usuwanie: ' + res.error + (res.detail ? ' — ' + res.detail : '') +
-            ' (HTTP ' + String(res.status) + ')',
+          'Usuwanie: ' +
+            res.error +
+            (res.detail ? ' — ' + res.detail : '') +
+            ' (HTTP ' +
+            String(res.status) +
+            ')',
         );
         return;
       }
@@ -192,16 +211,16 @@ export function TechnikPanelePage() {
 
       <PageJobNote>
         <p>
-          Tutaj włączasz lab, publikujesz i odświeżasz <strong>wyłącznie</strong> panel testowy
-          (<code>/panel-test</code>). Zero wpływu na Centrum i kanały produkcyjne — to warsztat
+          Tutaj włączasz lab, publikujesz i odświeżasz <strong>wyłącznie</strong> panel testowy (
+          <code>/panel-test</code>). Zero wpływu na Centrum i kanały produkcyjne — to warsztat
           Components V2, nie strona dla graczy.
         </p>
       </PageJobNote>
       <PlayerSeesNote>
         <p>
-          Gracze <strong>nie powinni</strong> tu zaglądać. Na kanale Testowego pojawia się tylko panel
-          lab z przyciskami Odśwież / Usuń (bot edytuje ten sam post). Wymaga: guildia Testowy,{' '}
-          <code>modules.panels</code> ON w <a href="/technik/discordy">Discordach</a> oraz{' '}
+          Gracze <strong>nie powinni</strong> tu zaglądać. Na kanale Testowego pojawia się tylko
+          panel lab z przyciskami Odśwież / Usuń (bot edytuje ten sam post). Wymaga: guildia
+          Testowy, <code>modules.panels</code> ON w <a href="/technik/discordy">Discordach</a> oraz{' '}
           <code>panel-test-enabled</code> po Apply.
         </p>
       </PlayerSeesNote>
@@ -263,7 +282,9 @@ export function TechnikPanelePage() {
         </div>
 
         {apiStatus === 'checking' ? (
-          <p className="technik-muted">Sprawdzam <code>/api/technik/panels/channels</code>…</p>
+          <p className="technik-muted">
+            Sprawdzam <code>/api/technik/panels/channels</code>…
+          </p>
         ) : null}
 
         {apiStatus === 'unavailable' ? (

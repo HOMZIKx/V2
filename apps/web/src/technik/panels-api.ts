@@ -53,7 +53,11 @@ async function parseJson(res: Response): Promise<Record<string, unknown>> {
   }
 }
 
-function fail(res: Response, parsed: Record<string, unknown>, fallback: string): PanelsApiResult<never> {
+function fail(
+  res: Response,
+  parsed: Record<string, unknown>,
+  fallback: string,
+): PanelsApiResult<never> {
   const detail =
     typeof parsed.detail === 'string'
       ? parsed.detail
@@ -136,12 +140,17 @@ export async function detectPanelsApi(
         return 'live';
       }
     }
-    const res = await fetch(
-      '/api/technik/panels/channels?guildId=' + encodeURIComponent(guildId),
-      { cache: 'no-store' },
-    );
+    const res = await fetch('/api/technik/panels/channels?guildId=' + encodeURIComponent(guildId), {
+      cache: 'no-store',
+    });
     if (res.status === 404 || res.status === 501) return 'unavailable';
-    if (res.status === 401 || res.status === 403 || res.ok || res.status === 400 || res.status === 503) {
+    if (
+      res.status === 401 ||
+      res.status === 403 ||
+      res.ok ||
+      res.status === 400 ||
+      res.status === 503
+    ) {
       return 'live';
     }
     if (res.status >= 500) return 'unavailable';
@@ -155,19 +164,17 @@ export async function fetchPanelChannels(
   guildId: string,
 ): Promise<PanelsApiResult<{ channels: readonly PanelChannel[]; via: 'guild' | 'query' }>> {
   try {
-    const gs = await fetch(
-      '/api/technik/guilds/' + encodeURIComponent(guildId) + '/channels',
-      { cache: 'no-store' },
-    );
+    const gs = await fetch('/api/technik/guilds/' + encodeURIComponent(guildId) + '/channels', {
+      cache: 'no-store',
+    });
     if (gs.status !== 404 && gs.status !== 501) {
       const parsed = await parseJson(gs);
       if (!gs.ok) return fail(gs, parsed, 'http_' + String(gs.status));
       return { ok: true, status: gs.status, data: { channels: mapChannels(parsed), via: 'guild' } };
     }
-    const res = await fetch(
-      '/api/technik/panels/channels?guildId=' + encodeURIComponent(guildId),
-      { cache: 'no-store' },
-    );
+    const res = await fetch('/api/technik/panels/channels?guildId=' + encodeURIComponent(guildId), {
+      cache: 'no-store',
+    });
     const parsed = await parseJson(res);
     if (!res.ok) return fail(res, parsed, 'http_' + String(res.status));
     return { ok: true, status: res.status, data: { channels: mapChannels(parsed), via: 'query' } };
@@ -186,10 +193,9 @@ export async function fetchGuildPanels(
   channelId?: string,
 ): Promise<PanelsApiResult<{ panels: readonly PanelMessage[]; via: 'guild' | 'query' }>> {
   try {
-    const gs = await fetch(
-      '/api/technik/guilds/' + encodeURIComponent(guildId) + '/panels',
-      { cache: 'no-store' },
-    );
+    const gs = await fetch('/api/technik/guilds/' + encodeURIComponent(guildId) + '/panels', {
+      cache: 'no-store',
+    });
     if (gs.status !== 404 && gs.status !== 501) {
       const parsed = await parseJson(gs);
       if (!gs.ok) return fail(gs, parsed, 'http_' + String(gs.status));
@@ -206,10 +212,7 @@ export async function fetchGuildPanels(
       };
     }
     const qs =
-      'guildId=' +
-      encodeURIComponent(guildId) +
-      '&channelId=' +
-      encodeURIComponent(channelId);
+      'guildId=' + encodeURIComponent(guildId) + '&channelId=' + encodeURIComponent(channelId);
     const res = await fetch('/api/technik/panels?' + qs, { cache: 'no-store' });
     const parsed = await parseJson(res);
     if (!res.ok) return fail(res, parsed, 'http_' + String(res.status));
@@ -270,7 +273,9 @@ function buildPublishPayload(body: PanelPublishBody): Record<string, unknown> {
   return payload;
 }
 
-export async function postPanelPublish(body: PanelPublishBody): Promise<
+export async function postPanelPublish(
+  body: PanelPublishBody,
+): Promise<
   PanelsApiResult<{ messageId: string; jumpUrl: string; channelId: string; panelId?: string }>
 > {
   try {
@@ -359,7 +364,12 @@ export async function postPanelRefresh(body: {
         '/panels/' +
         encodeURIComponent(body.panelId) +
         '/refresh',
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', cache: 'no-store' },
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+        cache: 'no-store',
+      },
     );
     const parsed = await parseJson(res);
     if (!res.ok) return fail(res, parsed, 'http_' + String(res.status));
@@ -394,7 +404,12 @@ export async function deletePanelMessage(body: {
         '/panels/' +
         encodeURIComponent(body.messageId) +
         '/delete',
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', cache: 'no-store' },
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+        cache: 'no-store',
+      },
     );
     if (gs.status !== 404 && gs.status !== 501) {
       const parsed = await parseJson(gs);

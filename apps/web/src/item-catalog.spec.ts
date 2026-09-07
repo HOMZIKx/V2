@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  bonusesAtEnhancement,
-  additionalBonusOptionsForSlot,
   additionalBonusOptionsForItem,
-  maxAdditionalBonusesForItem,
+  additionalBonusOptionsForSlot,
+  bonusesAtEnhancement,
   catalogBonusEntriesForItem,
-  splitItemBonuses,
-  weaponHasAverageSkillDamage,
-  weaponHasPhPvmAttackBonuses,
-  weaponRequiredLevel,
   clampEnhancement,
   compatibleClassesForCategory,
   enhancerCatalogItems,
@@ -19,13 +14,18 @@ import {
   formatEnhancedItemName,
   isItemCompatibleWithClass,
   knownCatalogBonusNames,
+  maxAdditionalBonusesForItem,
   parseEnhancementFromName,
   phPlus9Lines,
   phRequiredLevel,
   resolveItemBonuses,
   resolveItemIconPath,
   searchEquipmentCatalogSuggestions,
+  splitItemBonuses,
   stripEnhancementFromName,
+  weaponHasAverageSkillDamage,
+  weaponHasPhPvmAttackBonuses,
+  weaponRequiredLevel,
 } from './item-catalog.js';
 
 describe('item catalog class and enhancement rules', () => {
@@ -147,9 +147,9 @@ describe('item catalog class and enhancement rules', () => {
     expect(shield.some((entry) => entry.name.toLocaleLowerCase('pl').includes('obron'))).toBe(true);
 
     const knife = catalogBonusEntriesForItem('Krótki Nóż', 9);
-    expect(
-      knife.every((entry) => !entry.name.toLocaleLowerCase('pl').includes('obrona')),
-    ).toBe(true);
+    expect(knife.every((entry) => !entry.name.toLocaleLowerCase('pl').includes('obrona'))).toBe(
+      true,
+    );
   });
   it('keeps catalog builtins non-editable and exposes slot mix pools', () => {
     const split = splitItemBonuses('Bojowa Tarcza', 9, [
@@ -158,17 +158,12 @@ describe('item catalog class and enhancement rules', () => {
       'Max PŻ +2000',
     ]);
     expect(split.builtin.some((line) => line.includes('Obrona'))).toBe(true);
-    expect(split.additional).toEqual([
-      'Silny przeciwko Nieumarłym +20%',
-      'Max PŻ +2000',
-    ]);
+    expect(split.additional).toEqual(['Silny przeciwko Nieumarłym +20%', 'Max PŻ +2000']);
     const weaponPool = additionalBonusOptionsForSlot('weapon');
     expect(weaponPool).toContain('Silny przeciwko Nieumarłym +20%');
     expect(weaponPool).toContain('Siła +12');
     expect(additionalBonusOptionsForSlot('armor').length).toBeGreaterThan(0);
   });
-
-
 
   it('fills truncated wiki ladders via overrides for black steel armor and crystal bracelet', () => {
     expect(resolveItemBonuses('Zbroja Z Czarnej Stali', 9)).toEqual(
@@ -193,7 +188,9 @@ describe('item catalog class and enhancement rules', () => {
     expect(maxAdditionalBonusesForItem('Zatruty Miecz', 'weapon')).toBe(5);
     expect(additionalBonusOptionsForSlot('weapon')).toContain('Silny przeciwko Mistykom +2%');
     expect(additionalBonusOptionsForSlot('weapon')).toContain('Silny przeciwko Mistykom +20%');
-    expect(additionalBonusOptionsForItem('Zatruty Miecz', 'weapon')).toContain('Średnie Obrażenia +20%');
+    expect(additionalBonusOptionsForItem('Zatruty Miecz', 'weapon')).toContain(
+      'Średnie Obrażenia +20%',
+    );
     expect(additionalBonusOptionsForItem('Zatruty Miecz', 'weapon')).toContain(
       'Obrażenia Umiejętności +10%',
     );
@@ -241,12 +238,11 @@ describe('item catalog class and enhancement rules', () => {
     expect(resolveItemBonuses('Ametystowe Kolczyki +9', 9)).toContain('Siła +14');
     const entries = catalogBonusEntriesForItem('Ametystowe Kolczyki', 9);
     expect(entries.map((entry) => entry.line)).toEqual(phPlus9Lines('Ametystowe Kolczyki'));
-    expect(splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).builtin).toContain(
-      'Siła +14',
-    );
-    expect(splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).additional).toEqual([
-      'Max PŻ +2000',
-    ]);
+    expect(
+      splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).builtin,
+    ).toContain('Siła +14');
+    expect(
+      splitItemBonuses('Ametystowe Kolczyki', 9, ['Siła +14', 'Max PŻ +2000']).additional,
+    ).toEqual(['Max PŻ +2000']);
   });
-
 });

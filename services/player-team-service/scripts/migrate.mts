@@ -12,10 +12,7 @@ if (connectionString === undefined || connectionString.trim() === '') {
   process.exit(1);
 }
 
-const migrationsDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../migrations',
-);
+const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
 
 runMigrations({ connectionString, migrationsDir })
   .then((results) => {
@@ -23,7 +20,9 @@ runMigrations({ connectionString, migrationsDir })
       console.log(`${result.status.padEnd(7)} ${result.id} sha256=${result.checksum}`);
     }
     const appliedCount = results.filter((result) => result.status === 'applied').length;
-    console.log(`player-team migrations complete. Applied ${appliedCount}, total ${results.length}.`);
+    console.log(
+      `player-team migrations complete. Applied ${appliedCount}, total ${results.length}.`,
+    );
   })
   .catch((error: unknown) => {
     console.error(

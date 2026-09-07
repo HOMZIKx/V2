@@ -11,66 +11,70 @@ import {
   type ReactNode,
 } from 'react';
 
+import type { CharacterAppearanceLook } from './character-profile';
 import {
   PLAYER_STORE_KEY,
   acceptIncomingInvitation,
+  addItemNote,
   addProgressionTimer,
   addWorkspaceNote,
-  removeWorkspaceNote,
-  addItemNote,
-  removeItemNote,
   applyTaskOutcome,
+  archiveCharacter,
+  archiveWorkspace,
   assignItemToSet,
   cancelDiscordAuth,
   completeDiscordAuth,
-  updateViewerProfile,
   confirmItemLocation,
   createCharacter,
   createEquipmentItem,
   createEquipmentSet,
-  renameEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
-  renameWorkspace,
-  removeWorkspaceMember,
-  archiveWorkspace,
-  updateWorkspaceNotifyPrefs,
-  updateMemberNotifyPrefs,
-  listTeamNotifyDiscordRecipients,
   declineIncomingInvitation,
   ensureCharacterProgressionTimers,
+  listTeamNotifyDiscordRecipients,
   markTimerDone,
   parsePlayerStore,
   removeItemFromSet,
-  unequipItemToBag,
+  removeItemNote,
   removeProgressionTimer,
+  removeWorkspaceMember,
+  removeWorkspaceNote,
+  renameEquipmentSet,
+  renameWorkspace,
   seedDemoData,
   serializePlayerStore,
   setActiveCharacterSet,
   startDiscordAuth,
   touchLastOpened,
+  unequipItemToBag,
   updateCharacter,
-  archiveCharacter,
   updateEquipmentItemBonuses,
   updateEquipmentItemWeaponStats,
+  updateMemberNotifyPrefs,
+  updateViewerProfile,
+  updateWorkspaceNotifyPrefs,
   type AuthStatus,
-  type DiscordAuthViewerInput,
-  type PlayerIdentity,
   type CharacterClass,
   type CharacterGender,
   type CharacterSkillPath,
+  type DiscordAuthViewerInput,
   type EquipmentSlot,
+  type PlayerIdentity,
   type PlayerStoreState,
   type ProgressionKind,
   type TaskOutcome,
 } from './player-store';
-import type { CharacterAppearanceLook } from './character-profile';
 
-import { getMyPlayerTeamState, putMyPlayerTeamState, resolvePlayerTeamDemoViewerId } from './player-team-online-api';
-import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
-import { preserveHuntFieldsOnPut } from './hunt-snapshot';
 import { syncKingdomWarRecipients } from './discord-notify-api';
+import { preserveHuntFieldsOnPut } from './hunt-snapshot';
+import {
+  getMyPlayerTeamState,
+  putMyPlayerTeamState,
+  resolvePlayerTeamDemoViewerId,
+} from './player-team-online-api';
+import { mergeServerSnapshot, shouldApplyServerSnapshot } from './player-team-sync';
 
 interface PlayerStoreApi {
   readonly state: PlayerStoreState;
@@ -159,19 +163,18 @@ interface PlayerStoreApi {
       readonly makeActive?: boolean;
     },
   ) => string | null;
-  renameSet: (
-    workspaceId: string,
-    characterId: string,
-    setId: string,
-    name: string,
-  ) => boolean;
+  renameSet: (workspaceId: string, characterId: string, setId: string, name: string) => boolean;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
   completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
   ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
   addTimer: (
     workspaceId: string,
     characterId: string,
-    input: { readonly kind?: ProgressionKind; readonly label?: string; readonly durationMinutes?: number },
+    input: {
+      readonly kind?: ProgressionKind;
+      readonly label?: string;
+      readonly durationMinutes?: number;
+    },
   ) => void;
   removeTimer: (workspaceId: string, timerId: string) => void;
   createItem: (
@@ -227,7 +230,8 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
   const [hydrated, setHydrated] = useState(false);
   const onlineEnabled =
     process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED === 'true' ||
-    (process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED !== 'false');
+    (process.env.NODE_ENV !== 'production' &&
+      process.env.NEXT_PUBLIC_PLAYER_TEAM_ONLINE_ENABLED !== 'false');
 
   const serverHydratedViewerIdRef = useRef<string | null>(null);
   const serverHydratedRef = useRef(false);
@@ -385,7 +389,6 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
   const writesEnabled =
     state.authStatus === 'authenticated' &&
     (state.connection === 'connected' || state.connection === 'reconnecting');
-
 
   const syncWarRecipientsFromState = useCallback((next: PlayerStoreState) => {
     const ids = new Set<string>();

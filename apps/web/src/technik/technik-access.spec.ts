@@ -40,9 +40,9 @@ describe('Technik access', () => {
   });
 
   it('resolves snowflake from viewer.id when discordAccountId missing', () => {
-    expect(
-      resolveViewerDiscordId({ id: MATEUSZ_OPERATOR_DISCORD_ID, displayName: 'M' }),
-    ).toBe(MATEUSZ_OPERATOR_DISCORD_ID);
+    expect(resolveViewerDiscordId({ id: MATEUSZ_OPERATOR_DISCORD_ID, displayName: 'M' })).toBe(
+      MATEUSZ_OPERATOR_DISCORD_ID,
+    );
     expect(
       canAccessMemberActivityTechnik({
         viewerDiscordId: '',

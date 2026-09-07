@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { AuthStatus, PlayerIdentity } from '../src/player-store';
-import { usePlayerStore } from '../src/player-store-react';
 import {
   getIdentityAuthBaseUrl,
   isDiscordAuthSimulateEnabled,
@@ -12,6 +10,8 @@ import {
   resolveDiscordViewerFromSession,
   startDiscordOAuthRedirect,
 } from '../src/identity-auth-client';
+import type { AuthStatus, PlayerIdentity } from '../src/player-store';
+import { usePlayerStore } from '../src/player-store-react';
 
 export function DiscordEntryScreen() {
   const { state, hydrated, startAuth, finishAuth, cancelAuth, returnToEntry, resetStore } =
@@ -209,8 +209,6 @@ export function DiscordEntryScreen() {
             </button>
           </div>
         ) : null}
-
-        
 
         <p className="entry-meta">
           Identity: <code>127.0.0.1:4200</code> · Web: <code>127.0.0.1:3000</code>

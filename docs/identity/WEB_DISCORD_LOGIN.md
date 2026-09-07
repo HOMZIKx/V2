@@ -18,22 +18,16 @@ The bot gateway (pps/discord-gateway) stays separate (panels/commands).
 
 pps/web/.env.local:
 
-`
-NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL=http://127.0.0.1:4200
-NEXT_PUBLIC_IDENTITY_AUTH_ENABLED=true
-`
+`NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL=http://127.0.0.1:4200
+NEXT_PUBLIC_IDENTITY_AUTH_ENABLED=true`
 
 Offline Mateusz stub simulator (optional):
 
-`
-NEXT_PUBLIC_DISCORD_AUTH_SIMULATE=true
-`
+`NEXT_PUBLIC_DISCORD_AUTH_SIMULATE=true`
 
 Identity (root .env) must have auth enabled, Discord credentials, and:
 
-`
-IDENTITY_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-`
+`IDENTITY_TRUSTED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000`
 
 Discord developer portal redirect:
 

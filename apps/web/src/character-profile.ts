@@ -106,10 +106,7 @@ export const characterSkillPathLabels: Record<CharacterSkillPath, string> = {
   shaman_heal: 'Leczenie',
 };
 
-export const characterSkillPathsByClass: Record<
-  CharacterClass,
-  readonly CharacterSkillPath[]
-> = {
+export const characterSkillPathsByClass: Record<CharacterClass, readonly CharacterSkillPath[]> = {
   warrior: ['warrior_body', 'warrior_mental'],
   sura: ['sura_weapon', 'sura_magic'],
   ninja: ['ninja_blade', 'ninja_archery'],

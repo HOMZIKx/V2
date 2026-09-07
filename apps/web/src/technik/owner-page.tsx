@@ -11,7 +11,6 @@ export function TechnikOwnerPage() {
         panelu Technika (WEB_ACCESS / D-060).
       </p>
 
-      
       <PageJobNote>
         <p>
           Informacja, czego Technik tu nie konfiguruje: tokeny, sekrety, allowlista Ownera. Bez
@@ -19,10 +18,12 @@ export function TechnikOwnerPage() {
         </p>
       </PageJobNote>
       <PlayerSeesNote>
-        <p>Gracz nie widzi tej strony. Sekrety i allowlista Ownera nigdy nie trafiają do UI Technika.</p>
+        <p>
+          Gracz nie widzi tej strony. Sekrety i allowlista Ownera nigdy nie trafiają do UI Technika.
+        </p>
       </PlayerSeesNote>
 
-<section className="technik-panel technik-panel--wide">
+      <section className="technik-panel technik-panel--wide">
         <h2>Czego Technika nie rusza</h2>
         <ul className="technik-message-list">
           <li>
@@ -34,8 +35,8 @@ export function TechnikOwnerPage() {
             Signing keys — <code>DISCORD_COMPONENT_SIGNING_SECRET</code>, JWT
           </li>
           <li>
-            S2S: <code>DISCORD_TECHNIKA_SHARED_SECRET</code>, <code>DISCORD_NOTIFY_SHARED_SECRET</code>{' '}
-            (serwer WWW trzyma je poza przeglądarką)
+            S2S: <code>DISCORD_TECHNIKA_SHARED_SECRET</code>,{' '}
+            <code>DISCORD_NOTIFY_SHARED_SECRET</code> (serwer WWW trzyma je poza przeglądarką)
           </li>
           <li>Database URLs, Zeabur secrets, private keys</li>
           <li>
@@ -48,7 +49,7 @@ export function TechnikOwnerPage() {
         </p>
       </section>
 
-<HonestGap>
+      <HonestGap>
         <p>
           <strong>WWW Activity Center</strong> (katalogi typów / activity-service) — osobny produkt,
           odroczone. <strong>Discord Centrum</strong> (panel hub, kanały, wygląd, Opublikuj) jest w

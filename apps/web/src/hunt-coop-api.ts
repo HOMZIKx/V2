@@ -16,7 +16,12 @@ import {
 export type HuntCoopStatus = 'offline' | 'connecting' | 'online' | 'error';
 
 export type HuntRoomGetResult<T> =
-  | { readonly ok: true; readonly state: T | null; readonly revision: number | null; readonly via: 'hunt' | 'snapshot' }
+  | {
+      readonly ok: true;
+      readonly state: T | null;
+      readonly revision: number | null;
+      readonly via: 'hunt' | 'snapshot';
+    }
   | { readonly ok: false; readonly error: string };
 
 const baseUrl =
@@ -194,10 +199,11 @@ async function tryGetDedicatedParty(
   actorViewerId: string,
 ): Promise<HuntRoomGetResult<HuntPartyRoomState> | null> {
   try {
-    const res = await fetch(
-      `${baseUrl}/player-team/v1/hunt/parties/${encodeURIComponent(code)}`,
-      { method: 'GET', headers: huntHeaders(actorViewerId), cache: 'no-store' },
-    );
+    const res = await fetch(`${baseUrl}/player-team/v1/hunt/parties/${encodeURIComponent(code)}`, {
+      method: 'GET',
+      headers: huntHeaders(actorViewerId),
+      cache: 'no-store',
+    });
     if (res.status === 404) return null;
     if (!res.ok) {
       const body = await res.text().catch(() => '');

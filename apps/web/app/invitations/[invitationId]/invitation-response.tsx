@@ -122,7 +122,7 @@ export function InvitationResponse() {
             <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
           </div>
         ) : null}
-</main>
+      </main>
     </AppShell>
   );
 }

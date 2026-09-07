@@ -48,9 +48,7 @@ export type VersionedConfigStoreOptions = {
 
 export class ApplyValidationError extends Error {
   public readonly issues: ReadonlyArray<{ readonly path: string; readonly message: string }>;
-  public constructor(
-    issues: ReadonlyArray<{ readonly path: string; readonly message: string }>,
-  ) {
+  public constructor(issues: ReadonlyArray<{ readonly path: string; readonly message: string }>) {
     super('Draft failed validation');
     this.name = 'ApplyValidationError';
     this.issues = issues;

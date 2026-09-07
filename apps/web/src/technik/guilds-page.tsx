@@ -6,18 +6,18 @@ import { D060Controls } from './d060-controls';
 import {
   DEFAULT_GUILD_MODULES,
   DEFAULT_GUILD_RIGHTS,
+  fetchGuilds,
   GUILD_MODULE_KEYS,
   GUILD_RIGHTS,
-  TECHNIK_TEST_GUILD_ID,
-  type GuildModules,
-  type GuildRight,
-  type TechnikaGuildDto,
-  fetchGuilds,
   guildDisplayLabel,
   isTechnikGuildEditable,
   pickDefaultGuildId,
   putGuild,
   sortGuildsForTechnik,
+  TECHNIK_TEST_GUILD_ID,
+  type GuildModules,
+  type GuildRight,
+  type TechnikaGuildDto,
 } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
 import { useTechnikaConfig } from './use-technika-config';
@@ -29,7 +29,8 @@ const MODULE_META: Record<
   characterTimers: {
     title: 'Timery postaci',
     help: 'PW o Księdze, Kamieniu, Dowodzeniu… (nie metiny na mapie).',
-    player: 'Gracz dostaje prywatną wiadomość z timerem postaci i przyciskami Gotowe / Przypomnij później.',
+    player:
+      'Gracz dostaje prywatną wiadomość z timerem postaci i przyciskami Gotowe / Przypomnij później.',
   },
   kingdomWar: {
     title: 'Wojna królestw',
@@ -39,12 +40,14 @@ const MODULE_META: Record<
   panels: {
     title: 'Panele Discord',
     help: 'Zapis w config działa; runtime lab honoruje panel-test na guildii.',
-    player: 'Na kanale guildii może pojawić się panel lab (/panel-test), jeśli włączysz też lab globalnie.',
+    player:
+      'Na kanale guildii może pojawić się panel lab (/panel-test), jeśli włączysz też lab globalnie.',
   },
   channels: {
     title: 'Kanały / publikacja',
     help: 'Flaga w config (egzekucja hubów Centrum = później).',
-    player: 'Na razie nie zmienia samodzielnie tego, co gracz widzi — zapisujesz intencję w config.',
+    player:
+      'Na razie nie zmienia samodzielnie tego, co gracz widzi — zapisujesz intencję w config.',
   },
 };
 
@@ -225,18 +228,17 @@ export function TechnikGuildsPage() {
       <h1>Discordy / guildie</h1>
       <p className="technik-lead">
         Najpierw wybierz serwer. <strong>Tylko Testowy</strong> (
-        <code>{TECHNIK_TEST_GUILD_ID}</code>) może mieć włączony ruch bota. Destiled i Projekt Sojusz
-        są na liście, ale zablokowane przed enable.
+        <code>{TECHNIK_TEST_GUILD_ID}</code>) może mieć włączony ruch bota. Destiled i Projekt
+        Sojusz są na liście, ale zablokowane przed enable.
       </p>
 
-      
       <PageJobNote>
         <p>
           Wybierasz serwer Discord (Testowy vs prod) i włączasz moduły bota per guildia. Publish na
           Destiled/Sojusz zostaje zablokowany do Twojego Apply.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
           Gdy guildia jest włączona i moduł timerów/wojny jest ON + po Apply: członkowie tej guildii
           mogą dostać PW od bota. Wyłączona guildia = bot milczy dla tego serwera.
@@ -265,7 +267,11 @@ export function TechnikGuildsPage() {
               <strong>Bez atrapy listy.</strong> {guildsError}
             </p>
             <div className="technik-row" style={{ marginTop: '0.5rem' }}>
-              <button type="button" onClick={() => void loadGuilds(selectedGuildId)} disabled={cfg.busy}>
+              <button
+                type="button"
+                onClick={() => void loadGuilds(selectedGuildId)}
+                disabled={cfg.busy}
+              >
                 Spróbuj ponownie
               </button>
             </div>

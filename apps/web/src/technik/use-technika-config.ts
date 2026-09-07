@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import type { D060StepId } from './d060-controls';
 import {
   type BotCapability,
   type BotConfigDraftPartial,
@@ -20,7 +21,6 @@ import {
   postConfigValidate,
   putConfigDraft,
 } from './technika-config-api';
-import type { D060StepId } from './d060-controls';
 
 function looksLikeSecret(value: string): boolean {
   return /token|secret|password|api[_-]?key|Bearer\s|mongodb(\+srv)?:\/\//i.test(value);

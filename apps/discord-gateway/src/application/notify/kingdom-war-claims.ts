@@ -1,8 +1,8 @@
 /** War character claims for the day — file-backed so restart keeps tonight's claims. */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 type ClaimMap = Record<string, string>; // characterId -> discordUserId
 
@@ -36,7 +36,12 @@ function loadFromDisk(): void {
   try {
     const raw = readFileSync(persistPath(), 'utf8');
     const parsed = JSON.parse(raw) as PersistShape;
-    if (parsed && typeof parsed.dayKey === 'string' && parsed.claims && typeof parsed.claims === 'object') {
+    if (
+      parsed &&
+      typeof parsed.dayKey === 'string' &&
+      parsed.claims &&
+      typeof parsed.claims === 'object'
+    ) {
       claimDayKey = parsed.dayKey;
       claims = { ...parsed.claims };
     }

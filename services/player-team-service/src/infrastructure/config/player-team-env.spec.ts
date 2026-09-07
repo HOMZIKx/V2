@@ -5,7 +5,8 @@ import { parsePlayerTeamEnv } from './player-team-env.js';
 describe('parsePlayerTeamEnv', () => {
   it('parses demo defaults for local development', () => {
     const config = parsePlayerTeamEnv({
-      PLAYER_TEAM_DATABASE_URL: 'postgresql://player_team:player_team_dev_password@127.0.0.1:5432/player_team',
+      PLAYER_TEAM_DATABASE_URL:
+        'postgresql://player_team:player_team_dev_password@127.0.0.1:5432/player_team',
     });
 
     expect(config.PLAYER_TEAM_SERVICE_PORT).toBe(4400);

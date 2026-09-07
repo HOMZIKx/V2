@@ -177,7 +177,6 @@ export function isDiscordUserId(value: string): boolean {
   return /^\d{17,20}$/.test(value.trim());
 }
 
-
 /** Prefer known directory entry; otherwise accept any valid snowflake for invite UX. */
 export function resolveInviteDiscordIdentity(
   directory: readonly DiscordIdentity[],
@@ -193,16 +192,14 @@ export function resolveInviteDiscordIdentity(
     return { ok: true, identity: fromDir, error: null };
   }
   const hint = (displayNameHint ?? '').trim();
-  const displayName =
-    hint.length >= 2
-      ? hint
-      : `Gracz ${normalizedId.slice(-4)}`;
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toLocaleUpperCase('pl'))
-    .join('') || 'G';
+  const displayName = hint.length >= 2 ? hint : `Gracz ${normalizedId.slice(-4)}`;
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toLocaleUpperCase('pl'))
+      .join('') || 'G';
   return {
     ok: true,
     identity: {

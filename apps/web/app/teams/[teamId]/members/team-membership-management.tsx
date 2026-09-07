@@ -65,8 +65,7 @@ export function TeamMembershipManagement() {
   }, [workspace?.id, workspace?.name]);
 
   const pending = workspace?.invitations.filter((entry) => entry.status === 'pending') ?? [];
-  const justSent =
-    pending.find((entry) => entry.recipientDiscordId === justSentDiscordId) ?? null;
+  const justSent = pending.find((entry) => entry.recipientDiscordId === justSentDiscordId) ?? null;
 
   if (!hydrated) {
     return (
@@ -206,9 +205,7 @@ export function TeamMembershipManagement() {
           <header>
             <h2>Obecni członkowie</h2>
             <span>
-              {workspace.members.length === 1
-                ? '1 osoba'
-                : `${workspace.members.length} osób`}
+              {workspace.members.length === 1 ? '1 osoba' : `${workspace.members.length} osób`}
             </span>
           </header>
           <ul className="membership-member-list">

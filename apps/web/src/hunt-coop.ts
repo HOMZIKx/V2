@@ -51,10 +51,17 @@ export function partyRoomOwnerId(joinCode: string): string {
 }
 
 export function normalizeJoinCode(code: string): string {
-  return code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 6);
 }
 
-export function generateJoinCode(now = Date.now(), salt = Math.floor(Math.random() * 1_000_000)): string {
+export function generateJoinCode(
+  now = Date.now(),
+  salt = Math.floor(Math.random() * 1_000_000),
+): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let n = (now % 1_000_000_000) ^ salt;
   let out = '';
@@ -106,9 +113,8 @@ export function parseTimersRoom(raw: unknown): HuntTimersRoomState | null {
         confirmedAt,
         confirmedBy,
         location,
-        updatedAt: typeof row.updatedAt === 'number' ? row.updatedAt : confirmedAt ?? 0,
-        updatedBy:
-          typeof row.updatedBy === 'string' ? row.updatedBy : confirmedBy ?? 'unknown',
+        updatedAt: typeof row.updatedAt === 'number' ? row.updatedAt : (confirmedAt ?? 0),
+        updatedBy: typeof row.updatedBy === 'string' ? row.updatedBy : (confirmedBy ?? 'unknown'),
         ...(typeof row.idempotencyKey === 'string' ? { idempotencyKey: row.idempotencyKey } : {}),
       };
     }
@@ -313,13 +319,15 @@ export type ScoutPinDraft = {
 };
 
 /** Apply shared timer entries onto local RespawnRecord list (metin only). */
-export function applyTimersRoomToRecords<T extends {
-  readonly key: string;
-  readonly kind: string;
-  readonly confirmedAt: number | null;
-  readonly confirmedBy: string | null;
-  readonly location: RespawnLocation | null;
-}>(records: readonly T[], room: HuntTimersRoomState | null): readonly T[] {
+export function applyTimersRoomToRecords<
+  T extends {
+    readonly key: string;
+    readonly kind: string;
+    readonly confirmedAt: number | null;
+    readonly confirmedBy: string | null;
+    readonly location: RespawnLocation | null;
+  },
+>(records: readonly T[], room: HuntTimersRoomState | null): readonly T[] {
   if (!room) return records;
   return records.map((record) => {
     if (record.kind !== 'metin') return record;
@@ -335,13 +343,15 @@ export function applyTimersRoomToRecords<T extends {
 }
 
 /** Merge local confirmed timers into room document before PUT. */
-export function mergeRecordsIntoTimersRoom<T extends {
-  readonly key: string;
-  readonly kind: string;
-  readonly confirmedAt: number | null;
-  readonly confirmedBy: string | null;
-  readonly location: RespawnLocation | null;
-}>(
+export function mergeRecordsIntoTimersRoom<
+  T extends {
+    readonly key: string;
+    readonly kind: string;
+    readonly confirmedAt: number | null;
+    readonly confirmedBy: string | null;
+    readonly location: RespawnLocation | null;
+  },
+>(
   room: HuntTimersRoomState,
   records: readonly T[],
   updatedBy: string,

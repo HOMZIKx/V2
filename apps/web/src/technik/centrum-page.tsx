@@ -11,15 +11,15 @@ import {
   type CentrumHubActionId,
 } from './centrum-hub-actions';
 import {
-  type PanelChannel,
-  type PanelMessage,
-  type PanelsApiStatus,
   deletePanelMessage,
   detectPanelsApi,
   fetchGuildPanels,
   fetchPanelChannels,
   postPanelPublish,
   postPanelRefresh,
+  type PanelChannel,
+  type PanelMessage,
+  type PanelsApiStatus,
 } from './panels-api';
 import { channelLabel, loadPublishChannels } from './publish-channels';
 import { TECHNIK_TEST_GUILD_ID } from './technika-config-api';
@@ -68,7 +68,9 @@ export function TechnikCentrumPage() {
     }
     const chRes = await fetchPanelChannels(guildId);
     if (!chRes.ok) {
-      setOpsMsg('Nie udało się pobrać kanałów: ' + chRes.error + (chRes.detail ? ' — ' + chRes.detail : ''));
+      setOpsMsg(
+        'Nie udało się pobrać kanałów: ' + chRes.error + (chRes.detail ? ' — ' + chRes.detail : ''),
+      );
       return;
     }
     setChannels(chRes.data.channels);
@@ -83,7 +85,9 @@ export function TechnikCentrumPage() {
       const res = await fetchGuildPanels(guildId, ch);
       if (!res.ok) {
         setPanels([]);
-        setOpsMsg('Nie udało się pobrać paneli: ' + res.error + (res.detail ? ' — ' + res.detail : ''));
+        setOpsMsg(
+          'Nie udało się pobrać paneli: ' + res.error + (res.detail ? ' — ' + res.detail : ''),
+        );
         return;
       }
       setPanels(res.data.panels);
@@ -209,8 +213,8 @@ export function TechnikCentrumPage() {
       <PlayerSeesNote>
         <p>
           Gracz widzi panel z przyciskami:{' '}
-          {onLabels.length ? onLabels.join(' · ') : '— (włącz choć jedną akcję poniżej)'}. Po kliknięciu
-          dostaje prywatną odpowiedź — bez spamu na kanale.
+          {onLabels.length ? onLabels.join(' · ') : '— (włącz choć jedną akcję poniżej)'}. Po
+          kliknięciu dostaje prywatną odpowiedź — bez spamu na kanale.
         </p>
       </PlayerSeesNote>
 
@@ -231,7 +235,9 @@ export function TechnikCentrumPage() {
             <a href="/technik/wyglad">Tytuł, opis, akcent, bannerUrl, własne przyciski →</a>
             <br />
             <span className="technik-muted">
-              Opublikuj wyśle title/description/accentHex/includeBanner/bannerUrl/enabledActions/customButtons (bez auto-publikacji).
+              Opublikuj wyśle
+              title/description/accentHex/includeBanner/bannerUrl/enabledActions/customButtons (bez
+              auto-publikacji).
             </span>
           </dd>
         </dl>
@@ -269,7 +275,9 @@ export function TechnikCentrumPage() {
           <h2>Publikacja na Discordzie</h2>
           <span
             className={
-              apiStatus === 'live' ? 'technik-pill technik-pill--live' : 'technik-pill technik-pill--pending'
+              apiStatus === 'live'
+                ? 'technik-pill technik-pill--live'
+                : 'technik-pill technik-pill--pending'
             }
           >
             {apiStatus === 'checking'
@@ -311,10 +319,14 @@ export function TechnikCentrumPage() {
               </button>
             </div>
             {!hubChannelId ? (
-              <p className="technik-muted">Ustaw kanał Centrum w zakładce Kanały, żeby publikować.</p>
+              <p className="technik-muted">
+                Ustaw kanał Centrum w zakładce Kanały, żeby publikować.
+              </p>
             ) : null}
             {!cfg.canWrite ? (
-              <p className="technik-muted">Publikacja wymaga sekretu Technika po stronie serwera.</p>
+              <p className="technik-muted">
+                Publikacja wymaga sekretu Technika po stronie serwera.
+              </p>
             ) : null}
             {opsMsg ? (
               <p className="technik-test-status" role="status">

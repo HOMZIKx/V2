@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  canonicalOwnerViewerId,
-  ownerViewerIdCandidates,
-} from './owner-viewer-id.js';
+import { canonicalOwnerViewerId, ownerViewerIdCandidates } from './owner-viewer-id.js';
 
 describe('ownerViewerIdCandidates', () => {
   it('canonicalizes discord: prefix to bare snowflake', () => {
-    expect(canonicalOwnerViewerId('discord:1534228693017432124')).toBe(
-      '1534228693017432124',
-    );
+    expect(canonicalOwnerViewerId('discord:1534228693017432124')).toBe('1534228693017432124');
     expect(canonicalOwnerViewerId('1534228693017432124')).toBe('1534228693017432124');
   });
 

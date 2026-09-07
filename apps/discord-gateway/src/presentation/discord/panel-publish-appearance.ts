@@ -5,13 +5,7 @@
 
 export type PanelButtonStyle = 'primary' | 'secondary' | 'danger';
 
-export type PanelHubActionId =
-  | 'create'
-  | 'lfg'
-  | 'mine'
-  | 'notify'
-  | 'profile'
-  | 'forme';
+export type PanelHubActionId = 'create' | 'lfg' | 'mine' | 'notify' | 'profile' | 'forme';
 
 export type PanelCustomButtonAction = PanelHubActionId | 'url' | 'ephemeral_text';
 
@@ -43,12 +37,7 @@ export const HUB_ACTION_LABELS: Record<PanelHubActionId, string> = {
   forme: 'Dla mnie',
 };
 
-export const DEFAULT_HUB_ACTIONS: readonly PanelHubActionId[] = [
-  'create',
-  'lfg',
-  'mine',
-  'notify',
-];
+export const DEFAULT_HUB_ACTIONS: readonly PanelHubActionId[] = ['create', 'lfg', 'mine', 'notify'];
 
 const HUB_SET = new Set<string>(['create', 'lfg', 'mine', 'notify', 'profile', 'forme']);
 const CUSTOM_ACTION_SET = new Set<string>([...HUB_SET, 'url', 'ephemeral_text']);
@@ -100,10 +89,12 @@ function normalizeCustomButton(raw: unknown): PanelCustomButton | null {
   return btn;
 }
 
-export function parsePanelPublishAppearance(record: Record<string, unknown>): PanelPublishAppearance {
-  const title = typeof record.title === 'string' && record.title.trim() ? record.title.trim() : undefined;
-  const description =
-    typeof record.description === 'string' ? record.description : undefined;
+export function parsePanelPublishAppearance(
+  record: Record<string, unknown>,
+): PanelPublishAppearance {
+  const title =
+    typeof record.title === 'string' && record.title.trim() ? record.title.trim() : undefined;
+  const description = typeof record.description === 'string' ? record.description : undefined;
   const accentHex =
     typeof record.accentHex === 'string' && record.accentHex.trim()
       ? record.accentHex.trim()

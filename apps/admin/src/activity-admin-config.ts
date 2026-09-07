@@ -54,7 +54,9 @@ export function resolveActivityAdminEnv(
   return { baseUrl: trimmedBase, guildId: trimmedGuild };
 }
 
-export function isActivityAdminReadConfigured(env: ActivityAdminEnv = resolveActivityAdminEnv()): boolean {
+export function isActivityAdminReadConfigured(
+  env: ActivityAdminEnv = resolveActivityAdminEnv(),
+): boolean {
   return Boolean(env.baseUrl && env.guildId);
 }
 
@@ -63,10 +65,7 @@ export function activityAdminPath(guildId: string, suffix: string): string {
   return `/activity/v1/admin/guilds/${encodeURIComponent(guildId)}${clean}`;
 }
 
-export function activityAdminCurlTip(
-  path: string,
-  baseUrl: string,
-): string {
+export function activityAdminCurlTip(path: string, baseUrl: string): string {
   return `curl -sS "${baseUrl}${path}"`;
 }
 

@@ -1,8 +1,4 @@
-import {
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  type MessageCreateOptions,
-} from 'discord.js';
+import { ActionRowBuilder, StringSelectMenuBuilder, type MessageCreateOptions } from 'discord.js';
 
 import { applyMessageTemplate, computeNotifyAt } from '../../application/config/live-bot-config.js';
 import type { KingdomWarConfig } from '../../application/technika/capabilities.js';
@@ -42,9 +38,7 @@ export function renderKingdomWarReminder(input: {
   for (const character of roster) {
     const claimedBy = claims[character.id];
     content.push(
-      claimedBy
-        ? `• ${character.name} — zajęta (<@${claimedBy}>)`
-        : `• ${character.name} — wolna`,
+      claimedBy ? `• ${character.name} — zajęta (<@${claimedBy}>)` : `• ${character.name} — wolna`,
     );
   }
 

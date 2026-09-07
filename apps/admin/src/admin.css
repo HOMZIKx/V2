@@ -28,7 +28,8 @@ body,
 
 body {
   margin: 0;
-  background: radial-gradient(1200px 600px at 10% -10%, #1a1020 0%, transparent 55%),
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #1a1020 0%, transparent 55%),
     radial-gradient(900px 500px at 90% 0%, #0b1a33 0%, transparent 50%), var(--admin-bg);
   color: var(--admin-text);
   font-family: var(--admin-font);
@@ -463,7 +464,6 @@ body {
     flex-wrap: wrap;
   }
 }
-
 
 .admin-panel--live-config {
   border-color: color-mix(in srgb, var(--admin-ok) 28%, var(--admin-panel-border));

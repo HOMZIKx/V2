@@ -28,7 +28,12 @@ function badgeFor(state: DiagnosticsState): { label: string; tone: 'ok' | 'warn'
   if (anyNetworkFail) {
     return { label: 'Diagnostyka niedostępna (sieć/CORS)', tone: 'error' };
   }
-  if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
+  if (
+    discord.ok &&
+    discord.data.enabled &&
+    discord.data.state === 'ready' &&
+    discord.data.isolationOk
+  ) {
     return { label: 'Discord ready', tone: 'ok' };
   }
   if (!live.ok || !ready.ok || !discord.ok) {
@@ -57,7 +62,13 @@ function payloadForCopy(result: HealthFetchResult<unknown>): string {
   });
 }
 
-function CopyButton({ text, label = 'Kopiuj JSON' }: { readonly text: string; readonly label?: string }) {
+function CopyButton({
+  text,
+  label = 'Kopiuj JSON',
+}: {
+  readonly text: string;
+  readonly label?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   return (
@@ -165,8 +176,8 @@ export function DiagnosticsPage() {
       <h1>Diagnostyka</h1>
       <p className="admin-lead">
         Surowy JSON zdrowia New Bot (<code>{baseUrl}</code>): <code>/health/live</code>,{' '}
-        <code>/health/ready</code>, <code>/health/discord</code>. Bez Activity REST i bez
-        wymyślania wartości.
+        <code>/health/ready</code>, <code>/health/discord</code>. Bez Activity REST i bez wymyślania
+        wartości.
       </p>
 
       <div className="admin-row">

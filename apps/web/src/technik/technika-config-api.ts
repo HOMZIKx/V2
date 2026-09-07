@@ -113,9 +113,10 @@ export const DEFAULT_KINGDOM_WAR: KingdomWarConfig = {
  * Prefer upcoming characterTimers module; fall back to timersNotify (same shape).
  * UI always labels this as Timery postaci (not map metins).
  */
-export function pickCharacterTimers(
-  config: BotConfigValues | null | undefined,
-): { values: CharacterTimersConfig; apiKey: 'characterTimers' | 'timersNotify' } {
+export function pickCharacterTimers(config: BotConfigValues | null | undefined): {
+  values: CharacterTimersConfig;
+  apiKey: 'characterTimers' | 'timersNotify';
+} {
   if (config?.characterTimers && typeof config.characterTimers === 'object') {
     return {
       values: { ...DEFAULT_CHARACTER_TIMERS, ...config.characterTimers },
@@ -150,9 +151,7 @@ function failFrom(
   parsed: Record<string, unknown>,
   fallback: string,
 ): TechnikaApiResult<never> {
-  const issues = Array.isArray(parsed.issues)
-    ? (parsed.issues as ValidationIssue[])
-    : undefined;
+  const issues = Array.isArray(parsed.issues) ? (parsed.issues as ValidationIssue[]) : undefined;
   const err =
     typeof parsed.error === 'string'
       ? parsed.error
@@ -189,11 +188,18 @@ export async function fetchTechnikaMeta(): Promise<TechnikaApiResult<TechnikaMet
       },
     };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
-export async function fetchCapabilities(): Promise<TechnikaApiResult<{ capabilities: readonly BotCapability[] }>> {
+export async function fetchCapabilities(): Promise<
+  TechnikaApiResult<{ capabilities: readonly BotCapability[] }>
+> {
   try {
     const res = await fetch('/api/technik/capabilities', { cache: 'no-store' });
     const { parsed } = await parseJson(res);
@@ -201,7 +207,12 @@ export async function fetchCapabilities(): Promise<TechnikaApiResult<{ capabilit
     const list = Array.isArray(parsed.capabilities) ? (parsed.capabilities as BotCapability[]) : [];
     return { ok: true, status: res.status, data: { capabilities: list } };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
@@ -212,7 +223,12 @@ export async function fetchActiveConfig(): Promise<TechnikaApiResult<ConfigSnaps
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
     return { ok: true, status: res.status, data: parsed as unknown as ConfigSnapshot };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
@@ -224,7 +240,9 @@ export type BotConfigDraftPartial = {
   readonly 'notify-timer-enabled'?: boolean;
 } & Record<string, unknown>;
 
-export async function putConfigDraft(partial: BotConfigDraftPartial): Promise<TechnikaApiResult<Record<string, unknown>>> {
+export async function putConfigDraft(
+  partial: BotConfigDraftPartial,
+): Promise<TechnikaApiResult<Record<string, unknown>>> {
   try {
     const res = await fetch('/api/technik/config/draft', {
       method: 'PUT',
@@ -236,11 +254,18 @@ export async function putConfigDraft(partial: BotConfigDraftPartial): Promise<Te
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
     return { ok: true, status: res.status, data: parsed };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
-export async function postConfigValidate(config?: unknown): Promise<TechnikaApiResult<{ ok: boolean; issues: ValidationIssue[]; config?: unknown }>> {
+export async function postConfigValidate(
+  config?: unknown,
+): Promise<TechnikaApiResult<{ ok: boolean; issues: ValidationIssue[]; config?: unknown }>> {
   try {
     const res = await fetch('/api/technik/config/validate', {
       method: 'POST',
@@ -260,40 +285,85 @@ export async function postConfigValidate(config?: unknown): Promise<TechnikaApiR
       },
     };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
 export async function postConfigPreview(): Promise<TechnikaApiResult<Record<string, unknown>>> {
   try {
-    const res = await fetch('/api/technik/config/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', cache: 'no-store' });
+    const res = await fetch('/api/technik/config/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      cache: 'no-store',
+    });
     const { parsed } = await parseJson(res);
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
     return { ok: true, status: res.status, data: parsed };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
 export async function postConfigApply(): Promise<TechnikaApiResult<ConfigSnapshot & { ok: true }>> {
   try {
-    const res = await fetch('/api/technik/config/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', cache: 'no-store' });
+    const res = await fetch('/api/technik/config/apply', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      cache: 'no-store',
+    });
     const { parsed } = await parseJson(res);
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
-    return { ok: true, status: res.status, data: parsed as unknown as ConfigSnapshot & { ok: true } };
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as ConfigSnapshot & { ok: true },
+    };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
-export async function postConfigRollback(): Promise<TechnikaApiResult<ConfigSnapshot & { ok: true }>> {
+export async function postConfigRollback(): Promise<
+  TechnikaApiResult<ConfigSnapshot & { ok: true }>
+> {
   try {
-    const res = await fetch('/api/technik/config/rollback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', cache: 'no-store' });
+    const res = await fetch('/api/technik/config/rollback', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+      cache: 'no-store',
+    });
     const { parsed } = await parseJson(res);
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
-    return { ok: true, status: res.status, data: parsed as unknown as ConfigSnapshot & { ok: true } };
+    return {
+      ok: true,
+      status: res.status,
+      data: parsed as unknown as ConfigSnapshot & { ok: true },
+    };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
@@ -351,8 +421,17 @@ export type PutGuildResponse = {
   readonly updatedAt: string;
 };
 
-export const DEFAULT_GUILD_MODULES: GuildModules = { characterTimers: true, kingdomWar: false, panels: true, channels: false };
-export const DEFAULT_GUILD_RIGHTS: readonly GuildRight[] = ['technika.config', 'discord.notify', 'discord.panels'];
+export const DEFAULT_GUILD_MODULES: GuildModules = {
+  characterTimers: true,
+  kingdomWar: false,
+  panels: true,
+  channels: false,
+};
+export const DEFAULT_GUILD_RIGHTS: readonly GuildRight[] = [
+  'technika.config',
+  'discord.notify',
+  'discord.panels',
+];
 
 export const TECHNIK_TEST_GUILD_ID = '1534228693017432124';
 export const KNOWN_GUILD_NAMES: Readonly<Record<string, string>> = {
@@ -365,7 +444,10 @@ export const TECHNIK_PRODUCTION_GUILD_IDS = ['1543972927719080016', '15313187870
 /** Backward-compatible name used by the channels page; these IDs are no longer locked. */
 export const TECHNIK_LOCKED_GUILD_IDS = TECHNIK_PRODUCTION_GUILD_IDS;
 
-const TECHNIK_EDITABLE_GUILD_IDS = [TECHNIK_TEST_GUILD_ID, ...TECHNIK_PRODUCTION_GUILD_IDS] as readonly string[];
+const TECHNIK_EDITABLE_GUILD_IDS = [
+  TECHNIK_TEST_GUILD_ID,
+  ...TECHNIK_PRODUCTION_GUILD_IDS,
+] as readonly string[];
 
 export function isTechnikGuildEditable(guildId: string): boolean {
   return TECHNIK_EDITABLE_GUILD_IDS.includes(guildId);
@@ -396,7 +478,11 @@ export function guildDisplayLabel(g: TechnikaGuildDto): string {
   const name = apiName || known;
   const blob = (name + ' ' + (g.notes ?? '') + ' ' + known).toLowerCase();
   let tag = '';
-  if (g.id === TECHNIK_TEST_GUILD_ID || /\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)) tag = 'testowy';
+  if (
+    g.id === TECHNIK_TEST_GUILD_ID ||
+    /\btest\b|lab\b|_test|test-guild|guild.?test|destiled.?lab|testowy/.test(blob)
+  )
+    tag = 'testowy';
   else if (!isTechnikGuildEditable(g.id)) tag = 'zablokowany';
   if (tag && name) return tag + ' · ' + name;
   if (tag) return tag + ' · ' + (known || g.id);
@@ -404,7 +490,10 @@ export function guildDisplayLabel(g: TechnikaGuildDto): string {
   return known || g.id;
 }
 
-export function pickDefaultGuildId(guilds: readonly TechnikaGuildDto[], preferId?: string | null): string | null {
+export function pickDefaultGuildId(
+  guilds: readonly TechnikaGuildDto[],
+  preferId?: string | null,
+): string | null {
   const sorted = sortGuildsForTechnik(guilds);
   if (preferId && sorted.some((g) => g.id === preferId)) return preferId;
   if (sorted.some((g) => g.id === TECHNIK_TEST_GUILD_ID)) return TECHNIK_TEST_GUILD_ID;
@@ -428,20 +517,36 @@ export async function fetchGuilds(): Promise<TechnikaApiResult<GuildsListRespons
       },
     };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
-export async function putGuild(guildId: string, body: PutGuildBody): Promise<TechnikaApiResult<PutGuildResponse>> {
+export async function putGuild(
+  guildId: string,
+  body: PutGuildBody,
+): Promise<TechnikaApiResult<PutGuildResponse>> {
   try {
     const res = await fetch(`/api/technik/guilds/${encodeURIComponent(guildId)}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store',
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
     });
     const { parsed } = await parseJson(res);
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
     return { ok: true, status: res.status, data: parsed as unknown as PutGuildResponse };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
@@ -454,22 +559,41 @@ export type TestDmRequest = {
   readonly warAt?: string;
   readonly notifyMinutesBefore?: number;
 };
-export type TestDmResponse = { readonly ok: true; readonly delivery: 'dm'; readonly messageId: string; readonly module: TestDmModule; readonly discordUserId: string };
+export type TestDmResponse = {
+  readonly ok: true;
+  readonly delivery: 'dm';
+  readonly messageId: string;
+  readonly module: TestDmModule;
+  readonly discordUserId: string;
+};
 
-export async function postConfigTestDm(body: TestDmRequest): Promise<TechnikaApiResult<TestDmResponse>> {
+export async function postConfigTestDm(
+  body: TestDmRequest,
+): Promise<TechnikaApiResult<TestDmResponse>> {
   try {
-    const res = await fetch('/api/technik/config/test-dm', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), cache: 'no-store' });
+    const res = await fetch('/api/technik/config/test-dm', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
     const { parsed } = await parseJson(res);
     if (!res.ok) return failFrom(res, parsed, `http_${res.status}`);
     return { ok: true, status: res.status, data: parsed as unknown as TestDmResponse };
   } catch (error) {
-    return { ok: false, error: 'network_error', status: 0, detail: error instanceof Error ? error.message : 'unknown' };
+    return {
+      ok: false,
+      error: 'network_error',
+      status: 0,
+      detail: error instanceof Error ? error.message : 'unknown',
+    };
   }
 }
 
 const WAR_AT_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export function computeNotifyAt(warAt: string, notifyMinutesBefore: number): string | null {
-  if (!WAR_AT_RE.test(warAt) || !Number.isFinite(notifyMinutesBefore) || notifyMinutesBefore < 0) return null;
+  if (!WAR_AT_RE.test(warAt) || !Number.isFinite(notifyMinutesBefore) || notifyMinutesBefore < 0)
+    return null;
   const parts = warAt.split(':').map(Number);
   const h = parts[0];
   const m = parts[1];

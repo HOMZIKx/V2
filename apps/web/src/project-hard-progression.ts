@@ -7,13 +7,7 @@
  */
 
 export type ProgressionKind =
-  | 'skill_book'
-  | 'soul_stone'
-  | 'leadership'
-  | 'polymorph'
-  | 'mining'
-  | 'horse'
-  | 'biologist';
+  'skill_book' | 'soul_stone' | 'leadership' | 'polymorph' | 'mining' | 'horse' | 'biologist';
 
 export type ProgressionReset = 'midnight' | 'hours_12' | 'hours_23';
 

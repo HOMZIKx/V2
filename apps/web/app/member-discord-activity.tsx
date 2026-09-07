@@ -230,9 +230,7 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
                   ? ' · domyślny Destiled (sprawdzam ranking)'
                   : ' · wykryty po aktywności'}
             </span>
-            {refreshedHint ? (
-              <span className="ma-refresh-hint"> · {refreshedHint}</span>
-            ) : null}
+            {refreshedHint ? <span className="ma-refresh-hint"> · {refreshedHint}</span> : null}
           </p>
 
           {error ? (
@@ -254,7 +252,9 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
                 </article>
                 <article>
                   <strong>{myRow.score}</strong>
-                  <span>wynik{typeof myRow.rank === 'number' ? ' · #' + String(myRow.rank) : ''}</span>
+                  <span>
+                    wynik{typeof myRow.rank === 'number' ? ' · #' + String(myRow.rank) : ''}
+                  </span>
                 </article>
               </>
             ) : (

@@ -11,56 +11,57 @@ import {
 } from 'discord.js';
 import { randomUUID } from 'node:crypto';
 
-import { defaultBotConfigValues, type BotConfigValues } from '../../application/technika/capabilities.js';
-import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
 import {
   authorizePanelOperator,
   isAllowedInteractionContext,
 } from '../../application/interactions/authorization.js';
 import { claimInteractionId } from '../../application/interactions/idempotency.js';
 import {
-  claimKingdomWarCharacter,
-} from '../../application/notify/kingdom-war-claims.js';
-import {
   cancelCharacterTimerReminder,
   scheduleCharacterTimerReminder,
 } from '../../application/notify/character-timer-reminders.js';
-import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
+import { claimKingdomWarCharacter } from '../../application/notify/kingdom-war-claims.js';
 import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
+import {
+  defaultBotConfigValues,
+  type BotConfigValues,
+} from '../../application/technika/capabilities.js';
+import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
+import { resolvePanelButtonMetaStore } from '../../application/technika/panel-button-meta.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
-import { confirmTimerKillFromBot } from '../../infrastructure/player-team/confirm-timer-kill.js';
 import {
   confirmCharacterProgressTimerFromBot,
   snoozeCharacterProgressTimerFromBot,
 } from '../../infrastructure/player-team/confirm-character-timer.js';
+import { confirmTimerKillFromBot } from '../../infrastructure/player-team/confirm-timer-kill.js';
 import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
+import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import { safeErrorMessage } from '../../infrastructure/security/secret-redaction.js';
 import {
   createSignedCustomId,
   HUB_CUSTOM_TO_ACTION,
   isHubAction,
-  parseHubEphemButtonId,
   panelPayload,
+  parseHubEphemButtonId,
   parseSignedCustomId,
 } from '../../infrastructure/security/signed-custom-id.js';
-import { resolvePanelButtonMetaStore } from '../../application/technika/panel-button-meta.js';
-import { HUB_ACTION_LABELS } from '../../presentation/discord/panel-publish-appearance.js';
 import {
   isTimerButtonAction,
   isWarClaimAction,
   parseTimerButtonCustomId,
 } from '../../infrastructure/security/timer-custom-id.js';
-import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import {
   KINGDOM_WAR_CHARACTER_STUB,
   renderKingdomWarReminder,
 } from '../../presentation/discord/kingdom-war-renderer.js';
+import { HUB_ACTION_LABELS } from '../../presentation/discord/panel-publish-appearance.js';
 import {
   buildStatusEmbed,
   renderDeleteConfirmation,
   renderPanelMessage,
 } from '../../presentation/discord/panel-renderer.js';
+import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 
 export type InteractionRouterDeps = {
   config: DiscordGatewayConfig;
@@ -317,7 +318,6 @@ export class InteractionRouter {
       return;
     }
 
-
     if (isHubAction(parsed.action) && interaction.isButton()) {
       await this.handleHubButton(interaction, parsed.action, parsed.payload);
       return;
@@ -478,8 +478,6 @@ export class InteractionRouter {
     });
   }
 
-
-
   private async handleHubButton(
     interaction: MessageComponentInteraction,
     action: import('../../infrastructure/security/signed-custom-id.js').ComponentAction,
@@ -510,7 +508,7 @@ export class InteractionRouter {
     };
 
     await interaction.reply({
-      content: stubs[hubId ?? ''] ?? (label + ' - akcja Centrum przyjeta.'),
+      content: stubs[hubId ?? ''] ?? label + ' - akcja Centrum przyjeta.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -642,10 +640,9 @@ export class InteractionRouter {
     const ack = `Gotowe: **${result.label}**${who} (rewizja ${result.revision}). Bez otwierania WWW.`;
 
     if (canUpdateMessage && result.liveTimers.length > 0) {
-      const deepLinkUrl =
-        result.characterId
-          ? `https://destiled.app/teams/team/characters/${encodeURIComponent(result.characterId)}?view=timers`
-          : 'https://destiled.app/timers';
+      const deepLinkUrl = result.characterId
+        ? `https://destiled.app/teams/team/characters/${encodeURIComponent(result.characterId)}?view=timers`
+        : 'https://destiled.app/timers';
       const body = {
         discordUserId: interaction.user.id,
         title: result.characterName
@@ -690,7 +687,8 @@ export class InteractionRouter {
     payload: { mapKey: string; channel: number; timerKey: string },
   ): Promise<void> {
     if (operation === 'odloz') {
-      const minutes = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).timersNotify.reminderMinutesBefore;
+      const minutes = (this.deps.getBotConfig?.() ?? defaultBotConfigValues()).timersNotify
+        .reminderMinutesBefore;
       await interaction.reply({
         content: `Przypomnę ponownie za ok. ${minutes} min (szkielet przypomnienia — bez otwierania WWW).`,
         flags: MessageFlags.Ephemeral,

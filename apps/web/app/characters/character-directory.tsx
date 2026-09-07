@@ -2,10 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  characterAppearanceLabel,
-  formatCharacterClassLine,
-} from '../../src/character-profile';
+import { characterAppearanceLabel, formatCharacterClassLine } from '../../src/character-profile';
 import { usePlayerStore } from '../../src/player-store-react';
 import { AppShell, Icon } from '../app-shell';
 import { DiscordEntryScreen } from '../discord-entry';
@@ -104,10 +101,7 @@ export function CharacterDirectory() {
           </div>
           <div className="characters-page-actions">
             {writesEnabled && primaryWorkspace ? (
-              <a
-                className="secondary-button"
-                href={`/teams/${primaryWorkspace.id}/characters/new`}
-              >
+              <a className="secondary-button" href={`/teams/${primaryWorkspace.id}/characters/new`}>
                 <Icon name="plus" size={16} /> Dodaj postać
               </a>
             ) : null}
@@ -152,10 +146,7 @@ export function CharacterDirectory() {
               Brak postaci. Dodaj pierwszą kartę, żeby otworzyć EQ i Timer.
             </p>
             {writesEnabled && primaryWorkspace ? (
-              <a
-                className="primary-button"
-                href={`/teams/${primaryWorkspace.id}/characters/new`}
-              >
+              <a className="primary-button" href={`/teams/${primaryWorkspace.id}/characters/new`}>
                 Dodaj postać
               </a>
             ) : (

@@ -1,20 +1,25 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+} from 'react';
 
 import { huntMapImagePath } from '../../src/hunt-map-assets';
+import { huntStatusLabel, useHuntViewer, type HuntConnectionStatus } from '../../src/hunt-online';
+import { MAP_HUNT_SNAPSHOT_VERSION, type MapHuntSnapshotV1 } from '../../src/hunt-snapshot';
 import type { MapHuntingSnapshot } from '../../src/map-hunting';
-import {
-  MAP_HUNT_SNAPSHOT_VERSION,
-  type MapHuntSnapshotV1,
-} from '../../src/hunt-snapshot';
 import { loadHuntFieldsFromServer, putMapHuntField } from '../../src/player-team-field-sync';
 import {
   confirmTimerKill,
   getOrCreateTimerRoom,
   type TimerRoomSnapshot,
 } from '../../src/player-team-rooms-api';
-import { huntStatusLabel, useHuntViewer, type HuntConnectionStatus } from '../../src/hunt-online';
 import {
   canConfirmRespawn,
   channelsWithLateWindows,
@@ -27,8 +32,8 @@ import {
   type RespawnRecord,
 } from '../../src/respawn-timers';
 import {
-  METIN_COUNTS_STORAGE_KEY,
   MAX_METIN_SLOT_COUNT,
+  METIN_COUNTS_STORAGE_KEY,
   MIN_METIN_SLOT_COUNT,
   buildMapTimerRecords,
   listMetinTypes,
@@ -187,32 +192,35 @@ export function MapHunting({
     }, 0);
   }, []);
 
-  const applyTimerRoom = useCallback((room: TimerRoomSnapshot) => {
-    setTimerRoomRevision(room.revision);
-    const roomScope = scopeKey(room.mapKey, room.channel);
-    const remoteList: RespawnRecord[] = Object.values(room.timers).map((t) => ({
-      key: t.key,
-      mapKey: t.mapKey,
-      channel: t.channel,
-      kind: t.kind,
-      entity: {
-        id: t.key,
-        name: t.entityName ?? t.key,
-        respawnTimeMin: 5,
-        respawnTimeMax: 10,
-      },
-      confirmedAt: t.confirmedAt,
-      confirmedBy: t.confirmedBy,
-      location: t.location,
-    }));
-    const mapDef = respawnMaps.find((m) => m.key === room.mapKey);
-    if (!mapDef) return;
-    setStore((current) => {
-      const base = buildMapTimerRecords(mapDef, room.channel, metinCounts);
-      const merged = mergeTimerRecordState(base, remoteList);
-      return { ...current, [roomScope]: merged };
-    });
-  }, [metinCounts]);
+  const applyTimerRoom = useCallback(
+    (room: TimerRoomSnapshot) => {
+      setTimerRoomRevision(room.revision);
+      const roomScope = scopeKey(room.mapKey, room.channel);
+      const remoteList: RespawnRecord[] = Object.values(room.timers).map((t) => ({
+        key: t.key,
+        mapKey: t.mapKey,
+        channel: t.channel,
+        kind: t.kind,
+        entity: {
+          id: t.key,
+          name: t.entityName ?? t.key,
+          respawnTimeMin: 5,
+          respawnTimeMax: 10,
+        },
+        confirmedAt: t.confirmedAt,
+        confirmedBy: t.confirmedBy,
+        location: t.location,
+      }));
+      const mapDef = respawnMaps.find((m) => m.key === room.mapKey);
+      if (!mapDef) return;
+      setStore((current) => {
+        const base = buildMapTimerRecords(mapDef, room.channel, metinCounts);
+        const merged = mergeTimerRecordState(base, remoteList);
+        return { ...current, [roomScope]: merged };
+      });
+    },
+    [metinCounts],
+  );
 
   // Personal mapHunt from /me/state on enter.
   useEffect(() => {
@@ -378,7 +386,9 @@ export function MapHunting({
       const next: Record<string, readonly RespawnRecord[]> = { ...current };
       for (let ch = 1; ch <= map.channels; ch += 1) {
         const key = scopeKey(map.key, ch);
-        const allowed = new Set(buildMapTimerRecords(map, ch, nextCounts).map((record) => record.key));
+        const allowed = new Set(
+          buildMapTimerRecords(map, ch, nextCounts).map((record) => record.key),
+        );
         const existing = current[key];
         if (!existing) continue;
         next[key] = existing.filter((record) => allowed.has(record.key));
@@ -551,7 +561,10 @@ export function MapHunting({
 
   return (
     <AppShell activeSection={shellSection} viewerName={displayName || initialSnapshot.viewerName}>
-      <main className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`} id="main-content">
+      <main
+        className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`}
+        id="main-content"
+      >
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
@@ -561,8 +574,8 @@ export function MapHunting({
                 {generalsAndMetinsView
                   ? 'Mapa + respawn generałów i metinów z katalogu. '
                   : 'Mapa + respawn z katalogu. '}
-                <b>Zbite</b> otwiera mini-mapę pinezki. Zbity cel zjeżdża na dół z odliczaniem.
-                Gdy okno wchodzi w ostatnie 20% na innym kanale — ten CH się podświetla.
+                <b>Zbite</b> otwiera mini-mapę pinezki. Zbity cel zjeżdża na dół z odliczaniem. Gdy
+                okno wchodzi w ostatnie 20% na innym kanale — ten CH się podświetla.
               </p>
             ) : (
               <p className="respawn-mini-lead">

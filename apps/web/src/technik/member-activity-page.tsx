@@ -2,24 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { usePlayerStore } from '../player-store-react';
 import { D060Controls } from './d060-controls';
+import { fetchGuildRoles, roleLabel, type GuildRole } from './guild-roles-api';
 import {
   DEFAULT_MEMBER_ACTIVITY,
   DEFAULT_MEMBER_ACTIVITY_GUILD_ID,
-  type ApiReachability,
-  type MemberActivityConfig,
-  type RankingRow,
-  type RankingWindow,
   detectMemberActivityRanking,
   fetchMemberActivityRanking,
   fetchMyRanking,
   windowDaysToRankingWindow,
+  type ApiReachability,
+  type MemberActivityConfig,
+  type RankingRow,
+  type RankingWindow,
 } from './member-activity-api';
-import { fetchGuildRoles, roleLabel, type GuildRole } from './guild-roles-api';
-import { HonestGap } from './ui-notes';
-import { KNOWN_GUILD_NAMES, putConfigDraft } from './technika-config-api';
-import { useTechnikaConfig } from './use-technika-config';
-import { usePlayerStore } from '../player-store-react';
 import {
   DEFAULT_TECHNIK_ACCESS,
   MATEUSZ_OPERATOR_DISCORD_ID,
@@ -31,6 +28,9 @@ import {
   type TechnikAccessConfig,
   type TechnikOperatorEntry,
 } from './technik-access';
+import { KNOWN_GUILD_NAMES, putConfigDraft } from './technika-config-api';
+import { HonestGap } from './ui-notes';
+import { useTechnikaConfig } from './use-technika-config';
 
 const WINDOWS: { id: RankingWindow; label: string }[] = [
   { id: '7d', label: '7 dni' },
@@ -86,8 +86,7 @@ function readMemberActivityFromConfig(
       ? (cfg.memberActivity as Record<string, unknown>)
       : null;
   if (!raw) return { ...DEFAULT_MEMBER_ACTIVITY };
-  const windowDays =
-    raw.windowDays === 14 || raw.windowDays === 30 ? Number(raw.windowDays) : 7;
+  const windowDays = raw.windowDays === 14 || raw.windowDays === 30 ? Number(raw.windowDays) : 7;
   return {
     enabled: raw.enabled !== false,
     guildId:
@@ -111,9 +110,7 @@ export function TechnikMemberActivityPage() {
   const cfg = useTechnikaConfig();
   const { state } = usePlayerStore();
   const viewerDiscordId =
-    resolveViewerDiscordId(state.viewer) ||
-    (state.viewer?.discordAccountId ?? '').trim() ||
-    '';
+    resolveViewerDiscordId(state.viewer) || (state.viewer?.discordAccountId ?? '').trim() || '';
   const [draft, setDraft] = useState<MemberActivityConfig>(DEFAULT_MEMBER_ACTIVITY);
   const [accessDraft, setAccessDraft] = useState<TechnikAccessConfig>(DEFAULT_TECHNIK_ACCESS);
   const [draftHydrated, setDraftHydrated] = useState(false);
@@ -219,57 +216,60 @@ export function TechnikMemberActivityPage() {
     };
   }, []);
 
-  const loadRanking = useCallback(async (opts?: { readonly silent?: boolean }) => {
-    const silent = Boolean(opts?.silent);
-    if (!silent) {
-      setBusy(true);
-      setMsg(null);
-    }
-    try {
-      const res = await fetchMemberActivityRanking({
-        window: windowId,
-        guildId: draft.guildId,
-        ...(q.trim() ? { q: q.trim() } : {}),
-        full: true,
-      });
-      if (!res.ok) {
-        if (!silent) {
-          setRows([]);
-          setTotalMembers(null);
-          if (res.offline) setRankStatus('offline');
-          setMsg(
-            (res.offline ? 'Gateway offline: ' : 'Ranking: ') +
-              res.error +
-              (res.detail ? ' — ' + res.detail : '') +
-              (res.status ? ' (HTTP ' + String(res.status) + ')' : ''),
-          );
-        }
-      } else {
-        setRankStatus('live');
-        setRows(res.rows);
-        setTotalMembers(typeof res.totalMembers === 'number' ? res.totalMembers : null);
-        if (silent) {
-          const t = new Date();
-          const hh = String(t.getHours()).padStart(2, '0');
-          const mm = String(t.getMinutes()).padStart(2, '0');
-          setRefreshedHint('odświeżono ' + hh + ':' + mm);
-        }
+  const loadRanking = useCallback(
+    async (opts?: { readonly silent?: boolean }) => {
+      const silent = Boolean(opts?.silent);
+      if (!silent) {
+        setBusy(true);
+        setMsg(null);
       }
-      if (viewerDiscordId) {
-        const me = await fetchMyRanking({
+      try {
+        const res = await fetchMemberActivityRanking({
           window: windowId,
-          discordUserId: viewerDiscordId,
           guildId: draft.guildId,
+          ...(q.trim() ? { q: q.trim() } : {}),
+          full: true,
         });
-        if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
-        else if (!silent) setMyRow(null);
-      } else if (!silent) {
-        setMyRow(null);
+        if (!res.ok) {
+          if (!silent) {
+            setRows([]);
+            setTotalMembers(null);
+            if (res.offline) setRankStatus('offline');
+            setMsg(
+              (res.offline ? 'Gateway offline: ' : 'Ranking: ') +
+                res.error +
+                (res.detail ? ' — ' + res.detail : '') +
+                (res.status ? ' (HTTP ' + String(res.status) + ')' : ''),
+            );
+          }
+        } else {
+          setRankStatus('live');
+          setRows(res.rows);
+          setTotalMembers(typeof res.totalMembers === 'number' ? res.totalMembers : null);
+          if (silent) {
+            const t = new Date();
+            const hh = String(t.getHours()).padStart(2, '0');
+            const mm = String(t.getMinutes()).padStart(2, '0');
+            setRefreshedHint('odświeżono ' + hh + ':' + mm);
+          }
+        }
+        if (viewerDiscordId) {
+          const me = await fetchMyRanking({
+            window: windowId,
+            discordUserId: viewerDiscordId,
+            guildId: draft.guildId,
+          });
+          if (me.ok && me.rows[0]) setMyRow(me.rows[0]);
+          else if (!silent) setMyRow(null);
+        } else if (!silent) {
+          setMyRow(null);
+        }
+      } finally {
+        if (!silent) setBusy(false);
       }
-    } finally {
-      if (!silent) setBusy(false);
-    }
-  }, [windowId, q, draft.guildId, viewerDiscordId]);
+    },
+    [windowId, q, draft.guildId, viewerDiscordId],
+  );
 
   useEffect(() => {
     if (!allowed) return;
@@ -303,9 +303,7 @@ export function TechnikMemberActivityPage() {
     setDraft(activity);
     setAccessDraft(nextAccess);
     if (!hasCap) {
-      setMsg(
-        'Brak możliwości „aktywność członków” w capabilities — UI lokalne do czasu gateway.',
-      );
+      setMsg('Brak możliwości „aktywność członków” w capabilities — UI lokalne do czasu gateway.');
       return;
     }
     if (!cfg.canWrite) {
@@ -379,9 +377,7 @@ export function TechnikMemberActivityPage() {
     if (isPermanentTechnikOperator(id)) return;
     void persistAll(draft, {
       ...accessDraft,
-      operators: ensureMateuszOperator(
-        accessDraft.operators.filter((o) => o.discordUserId !== id),
-      ),
+      operators: ensureMateuszOperator(accessDraft.operators.filter((o) => o.discordUserId !== id)),
     });
   };
 
@@ -412,8 +408,8 @@ export function TechnikMemberActivityPage() {
         <HonestGap>
           <p>
             <strong>Ta sekcja wymaga roli operatora Technika.</strong> Mateusz (
-            <code>{MATEUSZ_OPERATOR_DISCORD_ID}</code>) ma stały dostęp wpisany w kodzie — nie
-            traci go przez listę operatorów ani lokalne logowanie bez Discord ID.
+            <code>{MATEUSZ_OPERATOR_DISCORD_ID}</code>) ma stały dostęp wpisany w kodzie — nie traci
+            go przez listę operatorów ani lokalne logowanie bez Discord ID.
           </p>
           <p className="technik-muted">
             Sesja teraz: <code>{sessionIdLabel}</code>. Jeśli to Ty (Mateusz) i nadal widzisz ten
@@ -433,8 +429,8 @@ export function TechnikMemberActivityPage() {
         <div className="ma-hero__titles">
           <h1>Aktywność członków</h1>
           <p className="technik-lead ma-hero__lead">
-            Zbieranie aktywności z wybranego serwera i pełny ranking ops. Okna 7 / 14 / 30 dni albo od
-            startu bota — bez spamu na kanale.
+            Zbieranie aktywności z wybranego serwera i pełny ranking ops. Okna 7 / 14 / 30 dni albo
+            od startu bota — bez spamu na kanale.
           </p>
         </div>
         <div className="ma-hero__pills">
@@ -465,8 +461,8 @@ export function TechnikMemberActivityPage() {
       {!hasCap ? (
         <HonestGap>
           <p>
-            Bot jeszcze nie wystawia możliwości „aktywność członków” (albo gateway offline). Formularz
-            jest gotowy — po live zapis pójdzie do szkicu → Apply.
+            Bot jeszcze nie wystawia możliwości „aktywność członków” (albo gateway offline).
+            Formularz jest gotowy — po live zapis pójdzie do szkicu → Apply.
           </p>
         </HonestGap>
       ) : null}
@@ -479,7 +475,10 @@ export function TechnikMemberActivityPage() {
             checked={draft.enabled}
             disabled={busy}
             onChange={(e) =>
-              void persistAll({ ...draft, enabled: e.target.checked, memberRoleIds: [] }, accessDraft)
+              void persistAll(
+                { ...draft, enabled: e.target.checked, memberRoleIds: [] },
+                accessDraft,
+              )
             }
           />
           Włącz zbieranie aktywności
@@ -505,8 +504,8 @@ export function TechnikMemberActivityPage() {
               ))}
           </select>
           <small className="technik-help">
-            Ranking dotyczy tylko: <strong>{sourceName}</strong>. Wybór zostaje sticky do Apply — nie
-            wraca sam do Destiled po zapisie szkicu.
+            Ranking dotyczy tylko: <strong>{sourceName}</strong>. Wybór zostaje sticky do Apply —
+            nie wraca sam do Destiled po zapisie szkicu.
           </small>
         </label>
 
@@ -519,10 +518,7 @@ export function TechnikMemberActivityPage() {
               disabled={busy}
               onChange={(e) => {
                 const days = Number(e.target.value);
-                void persistAll(
-                  { ...draft, windowDays: days, memberRoleIds: [] },
-                  accessDraft,
-                );
+                void persistAll({ ...draft, windowDays: days, memberRoleIds: [] }, accessDraft);
                 setWindowId(windowDaysToRankingWindow(days));
               }}
             >
@@ -738,7 +734,9 @@ export function TechnikMemberActivityPage() {
 
         {rankStatus === 'unavailable' ? (
           <HonestGap>
-            <p>Endpoint rankingu jeszcze nie odpowiada (404). UI jest gotowe — podłączy się po live.</p>
+            <p>
+              Endpoint rankingu jeszcze nie odpowiada (404). UI jest gotowe — podłączy się po live.
+            </p>
           </HonestGap>
         ) : null}
 

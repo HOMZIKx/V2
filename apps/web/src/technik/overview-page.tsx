@@ -20,10 +20,18 @@ import { useTechnikaConfig } from './use-technika-config';
 
 const AUTO_REFRESH_MS = 15_000;
 
-function toneFrom(live: HealthFetchResult<LiveHealth> | null, discord: HealthFetchResult<DiscordHealth> | null) {
+function toneFrom(
+  live: HealthFetchResult<LiveHealth> | null,
+  discord: HealthFetchResult<DiscordHealth> | null,
+) {
   if (!live || !discord) return { label: 'Sprawdzam bota…', tone: 'warn' as const };
   if (!live.ok) return { label: 'Bot ma problem', tone: 'error' as const };
-  if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
+  if (
+    discord.ok &&
+    discord.data.enabled &&
+    discord.data.state === 'ready' &&
+    discord.data.isolationOk
+  ) {
     return { label: 'Bot działa', tone: 'ok' as const };
   }
   return { label: 'Bot ma problem', tone: 'warn' as const };
@@ -54,7 +62,11 @@ export function TechnikOverviewPage() {
     inFlight.current = true;
     setLoadingHealth(true);
     try {
-      const [l, r, d] = await Promise.all([fetchLiveHealth(), fetchReadyHealth(), fetchDiscordHealth()]);
+      const [l, r, d] = await Promise.all([
+        fetchLiveHealth(),
+        fetchReadyHealth(),
+        fetchDiscordHealth(),
+      ]);
       setLive(l);
       setReady(r);
       setDiscord(d);
@@ -85,21 +97,20 @@ export function TechnikOverviewPage() {
     <>
       <h1>Przegląd / rewizja</h1>
       <p className="technik-lead">
-        Tu zaczynasz: czy bot żyje, która wersja konfiguracji jest aktywna, i cykl D-060
-        (szkic → sprawdź → podgląd → Ty klikasz Apply).
+        Tu zaczynasz: czy bot żyje, która wersja konfiguracji jest aktywna, i cykl D-060 (szkic →
+        sprawdź → podgląd → Ty klikasz Apply).
       </p>
 
-      
       <PageJobNote>
         <p>
           Widzisz stan bota, aktywną rewizję konfiguracji i skrót cyklu: szkic → sprawdź → podgląd →
           zapisz i włącz → cofnij.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
-          Gracz na Discordzie nie widzi tego panelu. Widzi skutki: PW o timerach postaci, PW o wojnie,
-          ewentualnie panel lab na guildii testowej — dopiero po Twoim Apply.
+          Gracz na Discordzie nie widzi tego panelu. Widzi skutki: PW o timerach postaci, PW o
+          wojnie, ewentualnie panel lab na guildii testowej — dopiero po Twoim Apply.
         </p>
       </PlayerSeesNote>
 
@@ -123,7 +134,10 @@ export function TechnikOverviewPage() {
       </p>
       {healthErr ? <HealthErrorPanel error={healthErr} /> : null}
 
-      <div className="technik-panel-grid technik-panel-grid--status" style={{ marginTop: '0.75rem' }}>
+      <div
+        className="technik-panel-grid technik-panel-grid--status"
+        style={{ marginTop: '0.75rem' }}
+      >
         <section className="technik-panel">
           <h2>Życie procesu</h2>
           <p className="technik-help">GET /health/live</p>
@@ -255,7 +269,6 @@ export function TechnikOverviewPage() {
           <a href="/technik/centrum">Centrum</a>.
         </p>
       </HonestGap>
-
     </>
   );
 }

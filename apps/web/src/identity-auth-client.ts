@@ -147,7 +147,8 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
   let discordAccountId: string | null = null;
   try {
     const accounts = await fetchIdentityAccounts();
-    discordAccountId = accounts.find((account) => account.provider === 'discord')?.accountId ?? null;
+    discordAccountId =
+      accounts.find((account) => account.provider === 'discord')?.accountId ?? null;
   } catch {
     // me succeeded; accounts optional
   }
@@ -167,8 +168,9 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
  * returnTo → Identity web-bridge → web `/auth/callback` with viewer query.
  */
 export function startDiscordOAuthRedirect(
-  webOrigin: string =
-    typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:3000',
+  webOrigin: string = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'http://127.0.0.1:3000',
 ): void {
   const identityBase = getIdentityAuthBaseUrl();
   const bridgeReturnTo = `${identityBase}/identity/web-bridge?to=${encodeURIComponent(webOrigin)}`;
@@ -178,8 +180,9 @@ export function startDiscordOAuthRedirect(
 
 /** @deprecated alias — prefer startDiscordOAuthRedirect */
 export function beginDiscordSignInRedirect(
-  callbackURL: string =
-    typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://127.0.0.1:3000/',
+  callbackURL: string = typeof window !== 'undefined'
+    ? `${window.location.origin}/`
+    : 'http://127.0.0.1:3000/',
 ): void {
   let origin = 'http://127.0.0.1:3000';
   try {

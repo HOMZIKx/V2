@@ -5,8 +5,8 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const MAX_RECIPIENTS = 40;
 
@@ -19,9 +19,7 @@ function isSnowflake(id: string): boolean {
 
 function persistPath(): string {
   const fromEnv = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  const base = fromEnv
-    ? join(fromEnv, 'kingdom-war')
-    : join(tmpdir(), 'destiled-kingdom-war');
+  const base = fromEnv ? join(fromEnv, 'kingdom-war') : join(tmpdir(), 'destiled-kingdom-war');
   if (!existsSync(base)) mkdirSync(base, { recursive: true });
   return join(base, 'recipients.json');
 }

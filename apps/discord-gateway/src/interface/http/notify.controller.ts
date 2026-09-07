@@ -11,10 +11,10 @@ import {
 } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 
-import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
-import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
-import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
-import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
+import {
+  listKingdomWarRecipients,
+  replaceKingdomWarRecipients,
+} from '../../application/notify/kingdom-war-recipients.js';
 import {
   claimNotifyIdempotencyKey,
   releaseNotifyIdempotencyKey,
@@ -31,10 +31,10 @@ import {
   listTimerRoomWatchersExcept,
   registerTimerRoomWatcher,
 } from '../../application/notify/timer-room-watchers.js';
-import {
-  listKingdomWarRecipients,
-  replaceKingdomWarRecipients,
-} from '../../application/notify/kingdom-war-recipients.js';
+import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
+import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
+import { evaluateGuildModuleGate } from '../../application/technika/guild-module-gate.js';
+import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import {
   NotifyDmClosedError,
@@ -75,7 +75,6 @@ export class NotifyController {
   private botConfig() {
     return resolveActiveBotConfig(this.technikaStore);
   }
-
 
   private assertNotifySecret(notifySecret: string | undefined): void {
     if (!secretsMatch(notifySecret, this.config.DISCORD_NOTIFY_SHARED_SECRET)) {
@@ -137,18 +136,19 @@ export class NotifyController {
       body &&
       typeof body === 'object' &&
       Array.isArray((body as { recipients?: unknown }).recipients)
-        ? ((body as { recipients: unknown[] }).recipients
+        ? (body as { recipients: unknown[] }).recipients
             .filter((id): id is string => typeof id === 'string')
-            .slice(0, 40))
+            .slice(0, 40)
         : [];
     const result = replaceKingdomWarRecipients(recipients);
     return { ok: true, count: result.count };
   }
 
   @Post('kingdom-war-recipients/list')
-  public listWarRecipients(
-    @Headers(HEADER_NAME) notifySecret: string | undefined,
-  ): { readonly ok: true; readonly recipients: readonly string[] } {
+  public listWarRecipients(@Headers(HEADER_NAME) notifySecret: string | undefined): {
+    readonly ok: true;
+    readonly recipients: readonly string[];
+  } {
     this.assertNotifySecret(notifySecret);
     return { ok: true, recipients: listKingdomWarRecipients() };
   }
@@ -166,7 +166,11 @@ export class NotifyController {
     this.assertNotifySecret(notifySecret);
     const live = this.botConfig();
     const characterTimers = resolveCharacterTimersConfig(live);
-    if (!live['notify-timer-enabled'] || !characterTimers.enabled || !characterTimers.resetNotifyEnabled) {
+    if (
+      !live['notify-timer-enabled'] ||
+      !characterTimers.enabled ||
+      !characterTimers.resetNotifyEnabled
+    ) {
       return { ok: true, sent: 0, skipped: 0, duplicate: false };
     }
     const resetGate = evaluateGuildModuleGate({
@@ -204,13 +208,13 @@ export class NotifyController {
     const recipients = isCharacterTimerPath
       ? (payload.recipientDiscordUserIds ?? [])
       : (payload.recipientDiscordUserIds ??
-          (payload.mapKey && payload.channel !== undefined
-            ? listTimerRoomWatchersExcept({
-                mapKey: payload.mapKey,
-                channel: payload.channel,
-                exceptDiscordUserId: payload.actorDiscordUserId,
-              })
-            : []));
+        (payload.mapKey && payload.channel !== undefined
+          ? listTimerRoomWatchersExcept({
+              mapKey: payload.mapKey,
+              channel: payload.channel,
+              exceptDiscordUserId: payload.actorDiscordUserId,
+            })
+          : []));
 
     // Legacy map rooms only — never register character EQ timers as map watchers.
     if (payload.mapKey && payload.channel !== undefined) {
@@ -228,9 +232,7 @@ export class NotifyController {
     const gateway = this.assertGatewayReady();
     let sent = 0;
     let skipped = 0;
-    const wantButtons = isCharacterTimerPath
-      ? true
-      : live['notify-timer-dm-action-buttons'];
+    const wantButtons = isCharacterTimerPath ? true : live['notify-timer-dm-action-buttons'];
 
     for (const discordUserId of recipients) {
       const single: TimerNotifyPayload = {

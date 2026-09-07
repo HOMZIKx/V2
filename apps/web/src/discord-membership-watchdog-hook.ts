@@ -2,12 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
-import { usePlayerStore } from './player-store-react';
+import { MEMBERSHIP_CHECK_MS, shouldRevokeAppAccess } from './discord-membership-watchdog';
 import { isDiscordAuthSimulateEnabled } from './identity-auth-client';
-import {
-  MEMBERSHIP_CHECK_MS,
-  shouldRevokeAppAccess,
-} from './discord-membership-watchdog';
+import { usePlayerStore } from './player-store-react';
 
 /**
  * Periodically + on window focus: revoke local session when Identity is gone

@@ -5,10 +5,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { defaultBotConfigValues } from './capabilities.js';
-import {
-  RollbackUnavailableError,
-  VersionedConfigStore,
-} from './versioned-config-store.js';
+import { RollbackUnavailableError, VersionedConfigStore } from './versioned-config-store.js';
 
 describe('VersionedConfigStore', () => {
   const dirs: string[] = [];

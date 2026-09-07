@@ -10,12 +10,7 @@
 export const RECURRING_STORAGE_KEY = 'technik.recurring.v2';
 export const RECURRING_STORAGE_KEY_LEGACY = 'technik.recurring.v1';
 
-export type ReactionRole =
-  | 'decorative'
-  | 'rsvp_yes'
-  | 'rsvp_no'
-  | 'rsvp_maybe'
-  | 'count';
+export type ReactionRole = 'decorative' | 'rsvp_yes' | 'rsvp_no' | 'rsvp_maybe' | 'count';
 
 export type SeedReaction = {
   emoji: string;
@@ -160,10 +155,8 @@ function normalizeReactions(raw: unknown): SeedReaction[] {
 }
 
 function normalizeSchedule(raw: unknown, legacy?: Record<string, unknown>): RecurringSchedule {
-  const s =
-    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : (legacy ?? {});
-  const mode =
-    s.mode === 'daily' || s.mode === 'weekly' || s.mode === 'days' ? s.mode : 'weekly';
+  const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : (legacy ?? {});
+  const mode = s.mode === 'daily' || s.mode === 'weekly' || s.mode === 'days' ? s.mode : 'weekly';
   const days = Array.isArray(s.daysOfWeek)
     ? s.daysOfWeek.map(Number).filter((n) => n >= 0 && n <= 6)
     : [...DEFAULT_SCHEDULE.daysOfWeek];
@@ -179,9 +172,7 @@ function normalizeSchedule(raw: unknown, legacy?: Record<string, unknown>): Recu
 function normalizeRules(raw: unknown): RecurringRules {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const closeAt: CloseAt =
-    r.closeAt === 'at_start' || r.closeAt === 'manual' || r.closeAt === 'none'
-      ? r.closeAt
-      : 'none';
+    r.closeAt === 'at_start' || r.closeAt === 'manual' || r.closeAt === 'none' ? r.closeAt : 'none';
   const whoCanReact: WhoCanReact = r.whoCanReact === 'roles' ? 'roles' : 'everyone';
   const roleIds = Array.isArray(r.roleIds)
     ? r.roleIds.map(String).filter((id) => /^\d{17,20}$/.test(id))
@@ -201,9 +192,7 @@ export function normalizeRecurringDraft(raw: unknown): RecurringLocalDraft {
   const schedule = normalizeSchedule(p.schedule, p);
   const seedReactions = normalizeReactions(p.seedReactions);
   const reactionsEnabled =
-    typeof p.reactionsEnabled === 'boolean'
-      ? p.reactionsEnabled
-      : seedReactions.length > 0;
+    typeof p.reactionsEnabled === 'boolean' ? p.reactionsEnabled : seedReactions.length > 0;
   return {
     enabled: asBool(p.enabled, false),
     title: asString(p.title).slice(0, 100),
@@ -293,9 +282,7 @@ export function scheduleSummary(schedule: RecurringSchedule, enabled: boolean): 
 }
 
 /** Reactions that feed a count / RSVP number in the post body. */
-export function countableReactions(
-  draft: RecurringLocalDraft,
-): readonly SeedReaction[] {
+export function countableReactions(draft: RecurringLocalDraft): readonly SeedReaction[] {
   if (!draft.reactionsEnabled) return [];
   return draft.seedReactions.filter(
     (r) =>
@@ -326,16 +313,11 @@ export const SAMPLE_DUNGEON_CONTENT =
   'Start według harmonogramu. Limit miejsc ustawisz w regułach (gdy włączysz zapis).';
 
 /** Reactions with RSVP tak/nie/może roles (for warnings / insert buttons). */
-export function rsvpRoleReactions(
-  draft: RecurringLocalDraft,
-): readonly SeedReaction[] {
+export function rsvpRoleReactions(draft: RecurringLocalDraft): readonly SeedReaction[] {
   if (!draft.reactionsEnabled) return [];
   return draft.seedReactions.filter(
     (r) =>
-      r.emoji.trim() &&
-      (r.role === 'rsvp_yes' ||
-        r.role === 'rsvp_no' ||
-        r.role === 'rsvp_maybe'),
+      r.emoji.trim() && (r.role === 'rsvp_yes' || r.role === 'rsvp_no' || r.role === 'rsvp_maybe'),
   );
 }
 

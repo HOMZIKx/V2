@@ -44,7 +44,10 @@ export type DiscordClientLifecycleDeps = {
   getRuntimeAllowedGuildIds?: () => readonly string[];
   memberActivityCollector?: {
     handleMessageCreate(message: import('discord.js').Message): void;
-    handleVoiceStateUpdate(before: import('discord.js').VoiceState, after: import('discord.js').VoiceState): void;
+    handleVoiceStateUpdate(
+      before: import('discord.js').VoiceState,
+      after: import('discord.js').VoiceState,
+    ): void;
     flushAllOpenSessions(): void;
   } | null;
 };
@@ -76,7 +79,6 @@ const SYNC_INTENTS = [
   GatewayIntentBits.GuildMessages,
   GatewayIntentBits.GuildVoiceStates,
 ] as const;
-
 
 /** Discord REST/API: Cannot send messages to this user (DMs closed / no shared guild). */
 export function isDiscordDmClosedError(error: unknown): boolean {
@@ -209,7 +211,6 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     };
   }
 
-
   /** REST/cache merge so Technika lists every joined guild (not only TEST). */
   private joinedGuildRestCache: Array<{
     id: string;
@@ -246,7 +247,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   public async refreshJoinedGuildDirectory(
     extraGuildIds: readonly string[] = [],
   ): Promise<
-    ReadonlyArray<{ readonly id: string; readonly name: string; readonly memberCount: number | null }>
+    ReadonlyArray<{
+      readonly id: string;
+      readonly name: string;
+      readonly memberCount: number | null;
+    }>
   > {
     const byId = new Map<string, { id: string; name: string; memberCount: number | null }>();
     for (const guild of this.client.guilds.cache.values()) {
@@ -283,7 +288,11 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
           name?: string;
           approximate_member_count?: number;
         };
-        if (typeof record.id === 'string' && typeof record.name === 'string' && record.name.trim()) {
+        if (
+          typeof record.id === 'string' &&
+          typeof record.name === 'string' &&
+          record.name.trim()
+        ) {
           byId.set(record.id, {
             id: record.id,
             name: record.name,
@@ -358,7 +367,6 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return result.map((command) => ({ id: command.id, name: command.name }));
   }
 
-
   public async sendTimerNotify(input: {
     readonly discordUserId: string;
     readonly discordChannelId?: string;
@@ -367,9 +375,7 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
   }): Promise<{ readonly delivery: 'dm' | 'channel'; readonly messageId: string }> {
     const messageOptions: MessageCreateOptions = {
       content: input.content,
-      ...(input.components && input.components.length > 0
-        ? { components: input.components }
-        : {}),
+      ...(input.components && input.components.length > 0 ? { components: input.components } : {}),
     };
 
     if (input.discordChannelId) {
@@ -451,7 +457,6 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     return out.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-
   /** Technika: list guild roles (read-only; no prod publish hard-stop). */
   public async listGuildRoles(
     guildId: string,
@@ -481,7 +486,13 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
       throw new Error('Channel missing or not a guild text channel.');
     }
     const guildChannel = channel as GuildBasedChannel & {
-      messages: { fetch(options: { limit: number }): Promise<Map<string, { id: string; author: { id: string }; flags: { bitfield: number } }>> };
+      messages: {
+        fetch(options: {
+          limit: number;
+        }): Promise<
+          Map<string, { id: string; author: { id: string }; flags: { bitfield: number } }>
+        >;
+      };
       guildId: string;
     };
     if (guildChannel.guildId !== guildId) {
@@ -768,11 +779,14 @@ export class DiscordJsGatewayAdapter implements GatewayClientPort, GatewayRestPo
     // Never leave foreign guilds â€” Technika must list Destiled / Sojusz / TEST.
     // Strict isolation only gates runtime sync/actions below.
     if (!this.isAllowedGuild(guild.id)) {
-      this.deps.logger.warn('Joined guild outside runtime allowlist (kept for Technika discovery)', {
-        guildId: guild.id,
-        guildName: guild.name,
-        source: 'guildCreate',
-      });
+      this.deps.logger.warn(
+        'Joined guild outside runtime allowlist (kept for Technika discovery)',
+        {
+          guildId: guild.id,
+          guildName: guild.name,
+          source: 'guildCreate',
+        },
+      );
       void this.refreshJoinedGuildDirectory();
       return;
     }
@@ -1070,4 +1084,3 @@ export function assertAllowedGatewayIntents(
 export function assertOnlyGuildsIntent(intents: readonly number[]): void {
   assertAllowedGatewayIntents(intents, false);
 }
-

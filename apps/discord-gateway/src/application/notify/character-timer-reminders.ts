@@ -151,7 +151,9 @@ export function scheduleCharacterTimerReminder(
     readonly delayMs: number;
   },
   deps: CharacterTimerReminderDeps,
-): { readonly ok: true; readonly fireAtMs: number } | { readonly ok: false; readonly reason: string } {
+):
+  | { readonly ok: true; readonly fireAtMs: number }
+  | { readonly ok: false; readonly reason: string } {
   sendDeps = deps;
   loadFromDisk();
   const delayMs = Math.max(5_000, Math.min(24 * 3_600_000, Math.round(input.delayMs)));

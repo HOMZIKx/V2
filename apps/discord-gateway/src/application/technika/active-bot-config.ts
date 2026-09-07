@@ -1,7 +1,4 @@
-import {
-  defaultBotConfigValues,
-  type BotConfigValues,
-} from './capabilities.js';
+import { defaultBotConfigValues, type BotConfigValues } from './capabilities.js';
 import type { VersionedConfigStore } from './versioned-config-store.js';
 
 /** Resolve active Technika bot config (characterTimers.* / timersNotify alias / kingdomWar.*). */

@@ -50,8 +50,7 @@ function toDto(
   // Ignore placeholder "Guild-{snowflake}" values persisted by Kuzyn fallback.
   const liveName = discoveredName?.trim() || null;
   const storedRaw = config?.displayName?.trim() || null;
-  const storedName =
-    storedRaw && !/^Guild-\d{17,20}$/.test(storedRaw) ? storedRaw : null;
+  const storedName = storedRaw && !/^Guild-\d{17,20}$/.test(storedRaw) ? storedRaw : null;
   const name = liveName || storedName || undefined;
   return {
     id: guildId,
@@ -133,8 +132,7 @@ export class TechnikaGuildsController {
       return toDto(guildId, config, meta?.name ?? null, source);
     });
 
-    const botReady =
-      this.gateway !== null && this.gateway.getSnapshot().state === 'ready';
+    const botReady = this.gateway !== null && this.gateway.getSnapshot().state === 'ready';
 
     return {
       guilds,
@@ -179,8 +177,7 @@ export class TechnikaGuildsController {
       throw new BadRequestException({ ok: false, error: 'invalid_guild_id' });
     }
 
-    const base =
-      this.store.getDraftSnapshot()?.config ?? this.store.getActiveSnapshot().config;
+    const base = this.store.getDraftSnapshot()?.config ?? this.store.getActiveSnapshot().config;
     const normalized = bodyToGuildConfig(body);
     const validated = upsertGuildInConfig(base, guildId, normalized);
     if (!validated.ok) {
@@ -224,9 +221,7 @@ export class TechnikaGuildsController {
   private async refreshDiscovery(extraGuildIds: readonly string[] = []): Promise<void> {
     const gateway = this.gateway as
       | (DiscordJsGatewayAdapter & {
-          refreshJoinedGuildDirectory?: (
-            extraGuildIds?: readonly string[],
-          ) => Promise<unknown>;
+          refreshJoinedGuildDirectory?: (extraGuildIds?: readonly string[]) => Promise<unknown>;
         })
       | null;
     if (gateway && typeof gateway.refreshJoinedGuildDirectory === 'function') {
@@ -238,10 +233,7 @@ export class TechnikaGuildsController {
     }
   }
 
-  private discoverJoinedGuilds(): Map<
-    string,
-    { name: string; memberCount: number | null }
-  > {
+  private discoverJoinedGuilds(): Map<string, { name: string; memberCount: number | null }> {
     const map = new Map<string, { name: string; memberCount: number | null }>();
     const gateway = this.gateway as
       | (DiscordJsGatewayAdapter & {

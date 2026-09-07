@@ -61,15 +61,15 @@ export function TechnikTimersPage() {
       <h1>Timery postaci (PW)</h1>
       <p className="technik-lead">
         Prywatne przypomnienia o timerach z karty postaci (EQ/Timer): Księga, Kamień Duchowy,
-        Dowodzenie, Polimorfia, Górnictwo, Jazda konna. <strong>To nie metiny na mapie</strong> — bez
-        Zbite/Odłóż.
+        Dowodzenie, Polimorfia, Górnictwo, Jazda konna. <strong>To nie metiny na mapie</strong> —
+        bez Zbite/Odłóż.
       </p>
 
       <PageJobNote>
         <p>
-          Tu ustawiasz: czy bot wysyła PW o timerach postaci, treść szablonu i testową PW. Placeholdery
-          w szablonie biorą dane z <strong>prawdziwej karty timera</strong> (nazwa postaci, etykieta,
-          koniec) — New Bot uzupełnia je z żywego stanu.
+          Tu ustawiasz: czy bot wysyła PW o timerach postaci, treść szablonu i testową PW.
+          Placeholdery w szablonie biorą dane z <strong>prawdziwej karty timera</strong> (nazwa
+          postaci, etykieta, koniec) — New Bot uzupełnia je z żywego stanu.
         </p>
       </PageJobNote>
       <PlayerSeesNote>

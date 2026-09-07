@@ -47,8 +47,7 @@ export function isPermanentTechnikOperator(discordUserId: string): boolean {
 export function resolveViewerDiscordId(viewer: unknown): string {
   if (!viewer || typeof viewer !== 'object') return '';
   const v = viewer as Record<string, unknown>;
-  const fromAccount =
-    typeof v.discordAccountId === 'string' ? v.discordAccountId.trim() : '';
+  const fromAccount = typeof v.discordAccountId === 'string' ? v.discordAccountId.trim() : '';
   if (SNOWFLAKE.test(fromAccount)) return fromAccount;
   const fromId = typeof v.id === 'string' ? v.id.trim() : '';
   if (SNOWFLAKE.test(fromId)) return fromId;
@@ -84,10 +83,7 @@ export function readTechnikAccessFromConfig(
       : null;
   // Fallback: legacy nested under memberActivity
   const nested =
-    !raw &&
-    cfg &&
-    typeof cfg.memberActivity === 'object' &&
-    cfg.memberActivity
+    !raw && cfg && typeof cfg.memberActivity === 'object' && cfg.memberActivity
       ? (cfg.memberActivity as Record<string, unknown>)
       : null;
   const src = raw ?? nested;

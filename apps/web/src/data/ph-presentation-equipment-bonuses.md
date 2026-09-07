@@ -30,19 +30,19 @@ Verbatim rules/change list:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Wooden Earrings+9 | 12 | Dexterity: +10 | Warrior, Ninja, Sura, Shaman |
-| Golden Earrings+9 | 12 | Intelligence: +10 | Warrior, Ninja, Sura, Shaman |
-| Silver Earrings+9 | 12 | Vitality: +10 | Warrior, Ninja, Sura, Shaman |
-| Copper Earrings+9 | 12 | Strength: +10 | Warrior, Ninja, Sura, Shaman |
-| Jade Earrings+9 | 33 | Dexterity: +12; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| Ebony Earrings+9 | 33 | Strength: +12; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| Pearl Earrings+9 | 33 | Vitality: +12; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| White Gold Earrings+9 | 33 | Intelligence: +12; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| Crystal Earrings+9 | 54 | Dexterity: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| Amethyst Earrings+9 | 54 | Strength: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
-| Heaven`s Tear Earrings+9 | 54 | Intelligence: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
+| Item                     | Required level | Bonuses                                                                       | Wearable                     |
+| ------------------------ | -------------: | ----------------------------------------------------------------------------- | ---------------------------- |
+| Wooden Earrings+9        |             12 | Dexterity: +10                                                                | Warrior, Ninja, Sura, Shaman |
+| Golden Earrings+9        |             12 | Intelligence: +10                                                             | Warrior, Ninja, Sura, Shaman |
+| Silver Earrings+9        |             12 | Vitality: +10                                                                 | Warrior, Ninja, Sura, Shaman |
+| Copper Earrings+9        |             12 | Strength: +10                                                                 | Warrior, Ninja, Sura, Shaman |
+| Jade Earrings+9          |             33 | Dexterity: +12; Max HP: +1650                                                 | Warrior, Ninja, Sura, Shaman |
+| Ebony Earrings+9         |             33 | Strength: +12; Max HP: +1650                                                  | Warrior, Ninja, Sura, Shaman |
+| Pearl Earrings+9         |             33 | Vitality: +12; Max HP: +1650                                                  | Warrior, Ninja, Sura, Shaman |
+| White Gold Earrings+9    |             33 | Intelligence: +12; Max HP: +1650                                              | Warrior, Ninja, Sura, Shaman |
+| Crystal Earrings+9       |             54 | Dexterity: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650    | Warrior, Ninja, Sura, Shaman |
+| Amethyst Earrings+9      |             54 | Strength: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650     | Warrior, Ninja, Sura, Shaman |
+| Heaven`s Tear Earrings+9 |             54 | Intelligence: +14; Critical Hit Chance: +5%; Attack Value: +30; Max HP: +1650 | Warrior, Ninja, Sura, Shaman |
 
 ### Necklaces
 
@@ -54,15 +54,15 @@ Verbatim rules/change list:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Jade Necklace+9 | 42 | Casting Speed: +22%; Dexterity: +4 | Warrior, Ninja, Sura, Shaman |
-| Ebony Necklace+9 | 42 | Casting Speed: +22%; Vitality: +4 | Warrior, Ninja, Sura, Shaman |
-| Pearl Necklace+9 | 42 | Casting Speed: +22%; Intelligence: +4 | Warrior, Ninja, Sura, Shaman |
-| White Gold Necklace+9 | 42 | Casting Speed: +22%; Strength: +4 | Warrior, Ninja, Sura, Shaman |
-| Crystal Necklace+9 | 54 | Casting Speed: +24%; Stun Chance: 8% | Warrior, Ninja, Sura, Shaman |
-| Amethyst Necklace+9 | 54 | Casting Speed: +24%; Critical Hit Chance: +10% | Warrior, Ninja, Sura, Shaman |
-| Heaven`s Tear Necklace+9 | 54 | Casting Speed: +24%; Penetrating Hit Chance: 20% | Warrior, Ninja, Sura, Shaman |
+| Item                     | Required level | Bonuses                                          | Wearable                     |
+| ------------------------ | -------------: | ------------------------------------------------ | ---------------------------- |
+| Jade Necklace+9          |             42 | Casting Speed: +22%; Dexterity: +4               | Warrior, Ninja, Sura, Shaman |
+| Ebony Necklace+9         |             42 | Casting Speed: +22%; Vitality: +4                | Warrior, Ninja, Sura, Shaman |
+| Pearl Necklace+9         |             42 | Casting Speed: +22%; Intelligence: +4            | Warrior, Ninja, Sura, Shaman |
+| White Gold Necklace+9    |             42 | Casting Speed: +22%; Strength: +4                | Warrior, Ninja, Sura, Shaman |
+| Crystal Necklace+9       |             54 | Casting Speed: +24%; Stun Chance: 8%             | Warrior, Ninja, Sura, Shaman |
+| Amethyst Necklace+9      |             54 | Casting Speed: +24%; Critical Hit Chance: +10%   | Warrior, Ninja, Sura, Shaman |
+| Heaven`s Tear Necklace+9 |             54 | Casting Speed: +24%; Penetrating Hit Chance: 20% | Warrior, Ninja, Sura, Shaman |
 
 ### Bracelets
 
@@ -77,18 +77,18 @@ Verbatim rules/change list:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Wooden Bracelet+9 | 0 | Attack Speed: +5%; Skill Duration: +20 s | Warrior, Ninja, Sura, Shaman |
-| Copper Bracelet+9 | 8 | Attack Speed: +5%; 5% of damage added to SP | Warrior, Ninja, Sura, Shaman |
-| Gold Bracelet+9 | 22 | Attack Speed: +5%; Poison Chance: 7% | Warrior, Ninja, Sura, Shaman |
-| Jade Bracelet+9 | 28 | Attack Speed: +7%; 7% of damage added to HP | Warrior, Ninja, Sura, Shaman |
-| Ebony Bracelet+9 | 42 | Attack Speed: +7%; HP Recovery Chance on Kill: 5% | Warrior, Ninja, Sura, Shaman |
-| Pearl Bracelet+9 | 42 | Attack Speed: +7%; Penetrating Hit Chance: 7% | Warrior, Ninja, Sura, Shaman |
-| White Gold Bracelet+9 | 42 | Attack Speed: +7%; Max HP: +1800 | Warrior, Ninja, Sura, Shaman |
-| Crystal Bracelet+9 | 54 | Attack Speed: +10%; Chance for Double Yang: 7% | Warrior, Ninja, Sura, Shaman |
-| Amethyst Bracelet+9 | 54 | Attack Speed: +10%; Stun Chance: 5% | Warrior, Ninja, Sura, Shaman |
-| Heaven`s Tear Bracelet+9 | 54 | Attack Speed: +10%; Critical Hit Chance: +10% | Warrior, Ninja, Sura, Shaman |
+| Item                     | Required level | Bonuses                                           | Wearable                     |
+| ------------------------ | -------------: | ------------------------------------------------- | ---------------------------- |
+| Wooden Bracelet+9        |              0 | Attack Speed: +5%; Skill Duration: +20 s          | Warrior, Ninja, Sura, Shaman |
+| Copper Bracelet+9        |              8 | Attack Speed: +5%; 5% of damage added to SP       | Warrior, Ninja, Sura, Shaman |
+| Gold Bracelet+9          |             22 | Attack Speed: +5%; Poison Chance: 7%              | Warrior, Ninja, Sura, Shaman |
+| Jade Bracelet+9          |             28 | Attack Speed: +7%; 7% of damage added to HP       | Warrior, Ninja, Sura, Shaman |
+| Ebony Bracelet+9         |             42 | Attack Speed: +7%; HP Recovery Chance on Kill: 5% | Warrior, Ninja, Sura, Shaman |
+| Pearl Bracelet+9         |             42 | Attack Speed: +7%; Penetrating Hit Chance: 7%     | Warrior, Ninja, Sura, Shaman |
+| White Gold Bracelet+9    |             42 | Attack Speed: +7%; Max HP: +1800                  | Warrior, Ninja, Sura, Shaman |
+| Crystal Bracelet+9       |             54 | Attack Speed: +10%; Chance for Double Yang: 7%    | Warrior, Ninja, Sura, Shaman |
+| Amethyst Bracelet+9      |             54 | Attack Speed: +10%; Stun Chance: 5%               | Warrior, Ninja, Sura, Shaman |
+| Heaven`s Tear Bracelet+9 |             54 | Attack Speed: +10%; Critical Hit Chance: +10%     | Warrior, Ninja, Sura, Shaman |
 
 ### Boots
 
@@ -104,16 +104,16 @@ Verbatim rules/change list:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Leather Boots+9 | 29 | Defense: 3; Movement Speed: 20%; Resistance to Arrows: 20% | Warrior, Ninja, Sura, Shaman |
-| Golden Shoes+9 | 29 | Defense: 3; Movement Speed: 20%; Max HP: +1200 | Warrior, Ninja, Sura, Shaman |
-| Bronze Boots+9 | 29 | Defense: 3; Movement Speed: 20%; Defense: +45 | Warrior, Ninja, Sura, Shaman |
-| Jade Shoes+9 | 29 | Defense: 3; Movement Speed: 20%; Skill Duration: +45 s | Warrior, Ninja, Sura, Shaman |
-| Ecstasy Shoes+9 | 55 | Defense: 8; Movement Speed: 25%; Casting Speed: +16% | Warrior, Ninja, Sura, Shaman |
-| Nimbus Boots+9 | 55 | Defense: 8; Movement Speed: 25%; Arrow Evasion Chance: 16% | Warrior, Ninja, Sura, Shaman |
-| Phoenix Shoes+9 | 55 | Defense: 8; Movement Speed: 25%; Block Chance: 10% | Warrior, Ninja, Sura, Shaman |
-| Fire Bird Shoes+9 | 55 | Defense: 8; Movement Speed: 25%; Max HP: +2400 | Warrior, Ninja, Sura, Shaman |
+| Item              | Required level | Bonuses                                                    | Wearable                     |
+| ----------------- | -------------: | ---------------------------------------------------------- | ---------------------------- |
+| Leather Boots+9   |             29 | Defense: 3; Movement Speed: 20%; Resistance to Arrows: 20% | Warrior, Ninja, Sura, Shaman |
+| Golden Shoes+9    |             29 | Defense: 3; Movement Speed: 20%; Max HP: +1200             | Warrior, Ninja, Sura, Shaman |
+| Bronze Boots+9    |             29 | Defense: 3; Movement Speed: 20%; Defense: +45              | Warrior, Ninja, Sura, Shaman |
+| Jade Shoes+9      |             29 | Defense: 3; Movement Speed: 20%; Skill Duration: +45 s     | Warrior, Ninja, Sura, Shaman |
+| Ecstasy Shoes+9   |             55 | Defense: 8; Movement Speed: 25%; Casting Speed: +16%       | Warrior, Ninja, Sura, Shaman |
+| Nimbus Boots+9    |             55 | Defense: 8; Movement Speed: 25%; Arrow Evasion Chance: 16% | Warrior, Ninja, Sura, Shaman |
+| Phoenix Shoes+9   |             55 | Defense: 8; Movement Speed: 25%; Block Chance: 10%         | Warrior, Ninja, Sura, Shaman |
+| Fire Bird Shoes+9 |             55 | Defense: 8; Movement Speed: 25%; Max HP: +2400             | Warrior, Ninja, Sura, Shaman |
 
 ### Helmets
 
@@ -124,12 +124,12 @@ Verbatim rules/change list:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Ghost Mask Sallet+9 | 41 | Defense: 93; Block Chance: 5% | Warrior |
-| Steel Hood+9 | 41 | Defense: 93; Block Chance: 5% | Ninja |
-| Castle Helmet+9 | 41 | Defense: 93; Block Chance: 5% | Sura |
-| Sunlight Cap+9 | 41 | Defense: 93; Block Chance: 5% | Shaman |
+| Item                | Required level | Bonuses                       | Wearable |
+| ------------------- | -------------: | ----------------------------- | -------- |
+| Ghost Mask Sallet+9 |             41 | Defense: 93; Block Chance: 5% | Warrior  |
+| Steel Hood+9        |             41 | Defense: 93; Block Chance: 5% | Ninja    |
+| Castle Helmet+9     |             41 | Defense: 93; Block Chance: 5% | Sura     |
+| Sunlight Cap+9      |             41 | Defense: 93; Block Chance: 5% | Shaman   |
 
 ## 2. High-Level Equipment
 
@@ -152,13 +152,13 @@ The presentation says:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Soul Crystal Necklace+9 | 85 | Resistance to Lightning: +10%; Penetrating Hit Chance: 20%; HP Recovery Chance on Kill: 8%; Strong against Setaou: +10%; Casting Speed: +24% | Warrior, Ninja, Sura, Shaman |
-| Soul Crystal Bracelet+9 | 85 | Attack Speed: +10%; Critical Hit Chance: +10%; Strong against Setaou: +10% | Warrior, Ninja, Sura, Shaman |
-| Soul Crystal Earring+9 (STR) | 85 | Critical Hit Chance: +5%; Strength: +14; Max HP: +1650; Strong against Setaou: +10% | Warrior, Ninja, Sura, Shaman |
-| Soul Crystal Earring+9 (INT) | 85 | Critical Hit Chance: +5%; Intelligence: +14; Max HP: +1650; Strong against Setaou: +10% | Warrior, Ninja, Sura, Shaman |
-| Soul Crystal Earring+9 (DEX) | 85 | Critical Hit Chance: +5%; Dexterity: +14; Max HP: +1650; Strong against Setaou: +10% | Warrior, Ninja, Sura, Shaman |
+| Item                         | Required level | Bonuses                                                                                                                                      | Wearable                     |
+| ---------------------------- | -------------: | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Soul Crystal Necklace+9      |             85 | Resistance to Lightning: +10%; Penetrating Hit Chance: 20%; HP Recovery Chance on Kill: 8%; Strong against Setaou: +10%; Casting Speed: +24% | Warrior, Ninja, Sura, Shaman |
+| Soul Crystal Bracelet+9      |             85 | Attack Speed: +10%; Critical Hit Chance: +10%; Strong against Setaou: +10%                                                                   | Warrior, Ninja, Sura, Shaman |
+| Soul Crystal Earring+9 (STR) |             85 | Critical Hit Chance: +5%; Strength: +14; Max HP: +1650; Strong against Setaou: +10%                                                          | Warrior, Ninja, Sura, Shaman |
+| Soul Crystal Earring+9 (INT) |             85 | Critical Hit Chance: +5%; Intelligence: +14; Max HP: +1650; Strong against Setaou: +10%                                                      | Warrior, Ninja, Sura, Shaman |
+| Soul Crystal Earring+9 (DEX) |             85 | Critical Hit Chance: +5%; Dexterity: +14; Max HP: +1650; Strong against Setaou: +10%                                                         | Warrior, Ninja, Sura, Shaman |
 
 ### Titan Shield — level 81
 
@@ -170,9 +170,9 @@ Verbatim description:
 >
 > Source: Azrael Chest, Strong Ice Witch
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Titans Shield+9 | 81 | Defense: 161; Movement Speed: -6%; Resistance to Boss Skills: 10%; Strong against Setaou: +10%; Resistance to Classes: +20% | Warrior, Ninja, Sura, Shaman |
+| Item            | Required level | Bonuses                                                                                                                     | Wearable                     |
+| --------------- | -------------: | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Titans Shield+9 |             81 | Defense: 161; Movement Speed: -6%; Resistance to Boss Skills: 10%; Strong against Setaou: +10%; Resistance to Classes: +20% | Warrior, Ninja, Sura, Shaman |
 
 ### Helmets — levels 80 / 95
 
@@ -186,16 +186,16 @@ Verbatim description:
 > Level 80 helmets - Dead Ripper Chest
 > Level 95 helmets - Beran-Setaou Chest
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| War Master Helmet+9 | 80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10% | Warrior |
-| Spider Hood+9 | 80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10% | Ninja |
-| Magic Helmet+9 | 80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10% | Sura |
-| Soul Shard Hat+9 | 80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10% | Shaman |
-| Dragon Steel Helm+9 | 95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Warrior |
-| Dragon Hood+9 | 95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Ninja |
-| Dragonscale Helm+9 | 95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Sura |
-| Dragon Hat+9 | 95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Shaman |
+| Item                | Required level | Bonuses                                                                                   | Wearable |
+| ------------------- | -------------: | ----------------------------------------------------------------------------------------- | -------- |
+| War Master Helmet+9 |             80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10%                                | Warrior  |
+| Spider Hood+9       |             80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10%                                | Ninja    |
+| Magic Helmet+9      |             80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10%                                | Sura     |
+| Soul Shard Hat+9    |             80 | Defense: 97; Block Chance: 5%; Strong against Setaou: +10%                                | Shaman   |
+| Dragon Steel Helm+9 |             95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Warrior  |
+| Dragon Hood+9       |             95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Ninja    |
+| Dragonscale Helm+9  |             95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Sura     |
+| Dragon Hat+9        |             95 | Defense: 101; Block Chance: 8%; Strong against Monsters: +8%; Strong against Humans: +10% | Shaman   |
 
 ### Boots — 85+
 
@@ -207,10 +207,10 @@ Verbatim description:
 > Required Key Upgrade Item: Gloria/Qilin Recipe
 > Recipe Origin: Beran Setaou`s Box
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Qilin Shoes+9 | 94 | Defense: 8; Movement Speed: 25%; Block Chance: 20%; Resistance to Lightning: +10% | Warrior, Ninja, Sura, Shaman |
-| Glory Boots+9 | 94 | Defense: 8; Movement Speed: 25%; Strong against Classes: +15; Resistance to Lightning: +10% | Warrior, Ninja, Sura, Shaman |
+| Item          | Required level | Bonuses                                                                                     | Wearable                     |
+| ------------- | -------------: | ------------------------------------------------------------------------------------------- | ---------------------------- |
+| Qilin Shoes+9 |             94 | Defense: 8; Movement Speed: 25%; Block Chance: 20%; Resistance to Lightning: +10%           | Warrior, Ninja, Sura, Shaman |
+| Glory Boots+9 |             94 | Defense: 8; Movement Speed: 25%; Strong against Classes: +15; Resistance to Lightning: +10% | Warrior, Ninja, Sura, Shaman |
 
 ### Setaou armors
 
@@ -222,12 +222,12 @@ Verbatim description:
 > Required Key Upgrade Item: Setaou Soul
 > Setaou Soul source: Beran-Setaou Chest, Strong Ice Witch
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Setaou Armor+9 | 85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Warrior |
-| Setaou Suit+9 | 85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Ninja |
-| Setaou Plate Armor+9 | 85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Sura |
-| Setaou Clothing+9 | 85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Shaman |
+| Item                 | Required level | Bonuses                                                                                                                 | Wearable |
+| -------------------- | -------------: | ----------------------------------------------------------------------------------------------------------------------- | -------- |
+| Setaou Armor+9       |             85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Warrior  |
+| Setaou Suit+9        |             85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Ninja    |
+| Setaou Plate Armor+9 |             85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Sura     |
+| Setaou Clothing+9    |             85 | Defense: 244; Movement Speed: -4%; Resistance to Magic: 20%; Strong against Setaou: +10%; Strong against Monsters: +10% | Shaman   |
 
 ### A new life for level 70 weapons
 
@@ -241,14 +241,14 @@ Verbatim description:
 
 Item rows shown (`+9`):
 
-| Item | Required level | Bonuses | Wearable |
-|---|---:|---|---|
-| Sting Sword+9 | 85 | Attack Value 237 - 277; Magic Attack Value 155 - 177; Attack Speed: +15%; Strong against Humans: +20% | Warrior, Ninja, Sura |
-| Demon Blade+9 | 85 | Attack Value 142 - 204; Magic Attack Value 227 - 247; Attack Speed: +15%; Strong against Humans: +20% | Sura |
-| Soul Stealing Blade+9 | 85 | Attack Value 263 - 331; Attack Speed: +25%; Strong against Humans: +20% | Warrior |
-| Siamese Knife+9 | 85 | Attack Value 211 - 223; Attack Speed: +15%; Strong against Humans: +20% | Ninja |
-| Blue Dragon Bow+9 | 85 | Attack Value 324 - 430; Attack Speed: +15%; Strong against Humans: +20% | Ninja |
-| Ecstasy Fan+9 | 85 | Attack Value 159 - 181; Magic Attack Value 205 - 225; Attack Speed: +15%; Strong against Humans: +20% | Shaman |
+| Item                  | Required level | Bonuses                                                                                               | Wearable             |
+| --------------------- | -------------: | ----------------------------------------------------------------------------------------------------- | -------------------- |
+| Sting Sword+9         |             85 | Attack Value 237 - 277; Magic Attack Value 155 - 177; Attack Speed: +15%; Strong against Humans: +20% | Warrior, Ninja, Sura |
+| Demon Blade+9         |             85 | Attack Value 142 - 204; Magic Attack Value 227 - 247; Attack Speed: +15%; Strong against Humans: +20% | Sura                 |
+| Soul Stealing Blade+9 |             85 | Attack Value 263 - 331; Attack Speed: +25%; Strong against Humans: +20%                               | Warrior              |
+| Siamese Knife+9       |             85 | Attack Value 211 - 223; Attack Speed: +15%; Strong against Humans: +20%                               | Ninja                |
+| Blue Dragon Bow+9     |             85 | Attack Value 324 - 430; Attack Speed: +15%; Strong against Humans: +20%                               | Ninja                |
+| Ecstasy Fan+9         |             85 | Attack Value 159 - 181; Magic Attack Value 205 - 225; Attack Speed: +15%; Strong against Humans: +20% | Shaman               |
 
 ## 3. Changes to weapons above level 25 — PvM values
 
@@ -280,22 +280,22 @@ Verbatim rule text:
 
 The presentation's item tooltips show the following exact values. `+0` through `+4` are separate enhancement variants (all are named in the page as `Stone of ... +N`).
 
-| Stone | +0 | +1 | +2 | +3 | +4 |
-|---|---|---|---|---|---|
-| Stone of Penetration | Penetrating Hit Chance: 1% | Penetrating Hit Chance: 2% | Penetrating Hit Chance: 3% | Penetrating Hit Chance: 5% | Penetrating Hit Chance: 8% |
-| Stone of Deathblow | Critical Hit Chance: +1% | Critical Hit Chance: +2% | Critical Hit Chance: +3% | Critical Hit Chance: +5% | Critical Hit Chance: +8% |
-| Stone of Cooldown | Casting Speed: +5% | Casting Speed: +8% | Casting Speed: +12% | Casting Speed: +17% | Casting Speed: +25% |
-| Stone of Warrior | Strong against Warriors: +3% | Strong against Warriors: +5% | Strong against Warriors: +8% | Strong against Warriors: +17% | Strong against Warriors: +25% |
-| Stone of Ninja | Strong against Ninjas: +3% | Strong against Ninjas: +5% | Strong against Ninjas: +8% | Strong against Ninjas: +17% | Strong against Ninjas: +25% |
-| Stone of Sura | Strong against Suras: +3% | Strong against Suras: +5% | Strong against Suras: +8% | Strong against Suras: +17% | Strong against Suras: +25% |
-| Stone of Shaman | Strong against Shamans: +3% | Strong against Shamans: +5% | Strong against Shamans: +8% | Strong against Shamans: +17% | Strong against Shamans: +25% |
-| Stone of Monster | Strong against Monsters: +1% | Strong against Monsters: +2% | Strong against Monsters: +3% | Strong against Monsters: +5% | Strong against Monsters: +8% |
-| Stone of Evasion | Block Chance: 1% | Block Chance: 2% | Block Chance: 3% | Block Chance: 5% | Block Chance: 8% |
-| Stone of Ducking | Arrow Evasion Chance: 1% | Arrow Evasion Chance: 2% | Arrow Evasion Chance: 3% | Arrow Evasion Chance: 5% | Arrow Evasion Chance: 8% |
-| Stone of Magic | 1% of damage added to SP | 2% of damage added to SP | 3% of damage added to SP | 5% of damage added to SP | 8% of damage added to SP |
-| Stone of Vitality | Max HP: +50 | Max HP: +100 | Max HP: +150 | Max HP: +500 | Max HP: +1000 |
-| Stone of Defense | Defense: +5 | Defense: +10 | Defense: +15 | Defense: +25 | Defense: +40 |
-| Stone of Haste | Movement Speed: 5% | Movement Speed: 10% | Movement Speed: 15% | Movement Speed: 20% | Movement Speed: 30% |
+| Stone                | +0                           | +1                           | +2                           | +3                            | +4                            |
+| -------------------- | ---------------------------- | ---------------------------- | ---------------------------- | ----------------------------- | ----------------------------- |
+| Stone of Penetration | Penetrating Hit Chance: 1%   | Penetrating Hit Chance: 2%   | Penetrating Hit Chance: 3%   | Penetrating Hit Chance: 5%    | Penetrating Hit Chance: 8%    |
+| Stone of Deathblow   | Critical Hit Chance: +1%     | Critical Hit Chance: +2%     | Critical Hit Chance: +3%     | Critical Hit Chance: +5%      | Critical Hit Chance: +8%      |
+| Stone of Cooldown    | Casting Speed: +5%           | Casting Speed: +8%           | Casting Speed: +12%          | Casting Speed: +17%           | Casting Speed: +25%           |
+| Stone of Warrior     | Strong against Warriors: +3% | Strong against Warriors: +5% | Strong against Warriors: +8% | Strong against Warriors: +17% | Strong against Warriors: +25% |
+| Stone of Ninja       | Strong against Ninjas: +3%   | Strong against Ninjas: +5%   | Strong against Ninjas: +8%   | Strong against Ninjas: +17%   | Strong against Ninjas: +25%   |
+| Stone of Sura        | Strong against Suras: +3%    | Strong against Suras: +5%    | Strong against Suras: +8%    | Strong against Suras: +17%    | Strong against Suras: +25%    |
+| Stone of Shaman      | Strong against Shamans: +3%  | Strong against Shamans: +5%  | Strong against Shamans: +8%  | Strong against Shamans: +17%  | Strong against Shamans: +25%  |
+| Stone of Monster     | Strong against Monsters: +1% | Strong against Monsters: +2% | Strong against Monsters: +3% | Strong against Monsters: +5%  | Strong against Monsters: +8%  |
+| Stone of Evasion     | Block Chance: 1%             | Block Chance: 2%             | Block Chance: 3%             | Block Chance: 5%              | Block Chance: 8%              |
+| Stone of Ducking     | Arrow Evasion Chance: 1%     | Arrow Evasion Chance: 2%     | Arrow Evasion Chance: 3%     | Arrow Evasion Chance: 5%      | Arrow Evasion Chance: 8%      |
+| Stone of Magic       | 1% of damage added to SP     | 2% of damage added to SP     | 3% of damage added to SP     | 5% of damage added to SP      | 8% of damage added to SP      |
+| Stone of Vitality    | Max HP: +50                  | Max HP: +100                 | Max HP: +150                 | Max HP: +500                  | Max HP: +1000                 |
+| Stone of Defense     | Defense: +5                  | Defense: +10                 | Defense: +15                 | Defense: +25                  | Defense: +40                  |
+| Stone of Haste       | Movement Speed: 5%           | Movement Speed: 10%          | Movement Speed: 15%          | Movement Speed: 20%           | Movement Speed: 30%           |
 
 ### Verbatim enhancement names
 
@@ -320,27 +320,27 @@ For completeness, the exact item-name pattern shown by the tooltips is:
 
 This is the requested old/new view where the slide gives enough information to state it exactly:
 
-| Item/rule | Old | New |
-|---|---|---|
-| Level 33 earrings | Prior bonus arrangement (the slide specifically says they did not all provide the now-standard stat + HP combination) | Each grants a character stat plus additional HP; rows show +12 stat and +1650 Max HP at +9 |
-| Amethyst Earrings | Vitality | Strength (+14 at +9); the slide says “Strength was added to Amethyst Earrings instead of Vitality” |
-| Crystal Necklace | Previous Crystal Necklace bonus (not numerically printed) | Stun Chance: 8% at +9; the slide says its bonus was changed |
-| Wooden Bracelet | Stamina bonus | Skill Duration: +20 s at +9 |
-| Copper Bracelet | Previous bonus (not numerically printed) | 5% of damage added to SP at +9 |
-| Jade Bracelet | Previous bonus (not numerically printed) | 7% of damage added to HP at +9 |
-| Pearl Bracelet | Previous bonus | Penetrating Hit Chance: 7% at +9 |
-| Amethyst Bracelet | Previous bonus | Stun Chance: 5% at +9 |
-| Level 29 boots | Base defense was not standardized | Base Defense: 3; equip level standardized to 29 |
-| Level 55 boots | Base defense 5 | Base Defense 8; equip level standardized to 55 |
-| Ecstasy Boots | Lower casting-speed bonus (exact old number not printed) | Casting Speed: +16% at +9 |
-| Rain Boots / Nimbus Boots | Lower arrow-evasion bonus (exact old number not printed) | Arrow Evasion Chance: 16% at +9 |
-| Boots below level 29 | Non-standard base defense | Base defense standardized to 1 point |
-| Level 41 helmets | Lower defense at +7/+8/+9; no level-60 drop bonus | At +9 the shown rows have Defense 93 and Block Chance 5%; the level-60 block bonus moved to level 41 helmets |
-| Level 70 weapons | Equip level 70 | Required level 85; built-in Strong against Humans rises with enhancement, up to +20% at +9 |
-| Weapons above level 25 | No stated dedicated PvM pair | Attack Value PvM and Magic Attack Value PvM added; values scale with later weapon level/base attack |
-| Magic Spirit Stone | Previous bonus | `% damage added to MP` per rule text; tooltips render this as “damage added to SP,” from 1% at +0 to 8% at +4 |
-| Vitality Spirit Stone | Lower HP ceiling | Max HP: +50/+100/+150/+500/+1000 at +0/+1/+2/+3/+4 |
-| Defense Spirit Stone | Lower defense values | Defense: +5/+10/+15/+25/+40 at +0/+1/+2/+3/+4 |
+| Item/rule                 | Old                                                                                                                   | New                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Level 33 earrings         | Prior bonus arrangement (the slide specifically says they did not all provide the now-standard stat + HP combination) | Each grants a character stat plus additional HP; rows show +12 stat and +1650 Max HP at +9                    |
+| Amethyst Earrings         | Vitality                                                                                                              | Strength (+14 at +9); the slide says “Strength was added to Amethyst Earrings instead of Vitality”            |
+| Crystal Necklace          | Previous Crystal Necklace bonus (not numerically printed)                                                             | Stun Chance: 8% at +9; the slide says its bonus was changed                                                   |
+| Wooden Bracelet           | Stamina bonus                                                                                                         | Skill Duration: +20 s at +9                                                                                   |
+| Copper Bracelet           | Previous bonus (not numerically printed)                                                                              | 5% of damage added to SP at +9                                                                                |
+| Jade Bracelet             | Previous bonus (not numerically printed)                                                                              | 7% of damage added to HP at +9                                                                                |
+| Pearl Bracelet            | Previous bonus                                                                                                        | Penetrating Hit Chance: 7% at +9                                                                              |
+| Amethyst Bracelet         | Previous bonus                                                                                                        | Stun Chance: 5% at +9                                                                                         |
+| Level 29 boots            | Base defense was not standardized                                                                                     | Base Defense: 3; equip level standardized to 29                                                               |
+| Level 55 boots            | Base defense 5                                                                                                        | Base Defense 8; equip level standardized to 55                                                                |
+| Ecstasy Boots             | Lower casting-speed bonus (exact old number not printed)                                                              | Casting Speed: +16% at +9                                                                                     |
+| Rain Boots / Nimbus Boots | Lower arrow-evasion bonus (exact old number not printed)                                                              | Arrow Evasion Chance: 16% at +9                                                                               |
+| Boots below level 29      | Non-standard base defense                                                                                             | Base defense standardized to 1 point                                                                          |
+| Level 41 helmets          | Lower defense at +7/+8/+9; no level-60 drop bonus                                                                     | At +9 the shown rows have Defense 93 and Block Chance 5%; the level-60 block bonus moved to level 41 helmets  |
+| Level 70 weapons          | Equip level 70                                                                                                        | Required level 85; built-in Strong against Humans rises with enhancement, up to +20% at +9                    |
+| Weapons above level 25    | No stated dedicated PvM pair                                                                                          | Attack Value PvM and Magic Attack Value PvM added; values scale with later weapon level/base attack           |
+| Magic Spirit Stone        | Previous bonus                                                                                                        | `% damage added to MP` per rule text; tooltips render this as “damage added to SP,” from 1% at +0 to 8% at +4 |
+| Vitality Spirit Stone     | Lower HP ceiling                                                                                                      | Max HP: +50/+100/+150/+500/+1000 at +0/+1/+2/+3/+4                                                            |
+| Defense Spirit Stone      | Lower defense values                                                                                                  | Defense: +5/+10/+15/+25/+40 at +0/+1/+2/+3/+4                                                                 |
 
 ## Counts
 

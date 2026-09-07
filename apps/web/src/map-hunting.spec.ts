@@ -46,7 +46,8 @@ describe('respawn timers imported from dobry-temat', () => {
   it('blocks Zbite during countdown and unlocks when the spawn window opens', () => {
     const map = sampleMap();
     const ranged =
-      map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5) ?? map.metins[0]!;
+      map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5) ??
+      map.metins[0]!;
     const record = {
       ...buildMapRespawnRecords(map, 1).find((entry) => entry.entity.id === ranged.id)!,
       confirmedAt: 0,
@@ -85,7 +86,8 @@ describe('respawn timers imported from dobry-temat', () => {
   it('splits counting timers from available ones and flags late window channels', () => {
     const map = sampleMap();
     const ranged =
-      map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5) ?? map.metins[0]!;
+      map.metins.find((entry) => entry.respawnTimeMax - entry.respawnTimeMin >= 5) ??
+      map.metins[0]!;
     const counting = {
       ...buildMapRespawnRecords(map, 1).find((entry) => entry.entity.id === ranged.id)!,
       confirmedAt: 0,

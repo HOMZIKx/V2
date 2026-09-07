@@ -3,13 +3,7 @@
  * Source: docs/ux/CENTRUM_AKTYWNOSCI_DISCORD.md § zaakceptowane etykiety.
  */
 
-export type CentrumHubActionId =
-  | 'create'
-  | 'lfg'
-  | 'mine'
-  | 'inbox'
-  | 'forMe'
-  | 'profile';
+export type CentrumHubActionId = 'create' | 'lfg' | 'mine' | 'inbox' | 'forMe' | 'profile';
 
 export type CentrumHubAction = {
   readonly id: CentrumHubActionId;
@@ -102,11 +96,8 @@ export function saveEnabledHubActions(enabled: readonly CentrumHubActionId[]): v
   localStorage.setItem(MODULES_KEY, JSON.stringify({ enabled: [...enabled] }));
 }
 
-
 /** Map UI hub ids → New Bot publish enabledActions (inbox→notify, forMe→forme). */
-export function mapHubActionsForPublish(
-  ids: readonly CentrumHubActionId[],
-): readonly string[] {
+export function mapHubActionsForPublish(ids: readonly CentrumHubActionId[]): readonly string[] {
   return ids.map((id) => {
     if (id === 'inbox') return 'notify';
     if (id === 'forMe') return 'forme';

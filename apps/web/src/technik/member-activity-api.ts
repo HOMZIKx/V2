@@ -154,7 +154,13 @@ export async function detectMemberActivityRanking(): Promise<ApiReachability> {
     if (isOfflineStatus(res.status, parsed)) return 'offline';
     if (res.status === 404 || res.status === 501) return 'unavailable';
     // 200, 400, 401, 403, 503 (secret missing on full) still mean route exists
-    if (res.ok || res.status === 400 || res.status === 401 || res.status === 403 || res.status === 503) {
+    if (
+      res.ok ||
+      res.status === 400 ||
+      res.status === 401 ||
+      res.status === 403 ||
+      res.status === 503
+    ) {
       return 'live';
     }
     return 'unavailable';
@@ -176,7 +182,8 @@ export async function fetchMemberActivityRanking(opts: {
   if (opts.q && opts.q.trim()) qs.set('q', opts.q.trim());
   if (opts.guildId) qs.set('guildId', opts.guildId);
   if (opts.full) qs.set('full', '1');
-  if (typeof opts.topN === 'number' && opts.topN > 0) qs.set('topN', String(Math.min(500, opts.topN)));
+  if (typeof opts.topN === 'number' && opts.topN > 0)
+    qs.set('topN', String(Math.min(500, opts.topN)));
 
   const url = '/api/technik/member-activity/ranking?' + qs.toString();
   try {
@@ -188,19 +195,14 @@ export async function fetchMemberActivityRanking(opts: {
         error: 'gateway_unreachable',
         status: res.status,
         detail:
-          typeof parsed.detail === 'string'
-            ? parsed.detail
-            : 'Gateway Discord nie odpowiada.',
+          typeof parsed.detail === 'string' ? parsed.detail : 'Gateway Discord nie odpowiada.',
         offline: true,
       };
     }
     if (!res.ok) {
       const fail: RankingResult = {
         ok: false,
-        error:
-          typeof parsed.error === 'string'
-            ? parsed.error
-            : 'http_' + String(res.status),
+        error: typeof parsed.error === 'string' ? parsed.error : 'http_' + String(res.status),
         status: res.status,
       };
       if (typeof parsed.detail === 'string') {
@@ -259,10 +261,7 @@ export async function fetchMyRanking(opts: {
     if (!res.ok) {
       const fail: RankingResult = {
         ok: false,
-        error:
-          typeof parsed.error === 'string'
-            ? parsed.error
-            : 'http_' + String(res.status),
+        error: typeof parsed.error === 'string' ? parsed.error : 'http_' + String(res.status),
         status: res.status,
       };
       if (typeof parsed.detail === 'string') {
@@ -275,9 +274,7 @@ export async function fetchMyRanking(opts: {
         ? mapEntry(parsed.self as Record<string, unknown>)
         : null;
     const top = mapEntries({ top: parsed.top });
-    const rows = self
-      ? [self, ...top.filter((r) => r.discordUserId !== self.discordUserId)]
-      : top;
+    const rows = self ? [self, ...top.filter((r) => r.discordUserId !== self.discordUserId)] : top;
     return {
       ok: true,
       rows,

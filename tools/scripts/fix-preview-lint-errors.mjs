@@ -17,12 +17,12 @@ function replaceOnce(path, from, to) {
 // For the dependency cases we can express safely, make the dependencies explicit.
 replaceOnce(
   'apps/web/app/member-discord-activity.tsx',
-  "    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve on account id only\n  }, [discordUserId]);",
+  '    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve on account id only\n  }, [discordUserId]);',
   '  }, [discordUserId, viewer]);',
 );
 replaceOnce(
   'apps/web/src/technik/bot-config-page.tsx',
-  "  useEffect(() => {\n    void load();\n    // initial load only\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, []);",
+  '  useEffect(() => {\n    void load();\n    // initial load only\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, []);',
   '  useEffect(() => {\n    void load();\n  }, [load]);',
 );
 replaceOnce(
@@ -59,8 +59,8 @@ replaceOnce(
 );
 replaceOnce(
   'apps/web/src/discord-notify-api.spec.ts',
-  '        async () =>\n          new Response(JSON.stringify({ ok: false, error: \'invalid_notify_secret\' }), {',
-  '        () =>\n          Promise.resolve(new Response(JSON.stringify({ ok: false, error: \'invalid_notify_secret\' }), {',
+  "        async () =>\n          new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {",
+  "        () =>\n          Promise.resolve(new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {",
 );
 replaceOnce(
   'apps/web/src/discord-notify-api.spec.ts',
@@ -108,7 +108,7 @@ replaceOnce(
 // Panels API: all external fields are unknown until narrowed.
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
-  "function mapChannels(parsed: Record<string, unknown>): PanelChannel[] {",
+  'function mapChannels(parsed: Record<string, unknown>): PanelChannel[] {',
   "function stringField(value: unknown, fallback = ''): string {\n  if (typeof value === 'string') return value;\n  if (typeof value === 'number' && Number.isFinite(value)) return String(value);\n  return fallback;\n}\n\nfunction mapChannels(parsed: Record<string, unknown>): PanelChannel[] {",
 );
 replaceOnce(
@@ -119,12 +119,12 @@ replaceOnce(
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
   "      messageId: String(p.messageId ?? p.id ?? p.panelId ?? ''),\n      panelId: String(p.panelId ?? p.messageId ?? p.id ?? ''),",
-  "      messageId: stringField(p.messageId ?? p.id ?? p.panelId),\n      panelId: stringField(p.panelId ?? p.messageId ?? p.id),",
+  '      messageId: stringField(p.messageId ?? p.id ?? p.panelId),\n      panelId: stringField(p.panelId ?? p.messageId ?? p.id),',
 );
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
-  "  if (Array.isArray(body.enabledActions)) {\n    payload.enabledActions = [...body.enabledActions];\n  }\n  if (Array.isArray(body.customButtons)) {\n    payload.customButtons = body.customButtons.map((b) => ({ ...b }));\n  }",
-  "  if (body.enabledActions) {\n    payload.enabledActions = [...body.enabledActions];\n  }\n  if (body.customButtons) {\n    payload.customButtons = body.customButtons.map((b) => ({ ...b }));\n  }",
+  '  if (Array.isArray(body.enabledActions)) {\n    payload.enabledActions = [...body.enabledActions];\n  }\n  if (Array.isArray(body.customButtons)) {\n    payload.customButtons = body.customButtons.map((b) => ({ ...b }));\n  }',
+  '  if (body.enabledActions) {\n    payload.enabledActions = [...body.enabledActions];\n  }\n  if (body.customButtons) {\n    payload.customButtons = body.customButtons.map((b) => ({ ...b }));\n  }',
 );
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
@@ -138,18 +138,18 @@ replaceOnce(
 );
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
-  "        messageId: String(parsed.messageId ?? body.panelId),",
-  "        messageId: stringField(parsed.messageId, body.panelId),",
+  '        messageId: String(parsed.messageId ?? body.panelId),',
+  '        messageId: stringField(parsed.messageId, body.panelId),',
 );
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
-  "        data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },",
-  "        data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },",
+  '        data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },',
+  '        data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },',
 );
 replaceOnce(
   'apps/web/src/technik/panels-api.ts',
-  "      data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },",
-  "      data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },",
+  '      data: { deleted: true, messageId: String(parsed.messageId ?? body.messageId) },',
+  '      data: { deleted: true, messageId: stringField(parsed.messageId, body.messageId) },',
 );
 
 // Remove genuine lint issues instead of suppressing them.

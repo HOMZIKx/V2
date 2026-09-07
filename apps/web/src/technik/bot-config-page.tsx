@@ -10,27 +10,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
+  computeNotifyAt,
   DEFAULT_CHARACTER_TIMERS,
   DEFAULT_GUILD_MODULES,
   DEFAULT_GUILD_RIGHTS,
   DEFAULT_KINGDOM_WAR,
-  GUILD_MODULE_KEYS,
-  GUILD_RIGHTS,
-  type BotCapability,
-  type CharacterTimersConfig,
-  type ConfigSnapshot,
-  type GuildModules,
-  type GuildRight,
-  type KingdomWarConfig,
-  type TechnikaGuildDto,
-  computeNotifyAt,
   fetchActiveConfig,
   fetchCapabilities,
   fetchGuilds,
   fetchTechnikaMeta,
-  TECHNIK_TEST_GUILD_ID,
-  isTechnikGuildEditable,
+  GUILD_MODULE_KEYS,
+  GUILD_RIGHTS,
   guildDisplayLabel,
+  isTechnikGuildEditable,
   pickCharacterTimers,
   pickDefaultGuildId,
   postConfigApply,
@@ -41,6 +33,14 @@ import {
   putConfigDraft,
   putGuild,
   sortGuildsForTechnik,
+  TECHNIK_TEST_GUILD_ID,
+  type BotCapability,
+  type CharacterTimersConfig,
+  type ConfigSnapshot,
+  type GuildModules,
+  type GuildRight,
+  type KingdomWarConfig,
+  type TechnikaGuildDto,
 } from './technika-config-api';
 
 const STEPPER_STEPS = [
@@ -56,10 +56,7 @@ type StepId = (typeof STEPPER_STEPS)[number]['id'];
 
 const WAR_AT_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-const MODULE_META: Record<
-  (typeof GUILD_MODULE_KEYS)[number],
-  { title: string; help: string }
-> = {
+const MODULE_META: Record<(typeof GUILD_MODULE_KEYS)[number], { title: string; help: string }> = {
   characterTimers: {
     title: 'Timery postaci',
     help: 'Żywy moduł — PW o timerach postaci (np. Księga).',
@@ -194,8 +191,7 @@ export function TechnikBotConfigPage() {
       setGuildsBotReady(null);
       setSelectedGuildId(null);
       setGuildEdit(null);
-      const unreachable =
-        res.error === 'gateway_unreachable' || res.error === 'network_error';
+      const unreachable = res.error === 'gateway_unreachable' || res.error === 'network_error';
       setGuildsError(
         unreachable
           ? `Brak połączenia z bramką Discord (${res.error})${
@@ -210,9 +206,7 @@ export function TechnikBotConfigPage() {
     const sorted = sortGuildsForTechnik(res.data.guilds);
     setGuilds(sorted);
     setGuildsRevision(res.data.revision);
-    setGuildsBotReady(
-      typeof res.data.botReady === 'boolean' ? res.data.botReady : null,
-    );
+    setGuildsBotReady(typeof res.data.botReady === 'boolean' ? res.data.botReady : null);
     const keep = pickDefaultGuildId(sorted, preferId);
     setSelectedGuildId(keep);
     const pick = sorted.find((g) => g.id === keep);
@@ -238,7 +232,10 @@ export function TechnikBotConfigPage() {
       setMetaLoaded(false);
       setMutationsEnabled(false);
       setWriteBlockReason(
-        'Nie udalo sie sprawdzic uprawnien zapisu: ' + meta.error + (meta.detail ? ' - ' + meta.detail : '') + '. To nie jest automatycznie brak klucza.',
+        'Nie udalo sie sprawdzic uprawnien zapisu: ' +
+          meta.error +
+          (meta.detail ? ' - ' + meta.detail : '') +
+          '. To nie jest automatycznie brak klucza.',
       );
     }
     if (caps.ok) {
@@ -339,9 +336,7 @@ export function TechnikBotConfigPage() {
       );
       setLastAction(`szkic guildii ${res.data.guild.id} (rev draft)`);
       setSnapshot((prev) =>
-        prev
-          ? { ...prev, hasDraft: true, revision: res.data.revision }
-          : prev,
+        prev ? { ...prev, hasDraft: true, revision: res.data.revision } : prev,
       );
       await loadGuilds(selectedGuildId);
     } finally {
@@ -392,13 +387,13 @@ export function TechnikBotConfigPage() {
       warDraft.notifyMinutesBefore > 24 * 60
     ) {
       local.push('Przypomnienie o wojnie: podaj liczbę minut od 1 do 1440 (zwykle 30).');
-    if (
-      !Number.isInteger(warDraft.maxClaimsPerUser) ||
-      warDraft.maxClaimsPerUser < 1 ||
-      warDraft.maxClaimsPerUser > 20
-    ) {
-      local.push('Wojna: ile postaci max na osobę — podaj liczbę od 1 do 20 (zwykle 3).');
-    }
+      if (
+        !Number.isInteger(warDraft.maxClaimsPerUser) ||
+        warDraft.maxClaimsPerUser < 1 ||
+        warDraft.maxClaimsPerUser > 20
+      ) {
+        local.push('Wojna: ile postaci max na osobę — podaj liczbę od 1 do 20 (zwykle 3).');
+      }
     }
     if (warDraft.enabled && warDraft.messageTemplate.trim().length < 1) {
       local.push('Przypomnienie o wojnie jest włączone — wpisz treść wiadomości.');
@@ -407,9 +402,7 @@ export function TechnikBotConfigPage() {
       local.push('Treść wiadomości o wojnie wygląda na sekret — usuń tokeny i hasła.');
     }
     if (warNotifyAt) {
-      local.push(
-        `Wojna o ${warDraft.warAt} — bot przypomni o ${warNotifyAt} (czas warszawski).`,
-      );
+      local.push(`Wojna o ${warDraft.warAt} — bot przypomni o ${warNotifyAt} (czas warszawski).`);
     }
 
     if (!mutationsEnabled) {
@@ -562,11 +555,9 @@ export function TechnikBotConfigPage() {
               reminderMinutesBefore: charTimers.reminderMinutesBefore,
               ...(testUserId.trim() ? { discordUserId: testUserId.trim() } : {}),
             };
-      const res = await postConfigTestDm(payload as import("./technika-config-api").TestDmRequest);
+      const res = await postConfigTestDm(payload as import('./technika-config-api').TestDmRequest);
       if (!res.ok) {
-        setTestDmMsg(
-          `Test PW nieudany: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`,
-        );
+        setTestDmMsg(`Test PW nieudany: ${res.error}${res.detail ? ` — ${res.detail}` : ''}`);
         return;
       }
       setTestDmMsg(
@@ -601,9 +592,7 @@ export function TechnikBotConfigPage() {
           <h2>Discordy (guildie)</h2>
           <span
             className={
-              guildsError
-                ? 'technik-pill technik-pill--pending'
-                : 'technik-pill technik-pill--live'
+              guildsError ? 'technik-pill technik-pill--pending' : 'technik-pill technik-pill--live'
             }
           >
             {guildsError
@@ -615,9 +604,10 @@ export function TechnikBotConfigPage() {
         </div>
         <p className="technik-help">
           Tu konfigurujesz <strong>które serwery Discord</strong> obsługujemy oraz które funkcje i
-          prawa na nich działają. Najpierw ustaw <strong>testowy</strong> Discord (<code>1534228693017432124</code>) — logowanie + funkcje bota (timery postaci),
-          potem <strong>MAIN</strong>. Zapis guildii idzie do <strong>szkicu</strong> — żeby weszło
-          na produkcję, użyj kroków D-060 poniżej (Sprawdź → Zapisz i włącz).
+          prawa na nich działają. Najpierw ustaw <strong>testowy</strong> Discord (
+          <code>1534228693017432124</code>) — logowanie + funkcje bota (timery postaci), potem{' '}
+          <strong>MAIN</strong>. Zapis guildii idzie do <strong>szkicu</strong> — żeby weszło na
+          produkcję, użyj kroków D-060 poniżej (Sprawdź → Zapisz i włącz).
         </p>
 
         {guildsError ? (
@@ -626,7 +616,11 @@ export function TechnikBotConfigPage() {
               <strong>Nie pokażemy atrapy listy.</strong> {guildsError}
             </p>
             <div className="technik-row" style={{ marginTop: '0.5rem' }}>
-              <button type="button" onClick={() => void loadGuilds(selectedGuildId)} disabled={busy}>
+              <button
+                type="button"
+                onClick={() => void loadGuilds(selectedGuildId)}
+                disabled={busy}
+              >
                 Spróbuj ponownie
               </button>
             </div>
@@ -657,7 +651,8 @@ export function TechnikBotConfigPage() {
                       <span className="technik-guild-list__body">
                         <strong>{label}</strong>
                         <span className="technik-muted">
-                          {g.id === TECHNIK_TEST_GUILD_ID ? 'priorytet TEST · ' : ''}{g.enabled ? 'włączony' : 'wyłączony'} · {sourceLabel(g.source)} ·{' '}
+                          {g.id === TECHNIK_TEST_GUILD_ID ? 'priorytet TEST · ' : ''}
+                          {g.enabled ? 'włączony' : 'wyłączony'} · {sourceLabel(g.source)} ·{' '}
                           <code>{g.id}</code>
                         </span>
                       </span>
@@ -676,7 +671,8 @@ export function TechnikBotConfigPage() {
                 </p>
                 {!guildEditable ? (
                   <p className="technik-error" role="alert" style={{ marginTop: '0.5rem' }}>
-                    Tylko Testowy — produkcyjne Discordy zablokowane. Możesz oglądać listę, ale nie włączaj ani nie zapisuj modułów.
+                    Tylko Testowy — produkcyjne Discordy zablokowane. Możesz oglądać listę, ale nie
+                    włączaj ani nie zapisuj modułów.
                   </p>
                 ) : null}
 
@@ -686,9 +682,7 @@ export function TechnikBotConfigPage() {
                     checked={guildEdit.enabled}
                     disabled={!guildEditable}
                     onChange={(e) =>
-                      setGuildEdit((prev) =>
-                        prev ? { ...prev, enabled: e.target.checked } : prev,
-                      )
+                      setGuildEdit((prev) => (prev ? { ...prev, enabled: e.target.checked } : prev))
                     }
                   />
                   Włącz obsługę tego Discorda (bot + Technika)
@@ -703,9 +697,7 @@ export function TechnikBotConfigPage() {
                     disabled={!guildEditable}
                     placeholder="np. DESTILED TEST"
                     onChange={(e) =>
-                      setGuildEdit((prev) =>
-                        prev ? { ...prev, name: e.target.value } : prev,
-                      )
+                      setGuildEdit((prev) => (prev ? { ...prev, name: e.target.value } : prev))
                     }
                   />
                   <span className="technik-help">
@@ -781,8 +773,8 @@ export function TechnikBotConfigPage() {
                   </p>
                 ) : (
                   <p className="technik-help" style={{ marginTop: '0.5rem' }}>
-                    Przycisk zapisuje tylko szkic <code>config.guilds[id]</code>. Produkcja = „Zapisz
-                    i włącz” w stepperze D-060.
+                    Przycisk zapisuje tylko szkic <code>config.guilds[id]</code>. Produkcja =
+                    „Zapisz i włącz” w stepperze D-060.
                   </p>
                 )}
               </div>
@@ -796,16 +788,10 @@ export function TechnikBotConfigPage() {
           <h2>Jak zapisać (D-060)</h2>
           <span
             className={
-              canWrite
-                ? 'technik-pill technik-pill--live'
-                : 'technik-pill technik-pill--pending'
+              canWrite ? 'technik-pill technik-pill--live' : 'technik-pill technik-pill--pending'
             }
           >
-            {!metaLoaded
-              ? 'Sprawdzam zapis…'
-              : canWrite
-                ? 'Możesz zapisywać'
-                : 'Zapis zablokowany'}
+            {!metaLoaded ? 'Sprawdzam zapis…' : canWrite ? 'Możesz zapisywać' : 'Zapis zablokowany'}
           </span>
         </div>
         {writeBlockReason ? (
@@ -957,8 +943,8 @@ export function TechnikBotConfigPage() {
           </span>
           <h2>Timery postaci (PW)</h2>
           <p className="technik-help">
-            Przypomnienia o timerach postaci (np. Księga). To nie są metiny na mapie. Działa globalnie;
-            per-Discord włączasz powyżej w module „Timery postaci”.
+            Przypomnienia o timerach postaci (np. Księga). To nie są metiny na mapie. Działa
+            globalnie; per-Discord włączasz powyżej w module „Timery postaci”.
           </p>
 
           <div className="technik-field-block">
@@ -1088,7 +1074,6 @@ export function TechnikBotConfigPage() {
             </span>
           </label>
 
-          
           <label className="technik-field">
             <span>Ile postaci max może zadeklarować jedna osoba (1–20)</span>
             <input
@@ -1107,7 +1092,7 @@ export function TechnikBotConfigPage() {
               Limit claimów wojny na jednego użytkownika Discord. Domyślnie 3.
             </span>
           </label>
-<label className="technik-field">
+          <label className="technik-field">
             <span>Treść wiadomości (duży szablon)</span>
             <textarea
               className="technik-textarea--large"

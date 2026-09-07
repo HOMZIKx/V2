@@ -15,9 +15,9 @@ import {
 } from './discord-notify-api';
 import {
   listTeamNotifyDiscordRecipients,
+  type PlayerIdentity,
   type ProgressTimer,
   type WorkspaceRecord,
-  type PlayerIdentity,
 } from './player-store';
 
 export type CharacterTimerNotifyContext = {
@@ -108,8 +108,7 @@ export async function notifyCharacterProgressTimer(
   let sent = 0;
 
   const actorDiscord =
-    ctx.viewer?.discordAccountId?.trim() &&
-    /^\d{17,20}$/.test(ctx.viewer.discordAccountId.trim())
+    ctx.viewer?.discordAccountId?.trim() && /^\d{17,20}$/.test(ctx.viewer.discordAccountId.trim())
       ? ctx.viewer.discordAccountId.trim()
       : null;
 
@@ -140,9 +139,7 @@ export async function notifyCharacterProgressTimer(
   // Direct DMs: for reset, actor only (others already via reset fan-out);
   // for reminder/manual, all prefs-allowed team recipients.
   const directRecipients =
-    ctx.kind === 'reset'
-      ? recipients.filter((id) => id === actorDiscord)
-      : recipients;
+    ctx.kind === 'reset' ? recipients.filter((id) => id === actorDiscord) : recipients;
 
   for (const discordUserId of directRecipients) {
     const result = await postDiscordTimerNotify({

@@ -211,9 +211,7 @@ export function MemberDashboard() {
                 <div className="last-opened">
                   <p>
                     <strong>{lastWorkspace.name}</strong>
-                    <small>
-                      Notatki, zmiany i akcje · {lastWorkspace.updatedLabel}
-                    </small>
+                    <small>Notatki, zmiany i akcje · {lastWorkspace.updatedLabel}</small>
                   </p>
                   <a className="primary-button" href={`/teams/${lastWorkspace.id}`}>
                     Otwórz zespół
@@ -230,11 +228,7 @@ export function MemberDashboard() {
               <p className="empty-copy">Skład i ekwipunek w module Postacie.</p>
               <a
                 className="secondary-button"
-                href={
-                  lastWorkspace
-                    ? `/teams/${lastWorkspace.id}/characters`
-                    : '/#first-use'
-                }
+                href={lastWorkspace ? `/teams/${lastWorkspace.id}/characters` : '/#first-use'}
               >
                 Otwórz postacie
               </a>

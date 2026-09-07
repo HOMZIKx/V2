@@ -38,7 +38,9 @@ export function encodeCharacterTimerButtonPayload(payload: CharacterTimerButtonP
 export function decodeCharacterTimerButtonPayload(encoded: string): CharacterTimerButtonPayload {
   const padded = encoded.replaceAll('-', '+').replaceAll('_', '/');
   const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
-  const timerId = Buffer.from(padded + pad, 'base64').toString('utf8').trim();
+  const timerId = Buffer.from(padded + pad, 'base64')
+    .toString('utf8')
+    .trim();
   if (!timerId) {
     throw new Error('Invalid character timer button payload.');
   }

@@ -2,41 +2,33 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { fetchGuildRoles, roleLabel, type GuildRole } from './guild-roles-api';
 import {
-  fetchGuildRoles,
-  roleLabel,
-  type GuildRole,
-} from './guild-roles-api';
-import {
-  type PanelChannel,
-  type PanelsApiStatus,
   detectPanelsApi,
   fetchPanelChannels,
+  type PanelChannel,
+  type PanelsApiStatus,
 } from './panels-api';
+import { channelLabel, loadPublishChannels, setPublishChannel } from './publish-channels';
 import {
-  channelLabel,
-  loadPublishChannels,
-  setPublishChannel,
-} from './publish-channels';
-import {
+  countableReactions,
   DAY_LABELS,
   DEFAULT_RECURRING,
   EMOJI_QUICK,
-  REACTION_ROLE_OPTIONS,
-  RSVP_LIST_PLACEHOLDER,
-  RSVP_PRESET,
-  SAMPLE_DUNGEON_CONTENT,
-  type RecurringLocalDraft,
-  type SeedReaction,
-  countableReactions,
   formatCountPlaceholder,
   loadRecurringDraft,
   newReactionRow,
   previewCountsInContent,
+  REACTION_ROLE_OPTIONS,
+  RSVP_LIST_PLACEHOLDER,
+  RSVP_PRESET,
   rsvpRoleReactions,
+  SAMPLE_DUNGEON_CONTENT,
   saveRecurringDraft,
   scheduleSummary,
   toRecurringPostsPayload,
+  type RecurringLocalDraft,
+  type SeedReaction,
 } from './recurring-config';
 import { TECHNIK_TEST_GUILD_ID } from './technika-config-api';
 import { HonestGap, PageJobNote, PlayerSeesNote } from './ui-notes';
@@ -156,20 +148,11 @@ export function TechnikCyklicznePage() {
     persist({ ...draft, ...partial }, note);
   };
 
-  const patchSchedule = (
-    partial: Partial<RecurringLocalDraft['schedule']>,
-    note?: string,
-  ) => {
-    persist(
-      { ...draft, schedule: { ...draft.schedule, ...partial } },
-      note,
-    );
+  const patchSchedule = (partial: Partial<RecurringLocalDraft['schedule']>, note?: string) => {
+    persist({ ...draft, schedule: { ...draft.schedule, ...partial } }, note);
   };
 
-  const patchRules = (
-    partial: Partial<RecurringLocalDraft['rules']>,
-    note?: string,
-  ) => {
+  const patchRules = (partial: Partial<RecurringLocalDraft['rules']>, note?: string) => {
     persist({ ...draft, rules: { ...draft.rules, ...partial } }, note);
   };
 
@@ -204,22 +187,22 @@ export function TechnikCyklicznePage() {
   };
 
   const applyRsvpPreset = () => {
-    persist({
-      ...draft,
-      reactionsEnabled: true,
-      rsvpEnabled: true,
-      seedReactions: RSVP_PRESET.map((r) => ({ ...r })),
-    }, 'Wstawiono preset RSVP ✅❌❓ i włączono zapis.');
+    persist(
+      {
+        ...draft,
+        reactionsEnabled: true,
+        rsvpEnabled: true,
+        seedReactions: RSVP_PRESET.map((r) => ({ ...r })),
+      },
+      'Wstawiono preset RSVP ✅❌❓ i włączono zapis.',
+    );
   };
 
   const appendToContent = (snippet: string, note?: string) => {
     const cur = draft.content ?? '';
     const needsSpace = cur.length > 0 && !/\s$/.test(cur);
     const next = cur + (needsSpace ? ' ' : '') + snippet;
-    persist(
-      { ...draft, content: next.slice(0, 2000) },
-      note ?? 'Dodano fragment do treści.',
-    );
+    persist({ ...draft, content: next.slice(0, 2000) }, note ?? 'Dodano fragment do treści.');
   };
 
   const applySampleTemplate = () => {
@@ -232,9 +215,7 @@ export function TechnikCyklicznePage() {
         rsvpEnabled: true,
         showCountsInPost: true,
         seedReactions:
-          draft.seedReactions.length > 0
-            ? draft.seedReactions
-            : RSVP_PRESET.map((r) => ({ ...r })),
+          draft.seedReactions.length > 0 ? draft.seedReactions : RSVP_PRESET.map((r) => ({ ...r })),
       },
       'Wstawiono przykładowy szablon dungeon + włączono zapis i licznik w treści.',
     );
@@ -278,8 +259,7 @@ export function TechnikCyklicznePage() {
   const playerSeesBits: string[] = [];
   if (draft.reactionsEnabled && draft.seedReactions.length) {
     playerSeesBits.push(
-      'pod postem zobaczy reakcje: ' +
-        draft.seedReactions.map((r) => r.emoji).join(' '),
+      'pod postem zobaczy reakcje: ' + draft.seedReactions.map((r) => r.emoji).join(' '),
     );
   }
   if (draft.rsvpEnabled) {
@@ -297,8 +277,8 @@ export function TechnikCyklicznePage() {
     <>
       <h1>Cykliczne</h1>
       <p className="technik-lead">
-        Konfigurator serii postów: co, kiedy, kanał, reakcje i zapis. Wybierasz przełącznikami —
-        bez ściany identycznych pól. To <strong>szkic przygotowawczy</strong>: nic nie publikuje się
+        Konfigurator serii postów: co, kiedy, kanał, reakcje i zapis. Wybierasz przełącznikami — bez
+        ściany identycznych pól. To <strong>szkic przygotowawczy</strong>: nic nie publikuje się
         samo.
       </p>
 
@@ -324,10 +304,9 @@ export function TechnikCyklicznePage() {
         <HonestGap>
           <p>
             <strong>Szkic — scheduler jeszcze nie żyje.</strong> New Bot nie odpala crona ani
-            automatycznych wysyłek. Ten formularz przygotowuje obiekt{' '}
-            <code>recurringPosts</code> (treść, kanał, reakcje, reguły) —{' '}
-            <em>nic nie zostanie wysłane automatycznie</em>. Kanał syncuje się do{' '}
-            <code>publishChannels.recurring</code> (zakładka Kanały).
+            automatycznych wysyłek. Ten formularz przygotowuje obiekt <code>recurringPosts</code>{' '}
+            (treść, kanał, reakcje, reguły) — <em>nic nie zostanie wysłane automatycznie</em>. Kanał
+            syncuje się do <code>publishChannels.recurring</code> (zakładka Kanały).
           </p>
         </HonestGap>
       ) : (
@@ -354,7 +333,10 @@ export function TechnikCyklicznePage() {
       </section>
 
       {/* ——— 1. Co / Kiedy / Kanał ——— */}
-      <section className="technik-panel technik-panel--wide technik-panel--live-config" style={{ marginTop: '1rem' }}>
+      <section
+        className="technik-panel technik-panel--wide technik-panel--live-config"
+        style={{ marginTop: '1rem' }}
+      >
         <div className="technik-panel-head">
           <h2>1. Co / Kiedy / Kanał</h2>
           <span className="technik-pill">{whenSummary}</span>
@@ -377,12 +359,12 @@ export function TechnikCyklicznePage() {
               <strong>Jak napisać treść, żeby liczniki działały</strong>
               <ol className="technik-template-coach__steps">
                 <li>
-                  Włącz <em>„4. Licznik w treści”</em> oraz (dla zapisów){' '}
-                  <em>„3. Zapis / RSVP”</em> z reakcjami Tak / Nie / Może w sekcji 2.
+                  Włącz <em>„4. Licznik w treści”</em> oraz (dla zapisów) <em>„3. Zapis / RSVP”</em>{' '}
+                  z reakcjami Tak / Nie / Może w sekcji 2.
                 </li>
                 <li>
-                  Wklej placeholdery przyciskami poniżej <strong>albo</strong> zostaw treść bez nich —
-                  wtedy bot doda krótki dodatek z liczbami na dole postu.
+                  Wklej placeholdery przyciskami poniżej <strong>albo</strong> zostaw treść bez nich
+                  — wtedy bot doda krótki dodatek z liczbami na dole postu.
                 </li>
                 <li>
                   Lista zapisów powstaje z kliknięć w reakcje. Wstaw{' '}
@@ -390,7 +372,11 @@ export function TechnikCyklicznePage() {
                   runtime żyje). To tylko tekst w treści — bez osobnego pola w bramce.
                 </li>
               </ol>
-              <div className="technik-template-coach__btns" role="group" aria-label="Wstaw placeholdery">
+              <div
+                className="technik-template-coach__btns"
+                role="group"
+                aria-label="Wstaw placeholdery"
+              >
                 {insertCountButtons.length === 0 ? (
                   <span className="technik-muted">
                     Brak emoji do licznika — dodaj w sekcji 2 reakcje z rolą Licznik albo RSVP
@@ -416,19 +402,12 @@ export function TechnikCyklicznePage() {
                   className="technik-btn-ghost"
                   title={'Wstaw ' + RSVP_LIST_PLACEHOLDER}
                   onClick={() =>
-                    appendToContent(
-                      RSVP_LIST_PLACEHOLDER,
-                      'Wstawiono placeholder listy zapisów.',
-                    )
+                    appendToContent(RSVP_LIST_PLACEHOLDER, 'Wstawiono placeholder listy zapisów.')
                   }
                 >
                   Lista zapisów
                 </button>
-                <button
-                  type="button"
-                  className="technik-btn-ghost"
-                  onClick={applySampleTemplate}
-                >
+                <button type="button" className="technik-btn-ghost" onClick={applySampleTemplate}>
                   Przykładowy szablon dungeon
                 </button>
               </div>
@@ -468,9 +447,7 @@ export function TechnikCyklicznePage() {
                   key={value}
                   type="button"
                   className={
-                    draft.schedule.mode === value
-                      ? 'technik-day-pill is-on'
-                      : 'technik-day-pill'
+                    draft.schedule.mode === value ? 'technik-day-pill is-on' : 'technik-day-pill'
                   }
                   aria-pressed={draft.schedule.mode === value}
                   onClick={() => patchSchedule({ mode: value })}
@@ -518,10 +495,7 @@ export function TechnikCyklicznePage() {
                   value={draft.schedule.horizonDays}
                   onChange={(e) =>
                     patchSchedule({
-                      horizonDays: Math.min(
-                        90,
-                        Math.max(1, Number(e.target.value) || 1),
-                      ),
+                      horizonDays: Math.min(90, Math.max(1, Number(e.target.value) || 1)),
                     })
                   }
                 />
@@ -533,8 +507,8 @@ export function TechnikCyklicznePage() {
           <div className="technik-cykl-col">
             <h3 className="technik-cykl-col__title">Kanał</h3>
             <p className="technik-help">
-              Domyślnie z mapowania „Cykliczne” w{' '}
-              <a href="/technik/kanaly">Kanałach</a>. Wybór poniżej nadpisuje i syncuje mapę.
+              Domyślnie z mapowania „Cykliczne” w <a href="/technik/kanaly">Kanałach</a>. Wybór
+              poniżej nadpisuje i syncuje mapę.
             </p>
             <label className="technik-field">
               <span>Kanał publikacji</span>
@@ -571,9 +545,7 @@ export function TechnikCyklicznePage() {
                 ...draft,
                 reactionsEnabled: on,
                 seedReactions:
-                  on && draft.seedReactions.length === 0
-                    ? [newReactionRow()]
-                    : draft.seedReactions,
+                  on && draft.seedReactions.length === 0 ? [newReactionRow()] : draft.seedReactions,
               });
             }}
           />
@@ -609,9 +581,7 @@ export function TechnikCyklicznePage() {
                         <input
                           value={row.emoji}
                           maxLength={16}
-                          onChange={(e) =>
-                            updateReaction(index, { emoji: e.target.value })
-                          }
+                          onChange={(e) => updateReaction(index, { emoji: e.target.value })}
                           aria-label={'Emoji wiersza ' + String(index + 1)}
                         />
                       </label>
@@ -621,9 +591,7 @@ export function TechnikCyklicznePage() {
                             key={em}
                             type="button"
                             className={
-                              row.emoji === em
-                                ? 'technik-day-pill is-on'
-                                : 'technik-day-pill'
+                              row.emoji === em ? 'technik-day-pill is-on' : 'technik-day-pill'
                             }
                             onClick={() => updateReaction(index, { emoji: em })}
                           >
@@ -658,9 +626,7 @@ export function TechnikCyklicznePage() {
                         value={row.label ?? ''}
                         maxLength={40}
                         placeholder="np. Będę"
-                        onChange={(e) =>
-                          updateReaction(index, { label: e.target.value })
-                        }
+                        onChange={(e) => updateReaction(index, { label: e.target.value })}
                       />
                     </label>
                     <button
@@ -688,15 +654,18 @@ export function TechnikCyklicznePage() {
             onChange={(e) => {
               const on = e.target.checked;
               if (on && !draft.reactionsEnabled) {
-                persist({
-                  ...draft,
-                  rsvpEnabled: true,
-                  reactionsEnabled: true,
-                  seedReactions:
-                    draft.seedReactions.length > 0
-                      ? draft.seedReactions
-                      : RSVP_PRESET.map((r) => ({ ...r })),
-                }, 'Włączono zapis RSVP i reakcje (preset, jeśli brakowało wierszy).');
+                persist(
+                  {
+                    ...draft,
+                    rsvpEnabled: true,
+                    reactionsEnabled: true,
+                    seedReactions:
+                      draft.seedReactions.length > 0
+                        ? draft.seedReactions
+                        : RSVP_PRESET.map((r) => ({ ...r })),
+                  },
+                  'Włączono zapis RSVP i reakcje (preset, jeśli brakowało wierszy).',
+                );
               } else {
                 patch({ rsvpEnabled: on });
               }
@@ -705,8 +674,8 @@ export function TechnikCyklicznePage() {
           <span>
             <strong>3. Zapis / RSVP</strong>
             <small className="technik-help">
-              Gdy włączone: reakcje z rolą „RSVP: tak / nie / może” budują listę zapisanych.
-              Gracz widzi, kto kliknął — nie tylko samą emotkę. W treści możesz wstawić{' '}
+              Gdy włączone: reakcje z rolą „RSVP: tak / nie / może” budują listę zapisanych. Gracz
+              widzi, kto kliknął — nie tylko samą emotkę. W treści możesz wstawić{' '}
               <code>{RSVP_LIST_PLACEHOLDER}</code>, żeby lista była też w poście.
             </small>
           </span>
@@ -730,8 +699,8 @@ export function TechnikCyklicznePage() {
           <span>
             <strong>4. Licznik w treści</strong>
             <small className="technik-help">
-              Pokazuje liczby kliknięć przy reakcjach „Licznik” oraz RSVP (tak / nie / może).
-              Wklej placeholdery w treści albo zostaw puste — bot doda krótki dodatek na dole.
+              Pokazuje liczby kliknięć przy reakcjach „Licznik” oraz RSVP (tak / nie / może). Wklej
+              placeholdery w treści albo zostaw puste — bot doda krótki dodatek na dole.
             </small>
           </span>
         </label>
@@ -740,8 +709,8 @@ export function TechnikCyklicznePage() {
           <div className="technik-choice-card__body">
             {countable.length === 0 ? (
               <p className="technik-inline-warn" role="status">
-                Brak reakcji do policzenia — dodaj w sekcji 2 rolę „Licznik” albo RSVP (Tak/Nie/Może),
-                żeby było co pokazać w treści.
+                Brak reakcji do policzenia — dodaj w sekcji 2 rolę „Licznik” albo RSVP
+                (Tak/Nie/Może), żeby było co pokazać w treści.
               </p>
             ) : (
               <>
@@ -770,7 +739,9 @@ export function TechnikCyklicznePage() {
           onClick={() => setRulesOpen((v) => !v)}
         >
           <h2 style={{ margin: 0 }}>5. Reguły</h2>
-          <span className="technik-muted">{rulesOpen ? 'zwiń' : 'rozwiń — limity, kto może, zamknięcie'}</span>
+          <span className="technik-muted">
+            {rulesOpen ? 'zwiń' : 'rozwiń — limity, kto może, zamknięcie'}
+          </span>
         </button>
 
         {rulesOpen ? (
@@ -796,10 +767,7 @@ export function TechnikCyklicznePage() {
                     }
                     const n = Number(raw);
                     patchRules({
-                      maxSlots:
-                        Number.isFinite(n) && n > 0
-                          ? Math.min(9999, Math.floor(n))
-                          : null,
+                      maxSlots: Number.isFinite(n) && n > 0 ? Math.min(9999, Math.floor(n)) : null,
                     });
                   }}
                 />

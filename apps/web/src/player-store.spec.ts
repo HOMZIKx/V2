@@ -2,30 +2,30 @@ import { describe, expect, it } from 'vitest';
 
 import {
   archiveCharacter,
+  archiveWorkspace,
   assignItemToSet,
-  unequipItemToBag,
-  updateEquipmentItemBonuses,
   completeDiscordAuth,
   createCharacter,
   createEquipmentItem,
   createEquipmentSet,
-  renameEquipmentSet,
   createInitialPlayerStore,
   createOutgoingInvitation,
   createWorkspace,
-  renameWorkspace,
-  removeWorkspaceMember,
-  archiveWorkspace,
-  updateWorkspaceNotifyPrefs,
-  updateMemberNotifyPrefs,
-  resolveEffectiveNotifyPrefs,
-  isNotifyPrefEnabled,
-  listTeamNotifyDiscordRecipients,
   getReadyTimers,
   getSlotReadiness,
+  isNotifyPrefEnabled,
+  listTeamNotifyDiscordRecipients,
   markTimerDone,
+  removeWorkspaceMember,
+  renameEquipmentSet,
+  renameWorkspace,
+  resolveEffectiveNotifyPrefs,
   seedDemoData,
   startDiscordAuth,
+  unequipItemToBag,
+  updateEquipmentItemBonuses,
+  updateMemberNotifyPrefs,
+  updateWorkspaceNotifyPrefs,
 } from './player-store';
 
 describe('player store first-slice', () => {
@@ -298,9 +298,9 @@ describe('player store first-slice', () => {
 
     state = assignItemToSet(state, workspaceId, nerw.id, nerwSet, itemId, 'earrings');
     expect(
-      state.workspaces[0]!.characters
-        .find((entry) => entry.id === nerw.id)!
-        .sets.find((set) => set.id === nerwSet)!.assignments.earrings,
+      state.workspaces[0]!.characters.find((entry) => entry.id === nerw.id)!.sets.find(
+        (set) => set.id === nerwSet,
+      )!.assignments.earrings,
     ).toBe(itemId);
 
     state = assignItemToSet(state, workspaceId, aalp.id, aalpSet, itemId, 'earrings');
@@ -316,13 +316,13 @@ describe('player store first-slice', () => {
 
     const owners = workspace.characters.flatMap((character) =>
       character.sets.flatMap((set) =>
-        Object.values(set.assignments).filter((id) => id === itemId).map(() => character.id),
+        Object.values(set.assignments)
+          .filter((id) => id === itemId)
+          .map(() => character.id),
       ),
     );
     expect(owners).toEqual([aalp.id]);
   });
-
-
 
   it('unequipItemToBag clears the item from every character set', () => {
     let state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated');
@@ -340,10 +340,9 @@ describe('player store first-slice', () => {
     const nerw = state.workspaces[0]!.characters.find((entry) => entry.id === 'nerwnicht')!;
     const setA = nerw.sets[0]!.id;
     state = createEquipmentSet(state, workspaceId, nerw.id, { name: 'Set B' }).state;
-    const setB =
-      state.workspaces[0]!.characters.find((entry) => entry.id === nerw.id)!.sets.find(
-        (set) => set.id !== setA,
-      )!.id;
+    const setB = state.workspaces[0]!.characters.find((entry) => entry.id === nerw.id)!.sets.find(
+      (set) => set.id !== setA,
+    )!.id;
 
     // Simulate ghost assignment on a second set (pre-fix unique-ownership gap).
     state = assignItemToSet(state, workspaceId, nerw.id, setA, itemId, 'earrings');
@@ -372,9 +371,7 @@ describe('player store first-slice', () => {
 
     state = unequipItemToBag(state, workspaceId, itemId);
     const owners = state.workspaces[0]!.characters.flatMap((character) =>
-      character.sets.flatMap((set) =>
-        Object.values(set.assignments).filter((id) => id === itemId),
-      ),
+      character.sets.flatMap((set) => Object.values(set.assignments).filter((id) => id === itemId)),
     );
     expect(owners).toEqual([]);
     expect(state.workspaces[0]!.items.some((item) => item.id === itemId)).toBe(true);
@@ -413,10 +410,7 @@ describe('player store first-slice', () => {
       expect(again.bonuses).toContain(line);
     }
   });
-
-
 });
-
 
 describe('team manage (owner)', () => {
   it('renames workspace', () => {
@@ -447,7 +441,6 @@ describe('team manage (owner)', () => {
   });
 });
 
-
 describe('notifyPrefs', () => {
   it('defaults missing prefs to true', () => {
     const prefs = resolveEffectiveNotifyPrefs({}, null);
@@ -474,9 +467,7 @@ describe('notifyPrefs', () => {
     state = updateMemberNotifyPrefs(state, id, { kingdomWar: false });
     const member = state.workspaces[0]!.members.find((m) => m.id === state.viewer!.id)!;
     expect(member.notifyPrefs?.kingdomWar).toBe(false);
-    expect(
-      resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).characterTimers,
-    ).toBe(false);
+    expect(resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).characterTimers).toBe(false);
     expect(resolveEffectiveNotifyPrefs(state.workspaces[0]!, member).kingdomWar).toBe(false);
   });
   it('lists ONLY team members with prefs true and discord ids (never invents guild)', () => {

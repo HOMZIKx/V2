@@ -47,7 +47,9 @@ function readViewerGuildIds(viewer: unknown): string[] {
   return [];
 }
 
-export function pickMemberActivityGuildFromIds(memberOf: readonly string[]): ResolvedMemberActivityGuild | null {
+export function pickMemberActivityGuildFromIds(
+  memberOf: readonly string[],
+): ResolvedMemberActivityGuild | null {
   return pickFromKnownMembership(memberOf);
 }
 

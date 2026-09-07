@@ -1,6 +1,13 @@
 /** Daily-bucket member activity store — real MessageCreate + voice minutes. */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 export type DayUserBucket = {
@@ -122,8 +129,14 @@ export class MemberActivityStore {
     readonly guildId: string;
     readonly fromDayInclusive: string;
     readonly toDayInclusive: string;
-  }): Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }> {
-    const out = new Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }>();
+  }): Map<
+    string,
+    { messageCount: number; voiceMinutes: number; displayName?: string | undefined }
+  > {
+    const out = new Map<
+      string,
+      { messageCount: number; voiceMinutes: number; displayName?: string | undefined }
+    >();
     for (const day of this.listDayKeys(input.guildId)) {
       if (day < input.fromDayInclusive || day > input.toDayInclusive) continue;
       const file = this.readDay(input.guildId, day);

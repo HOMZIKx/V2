@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { describe, expect, it } from 'vitest';
 
 import { upsertGuildInConfig, validateBotConfigDraft } from './bot-config.schema.js';
 import { defaultBotConfigValues } from './capabilities.js';

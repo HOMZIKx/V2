@@ -126,11 +126,14 @@ export async function getPartyRoom(input: {
   readonly viewerId: string;
   readonly roomId: string;
 }): Promise<PartyRoomSnapshot> {
-  const res = await fetch(`${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`, {
-    method: 'GET',
-    headers: headers(input.viewerId),
-    cache: 'no-store',
-  });
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`,
+    {
+      method: 'GET',
+      headers: headers(input.viewerId),
+      cache: 'no-store',
+    },
+  );
   if (!res.ok) throw new Error(`getPartyRoom failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }
@@ -161,14 +164,17 @@ export async function patchPartyRoom(input: {
     readonly visibility?: 'open' | 'closed';
   };
 }): Promise<PartyRoomSnapshot> {
-  const res = await fetch(`${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`, {
-    method: 'PATCH',
-    headers: headers(input.viewerId, true),
-    body: JSON.stringify({
-      expectedRevision: input.expectedRevision,
-      ...input.patch,
-    }),
-  });
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`,
+    {
+      method: 'PATCH',
+      headers: headers(input.viewerId, true),
+      body: JSON.stringify({
+        expectedRevision: input.expectedRevision,
+        ...input.patch,
+      }),
+    },
+  );
   if (!res.ok) throw new Error(`patchPartyRoom failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }

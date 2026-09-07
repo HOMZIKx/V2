@@ -31,7 +31,12 @@ function badgeFor(state: DiagnosticsState): { label: string; tone: 'ok' | 'warn'
   if (anyNetworkFail) {
     return { label: 'Bot ma problem', tone: 'error' };
   }
-  if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
+  if (
+    discord.ok &&
+    discord.data.enabled &&
+    discord.data.state === 'ready' &&
+    discord.data.isolationOk
+  ) {
     return { label: 'Bot działa', tone: 'ok' };
   }
   if (!live.ok || !ready.ok || !discord.ok) {
@@ -60,7 +65,13 @@ function payloadForCopy(result: HealthFetchResult<unknown>): string {
   });
 }
 
-function CopyButton({ text, label = 'Kopiuj JSON' }: { readonly text: string; readonly label?: string }) {
+function CopyButton({
+  text,
+  label = 'Kopiuj JSON',
+}: {
+  readonly text: string;
+  readonly label?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -162,10 +173,10 @@ export function TechnikDiagnosticsPage() {
     <>
       <h1>Diagnostyka</h1>
       <p className="technik-lead">
-        Surowy podgląd dla ciekawskich. Na co dzień wystarczy zakładka Status — tu masz pełne JSON-y.
+        Surowy podgląd dla ciekawskich. Na co dzień wystarczy zakładka Status — tu masz pełne
+        JSON-y.
       </p>
 
-      
       <PageJobNote>
         <p>
           Sprawdzasz zdrowie bota i zależności (live / ready / Discord). Tu nie zmieniasz treści
@@ -175,7 +186,7 @@ export function TechnikDiagnosticsPage() {
       <PlayerSeesNote>
         <p>Z tej strony gracz nic nie dostaje — to tylko podgląd zdrowia bota dla Technika.</p>
       </PlayerSeesNote>
-<div className="technik-row">
+      <div className="technik-row">
         <StatusBadge label={badge.label} tone={badge.tone} />
         <button type="button" onClick={() => void refresh()} disabled={loading}>
           {loading ? 'Odświeżam…' : 'Odśwież'}

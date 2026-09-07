@@ -1,25 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+} from 'react';
 
 import { huntMapImagePath } from '../../src/hunt-map-assets';
-import type { MapHuntingSnapshot } from '../../src/map-hunting';
-import {
-  PARTY_HUNT_SNAPSHOT_VERSION,
-  type PartyHuntSnapshotV1,
-} from '../../src/hunt-snapshot';
 import { huntStatusLabel, useHuntViewer, type HuntConnectionStatus } from '../../src/hunt-online';
-import { loadHuntFieldsFromServer, putPartyHuntField } from '../../src/player-team-field-sync';
-import {
-  addPartyRoomPin,
-  createPartyRoom,
-  getPartyRoom,
-  joinPartyRoom,
-  leavePartyRoom,
-  patchPartyRoom,
-  removePartyRoomPin,
-  type PartyRoomSnapshot,
-} from '../../src/player-team-rooms-api';
+import { PARTY_HUNT_SNAPSHOT_VERSION, type PartyHuntSnapshotV1 } from '../../src/hunt-snapshot';
+import type { MapHuntingSnapshot } from '../../src/map-hunting';
 import {
   PARTY_SCOUT_PIN_TTL_MS,
   SCOUT_PIN_KIND_PRESETS,
@@ -46,6 +40,17 @@ import {
   type PartyVisibility,
   type ScoutPinKind,
 } from '../../src/map-party';
+import { loadHuntFieldsFromServer, putPartyHuntField } from '../../src/player-team-field-sync';
+import {
+  addPartyRoomPin,
+  createPartyRoom,
+  getPartyRoom,
+  joinPartyRoom,
+  leavePartyRoom,
+  patchPartyRoom,
+  removePartyRoomPin,
+  type PartyRoomSnapshot,
+} from '../../src/player-team-rooms-api';
 import { respawnMaps, type RespawnLocation } from '../../src/respawn-timers';
 import { AppShell } from '../app-shell';
 import styles from './map-hunting.module.css';
@@ -140,8 +145,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               name: typeof value.name === 'string' ? value.name : `Party · ${nextMapKey}`,
               leaderId:
                 typeof value.leaderId === 'string'
-                ? value.leaderId
-                : (members as Array<{ id?: string }>)[0]?.id ?? 'unknown',
+                  ? value.leaderId
+                  : ((members as Array<{ id?: string }>)[0]?.id ?? 'unknown'),
               visibility: value.visibility === 'closed' ? 'closed' : 'open',
               joinCode: typeof value.joinCode === 'string' ? value.joinCode : '',
               mapKey: nextMapKey,
@@ -336,7 +341,6 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     viewerId,
   ]);
 
-
   useEffect(() => {
     if (!loaded) return;
     setPins((current) => {
@@ -379,10 +383,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     () => activeScoutPins(pins, party, mapKey, channel, now),
     [channel, mapKey, now, party, pins],
   );
-  const sidebarPins = useMemo(
-    () => partyActiveScoutPins(pins, party, now),
-    [now, party, pins],
-  );
+  const sidebarPins = useMemo(() => partyActiveScoutPins(pins, party, now), [now, party, pins]);
   const currentMapImage = huntMapImagePath(mapKey);
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(mapKey);
   const selectedPin =
@@ -419,7 +420,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           applyPartyRoom(room);
           setNotice(`Wspólna mapa party ustawiona na ${mapKey} · CH${channel}.`);
         })
-        .catch((e) => setNotice(`Sync mapy online nieudany: ${e instanceof Error ? e.message : String(e)}`));
+        .catch((e) =>
+          setNotice(`Sync mapy online nieudany: ${e instanceof Error ? e.message : String(e)}`),
+        );
       return;
     }
     setParty(setPartyChannel(setPartyMap(party, mapKey, channel), channel));
@@ -454,7 +457,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         })
         .catch((e) => {
           setConnectionStatus('error');
-          setNotice(`Nie udało się utworzyć party online: ${e instanceof Error ? e.message : String(e)}`);
+          setNotice(
+            `Nie udało się utworzyć party online: ${e instanceof Error ? e.message : String(e)}`,
+          );
         });
       return;
     }
@@ -572,7 +577,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           applyPartyRoom(room);
           setNotice('Sesja wyzerowana · zbicia = 0 (wspólny pokój).');
         })
-        .catch((e) => setNotice(`Reset online nieudany: ${e instanceof Error ? e.message : String(e)}`));
+        .catch((e) =>
+          setNotice(`Reset online nieudany: ${e instanceof Error ? e.message : String(e)}`),
+        );
       return;
     }
     const next = resetSessionKills(party);
@@ -622,9 +629,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setSelectedPinId(pin.id);
     setNotice(`Pinezka ${pin.label} · ~10 min · widoczna dla party na tej mapie/CH.`);
     if (onlineEnabled && viewerId && partyRoomId) {
-      void addPartyRoomPin({ viewerId, roomId: partyRoomId, pin }).then(applyPartyRoom).catch(() => {
-        setConnectionStatus('error');
-      });
+      void addPartyRoomPin({ viewerId, roomId: partyRoomId, pin })
+        .then(applyPartyRoom)
+        .catch(() => {
+          setConnectionStatus('error');
+        });
     }
   };
   const selectPinFromList = (pin: PartyScoutPin) => {
@@ -639,9 +648,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setSelectedPinId((current) => (current === pinId ? null : current));
     setNotice('Pinezka odkliknięta.');
     if (onlineEnabled && viewerId && partyRoomId) {
-      void removePartyRoomPin({ viewerId, roomId: partyRoomId, pinId }).then(applyPartyRoom).catch(() => {
-        setConnectionStatus('error');
-      });
+      void removePartyRoomPin({ viewerId, roomId: partyRoomId, pinId })
+        .then(applyPartyRoom)
+        .catch(() => {
+          setConnectionStatus('error');
+        });
     }
   };
   const killAndDismiss = (pinId: string) => {
@@ -695,7 +706,10 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
 
   return (
     <AppShell activeSection="maps" viewerName={displayName || initialSnapshot.viewerName}>
-      <main className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`} id="main-content">
+      <main
+        className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`}
+        id="main-content"
+      >
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
@@ -732,7 +746,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
             {party && !miniMode ? (
               <>
                 {party.visibility === 'closed' || party.joinCode ? (
-                  <button className="respawn-party-toggle" onClick={() => { void copyJoinCode(); }} type="button">
+                  <button
+                    className="respawn-party-toggle"
+                    onClick={() => {
+                      void copyJoinCode();
+                    }}
+                    type="button"
+                  >
                     <span /> Kopiuj kod
                   </button>
                 ) : null}
@@ -742,7 +762,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               </>
             ) : null}
             {party && miniMode ? (
-              <button className="respawn-party-toggle" onClick={() => { void copyJoinCode(); }} type="button">
+              <button
+                className="respawn-party-toggle"
+                onClick={() => {
+                  void copyJoinCode();
+                }}
+                type="button"
+              >
                 <span /> Kod
               </button>
             ) : null}
@@ -1002,7 +1028,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                       Zapisane zamknięte party czeka na kod <b>{savedClosedParty.joinCode}</b>.
                     </p>
                   ) : !miniMode ? (
-                    <p>{onlineEnabled && viewerId ? 'Dołącz kodem do wspólnego pokoju player-team.' : 'Offline: lokalny join-by-code (cache).'}</p>
+                    <p>
+                      {onlineEnabled && viewerId
+                        ? 'Dołącz kodem do wspólnego pokoju player-team.'
+                        : 'Offline: lokalny join-by-code (cache).'}
+                    </p>
                   ) : null}
                 </div>
               </>
@@ -1086,8 +1116,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                             >
                               <strong>{pin.label}</strong>
                               <small>
-                                {pin.mapKey} CH{pin.channel} · {pin.location.x}% /{' '}
-                                {pin.location.y}%
+                                {pin.mapKey} CH{pin.channel} · {pin.location.x}% / {pin.location.y}%
                               </small>
                               <b className={styles.pinListTtl}>TTL {remaining}</b>
                             </button>

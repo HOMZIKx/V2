@@ -22,7 +22,7 @@
 }
 
 /* Class PNGs ship on pure black — blend the plate into Destiled surfaces everywhere. */
-img[src^="/game/classes/"] {
+img[src^='/game/classes/'] {
   mix-blend-mode: lighten;
 }
 
@@ -1024,7 +1024,6 @@ button:disabled {
   border-color: rgba(160, 185, 220, 0.4);
   color: #f0f4fb;
 }
-
 
 .profile-button {
   display: flex;
@@ -2566,7 +2565,6 @@ button:disabled {
   color: #7a8496;
   font-size: 12px;
 }
-
 
 .team-note strong {
   color: #cfd4dd;
@@ -4516,7 +4514,9 @@ button:disabled {
   outline: none;
   isolation: auto;
   transform-origin: center bottom;
-  transition: transform 200ms ease, filter 200ms ease;
+  transition:
+    transform 200ms ease,
+    filter 200ms ease;
 }
 
 .character-cards > .character-card-link:hover,
@@ -6939,7 +6939,6 @@ button:disabled {
     border-bottom: 0;
   }
 }
-
 
 /* Centrum Aktywności — shell UI (no Activity API; bridge New Bot in progress). */
 .activity-shell-tabs {
@@ -9442,8 +9441,7 @@ button:disabled {
   border: 1px solid var(--line-strong);
   border-radius: 16px;
   background:
-    radial-gradient(circle at 80% 0, rgba(55, 104, 220, 0.18), transparent 42%),
-    var(--panel-strong);
+    radial-gradient(circle at 80% 0, rgba(55, 104, 220, 0.18), transparent 42%), var(--panel-strong);
   box-shadow: var(--shadow);
 }
 .character-action-modal-card > header {
@@ -9501,7 +9499,10 @@ button:disabled {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
 }
 .character-action-choice:hover,
 .character-action-choice:focus-visible {
@@ -9633,7 +9634,6 @@ button:disabled {
   font-size: 13px;
   line-height: 1.45;
 }
-
 
 @media (max-width: 900px) {
   .first-use-panel,
@@ -10288,8 +10288,7 @@ button:disabled {
   padding: 10px 11px;
   border: 1px solid rgba(150, 170, 205, 0.28);
   border-radius: 12px;
-  background:
-    linear-gradient(165deg, rgba(18, 24, 36, 0.98), rgba(10, 14, 22, 0.98));
+  background: linear-gradient(165deg, rgba(18, 24, 36, 0.98), rgba(10, 14, 22, 0.98));
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
   color: #d7deea;
   opacity: 0;
@@ -11440,7 +11439,9 @@ button:disabled {
   letter-spacing: 0.01em;
   text-decoration: none;
   border-bottom: 1px solid rgba(196, 204, 218, 0.35);
-  transition: color 140ms ease, border-color 140ms ease;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
 }
 
 .panel-text-link:hover,
@@ -11461,7 +11462,9 @@ button:disabled {
   letter-spacing: 0.01em;
   text-decoration: none;
   border-bottom: 1px solid rgba(196, 204, 218, 0.35);
-  transition: color 140ms ease, border-color 140ms ease;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
 }
 
 .panel-text-link:hover,
@@ -11476,7 +11479,8 @@ button:disabled {
   text-decoration: none;
 }
 /* DESTILED inspector-panel button contrast */
-.inspector-panel button:not(.primary-button):not(.eq-bonus-catalog-entry):not(.eq-bonus-toggle-entry),
+.inspector-panel
+  button:not(.primary-button):not(.eq-bonus-catalog-entry):not(.eq-bonus-toggle-entry),
 .eq-bonus-editor > button {
   min-height: 36px;
   padding: 0 14px;
@@ -11510,7 +11514,6 @@ button:disabled {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
 
 /* Character directory choice panel + hover polish */
 .character-cards > .character-card-link {
@@ -11704,7 +11707,7 @@ button:disabled {
   content: none !important;
 }
 .characters-page .character-card-visual img,
-.characters-page img[src^="/game/classes/"] {
+.characters-page img[src^='/game/classes/'] {
   background: transparent !important;
   mix-blend-mode: lighten !important;
   filter: none !important; /* drop-shadow recreates a black plate */
@@ -11887,7 +11890,6 @@ button:disabled {
   display: none;
 }
 
-
 /* Weapon characteristic editors in Szczegóły (lvl 30/75 + PH PvM) */
 .eq-weapon-char-fields {
   display: grid;
@@ -11981,7 +11983,6 @@ button:disabled {
   }
 }
 
-
 /* EQ team / item note badge + board notes */
 .eq-note-badge {
   position: absolute;
@@ -12043,9 +12044,10 @@ button:disabled {
   gap: 4px;
 }
 
-
 /* bag tiles: fixed size, no stretch when few items */
-.eq-pool-header .empty-copy { display: none; }
+.eq-pool-header .empty-copy {
+  display: none;
+}
 .eq-camp-center .eq-inventory-grid {
   grid-template-columns: repeat(auto-fill, 68px);
   justify-content: start;
@@ -12694,8 +12696,6 @@ button:disabled {
   font-weight: 600;
 }
 
-
-
 .team-notify-prefs-panel .team-notify-prefs-grid {
   display: grid;
   gap: 12px;
@@ -13330,8 +13330,12 @@ button:disabled {
   font-size: 0.86rem;
   line-height: 1.45;
 }
-.technik-honest-gap p { margin: 0; }
-.technik-honest-gap a { color: var(--text); }
+.technik-honest-gap p {
+  margin: 0;
+}
+.technik-honest-gap a {
+  color: var(--text);
+}
 .technik-info-chip {
   display: inline-block;
   margin: 0.75rem 0 0;
@@ -13344,7 +13348,10 @@ button:disabled {
   line-height: 1.35;
   max-width: 100%;
 }
-.technik-info-chip strong { color: var(--silver); font-weight: 600; }
+.technik-info-chip strong {
+  color: var(--silver);
+  font-weight: 600;
+}
 .technik-panel--path {
   border-color: color-mix(in srgb, var(--blue) 28%, var(--line));
 }
@@ -13436,7 +13443,6 @@ button:disabled {
     var(--panel-strong)
   );
 }
-
 
 /* Cykliczne configurator (choice cards + reaction rows) */
 .technik-day-pills,
@@ -13706,8 +13712,7 @@ button:disabled {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(164, 180, 213, 0.28);
-  background:
-    linear-gradient(180deg, rgba(18, 22, 34, 0.96), rgba(6, 9, 16, 0.96));
+  background: linear-gradient(180deg, rgba(18, 22, 34, 0.96), rgba(6, 9, 16, 0.96));
   color: #eef0f5;
   font: inherit;
   font-size: 0.9rem;
@@ -13717,7 +13722,9 @@ button:disabled {
     0 8px 20px rgba(0, 0, 0, 0.18);
   appearance: none;
   outline: none;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 .ma-input::placeholder,
 .ma-page .technik-field input::placeholder {
@@ -13754,7 +13761,10 @@ select.ma-input,
     calc(100% - 14px) calc(50% - 2px),
     calc(100% - 9px) calc(50% - 2px),
     0 0;
-  background-size: 5px 5px, 5px 5px, 100% 100%;
+  background-size:
+    5px 5px,
+    5px 5px,
+    100% 100%;
   background-repeat: no-repeat;
 }
 
@@ -13780,7 +13790,9 @@ select.ma-input,
   flex: 0 0 auto;
   align-self: flex-end;
   line-height: 1;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
 }
 .ma-control-row > .ma-btn,
 .ma-toolbar > .ma-btn {
@@ -13830,8 +13842,7 @@ select.ma-input,
   pointer-events: none;
   border-style: solid;
   border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
-  background:
-    linear-gradient(120deg, rgba(57, 136, 255, 0.16), rgba(124, 72, 220, 0.12));
+  background: linear-gradient(120deg, rgba(57, 136, 255, 0.16), rgba(124, 72, 220, 0.12));
   color: #e8eefc;
   opacity: 1;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -14286,12 +14297,13 @@ select.ma-input,
   padding: 14px 16px !important;
   border-radius: 14px !important;
   border-color: rgba(124, 92, 220, 0.35) !important;
-  background:
-    linear-gradient(180deg, rgba(18, 22, 34, 0.95), rgba(6, 9, 16, 0.95)) !important;
+  background: linear-gradient(180deg, rgba(18, 22, 34, 0.95), rgba(6, 9, 16, 0.95)) !important;
   font-size: 20px !important;
   font-weight: 600;
   letter-spacing: -0.01em;
-  box-shadow: 0 0 0 1px rgba(227, 60, 87, 0.08), 0 10px 28px rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 0 0 1px rgba(227, 60, 87, 0.08),
+    0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
 .profil-nick-input:focus {
@@ -14459,4 +14471,3 @@ select.ma-input,
     bottom: 14px;
   }
 }
-

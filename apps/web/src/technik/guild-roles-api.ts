@@ -11,7 +11,12 @@ export type GuildRole = {
 
 export type GuildRolesResult =
   | { readonly ok: true; readonly roles: readonly GuildRole[]; readonly via: string }
-  | { readonly ok: false; readonly error: string; readonly status: number; readonly unavailable?: boolean };
+  | {
+      readonly ok: false;
+      readonly error: string;
+      readonly status: number;
+      readonly unavailable?: boolean;
+    };
 
 async function parseJson(res: Response): Promise<Record<string, unknown>> {
   const raw = await res.text();
@@ -24,7 +29,11 @@ async function parseJson(res: Response): Promise<Record<string, unknown>> {
 }
 
 function mapRoles(parsed: Record<string, unknown>): GuildRole[] {
-  const raw = Array.isArray(parsed.roles) ? parsed.roles : Array.isArray(parsed.items) ? parsed.items : [];
+  const raw = Array.isArray(parsed.roles)
+    ? parsed.roles
+    : Array.isArray(parsed.items)
+      ? parsed.items
+      : [];
   return raw
     .filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === 'object')
     .map((r) => ({

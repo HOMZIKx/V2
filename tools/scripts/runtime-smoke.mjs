@@ -155,16 +155,23 @@ for (const relativePath of requiredArtifacts) {
   }
 }
 
-const [webPort, adminPort, apiGatewayPort, discordGatewayPort, identityPort, authorizationPort, playerTeamPort] =
-  await Promise.all([
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-    allocatePort(),
-  ]);
+const [
+  webPort,
+  adminPort,
+  apiGatewayPort,
+  discordGatewayPort,
+  identityPort,
+  authorizationPort,
+  playerTeamPort,
+] = await Promise.all([
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+  allocatePort(),
+]);
 
 for (const port of [
   webPort,

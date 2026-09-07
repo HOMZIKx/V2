@@ -4,9 +4,7 @@ export function HealthErrorPanel({ error }: { readonly error: HealthFetchErr }) 
   return (
     <section className="technik-panel technik-error" role="alert">
       <h2>Bot ma problem z połączeniem</h2>
-      <p>
-        Nie udało się dogadać z botem. Spokojnie — poniżej jest krótki opis i wskazówka.
-      </p>
+      <p>Nie udało się dogadać z botem. Spokojnie — poniżej jest krótki opis i wskazówka.</p>
       <p>
         <strong>{error.error}</strong>
       </p>

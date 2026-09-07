@@ -16,8 +16,7 @@ export function shouldApplyServerSnapshot(input: {
   }
 
   const serverEmpty = parsed.workspaces.length === 0 && !parsed.seededDemo;
-  const localHasData =
-    input.localState.seededDemo || input.localState.workspaces.length > 0;
+  const localHasData = input.localState.seededDemo || input.localState.workspaces.length > 0;
 
   if (serverEmpty && localHasData) {
     return false;
@@ -43,9 +42,7 @@ function mergeViewerProfile(
       displayName: localViewer.displayName,
       initials: localViewer.initials,
       profileSetupDone: true,
-      ...(localViewer.avatarNote !== undefined
-        ? { avatarNote: localViewer.avatarNote }
-        : {}),
+      ...(localViewer.avatarNote !== undefined ? { avatarNote: localViewer.avatarNote } : {}),
     };
   }
 

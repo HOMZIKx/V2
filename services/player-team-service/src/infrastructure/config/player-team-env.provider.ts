@@ -8,4 +8,3 @@ export class PlayerTeamEnvProvider {
     return parsePlayerTeamEnv(process.env);
   }
 }
-

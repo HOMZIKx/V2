@@ -41,7 +41,8 @@ export function TeamWorkspace() {
   );
 
   const readyTimers = useMemo(
-    () => (workspace ? getReadyTimers(state).filter((entry) => entry.workspaceId === workspace.id) : []),
+    () =>
+      workspace ? getReadyTimers(state).filter((entry) => entry.workspaceId === workspace.id) : [],
     [state, workspace],
   );
 
@@ -128,16 +129,18 @@ export function TeamWorkspace() {
 
         {state.workspaces.filter((entry) => !entry.archived).length > 1 ? (
           <ul className="workspace-switcher" aria-label="Twoje zespoły">
-            {state.workspaces.filter((entry) => !entry.archived).map((entry) => (
-              <li key={entry.id}>
-                <a
-                  aria-current={entry.id === workspace.id ? 'page' : undefined}
-                  href={`/teams/${entry.id}`}
-                >
-                  {entry.name}
-                </a>
-              </li>
-            ))}
+            {state.workspaces
+              .filter((entry) => !entry.archived)
+              .map((entry) => (
+                <li key={entry.id}>
+                  <a
+                    aria-current={entry.id === workspace.id ? 'page' : undefined}
+                    href={`/teams/${entry.id}`}
+                  >
+                    {entry.name}
+                  </a>
+                </li>
+              ))}
           </ul>
         ) : null}
 
@@ -172,10 +175,14 @@ export function TeamWorkspace() {
           <section className="panel" id="changes">
             <header>
               <h2>Ostatnie zmiany</h2>
-              <a className="panel-text-link" href={`/teams/${workspace.id}/history`}>Pełna historia</a>
+              <a className="panel-text-link" href={`/teams/${workspace.id}/history`}>
+                Pełna historia
+              </a>
             </header>
             {recentHistory.length === 0 ? (
-              <p className="empty-copy">Po pierwszej zmianie w EQ, składzie lub timerze pojawi się wpis.</p>
+              <p className="empty-copy">
+                Po pierwszej zmianie w EQ, składzie lub timerze pojawi się wpis.
+              </p>
             ) : (
               <ul className="attention-list">
                 {recentHistory.map((entry) => (
@@ -261,15 +268,15 @@ export function TeamWorkspace() {
                 {workspace.notes
                   .filter((note) => note.scope !== 'equipment')
                   .map((note) => (
-                  <li className="team-note" key={note.id}>
-                    <div className="team-note-meta">
-                      <strong>{note.authorName}</strong>
-                      <span aria-hidden="true"> · </span>
-                      <time>{note.createdAtLabel}</time>
-                    </div>
-                    <p>{note.body}</p>
-                  </li>
-                ))}
+                    <li className="team-note" key={note.id}>
+                      <div className="team-note-meta">
+                        <strong>{note.authorName}</strong>
+                        <span aria-hidden="true"> · </span>
+                        <time>{note.createdAtLabel}</time>
+                      </div>
+                      <p>{note.body}</p>
+                    </li>
+                  ))}
               </ul>
             )}
           </section>

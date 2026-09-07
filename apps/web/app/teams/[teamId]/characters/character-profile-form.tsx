@@ -4,8 +4,8 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import {
-  characterAppearanceLooks,
   characterAppearanceLabel,
+  characterAppearanceLooks,
   characterClassLabels,
   characterGenderLabels,
   characterSkillPathLabels,
@@ -347,20 +347,24 @@ export function CharacterProfileForm({
                   const selected = draft.appearanceLook === look.id;
                   return (
                     <label
-                      className={selected ? 'appearance-look-option is-selected' : 'appearance-look-option'}
+                      className={
+                        selected ? 'appearance-look-option is-selected' : 'appearance-look-option'
+                      }
                       key={look.id}
                     >
                       <input
                         checked={selected}
                         name="appearanceLook"
-                        onChange={() =>
-                          updateDraft('appearanceLook', look.id)
-                        }
+                        onChange={() => updateDraft('appearanceLook', look.id)}
                         type="radio"
                         value={look.id}
                       />
                       <span className="appearance-look-thumb">
-                        {thumb ? <img alt="" src={thumb} /> : <span className="missing-render">—</span>}
+                        {thumb ? (
+                          <img alt="" src={thumb} />
+                        ) : (
+                          <span className="missing-render">—</span>
+                        )}
                       </span>
                       <span className="appearance-look-label">{look.label}</span>
                     </label>
@@ -420,9 +424,7 @@ export function CharacterProfileForm({
               )}
             </div>
             <h2>{draft.name.trim() || 'Nowa postać'}</h2>
-            <p>
-              {formatCharacterClassLine(draft.characterClass, draft.skillPath, draft.gender)}
-            </p>
+            <p>{formatCharacterClassLine(draft.characterClass, draft.skillPath, draft.gender)}</p>
             <p>{characterAppearanceLabel(draft.appearanceLook)}</p>
           </aside>
         </section>

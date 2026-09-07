@@ -167,12 +167,8 @@ export class HuntRoomsController {
       ...(parsed.data.activeChannel !== undefined
         ? { activeChannel: parsed.data.activeChannel }
         : {}),
-      ...(parsed.data.sessionKills !== undefined
-        ? { sessionKills: parsed.data.sessionKills }
-        : {}),
-      ...(parsed.data.visibility !== undefined
-        ? { visibility: parsed.data.visibility }
-        : {}),
+      ...(parsed.data.sessionKills !== undefined ? { sessionKills: parsed.data.sessionKills } : {}),
+      ...(parsed.data.visibility !== undefined ? { visibility: parsed.data.visibility } : {}),
     });
   }
 

@@ -59,12 +59,11 @@ export function resolveDiscordGatewayBaseUrl(
 }
 
 export function curlTipFor(path: string, baseUrl = resolveDiscordGatewayBaseUrl()): string {
-  const absolute =
-    baseUrl.startsWith('http')
-      ? baseUrl
-      : typeof window !== 'undefined'
-        ? `${window.location.origin}${baseUrl}`
-        : `http://127.0.0.1:3000${baseUrl}`;
+  const absolute = baseUrl.startsWith('http')
+    ? baseUrl
+    : typeof window !== 'undefined'
+      ? `${window.location.origin}${baseUrl}`
+      : `http://127.0.0.1:3000${baseUrl}`;
   return `curl -sS "${absolute}${path}"`;
 }
 

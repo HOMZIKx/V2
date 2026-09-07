@@ -13,13 +13,13 @@
 
 ### Related activity/p4 refs (also on origin)
 
-| Branch | Remote SHA (short) |
-|--------|--------------------|
-| `cursor/p4-1-activity-domain` | `84716b3` |
-| `cursor/p4-centrum-aktywnosci-plan-ea0a` | `0c8804a` |
-| `cursor/p4-centrum-aktywnosci-spec-v2` | `c5c492c` |
-| `cursor/p4-spec-post-merge-hygiene` | `c99085a` |
-| `codex/activity-center-web` | `5491aa1` |
+| Branch                                   | Remote SHA (short) |
+| ---------------------------------------- | ------------------ |
+| `cursor/p4-1-activity-domain`            | `84716b3`          |
+| `cursor/p4-centrum-aktywnosci-plan-ea0a` | `0c8804a`          |
+| `cursor/p4-centrum-aktywnosci-spec-v2`   | `c5c492c`          |
+| `cursor/p4-spec-post-merge-hygiene`      | `c99085a`          |
+| `codex/activity-center-web`              | `5491aa1`          |
 
 ## What's in `services/activity-service/dist`
 

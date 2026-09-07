@@ -16,11 +16,7 @@ import { IdentityError } from '../domain/errors.js';
 import type { AuthRuntime } from '../infrastructure/auth/create-better-auth.js';
 import { isAllowedCallbackUrl } from '../infrastructure/config/callback-url.js';
 import type { IdentityEnv } from '../infrastructure/config/identity-env.js';
-import {
-  AUTH_RUNTIME,
-  IDENTITY_CONFIG,
-  IDENTITY_SESSION_PORT,
-} from './identity.tokens.js';
+import { AUTH_RUNTIME, IDENTITY_CONFIG, IDENTITY_SESSION_PORT } from './identity.tokens.js';
 import { toWebHeaders } from './request-headers.js';
 
 /**
@@ -138,8 +134,7 @@ export class WebOauthController {
 
       void reply.redirect(callback.toString(), 302);
     } catch (error) {
-      const message =
-        error instanceof IdentityError ? error.code : 'identity_bridge_failed';
+      const message = error instanceof IdentityError ? error.code : 'identity_bridge_failed';
       void reply
         .status(200)
         .header('content-type', 'text/html; charset=utf-8')

@@ -13,6 +13,7 @@ Start-DestiledCompanion.cmd
 Launcher startuje Windows PowerShell 5.1 w trybie STA i omija lokalną politykę wykonywania tylko dla tego procesu.
 
 Po uruchomieniu:
+
 - panel jest widoczny od razu, nawet jeśli klient gry nie działa;
 - Companion szuka widocznego okna o tytule zawierającym `Metin2`, `Projekt Hard` albo `Project Hard`;
 - po wykryciu gry panel przykleja się do prawego górnego rogu okna;

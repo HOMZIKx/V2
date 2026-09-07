@@ -80,30 +80,30 @@ export function D060Controls({
           'Zmiany najpierw idą do szkicu. Ty klikasz „Zapisz i włącz” — agent nigdy nie robi Apply za Ciebie.'}
       </p>
       {showStepper ? (
-      <ol className="technik-stepper" aria-label="Kroki zapisu ustawień">
-        {D060_STEPS.map((item, index) => {
-          const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
-          const locked =
-            (!canWrite && (item.id === 'Apply' || item.id === 'Rollback')) ||
-            (item.id === 'Rollback' && !snapshot?.canRollback);
-          return (
-            <li
-              key={item.id}
-              className={'technik-stepper__item technik-stepper__item--' + stateCls}
-            >
-              <button
-                type="button"
-                className="technik-stepper__btn"
-                disabled={locked && (item.id === 'Apply' || item.id === 'Rollback')}
-                onClick={() => onStep(item.id)}
+        <ol className="technik-stepper" aria-label="Kroki zapisu ustawień">
+          {D060_STEPS.map((item, index) => {
+            const stateCls = index < stepIndex ? 'done' : index === stepIndex ? 'current' : 'todo';
+            const locked =
+              (!canWrite && (item.id === 'Apply' || item.id === 'Rollback')) ||
+              (item.id === 'Rollback' && !snapshot?.canRollback);
+            return (
+              <li
+                key={item.id}
+                className={'technik-stepper__item technik-stepper__item--' + stateCls}
               >
-                <span className="technik-stepper__idx">{index + 1}</span>
-                <span>{item.label}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+                <button
+                  type="button"
+                  className="technik-stepper__btn"
+                  disabled={locked && (item.id === 'Apply' || item.id === 'Rollback')}
+                  onClick={() => onStep(item.id)}
+                >
+                  <span className="technik-stepper__idx">{index + 1}</span>
+                  <span>{item.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       ) : null}
       <div
         className={compact ? 'technik-row technik-row--compact' : 'technik-row'}

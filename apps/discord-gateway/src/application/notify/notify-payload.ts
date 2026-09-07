@@ -152,7 +152,11 @@ export function formatTimerNotifyContent(payload: TimerNotifyPayload): string {
       lines.push(`Timer: ${payload.timerKey}`);
     }
   }
-  if ((!payload.liveTimers || payload.liveTimers.length === 0) && payload.roomSummary && payload.roomSummary.length > 0) {
+  if (
+    (!payload.liveTimers || payload.liveTimers.length === 0) &&
+    payload.roomSummary &&
+    payload.roomSummary.length > 0
+  ) {
     lines.push('', isCharacter ? 'Pozostałe na tej karcie:' : 'Inne timery w pokoju:');
     for (const line of payload.roomSummary.slice(0, 8)) {
       lines.push(`• ${line}`);

@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
 import { randomBytes } from 'node:crypto';
+import { Pool } from 'pg';
 
 import { createLogger } from '@v2/observability';
 
@@ -18,8 +18,8 @@ import {
   type TimerRoomRecord,
   type TimerRoomSnapshot,
 } from '../../domain/ports/hunt-rooms.port.js';
-import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
+import { type PlayerTeamEnv } from '../config/player-team-env.js';
 
 function newId(prefix: string): string {
   return `${prefix}-${randomBytes(6).toString('hex')}`;
@@ -130,9 +130,10 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
 
   public async joinPartyRoom(input: JoinPartyRoomInput): Promise<PartyRoomRecord> {
     const code = input.joinCode.trim();
-    const found = await this.db.query(`SELECT * FROM player_team_party_rooms WHERE join_code = $1`, [
-      code,
-    ]);
+    const found = await this.db.query(
+      `SELECT * FROM player_team_party_rooms WHERE join_code = $1`,
+      [code],
+    );
     const row = found.rows[0];
     if (row === undefined) {
       throw new PlayerTeamError('NOT_FOUND', 'party room not found for join code');
@@ -234,11 +235,9 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     );
     if ((updated.rowCount ?? 0) === 0) {
       const again = await this.getPartyRoom(input.roomId);
-      throw new PlayerTeamError(
-        'REVISION_CONFLICT',
-        'party room revision conflict on update',
-        { actualRevision: again?.revision ?? null },
-      );
+      throw new PlayerTeamError('REVISION_CONFLICT', 'party room revision conflict on update', {
+        actualRevision: again?.revision ?? null,
+      });
     }
     return this.mapPartyRow(updated.rows[0]);
   }
@@ -289,8 +288,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     channel: number,
     roomCode: string | null,
   ): Promise<TimerRoomSnapshot> {
-    const normalizedCode =
-      roomCode && roomCode.trim().length > 0 ? roomCode.trim() : null;
+    const normalizedCode = roomCode && roomCode.trim().length > 0 ? roomCode.trim() : null;
     const id = this.timerRoomId(mapKey, channel, normalizedCode);
 
     const existing = await this.db.query(`SELECT * FROM player_team_timer_rooms WHERE id = $1`, [

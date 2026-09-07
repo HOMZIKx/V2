@@ -33,7 +33,12 @@ function toneFromResults(state: StatusState): { label: string; tone: 'ok' | 'war
   if (!ready.ok && !discord.ok) {
     return { label: 'Ready / Discord niedostępne', tone: 'error' };
   }
-  if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
+  if (
+    discord.ok &&
+    discord.data.enabled &&
+    discord.data.state === 'ready' &&
+    discord.data.isolationOk
+  ) {
     return { label: 'New Bot live + Discord ready', tone: 'ok' };
   }
   if (ready.ok && ready.data.status === 'ok') {
@@ -57,9 +62,7 @@ function firstError(state: StatusState) {
   return null;
 }
 
-function formatDiscordField(
-  value: string | number | boolean | null | undefined,
-): string {
+function formatDiscordField(value: string | number | boolean | null | undefined): string {
   if (value === null) {
     return 'null';
   }

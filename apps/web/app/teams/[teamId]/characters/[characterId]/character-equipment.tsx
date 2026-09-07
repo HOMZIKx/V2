@@ -1,41 +1,37 @@
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent,
-  type FormEvent,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 
-import { characterClassLabels, formatCharacterClassLine } from '../../../../../src/character-profile';
 import {
-  ENHANCEMENT_LEVELS,
-  maxAdditionalBonusesForItem,
-  catalogBonusEntriesForItem,
+  characterClassLabels,
+  formatCharacterClassLine,
+} from '../../../../../src/character-profile';
+import {
   additionalBonusOptionsForItem,
+  AVERAGE_DAMAGE_MAX,
+  AVERAGE_DAMAGE_MIN,
+  catalogBonusEntriesForItem,
   displayItemBonuses,
+  ENHANCEMENT_LEVELS,
   equipmentSlotForCategory,
   findGameItemByCardName,
   formatEnhancedItemName,
   isItemCompatibleWithClass,
+  maxAdditionalBonusesForItem,
   mergeItemBonusStorage,
   normalizeItemSearchText,
   parseEnhancementFromName,
+  readAverageSkillDamage,
   searchEquipmentCatalogSuggestions,
+  SKILL_DAMAGE_MAX,
+  SKILL_DAMAGE_MIN,
   splitItemBonuses,
+  stripEnhancementFromName,
   weaponHasAverageSkillDamage,
   weaponHasPhPvmAttackBonuses,
-  stripEnhancementFromName,
-  readAverageSkillDamage,
   withAverageSkillDamage,
-  AVERAGE_DAMAGE_MIN,
-  AVERAGE_DAMAGE_MAX,
-  SKILL_DAMAGE_MIN,
-  SKILL_DAMAGE_MAX,
 } from '../../../../../src/item-catalog';
 import {
   equipmentSlots,
@@ -132,7 +128,6 @@ function assignedItemIds(workspace: WorkspaceRecord): Map<string, string> {
   return map;
 }
 
-
 function findItemEquipLocation(
   workspace: WorkspaceRecord,
   itemId: string,
@@ -161,10 +156,7 @@ function findItemEquipLocation(
 }
 
 /** Assignment-based owner label for tooltips (never "Poza postacią" when on a slot). */
-function slotOwnerMeta(
-  readiness: SetReadiness,
-  itemAssignedHere: boolean,
-): string {
+function slotOwnerMeta(readiness: SetReadiness, itemAssignedHere: boolean): string {
   if (itemAssignedHere) {
     if (readiness === 'planned') return readinessLabels.planned;
     if (readiness === 'conflict') return readinessLabels.conflict;
@@ -344,7 +336,7 @@ function CharacterCard(props: {
     writesEnabled,
     addTimerKind,
     customTimerLabel,
-  customTimerMinutes,
+    customTimerMinutes,
     onFocus,
     onSelectItem,
     onAssign,
@@ -358,16 +350,14 @@ function CharacterCard(props: {
     onAddTimer,
     onAddTimerKind,
     onCustomTimerLabel,
-  onCustomTimerMinutes,
+    onCustomTimerMinutes,
     missingKinds,
     onSelectSet,
     onCreateSet,
     onRenameSet,
   } = props;
   const set =
-    (focusId === entry.id
-      ? entry.sets.find((candidate) => candidate.id === activeSetId)
-      : null) ??
+    (focusId === entry.id ? entry.sets.find((candidate) => candidate.id === activeSetId) : null) ??
     entry.sets.find((candidate) => candidate.id === entry.activeSetId) ??
     entry.sets[0] ??
     null;
@@ -628,10 +618,7 @@ function CharacterCard(props: {
                     <ItemIcon item={item} />
                     <ItemNoteBadge item={item} />
                     <small>{slotLabels[slot]}</small>
-                    <ItemHoverTooltip
-                      item={item}
-                      meta={slotOwnerMeta(readiness, true)}
-                    />
+                    <ItemHoverTooltip item={item} meta={slotOwnerMeta(readiness, true)} />
                   </>
                 ) : (
                   <span className="eq-char-slot-label">{slotLabels[slot]}</span>
@@ -761,7 +748,6 @@ function CharacterCard(props: {
           </div>
         </div>
       ) : null}
-
     </article>
   );
 }
@@ -885,8 +871,7 @@ export function CharacterEquipment() {
       url.searchParams.set('view', 'timers');
       setSelectedItemId(null);
       setInspectorEditMode(false);
-    }
-    else url.searchParams.delete('view');
+    } else url.searchParams.delete('view');
     window.history.replaceState(null, '', `${url.pathname}${url.search}`);
   };
 
@@ -1043,7 +1028,9 @@ export function CharacterEquipment() {
     }
     // Clear ALL set assignments for this itemId (ghost copies on other sets).
     unequipItem(workspace.id, itemId);
-    setAnnouncement(`${item.name} → torba (zdjęto z ${loc.characterName} / ${slotLabels[loc.slot]}).`);
+    setAnnouncement(
+      `${item.name} → torba (zdjęto z ${loc.characterName} / ${slotLabels[loc.slot]}).`,
+    );
   };
 
   const onBagClickOrDrop = (itemId: string | null) => {
@@ -1078,8 +1065,7 @@ export function CharacterEquipment() {
         skillDamagePercent !== null && skillDamagePercent !== 0 ? skillDamagePercent : null;
       const addingAvg = nextAvg !== null && !hadAvg;
       const addingSkill = nextSkill !== null && !hadSkill;
-      const baseLen =
-        current.length - (hadAvg ? 1 : 0) - (hadSkill ? 1 : 0);
+      const baseLen = current.length - (hadAvg ? 1 : 0) - (hadSkill ? 1 : 0);
       if (baseLen + (nextAvg !== null ? 1 : 0) + (nextSkill !== null ? 1 : 0) > maxAdditional) {
         setAnnouncement('Limit 5 bonusów dodatkowych — usuń inną linię albo wyczyść SR/UM.');
         return current;
@@ -1137,9 +1123,7 @@ export function CharacterEquipment() {
     const maxAdditional = maxAdditionalBonusesForItem(cardName, catalogSlot);
     const additional = newItemAdditionalBonuses.slice(0, maxAdditional);
     // Keep user-toggled catalog builtins + additional 1–5 (SR/UM count toward 5).
-    const builtinSelected = newItemSelectedBonuses.filter(
-      (line) => !additional.includes(line),
-    );
+    const builtinSelected = newItemSelectedBonuses.filter((line) => !additional.includes(line));
     const bonuses = [...builtinSelected, ...additional];
     const createdId = createItem(workspace.id, {
       name: cardName,
@@ -1188,7 +1172,7 @@ export function CharacterEquipment() {
       addTimerKind={addTimerKind}
       boardMode={boardMode}
       customTimerLabel={customTimerLabel}
-          customTimerMinutes={customTimerMinutes}
+      customTimerMinutes={customTimerMinutes}
       dropTargetId={dropTargetId}
       entry={entry}
       focusId={focusCharacter.id}
@@ -1247,24 +1231,17 @@ export function CharacterEquipment() {
             kind: 'reset',
           }).then((result) => {
             if (result.sent > 0) {
-              setAnnouncement(
-                (prev) =>
-                  `${prev} Wysłano PW Discord (${result.sent}).`,
-              );
+              setAnnouncement((prev) => `${prev} Wysłano PW Discord (${result.sent}).`);
             } else if (!discordAccountId) {
               /* no-op */
             } else if (result.results.some((r) => !r.ok)) {
               const err = result.results.find((r) => !r.ok);
               if (err && !err.ok) {
-                setAnnouncement(
-                  (prev) => `${prev} Discord PW: ${err.error}.`,
-                );
+                setAnnouncement((prev) => `${prev} Discord PW: ${err.error}.`);
               }
             }
           });
-          const endsAt =
-            timer.readyAtIso ??
-            new Date(Date.now() + 60 * 60_000).toISOString();
+          const endsAt = timer.readyAtIso ?? new Date(Date.now() + 60 * 60_000).toISOString();
           scheduleCharacterTimerReminder({
             endsAtIso: endsAt,
             reminderMinutesBefore: 60,
@@ -1279,7 +1256,9 @@ export function CharacterEquipment() {
             },
           });
         } else if (teamTimerRecipients.length === 0 && !timersPwAllowed) {
-          setAnnouncement((prev) => `${prev} (PW timerów postaci wyłączone w ustawieniach zespołu.)`);
+          setAnnouncement(
+            (prev) => `${prev} (PW timerów postaci wyłączone w ustawieniach zespołu.)`,
+          );
         } else if (teamTimerRecipients.length === 0) {
           setAnnouncement(
             (prev) =>
@@ -1292,7 +1271,7 @@ export function CharacterEquipment() {
         setAnnouncement(`${characterName}: usunięto timer „${label}”.`);
       }}
       onCustomTimerLabel={setCustomTimerLabel}
-          onCustomTimerMinutes={setCustomTimerMinutes}
+      onCustomTimerMinutes={setCustomTimerMinutes}
       onDropTarget={setDropTargetId}
       onFocus={(characterId, setId) => {
         setFocusCharacterId(characterId);
@@ -1548,9 +1527,7 @@ export function CharacterEquipment() {
                                 setNewItemEnhancement(fromName);
                               }
                               const hit = findGameItemByCardName(withoutPlus);
-                              setNewItemSlot(
-                                hit ? equipmentSlotForCategory(hit.category) : null,
-                              );
+                              setNewItemSlot(hit ? equipmentSlotForCategory(hit.category) : null);
                             }}
                             onKeyDown={(event) => event.stopPropagation()}
                             onFocus={() => setCatalogMenuOpen(true)}
@@ -1560,7 +1537,9 @@ export function CharacterEquipment() {
                           {catalogMenuOpen && newItemName.trim().length >= 2 ? (
                             <ul className="eq-catalog-menu" id="eq-catalog-menu" role="listbox">
                               {catalogSuggestions.length === 0 ? (
-                                <li className="eq-catalog-menu-empty">Brak trafień w katalogu EQ</li>
+                                <li className="eq-catalog-menu-empty">
+                                  Brak trafień w katalogu EQ
+                                </li>
                               ) : (
                                 catalogSuggestions.map((item) => {
                                   const slot = equipmentSlotForCategory(item.category);
@@ -1734,7 +1713,8 @@ export function CharacterEquipment() {
                                   ),
                                   newItemSlot,
                                 );
-                                const blocked = already || newItemAdditionalBonuses.length >= maxAdd;
+                                const blocked =
+                                  already || newItemAdditionalBonuses.length >= maxAdd;
                                 return (
                                   <button
                                     className={`eq-bonus-catalog-entry${already ? ' is-added' : ''}`}
@@ -1781,11 +1761,7 @@ export function CharacterEquipment() {
                         value={query}
                       />
                     </label>
-                    <div
-                      aria-label="Filtr slotu EQ"
-                      className="catalog-filters"
-                      role="group"
-                    >
+                    <div aria-label="Filtr slotu EQ" className="catalog-filters" role="group">
                       <button
                         aria-pressed={category === 'all'}
                         className={category === 'all' ? 'is-active' : ''}
@@ -1930,97 +1906,397 @@ export function CharacterEquipment() {
           ) : null}
 
           {boardMode === 'eq' ? (
-          <aside className="eq-camp-side">
-            <section className="panel inspector-panel">
-              <header>
-                <h2>Szczegóły</h2>
-              </header>
-              {selectedItem ? (
-                <div className="eq-inspector-item" key={selectedItem.id}>
-                  <div className="eq-inspector-thumb" aria-hidden>
-                    <img alt="" src={selectedItem.iconPath} />
-                  </div>
-                  <h3>{selectedItem.name}</h3>
-                  <p>
-                    Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
-                  </p>
-                  <p className="eq-inspector-meta">
-                    {ownership.get(selectedItem.id)
-                      ? `Na postaci: ${ownership.get(selectedItem.id)}`
-                      : 'Lokalizacja: torba zespołu'}
-                    {' · '}
-                    Slot: {slotLabels[selectedItem.category]}
-                  </p>
+            <aside className="eq-camp-side">
+              <section className="panel inspector-panel">
+                <header>
+                  <h2>Szczegóły</h2>
+                </header>
+                {selectedItem ? (
+                  <div className="eq-inspector-item" key={selectedItem.id}>
+                    <div className="eq-inspector-thumb" aria-hidden>
+                      <img alt="" src={selectedItem.iconPath} />
+                    </div>
+                    <h3>{selectedItem.name}</h3>
+                    <p>
+                      Ulepszenie +{selectedItem.enhancement} · {selectedItem.levelLabel}
+                    </p>
+                    <p className="eq-inspector-meta">
+                      {ownership.get(selectedItem.id)
+                        ? `Na postaci: ${ownership.get(selectedItem.id)}`
+                        : 'Lokalizacja: torba zespołu'}
+                      {' · '}
+                      Slot: {slotLabels[selectedItem.category]}
+                    </p>
 
-                  {(() => {
-                    const viewEnhancement = inspectorEditMode
-                      ? draftEnhancement
-                      : selectedItem.enhancement;
-                    const viewName = inspectorEditMode
-                      ? formatEnhancedItemName(
-                          stripEnhancementFromName(selectedItem.name),
-                          viewEnhancement,
-                        )
-                      : selectedItem.name;
-                    const { builtin, additional } = splitItemBonuses(
-                      viewName,
-                      viewEnhancement,
-                      inspectorEditMode
-                        ? mergeItemBonusStorage(
-                            viewName,
+                    {(() => {
+                      const viewEnhancement = inspectorEditMode
+                        ? draftEnhancement
+                        : selectedItem.enhancement;
+                      const viewName = inspectorEditMode
+                        ? formatEnhancedItemName(
+                            stripEnhancementFromName(selectedItem.name),
                             viewEnhancement,
-                            draftAdditional,
-                            selectedItem.category,
                           )
-                        : selectedItem.bonuses,
-                    );
-                    const mixOptions = additionalBonusOptionsForItem(
-                      viewName,
-                      selectedItem.category,
-                    );
-                    const maxAdditional = maxAdditionalBonusesForItem(
-                      viewName,
-                      selectedItem.category,
-                    );
-                    const editingAdditional = inspectorEditMode ? draftAdditional : additional;
-                    const canAddMore = editingAdditional.length < maxAdditional;
+                        : selectedItem.name;
+                      const { builtin, additional } = splitItemBonuses(
+                        viewName,
+                        viewEnhancement,
+                        inspectorEditMode
+                          ? mergeItemBonusStorage(
+                              viewName,
+                              viewEnhancement,
+                              draftAdditional,
+                              selectedItem.category,
+                            )
+                          : selectedItem.bonuses,
+                      );
+                      const mixOptions = additionalBonusOptionsForItem(
+                        viewName,
+                        selectedItem.category,
+                      );
+                      const maxAdditional = maxAdditionalBonusesForItem(
+                        viewName,
+                        selectedItem.category,
+                      );
+                      const editingAdditional = inspectorEditMode ? draftAdditional : additional;
+                      const canAddMore = editingAdditional.length < maxAdditional;
 
-                    if (!inspectorEditMode) {
+                      if (!inspectorEditMode) {
+                        return (
+                          <>
+                            <div className="eq-inspector-actions">
+                              {writesEnabled ? (
+                                <button
+                                  className="primary-button"
+                                  onClick={() => {
+                                    setDraftEnhancement(selectedItem.enhancement);
+                                    setDraftAdditional(additional);
+                                    setInspectorEditMode(true);
+                                  }}
+                                  type="button"
+                                >
+                                  Edytuj
+                                </button>
+                              ) : null}
+                              {writesEnabled && ownership.get(selectedItem.id) ? (
+                                <button onClick={() => unequipToBag(selectedItem.id)} type="button">
+                                  Zdejmij do torby
+                                </button>
+                              ) : null}
+                              <button onClick={() => clearSelection()} type="button">
+                                Anuluj wybór
+                              </button>
+                            </div>
+                            {writesEnabled && livingCharacters.length > 0 ? (
+                              <>
+                                <span className="section-kicker">Przenieś / Załóż</span>
+                                <div className="eq-mobile-assign-targets">
+                                  {livingCharacters.map((entry) => (
+                                    <button
+                                      key={`view-move-${entry.id}`}
+                                      onClick={() => assignToCharacter(entry, selectedItem.id)}
+                                      type="button"
+                                    >
+                                      {entry.name}
+                                    </button>
+                                  ))}
+                                  {ownership.get(selectedItem.id) ? (
+                                    <button
+                                      onClick={() => unequipToBag(selectedItem.id)}
+                                      type="button"
+                                    >
+                                      → Torba
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </>
+                            ) : null}
+
+                            <span className="section-kicker">
+                              Bonusy wbudowane (+{selectedItem.enhancement})
+                            </span>
+                            <ul className="eq-bonus-lines">
+                              {builtin.length > 0 ? (
+                                builtin.map((bonus) => (
+                                  <li className="eq-bonus-builtin" key={`builtin-${bonus}`}>
+                                    <span>{bonus}</span>
+                                    <em className="eq-bonus-locked" title="Z katalogu ulepszeń">
+                                      katalog
+                                    </em>
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="eq-bonus-empty">
+                                  <span>
+                                    Brak kompletnej drabinki ulepszeń w katalogu dla tej karty.
+                                  </span>
+                                </li>
+                              )}
+                            </ul>
+
+                            <span className="section-kicker">
+                              Bonusy dodatkowe ({additional.length}/{maxAdditional})
+                            </span>
+                            <ul className="eq-bonus-lines">
+                              {additional.map((bonus) => (
+                                <li key={`add-ro-${bonus}`}>
+                                  <span>{bonus}</span>
+                                </li>
+                              ))}
+                              {additional.length === 0 ? (
+                                <li className="eq-bonus-empty">
+                                  <span>Brak dodatkowych — użyj Edytuj, żeby dodać (max 5)</span>
+                                </li>
+                              ) : null}
+                            </ul>
+
+                            {selectedItem.category === 'weapon' &&
+                            weaponHasPhPvmAttackBonuses(selectedItem.name) ? (
+                              <p className="eq-catalog-hint">
+                                PvM Attack Value / Magic Attack Value PvM — wartości serwerowe PH
+                                (wiki/SHIFT), nie edytowane tu.
+                              </p>
+                            ) : null}
+                          </>
+                        );
+                      }
+
                       return (
-                        <>
+                        <div className="eq-bonus-editor">
                           <div className="eq-inspector-actions">
-                            {writesEnabled ? (
-                              <button
-                                className="primary-button"
-                                onClick={() => {
-                                  setDraftEnhancement(selectedItem.enhancement);
-                                  setDraftAdditional(additional);
-                                  setInspectorEditMode(true);
-                                }}
-                                type="button"
-                              >
-                                Edytuj
-                              </button>
-                            ) : null}
-                            {writesEnabled && ownership.get(selectedItem.id) ? (
-                              <button
-                                onClick={() => unequipToBag(selectedItem.id)}
-                                type="button"
-                              >
-                                Zdejmij do torby
-                              </button>
-                            ) : null}
-                            <button onClick={() => clearSelection()} type="button">
-                              Anuluj wybór
+                            <button
+                              className="primary-button"
+                              disabled={!writesEnabled}
+                              onClick={() => {
+                                // Pass additional-only; store merges builtins so they cannot wipe extras.
+                                updateItemBonuses(workspace.id, selectedItem.id, draftAdditional, {
+                                  enhancement: draftEnhancement,
+                                });
+                                setAnnouncement(
+                                  `Zapisano: ${formatEnhancedItemName(
+                                    stripEnhancementFromName(selectedItem.name),
+                                    draftEnhancement,
+                                  )} (${draftAdditional.length} dodatkowych).`,
+                                );
+                                setInspectorEditMode(false);
+                              }}
+                              type="button"
+                            >
+                              Zapisz
+                            </button>
+                            <button onClick={() => setInspectorEditMode(false)} type="button">
+                              Anuluj
                             </button>
                           </div>
-                          {writesEnabled && livingCharacters.length > 0 ? (
+
+                          <label className="eq-weapon-stat-field">
+                            <span>Ulepszenie</span>
+                            <select
+                              disabled={!writesEnabled}
+                              onChange={(event) => setDraftEnhancement(Number(event.target.value))}
+                              value={draftEnhancement}
+                            >
+                              {ENHANCEMENT_LEVELS.map((level) => (
+                                <option key={level} value={level}>
+                                  +{level}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <span className="section-kicker">
+                            Bonusy wbudowane (+{draftEnhancement}) — z katalogu
+                          </span>
+                          <ul className="eq-bonus-lines">
+                            {builtin.length > 0 ? (
+                              builtin.map((bonus) => (
+                                <li className="eq-bonus-builtin" key={`edit-builtin-${bonus}`}>
+                                  <span>{bonus}</span>
+                                  <em className="eq-bonus-locked">katalog</em>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="eq-bonus-empty">
+                                <span>Brak drabinki wbudowanych dla tego +N.</span>
+                              </li>
+                            )}
+                          </ul>
+
+                          <span className="section-kicker">
+                            Bonusy dodatkowe ({draftAdditional.length}/{maxAdditional})
+                          </span>
+                          {selectedItem.category === 'weapon' &&
+                          weaponHasAverageSkillDamage(viewName) ? (
+                            <div className="eq-sr-um-editor" aria-label="SR i UM — wartość własna">
+                              <p className="eq-catalog-hint">
+                                Średnie Obrażenia i Obrażenia Umiejętności zajmują sloty 1–5. Wpisz
+                                dowolny % z zakresu; przyciski z puli to skróty.
+                              </p>
+                              {(() => {
+                                const { averageDamagePercent, skillDamagePercent } =
+                                  readAverageSkillDamage(draftAdditional);
+                                return (
+                                  <div className="eq-sr-um-fields">
+                                    <label className="eq-weapon-stat-field">
+                                      <span>
+                                        Średnie Obrażenia % ({AVERAGE_DAMAGE_MIN}…
+                                        {AVERAGE_DAMAGE_MAX})
+                                      </span>
+                                      <input
+                                        disabled={!writesEnabled}
+                                        inputMode="numeric"
+                                        max={AVERAGE_DAMAGE_MAX}
+                                        min={AVERAGE_DAMAGE_MIN}
+                                        onChange={(event) => {
+                                          const raw = event.target.value.trim();
+                                          if (raw === '' || raw === '-') {
+                                            applyDraftAverageSkill(null, skillDamagePercent);
+                                            return;
+                                          }
+                                          const num = Number.parseInt(raw, 10);
+                                          if (!Number.isFinite(num)) return;
+                                          const clamped = Math.min(
+                                            AVERAGE_DAMAGE_MAX,
+                                            Math.max(AVERAGE_DAMAGE_MIN, num),
+                                          );
+                                          applyDraftAverageSkill(clamped, skillDamagePercent);
+                                        }}
+                                        placeholder="np. 27"
+                                        type="number"
+                                        value={averageDamagePercent ?? ''}
+                                      />
+                                    </label>
+                                    <label className="eq-weapon-stat-field">
+                                      <span>
+                                        Obrażenia Umiejętności % ({SKILL_DAMAGE_MIN}…
+                                        {SKILL_DAMAGE_MAX})
+                                      </span>
+                                      <input
+                                        disabled={!writesEnabled}
+                                        inputMode="numeric"
+                                        max={SKILL_DAMAGE_MAX}
+                                        min={SKILL_DAMAGE_MIN}
+                                        onChange={(event) => {
+                                          const raw = event.target.value.trim();
+                                          if (raw === '' || raw === '-') {
+                                            applyDraftAverageSkill(averageDamagePercent, null);
+                                            return;
+                                          }
+                                          const num = Number.parseInt(raw, 10);
+                                          if (!Number.isFinite(num)) return;
+                                          const clamped = Math.min(
+                                            SKILL_DAMAGE_MAX,
+                                            Math.max(SKILL_DAMAGE_MIN, num),
+                                          );
+                                          applyDraftAverageSkill(averageDamagePercent, clamped);
+                                        }}
+                                        placeholder="np. 12"
+                                        type="number"
+                                        value={skillDamagePercent ?? ''}
+                                      />
+                                    </label>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : null}
+                          <ul className="eq-bonus-lines">
+                            {draftAdditional.map((bonus) => (
+                              <li key={`edit-add-${bonus}`}>
+                                <span>{bonus}</span>
+                                <button
+                                  disabled={!writesEnabled}
+                                  onClick={() =>
+                                    setDraftAdditional((current) =>
+                                      current.filter((line) => line !== bonus),
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  Usuń
+                                </button>
+                              </li>
+                            ))}
+                            {draftAdditional.length === 0 ? (
+                              <li className="eq-bonus-empty">
+                                <span>Wybierz z puli poniżej</span>
+                              </li>
+                            ) : null}
+                          </ul>
+
+                          <span className="eq-bonus-source-label">
+                            Pula Zaczarowania
+                            {!canAddMore ? ' · limit 5' : ''}:
+                          </span>
+                          <div className="eq-bonus-catalog-list">
+                            {mixOptions.map((line) => {
+                              const avgSkill = readAverageSkillDamage([line]);
+                              const isAvgShortcut = avgSkill.averageDamagePercent !== null;
+                              const isSkillShortcut = avgSkill.skillDamagePercent !== null;
+                              const currentAvgSkill = readAverageSkillDamage(draftAdditional);
+                              const alreadyAdded = isAvgShortcut
+                                ? currentAvgSkill.averageDamagePercent ===
+                                  avgSkill.averageDamagePercent
+                                : isSkillShortcut
+                                  ? currentAvgSkill.skillDamagePercent ===
+                                    avgSkill.skillDamagePercent
+                                  : draftAdditional.includes(line);
+                              const replacingAvg =
+                                isAvgShortcut && currentAvgSkill.averageDamagePercent !== null;
+                              const replacingSkill =
+                                isSkillShortcut && currentAvgSkill.skillDamagePercent !== null;
+                              const wouldNeedSlot =
+                                (isAvgShortcut && !replacingAvg) ||
+                                (isSkillShortcut && !replacingSkill) ||
+                                (!isAvgShortcut && !isSkillShortcut);
+                              const blocked =
+                                !writesEnabled ||
+                                alreadyAdded ||
+                                (wouldNeedSlot && !canAddMore && !replacingAvg && !replacingSkill);
+                              return (
+                                <button
+                                  className={`eq-bonus-catalog-entry${alreadyAdded ? ' is-added' : ''}`}
+                                  disabled={blocked}
+                                  key={`edit-opt-${line}`}
+                                  onClick={() => {
+                                    if (alreadyAdded) return;
+                                    if (isAvgShortcut) {
+                                      applyDraftAverageSkill(
+                                        avgSkill.averageDamagePercent,
+                                        currentAvgSkill.skillDamagePercent,
+                                      );
+                                      return;
+                                    }
+                                    if (isSkillShortcut) {
+                                      applyDraftAverageSkill(
+                                        currentAvgSkill.averageDamagePercent,
+                                        avgSkill.skillDamagePercent,
+                                      );
+                                      return;
+                                    }
+                                    if (!canAddMore) return;
+                                    setDraftAdditional((current) => [...current, line]);
+                                  }}
+                                  type="button"
+                                >
+                                  <span>{line}</span>
+                                  {alreadyAdded ? (
+                                    <span className="eq-bonus-check">✓</span>
+                                  ) : (
+                                    <span className="eq-bonus-plus">+</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {livingCharacters.length > 0 ? (
                             <>
                               <span className="section-kicker">Przenieś / Załóż</span>
                               <div className="eq-mobile-assign-targets">
                                 {livingCharacters.map((entry) => (
                                   <button
-                                    key={`view-move-${entry.id}`}
+                                    key={`move-${entry.id}`}
                                     onClick={() => assignToCharacter(entry, selectedItem.id)}
                                     type="button"
                                   >
@@ -2038,395 +2314,82 @@ export function CharacterEquipment() {
                               </div>
                             </>
                           ) : null}
-
-                          <span className="section-kicker">
-                            Bonusy wbudowane (+{selectedItem.enhancement})
-                          </span>
-                          <ul className="eq-bonus-lines">
-                            {builtin.length > 0 ? (
-                              builtin.map((bonus) => (
-                                <li className="eq-bonus-builtin" key={`builtin-${bonus}`}>
-                                  <span>{bonus}</span>
-                                  <em className="eq-bonus-locked" title="Z katalogu ulepszeń">
-                                    katalog
-                                  </em>
-                                </li>
-                              ))
-                            ) : (
-                              <li className="eq-bonus-empty">
-                                <span>
-                                  Brak kompletnej drabinki ulepszeń w katalogu dla tej karty.
-                                </span>
-                              </li>
-                            )}
-                          </ul>
-
-                          <span className="section-kicker">
-                            Bonusy dodatkowe ({additional.length}/{maxAdditional})
-                          </span>
-                          <ul className="eq-bonus-lines">
-                            {additional.map((bonus) => (
-                              <li key={`add-ro-${bonus}`}>
-                                <span>{bonus}</span>
-                              </li>
-                            ))}
-                            {additional.length === 0 ? (
-                              <li className="eq-bonus-empty">
-                                <span>Brak dodatkowych — użyj Edytuj, żeby dodać (max 5)</span>
-                              </li>
-                            ) : null}
-                          </ul>
-
-                          {selectedItem.category === 'weapon' &&
-                          weaponHasPhPvmAttackBonuses(selectedItem.name) ? (
-                            <p className="eq-catalog-hint">
-                              PvM Attack Value / Magic Attack Value PvM — wartości serwerowe PH
-                              (wiki/SHIFT), nie edytowane tu.
-                            </p>
-                          ) : null}
-                        </>
-                      );
-                    }
-
-                    return (
-                      <div className="eq-bonus-editor">
-                        <div className="eq-inspector-actions">
-                          <button
-                            className="primary-button"
-                            disabled={!writesEnabled}
-                            onClick={() => {
-                              // Pass additional-only; store merges builtins so they cannot wipe extras.
-                              updateItemBonuses(
-                                workspace.id,
-                                selectedItem.id,
-                                draftAdditional,
-                                { enhancement: draftEnhancement },
-                              );
-                              setAnnouncement(
-                                `Zapisano: ${formatEnhancedItemName(
-                                  stripEnhancementFromName(selectedItem.name),
-                                  draftEnhancement,
-                                )} (${draftAdditional.length} dodatkowych).`,
-                              );
-                              setInspectorEditMode(false);
-                            }}
-                            type="button"
-                          >
-                            Zapisz
-                          </button>
-                          <button
-                            onClick={() => setInspectorEditMode(false)}
-                            type="button"
-                          >
-                            Anuluj
-                          </button>
                         </div>
+                      );
+                    })()}
 
-                        <label className="eq-weapon-stat-field">
-                          <span>Ulepszenie</span>
-                          <select
-                            disabled={!writesEnabled}
-                            onChange={(event) => setDraftEnhancement(Number(event.target.value))}
-                            value={draftEnhancement}
-                          >
-                            {ENHANCEMENT_LEVELS.map((level) => (
-                              <option key={level} value={level}>
-                                +{level}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <span className="section-kicker">
-                          Bonusy wbudowane (+{draftEnhancement}) — z katalogu
-                        </span>
-                        <ul className="eq-bonus-lines">
-                          {builtin.length > 0 ? (
-                            builtin.map((bonus) => (
-                              <li className="eq-bonus-builtin" key={`edit-builtin-${bonus}`}>
-                                <span>{bonus}</span>
-                                <em className="eq-bonus-locked">katalog</em>
-                              </li>
-                            ))
-                          ) : (
-                            <li className="eq-bonus-empty">
-                              <span>Brak drabinki wbudowanych dla tego +N.</span>
-                            </li>
-                          )}
-                        </ul>
-
-                        <span className="section-kicker">
-                          Bonusy dodatkowe ({draftAdditional.length}/{maxAdditional})
-                        </span>
-                        {selectedItem.category === 'weapon' &&
-                        weaponHasAverageSkillDamage(viewName) ? (
-                          <div className="eq-sr-um-editor" aria-label="SR i UM — wartość własna">
-                            <p className="eq-catalog-hint">
-                              Średnie Obrażenia i Obrażenia Umiejętności zajmują sloty 1–5.
-                              Wpisz dowolny % z zakresu; przyciski z puli to skróty.
-                            </p>
-                            {(() => {
-                              const { averageDamagePercent, skillDamagePercent } =
-                                readAverageSkillDamage(draftAdditional);
-                              return (
-                                <div className="eq-sr-um-fields">
-                                  <label className="eq-weapon-stat-field">
-                                    <span>
-                                      Średnie Obrażenia % ({AVERAGE_DAMAGE_MIN}…{AVERAGE_DAMAGE_MAX})
-                                    </span>
-                                    <input
-                                      disabled={!writesEnabled}
-                                      inputMode="numeric"
-                                      max={AVERAGE_DAMAGE_MAX}
-                                      min={AVERAGE_DAMAGE_MIN}
-                                      onChange={(event) => {
-                                        const raw = event.target.value.trim();
-                                        if (raw === '' || raw === '-') {
-                                          applyDraftAverageSkill(null, skillDamagePercent);
-                                          return;
-                                        }
-                                        const num = Number.parseInt(raw, 10);
-                                        if (!Number.isFinite(num)) return;
-                                        const clamped = Math.min(
-                                          AVERAGE_DAMAGE_MAX,
-                                          Math.max(AVERAGE_DAMAGE_MIN, num),
-                                        );
-                                        applyDraftAverageSkill(clamped, skillDamagePercent);
-                                      }}
-                                      placeholder="np. 27"
-                                      type="number"
-                                      value={averageDamagePercent ?? ''}
-                                    />
-                                  </label>
-                                  <label className="eq-weapon-stat-field">
-                                    <span>
-                                      Obrażenia Umiejętności % ({SKILL_DAMAGE_MIN}…{SKILL_DAMAGE_MAX})
-                                    </span>
-                                    <input
-                                      disabled={!writesEnabled}
-                                      inputMode="numeric"
-                                      max={SKILL_DAMAGE_MAX}
-                                      min={SKILL_DAMAGE_MIN}
-                                      onChange={(event) => {
-                                        const raw = event.target.value.trim();
-                                        if (raw === '' || raw === '-') {
-                                          applyDraftAverageSkill(averageDamagePercent, null);
-                                          return;
-                                        }
-                                        const num = Number.parseInt(raw, 10);
-                                        if (!Number.isFinite(num)) return;
-                                        const clamped = Math.min(
-                                          SKILL_DAMAGE_MAX,
-                                          Math.max(SKILL_DAMAGE_MIN, num),
-                                        );
-                                        applyDraftAverageSkill(averageDamagePercent, clamped);
-                                      }}
-                                      placeholder="np. 12"
-                                      type="number"
-                                      value={skillDamagePercent ?? ''}
-                                    />
-                                  </label>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ) : null}
-                        <ul className="eq-bonus-lines">
-                          {draftAdditional.map((bonus) => (
-                            <li key={`edit-add-${bonus}`}>
-                              <span>{bonus}</span>
-                              <button
-                                disabled={!writesEnabled}
-                                onClick={() =>
-                                  setDraftAdditional((current) =>
-                                    current.filter((line) => line !== bonus),
-                                  )
-                                }
-                                type="button"
-                              >
-                                Usuń
-                              </button>
+                    <div className="eq-item-notes">
+                      <span className="section-kicker">Notatki przy karcie</span>
+                      {(selectedItem.notes?.length ?? 0) === 0 ? (
+                        <p className="empty-copy">Brak notatek przy tej karcie.</p>
+                      ) : (
+                        <ul className="team-note-list">
+                          {(selectedItem.notes ?? []).map((note) => (
+                            <li className="team-note" key={note.id}>
+                              <div className="team-note-meta">
+                                <strong>{note.authorName}</strong>
+                                <span aria-hidden="true"> · </span>
+                                <time>{note.createdAt}</time>
+                                {writesEnabled ? (
+                                  <button
+                                    className="eq-note-remove"
+                                    onClick={() => {
+                                      removeItemNote(workspace.id, selectedItem.id, note.id);
+                                      setAnnouncement('Usunięto notatkę przy karcie.');
+                                    }}
+                                    type="button"
+                                  >
+                                    Usuń
+                                  </button>
+                                ) : null}
+                              </div>
+                              <p>{note.body}</p>
                             </li>
                           ))}
-                          {draftAdditional.length === 0 ? (
-                            <li className="eq-bonus-empty">
-                              <span>Wybierz z puli poniżej</span>
-                            </li>
-                          ) : null}
                         </ul>
-
-                        <span className="eq-bonus-source-label">
-                          Pula Zaczarowania
-                          {!canAddMore ? ' · limit 5' : ''}:
-                        </span>
-                        <div className="eq-bonus-catalog-list">
-                          {mixOptions.map((line) => {
-                            const avgSkill = readAverageSkillDamage([line]);
-                            const isAvgShortcut = avgSkill.averageDamagePercent !== null;
-                            const isSkillShortcut = avgSkill.skillDamagePercent !== null;
-                            const currentAvgSkill = readAverageSkillDamage(draftAdditional);
-                            const alreadyAdded = isAvgShortcut
-                              ? currentAvgSkill.averageDamagePercent ===
-                                avgSkill.averageDamagePercent
-                              : isSkillShortcut
-                                ? currentAvgSkill.skillDamagePercent ===
-                                  avgSkill.skillDamagePercent
-                                : draftAdditional.includes(line);
-                            const replacingAvg =
-                              isAvgShortcut && currentAvgSkill.averageDamagePercent !== null;
-                            const replacingSkill =
-                              isSkillShortcut && currentAvgSkill.skillDamagePercent !== null;
-                            const wouldNeedSlot =
-                              (isAvgShortcut && !replacingAvg) ||
-                              (isSkillShortcut && !replacingSkill) ||
-                              (!isAvgShortcut && !isSkillShortcut);
-                            const blocked =
-                              !writesEnabled ||
-                              alreadyAdded ||
-                              (wouldNeedSlot && !canAddMore && !replacingAvg && !replacingSkill);
-                            return (
-                              <button
-                                className={`eq-bonus-catalog-entry${alreadyAdded ? ' is-added' : ''}`}
-                                disabled={blocked}
-                                key={`edit-opt-${line}`}
-                                onClick={() => {
-                                  if (alreadyAdded) return;
-                                  if (isAvgShortcut) {
-                                    applyDraftAverageSkill(
-                                      avgSkill.averageDamagePercent,
-                                      currentAvgSkill.skillDamagePercent,
-                                    );
-                                    return;
-                                  }
-                                  if (isSkillShortcut) {
-                                    applyDraftAverageSkill(
-                                      currentAvgSkill.averageDamagePercent,
-                                      avgSkill.skillDamagePercent,
-                                    );
-                                    return;
-                                  }
-                                  if (!canAddMore) return;
-                                  setDraftAdditional((current) => [...current, line]);
-                                }}
-                                type="button"
-                              >
-                                <span>{line}</span>
-                                {alreadyAdded ? (
-                                  <span className="eq-bonus-check">✓</span>
-                                ) : (
-                                  <span className="eq-bonus-plus">+</span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {livingCharacters.length > 0 ? (
-                          <>
-                            <span className="section-kicker">Przenieś / Załóż</span>
-                            <div className="eq-mobile-assign-targets">
-                              {livingCharacters.map((entry) => (
-                                <button
-                                  key={`move-${entry.id}`}
-                                  onClick={() => assignToCharacter(entry, selectedItem.id)}
-                                  type="button"
-                                >
-                                  {entry.name}
-                                </button>
-                              ))}
-                              {ownership.get(selectedItem.id) ? (
-                                <button
-                                  onClick={() => unequipToBag(selectedItem.id)}
-                                  type="button"
-                                >
-                                  → Torba
-                                </button>
-                              ) : null}
-                            </div>
-                          </>
-                        ) : null}
-                      </div>
-                    );
-                  })()}
-
-                  <div className="eq-item-notes">
-                    <span className="section-kicker">Notatki przy karcie</span>
-                    {(selectedItem.notes?.length ?? 0) === 0 ? (
-                      <p className="empty-copy">Brak notatek przy tej karcie.</p>
-                    ) : (
-                      <ul className="team-note-list">
-                        {(selectedItem.notes ?? []).map((note) => (
-                          <li className="team-note" key={note.id}>
-                            <div className="team-note-meta">
-                              <strong>{note.authorName}</strong>
-                              <span aria-hidden="true"> · </span>
-                              <time>{note.createdAt}</time>
-                              {writesEnabled ? (
-                                <button
-                                  className="eq-note-remove"
-                                  onClick={() => {
-                                    removeItemNote(workspace.id, selectedItem.id, note.id);
-                                    setAnnouncement('Usunięto notatkę przy karcie.');
-                                  }}
-                                  type="button"
-                                >
-                                  Usuń
-                                </button>
-                              ) : null}
-                            </div>
-                            <p>{note.body}</p>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {writesEnabled ? (
-                      <form
-                        className="team-note-form eq-item-note-form"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          if (!itemNoteDraft.trim()) return;
-                          addItemNote(workspace.id, selectedItem.id, itemNoteDraft);
-                          setItemNoteDraft('');
-                          setAnnouncement('Dodano notatkę przy karcie.');
-                        }}
-                      >
-                        <label>
-                          Dodaj notatkę
-                          <textarea
-                            maxLength={280}
-                            onChange={(event) => setItemNoteDraft(event.target.value)}
-                            placeholder="Krótka informacja dla zespołu o tej karcie…"
-                            rows={2}
-                            value={itemNoteDraft}
-                          />
-                        </label>
-                        <div>
-                          <small>{itemNoteDraft.trim().length}/280</small>
-                          <button
-                            disabled={itemNoteDraft.trim().length === 0}
-                            type="submit"
-                          >
+                      )}
+                      {writesEnabled ? (
+                        <form
+                          className="team-note-form eq-item-note-form"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            if (!itemNoteDraft.trim()) return;
+                            addItemNote(workspace.id, selectedItem.id, itemNoteDraft);
+                            setItemNoteDraft('');
+                            setAnnouncement('Dodano notatkę przy karcie.');
+                          }}
+                        >
+                          <label>
                             Dodaj notatkę
-                          </button>
-                        </div>
-                      </form>
+                            <textarea
+                              maxLength={280}
+                              onChange={(event) => setItemNoteDraft(event.target.value)}
+                              placeholder="Krótka informacja dla zespołu o tej karcie…"
+                              rows={2}
+                              value={itemNoteDraft}
+                            />
+                          </label>
+                          <div>
+                            <small>{itemNoteDraft.trim().length}/280</small>
+                            <button disabled={itemNoteDraft.trim().length === 0} type="submit">
+                              Dodaj notatkę
+                            </button>
+                          </div>
+                        </form>
+                      ) : null}
+                    </div>
+
+                    {writesEnabled && findItemEquipLocation(workspace, selectedItem.id) ? (
+                      <button onClick={() => unequipToBag(selectedItem.id)} type="button">
+                        Zdejmij do torby
+                      </button>
                     ) : null}
                   </div>
-
-                  {writesEnabled && findItemEquipLocation(workspace, selectedItem.id) ? (
-                    <button
-                      onClick={() => unequipToBag(selectedItem.id)}
-                      type="button"
-                    >
-                      Zdejmij do torby
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <p>Wybierz kartę z ekwipunku albo slotu postaci.</p>
-              )}
-            </section>
-          </aside>
+                ) : (
+                  <p>Wybierz kartę z ekwipunku albo slotu postaci.</p>
+                )}
+              </section>
+            </aside>
           ) : null}
         </div>
 

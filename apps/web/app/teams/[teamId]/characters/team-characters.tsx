@@ -124,10 +124,7 @@ export function TeamCharacters() {
           </div>
           <div className="characters-page-actions">
             {writesEnabled ? (
-              <a
-                className="secondary-button"
-                href={`/teams/${workspace.id}/characters/new`}
-              >
+              <a className="secondary-button" href={`/teams/${workspace.id}/characters/new`}>
                 <Icon name="plus" size={16} /> Dodaj postać
               </a>
             ) : null}
@@ -172,10 +169,7 @@ export function TeamCharacters() {
               Brak postaci w tym zespole. Dodaj pierwszą kartę, żeby otworzyć EQ i Timer.
             </p>
             {writesEnabled ? (
-              <a
-                className="primary-button"
-                href={`/teams/${workspace.id}/characters/new`}
-              >
+              <a className="primary-button" href={`/teams/${workspace.id}/characters/new`}>
                 Dodaj postać
               </a>
             ) : null}

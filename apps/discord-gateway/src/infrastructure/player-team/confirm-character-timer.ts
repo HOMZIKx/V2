@@ -115,8 +115,7 @@ async function loadStateWithTimer(
       state?: LooseState | null;
       revision?: number;
     };
-    const state: LooseState =
-      body.state && typeof body.state === 'object' ? { ...body.state } : {};
+    const state: LooseState = body.state && typeof body.state === 'object' ? { ...body.state } : {};
     const workspaces = Array.isArray(state.workspaces) ? [...state.workspaces] : [];
 
     let foundWorkspaceIndex = -1;
@@ -178,12 +177,7 @@ async function resolveLoadedTimer(
   };
 
   for (const candidate of candidates) {
-    const attempt = await loadStateWithTimer(
-      url,
-      input.demoViewerHeader,
-      candidate,
-      input.timerId,
-    );
+    const attempt = await loadStateWithTimer(url, input.demoViewerHeader, candidate, input.timerId);
     if (attempt.ok) {
       return { ok: true, loaded: attempt.loaded, url };
     }
@@ -248,8 +242,7 @@ export async function confirmCharacterProgressTimerFromBot(
       (ws.characters ?? []).find((c) => c.id === foundTimer.characterId)?.name ?? null;
     const label = typeof foundTimer.label === 'string' ? foundTimer.label : input.timerId;
     const kind =
-      (typeof foundTimer.kind === 'string' ? foundTimer.kind : null) ??
-      inferProgressionKind(label);
+      (typeof foundTimer.kind === 'string' ? foundTimer.kind : null) ?? inferProgressionKind(label);
     const durationMinutes =
       typeof foundTimer.durationMinutes === 'number' ? foundTimer.durationMinutes : undefined;
     const restart = restartAfterDone(kind, new Date(), durationMinutes);
@@ -318,8 +311,7 @@ export async function confirmCharacterProgressTimerFromBot(
     }
 
     const putJson = (await putRes.json()) as { revision?: number };
-    const characterId =
-      typeof foundTimer.characterId === 'string' ? foundTimer.characterId : null;
+    const characterId = typeof foundTimer.characterId === 'string' ? foundTimer.characterId : null;
     return {
       ok: true,
       revision: typeof putJson.revision === 'number' ? putJson.revision : nextRevision,

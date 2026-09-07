@@ -11,12 +11,12 @@ Paths: `/game/classes/{class}-{gender}.png`
 
 Additional costume lines live under `/game/classes/looks/{look}/`:
 
-| Look id        | Wiki costume series                         | Path prefix                         |
-|----------------|---------------------------------------------|-------------------------------------|
-| `desert`       | Desert Warrior                              | `/game/classes/` (legacy root)      |
+| Look id        | Wiki costume series                           | Path prefix                         |
+| -------------- | --------------------------------------------- | ----------------------------------- |
+| `desert`       | Desert Warrior                                | `/game/classes/` (legacy root)      |
 | `black-desert` | Black Desert Warrior / Desert Warrior (Black) | `/game/classes/looks/black-desert/` |
-| `azrael`       | Azrael's Armour                             | `/game/classes/looks/azrael/`       |
-| `ice-dragon`   | Ice Dragon Guard                            | `/game/classes/looks/ice-dragon/`   |
+| `azrael`       | Azrael's Armour                               | `/game/classes/looks/azrael/`       |
+| `ice-dragon`   | Ice Dragon Guard                              | `/game/classes/looks/ice-dragon/`   |
 
 Each look has all **8** class×gender frames (`warrior|sura|ninja|shaman` × `male|female`),
 sourced as `File:{Class} ({M|F}) {Series}.png`.

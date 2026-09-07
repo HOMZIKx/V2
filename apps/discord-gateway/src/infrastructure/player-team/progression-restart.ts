@@ -4,13 +4,7 @@
  */
 
 export type ProgressionKind =
-  | 'skill_book'
-  | 'soul_stone'
-  | 'leadership'
-  | 'polymorph'
-  | 'mining'
-  | 'horse'
-  | 'biologist';
+  'skill_book' | 'soul_stone' | 'leadership' | 'polymorph' | 'mining' | 'horse' | 'biologist';
 
 const HORSE_HOURS = 23;
 const SOUL_STONE_HOURS = 12;
@@ -38,11 +32,7 @@ export function inferProgressionKind(label: string): ProgressionKind | null {
   ) {
     return 'soul_stone';
   }
-  if (
-    ascii.includes('dowodz') ||
-    ascii.includes('sun zi') ||
-    ascii.includes('leadership')
-  ) {
+  if (ascii.includes('dowodz') || ascii.includes('sun zi') || ascii.includes('leadership')) {
     return 'leadership';
   }
   if (ascii.includes('polimorf') || ascii.includes('polymorph')) return 'polymorph';

@@ -120,8 +120,7 @@ export function appearanceToRenderInput(
 export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload {
   const payload = panelPayload();
   const title = input.title?.trim() || PANEL_TITLE;
-  const description =
-    input.description !== undefined ? input.description : PANEL_DESCRIPTION;
+  const description = input.description !== undefined ? input.description : PANEL_DESCRIPTION;
   const accent = accentHexToInt(input.accentHex) ?? V2_PANEL_COLORS.embed;
   const includeBanner = input.includeBanner !== false;
   const externalBanner =
@@ -176,7 +175,9 @@ export function renderPanelMessage(input: PanelRenderInput): PanelMessagePayload
       new ButtonBuilder()
         .setCustomId(createSignedCustomId(customAction, payload, input.signingSecret))
         .setLabel(HUB_ACTION_LABELS[actionId])
-        .setStyle(actionId === 'create' || actionId === 'lfg' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        .setStyle(
+          actionId === 'create' || actionId === 'lfg' ? ButtonStyle.Primary : ButtonStyle.Secondary,
+        ),
     );
   }
   for (const row of chunkButtons(hubBuilders, 5)) {

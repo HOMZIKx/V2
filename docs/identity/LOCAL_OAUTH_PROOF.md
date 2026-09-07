@@ -185,4 +185,3 @@ After this Identity proof works, use the product UI:
 - Public env: NEXT_PUBLIC_IDENTITY_AUTH_BASE_URL=http://127.0.0.1:4200
 - Real OAuth is the default; NEXT_PUBLIC_DISCORD_AUTH_SIMULATE=true only for the state simulator
 - Run Identity :4200 + Web :3000 (prefer 127.0.0.1 on both hosts)
-

@@ -49,10 +49,7 @@
   ],
   "rules": {
     "weaponsAboveLevel25": {
-      "bonuses": [
-        "Attack Value PvM",
-        "Magic Attack Value PvM"
-      ],
+      "bonuses": ["Attack Value PvM", "Magic Attack Value PvM"],
       "valuesDocumented": false
     }
   }

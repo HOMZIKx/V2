@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   applyMessageTemplate,
@@ -19,9 +19,7 @@ describe('live bot config', () => {
     expect(cfg.timersNotify.reminderMinutesBefore).toBe(60);
     expect(cfg.kingdomWar.warAt).toBe('18:00');
     expect(cfg.kingdomWar.notifyMinutesBefore).toBe(30);
-    expect(computeNotifyAt(cfg.kingdomWar.warAt, cfg.kingdomWar.notifyMinutesBefore)).toBe(
-      '17:30',
-    );
+    expect(computeNotifyAt(cfg.kingdomWar.warAt, cfg.kingdomWar.notifyMinutesBefore)).toBe('17:30');
   });
 
   it('patches revision and templates', () => {
@@ -30,8 +28,6 @@ describe('live bot config', () => {
     });
     expect(next.revision).toBe(1);
     expect(next.timersNotify.enabled).toBe(false);
-    expect(applyMessageTemplate(next.timersNotify.messageTemplate, { title: 'X' })).toBe(
-      'Ping X',
-    );
+    expect(applyMessageTemplate(next.timersNotify.messageTemplate, { title: 'X' })).toBe('Ping X');
   });
 });

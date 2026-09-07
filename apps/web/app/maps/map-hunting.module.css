@@ -263,7 +263,6 @@
   margin: 3px 0;
 }
 
-
 /* Real map pins (pinezki) — not entity portraits / green squares.
    Overrides globals .respawn-map-marker chrome without editing globals.css. */
 .root :global(.respawn-map-marker.respawn-map-pin) {
@@ -442,7 +441,6 @@
   appearance: textfield;
 }
 
-
 /* Entity icons: fill the icon slot, never overflow (globals force 44px). */
 .root :global(.respawn-record-icon) {
   display: flex;
@@ -468,8 +466,6 @@
   width: 100% !important;
   height: 100% !important;
 }
-
-
 
 /* Party scout pin kind picker + sidebar pin list (Party only; Timers untouched). */
 .pinKindBar {
@@ -659,7 +655,6 @@
 .root:global(.is-mini) :global(.respawn-map-caption) {
   font-size: 10px;
 }
-
 
 /* Wspolny sync Timers / Party (player-team) */
 .syncBanner {

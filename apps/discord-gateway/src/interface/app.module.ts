@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import path from 'node:path';
 
+import { MemberActivityCollector } from '../application/member-activity/member-activity-collector.js';
+import { MemberActivityStore } from '../application/member-activity/member-activity-store.js';
+import { resolveActiveBotConfig } from '../application/technika/active-bot-config.js';
+import { defaultMemberActivity } from '../application/technika/capabilities.js';
 import { VersionedConfigStore } from '../application/technika/versioned-config-store.js';
 import type { DiscordGatewayConfig } from '../infrastructure/discord/discord-config.js';
 import {
@@ -16,17 +20,13 @@ import {
   TECHNIKA_CONFIG_STORE_TOKEN,
 } from './discord/discord.tokens.js';
 import { HealthController } from './http/health.controller.js';
+import { MemberActivityController } from './http/member-activity.controller.js';
 import { NotifyController } from './http/notify.controller.js';
 import { TechnikaCapabilitiesController } from './http/technika-capabilities.controller.js';
 import { TechnikaConfigController } from './http/technika-config.controller.js';
 import { TechnikaGuildPanelsController } from './http/technika-guild-panels.controller.js';
 import { TechnikaGuildsController } from './http/technika-guilds.controller.js';
 import { TechnikaPanelsController } from './http/technika-panels.controller.js';
-import { MemberActivityController } from './http/member-activity.controller.js';
-import { MemberActivityStore } from '../application/member-activity/member-activity-store.js';
-import { MemberActivityCollector } from '../application/member-activity/member-activity-collector.js';
-import { resolveActiveBotConfig } from '../application/technika/active-bot-config.js';
-import { defaultMemberActivity } from '../application/technika/capabilities.js';
 
 function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
   if (config.DISCORD_GATEWAY_DATA_DIR.trim().length > 0) {

@@ -164,7 +164,6 @@ export function TeamHistory() {
             </ol>
           )}
         </section>
-
       </main>
     </AppShell>
   );

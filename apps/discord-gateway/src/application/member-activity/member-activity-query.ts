@@ -42,7 +42,10 @@ export function resolveWindowRange(
   };
 }
 
-export function parseActivityWindow(raw: string | undefined, fallback: ActivityWindow): ActivityWindow {
+export function parseActivityWindow(
+  raw: string | undefined,
+  fallback: ActivityWindow,
+): ActivityWindow {
   if (raw === '7d' || raw === '14d' || raw === '30d' || raw === 'since_bot') return raw;
   return fallback;
 }
@@ -78,9 +81,7 @@ export class MemberActivityQuery {
     const q = input.q?.trim().toLowerCase();
     if (q) {
       rows = rows.filter(
-        (r) =>
-          r.discordUserId.includes(q) ||
-          (r.displayName ?? '').toLowerCase().includes(q),
+        (r) => r.discordUserId.includes(q) || (r.displayName ?? '').toLowerCase().includes(q),
       );
     }
     rows.sort(

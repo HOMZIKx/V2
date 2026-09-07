@@ -24,7 +24,6 @@ const FORBIDDEN_CONFIG_KEYS = [
   'private_key',
 ] as const;
 
-
 const GUILD_RIGHTS = [
   'technika.config',
   'technika.apply',
@@ -44,13 +43,34 @@ export const GuildModulesSchema = z.object({
 
 export const PublishChannelsSchema = z
   .object({
-    centrumHub: z.string().regex(/^\d{17,20}$/).optional(),
-    notifications: z.string().regex(/^\d{17,20}$/).optional(),
-    dungeons: z.string().regex(/^\d{17,20}$/).optional(),
-    trade: z.string().regex(/^\d{17,20}$/).optional(),
-    recurring: z.string().regex(/^\d{17,20}$/).optional(),
-    events: z.string().regex(/^\d{17,20}$/).optional(),
-    website: z.string().regex(/^\d{17,20}$/).optional(),
+    centrumHub: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    notifications: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    dungeons: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    trade: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    recurring: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    events: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
+    website: z
+      .string()
+      .regex(/^\d{17,20}$/)
+      .optional(),
   })
   .strict();
 
@@ -65,7 +85,9 @@ export const GuildConfigSchema = z.object({
     .string()
     .trim()
     .max(500)
-    .refine((v) => v === '' || /^https?:\/\//i.test(v), { message: 'appWebsiteUrl must be http(s) URL' })
+    .refine((v) => v === '' || /^https?:\/\//i.test(v), {
+      message: 'appWebsiteUrl must be http(s) URL',
+    })
     .optional(),
 });
 
@@ -77,33 +99,41 @@ export const GuildsMapSchema = z.record(
 export const TimersNotifySchema = z.object({
   enabled: z.boolean(),
   messageTemplate: z.string().trim().min(1).max(1800),
-  reminderMinutesBefore: z.number().int().min(1).max(24 * 60),
+  reminderMinutesBefore: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 60),
   resetNotifyEnabled: z.boolean(),
 });
 
 export const CharacterTimersSchema = TimersNotifySchema;
 
-
 export const MemberActivitySchema = z.object({
   enabled: z.boolean(),
   guildId: z.string().regex(/^\d{17,20}$/, 'guildId must be a Discord snowflake'),
-  memberRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(50).default([]),
-  windowDays: z.number().int().refine((n) => n === 7 || n === 14 || n === 30, 'windowDays must be 7|14|30'),
+  memberRoleIds: z
+    .array(z.string().regex(/^\d{17,20}$/))
+    .max(50)
+    .default([]),
+  windowDays: z
+    .number()
+    .int()
+    .refine((n) => n === 7 || n === 14 || n === 30, 'windowDays must be 7|14|30'),
   topN: z.number().int().min(1).max(100).default(10),
 });
 
-
 export const KingdomWarSchema = z.object({
   enabled: z.boolean(),
-  warAt: z
-    .string()
-    .trim()
-    .regex(HH_MM, 'warAt must be HH:mm (Europe/Warsaw wall clock)'),
-  notifyMinutesBefore: z.number().int().min(1).max(24 * 60),
+  warAt: z.string().trim().regex(HH_MM, 'warAt must be HH:mm (Europe/Warsaw wall clock)'),
+  notifyMinutesBefore: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 60),
   maxClaimsPerUser: z.number().int().min(1).max(20).default(3),
   messageTemplate: z.string().trim().min(1).max(1800),
 });
-
 
 export const SeedReactionSchema = z.object({
   emoji: z.string().trim().min(1).max(64),
@@ -125,7 +155,10 @@ export const RecurringPostRulesSchema = z.object({
   maxSlots: z.number().int().min(1).max(9999).nullable().optional(),
   closeAt: z.enum(['none', 'at_start', 'manual']).optional(),
   whoCanReact: z.enum(['everyone', 'roles']).default('everyone'),
-  roleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(50).optional(),
+  roleIds: z
+    .array(z.string().regex(/^\d{17,20}$/))
+    .max(50)
+    .optional(),
 });
 
 /** Exact Technika / New Bot recurringPosts object (config-only; no scheduler).
@@ -154,7 +187,6 @@ export const RecurringPostsSchema = z.object({
   rsvpEnabled: z.boolean().default(false),
   rules: RecurringPostRulesSchema.default({ whoCanReact: 'everyone', closeAt: 'none' }),
 });
-
 
 export const BotConfigValuesSchema = z
   .object({
@@ -294,10 +326,7 @@ export function validateBotConfigDraft(input: unknown): ConfigValidationResult {
   return { ok: true, config: parsed.data as BotConfigValues, issues: [] };
 }
 
-export function mergePartialDraft(
-  base: BotConfigValues,
-  partial: unknown,
-): ConfigValidationResult {
+export function mergePartialDraft(base: BotConfigValues, partial: unknown): ConfigValidationResult {
   if (partial === null || typeof partial !== 'object' || Array.isArray(partial)) {
     return {
       ok: false,
@@ -334,7 +363,7 @@ export function mergePartialDraft(
   const partialGuilds =
     (partial as { guilds?: Record<string, unknown> }).guilds &&
     typeof (partial as { guilds?: unknown }).guilds === 'object'
-      ? ((partial as { guilds: Record<string, unknown> }).guilds)
+      ? (partial as { guilds: Record<string, unknown> }).guilds
       : undefined;
   const mergedGuilds = {
     ...base.guilds,
@@ -358,7 +387,8 @@ export function mergePartialDraft(
       ...(p.publishChannels ?? {}),
     },
     recurringPosts: (() => {
-      const incoming = (p.recurringPosts ?? {}) as Partial<BotConfigValues['recurringPosts']> & Record<string, unknown>;
+      const incoming = (p.recurringPosts ?? {}) as Partial<BotConfigValues['recurringPosts']> &
+        Record<string, unknown>;
       return {
         ...base.recurringPosts,
         ...incoming,
@@ -381,10 +411,7 @@ export function mergePartialDraft(
 }
 
 /** Accept flat Technika DTO `{ id?, name?, enabled, modules, rights }` or nested GuildConfig. */
-export function normalizeGuildPayload(
-  input: unknown,
-  existing?: GuildConfig,
-): unknown {
+export function normalizeGuildPayload(input: unknown, existing?: GuildConfig): unknown {
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
     return input;
   }
@@ -414,17 +441,19 @@ export function normalizeGuildPayload(
           ? modulesIn.characterTimers
           : baseModules.characterTimers,
       kingdomWar:
-        typeof modulesIn.kingdomWar === 'boolean'
-          ? modulesIn.kingdomWar
-          : baseModules.kingdomWar,
-      panels:
-        typeof modulesIn.panels === 'boolean' ? modulesIn.panels : baseModules.panels,
-      channels:
-        typeof modulesIn.channels === 'boolean' ? modulesIn.channels : baseModules.channels,
+        typeof modulesIn.kingdomWar === 'boolean' ? modulesIn.kingdomWar : baseModules.kingdomWar,
+      panels: typeof modulesIn.panels === 'boolean' ? modulesIn.panels : baseModules.panels,
+      channels: typeof modulesIn.channels === 'boolean' ? modulesIn.channels : baseModules.channels,
     },
     rights,
-    ...(typeof b.notes === 'string' ? { notes: b.notes } : existing?.notes ? { notes: existing.notes } : {}),
-    ...(b.publishChannels && typeof b.publishChannels === 'object' && !Array.isArray(b.publishChannels)
+    ...(typeof b.notes === 'string'
+      ? { notes: b.notes }
+      : existing?.notes
+        ? { notes: existing.notes }
+        : {}),
+    ...(b.publishChannels &&
+    typeof b.publishChannels === 'object' &&
+    !Array.isArray(b.publishChannels)
       ? { publishChannels: b.publishChannels }
       : existing?.publishChannels
         ? { publishChannels: existing.publishChannels }
@@ -470,7 +499,6 @@ export function upsertGuildInConfig(
     },
   });
 }
-
 
 export function cloneBotConfig(values: BotConfigValues): BotConfigValues {
   return structuredClone(values);

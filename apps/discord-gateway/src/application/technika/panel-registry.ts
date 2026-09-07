@@ -41,7 +41,8 @@ export class PanelRegistry {
   public upsert(panel: StoredPanel): StoredPanel {
     const data = this.read();
     const next = data.panels.filter(
-      (p) => !(p.guildId === panel.guildId && (p.id === panel.id || p.messageId === panel.messageId)),
+      (p) =>
+        !(p.guildId === panel.guildId && (p.id === panel.id || p.messageId === panel.messageId)),
     );
     next.push(panel);
     this.write({ panels: next });

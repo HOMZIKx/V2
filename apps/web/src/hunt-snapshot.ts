@@ -66,8 +66,7 @@ export function parseMapHuntSnapshot(raw: unknown): MapHuntSnapshotV1 | null {
   if (raw.version !== MAP_HUNT_SNAPSHOT_VERSION) return null;
   if (typeof raw.mapKey !== 'string' || raw.mapKey.length === 0) return null;
   if (typeof raw.channel !== 'number' || !Number.isFinite(raw.channel)) return null;
-  const filter =
-    raw.filter === 'all' || raw.filter === 'active' ? raw.filter : undefined;
+  const filter = raw.filter === 'all' || raw.filter === 'active' ? raw.filter : undefined;
   const snap: MapHuntSnapshotV1 = {
     version: MAP_HUNT_SNAPSHOT_VERSION,
     mapKey: raw.mapKey,
@@ -96,7 +95,9 @@ export function parsePartyHuntSnapshot(raw: unknown): PartyHuntSnapshotV1 | null
       ? (raw.savedClosedParty as MapParty | null)
       : null;
   const pins = Array.isArray(raw.pins)
-    ? (raw.pins.filter((pin) => isPlainObject(pin) && typeof pin.id === 'string') as PartyScoutPin[])
+    ? (raw.pins.filter(
+        (pin) => isPlainObject(pin) && typeof pin.id === 'string',
+      ) as PartyScoutPin[])
     : [];
   const partyRoomId =
     typeof raw.partyRoomId === 'string'

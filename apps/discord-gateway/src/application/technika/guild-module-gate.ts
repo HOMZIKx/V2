@@ -1,8 +1,4 @@
-import type {
-  BotConfigValues,
-  GuildModuleFlags,
-  GuildRight,
-} from './capabilities.js';
+import type { BotConfigValues, GuildModuleFlags, GuildRight } from './capabilities.js';
 
 export type GuildModuleKey = keyof GuildModuleFlags;
 

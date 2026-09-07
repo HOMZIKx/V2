@@ -4,14 +4,22 @@ import { z } from 'zod';
 export const TimersNotifyConfigSchema = z.object({
   enabled: z.boolean(),
   messageTemplate: z.string().trim().min(1).max(1800),
-  reminderMinutesBefore: z.number().int().min(0).max(24 * 60),
+  reminderMinutesBefore: z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60),
 });
 
 export const KingdomWarConfigSchema = z.object({
   enabled: z.boolean(),
   warAt: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
   maxClaimsPerUser: z.number().int().min(1).max(20).default(3),
-  notifyMinutesBefore: z.number().int().min(0).max(24 * 60),
+  notifyMinutesBefore: z
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60),
   messageTemplate: z.string().trim().min(1).max(1800),
   /** Stub roster until Kuzyn profile is wired — do not invent a fake roster API. */
   characterRosterStub: z

@@ -33,12 +33,7 @@ export function useHuntViewer(): {
       onlineEnabled,
       hydrated: store.hydrated,
     }),
-    [
-      onlineEnabled,
-      store.hydrated,
-      store.state.authStatus,
-      store.state.viewer,
-    ],
+    [onlineEnabled, store.hydrated, store.state.authStatus, store.state.viewer],
   );
 }
 

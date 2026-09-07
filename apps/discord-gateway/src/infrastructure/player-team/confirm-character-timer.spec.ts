@@ -81,7 +81,6 @@ describe('confirmCharacterProgressTimerFromBot viewer aliases', () => {
   });
 });
 
-
 describe('confirmCharacterProgressTimerFromBot EQ restart', () => {
   it('restarts Ksiega with midnight readyAtIso (not hardcoded +1h)', async () => {
     const snowflake = '808066932753563668';
@@ -134,8 +133,9 @@ describe('confirmCharacterProgressTimerFromBot EQ restart', () => {
     expect(result.ok).toBe(true);
 
     const expected = restartAfterDone('skill_book', new Date(before));
-    const timers = (putBody as { state: { workspaces: Array<{ timers: Array<Record<string, unknown>> }> } })
-      .state.workspaces[0]!.timers;
+    const timers = (
+      putBody as { state: { workspaces: Array<{ timers: Array<Record<string, unknown>> }> } }
+    ).state.workspaces[0]!.timers;
     const updated = timers.find((t) => t.id === timerId)!;
     expect(updated.status).toBe('running');
     expect(updated.remainingLabel).toBe(expected.remainingLabel);

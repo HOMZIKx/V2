@@ -86,4 +86,3 @@ export function parsePlayerTeamEnv(env: NodeJS.ProcessEnv): PlayerTeamEnv {
 
   return parsed.data;
 }
-

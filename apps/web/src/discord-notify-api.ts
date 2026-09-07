@@ -154,10 +154,7 @@ export async function postDiscordTimerResetNotify(input: {
   }
 }
 
-export function buildCharacterTimersDeepLinkUrl(
-  teamId: string,
-  characterId: string,
-): string {
+export function buildCharacterTimersDeepLinkUrl(teamId: string, characterId: string): string {
   const path = `/teams/${encodeURIComponent(teamId)}/characters/${encodeURIComponent(characterId)}?board=timers`;
   if (typeof window === 'undefined') {
     return `http://127.0.0.1:3000${path}`;
@@ -223,11 +220,7 @@ export async function syncKingdomWarRecipients(
 ): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
   try {
     const snowflakes = [
-      ...new Set(
-        recipients
-          .map((id) => id.trim())
-          .filter((id) => /^\d{17,20}$/.test(id)),
-      ),
+      ...new Set(recipients.map((id) => id.trim()).filter((id) => /^\d{17,20}$/.test(id))),
     ].slice(0, 40);
     const parsed = await postNotify('/api/discord-notify', {
       action: 'war-recipients',

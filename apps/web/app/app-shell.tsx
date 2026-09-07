@@ -4,13 +4,22 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { getReadyTimers } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
-import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { progressionTimerLabels } from '../src/project-hard-progression';
 
 export type AppSection =
-  'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
+  | 'dashboard'
+  | 'profil'
+  | 'generaly-metki'
+  | 'teams'
+  | 'characters'
+  | 'timers'
+  | 'maps'
+  | 'market'
+  | 'technik'
+  | 'later';
 
 export type IconName =
   | 'activity'
@@ -97,13 +106,7 @@ function timerKindLabel(timer: {
   return timer.label;
 }
 
-function NotificationsBell({
-  brandHref,
-  readyCount,
-}: {
-  brandHref: string;
-  readyCount: number;
-}) {
+function NotificationsBell({ brandHref, readyCount }: { brandHref: string; readyCount: number }) {
   const router = useRouter();
   const { state } = usePlayerStore();
   const [open, setOpen] = useState(false);
@@ -157,11 +160,7 @@ function NotificationsBell({
       </button>
 
       {open ? (
-        <div
-          aria-label="Lista powiadomień"
-          className="notifications-popover"
-          role="dialog"
-        >
+        <div aria-label="Lista powiadomień" className="notifications-popover" role="dialog">
           <header className="notifications-popover-header">
             <div>
               <strong>Powiadomienia</strong>
@@ -290,8 +289,7 @@ export function AppShell({
           }
         : {
             title: 'Podgląd lokalny',
-            detail:
-              'Dane w przeglądarce (localStorage). Pełna synchronizacja zespołu wymaga API.',
+            detail: 'Dane w przeglądarce (localStorage). Pełna synchronizacja zespołu wymaga API.',
           }
       : state.connection === 'reconnecting'
         ? {

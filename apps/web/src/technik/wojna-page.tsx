@@ -64,8 +64,8 @@ export function TechnikWojnaPage() {
       <PageJobNote>
         <p>
           Tu ustawiasz godzinę wojny, ile minut wcześniej bot przypomina i treść PW. Placeholdery
-          (np. godzina wojny, ile minut do startu) uzupełnia New Bot z żywego harmonogramu. Przyciski
-          zajmowania postaci w PW obsługuje New Bot / gateway — WWW tylko konfiguruje.
+          (np. godzina wojny, ile minut do startu) uzupełnia New Bot z żywego harmonogramu.
+          Przyciski zajmowania postaci w PW obsługuje New Bot / gateway — WWW tylko konfiguruje.
         </p>
       </PageJobNote>
       <PlayerSeesNote>
@@ -135,7 +135,9 @@ export function TechnikWojnaPage() {
               }))
             }
           />
-          <span className="technik-help">Domyślnie 3 postacie na osobę — tyle samo co przyciski claim w PW wojny.</span>
+          <span className="technik-help">
+            Domyślnie 3 postacie na osobę — tyle samo co przyciski claim w PW wojny.
+          </span>
         </label>
 
         <label className="technik-field technik-field--message">

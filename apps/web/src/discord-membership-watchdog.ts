@@ -44,7 +44,8 @@ function parseMemberBody(status: number, body: unknown): MembershipProbeResult {
   if (status === 404) {
     if (body && typeof body === 'object') {
       const o = body as Record<string, unknown>;
-      const rawError = typeof o.error === 'string' ? o.error : typeof o.code === 'string' ? o.code : '';
+      const rawError =
+        typeof o.error === 'string' ? o.error : typeof o.code === 'string' ? o.code : '';
       const err = rawError.toLowerCase();
       if (
         err === 'not_a_member' ||
@@ -76,10 +77,10 @@ export async function probeGuildMember(
     return { kind: 'inconclusive', reason: 'bad_ids' };
   }
   try {
-    const res = await fetch(
-      '/api/technik/guilds/' + guildId + '/members/' + discordUserId,
-      { method: 'GET', cache: 'no-store' },
-    );
+    const res = await fetch('/api/technik/guilds/' + guildId + '/members/' + discordUserId, {
+      method: 'GET',
+      cache: 'no-store',
+    });
     let body: unknown = null;
     try {
       body = await res.json();
@@ -124,9 +125,7 @@ export async function shouldRevokeAppAccess(opts: {
     return { revoke: false, reason: 'no_discord_id' };
   }
 
-  const results = await Promise.all(
-    BOT_GUILD_IDS.map((id) => probeGuildMember(id, discordUserId)),
-  );
+  const results = await Promise.all(BOT_GUILD_IDS.map((id) => probeGuildMember(id, discordUserId)));
 
   let anyMember = false;
   let anyInconclusive = false;
@@ -144,8 +143,6 @@ export async function shouldRevokeAppAccess(opts: {
   // Endpoint missing / gateway offline / mixed → never false-positive kick.
   return {
     revoke: false,
-    reason: anyInconclusive
-      ? 'guild_probe_inconclusive'
-      : 'guild_probe_partial',
+    reason: anyInconclusive ? 'guild_probe_inconclusive' : 'guild_probe_partial',
   };
 }

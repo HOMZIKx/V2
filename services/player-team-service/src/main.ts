@@ -7,9 +7,9 @@ import { resolveHttpListen } from '@v2/configuration';
 import { createLogger } from '@v2/observability';
 
 import { loadPlayerTeamEnvFiles } from './infrastructure/config/load-env-file.js';
+import { type PlayerTeamEnv } from './infrastructure/config/player-team-env.js';
 import { AppModule } from './interface/app.module.js';
 import { PLAYER_TEAM_ENV } from './interface/player-team.tokens.js';
-import { type PlayerTeamEnv } from './infrastructure/config/player-team-env.js';
 
 loadPlayerTeamEnvFiles();
 

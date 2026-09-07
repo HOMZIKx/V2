@@ -14,10 +14,12 @@ afterEach(() => {
 
 describe('activity-admin-config', () => {
   it('requires both base URL and guild id for READ', () => {
-    expect(isActivityAdminReadConfigured(resolveActivityAdminEnv(undefined, undefined))).toBe(false);
-    expect(isActivityAdminReadConfigured(resolveActivityAdminEnv('http://127.0.0.1:3200', ''))).toBe(
+    expect(isActivityAdminReadConfigured(resolveActivityAdminEnv(undefined, undefined))).toBe(
       false,
     );
+    expect(
+      isActivityAdminReadConfigured(resolveActivityAdminEnv('http://127.0.0.1:3200', '')),
+    ).toBe(false);
     expect(
       isActivityAdminReadConfigured(resolveActivityAdminEnv('http://127.0.0.1:3200/', '123')),
     ).toBe(true);
@@ -35,7 +37,10 @@ describe('activity-admin-config', () => {
   });
 
   it('returns unset when env missing instead of inventing data', async () => {
-    const result = await fetchActivityAdminJson('/config', { baseUrl: undefined, guildId: undefined });
+    const result = await fetchActivityAdminJson('/config', {
+      baseUrl: undefined,
+      guildId: undefined,
+    });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.kind).toBe('unset');

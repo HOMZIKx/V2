@@ -3,16 +3,16 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resetLiveBotConfigForTests } from '../../application/config/live-bot-config.js';
 import { resetNotifyIdempotencyWindow } from '../../application/notify/notify-idempotency.js';
 import { resetTimerRoomWatchersForTests } from '../../application/notify/timer-room-watchers.js';
+import { defaultBotConfigValues } from '../../application/technika/capabilities.js';
 import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
 } from '../../infrastructure/discord/discord-config.js';
-import { defaultBotConfigValues } from '../../application/technika/capabilities.js';
 import { NotifyController } from './notify.controller.js';
 
 function mockTechnikaStore(overrides: Record<string, unknown> = {}) {
@@ -114,12 +114,10 @@ describe('NotifyController', () => {
   });
 
   it('sends DM and ignores duplicate idempotency key', async () => {
-    const sendTimerNotify = vi.fn(
-      async (_input: { readonly content: string }) => ({
-        delivery: 'dm' as const,
-        messageId: 'm1',
-      }),
-    );
+    const sendTimerNotify = vi.fn(async (_input: { readonly content: string }) => ({
+      delivery: 'dm' as const,
+      messageId: 'm1',
+    }));
     const controller = new NotifyController(enabledConfig(), {
       getSnapshot: () => ({ state: 'ready' }),
       sendTimerNotify,
@@ -134,9 +132,7 @@ describe('NotifyController', () => {
     });
     expect(sendTimerNotify).toHaveBeenCalledTimes(1);
     expect(sendTimerNotify.mock.calls[0]?.[0]?.content).toContain('DESTILED');
-    expect(sendTimerNotify.mock.calls[0]?.[0]?.content).toContain(
-      'http://127.0.0.1:3000/timers',
-    );
+    expect(sendTimerNotify.mock.calls[0]?.[0]?.content).toContain('http://127.0.0.1:3000/timers');
 
     const second = await controller.notifyTimer(SECRET, validBody);
     expect(second.duplicate).toBe(true);
@@ -145,9 +141,8 @@ describe('NotifyController', () => {
   });
 
   it('fails gracefully when Discord DMs are closed', async () => {
-    const { NotifyDmClosedError } = await import(
-      '../../infrastructure/discord/discord-js-adapter.js'
-    );
+    const { NotifyDmClosedError } =
+      await import('../../infrastructure/discord/discord-js-adapter.js');
     const sendTimerNotify = vi.fn(async () => {
       throw new NotifyDmClosedError();
     });
@@ -168,7 +163,6 @@ describe('NotifyController', () => {
       skipped: 'dms_closed',
     });
   });
-
 
   it('registers watchers and fans out reset notify with buttons', async () => {
     const sendTimerNotify = vi.fn(async () => ({ delivery: 'dm', messageId: 'm-reset' }));

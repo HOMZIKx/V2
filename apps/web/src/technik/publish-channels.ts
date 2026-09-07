@@ -7,13 +7,7 @@
 import { TECHNIK_TEST_GUILD_ID } from './technika-config-api';
 
 export type PublishPurposeId =
-  | 'centrumHub'
-  | 'website'
-  | 'notifications'
-  | 'dungeons'
-  | 'trade'
-  | 'recurring'
-  | 'events';
+  'centrumHub' | 'website' | 'notifications' | 'dungeons' | 'trade' | 'recurring' | 'events';
 
 export type PublishPurpose = {
   readonly id: PublishPurposeId;

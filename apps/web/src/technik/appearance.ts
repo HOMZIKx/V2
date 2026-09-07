@@ -8,14 +8,7 @@ export type CustomButtonStyle = 'primary' | 'secondary' | 'danger';
 
 /** New Bot publish action kinds for customButtons[].action */
 export type CustomButtonAction =
-  | 'create'
-  | 'lfg'
-  | 'mine'
-  | 'notify'
-  | 'profile'
-  | 'forme'
-  | 'url'
-  | 'ephemeral_text';
+  'create' | 'lfg' | 'mine' | 'notify' | 'profile' | 'forme' | 'url' | 'ephemeral_text';
 
 export type AppearanceCustomButton = {
   id: string;

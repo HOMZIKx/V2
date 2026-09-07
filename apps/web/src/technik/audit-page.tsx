@@ -24,13 +24,12 @@ export function TechnikAuditPage() {
         audit log — jeśli brak endpointu, mówimy o tym wprost.
       </p>
 
-      
       <PageJobNote>
         <p>
           Podgląd audytu zmian konfiguracji i cofnięcie ostatniego Apply, gdy coś pójdzie nie tak.
         </p>
       </PageJobNote>
-<PlayerSeesNote>
+      <PlayerSeesNote>
         <p>
           Rollback przywraca poprzednią konfigurację bota. Gracze znowu dostają (lub przestają
           dostawać) PW / panele zgodnie z przywróconą rewizją — po Twoim kliknięciu Cofnij.
@@ -76,10 +75,9 @@ export function TechnikAuditPage() {
 
       <HonestGap>
         <p>
-          <strong>Luka audytu gateway:</strong> brak{' '}
-          <code>GET /discord/v1/config/audit</code> w obecnym kontrakcie — nie udajemy listy
-          historycznych apply. Dostępne: aktywna rewizja + Rollback. Audyt activity-service Centrum
-          = odroczone.
+          <strong>Luka audytu gateway:</strong> brak <code>GET /discord/v1/config/audit</code> w
+          obecnym kontrakcie — nie udajemy listy historycznych apply. Dostępne: aktywna rewizja +
+          Rollback. Audyt activity-service Centrum = odroczone.
         </p>
       </HonestGap>
 

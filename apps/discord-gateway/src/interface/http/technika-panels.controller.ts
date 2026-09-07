@@ -15,22 +15,16 @@ import {
 
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
+import { parsePanelPublishAppearance } from '../../presentation/discord/panel-publish-appearance.js';
 import {
   appearanceToRenderInput,
   renderPanelMessage,
 } from '../../presentation/discord/panel-renderer.js';
-import { parsePanelPublishAppearance } from '../../presentation/discord/panel-publish-appearance.js';
-import {
-  DISCORD_CONFIG_TOKEN,
-  DISCORD_GATEWAY_TOKEN,
-} from '../discord/discord.tokens.js';
+import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
 import { assertTechnikaSecret, TECHNIKA_SECRET_HEADER } from './technika-auth.js';
 
 /** Hard-stop: never publish/list-mutate Destiled / Sojusz via Technika panels API. */
-const PROD_GUILD_HARD_STOP = new Set<string>([
-  '1543972927719080016',
-  '1531318787058696424',
-]);
+const PROD_GUILD_HARD_STOP = new Set<string>(['1543972927719080016', '1531318787058696424']);
 
 function requireSnowflake(value: unknown, field: string): string {
   if (typeof value !== 'string' || !/^\d{17,20}$/.test(value.trim())) {
@@ -134,7 +128,9 @@ export class TechnikaPanelsController {
       renderer: 'components-v2-container',
       flags: typeof panel.flags === 'number' ? panel.flags : 0,
       componentCount: panel.components?.length ?? 0,
-      hasBanner: (panel.files?.length ?? 0) > 0 || Boolean(appearance.bannerUrl && appearance.includeBanner !== false),
+      hasBanner:
+        (panel.files?.length ?? 0) > 0 ||
+        Boolean(appearance.bannerUrl && appearance.includeBanner !== false),
       title: appearance.title ?? null,
       enabledActions: appearance.enabledActions ?? [],
       customButtonCount: appearance.customButtons?.length ?? 0,

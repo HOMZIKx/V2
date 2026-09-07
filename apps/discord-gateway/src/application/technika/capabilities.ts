@@ -146,7 +146,8 @@ export const BOT_CAPABILITIES = [
       {
         key: 'messageTemplate',
         title: 'Szablon wiadomości',
-        description: 'Szablon PL z {{warAt}}, {{notifyMinutesBefore}}. Bez sekretów infrastrukturalnych.',
+        description:
+          'Szablon PL z {{warAt}}, {{notifyMinutesBefore}}. Bez sekretów infrastrukturalnych.',
         valueType: 'string',
         default:
           '**DESTILED · Wojna Królestw**\nZa {{notifyMinutesBefore}} min start ({{warAt}} Europe/Warsaw).',
@@ -167,10 +168,34 @@ export const BOT_CAPABILITIES = [
       topN: 10,
     },
     fields: [
-      { key: 'enabled', title: 'Włączony', description: 'Włącza collector aktywności.', valueType: 'boolean', default: true },
-      { key: 'guildId', title: 'Guildia źródłowa', description: 'Domyślnie Destiled.', valueType: 'string', default: '1543972927719080016' },
-      { key: 'windowDays', title: 'Okno (dni)', description: '7, 14 lub 30.', valueType: 'number', default: 7 },
-      { key: 'topN', title: 'Top N', description: 'Dashboard top (10).', valueType: 'number', default: 10 },
+      {
+        key: 'enabled',
+        title: 'Włączony',
+        description: 'Włącza collector aktywności.',
+        valueType: 'boolean',
+        default: true,
+      },
+      {
+        key: 'guildId',
+        title: 'Guildia źródłowa',
+        description: 'Domyślnie Destiled.',
+        valueType: 'string',
+        default: '1543972927719080016',
+      },
+      {
+        key: 'windowDays',
+        title: 'Okno (dni)',
+        description: '7, 14 lub 30.',
+        valueType: 'number',
+        default: 7,
+      },
+      {
+        key: 'topN',
+        title: 'Top N',
+        description: 'Dashboard top (10).',
+        valueType: 'number',
+        default: 10,
+      },
     ],
   },
   {
@@ -187,7 +212,17 @@ export const BOT_CAPABILITIES = [
     description:
       'Config-only flat object: enabled/title/content/schedule{mode,daysOfWeek,timeWarsaw,horizonDays}/channelId/seedReactions/showCountsInPost/rsvpEnabled/rules. Scheduler/cron NIE zaimplementowany — uczciwa luka. Zero auto-publish.',
     valueType: 'object',
-    default: { enabled: false, title: '', content: '', schedule: { mode: 'weekly', daysOfWeek: [1, 3, 5], timeWarsaw: '18:00', horizonDays: 90 }, channelId: '', seedReactions: [], showCountsInPost: false, rsvpEnabled: false, rules: { whoCanReact: 'everyone', closeAt: 'none' } },
+    default: {
+      enabled: false,
+      title: '',
+      content: '',
+      schedule: { mode: 'weekly', daysOfWeek: [1, 3, 5], timeWarsaw: '18:00', horizonDays: 90 },
+      channelId: '',
+      seedReactions: [],
+      showCountsInPost: false,
+      rsvpEnabled: false,
+      rules: { whoCanReact: 'everyone', closeAt: 'none' },
+    },
   },
   {
     id: 'strict-guild-isolation',
@@ -217,7 +252,6 @@ export type KingdomWarConfig = {
   readonly maxClaimsPerUser: number;
   readonly messageTemplate: string;
 };
-
 
 export type GuildModuleFlags = {
   readonly characterTimers: boolean;
@@ -269,7 +303,6 @@ export function defaultGuildConfig(partial?: Partial<GuildConfig>): GuildConfig 
   };
 }
 
-
 export type MemberActivityConfig = {
   readonly enabled: boolean;
   readonly guildId: string;
@@ -279,15 +312,7 @@ export type MemberActivityConfig = {
 };
 
 export type PublishChannelPurpose =
-  | 'centrumHub'
-  | 'notifications'
-  | 'dungeons'
-  | 'trade'
-  | 'recurring'
-  | 'events'
-  | 'website';
-
-
+  'centrumHub' | 'notifications' | 'dungeons' | 'trade' | 'recurring' | 'events' | 'website';
 
 export type SeedReactionRole = 'decorative' | 'rsvp_yes' | 'rsvp_no' | 'rsvp_maybe' | 'count';
 
@@ -351,7 +376,6 @@ export function defaultCharacterTimers(): CharacterTimersConfig {
   return { ...CHARACTER_TIMERS_DEFAULT };
 }
 
-
 export function defaultMemberActivity(): MemberActivityConfig {
   return {
     enabled: true,
@@ -384,7 +408,6 @@ export function defaultRecurringPosts(): RecurringPostsConfig {
     rules: { whoCanReact: 'everyone', closeAt: 'none' },
   };
 }
-
 
 export function defaultKingdomWar(): KingdomWarConfig {
   return {

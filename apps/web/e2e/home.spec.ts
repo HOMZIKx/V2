@@ -54,7 +54,7 @@ test('opens the separate character module from global navigation', async ({ page
   await expect(page.getByRole('heading', { name: 'Postacie', exact: true })).toBeVisible();
   await expect(
     page
-          .getByText('Lista postaci z Twoich zespołów', {
+      .getByText('Lista postaci z Twoich zespołów', {
         exact: false,
       })
       .first(),
@@ -75,7 +75,10 @@ test('keeps team actions and notes explicit', async ({ page }) => {
 test('opens the character equipment card from the character directory', async ({ page }) => {
   await seedAuthenticatedDemo(page);
   await page.goto('/characters');
-  await page.getByRole('link', { name: /NerwNicht/ }).first().click();
+  await page
+    .getByRole('link', { name: /NerwNicht/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/teams\/asteria\/characters\/nerwnicht$/);
   await expect(page.getByRole('link', { name: /Edytuj NerwNicht/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ekwipunek', exact: true })).toBeVisible();

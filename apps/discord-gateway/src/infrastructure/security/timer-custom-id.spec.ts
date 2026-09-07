@@ -31,6 +31,8 @@ describe('timer custom id', () => {
   it('rejects tampered timer custom id', () => {
     const customId = createTimerButtonCustomId('zbite', sample, secret);
     const tampered = `${customId.slice(0, -2)}aa`;
-    expect(() => parseTimerButtonCustomId(tampered, secret)).toThrow(/signature|format|version|timer/i);
+    expect(() => parseTimerButtonCustomId(tampered, secret)).toThrow(
+      /signature|format|version|timer/i,
+    );
   });
 });

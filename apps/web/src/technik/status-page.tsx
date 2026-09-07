@@ -34,7 +34,12 @@ function toneFromResults(state: StatusState): { label: string; tone: 'ok' | 'war
   if (!ready.ok && !discord.ok) {
     return { label: 'Bot ma problem', tone: 'error' };
   }
-  if (discord.ok && discord.data.enabled && discord.data.state === 'ready' && discord.data.isolationOk) {
+  if (
+    discord.ok &&
+    discord.data.enabled &&
+    discord.data.state === 'ready' &&
+    discord.data.isolationOk
+  ) {
     return { label: 'Bot działa', tone: 'ok' };
   }
   if (ready.ok && ready.data.status === 'ok') {

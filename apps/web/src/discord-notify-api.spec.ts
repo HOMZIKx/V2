@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildTimersDeepLinkUrl, postDiscordTimerNotify } from './discord-notify-api.js';
 
@@ -9,15 +9,17 @@ describe('discord-notify-api', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(() =>
-        Promise.resolve(new Response(
-          JSON.stringify({
-            ok: true,
-            delivery: 'dm',
-            duplicate: false,
-            messageId: 'm1',
-          }),
-          { status: 200, headers: { 'content-type': 'application/json' } },
-        )),
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: true,
+              delivery: 'dm',
+              duplicate: false,
+              messageId: 'm1',
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
       ),
     );
   });
@@ -47,12 +49,13 @@ describe('discord-notify-api', () => {
   it('maps upstream errors', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(
-        () =>
-          Promise.resolve(new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ ok: false, error: 'invalid_notify_secret' }), {
             status: 401,
             headers: { 'content-type': 'application/json' },
-          })),
+          }),
+        ),
       ),
     );
     const result = await postDiscordTimerNotify({
