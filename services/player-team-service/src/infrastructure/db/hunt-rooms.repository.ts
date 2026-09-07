@@ -143,7 +143,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       throw new PlayerTeamError('NOT_FOUND', 'party room not found for join code');
     }
 
-    const members = (Array.isArray(row.members) ? row.members : []) as PartyRoomMember[];
+    const members = Array.isArray(row.members) ? row.members : [];
     if (members.some((m) => m.id === input.viewerId)) {
       return this.mapPartyRow(row);
     }
