@@ -51,7 +51,7 @@ describe('activity-admin-config', () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ revision: 1 }),
+      json: () => Promise.resolve({ revision: 1 }),
     });
     const result = await fetchActivityAdminJson(
       '/config',
