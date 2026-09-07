@@ -296,8 +296,14 @@ export function decideAuthorization(
     };
     const candidates: Candidate[] = [];
 
+    // A freshly reconciled pending guild is already cryptographically vouched for
+    // by the Discord Gateway and has a complete member snapshot. Treat it as a
+    // bootstrap login source until policy activation explicitly decides whether
+    // it remains login-entitling. Detached/unavailable guilds never qualify.
     const entitlingGuilds = context.guilds.filter(
-      (guild) => guild.status === 'active' && guild.loginEntitling,
+      (guild) =>
+        (guild.status === 'active' && guild.loginEntitling) ||
+        (guild.status === 'pending_sync' && guild.syncStatus === 'fresh'),
     );
 
     let sawMembershipCandidate = false;
