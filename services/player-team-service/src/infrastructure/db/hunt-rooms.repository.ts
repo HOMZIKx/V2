@@ -56,6 +56,13 @@ function joinCodeFromNow(): string {
   return String((Date.now() % 9000) + 1000);
 }
 
+function requireRow<T extends QueryResultRow>(row: T | undefined, operation: string): T {
+  if (row === undefined) {
+    throw new Error(`Database operation returned no row: ${operation}`);
+  }
+  return row;
+}
+
 @Injectable()
 export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleInit {
   private readonly logger = createLogger('hunt-rooms-repository');
@@ -129,7 +136,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
         JSON.stringify(members),
       ],
     });
-    return this.mapPartyRow(result.rows[0]);
+    return this.mapPartyRow(requireRow(result.rows[0], 'create party room'));
   }
 
   public async joinPartyRoom(input: JoinPartyRoomInput): Promise<PartyRoomRecord> {
@@ -162,7 +169,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [row.id, JSON.stringify(nextMembers)],
     );
-    return this.mapPartyRow(updated.rows[0]);
+    return this.mapPartyRow(requireRow(updated.rows[0], 'join party room'));
   }
 
   public async getPartyRoom(roomId: string): Promise<PartyRoomRecord | null> {
@@ -200,7 +207,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [roomId, JSON.stringify(nextMembers), leaderId],
     );
-    return this.mapPartyRow(updated.rows[0]);
+    return this.mapPartyRow(requireRow(updated.rows[0], 'leave party room'));
   }
 
   public async patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord> {
@@ -244,7 +251,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
         actualRevision: again?.revision ?? null,
       });
     }
-    return this.mapPartyRow(updated.rows[0]);
+    return this.mapPartyRow(requireRow(updated.rows[0], 'patch party room'));
   }
 
   public async addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord> {
@@ -262,7 +269,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [roomId, JSON.stringify(pins)],
     );
-    return this.mapPartyRow(updated.rows[0]);
+    return this.mapPartyRow(requireRow(updated.rows[0], 'add party room pin'));
   }
 
   public async removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord> {
@@ -280,7 +287,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [roomId, JSON.stringify(pins)],
     );
-    return this.mapPartyRow(updated.rows[0]);
+    return this.mapPartyRow(requireRow(updated.rows[0], 'remove party room pin'));
   }
 
   private timerRoomId(mapKey: string, channel: number, roomCode: string | null): string {
@@ -312,7 +319,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [id, mapKey, channel, normalizedCode],
     );
-    return this.mapTimerRow(inserted.rows[0]);
+    return this.mapTimerRow(requireRow(inserted.rows[0], 'create timer room'));
   }
 
   public async confirmTimerKill(input: ConfirmTimerKillInput): Promise<TimerRoomSnapshot> {
@@ -350,6 +357,6 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
        RETURNING *`,
       [room.id, JSON.stringify(timers), JSON.stringify(appliedOps)],
     );
-    return this.mapTimerRow(updated.rows[0]);
+    return this.mapTimerRow(requireRow(updated.rows[0], 'confirm timer kill'));
   }
 }
