@@ -728,7 +728,7 @@ export function CharacterEquipmentV2() {
 
                   {selectedBonusGroups.sockets.length > 0 ? (
                     <div className={styles.socketBonusGroup}>
-                      <span>Kamienie / wtopy</span>
+                      <span>Kamienie / przetopy</span>
                       <ul>
                         {selectedBonusGroups.sockets.map((bonus, index) => (
                           <li key={`${bonus}-socket-${index}`}>{bonus}</li>
