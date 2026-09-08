@@ -10,6 +10,9 @@ export type TeamInvitationRecord = {
   readonly status: TeamInvitationStatus;
   readonly createdLabel: string;
   readonly expiresLabel: string;
+  /** Absolute timestamps are authoritative; labels are display-only compatibility fields. */
+  readonly createdAtIso?: string;
+  readonly expiresAtIso?: string;
   readonly revision: number;
 };
 
@@ -43,5 +46,19 @@ export interface TeamInvitationsRepositoryPort {
     readonly state: Record<string, unknown>;
     readonly expectedRevision: number;
     readonly updatedByUserId: string;
+  }): Promise<TeamInvitationWorkspaceUpdate>;
+
+  /**
+   * Production implementation commits accepted shared membership and the recipient's
+   * private viewer snapshot in one PostgreSQL transaction. Optional for lightweight
+   * in-memory test repositories.
+   */
+  acceptInvitationAtomically?(input: {
+    readonly workspaceId: string;
+    readonly state: Record<string, unknown>;
+    readonly expectedRevision: number;
+    readonly updatedByUserId: string;
+    readonly recipientDiscordId: string;
+    readonly invitationId: string;
   }): Promise<TeamInvitationWorkspaceUpdate>;
 }
