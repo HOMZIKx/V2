@@ -82,12 +82,30 @@ const replaceDropSchema = z
     message: 'drop must contain at least one item or money entry',
   });
 
-function roleFor(state: Record<string, unknown>, viewerId: string): 'owner' | 'member' | null {
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function viewerAppId(state: Record<string, unknown> | null): string | null {
+  if (!state) return null;
+  const viewer = state.viewer;
+  if (!viewer || typeof viewer !== 'object' || Array.isArray(viewer)) return null;
+  return asString((viewer as Record<string, unknown>).id);
+}
+
+function roleFor(
+  state: Record<string, unknown>,
+  viewerId: string,
+  viewerInternalId: string | null,
+): 'owner' | 'member' | null {
   const members = Array.isArray(state.members) ? state.members : [];
   for (const raw of members) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
     const member = raw as Record<string, unknown>;
-    if (member.discordAccountId !== viewerId) continue;
+    const matchesViewer =
+      asString(member.discordAccountId) === viewerId ||
+      (viewerInternalId !== null && asString(member.id) === viewerInternalId);
+    if (!matchesViewer) continue;
     return member.role === 'owner' ? 'owner' : member.role === 'member' ? 'member' : null;
   }
   return null;
@@ -119,8 +137,11 @@ export class TeamEconomyManagementController {
 
   private async assertOwner(headers: RequestHeaders, workspaceId: string): Promise<string> {
     const viewerId = await this.viewerId(headers);
-    const workspace = await this.state.getWorkspaceSnapshot(viewerId, workspaceId);
-    if (roleFor(workspace.state, viewerId) !== 'owner') {
+    const [workspace, viewerSnapshot] = await Promise.all([
+      this.state.getWorkspaceSnapshot(viewerId, workspaceId),
+      this.state.getViewerSnapshot(viewerId),
+    ]);
+    if (roleFor(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner') {
       throw new ForbiddenException('only workspace owner can manage shared economy data');
     }
     return viewerId;
