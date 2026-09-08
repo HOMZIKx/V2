@@ -10,6 +10,7 @@ vi.mock('./discord-notify-api.js', () => ({
   buildCharacterTimersDeepLinkUrl: () =>
     'http://127.0.0.1:3000/teams/asteria/characters/nerwnicht?view=timers',
   buildCharacterTimerRoomSummary: () => ['Aalpsik · Jazda konna — gotowe'],
+  syncTeamCoordinationRecipients: vi.fn(() => Promise.resolve({ ok: true, count: 2 })),
   postDiscordTimerNotify: vi.fn(() =>
     Promise.resolve({
       ok: true,
@@ -24,6 +25,7 @@ vi.mock('./discord-notify-api.js', () => ({
 import {
   postDiscordTimerNotify,
   postDiscordTimerResetNotify,
+  syncTeamCoordinationRecipients,
 } from './discord-notify-api.js';
 
 describe('character-timer-discord-notify', () => {
@@ -120,6 +122,7 @@ describe('character-timer-discord-notify', () => {
     });
     expect(result.sent).toBe(0);
     expect(postDiscordTimerNotify).not.toHaveBeenCalled();
+    expect(syncTeamCoordinationRecipients).not.toHaveBeenCalled();
   });
 
   it('sends actor confirmation and broadcasts the refreshed card to the rest of the team', async () => {
@@ -215,6 +218,10 @@ describe('character-timer-discord-notify', () => {
     });
 
     expect(result.sent).toBe(2);
+    expect(syncTeamCoordinationRecipients).toHaveBeenCalledWith([
+      '123456789012345678',
+      '223456789012345678',
+    ]);
     expect(postDiscordTimerResetNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientDiscordUserIds: ['223456789012345678'],
