@@ -8,17 +8,17 @@ Aktualny priorytet runtime: prawdziwy Discord OAuth, trwały Player Team oraz ni
 
 ## Produkcja Zeabur — stan potwierdzony 2026-09-08
 
-- `identity-service`, `webapp-dest`, `player-team-service`, `activity-service`, `authorization-service`, `api-gateway` i `discord-gateway` były potwierdzone jako `RUNNING` na świeżym automatycznym Git deploymencie `e31b81bac1762df3ed3971abb06364ed1d9a9770`; kluczowe usługi poza celowo pozostawionym `player-workspace-service` śledzą `preview/destiled-web`.
+- `identity-service`, `webapp-dest`, `player-team-service`, `activity-service`, `authorization-service`, `api-gateway` i `discord-gateway` są po recovery bez krytycznych problemów runtime; kluczowe usługi poza celowo pozostawionym `player-workspace-service` śledzą `preview/destiled-web`. API Gateway został odzyskany natywnym `redeployService` z kanonicznego Git triggera; potwierdzony deployment `6a9fd4677b89d6943549fbb1` użył `refs/heads/preview/destiled-web` i SHA `eb66226297a57ef4401a2f35635bbbb956856272`.
 - Produkcyjny auth cutover jest aktywny: `IDENTITY_INTERNAL_JWT_ENABLED=true`, `INTERNAL_JWT_CLIENT_ENABLED=true`, `PLAYER_TEAM_INTERNAL_JWT_ENABLED=true`; legacy Player Team demo write jest wyłączone.
 - Identity readiness po realnym restarcie: PostgreSQL + Redis + migracja OK; JWKS działa z aktywnym `kid`.
-- Publiczny auth probe po restartach: `/identity/me` bez sesji → 401; `/player-team/v1/me/state` bez sesji → 401; start Discord OAuth → 302 do `discord.com` + state cookie.
+- Publiczny auth probe po recovery: `/identity/me` bez sesji → 401; `/player-team/v1/me/state` bez sesji → 401; start Discord OAuth → 302 do `discord.com` + state cookie.
 - Pełny login użytkownika pozostaje `PARTIAL` wyłącznie dlatego, że zgoda Discord OAuth wymaga działania prawdziwego użytkownika. Po autoryzacji trzeba potwierdzić callback → session → internal JWT → Player Team write → DB → restart/reload → read.
 - `discord-gateway` jest `ready`, ma 3 guildie w cache i działa niezależnie od Web. Collector nasłuchuje bezpośrednio `MessageCreate` i `VoiceStateUpdate`.
 - Dane collectora i Technika są teraz na persistent volume `discord-gateway-data` zamontowanym pod `/data`; restart proof potwierdził zachowanie configu, `collectorStartedAt` i liczników.
-- Ranking aktywności w chwili proof miał 0 członków / 0 wiadomości / 0 minut voice. Do proof niezerowych liczników potrzebny jest realny event człowieka na Discordzie, a następnie ponowny restart/check.
+- Publiczny E2E po recovery potwierdził już realne niezerowe dane collectora: 6 członków, 12 wiadomości i 34 min voice. Osobny proof `niezerowe liczniki → restart gateway → te same liczniki` nadal pozostaje do wykonania, jeśli chcemy domknąć również ten dodatkowy dowód trwałości.
 - Dług architektoniczny: daily member-activity buckets są obecnie trwałe na volume Gateway, ale ADR-0014 wskazuje `activity-service` jako docelowe SoT danych Activity. Migracja do bazy Activity jest osobnym etapem.
-- Audyt produkcji po restartach: 14 usług, `critical=0`; pozostał niegroźny stale typo env `UTHORIZATION_ASSERTION_AUD` obok poprawnego `AUTHORIZATION_ASSERTION_AUD` w Discord Gateway oraz informacyjne stare generated host keys.
-- Dalszy audyt Zeabur ujawnił, że `API_GATEWAY_CORS_ORIGINS` i `IDENTITY_TRUSTED_ORIGINS` w automatycznym Git snapshotcie nadal zawierały stale `https//v2-web.zeabur.app`. Próba wymuszenia ręcznego `deploy(..., vars)` spowodowała regresję runtime (`api-gateway=SUSPENDED`, `identity-service=CRASHED`) i została odrzucona. Identity odzyskano automatycznym Git rolloutem. Ręczne `deploy(..., gitRef)` również jest niekanoniczne dla tego GitHub-service: mimo podawanego preview/SHA rozwiązywało source do head `main` (`a871959...`); oba takie buildy API zostały anulowane przed aktywacją. Dla `api-gateway` odświeżono oficjalny Git trigger do `repoID=1323125581`, `branchName=preview/destiled-web`; ten commit jest celowym GitHub push, który ma odtworzyć API poprawną ścieżką integracji GitHub → Zeabur. Po rolloutcie wymagane są ponowny env audit i public E2E. Trwałe źródło dwóch stale originów pozostaje osobnym blockerem operacyjnym do wyjaśnienia po przywróceniu pełnego runtime.
+- Finalny audyt po recovery: 14 usług, `critical=0`, `warning=1`, `info=8`; jedyny warning to niegroźny stale typo env `UTHORIZATION_ASSERTION_AUD` obok poprawnego `AUTHORIZATION_ASSERTION_AUD` w Discord Gateway, a pozostałe informacje dotyczą m.in. starych generated host keys i świadomie pozostawionego legacy branchu `player-workspace-service`.
+- Regresja Zeabura jest zamknięta: ręczne `deploy(..., vars)` i `deploy(..., gitRef)` są niekanoniczne dla tych GitHub-services i nie należy ich używać do recovery. `api-gateway` odzyskano przez `redeployService(serviceID, environmentID)` korzystający z istniejącego `gitTrigger` (`repoID=1323125581`, `branchName=preview/destiled-web`). Trwałe `API_GATEWAY_CORS_ORIGINS` i `IDENTITY_TRUSTED_ORIGINS` poprawiono osobno przez `updateEnvironmentVariable`, bez ręcznego deploymentu z vars. Publiczny E2E po naprawie przeszedł: web 200, Identity ready/JWKS 200, właściwe 401 dla anonimowych endpointów, OAuth 302 do Discorda, Gateway `ready` bez `lastError`.
 
 Szczegóły dowodów i run IDs: `docs/ai/FIX_LOG.md`.
 
@@ -53,4 +53,4 @@ Szczegóły dowodów i run IDs: `docs/ai/FIX_LOG.md`.
 
 ## Marker
 
-`PRODUCTION_RUNTIME_STABILIZATION` + `REAL_OAUTH_USER_PROOF_PENDING` + `ZEABUR_ORIGIN_SOURCE_BLOCKER` + `DEC-066` + `DEC-067` + `DEC-068`
+`PRODUCTION_RUNTIME_STABILIZATION` + `API_GATEWAY_RECOVERED` + `ZEABUR_CANONICAL_REDEPLOY_CONFIRMED` + `REAL_OAUTH_USER_PROOF_PENDING` + `DEC-066` + `DEC-067` + `DEC-068`
