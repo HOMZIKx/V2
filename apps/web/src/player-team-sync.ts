@@ -61,5 +61,9 @@ export function mergeServerSnapshot(
     authStatus: localState.authStatus,
     connection: localState.connection,
     viewer: mergeViewerProfile(localState.viewer, serverState.viewer),
+    // Incoming invitations are discovered independently from shared workspace
+    // state by verified Discord ID. Do not let an older private snapshot erase
+    // them during the one reload used by TeamInvitationSync.
+    pendingIncomingInvitations: localState.pendingIncomingInvitations,
   };
 }
