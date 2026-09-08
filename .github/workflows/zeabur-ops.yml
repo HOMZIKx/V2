@@ -9,6 +9,7 @@ on:
       - ops/zeabur/run.mjs
       - ops/zeabur/audit-env.mjs
       - ops/zeabur/repair-production.mjs
+      - ops/zeabur/repair-api-gateway.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -39,6 +40,7 @@ jobs:
           case "$MODE" in
             env_audit) node ops/zeabur/audit-env.mjs ;;
             production_repair) node ops/zeabur/repair-production.mjs ;;
+            api_gateway_repair) node ops/zeabur/repair-api-gateway.mjs ;;
             *) node ops/zeabur/run.mjs ;;
           esac
 
