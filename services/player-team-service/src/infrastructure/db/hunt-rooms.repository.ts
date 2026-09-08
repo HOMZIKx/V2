@@ -1,6 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
 import { randomBytes } from 'node:crypto';
+import { Pool } from 'pg';
 
 import { createLogger } from '@v2/observability';
 
@@ -18,8 +18,8 @@ import {
   type TimerRoomRecord,
   type TimerRoomSnapshot,
 } from '../../domain/ports/hunt-rooms.port.js';
-import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
+import { type PlayerTeamEnv } from '../config/player-team-env.js';
 
 function newId(prefix: string): string {
   return `${prefix}-${randomBytes(6).toString('hex')}`;
@@ -130,9 +130,10 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
 
   public async joinPartyRoom(input: JoinPartyRoomInput): Promise<PartyRoomRecord> {
     const code = input.joinCode.trim();
-    const found = await this.db.query(`SELECT * FROM player_team_party_rooms WHERE join_code = $1`, [
-      code,
-    ]);
+    const found = await this.db.query(
+      `SELECT * FROM player_team_party_rooms WHERE join_code = $1`,
+      [code],
+    );
     const row = found.rows[0];
     if (row === undefined) {
       throw new PlayerTeamError('NOT_FOUND', 'party room not found for join code');
@@ -171,6 +172,9 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
   public async leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null> {
     const current = await this.getPartyRoom(roomId);
     if (current === null) return null;
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
 
     const nextMembers = current.members.filter((m) => m.id !== viewerId);
     if (nextMembers.length === 0) {
@@ -217,64 +221,92 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       `UPDATE player_team_party_rooms
        SET map_key = COALESCE($2, map_key),
            active_channel = COALESCE($3, active_channel),
-           session_kills = COALESCE($4, session_kills),
-           visibility = COALESCE($5, visibility),
+           session_kills = CASE
+             WHEN $4::integer IS NOT NULL THEN $4::integer
+             WHEN $5::integer IS NOT NULL THEN GREATEST(0, session_kills + $5::integer)
+             ELSE session_kills
+           END,
+           visibility = COALESCE($6, visibility),
+           requests = COALESCE($7::jsonb, requests),
            revision = revision + 1,
            updated_at = NOW()
-       WHERE id = $1 AND revision = $6
+       WHERE id = $1 AND revision = $8
        RETURNING *`,
       [
         input.roomId,
         input.mapKey ?? null,
         input.activeChannel ?? null,
         input.sessionKills ?? null,
+        input.sessionKillsDelta ?? null,
         input.visibility ?? null,
+        input.requests !== undefined ? JSON.stringify(input.requests) : null,
         input.expectedRevision,
       ],
     );
     if ((updated.rowCount ?? 0) === 0) {
       const again = await this.getPartyRoom(input.roomId);
-      throw new PlayerTeamError(
-        'REVISION_CONFLICT',
-        'party room revision conflict on update',
-        { actualRevision: again?.revision ?? null },
-      );
+      throw new PlayerTeamError('REVISION_CONFLICT', 'party room revision conflict on update', {
+        actualRevision: again?.revision ?? null,
+      });
     }
     return this.mapPartyRow(updated.rows[0]);
   }
 
-  public async addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord> {
+  public async addPartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pin: PartyRoomPin,
+  ): Promise<PartyRoomRecord> {
     const current = await this.getPartyRoom(roomId);
     if (current === null) {
       throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     }
-    const pins = [...current.pins.filter((p) => p.id !== pin.id), { ...pin, partyId: roomId }];
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
+    const normalizedPin = { ...pin, partyId: roomId };
     const updated = await this.db.query(
       `UPDATE player_team_party_rooms
-       SET pins = $2::jsonb,
+       SET pins = COALESCE(
+             (SELECT jsonb_agg(item)
+                FROM jsonb_array_elements(pins) AS item
+               WHERE item->>'id' <> $2),
+             '[]'::jsonb
+           ) || $3::jsonb,
            revision = revision + 1,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [roomId, JSON.stringify(pins)],
+      [roomId, pin.id, JSON.stringify([normalizedPin])],
     );
     return this.mapPartyRow(updated.rows[0]);
   }
 
-  public async removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord> {
+  public async removePartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pinId: string,
+  ): Promise<PartyRoomRecord> {
     const current = await this.getPartyRoom(roomId);
     if (current === null) {
       throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     }
-    const pins = current.pins.filter((p) => p.id !== pinId);
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
     const updated = await this.db.query(
       `UPDATE player_team_party_rooms
-       SET pins = $2::jsonb,
+       SET pins = COALESCE(
+             (SELECT jsonb_agg(item)
+                FROM jsonb_array_elements(pins) AS item
+               WHERE item->>'id' <> $2),
+             '[]'::jsonb
+           ),
            revision = revision + 1,
            updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
-      [roomId, JSON.stringify(pins)],
+      [roomId, pinId],
     );
     return this.mapPartyRow(updated.rows[0]);
   }
@@ -289,8 +321,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     channel: number,
     roomCode: string | null,
   ): Promise<TimerRoomSnapshot> {
-    const normalizedCode =
-      roomCode && roomCode.trim().length > 0 ? roomCode.trim() : null;
+    const normalizedCode = roomCode && roomCode.trim().length > 0 ? roomCode.trim() : null;
     const id = this.timerRoomId(mapKey, channel, normalizedCode);
 
     const existing = await this.db.query(`SELECT * FROM player_team_timer_rooms WHERE id = $1`, [

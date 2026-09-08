@@ -82,7 +82,9 @@ export type PatchPartyRoomInput = {
   readonly mapKey?: string;
   readonly activeChannel?: number;
   readonly sessionKills?: number;
+  readonly sessionKillsDelta?: number;
   readonly visibility?: 'open' | 'closed';
+  readonly requests?: readonly PartyRoomRequest[];
 };
 
 export type ConfirmTimerKillInput = {
@@ -100,8 +102,8 @@ export interface HuntRoomsRepositoryPort {
   getPartyRoom(roomId: string): Promise<PartyRoomRecord | null>;
   leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null>;
   patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord>;
-  addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord>;
-  removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord>;
+  addPartyRoomPin(roomId: string, viewerId: string, pin: PartyRoomPin): Promise<PartyRoomRecord>;
+  removePartyRoomPin(roomId: string, viewerId: string, pinId: string): Promise<PartyRoomRecord>;
 
   getOrCreateTimerRoom(
     mapKey: string,

@@ -62,15 +62,25 @@ export type TimerRoomSnapshot = {
   readonly updatedAtIso: string;
 };
 
-const baseUrl =
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim() || 'http://127.0.0.1:4400';
+// Production Timers/Party requests always use the authenticated same-origin
+// Next proxy. A direct base URL is retained only for explicit local/dev work.
+const configuredBaseUrl =
+  process.env.NODE_ENV === 'production'
+    ? ''
+    : (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim();
+const baseUrl = configuredBaseUrl.replace(/\/$/, '');
 
 const demoHeaderName = (
   (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
 ).toLowerCase();
 
+const requestCredentials: RequestCredentials = baseUrl.length === 0 ? 'include' : 'same-origin';
+
 function headers(viewerId: string, json = false): HeadersInit {
-  const h: Record<string, string> = { [demoHeaderName]: viewerId };
+  const h: Record<string, string> = {};
+  // Only direct local/dev calls use the compatibility identity. Production
+  // identity is resolved server-side by /player-team/[...path].
+  if (baseUrl.length > 0) h[demoHeaderName] = viewerId;
   if (json) h['content-type'] = 'application/json';
   return h;
 }
@@ -94,6 +104,7 @@ export async function createPartyRoom(input: {
   const res = await fetch(`${baseUrl}/player-team/v1/party-rooms`, {
     method: 'POST',
     headers: headers(input.viewerId, true),
+    credentials: requestCredentials,
     body: JSON.stringify({
       displayName: input.displayName,
       mapKey: input.mapKey,
@@ -113,6 +124,7 @@ export async function joinPartyRoom(input: {
   const res = await fetch(`${baseUrl}/player-team/v1/party-rooms/join`, {
     method: 'POST',
     headers: headers(input.viewerId, true),
+    credentials: requestCredentials,
     body: JSON.stringify({
       displayName: input.displayName,
       joinCode: input.joinCode,
@@ -126,11 +138,15 @@ export async function getPartyRoom(input: {
   readonly viewerId: string;
   readonly roomId: string;
 }): Promise<PartyRoomSnapshot> {
-  const res = await fetch(`${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`, {
-    method: 'GET',
-    headers: headers(input.viewerId),
-    cache: 'no-store',
-  });
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`,
+    {
+      method: 'GET',
+      headers: headers(input.viewerId),
+      credentials: requestCredentials,
+      cache: 'no-store',
+    },
+  );
   if (!res.ok) throw new Error(`getPartyRoom failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }
@@ -144,6 +160,7 @@ export async function leavePartyRoom(input: {
     {
       method: 'POST',
       headers: headers(input.viewerId, true),
+      credentials: requestCredentials,
       body: '{}',
     },
   );
@@ -158,17 +175,23 @@ export async function patchPartyRoom(input: {
     readonly mapKey?: string;
     readonly activeChannel?: number;
     readonly sessionKills?: number;
+    readonly sessionKillsDelta?: number;
     readonly visibility?: 'open' | 'closed';
+    readonly requests?: PartyRoomSnapshot['requests'];
   };
 }): Promise<PartyRoomSnapshot> {
-  const res = await fetch(`${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`, {
-    method: 'PATCH',
-    headers: headers(input.viewerId, true),
-    body: JSON.stringify({
-      expectedRevision: input.expectedRevision,
-      ...input.patch,
-    }),
-  });
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`,
+    {
+      method: 'PATCH',
+      headers: headers(input.viewerId, true),
+      credentials: requestCredentials,
+      body: JSON.stringify({
+        expectedRevision: input.expectedRevision,
+        ...input.patch,
+      }),
+    },
+  );
   if (!res.ok) throw new Error(`patchPartyRoom failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }
@@ -183,6 +206,7 @@ export async function addPartyRoomPin(input: {
     {
       method: 'POST',
       headers: headers(input.viewerId, true),
+      credentials: requestCredentials,
       body: JSON.stringify({ pin: input.pin }),
     },
   );
@@ -200,6 +224,7 @@ export async function removePartyRoomPin(input: {
     {
       method: 'DELETE',
       headers: headers(input.viewerId),
+      credentials: requestCredentials,
     },
   );
   if (!res.ok) throw new Error(`removePartyRoomPin failed: ${await readError(res)}`);
@@ -219,6 +244,7 @@ export async function getOrCreateTimerRoom(input: {
   const res = await fetch(path, {
     method: 'GET',
     headers: headers(input.viewerId),
+    credentials: requestCredentials,
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`getOrCreateTimerRoom failed: ${await readError(res)}`);
@@ -234,19 +260,35 @@ export async function confirmTimerKill(input: {
   readonly operationId: string;
   readonly expectedRevision?: number | null;
 }): Promise<TimerRoomSnapshot> {
-  const res = await fetch(
-    `${baseUrl}/player-team/v1/timer-rooms/${encodeURIComponent(input.mapKey)}/${input.channel}/confirm-kill`,
-    {
-      method: 'POST',
-      headers: headers(input.viewerId, true),
-      body: JSON.stringify({
-        roomCode: input.roomCode ?? null,
-        record: input.record,
-        operationId: input.operationId,
-        expectedRevision: input.expectedRevision ?? undefined,
-      }),
-    },
-  );
+  const post = (expectedRevision: number | null) =>
+    fetch(
+      `${baseUrl}/player-team/v1/timer-rooms/${encodeURIComponent(input.mapKey)}/${input.channel}/confirm-kill`,
+      {
+        method: 'POST',
+        headers: headers(input.viewerId, true),
+        credentials: requestCredentials,
+        body: JSON.stringify({
+          roomCode: input.roomCode ?? null,
+          record: input.record,
+          operationId: input.operationId,
+          expectedRevision: expectedRevision ?? undefined,
+        }),
+      },
+    );
+
+  let res = await post(input.expectedRevision ?? null);
+  if (res.status === 409) {
+    // Another online user changed the same map/CH between poll and click.
+    // Refresh revision and replay the idempotent operation once instead of
+    // dropping this user's confirmation.
+    const latest = await getOrCreateTimerRoom({
+      viewerId: input.viewerId,
+      mapKey: input.mapKey,
+      channel: input.channel,
+      roomCode: input.roomCode ?? null,
+    });
+    res = await post(latest.revision);
+  }
   if (!res.ok) throw new Error(`confirmTimerKill failed: ${await readError(res)}`);
   return (await res.json()) as TimerRoomSnapshot;
 }

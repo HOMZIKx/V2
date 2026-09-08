@@ -112,8 +112,13 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
       ...current,
       mapKey: input.mapKey ?? current.mapKey,
       activeChannel: input.activeChannel ?? current.activeChannel,
-      sessionKills: input.sessionKills ?? current.sessionKills,
+      sessionKills:
+        input.sessionKills ??
+        (input.sessionKillsDelta !== undefined
+          ? Math.max(0, current.sessionKills + input.sessionKillsDelta)
+          : current.sessionKills),
       visibility: input.visibility ?? current.visibility,
+      requests: input.requests ?? current.requests,
       revision: current.revision + 1,
       updatedAtIso: new Date().toISOString(),
     };
@@ -121,9 +126,16 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
     return next;
   }
 
-  public async addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord> {
+  public async addPartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pin: PartyRoomPin,
+  ): Promise<PartyRoomRecord> {
     const current = this.parties.get(roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
     const pins = [...current.pins.filter((p) => p.id !== pin.id), { ...pin, partyId: roomId }];
     const next: PartyRoomRecord = {
       ...current,
@@ -135,9 +147,16 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
     return next;
   }
 
-  public async removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord> {
+  public async removePartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pinId: string,
+  ): Promise<PartyRoomRecord> {
     const current = this.parties.get(roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
     const next: PartyRoomRecord = {
       ...current,
       pins: current.pins.filter((p) => p.id !== pinId),
@@ -222,7 +241,7 @@ describe('HuntRoomsUseCases', () => {
     });
     expect(joined.members.map((m) => m.id)).toEqual(['m1', 'w1']);
 
-    const withPin = await useCases.addPartyRoomPin(room.id, {
+    const withPin = await useCases.addPartyRoomPin(room.id, 'm1', {
       id: 'pin-1',
       partyId: room.id,
       mapKey: 'Yongbi',
@@ -235,6 +254,51 @@ describe('HuntRoomsUseCases', () => {
     });
     expect(withPin.pins).toHaveLength(1);
     expect(withPin.revision).toBeGreaterThan(joined.revision);
+  });
+
+  it('odrzuca odczyt i mutację party przez osobę spoza pokoju', async () => {
+    const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
+    const room = await useCases.createPartyRoom({
+      leaderId: 'm1',
+      displayName: 'Mateusz',
+      mapKey: 'Yongbi',
+      activeChannel: 1,
+      visibility: 'closed',
+    });
+    await expect(useCases.getPartyRoom(room.id, 'intruder')).rejects.toThrow(PlayerTeamError);
+    await expect(
+      useCases.addPartyRoomPin(room.id, 'intruder', {
+        id: 'pin-x',
+        partyId: room.id,
+        mapKey: 'Yongbi',
+        channel: 1,
+        location: { x: 1, y: 1 },
+        placedAt: 1,
+        placedBy: 'Intruder',
+        label: 'Metin',
+        kind: 'metin',
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+  });
+
+  it('synchronizuje prośby i atomowy przyrost zbić przez patch pokoju', async () => {
+    const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
+    const room = await useCases.createPartyRoom({
+      leaderId: 'm1',
+      displayName: 'Mateusz',
+      mapKey: 'Yongbi',
+      activeChannel: 1,
+      visibility: 'open',
+    });
+    const withRequest = await useCases.patchPartyRoom({
+      roomId: room.id,
+      viewerId: 'm1',
+      expectedRevision: room.revision,
+      requests: [{ id: 'guest-a', displayName: 'A', status: 'pending' }],
+      sessionKillsDelta: 1,
+    });
+    expect(withRequest.requests).toHaveLength(1);
+    expect(withRequest.sessionKills).toBe(1);
   });
 
   it('confirmTimerKill jest idempotentny po operationId', async () => {
