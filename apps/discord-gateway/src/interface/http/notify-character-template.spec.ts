@@ -45,7 +45,12 @@ describe('NotifyController character timer runtime template', () => {
         };
       },
     };
-    const sendTimerNotify = vi.fn(async () => ({ delivery: 'dm' as const, messageId: 'm1' }));
+    const sendTimerNotify = vi.fn(
+      async (_input: { readonly content: string }) => ({
+        delivery: 'dm' as const,
+        messageId: 'm1',
+      }),
+    );
     const controller = new NotifyController(
       enabledConfig(),
       { getSnapshot: () => ({ state: 'ready' }), sendTimerNotify } as never,
