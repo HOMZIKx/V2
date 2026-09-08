@@ -9,7 +9,8 @@ export function EconomySubnav() {
   const pathname = usePathname();
   const manage = pathname.includes('/economy/manage');
   const analysis = pathname.includes('/economy/analysis');
-  const overview = !manage && !analysis;
+  const images = pathname.includes('/economy/images');
+  const overview = !manage && !analysis && !images;
 
   return (
     <nav aria-label="Narzędzia ekonomii" className={styles.quickNav}>
@@ -21,6 +22,9 @@ export function EconomySubnav() {
       </a>
       <a data-active={analysis} href={`/teams/${teamId}/economy/analysis`}>
         Rentowność
+      </a>
+      <a data-active={images} href={`/teams/${teamId}/economy/images`}>
+        Ilustracje
       </a>
     </nav>
   );
