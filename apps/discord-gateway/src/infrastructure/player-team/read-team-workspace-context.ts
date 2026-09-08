@@ -1,5 +1,7 @@
 import {
+  confirmKingdomWarClaimForUser,
   consumeKingdomWarScopeTokenForUser,
+  discardPendingKingdomWarClaim,
   encodeKingdomWarScopedCharacterId,
 } from '../../application/notify/kingdom-war-claims.js';
 import { resolveTeamKingdomWarWorkspaceId } from '../../application/notify/kingdom-war-team-recipients.js';
@@ -122,14 +124,19 @@ async function readExactWarContext(input: {
   readonly demoViewerHeader: string;
   readonly viewerId: string;
   readonly workspaceId: string;
+  readonly confirmPendingClaim?: boolean;
 }): Promise<TeamWorkspaceContext | null> {
   for (const candidate of ownerViewerIdCandidates(input.viewerId)) {
     const shared = await readSharedWorkspace({ ...input, viewerId: candidate });
     if (!shared) continue;
     const context = contextFromWorkspace(shared, input.viewerId, 'kingdomWar');
     if (!context || context.workspaceId !== input.workspaceId) continue;
+    if (input.confirmPendingClaim && !confirmKingdomWarClaimForUser(input.viewerId)) {
+      return null;
+    }
     return scopeWarRoster(context);
   }
+  if (input.confirmPendingClaim) discardPendingKingdomWarClaim(input.viewerId);
   return null;
 }
 
@@ -156,8 +163,11 @@ export async function readTeamWorkspaceContextFromBot(input: {
   const warScopeToken = consumeKingdomWarScopeTokenForUser(input.viewerId);
   if (warScopeToken) {
     const workspaceId = resolveTeamKingdomWarWorkspaceId(warScopeToken);
-    if (!workspaceId) return null;
-    return readExactWarContext({ ...input, workspaceId });
+    if (!workspaceId) {
+      discardPendingKingdomWarClaim(input.viewerId);
+      return null;
+    }
+    return readExactWarContext({ ...input, workspaceId, confirmPendingClaim: true });
   }
 
   const url = `${input.baseUrl.replace(/\/$/, '')}/player-team/v1/me/state`;
