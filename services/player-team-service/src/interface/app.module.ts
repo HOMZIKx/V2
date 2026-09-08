@@ -9,6 +9,7 @@ import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
 import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
+import { TeamEconomyManagementRepository } from '../infrastructure/db/team-economy-management.repository.js';
 import { TeamEconomyRepository } from '../infrastructure/db/team-economy.repository.js';
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
 
@@ -16,6 +17,7 @@ import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
 import { PlayerTeamController } from './player-team.controller.js';
+import { TeamEconomyManagementController } from './team-economy-management.controller.js';
 import { TeamEconomyController } from './team-economy.controller.js';
 import { TeamInvitationsController } from './team-invitations.controller.js';
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
@@ -38,6 +40,7 @@ import {
     WorkspaceLiveController,
     TeamInvitationsController,
     TeamEconomyController,
+    TeamEconomyManagementController,
   ],
   providers: [
     PlayerTeamEnvProvider,
@@ -51,6 +54,7 @@ import {
     MetinGeneralHuntsRepository,
     TeamInvitationsRepository,
     TeamEconomyRepository,
+    TeamEconomyManagementRepository,
     WorkspaceLiveBus,
     {
       provide: PLAYER_TEAM_STATE_USE_CASES,
