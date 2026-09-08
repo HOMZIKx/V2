@@ -1,25 +1,25 @@
 import { Module } from '@nestjs/common';
 
-import { FixedHuntRoomsUseCases } from '../application/use-cases/fixed-hunt-rooms.use-cases.js';
 import { HuntRoomsUseCases } from '../application/use-cases/hunt-rooms.use-cases.js';
+import { MetinGeneralHuntsUseCases } from '../application/use-cases/metin-general-hunts.use-cases.js';
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
 import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.provider.js';
-import { FixedHuntRoomsRepository } from '../infrastructure/db/fixed-hunt-rooms.repository.js';
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
+import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
 
-import { FixedHuntRoomsController } from './fixed-hunt-rooms.controller.js';
 import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
+import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
 import { PlayerTeamController } from './player-team.controller.js';
 import { TeamInvitationsController } from './team-invitations.controller.js';
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
 import { WorkspaceLiveController } from './workspace-live.controller.js';
 import {
-  FIXED_HUNT_ROOMS_USE_CASES,
   HUNT_ROOMS_USE_CASES,
+  METIN_GENERAL_HUNTS_USE_CASES,
   PLAYER_TEAM_ENV,
   PLAYER_TEAM_STATE_USE_CASES,
   TEAM_INVITATIONS_USE_CASES,
@@ -30,7 +30,7 @@ import {
     HealthController,
     PlayerTeamController,
     HuntRoomsController,
-    FixedHuntRoomsController,
+    MetinGeneralHuntsController,
     WorkspaceLiveController,
     TeamInvitationsController,
   ],
@@ -43,7 +43,7 @@ import {
     },
     PlayerTeamStateRepository,
     HuntRoomsRepository,
-    FixedHuntRoomsRepository,
+    MetinGeneralHuntsRepository,
     TeamInvitationsRepository,
     WorkspaceLiveBus,
     {
@@ -69,15 +69,15 @@ import {
       inject: [HuntRoomsRepository, PLAYER_TEAM_ENV],
     },
     {
-      provide: FIXED_HUNT_ROOMS_USE_CASES,
+      provide: METIN_GENERAL_HUNTS_USE_CASES,
       useFactory: (
-        repository: FixedHuntRoomsRepository,
+        repository: MetinGeneralHuntsRepository,
         env: ReturnType<PlayerTeamEnvProvider['get']>,
       ) =>
-        new FixedHuntRoomsUseCases(repository, {
+        new MetinGeneralHuntsUseCases(repository, {
           allowDemoWrite: env.PLAYER_TEAM_ALLOW_DEMO_WRITE,
         }),
-      inject: [FixedHuntRoomsRepository, PLAYER_TEAM_ENV],
+      inject: [MetinGeneralHuntsRepository, PLAYER_TEAM_ENV],
     },
     {
       provide: TEAM_INVITATIONS_USE_CASES,
