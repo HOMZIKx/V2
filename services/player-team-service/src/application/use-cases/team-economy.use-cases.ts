@@ -8,12 +8,30 @@ import {
   type TeamEconomyRepositoryPort,
 } from '../../domain/ports/team-economy.port.js';
 
-function memberRole(state: Record<string, unknown>, viewerId: string): 'owner' | 'member' | null {
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function viewerAppId(state: Record<string, unknown> | null): string | null {
+  if (!state) return null;
+  const viewer = state.viewer;
+  if (!viewer || typeof viewer !== 'object' || Array.isArray(viewer)) return null;
+  return asString((viewer as Record<string, unknown>).id);
+}
+
+function memberRole(
+  state: Record<string, unknown>,
+  viewerId: string,
+  viewerInternalId: string | null,
+): 'owner' | 'member' | null {
   const members = Array.isArray(state.members) ? state.members : [];
   for (const raw of members) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
     const member = raw as Record<string, unknown>;
-    if (member.discordAccountId !== viewerId) continue;
+    const matchesViewer =
+      asString(member.discordAccountId) === viewerId ||
+      (viewerInternalId !== null && asString(member.id) === viewerInternalId);
+    if (!matchesViewer) continue;
     return member.role === 'owner' ? 'owner' : member.role === 'member' ? 'member' : null;
   }
   return null;
@@ -30,8 +48,11 @@ export class TeamEconomyUseCases {
   }
 
   private async assertOwner(viewerId: string, workspaceId: string): Promise<void> {
-    const workspace = await this.workspace(viewerId, workspaceId);
-    if (memberRole(workspace.state, viewerId) !== 'owner') {
+    const [workspace, viewerSnapshot] = await Promise.all([
+      this.workspace(viewerId, workspaceId),
+      this.stateUseCases.getViewerSnapshot(viewerId),
+    ]);
+    if (memberRole(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner') {
       throw new PlayerTeamError(
         'UNAUTHORIZED',
         'only workspace owner can edit an existing global item catalogue entry',
