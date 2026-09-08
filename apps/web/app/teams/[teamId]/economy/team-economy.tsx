@@ -322,14 +322,14 @@ export function TeamEconomy() {
           name: item.catalogMatch?.name ?? item.recognizedName,
           category: item.catalogMatch?.category ?? 'Pozostałe',
           totalQuantity: item.quantity,
-          ourQuantity: Math.floor((item.quantity * share) / 100),
+          ourQuantity: item.quantity,
           unitPrice: 0,
           currency: 'yang',
           confidence: item.confidence,
         })),
       );
       setNotice(
-        `AI rozpoznało ${body.items.length} pozycji. Sprawdź nazwę, liczbę sztuk i naszą część przed zapisem.`,
+        `AI rozpoznało ${body.items.length} pozycji. Sprawdź nazwę, liczbę wszystkich sztuk i wpisz liczbę sztuk należących do nas.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Błąd AI.');
@@ -348,15 +348,6 @@ export function TeamEconomy() {
     setDraftMoney((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
-  function applyShareToItems() {
-    setDraftItems((items) =>
-      items.map((item) => ({
-        ...item,
-        ourQuantity: Math.floor((item.totalQuantity * share) / 100),
-      })),
-    );
-  }
-
   function applyShareToMoney() {
     setDraftMoney((rows) => rows.map((row) => ({ ...row, sharePercent: share })));
   }
@@ -370,7 +361,7 @@ export function TeamEconomy() {
         name: '',
         category: 'Pozostałe',
         totalQuantity: 1,
-        ourQuantity: share === 100 ? 1 : 0,
+        ourQuantity: 1,
         unitPrice: 0,
         currency: 'yang',
         confidence: null,
@@ -574,7 +565,11 @@ export function TeamEconomy() {
           <article className={styles.metric}>
             <span>Wyprawy</span>
             <strong>{summary?.runCount ?? 0}</strong>
-            <small>{catalogReady ? `${dobryTematSeed.length} pozycji DOBRYTEMAT w źródle` : 'synchronizacja katalogu…'}</small>
+            <small>
+              {catalogReady
+                ? `${dobryTematSeed.length} pozycji DOBRYTEMAT w źródle`
+                : 'synchronizacja katalogu…'}
+            </small>
           </article>
         </section>
 
@@ -594,7 +589,7 @@ export function TeamEconomy() {
                   <input value={source} onChange={(event) => setSource(event.target.value)} />
                 </label>
                 <label className={styles.field}>
-                  Domyślny udział naszego zespołu %
+                  Domyślny udział pieniędzy %
                   <input
                     min="0"
                     max="100"
@@ -606,7 +601,7 @@ export function TeamEconomy() {
                     }
                   />
                   <small className={styles.shareHint}>
-                    Dla przedmiotów to tylko propozycja liczby sztuk. Dla pieniędzy procent jest liczony dokładnie.
+                    Pieniądze dzielimy procentowo. Przedmioty wpisujesz wyłącznie w pełnych sztukach.
                   </small>
                 </label>
                 <label className={styles.field}>
@@ -651,9 +646,6 @@ export function TeamEconomy() {
                   </button>
                   <button className={styles.buttonGhost} type="button" onClick={addMoney}>
                     + Pieniądze
-                  </button>
-                  <button className={styles.buttonGhost} type="button" onClick={applyShareToItems}>
-                    Przelicz sztuki wg {share}%
                   </button>
                   <button className={styles.buttonGhost} type="button" onClick={applyShareToMoney}>
                     Ustaw kasę na {share}%
@@ -1034,7 +1026,7 @@ export function TeamEconomy() {
                       <strong>{new Date(drop.occurredAtIso).toLocaleString('pl-PL')}</strong>
                     </header>
                     <p>
-                      Udział bazowy {(drop.ourShareBasisPoints / 100).toLocaleString('pl-PL')}% ·{' '}
+                      Udział pieniędzy {(drop.ourShareBasisPoints / 100).toLocaleString('pl-PL')}% ·{' '}
                       {drop.pileCount} kupek ·{' '}
                       {drop.participants.map((entry) => entry.displayName).join(', ') || 'bez listy'}
                     </p>
