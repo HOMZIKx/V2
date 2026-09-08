@@ -116,7 +116,9 @@ function roleFor(
 @UseFilters(PlayerTeamExceptionFilter)
 export class TeamEconomyManagementController {
   public constructor(
+    @Inject(TeamEconomyManagementRepository)
     private readonly management: TeamEconomyManagementRepository,
+    @Inject(TeamEconomyDropManagementRepository)
     private readonly dropManagement: TeamEconomyDropManagementRepository,
     @Inject(PLAYER_TEAM_STATE_USE_CASES) private readonly state: PlayerTeamStateUseCases,
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
