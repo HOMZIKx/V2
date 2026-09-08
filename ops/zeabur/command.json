@@ -1,4 +1,4 @@
 {
-  "requestId": "technika-config-before-redeploy-20260908-1132",
-  "mode": "technika_persistence_probe"
+  "requestId": "technika-config-post-merge-deploy-audit-20260908-1134",
+  "mode": "env_audit"
 }
