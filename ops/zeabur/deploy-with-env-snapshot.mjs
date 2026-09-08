@@ -26,16 +26,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function finish(payload, code = 0) {
   fs.writeFileSync(`${outDir}/result.json`, JSON.stringify(payload, null, 2));
-  const lines = [
-    '# Explicit Zeabur env snapshot deployment',
-    '',
-    payload.ok ? '✅ Completed' : '❌ Failed',
-  ];
+  const lines = ['# Explicit Zeabur env snapshot deployment', '', payload.ok ? '✅ Completed' : '❌ Failed'];
   if (payload.deployments?.length) {
     lines.push('', 'Deployments:');
-    for (const item of payload.deployments) {
-      lines.push(`- ${item.service}: ${item.deploymentID} — ${item.status}`);
-    }
+    for (const item of payload.deployments) lines.push(`- ${item.service}: ${item.deploymentID} — ${item.status}`);
   }
   if (payload.error) lines.push('', `Error: ${payload.error}`);
   fs.writeFileSync(`${outDir}/summary.md`, `${lines.join('\n')}\n`);
@@ -44,17 +38,12 @@ function finish(payload, code = 0) {
 
 if (!token) finish({ ok: false, error: 'missing Zeabur token' }, 1);
 const command = JSON.parse(fs.readFileSync(commandPath, 'utf8'));
-if (command.confirm !== 'ZEABUR_WRITE_APPROVED') {
-  finish({ ok: false, error: 'missing write approval' }, 1);
-}
+if (command.confirm !== 'ZEABUR_WRITE_APPROVED') finish({ ok: false, error: 'missing write approval' }, 1);
 
 async function gql(query, variables = {}) {
   const response = await fetch(API, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
   const body = await response.json();
@@ -66,17 +55,19 @@ async function gql(query, variables = {}) {
 
 async function readService(target) {
   const data = await gql(
-    `query Read($serviceID:ObjectID!,$environmentID:ObjectID!){
-      service(_id:$serviceID){
-        _id name status
-        gitTrigger(environmentID:$environmentID){repoID branchName}
-        variables(environmentID:$environmentID){key value readonly exposed}
-      }
-    }`,
+    `query Read($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){_id name status gitTrigger(environmentID:$environmentID){repoID branchName} variables(environmentID:$environmentID){key value readonly exposed}}}`,
     { serviceID: target.serviceID, environmentID },
   );
   if (!data.service) throw new Error(`${target.service}: service not found`);
   return data.service;
+}
+
+async function readDeployments(target) {
+  const data = await gql(
+    `query Deployments($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){deployments(environmentID:$environmentID){_id status commitSHA createdAt startedAt finishedAt}}}`,
+    { serviceID: target.serviceID, environmentID },
+  );
+  return data.service?.deployments || [];
 }
 
 function configuredVars(service) {
@@ -88,87 +79,67 @@ function configuredVars(service) {
     result[entry.key] = String(entry.value ?? '');
   }
   const duplicateManualKeys = [...counts.entries()].filter(([, count]) => count > 1).map(([key]) => key);
-  if (duplicateManualKeys.length) {
-    throw new Error(`${service.name}: duplicate configured variables detected (${duplicateManualKeys.length})`);
-  }
+  if (duplicateManualKeys.length) throw new Error(`${service.name}: duplicate configured variables detected (${duplicateManualKeys.length})`);
   return result;
 }
 
 async function persistTarget(target) {
   let service = await readService(target);
   const matching = (service.variables || []).filter((entry) => entry.key === target.key);
-  if (matching.some((entry) => entry.readonly)) {
-    throw new Error(`${target.service}.${target.key} is readonly`);
-  }
+  if (matching.some((entry) => entry.readonly)) throw new Error(`${target.service}.${target.key} is readonly`);
 
   if (matching.length) {
     await gql(
-      `mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$oldKey:String!,$newKey:String!,$value:String!){
-        updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:$oldKey,newKey:$newKey,value:$value){key}
-      }`,
-      {
-        serviceID: target.serviceID,
-        environmentID,
-        oldKey: target.key,
-        newKey: target.key,
-        value: target.value,
-      },
+      `mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$oldKey:String!,$newKey:String!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:$oldKey,newKey:$newKey,value:$value){key}}`,
+      { serviceID: target.serviceID, environmentID, oldKey: target.key, newKey: target.key, value: target.value },
     );
   } else {
     await gql(
-      `mutation Create($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){
-        createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}
-      }`,
+      `mutation Create($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,
       { serviceID: target.serviceID, environmentID, key: target.key, value: target.value },
     );
   }
 
   service = await readService(target);
-  const map = configuredVars(service);
-  map[target.key] = target.value;
-  if (map[target.key] !== target.value) throw new Error(`${target.service}: origin override verification failed`);
+  const vars = configuredVars(service);
+  vars[target.key] = target.value;
+  if (vars[target.key] !== target.value) throw new Error(`${target.service}: origin override verification failed`);
 
   const repoID = service.gitTrigger?.repoID;
   const branchName = String(service.gitTrigger?.branchName || '').trim();
   if (!repoID || !branchName) throw new Error(`${target.service}: Git trigger is incomplete`);
 
+  const beforeIDs = new Set((await readDeployments(target)).map((entry) => entry._id));
   const deployed = await gql(
-    `mutation Deploy($serviceID:ObjectID!,$environmentID:ObjectID!,$gitRef:GitRef!,$vars:Map!){
-      deploy(serviceID:$serviceID,environmentID:$environmentID,gitRef:$gitRef,vars:$vars){_id status}
-    }`,
-    {
-      serviceID: target.serviceID,
-      environmentID,
-      gitRef: { repoID, ref: `refs/heads/${branchName}` },
-      vars: map,
-    },
+    `mutation Deploy($serviceID:ObjectID!,$environmentID:ObjectID!,$gitRef:GitRef!,$vars:Map!){deploy(serviceID:$serviceID,environmentID:$environmentID,gitRef:$gitRef,vars:$vars)}`,
+    { serviceID: target.serviceID, environmentID, gitRef: { repoID, ref: `refs/heads/${branchName}` }, vars },
   );
-
-  const deploymentID = deployed.deploy?._id;
-  if (!deploymentID) throw new Error(`${target.service}: deploy returned no deployment ID`);
-  return { target, deploymentID, initialStatus: deployed.deploy.status || 'UNKNOWN' };
+  if (deployed.deploy !== true) throw new Error(`${target.service}: deploy returned false`);
+  return { target, beforeIDs };
 }
 
 async function waitForDeployment(item) {
   const terminalFailure = new Set(['FAILED', 'CANCELED', 'CANCELLED', 'ERROR']);
-  for (let attempt = 0; attempt < 90; attempt += 1) {
-    const service = await readService(item.target);
-    const deployment = (await gql(
-      `query Deployment($serviceID:ObjectID!,$environmentID:ObjectID!){
-        service(_id:$serviceID){deployments(environmentID:$environmentID){_id status commitSHA}}
-      }`,
-      { serviceID: item.target.serviceID, environmentID },
-    )).service?.deployments?.find((entry) => entry._id === item.deploymentID);
-
-    if (deployment?.status === 'RUNNING') {
-      return { service: item.target.service, deploymentID: item.deploymentID, status: 'RUNNING', serviceStatus: service.status };
+  let deploymentID = null;
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const deployments = await readDeployments(item.target);
+    if (!deploymentID) {
+      const created = deployments.find((entry) => !item.beforeIDs.has(entry._id));
+      if (created) deploymentID = created._id;
     }
-    if (terminalFailure.has(String(deployment?.status || ''))) {
-      throw new Error(`${item.target.service}: deployment ${item.deploymentID} ended as ${deployment.status}`);
+    if (deploymentID) {
+      const deployment = deployments.find((entry) => entry._id === deploymentID);
+      if (deployment?.status === 'RUNNING') {
+        const service = await readService(item.target);
+        return { service: item.target.service, deploymentID, status: 'RUNNING', serviceStatus: service.status, commitSHA: deployment.commitSHA || null };
+      }
+      if (terminalFailure.has(String(deployment?.status || ''))) {
+        throw new Error(`${item.target.service}: deployment ${deploymentID} ended as ${deployment.status}`);
+      }
     }
     await sleep(2000);
   }
-  throw new Error(`${item.target.service}: deployment ${item.deploymentID} did not reach RUNNING`);
+  throw new Error(`${item.target.service}: explicit deployment did not reach RUNNING`);
 }
 
 try {
