@@ -15,12 +15,18 @@ type PersistShapeV2 = {
   readonly scopes: Readonly<Record<string, ClaimMap>>;
 };
 
-type RecentScopeHint = { readonly scopeToken: string; readonly expiresAtMs: number };
+type PendingClaim = {
+  readonly scopeToken: string;
+  readonly characterKey: string;
+  readonly discordUserId: string;
+  readonly maxClaims: number;
+  readonly expiresAtMs: number;
+};
 
 let claimsByScope: Record<string, ClaimMap> = {};
 let claimDayKey = '';
 let loaded = false;
-const recentScopeByUser = new Map<string, RecentScopeHint>();
+const pendingClaimByUser = new Map<string, PendingClaim>();
 
 function warsawDayKey(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -115,7 +121,7 @@ function ensureDay(): void {
   if (key !== claimDayKey) {
     claimDayKey = key;
     claimsByScope = {};
-    recentScopeByUser.clear();
+    pendingClaimByUser.clear();
     saveToDisk();
   }
 }
@@ -150,65 +156,90 @@ export function countClaimsForUser(discordUserId: string, workspaceId?: string):
   return n;
 }
 
+/**
+ * Stage a claim from a signed team-scoped button. Persistence is deferred until
+ * player-team confirms that the clicker still belongs to that exact workspace.
+ */
 export function claimKingdomWarCharacter(input: {
-  /** Must be the compact team-scoped id produced by encodeKingdomWarScopedCharacterId. */
   readonly characterId: string;
   readonly discordUserId: string;
-  /** Max characters one Discord user may hold in this team. */
   readonly maxClaimsPerUser?: number;
 }):
   | { readonly ok: true; readonly claims: ClaimMap }
   | { readonly ok: false; readonly reason: 'taken' | 'max_claims' } {
   ensureDay();
   const parsed = parseScopedCharacterId(input.characterId);
-  // Old/global panels are intentionally non-actionable after the team-scope migration.
   if (!parsed) return { ok: false, reason: 'taken' };
 
   const maxClaims = Math.max(1, Math.min(20, input.maxClaimsPerUser ?? 3));
-  const scopeClaims = { ...(claimsByScope[parsed.scopeToken] ?? {}) };
+  const scopeClaims = claimsByScope[parsed.scopeToken] ?? {};
   const existing = scopeClaims[parsed.characterKey];
   if (existing && existing !== input.discordUserId) {
     return { ok: false, reason: 'taken' };
   }
-  if (existing === input.discordUserId) {
-    recentScopeByUser.set(input.discordUserId, {
-      scopeToken: parsed.scopeToken,
-      expiresAtMs: Date.now() + 30_000,
-    });
-    return { ok: true, claims: flattenClaims(parsed.scopeToken) };
+  if (existing !== input.discordUserId) {
+    let owned = 0;
+    for (const userId of Object.values(scopeClaims)) {
+      if (userId === input.discordUserId) owned += 1;
+    }
+    if (owned >= maxClaims) {
+      return { ok: false, reason: 'max_claims' };
+    }
   }
 
-  let owned = 0;
-  for (const userId of Object.values(scopeClaims)) {
-    if (userId === input.discordUserId) owned += 1;
-  }
-  if (owned >= maxClaims) {
-    return { ok: false, reason: 'max_claims' };
-  }
-
-  scopeClaims[parsed.characterKey] = input.discordUserId;
-  claimsByScope = { ...claimsByScope, [parsed.scopeToken]: scopeClaims };
-  recentScopeByUser.set(input.discordUserId, {
+  pendingClaimByUser.set(input.discordUserId, {
     scopeToken: parsed.scopeToken,
+    characterKey: parsed.characterKey,
+    discordUserId: input.discordUserId,
+    maxClaims,
     expiresAtMs: Date.now() + 30_000,
   });
-  saveToDisk();
   return { ok: true, claims: flattenClaims(parsed.scopeToken) };
 }
 
-/** One-shot hint used by the existing interaction router to resolve the exact team panel clicked. */
+/** One-shot scope hint for exact player-team membership verification. */
 export function consumeKingdomWarScopeTokenForUser(discordUserId: string): string | null {
-  const hint = recentScopeByUser.get(discordUserId);
-  recentScopeByUser.delete(discordUserId);
-  if (!hint || hint.expiresAtMs < Date.now()) return null;
-  return hint.scopeToken;
+  const pending = pendingClaimByUser.get(discordUserId);
+  if (!pending || pending.expiresAtMs < Date.now()) {
+    pendingClaimByUser.delete(discordUserId);
+    return null;
+  }
+  return pending.scopeToken;
+}
+
+/** Commit only after exact workspace access has been verified by player-team. */
+export function confirmKingdomWarClaimForUser(discordUserId: string): boolean {
+  ensureDay();
+  const pending = pendingClaimByUser.get(discordUserId);
+  pendingClaimByUser.delete(discordUserId);
+  if (!pending || pending.expiresAtMs < Date.now()) return false;
+
+  const scopeClaims = { ...(claimsByScope[pending.scopeToken] ?? {}) };
+  const existing = scopeClaims[pending.characterKey];
+  if (existing && existing !== discordUserId) return false;
+  if (existing !== discordUserId) {
+    let owned = 0;
+    for (const userId of Object.values(scopeClaims)) {
+      if (userId === discordUserId) owned += 1;
+    }
+    if (owned >= pending.maxClaims) return false;
+  }
+
+  scopeClaims[pending.characterKey] = discordUserId;
+  claimsByScope = { ...claimsByScope, [pending.scopeToken]: scopeClaims };
+  saveToDisk();
+  return true;
+}
+
+export function discardPendingKingdomWarClaim(discordUserId: string): void {
+  pendingClaimByUser.delete(discordUserId);
 }
 
 export function resetKingdomWarClaimsForTests(): void {
   claimsByScope = {};
   claimDayKey = '';
   loaded = false;
-  recentScopeByUser.clear();
+  pendingClaimByUser.clear();
   try {
     writeFileSync(
       persistPath(),
