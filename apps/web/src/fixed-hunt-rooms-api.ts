@@ -36,7 +36,7 @@ export type FixedHuntRequest = {
   readonly channel: number;
   readonly userId: string;
   readonly displayName: string;
-  readonly status: 'active' | 'closed';
+  readonly status: string;
   readonly responders: readonly FixedHuntResponder[];
   readonly createdAt: number;
   readonly closedAt: number | null;
