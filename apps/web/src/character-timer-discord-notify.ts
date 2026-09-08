@@ -1,27 +1,13 @@
 /**
- * Discord notify for character ProgressTimers (EQ/Timer tab).
- * Team coordination is deliberate here: timer changes are broadcast only to
- * current team members whose effective character-timer DM preference is enabled.
- * This never expands to a Discord guild roster.
+ * Character timer → Discord daily panel bridge.
+ * There are no standalone character-timer DMs anymore. A timer mutation only refreshes
+ * the team's one daily PW panel and schedules visual threshold refreshes in the gateway.
  */
 
-import {
-  buildCharacterTimerRoomSummary,
-  buildCharacterTimersDeepLinkUrl,
-  postDiscordTimerNotify,
-  postDiscordTimerResetNotify,
-  syncTeamCoordinationRecipients,
-  type DiscordLiveTimerSnapshot,
-  type DiscordTimerNotifyResult,
-} from './discord-notify-api';
-import {
-  listTeamNotifyDiscordRecipients,
-  resolveMemberDiscordAccountId,
-  type PlayerIdentity,
-  type ProgressTimer,
-  type WorkspaceRecord,
-} from './player-store';
+import type { DiscordTimerNotifyResult } from './discord-notify-api';
+import type { PlayerIdentity, ProgressTimer, WorkspaceRecord } from './player-store';
 import { inferProgressionKind, restartAfterDone } from './project-hard-progression';
+import { refreshTeamDailyTimerPanel } from './team-daily-timer-panel-api';
 
 export type CharacterTimerNotifyContext = {
   readonly workspace: WorkspaceRecord;
@@ -29,34 +15,10 @@ export type CharacterTimerNotifyContext = {
   readonly viewer: PlayerIdentity | null;
   readonly actorName: string;
   readonly kind: 'reset' | 'reminder' | 'manual';
-  /** Optional extra Discord snowflakes — still intersected with opted-in team membership. */
   readonly extraRecipientDiscordIds?: readonly string[];
 };
 
-function recipientIds(ctx: CharacterTimerNotifyContext): string[] {
-  const allowed = new Set(
-    listTeamNotifyDiscordRecipients(ctx.workspace, 'characterTimers', ctx.viewer),
-  );
-  if (allowed.size === 0) return [];
-
-  const extras = ctx.extraRecipientDiscordIds;
-  if (extras && extras.length > 0) {
-    const out: string[] = [];
-    for (const raw of extras) {
-      const id = raw.trim();
-      if (allowed.has(id)) out.push(id);
-    }
-    return [...new Set(out)];
-  }
-  return [...allowed];
-}
-
-/**
- * React store updates are asynchronous. The caller can still hold the old readyAtIso
- * immediately after pressing Start. Recompute the just-started cycle here so Discord
- * and the gateway scheduler always receive the NEW end time, never the previous one.
- */
-function timerForNotify(ctx: CharacterTimerNotifyContext): ProgressTimer {
+function timerForPanelRefresh(ctx: CharacterTimerNotifyContext): ProgressTimer {
   if (ctx.kind !== 'reset') return ctx.timer;
   const kind = ctx.timer.kind ?? inferProgressionKind(ctx.timer.label);
   const restart = restartAfterDone(kind, new Date(), ctx.timer.durationMinutes);
@@ -70,24 +32,6 @@ function timerForNotify(ctx: CharacterTimerNotifyContext): ProgressTimer {
   };
 }
 
-function liveTimerSnapshots(
-  workspace: WorkspaceRecord,
-  focusTimer: ProgressTimer,
-): DiscordLiveTimerSnapshot[] {
-  const timers = workspace.timers
-    .filter((timer) => timer.characterId === focusTimer.characterId)
-    .map((timer) => (timer.id === focusTimer.id ? focusTimer : timer));
-
-  return timers.slice(0, 12).map((timer) => ({
-    id: timer.id,
-    label: timer.label,
-    status: timer.status,
-    ...(timer.remainingLabel ? { remainingLabel: timer.remainingLabel } : {}),
-    ...(timer.detail ? { detail: timer.detail } : {}),
-    ...(timer.readyAtIso ? { readyAtIso: timer.readyAtIso } : {}),
-  }));
-}
-
 export function buildCharacterTimerNotifyCopy(input: {
   readonly characterName: string;
   readonly timer: ProgressTimer;
@@ -95,130 +39,43 @@ export function buildCharacterTimerNotifyCopy(input: {
   readonly kind: 'reset' | 'reminder' | 'manual';
 }): { title: string; body: string } {
   const { characterName, timer, actorName, kind } = input;
-  if (kind === 'reminder') {
-    return {
-      title: `${timer.label} · ${characterName}`,
-      body: 'Timer jest gotowy. Stan całej karty znajduje się poniżej.',
-    };
-  }
   if (kind === 'reset') {
     return {
       title: `${timer.label} · ${characterName}`,
-      body: `${actorName} odświeżył timer. Cały zespół widzi poniżej aktualny stan timerów tej postaci.`,
+      body: `${actorName} odświeżył timer. Dzienny panel PW został zaktualizowany.`,
+    };
+  }
+  if (kind === 'reminder') {
+    return {
+      title: `${timer.label} · ${characterName}`,
+      body: 'Stan timera został zaktualizowany w dziennym panelu PW.',
     };
   }
   return {
     title: `${timer.label} · ${characterName}`,
-    body: `Aktualizacja timera ${timer.label} na ${characterName}.`,
+    body: 'Dzienny panel PW został zsynchronizowany.',
   };
 }
 
-/**
- * Broadcast a character timer card to opted-in team DMs.
- * Every message contains the full timer state for the affected character.
- */
 export async function notifyCharacterProgressTimer(
   ctx: CharacterTimerNotifyContext,
 ): Promise<{ readonly sent: number; readonly results: readonly DiscordTimerNotifyResult[] }> {
-  const recipients = recipientIds(ctx);
-  if (recipients.length === 0) {
-    return { sent: 0, results: [] };
-  }
+  const timer = timerForPanelRefresh(ctx);
 
-  // Keep a durable, explicit team audience in the gateway for bot-originated actions
-  // (e.g. a later war reminder). This is a merge operation, not guild enumeration.
-  void syncTeamCoordinationRecipients(recipients);
+  // Shared workspace writes are intentionally debounced in PlayerStoreProvider (120 ms).
+  // Waiting briefly here prevents the gateway from re-reading the previous server revision
+  // and repainting the PW panel with stale timer data immediately after a WWW click.
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
 
-  const timer = timerForNotify(ctx);
-  const characterName =
-    ctx.workspace.characters.find((c) => c.id === timer.characterId)?.name ?? timer.characterId;
-  const { title, body } = buildCharacterTimerNotifyCopy({
-    characterName,
-    timer,
-    actorName: ctx.actorName,
-    kind: ctx.kind,
+  const ok = await refreshTeamDailyTimerPanel(ctx.workspace.id, {
+    timerId: timer.id,
+    ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
   });
-  const deepLinkUrl = buildCharacterTimersDeepLinkUrl(ctx.workspace.id, timer.characterId);
-  const roomSummary = buildCharacterTimerRoomSummary(
-    ctx.workspace.timers,
-    ctx.workspace.characters,
-    timer.id,
-  );
-  const liveTimers = liveTimerSnapshots(ctx.workspace, timer);
-
-  const results: DiscordTimerNotifyResult[] = [];
-  let sent = 0;
-
-  const actorMember = ctx.workspace.members.find((member) => member.id === ctx.viewer?.id) ?? null;
-  const actorDiscord = actorMember
-    ? resolveMemberDiscordAccountId(actorMember, ctx.viewer)
-    : ctx.viewer?.discordAccountId?.trim() && /^\d{17,20}$/.test(ctx.viewer.discordAccountId.trim())
-      ? ctx.viewer.discordAccountId.trim()
-      : null;
-
-  // Reset event: one team broadcast to everyone except actor, plus actor confirmation.
-  if (ctx.kind === 'reset') {
-    const others = recipients.filter((id) => id !== actorDiscord);
-    if (others.length > 0 && actorDiscord) {
-      const reset = await postDiscordTimerResetNotify({
-        actorDiscordUserId: actorDiscord,
-        actorName: ctx.actorName,
-        title,
-        body,
-        deepLinkUrl,
-        workspaceId: ctx.workspace.id,
-        characterId: timer.characterId,
-        characterName,
-        timerId: timer.id,
-        timerLabel: timer.label,
-        ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
-        roomSummary,
-        liveTimers,
-        recipientDiscordUserIds: others,
-        idempotencyKey: `char-timer-reset:${timer.id}:${timer.operationId ?? Date.now()}`,
-      });
-      if (reset.ok) sent += reset.sent ?? 0;
-    }
-  }
-
-  const directRecipients =
-    ctx.kind === 'reset'
-      ? actorDiscord
-        ? recipients.filter((id) => id === actorDiscord)
-        : recipients
-      : recipients;
-
-  for (const discordUserId of directRecipients) {
-    const result = await postDiscordTimerNotify({
-      discordUserId,
-      title,
-      body,
-      deepLinkUrl,
-      workspaceId: ctx.workspace.id,
-      characterId: timer.characterId,
-      characterName,
-      timerId: timer.id,
-      timerLabel: timer.label,
-      ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
-      roomSummary,
-      liveTimers,
-      includeButtons: true,
-      kind: ctx.kind,
-      actorName: ctx.actorName,
-      idempotencyKey: `char-timer:${ctx.kind}:${timer.id}:${discordUserId}:${timer.operationId ?? Math.floor(Date.now() / 30_000)}`,
-    });
-    results.push(result);
-    if (result.ok && !result.duplicate && result.skipped !== 'dms_closed') {
-      sent += 1;
-    }
-  }
-
-  return { sent, results };
+  return { sent: ok ? 1 : 0, results: [] };
 }
 
 /**
- * Browser timers are intentionally disabled. Durable reminders belong to the
- * discord-gateway queue so closing the tab or refreshing the web app cannot lose them.
+ * Browser timers stay disabled. The gateway owns the persistent threshold/ready refresh queue.
  */
 export function scheduleCharacterTimerReminder(_input: {
   readonly endsAtIso: string | null;

@@ -4,30 +4,15 @@ import { createLogger } from '@v2/observability';
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
-import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
 import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
-import { getKingdomWarClaims } from '../../application/notify/kingdom-war-claims.js';
-import { startCharacterTimerReminderWorker } from '../../application/notify/character-timer-reminders.js';
-import { formatCharacterTimerTemplateContent } from '../../application/notify/character-timer-template.js';
-import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
-import { listKingdomWarRecipients } from '../../application/notify/kingdom-war-recipients.js';
-import { KingdomWarScheduler } from '../../application/notify/kingdom-war-scheduler.js';
-import { TeamSyncInteractionRouter } from './team-sync-interaction-router.js';
-
+import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import {
   DiscordGatewayConfigSchema,
   normalizeDiscordConfig,
   type DiscordGatewayConfig,
 } from '../../infrastructure/discord/discord-config.js';
 import { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
-import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
-import {
-  readCharacterTimerCardFromBot,
-  readSharedCharacterTimerCardFromBot,
-} from '../../infrastructure/player-team/read-character-timer-card.js';
-import { readTeamWorkspaceContextFromBot } from '../../infrastructure/player-team/read-team-workspace-context.js';
-import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
-import { renderKingdomWarReminder } from '../../presentation/discord/kingdom-war-renderer.js';
+import { DailyPanelInteractionRouter } from './daily-panel-interaction-router.js';
 import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
@@ -92,10 +77,7 @@ function installResilientAuthorizationStartupSync(
 
     for (const guildId of internals.runtimeAllowedGuildIds()) {
       const guild = internals.client.guilds.cache.get(guildId);
-      if (guild === undefined) {
-        continue;
-      }
-
+      if (guild === undefined) continue;
       try {
         await internals.registerAndReconcile(guild);
         synced += 1;
@@ -109,16 +91,10 @@ function installResilientAuthorizationStartupSync(
     }
 
     if (!failed) {
-      if (synced > 0) {
-        logger.info('Authorization startup sync completed for runtime guilds', { synced });
-      }
+      if (synced > 0) logger.info('Authorization startup sync completed for runtime guilds', { synced });
       return;
     }
-
-    if (retryTimer !== null) {
-      return;
-    }
-
+    if (retryTimer !== null) return;
     retryTimer = setTimeout(() => {
       retryTimer = null;
       void syncRuntimeGuilds();
@@ -132,7 +108,6 @@ function installResilientAuthorizationStartupSync(
 @Injectable()
 export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
   private readonly nestLogger = new Logger(DiscordBootstrapService.name);
-  private warScheduler: KingdomWarScheduler | null = null;
 
   public constructor(
     @Inject(DISCORD_CONFIG_TOKEN) private readonly config: DiscordGatewayConfig,
@@ -175,144 +150,13 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const gateway = this.gateway;
-    const config = this.config;
-    const store = this.technikaStore;
-    const logger = createLogger('kingdom-war-scheduler');
-    this.warScheduler = new KingdomWarScheduler({
-      logger,
-      getKingdomWar: () => resolveActiveBotConfig(store).kingdomWar,
-      onFire: async ({ warAt, notifyAt, dayKey }) => {
-        const warCfg = resolveActiveBotConfig(store).kingdomWar;
-        if (!warCfg.enabled) return;
-
-        // Recipient registry provides a safe team-scoped seed. From one current
-        // member we resolve the live player-team workspace and then use its real
-        // roster + all explicit Discord member IDs for the actual broadcast.
-        const registeredRecipients = listKingdomWarRecipients();
-        if (registeredRecipients.length === 0) {
-          logger.info('Kingdom war reminder skipped — no team recipients', {
-            warAt,
-            notifyAt,
-            dayKey,
-          });
-          return;
-        }
-        const context = await readTeamWorkspaceContextFromBot({
-          baseUrl: config.PLAYER_TEAM_BASE_URL,
-          demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-          viewerId: registeredRecipients[0]!,
-        });
-        const warRecipients =
-          context?.recipients.length ? [...context.recipients] : [...registeredRecipients];
-        const message = renderKingdomWarReminder({
-          config: warCfg,
-          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
-          claims: getKingdomWarClaims(),
-          ...(context?.roster.length ? { roster: context.roster } : {}),
-        });
-
-        let sent = 0;
-        let skipped = 0;
-        for (const discordUserId of warRecipients) {
-          try {
-            await gateway.sendTimerNotify({
-              discordUserId,
-              content: message.content ?? `Wojna królestw ${warAt}`,
-              ...(message.components ? { components: message.components } : {}),
-            });
-            sent += 1;
-          } catch (error) {
-            skipped += 1;
-            logger.warn('Kingdom war DM failed', {
-              discordUserId,
-              dayKey,
-              notifyAt,
-              error: error instanceof Error ? error.message : 'unknown',
-            });
-          }
-        }
-        logger.info('Kingdom war reminder fired', {
-          warAt,
-          notifyAt,
-          dayKey,
-          sent,
-          skipped,
-          recipientCount: warRecipients.length,
-          workspaceId: context?.workspaceId ?? null,
-        });
-      },
-    });
-    this.warScheduler.start();
-
-    startCharacterTimerReminderWorker({
-      logger: createLogger('character-timer-reminders'),
-      send: async (job) => {
-        if (job.workspaceId) {
-          await markCharacterTimerReadyInWorkspace({
-            baseUrl: config.PLAYER_TEAM_BASE_URL,
-            demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-            viewerId: job.discordUserId,
-            workspaceId: job.workspaceId,
-            timerId: job.timerId,
-          }).catch(() => false);
-        }
-        const card = job.workspaceId
-          ? await readSharedCharacterTimerCardFromBot({
-              baseUrl: config.PLAYER_TEAM_BASE_URL,
-              demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-              viewerId: job.discordUserId,
-              workspaceId: job.workspaceId,
-              timerId: job.timerId,
-            })
-          : await readCharacterTimerCardFromBot({
-              baseUrl: config.PLAYER_TEAM_BASE_URL,
-              demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-              viewerId: job.discordUserId,
-              timerId: job.timerId,
-            });
-        const resolvedWorkspaceId = card?.workspaceId ?? job.workspaceId;
-        const resolvedCharacterId = card?.characterId ?? job.characterId;
-        const resolvedCharacterName = card?.characterName ?? job.characterName;
-        const body = {
-          discordUserId: job.discordUserId,
-          title: `${job.label}${resolvedCharacterName ? ` · ${resolvedCharacterName}` : ''}`,
-          body: 'Timer jest gotowy, ale pozostaje zablokowany do jawnego odświeżenia przez zespół.',
-          deepLinkUrl: job.deepLinkUrl ?? 'https://desapp.zeabur.app/timers',
-          timerId: job.timerId,
-          timerLabel: job.label,
-          ...(resolvedWorkspaceId ? { workspaceId: resolvedWorkspaceId } : {}),
-          ...(resolvedCharacterId ? { characterId: resolvedCharacterId } : {}),
-          ...(resolvedCharacterName ? { characterName: resolvedCharacterName } : {}),
-          ...(card?.liveTimers ? { liveTimers: [...card.liveTimers] } : {}),
-          endsAt: new Date(job.fireAtMs).toISOString(),
-          kind: 'reminder' as const,
-          includeButtons: true,
-          idempotencyKey: `char-timer-ready:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
-        };
-        const characterTimers = resolveCharacterTimersConfig(resolveActiveBotConfig(store));
-        const content = formatCharacterTimerTemplateContent(body, characterTimers);
-        const message = renderTimerNotifyMessage({
-          payload: body,
-          content,
-          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
-          includeButtons: true,
-        });
-        await gateway.sendTimerNotify({
-          discordUserId: job.discordUserId,
-          content: message.content ?? content,
-          ...(message.components ? { components: message.components } : {}),
-        });
-      },
-    });
+    // Standalone character-timer DMs and the old global war sender intentionally
+    // do not start here. Timer delivery is owned by DailyCharacterTimerPanelBootstrapService;
+    // war delivery is owned by TeamKingdomWarBootstrapService.
   }
 
   public async onModuleDestroy(): Promise<void> {
-    this.warScheduler?.stop();
-    this.warScheduler = null;
-    if (this.gateway) {
-      await this.gateway.stop();
-    }
+    if (this.gateway) await this.gateway.stop();
   }
 }
 
@@ -326,12 +170,10 @@ export function createDiscordGatewayOrNull(
   technikaStore?: VersionedConfigStore | null,
   memberActivityCollector?: MemberActivityCollector | null,
 ): DiscordJsGatewayAdapter | null {
-  if (!config.DISCORD_ENABLED) {
-    return null;
-  }
+  if (!config.DISCORD_ENABLED) return null;
 
   const logger = createLogger('discord-gateway');
-  const routerHolder: { current: TeamSyncInteractionRouter | null } = { current: null };
+  const routerHolder: { current: DailyPanelInteractionRouter | null } = { current: null };
 
   const gateway = new DiscordJsGatewayAdapter({
     config,
@@ -346,7 +188,7 @@ export function createDiscordGatewayOrNull(
 
   installResilientAuthorizationStartupSync(gateway, logger);
 
-  routerHolder.current = new TeamSyncInteractionRouter({
+  routerHolder.current = new DailyPanelInteractionRouter({
     config,
     gateway,
     logger,

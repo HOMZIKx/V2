@@ -8,6 +8,7 @@ import {
   DiscordBootstrapService,
   loadDiscordConfig,
 } from './discord/discord-bootstrap.service.js';
+import { DailyCharacterTimerPanelBootstrapService } from './discord/daily-character-timer-panel-bootstrap.service.js';
 import { MemberActivityVoiceBootstrapService } from './discord/member-activity-voice-bootstrap.service.js';
 import { TeamKingdomWarBootstrapService } from './discord/team-kingdom-war-bootstrap.service.js';
 import {
@@ -17,6 +18,7 @@ import {
   MEMBER_ACTIVITY_STORE_TOKEN,
   TECHNIKA_CONFIG_STORE_TOKEN,
 } from './discord/discord.tokens.js';
+import { DailyCharacterTimerPanelController } from './http/daily-character-timer-panel.controller.js';
 import { HealthController } from './http/health.controller.js';
 import { NotifyController } from './http/notify.controller.js';
 import { TeamKingdomWarController } from './http/team-kingdom-war.controller.js';
@@ -43,6 +45,7 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
 
 @Module({
   controllers: [
+    DailyCharacterTimerPanelController,
     HealthController,
     NotifyController,
     TeamKingdomWarController,
@@ -90,6 +93,7 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
     DiscordBootstrapService,
     TeamKingdomWarBootstrapService,
     MemberActivityVoiceBootstrapService,
+    DailyCharacterTimerPanelBootstrapService,
   ],
 })
 export class AppModule {}
