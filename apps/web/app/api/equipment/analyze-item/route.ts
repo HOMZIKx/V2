@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const DEFAULT_VISION_MODEL = 'gpt-5.6-luna';
+const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const EQUIPMENT_CATEGORIES = new Set([
   'weapon',
   'armor',
@@ -52,8 +53,100 @@ interface ResponsesApiPayload {
   };
 }
 
+type IdentityAccount = {
+  readonly provider?: string;
+  readonly accountId?: string;
+};
+
+type AuthenticatedDiscordSession =
+  | { readonly ok: true; readonly discordUserId: string }
+  | { readonly ok: false; readonly status: 401 | 503; readonly error: string };
+
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.trim().replace(/\/$/, '');
+}
+
+function productionBackendOrigin(): string {
+  return trimTrailingSlash(
+    process.env.V2_BACKEND_PUBLIC_ORIGIN?.trim() || 'https://v2-api.zeabur.app',
+  );
+}
+
+function identityBaseUrl(): string {
+  const configured = process.env.IDENTITY_PROXY_TARGET?.trim();
+  if (configured) return trimTrailingSlash(configured);
+  return process.env.NODE_ENV === 'production' ? productionBackendOrigin() : LOCAL_IDENTITY;
+}
+
+async function resolveAuthenticatedDiscordSession(
+  request: Request,
+): Promise<AuthenticatedDiscordSession> {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) {
+    return { ok: false, status: 401, error: 'unauthorized' };
+  }
+
+  const headers = new Headers({ accept: 'application/json', cookie });
+  const baseUrl = identityBaseUrl();
+
+  let meResponse: Response;
+  try {
+    meResponse = await fetch(`${baseUrl}/identity/me`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+  } catch {
+    return { ok: false, status: 503, error: 'identity_unavailable' };
+  }
+
+  if (meResponse.status === 401) {
+    return { ok: false, status: 401, error: 'unauthorized' };
+  }
+  if (!meResponse.ok) {
+    return { ok: false, status: 503, error: 'identity_unavailable' };
+  }
+
+  let accountsResponse: Response;
+  try {
+    accountsResponse = await fetch(`${baseUrl}/identity/accounts`, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
+  } catch {
+    return { ok: false, status: 503, error: 'identity_unavailable' };
+  }
+
+  if (accountsResponse.status === 401) {
+    return { ok: false, status: 401, error: 'unauthorized' };
+  }
+  if (!accountsResponse.ok) {
+    return { ok: false, status: 503, error: 'identity_unavailable' };
+  }
+
+  let accountsBody: { readonly accounts?: readonly IdentityAccount[] };
+  try {
+    accountsBody = (await accountsResponse.json()) as {
+      readonly accounts?: readonly IdentityAccount[];
+    };
+  } catch {
+    return { ok: false, status: 503, error: 'identity_unavailable' };
+  }
+
+  const discordUserId = accountsBody.accounts
+    ?.find((account) => account.provider === 'discord')
+    ?.accountId?.trim();
+
+  if (!discordUserId || !/^\d{17,20}$/.test(discordUserId)) {
+    return { ok: false, status: 401, error: 'discord_session_required' };
+  }
+
+  return { ok: true, discordUserId };
 }
 
 function extractResponseText(payload: ResponsesApiPayload): string {
@@ -148,6 +241,14 @@ Zasady:
 `.trim();
 
 export async function POST(request: Request) {
+  const session = await resolveAuthenticatedDiscordSession(request);
+  if (!session.ok) {
+    return NextResponse.json(
+      { error: session.error },
+      { status: session.status },
+    );
+  }
+
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     return jsonError(
