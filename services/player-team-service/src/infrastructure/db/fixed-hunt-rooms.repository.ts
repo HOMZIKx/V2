@@ -49,25 +49,41 @@ export class FixedHuntRoomsRepository implements FixedHuntRoomsRepositoryPort, O
   }
 
   public async getOrCreateFixedHuntRoom(roomKey: string): Promise<FixedHuntRoomRecord> {
-    const result = await this.db.query(
+    const existing = await this.db.query(
+      `SELECT * FROM player_team_fixed_hunt_rooms WHERE room_key = $1`,
+      [roomKey],
+    );
+    if (existing.rows[0] !== undefined) {
+      return this.mapRow(existing.rows[0]);
+    }
+
+    const initialState = JSON.stringify({
+      roomKey,
+      routes: [],
+      markers: [],
+      requests: [],
+      history: [],
+    });
+    const inserted = await this.db.query(
       `INSERT INTO player_team_fixed_hunt_rooms
         (room_key, state, revision, updated_by_user_id, updated_at)
        VALUES ($1, $2::jsonb, 0, NULL, NOW())
-       ON CONFLICT (room_key) DO UPDATE
-         SET room_key = EXCLUDED.room_key
+       ON CONFLICT (room_key) DO NOTHING
        RETURNING *`,
-      [
-        roomKey,
-        JSON.stringify({
-          roomKey,
-          routes: [],
-          markers: [],
-          requests: [],
-          history: [],
-        }),
-      ],
+      [roomKey, initialState],
     );
-    return this.mapRow(result.rows[0]);
+    if (inserted.rows[0] !== undefined) {
+      return this.mapRow(inserted.rows[0]);
+    }
+
+    const raced = await this.db.query(
+      `SELECT * FROM player_team_fixed_hunt_rooms WHERE room_key = $1`,
+      [roomKey],
+    );
+    if (raced.rows[0] === undefined) {
+      throw new PlayerTeamError('NOT_FOUND', 'fixed hunt room could not be initialised');
+    }
+    return this.mapRow(raced.rows[0]);
   }
 
   public async updateFixedHuntRoom(input: UpdateFixedHuntRoomInput): Promise<FixedHuntRoomRecord> {
