@@ -20,6 +20,7 @@ import { HuntRoomsUseCases } from '../application/use-cases/hunt-rooms.use-cases
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
 import { HUNT_ROOMS_USE_CASES, PLAYER_TEAM_ENV } from './player-team.tokens.js';
+import { resolvePlayerTeamRequestDiscordId } from './request-auth.js';
 
 const createPartyBodySchema = z.object({
   displayName: z.string().min(1),
@@ -82,6 +83,8 @@ const confirmKillBodySchema = z.object({
   }),
 });
 
+type RequestHeaders = Record<string, string | string[] | undefined>;
+
 @Controller('player-team/v1')
 @UseFilters(PlayerTeamExceptionFilter)
 export class HuntRoomsController {
@@ -90,22 +93,21 @@ export class HuntRoomsController {
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
   ) {}
 
-  private demoViewerIdFromHeaders(
-    headers: Record<string, string | string[] | undefined>,
-  ): string | undefined {
-    const headerName = this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER.toLowerCase();
-    const value = headers[headerName];
-    if (Array.isArray(value)) return value[0];
-    return value;
+  private resolveViewerId(headers: RequestHeaders): Promise<string> {
+    return resolvePlayerTeamRequestDiscordId({
+      headers,
+      env: this.env,
+      assertDemoAccess: (demoViewerId) => this.useCases.assertDemoAccess(demoViewerId),
+    });
   }
 
   @Post('party-rooms')
   @HttpCode(200)
   public async createPartyRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Body() rawBody: unknown,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const parsed = createPartyBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
@@ -122,10 +124,10 @@ export class HuntRoomsController {
   @Post('party-rooms/join')
   @HttpCode(200)
   public async joinPartyRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Body() rawBody: unknown,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const parsed = joinPartyBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
@@ -139,10 +141,10 @@ export class HuntRoomsController {
 
   @Get('party-rooms/:roomId')
   public async getPartyRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomId') roomId: string,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const room = await this.useCases.getPartyRoom(roomId, viewerId);
     if (room === null) throw new NotFoundException('party room not found');
     return room;
@@ -151,21 +153,21 @@ export class HuntRoomsController {
   @Post('party-rooms/:roomId/leave')
   @HttpCode(200)
   public async leavePartyRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomId') roomId: string,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const room = await this.useCases.leavePartyRoom(roomId, viewerId);
     return { ok: true as const, room };
   }
 
   @Patch('party-rooms/:roomId')
   public async patchPartyRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomId') roomId: string,
     @Body() rawBody: unknown,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const parsed = patchPartyBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
@@ -190,11 +192,11 @@ export class HuntRoomsController {
   @Post('party-rooms/:roomId/pins')
   @HttpCode(200)
   public async addPin(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomId') roomId: string,
     @Body() rawBody: unknown,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     const parsed = addPinBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
@@ -208,22 +210,22 @@ export class HuntRoomsController {
 
   @Delete('party-rooms/:roomId/pins/:pinId')
   public async removePin(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomId') roomId: string,
     @Param('pinId') pinId: string,
   ) {
-    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = await this.resolveViewerId(headers);
     return this.useCases.removePartyRoomPin(roomId, viewerId, pinId);
   }
 
   @Get('timer-rooms/:mapKey/:channel')
   public async getTimerRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('mapKey') mapKey: string,
     @Param('channel') channelRaw: string,
     @Query('roomCode') roomCode?: string,
   ) {
-    this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    await this.resolveViewerId(headers);
     const channel = Number(channelRaw);
     if (!Number.isFinite(channel) || channel < 1) {
       throw new BadRequestException('invalid channel');
@@ -234,12 +236,12 @@ export class HuntRoomsController {
   @Post('timer-rooms/:mapKey/:channel/confirm-kill')
   @HttpCode(200)
   public async confirmKill(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('mapKey') mapKey: string,
     @Param('channel') channelRaw: string,
     @Body() rawBody: unknown,
   ) {
-    this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    await this.resolveViewerId(headers);
     const channel = Number(channelRaw);
     if (!Number.isFinite(channel) || channel < 1) {
       throw new BadRequestException('invalid channel');
