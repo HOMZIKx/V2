@@ -27,7 +27,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
 
   public async createPartyRoom(input: CreatePartyRoomInput): Promise<PartyRoomRecord> {
     const id = `party-${this.parties.size + 1}`;
-    const joinCode = String(1000 + this.parties.size);
+    const joinCode = `CODE${1000 + this.parties.size}`;
     const members: PartyRoomMember[] = [
       { id: input.leaderId, displayName: input.displayName, role: 'leader' },
     ];
@@ -78,6 +78,9 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   public async leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null> {
     const current = this.parties.get(roomId);
     if (!current) return null;
+    if (!current.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
     const nextMembers = current.members.filter((m) => m.id !== viewerId);
     if (nextMembers.length === 0) {
       this.parties.delete(roomId);
@@ -103,6 +106,21 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
   public async patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord> {
     const current = this.parties.get(input.roomId);
     if (!current) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
+    if (!current.members.some((member) => member.id === input.viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
+    const leaderOnly =
+      input.mapKey !== undefined ||
+      input.activeChannel !== undefined ||
+      input.sessionKills !== undefined ||
+      input.visibility !== undefined ||
+      input.requests !== undefined;
+    if (leaderOnly && current.leaderId !== input.viewerId) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'only the party leader can change party settings');
+    }
+    if (input.sessionKillsDelta !== undefined && input.sessionKillsDelta !== 1) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'session kill delta must be exactly +1');
+    }
     if (current.revision !== input.expectedRevision) {
       throw new PlayerTeamError('REVISION_CONFLICT', 'revision mismatch', {
         actualRevision: current.revision,
@@ -115,7 +133,7 @@ class MemoryHuntRoomsRepo implements HuntRoomsRepositoryPort {
       sessionKills:
         input.sessionKills ??
         (input.sessionKillsDelta !== undefined
-          ? Math.max(0, current.sessionKills + input.sessionKillsDelta)
+          ? current.sessionKills + input.sessionKillsDelta
           : current.sessionKills),
       visibility: input.visibility ?? current.visibility,
       requests: input.requests ?? current.requests,
@@ -222,7 +240,7 @@ describe('HuntRoomsUseCases', () => {
     expect(allowed.assertDemoAccess('  mateusz  ')).toBe('mateusz');
   });
 
-  it('tworzy party, dołącza drugiego gracza i dodaje pin', async () => {
+  it('tworzy prywatne party, dołącza kodem drugiego gracza i dodaje pin', async () => {
     const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
     const room = await useCases.createPartyRoom({
       leaderId: 'm1',
@@ -267,6 +285,15 @@ describe('HuntRoomsUseCases', () => {
     });
     await expect(useCases.getPartyRoom(room.id, 'intruder')).rejects.toThrow(PlayerTeamError);
     await expect(
+      useCases.patchPartyRoom({
+        roomId: room.id,
+        viewerId: 'intruder',
+        expectedRevision: room.revision,
+        sessionKillsDelta: 1,
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+    await expect(useCases.leavePartyRoom(room.id, 'intruder')).rejects.toThrow(PlayerTeamError);
+    await expect(
       useCases.addPartyRoomPin(room.id, 'intruder', {
         id: 'pin-x',
         partyId: room.id,
@@ -279,6 +306,65 @@ describe('HuntRoomsUseCases', () => {
         kind: 'metin',
       }),
     ).rejects.toThrow(PlayerTeamError);
+  });
+
+  it('pozwala członkowi dodać zbicie, ale ustawienia party zostawia liderowi', async () => {
+    const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
+    const created = await useCases.createPartyRoom({
+      leaderId: 'm1',
+      displayName: 'Mateusz',
+      mapKey: 'Yongbi',
+      activeChannel: 1,
+      visibility: 'open',
+    });
+    const joined = await useCases.joinPartyRoom({
+      viewerId: 'w1',
+      displayName: 'Wicek',
+      joinCode: created.joinCode,
+    });
+
+    const incremented = await useCases.patchPartyRoom({
+      roomId: joined.id,
+      viewerId: 'w1',
+      expectedRevision: joined.revision,
+      sessionKillsDelta: 1,
+    });
+    expect(incremented.sessionKills).toBe(1);
+
+    await expect(
+      useCases.patchPartyRoom({
+        roomId: joined.id,
+        viewerId: 'w1',
+        expectedRevision: incremented.revision,
+        mapKey: 'M2',
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+    await expect(
+      useCases.patchPartyRoom({
+        roomId: joined.id,
+        viewerId: 'w1',
+        expectedRevision: incremented.revision,
+        visibility: 'closed',
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+    await expect(
+      useCases.patchPartyRoom({
+        roomId: joined.id,
+        viewerId: 'w1',
+        expectedRevision: incremented.revision,
+        sessionKills: 0,
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+
+    const leaderUpdate = await useCases.patchPartyRoom({
+      roomId: joined.id,
+      viewerId: 'm1',
+      expectedRevision: incremented.revision,
+      activeChannel: 3,
+      visibility: 'closed',
+    });
+    expect(leaderUpdate.activeChannel).toBe(3);
+    expect(leaderUpdate.visibility).toBe('closed');
   });
 
   it('synchronizuje prośby i atomowy przyrost zbić przez patch pokoju', async () => {
@@ -299,6 +385,41 @@ describe('HuntRoomsUseCases', () => {
     });
     expect(withRequest.requests).toHaveLength(1);
     expect(withRequest.sessionKills).toBe(1);
+  });
+
+  it('odrzuca niedozwolony delta licznika i nie akceptuje starej rewizji', async () => {
+    const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
+    const room = await useCases.createPartyRoom({
+      leaderId: 'm1',
+      displayName: 'Mateusz',
+      mapKey: 'Yongbi',
+      activeChannel: 1,
+      visibility: 'open',
+    });
+    await expect(
+      useCases.patchPartyRoom({
+        roomId: room.id,
+        viewerId: 'm1',
+        expectedRevision: room.revision,
+        sessionKillsDelta: -1,
+      }),
+    ).rejects.toThrow(PlayerTeamError);
+
+    const next = await useCases.patchPartyRoom({
+      roomId: room.id,
+      viewerId: 'm1',
+      expectedRevision: room.revision,
+      sessionKillsDelta: 1,
+    });
+    expect(next.revision).toBe(room.revision + 1);
+    await expect(
+      useCases.patchPartyRoom({
+        roomId: room.id,
+        viewerId: 'm1',
+        expectedRevision: room.revision,
+        sessionKillsDelta: 1,
+      }),
+    ).rejects.toThrow(PlayerTeamError);
   });
 
   it('confirmTimerKill jest idempotentny po operationId', async () => {
@@ -336,6 +457,38 @@ describe('HuntRoomsUseCases', () => {
     expect(dup.revision).toBe(1);
     expect(dup.timers[record.key]?.confirmedAt).toBe(1000);
     expect(dup.appliedOps.filter((id) => id === 'op-1')).toHaveLength(1);
+  });
+
+  it('confirmTimerKill odrzuca starą rewizję dla drugiej operacji', async () => {
+    const useCases = new HuntRoomsUseCases(new MemoryHuntRoomsRepo(), { allowDemoWrite: true });
+    const room = await useCases.getOrCreateTimerRoom('M2', 1, null);
+    const record: TimerRoomRecord = {
+      key: 'M2:ch1:metin:1',
+      mapKey: 'M2',
+      channel: 1,
+      kind: 'metin',
+      confirmedAt: 100,
+      confirmedBy: 'A',
+      location: null,
+    };
+    await useCases.confirmTimerKill({
+      mapKey: 'M2',
+      channel: 1,
+      roomCode: null,
+      record,
+      operationId: 'op-a',
+      expectedRevision: room.revision,
+    });
+    await expect(
+      useCases.confirmTimerKill({
+        mapKey: 'M2',
+        channel: 1,
+        roomCode: null,
+        record: { ...record, key: 'M2:ch1:metin:2', confirmedBy: 'B' },
+        operationId: 'op-b',
+        expectedRevision: room.revision,
+      }),
+    ).rejects.toThrow(PlayerTeamError);
   });
 
   it('getOrCreateTimerRoom zwraca ten sam pokój przy powtórzeniu', async () => {
