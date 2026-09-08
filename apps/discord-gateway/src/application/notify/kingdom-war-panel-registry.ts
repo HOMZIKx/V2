@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+
+import { resolveGatewayPersistenceBaseDir } from './gateway-persistence.js';
 
 const VERSION = 1 as const;
 
@@ -33,13 +34,10 @@ function warsawDayKey(now = new Date()): string {
 }
 
 function persistPath(): string {
-  const configured = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
-  const legacy = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  const dir = configured
-    ? join(configured, 'kingdom-war')
-    : legacy
-      ? join(legacy, 'kingdom-war')
-      : join(tmpdir(), 'destiled-kingdom-war');
+  const { baseDir, status } = resolveGatewayPersistenceBaseDir();
+  const dir = status.temporaryFallback
+    ? join(baseDir, 'destiled-kingdom-war')
+    : join(baseDir, 'kingdom-war');
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return join(dir, 'panels-v1.json');
 }
@@ -75,7 +73,8 @@ function load(): void {
     const parsed = JSON.parse(raw) as Partial<PersistShape>;
     if (parsed.version !== VERSION) return;
     currentDayKey = typeof parsed.dayKey === 'string' ? parsed.dayKey : '';
-    selections = parsed.selections && typeof parsed.selections === 'object' ? parsed.selections : {};
+    selections =
+      parsed.selections && typeof parsed.selections === 'object' ? parsed.selections : {};
     if (parsed.panels && typeof parsed.panels === 'object') {
       for (const [key, panel] of Object.entries(parsed.panels)) {
         if (!panel || typeof panel.messageId !== 'string') continue;
@@ -99,7 +98,9 @@ function ensureDay(now = new Date()): string {
   return dayKey;
 }
 
-export function getKingdomWarPanelSelections(workspaceId: string): Readonly<Record<string, string>> {
+export function getKingdomWarPanelSelections(
+  workspaceId: string,
+): Readonly<Record<string, string>> {
   ensureDay();
   return { ...(selections[workspaceId] ?? {}) };
 }
@@ -109,7 +110,9 @@ export function replaceKingdomWarPanelSelectionForUser(input: {
   readonly discordUserId: string;
   readonly characterIds: readonly string[];
   readonly maxClaims: number;
-}): { readonly ok: true; readonly selections: Readonly<Record<string, string>> } | { readonly ok: false; readonly reason: 'taken' | 'max_claims' } {
+}):
+  | { readonly ok: true; readonly selections: Readonly<Record<string, string>> }
+  | { readonly ok: false; readonly reason: 'taken' | 'max_claims' } {
   ensureDay();
   const maxClaims = Math.max(1, Math.min(20, Math.round(input.maxClaims || 3)));
   const requested = [...new Set(input.characterIds.map((id) => id.trim()).filter(Boolean))];
@@ -129,7 +132,10 @@ export function replaceKingdomWarPanelSelectionForUser(input: {
   return { ok: true, selections: current };
 }
 
-export function getKingdomWarPanelMessage(workspaceId: string, discordUserId: string): WarPanelMessage | null {
+export function getKingdomWarPanelMessage(
+  workspaceId: string,
+  discordUserId: string,
+): WarPanelMessage | null {
   ensureDay();
   return panels.get(panelKey(workspaceId, discordUserId)) ?? null;
 }
