@@ -59,7 +59,8 @@ function normalizeExpiredTimers(
 ): { readonly state: Record<string, unknown>; readonly changed: boolean } {
   if (!Array.isArray(state.timers)) return { state, changed: false };
   let changed = false;
-  const timers = state.timers.map((raw) => {
+  const rawTimers = state.timers as unknown[];
+  const timers = rawTimers.map((raw) => {
     const timer = timerRecord(raw);
     if (!timer || timer.status === 'ready') return raw;
     const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
