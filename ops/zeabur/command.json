@@ -1,5 +1,6 @@
 {
-  "requestId": "inspect-discord-volume-schema-20260908-1",
+  "requestId": "inspect-discord-volumes-20260908-1",
   "mode": "graphql_read",
-  "query": "query Inspect{volume:__type(name:\"Volume\"){fields{name type{kind name ofType{kind name ofType{kind name}}}}} service:__type(name:\"Service\"){fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}}}"
+  "query": "query Inspect($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name status volumes(environmentID:$environmentID){id dir usage limit isResizing isExpandable}}}",
+  "variables": {"serviceID":"6a8211a6bdeaa87e2c52df28","environmentID":"6a720a3e5f062718bc7b3421"}
 }
