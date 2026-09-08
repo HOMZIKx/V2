@@ -1,11 +1,12 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { VoiceState } from 'discord.js';
+import type { Message, VoiceState } from 'discord.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { MemberActivityConfig } from '../technika/capabilities.js';
 import { MemberActivityCollector } from './member-activity-collector.js';
+import { MemberActivityQuery } from './member-activity-query.js';
 import { MemberActivityStore } from './member-activity-store.js';
 
 const GUILD_ID = '1543972927719080016';
@@ -46,6 +47,29 @@ function state(input?: {
   } as unknown as VoiceState;
 }
 
+function message(input?: {
+  guildId?: string;
+  userId?: string;
+  bot?: boolean;
+  displayName?: string;
+}): Message {
+  const userId = input?.userId ?? USER_ID;
+  const displayName = input?.displayName ?? 'Tester';
+  return {
+    guildId: input?.guildId ?? GUILD_ID,
+    author: {
+      id: userId,
+      bot: input?.bot ?? false,
+      username: displayName,
+    },
+    member: {
+      id: userId,
+      displayName,
+      roles: { cache: new Map() },
+    },
+  } as unknown as Message;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   while (tempDirs.length > 0) {
@@ -80,7 +104,7 @@ describe('MemberActivityCollector voice restart recovery', () => {
     expect(bucket?.displayName).toBe('Tester');
   });
 
-  it('does not seed AFK, bot, disconnected, or another guild voice states', () => {
+  it('does not seed AFK, bot, disconnected, or an unknown guild voice state', () => {
     const store = createStore();
     const cfg: MemberActivityConfig = {
       enabled: true,
@@ -97,9 +121,56 @@ describe('MemberActivityCollector voice restart recovery', () => {
         state({ channelId: afkChannelId, afkChannelId }),
         state({ bot: true, userId: '444444444444444444' }),
         state({ channelId: null, userId: '555555555555555555' }),
-        state({ guildId: OTHER_GUILD_ID, userId: '666666666666666666' }),
+        state({ guildId: '1999999999999999999', userId: '666666666666666666' }),
       ]),
     ).toBe(0);
+  });
+
+  it('collects Destiled and Sojusz concurrently while keeping the same user isolated per guild', () => {
+    const store = createStore();
+    const cfg: MemberActivityConfig = {
+      enabled: true,
+      guildId: GUILD_ID,
+      memberRoleIds: [],
+      windowDays: 7,
+      topN: 10,
+    };
+    let now = 1_800_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const collector = new MemberActivityCollector(store, () => cfg);
+
+    collector.handleMessageCreate(message({ guildId: GUILD_ID }));
+    collector.handleMessageCreate(message({ guildId: OTHER_GUILD_ID }));
+    collector.handleMessageCreate(message({ guildId: OTHER_GUILD_ID }));
+
+    expect(
+      collector.seedCurrentVoiceStates([
+        state({ guildId: GUILD_ID }),
+        state({ guildId: OTHER_GUILD_ID }),
+      ]),
+    ).toBe(2);
+
+    now += 2 * 60_000;
+    collector.flushAllOpenSessions();
+
+    const query = new MemberActivityQuery(store, () => cfg);
+    const destiled = query.ranking({ guildId: GUILD_ID, window: '7d', full: true });
+    const sojusz = query.ranking({ guildId: OTHER_GUILD_ID, window: '7d', full: true });
+
+    expect(destiled.entries).toHaveLength(1);
+    expect(destiled.entries[0]).toMatchObject({
+      discordUserId: USER_ID,
+      messageCount: 1,
+      voiceMinutes: 2,
+      score: 3,
+    });
+    expect(sojusz.entries).toHaveLength(1);
+    expect(sojusz.entries[0]).toMatchObject({
+      discordUserId: USER_ID,
+      messageCount: 2,
+      voiceMinutes: 2,
+      score: 4,
+    });
   });
 
   it('stops stale open sessions when activity collection is disabled', () => {
