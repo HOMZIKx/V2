@@ -10,6 +10,8 @@ export type TeamInvitationRecord = {
   readonly status: TeamInvitationStatus;
   readonly createdLabel: string;
   readonly expiresLabel: string;
+  readonly createdAtIso?: string;
+  readonly expiresAtIso?: string;
   readonly revision: number;
 };
 
