@@ -8,6 +8,7 @@ on:
       - ops/zeabur/command.json
       - ops/zeabur/run.mjs
       - ops/zeabur/audit-env.mjs
+      - ops/zeabur/repair-production.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -35,11 +36,11 @@ jobs:
         shell: bash
         run: |
           MODE="$(node -e "const c=require('./ops/zeabur/command.json'); process.stdout.write(c.mode || 'auth')")"
-          if [ "$MODE" = "env_audit" ]; then
-            node ops/zeabur/audit-env.mjs
-          else
-            node ops/zeabur/run.mjs
-          fi
+          case "$MODE" in
+            env_audit) node ops/zeabur/audit-env.mjs ;;
+            production_repair) node ops/zeabur/repair-production.mjs ;;
+            *) node ops/zeabur/run.mjs ;;
+          esac
 
       - name: Publish operation summary
         if: always()
