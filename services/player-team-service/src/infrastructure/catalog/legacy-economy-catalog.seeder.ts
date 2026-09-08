@@ -12,6 +12,8 @@ export class LegacyEconomyCatalogSeeder implements OnApplicationBootstrap {
   public constructor(private readonly economy: TeamEconomyRepository) {}
 
   public async onApplicationBootstrap(): Promise<void> {
+    if (process.env.NODE_ENV === 'test') return;
+
     const items = await loadLegacyEconomyCatalog();
     if (items.length === 0) {
       this.logger.info('legacy DOBRYTEMAT catalogue unavailable; continuing with local V2 catalogue.');
