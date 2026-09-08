@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { authoritativeNotifyRecipients } from '../../../src/discord-notify-recipients';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -141,28 +143,6 @@ async function authorisedWorkspaceState(
   return state;
 }
 
-function notifyRecipients(
-  workspace: JsonRecord,
-  key: 'characterTimers' | 'kingdomWar',
-): string[] {
-  const teamPrefs = asRecord(workspace.notifyPrefs);
-  const teamDefault = typeof teamPrefs?.[key] === 'boolean' ? Boolean(teamPrefs[key]) : true;
-  const members = Array.isArray(workspace.members) ? workspace.members : [];
-  const ids = new Set<string>();
-
-  for (const raw of members) {
-    const member = asRecord(raw);
-    if (!member) continue;
-    const personal = asRecord(member.notifyPrefs);
-    const enabled = typeof personal?.[key] === 'boolean' ? Boolean(personal[key]) : teamDefault;
-    if (!enabled) continue;
-    const id = discordSnowflake(member.discordAccountId) ?? discordSnowflake(member.id);
-    if (id) ids.add(id);
-  }
-
-  return [...ids].slice(0, 40);
-}
-
 async function sanitizeForwardBody(
   request: Request,
   action: unknown,
@@ -194,9 +174,9 @@ async function sanitizeForwardBody(
     return {
       ...forwardBody,
       actorDiscordUserId: viewer.discordId,
-      recipientDiscordUserIds: notifyRecipients(workspace, 'characterTimers').filter(
-        (id) => id !== viewer.discordId,
-      ),
+      // Gateway schedules the completion DM only for recipientDiscordUserIds.
+      // Keep the timer owner when their effective characterTimers preference is enabled.
+      recipientDiscordUserIds: authoritativeNotifyRecipients(workspace, 'characterTimers'),
     };
   }
 
@@ -210,7 +190,7 @@ async function sanitizeForwardBody(
     return {
       ...forwardBody,
       workspaceId,
-      recipients: notifyRecipients(workspace, 'kingdomWar'),
+      recipients: authoritativeNotifyRecipients(workspace, 'kingdomWar'),
     };
   }
 
