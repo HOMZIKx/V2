@@ -1,6 +1,8 @@
 {
-  "requestId": "gemini-secret-prepare-b64-20260908-1956",
+  "requestId": "gemini-secret-apply-b64-20260908-1958",
   "mode": "secure_secret_bridge",
-  "phase": "prepare",
+  "phase": "apply",
+  "targetKey": "GEMINI_API_KEY",
+  "ciphertext": "xr1Imm9bHQ6CL/llswpzs+290jn9fMzgD0EPBDm5HD9koyPbSa+SK7kcVwb4sCu+RMFuLucprYFjYKutG+tLYOhlvbMj0kiuwv1wc0qGilaGb+jpjNiRWQCSu1eq6/NOIWcvZtkgb/XXSF7VULM1i+1TkwOJvhwjrs/dD22sAA7K3foL7H19wq9pb0K9IbtO9PzDnZIpLdcddMiAxDUGKT8GenxVf/K34jXX/GA4c0oxQtq7Gq40EHjEXUKlBJxbr8RBWuKkB40eiPUxsZQBMd8cad2eL95Q45pHHOubiaOj2nC2H1y7OHb3C6ncTZjJsoqQUzYlxdid+n4VRMjugA==",
   "confirm": "ZEABUR_WRITE_APPROVED"
 }
