@@ -65,21 +65,23 @@ export function TeamTimerNotificationSettings() {
     );
   }
 
-  const save = async (event: FormEvent<HTMLFormElement>) => {
+  const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isOwner || saving) return;
     setSaving(true);
     setMessage(null);
-    try {
-      const config = await setTeamDailyTimerPanelTime(workspace.id, dailyTime);
-      setSavedTime(config.dailyTime);
-      setDailyTime(config.dailyTime);
-      setMessage(`Zapisano. Zespół otrzyma panel timerów codziennie o ${config.dailyTime}.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? `Nie udało się zapisać: ${error.message}` : 'Nie udało się zapisać.');
-    } finally {
-      setSaving(false);
-    }
+    void setTeamDailyTimerPanelTime(workspace.id, dailyTime)
+      .then((config) => {
+        setSavedTime(config.dailyTime);
+        setDailyTime(config.dailyTime);
+        setMessage(`Zapisano. Zespół otrzyma panel timerów codziennie o ${config.dailyTime}.`);
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? `Nie udało się zapisać: ${error.message}` : 'Nie udało się zapisać.');
+      })
+      .finally(() => {
+        setSaving(false);
+      });
   };
 
   return (
