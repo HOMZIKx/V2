@@ -1,6 +1,6 @@
 'use client';
 
-export type WorkspaceSection = 'overview' | 'characters' | 'members' | 'history';
+export type WorkspaceSection = 'overview' | 'characters' | 'members' | 'notifications' | 'history';
 
 export function WorkspaceSectionNav({
   workspaceId,
@@ -20,6 +20,11 @@ export function WorkspaceSectionNav({
       id: 'members' as const,
       href: `/teams/${workspaceId}/members`,
       label: 'Zarządzanie',
+    },
+    {
+      id: 'notifications' as const,
+      href: `/teams/${workspaceId}/timer-notifications`,
+      label: 'PW / Timery',
     },
     { id: 'history' as const, href: `/teams/${workspaceId}/history`, label: 'Historia' },
   ];
