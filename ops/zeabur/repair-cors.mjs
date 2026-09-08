@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+
+const API='https://api.zeabur.com/graphql';
+const token=process.env.ZEABUR_API_TOKEN||'';
+const out=process.env.ZEABUR_OUTPUT_DIR||'ops/zeabur/out';
+const commandPath=process.env.ZEABUR_COMMAND_PATH||'ops/zeabur/command.json';
+const environmentID='6a720a3e5f062718bc7b3421';
+const targets=[
+  {serviceID:'6a8211c9bdeaa87e2c52df34',service:'api-gateway',key:'API_GATEWAY_CORS_ORIGINS',value:'https://desapp.zeabur.app,https://v2-web.zeabur.app,https://v2222.zeabur.app,https://v2-admin.zeabur.app'},
+  {serviceID:'6a8211cfbdeaa87e2c52df39',service:'identity-service',key:'IDENTITY_TRUSTED_ORIGINS',value:'https://desapp.zeabur.app,https://v2-web.zeabur.app,https://v2-admin.zeabur.app,https://v2-api.zeabur.app,https://v2222.zeabur.app'},
+];
+fs.mkdirSync(out,{recursive:true});
+function finish(payload,code=0){fs.writeFileSync(`${out}/result.json`,JSON.stringify(payload,null,2));fs.writeFileSync(`${out}/summary.md`,`# CORS / trusted origins repair\n\n${payload.ok?'✅':'❌'} ${payload.message||''}\n`);process.exit(code)}
+if(!token)finish({ok:false,message:'missing Zeabur token'},1);
+const command=JSON.parse(fs.readFileSync(commandPath,'utf8'));
+if(command.confirm!=='ZEABUR_WRITE_APPROVED')finish({ok:false,message:'missing write approval'},1);
+async function gql(query,variables={}){const r=await fetch(API,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({query,variables})});const b=await r.json();if(!r.ok||b.errors?.length)throw new Error((b.errors||[]).map(e=>e.message).join('; ')||`HTTP ${r.status}`);return b.data}
+async function readEntries(t){const d=await gql(`query Read($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){variables(environmentID:$environmentID){key value readonly}}}`,{serviceID:t.serviceID,environmentID});return (d.service.variables||[]).filter(v=>v.key===t.key)}
+async function setVerified(t){let entries=await readEntries(t);if(entries.some(e=>e.readonly))throw new Error(`${t.service}.${t.key} is readonly`);if(entries.length){await gql(`mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$oldKey:String!,$newKey:String!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:$oldKey,newKey:$newKey,value:$value){key}}`,{serviceID:t.serviceID,environmentID,oldKey:t.key,newKey:t.key,value:t.value})}else{await gql(`mutation Create($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID:t.serviceID,environmentID,key:t.key,value:t.value})}entries=await readEntries(t);if(String(entries.at(-1)?.value??'')!==t.value){if(entries.length)await gql(`mutation Drop($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!){deleteSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key)}`,{serviceID:t.serviceID,environmentID,key:t.key});await gql(`mutation Create($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID:t.serviceID,environmentID,key:t.key,value:t.value});entries=await readEntries(t)}if(String(entries.at(-1)?.value??'')!==t.value)throw new Error(`${t.service}.${t.key} did not persist`);await gql(`mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}`,{serviceID:t.serviceID,environmentID});return `${t.service}.${t.key} verified and redeploy requested`}
+try{const actions=[];for(const t of targets)actions.push(await setVerified(t));finish({ok:true,message:'both origin lists persisted',actions})}catch(error){finish({ok:false,message:error?.message||String(error)},1)}
