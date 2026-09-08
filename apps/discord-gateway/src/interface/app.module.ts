@@ -9,6 +9,7 @@ import {
   loadDiscordConfig,
 } from './discord/discord-bootstrap.service.js';
 import { MemberActivityVoiceBootstrapService } from './discord/member-activity-voice-bootstrap.service.js';
+import { TeamKingdomWarBootstrapService } from './discord/team-kingdom-war-bootstrap.service.js';
 import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
@@ -18,6 +19,7 @@ import {
 } from './discord/discord.tokens.js';
 import { HealthController } from './http/health.controller.js';
 import { NotifyController } from './http/notify.controller.js';
+import { TeamKingdomWarController } from './http/team-kingdom-war.controller.js';
 import { TechnikaCapabilitiesController } from './http/technika-capabilities.controller.js';
 import { TechnikaConfigController } from './http/technika-config.controller.js';
 import { TechnikaGuildPanelsController } from './http/technika-guild-panels.controller.js';
@@ -43,6 +45,7 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
   controllers: [
     HealthController,
     NotifyController,
+    TeamKingdomWarController,
     TechnikaCapabilitiesController,
     TechnikaConfigController,
     TechnikaGuildsController,
@@ -85,6 +88,7 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
       inject: [DISCORD_CONFIG_TOKEN, TECHNIKA_CONFIG_STORE_TOKEN, MEMBER_ACTIVITY_COLLECTOR_TOKEN],
     },
     DiscordBootstrapService,
+    TeamKingdomWarBootstrapService,
     MemberActivityVoiceBootstrapService,
   ],
 })
