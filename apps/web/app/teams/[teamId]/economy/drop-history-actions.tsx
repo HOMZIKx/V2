@@ -225,7 +225,7 @@ export function DropHistoryActions({
       {error ? <p className={styles.error}>{error}</p> : null}
 
       {editing ? (
-        <form onSubmit={save}>
+        <form onSubmit={(event) => void save(event)}>
           <div className={styles.formGrid}>
             <label className={styles.field}>
               Źródło
