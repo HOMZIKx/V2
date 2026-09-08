@@ -163,3 +163,7 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The SARIF artifact is optional. Its GitHub artifact finalization can return
+          # a platform-side 403 even after gitleaks reports "no leaks found". Keep the
+          # security gate tied to the scan result, not to report upload availability.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
