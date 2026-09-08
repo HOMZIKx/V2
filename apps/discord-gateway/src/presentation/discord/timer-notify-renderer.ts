@@ -7,6 +7,7 @@ import {
 
 import {
   isCharacterProgressTimerPayload,
+  isLiveTimerDue,
   type TimerNotifyPayload,
 } from '../../application/notify/notify-payload.js';
 import { createCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
@@ -19,6 +20,11 @@ export type TimerNotifyRenderInput = {
   readonly includeButtons: boolean;
 };
 
+function timerButtonLabel(label: string): string {
+  const trimmed = label.trim();
+  return trimmed.length <= 70 ? trimmed : `${trimmed.slice(0, 67)}…`;
+}
+
 export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): MessageCreateOptions {
   const { payload, content, signingSecret, includeButtons } = input;
   if (!includeButtons || signingSecret.length === 0) {
@@ -27,18 +33,19 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
 
   if (isCharacterProgressTimerPayload(payload) && payload.timerId) {
     try {
-      const live = (payload.liveTimers ?? []).slice(0, 10);
+      const live = (payload.liveTimers ?? []).slice(0, 12);
       const focusId = payload.timerId;
       const rows: ActionRowBuilder<ButtonBuilder>[] = [];
 
       if (live.length > 0) {
-        // Numbered Gotowe buttons 1..N — each updates that timer on the EQ card.
+        // Buttons use timer names, not anonymous 1..N numbers. A running timer stays
+        // locked. Once its wall clock is due, the button becomes the explicit team
+        // action that starts the next cycle.
         for (let i = 0; i < live.length; i += 5) {
           const chunk = live.slice(i, i + 5);
           const row = new ActionRowBuilder<ButtonBuilder>();
-          chunk.forEach((timer, offset) => {
-            const n = i + offset + 1;
-            const ready = timer.status === 'ready' || timer.status === 'done';
+          chunk.forEach((timer) => {
+            const due = isLiveTimerDue(timer);
             row.addComponents(
               new ButtonBuilder()
                 .setCustomId(
@@ -48,9 +55,9 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
                     signingSecret,
                   ),
                 )
-                .setLabel(String(n))
-                .setStyle(ready ? ButtonStyle.Success : ButtonStyle.Secondary)
-                .setDisabled(!ready),
+                .setLabel(timerButtonLabel(timer.label))
+                .setStyle(due ? ButtonStyle.Success : ButtonStyle.Secondary)
+                .setDisabled(!due),
             );
           });
           rows.push(row);
@@ -62,7 +69,7 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
               .setCustomId(
                 createCharacterTimerButtonCustomId('gotowe', { timerId: focusId }, signingSecret),
               )
-              .setLabel('Gotowe')
+              .setLabel(timerButtonLabel(payload.timerLabel ?? 'Odśwież timer'))
               .setStyle(ButtonStyle.Success),
           ),
         );
@@ -80,7 +87,7 @@ export function renderTimerNotifyMessage(input: TimerNotifyRenderInput): Message
         aux.addComponents(
           new ButtonBuilder()
             .setStyle(ButtonStyle.Link)
-            .setLabel('Otwórz kartę')
+            .setLabel('Otwórz timery')
             .setURL(payload.deepLinkUrl),
         );
       } catch {
