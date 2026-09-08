@@ -1,5 +1,7 @@
 {
-  "requestId": "persistent-origin-repair-final-20260908-1",
-  "mode": "persistent_origin_repair",
+  "requestId": "service-restart-mode-proof-20260908-1",
+  "mode": "service_restart",
+  "serviceId": "6a99a4d34177ab13f998c84c",
+  "environmentId": "6a720a3e5f062718bc7b3421",
   "confirm": "ZEABUR_WRITE_APPROVED"
 }
