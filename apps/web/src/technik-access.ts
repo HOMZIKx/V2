@@ -10,12 +10,13 @@ type TechnikAccessPayload = {
 
 export async function fetchTechnikAccess(signal?: AbortSignal): Promise<TechnikAccessState> {
   try {
-    const response = await fetch('/api/technik/access', {
+    const init: RequestInit = {
       method: 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
-      signal,
-    });
+      ...(signal ? { signal } : {}),
+    };
+    const response = await fetch('/api/technik/access', init);
 
     if (response.status === 401 || response.status === 403) return 'denied';
     if (!response.ok) return 'unavailable';
