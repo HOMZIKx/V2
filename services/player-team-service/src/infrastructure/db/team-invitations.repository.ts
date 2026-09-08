@@ -63,6 +63,26 @@ export class TeamInvitationsRepository implements TeamInvitationsRepositoryPort,
     return this.pool;
   }
 
+  public async getWorkspace(workspaceId: string): Promise<TeamInvitationWorkspaceUpdate | null> {
+    const result = await this.db.query<{
+      workspace_id: string;
+      state: Record<string, unknown>;
+      revision: number;
+    }>(
+      `SELECT workspace_id, state, revision
+       FROM player_team_workspace_snapshots
+       WHERE workspace_id = $1`,
+      [workspaceId],
+    );
+    const row = result.rows[0];
+    if (row === undefined) return null;
+    return {
+      workspaceId: row.workspace_id,
+      state: row.state,
+      revision: Number(row.revision),
+    };
+  }
+
   public async findForRecipient(
     invitationId: string,
     recipientDiscordId: string,
@@ -95,7 +115,12 @@ export class TeamInvitationsRepository implements TeamInvitationsRepositoryPort,
     const invitations = Array.isArray(row.state.invitations) ? row.state.invitations : [];
     const invitation = invitations
       .map(parseInvitation)
-      .find((entry) => entry !== null && entry.id === invitationId && entry.recipientDiscordId === recipientDiscordId);
+      .find(
+        (entry) =>
+          entry !== null &&
+          entry.id === invitationId &&
+          entry.recipientDiscordId === recipientDiscordId,
+      );
     if (invitation === undefined || invitation === null) return null;
 
     return {
