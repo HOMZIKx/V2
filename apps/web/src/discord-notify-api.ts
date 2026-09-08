@@ -264,22 +264,36 @@ export async function syncTeamCoordinationRecipients(
 }
 
 /**
- * Replace kingdom-war recipient snapshot from explicit team settings.
- * HARD: empty recipients => gateway sends zero war DMs (never guild fan-out).
+ * Replace the kingdom-war recipient snapshot for ONE workspace/team.
+ *
+ * The legacy one-argument form is intentionally a no-op: it used to merge every
+ * workspace visible to one browser into a global bot audience. Keeping it callable
+ * avoids breaking an older provider during rollout while preventing global fan-out.
  */
 export async function syncKingdomWarRecipients(
-  recipients: readonly string[],
+  workspaceIdOrLegacyRecipients: string | readonly string[],
+  recipientsMaybe?: readonly string[],
 ): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
+  if (Array.isArray(workspaceIdOrLegacyRecipients)) {
+    return { ok: true, count: 0 };
+  }
+
+  const workspaceId = workspaceIdOrLegacyRecipients.trim();
+  if (!workspaceId || !Array.isArray(recipientsMaybe)) {
+    return { ok: false, error: 'invalid_workspace_recipient_scope' };
+  }
+
   try {
-    const snowflakes = normalizeRecipientSnowflakes(recipients);
+    const snowflakes = normalizeRecipientSnowflakes(recipientsMaybe);
     const parsed = await postNotify('/api/discord-notify', {
-      action: 'war-recipients',
+      action: 'team-war-recipients',
+      workspaceId,
       recipients: snowflakes,
     });
     if (!parsed.okHttp || parsed.ok !== true) {
       return {
         ok: false,
-        error: typeof parsed.error === 'string' ? parsed.error : 'war_recipients_sync_failed',
+        error: typeof parsed.error === 'string' ? parsed.error : 'team_war_recipients_sync_failed',
       };
     }
     return {
