@@ -19,6 +19,12 @@ import {
   type MetinGeneralHuntSnapshot,
   type MetinGeneralHuntState,
 } from '../../src/metin-general-hunts-api';
+import {
+  metinGeneralHuntEventCycleKey,
+  pickRouteColor,
+  routeDisplayColor,
+  smoothRoutePath,
+} from '../../src/metin-general-hunt-visuals';
 import { huntMapImagePath } from '../../src/hunt-map-assets';
 import { useHuntViewer } from '../../src/hunt-online';
 import { respawnMaps } from '../../src/respawn-timers';
@@ -111,17 +117,29 @@ function newId(prefix: string): string {
   return `${prefix}-${random}`;
 }
 
-function emptyState(huntKey: string): MetinGeneralHuntState {
-  return { huntKey, routes: [], markers: [], requests: [], history: [] };
+function emptyState(huntKey: string, now = Date.now()): MetinGeneralHuntState {
+  return {
+    huntKey,
+    eventCycleKey: metinGeneralHuntEventCycleKey(huntKey, now),
+    routes: [],
+    markers: [],
+    requests: [],
+    history: [],
+  };
 }
 
 function normalizeState(
   huntKey: string,
   state: MetinGeneralHuntState | null | undefined,
+  now = Date.now(),
 ): MetinGeneralHuntState {
-  if (!state || typeof state !== 'object') return emptyState(huntKey);
+  const eventCycleKey = metinGeneralHuntEventCycleKey(huntKey, now);
+  if (!state || typeof state !== 'object' || state.eventCycleKey !== eventCycleKey) {
+    return emptyState(huntKey, now);
+  }
   return {
     huntKey,
+    eventCycleKey,
     routes: Array.isArray(state.routes) ? state.routes : [],
     markers: Array.isArray(state.markers) ? state.markers : [],
     requests: Array.isArray(state.requests) ? state.requests : [],
@@ -228,14 +246,6 @@ function requestTone(type: MetinGeneralHuntRequestType) {
   }
 }
 
-function routeColor(userId: string): string {
-  let hash = 0;
-  for (let index = 0; index < userId.length; index += 1) {
-    hash = (hash * 31 + userId.charCodeAt(index)) >>> 0;
-  }
-  return `hsl(${hash % 360} 72% 62%)`;
-}
-
 export default function GeneralsMetinsPage() {
   const { viewerId, displayName, onlineEnabled, hydrated } = useHuntViewer();
   const [huntKey, setHuntKey] = useState<HuntDefinition['key']>('metin-red-las');
@@ -249,8 +259,8 @@ export default function GeneralsMetinsPage() {
   const [now, setNow] = useState(() => Date.now());
 
   const state = useMemo(
-    () => normalizeState(huntDefinition.key, snapshot?.state),
-    [huntDefinition.key, snapshot?.state],
+    () => normalizeState(huntDefinition.key, snapshot?.state, now),
+    [huntDefinition.key, now, snapshot?.state],
   );
 
   const loadHunt = useCallback(
@@ -262,7 +272,24 @@ export default function GeneralsMetinsPage() {
       }
       if (!quiet) setLoading(true);
       try {
-        const result = await getMetinGeneralHunt({ viewerId, huntKey: huntDefinition.key });
+        let result = await getMetinGeneralHunt({ viewerId, huntKey: huntDefinition.key });
+        const expectedCycleKey = metinGeneralHuntEventCycleKey(huntDefinition.key);
+        if (result.state.eventCycleKey !== expectedCycleKey) {
+          try {
+            result = await putMetinGeneralHunt({
+              viewerId,
+              huntKey: huntDefinition.key,
+              expectedRevision: result.revision,
+              state: emptyState(huntDefinition.key),
+            });
+          } catch (error) {
+            if (error instanceof MetinGeneralHuntApiError && error.status === 409) {
+              result = await getMetinGeneralHunt({ viewerId, huntKey: huntDefinition.key });
+            } else {
+              throw error;
+            }
+          }
+        }
         setSnapshot({ ...result, state: normalizeState(huntDefinition.key, result.state) });
         setNotice('');
       } catch (error) {
@@ -291,7 +318,7 @@ export default function GeneralsMetinsPage() {
   }, [hydrated, loadHunt, onlineEnabled, viewerId]);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 15_000);
+    const id = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -480,22 +507,30 @@ export default function GeneralsMetinsPage() {
 
     if (mode === 'route' && huntDefinition.kind === 'metin') {
       await mutateHunt((current) => {
+        const routeUserId = viewerId ?? 'unknown';
         const mine = current.routes.find(
-          (route) => route.userId === viewerId && route.channel === channel,
+          (route) => route.userId === routeUserId && route.channel === channel,
         );
+        const color = mine?.color ?? pickRouteColor(routeUserId, current.routes);
         const routes = mine
           ? current.routes.map((route) =>
               route.id === mine.id
-                ? { ...route, points: [...route.points, point].slice(-80), updatedAt: Date.now() }
+                ? {
+                    ...route,
+                    color,
+                    points: [...route.points, point].slice(-80),
+                    updatedAt: Date.now(),
+                  }
                 : route,
             )
           : [
               ...current.routes,
               {
                 id: newId('route'),
-                userId: viewerId ?? 'unknown',
+                userId: routeUserId,
                 displayName,
                 channel,
+                color,
                 points: [point],
                 updatedAt: Date.now(),
               },
@@ -739,31 +774,92 @@ export default function GeneralsMetinsPage() {
                     preserveAspectRatio="none"
                     viewBox="0 0 100 100"
                   >
-                    {visibleRoutes.map((route) => (
-                      <g key={route.id}>
-                        {route.points.length > 1 ? (
-                          <polyline
-                            fill="none"
-                            points={route.points.map((point) => `${point.x},${point.y}`).join(' ')}
-                            stroke={routeColor(route.userId)}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="0.85"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        ) : null}
-                        {route.points.map((point, index) => (
-                          <circle
-                            cx={point.x}
-                            cy={point.y}
-                            fill={routeColor(route.userId)}
-                            key={`${route.id}-${index}`}
-                            r="0.85"
-                            vectorEffect="non-scaling-stroke"
-                          />
-                        ))}
-                      </g>
-                    ))}
+                    {visibleRoutes.map((route) => {
+                      const color = routeDisplayColor(route, visibleRoutes);
+                      const path = smoothRoutePath(route.points);
+                      const editing = mode === 'route' && route.userId === viewerId;
+                      const first = route.points[0];
+                      const last = route.points.at(-1);
+                      return (
+                        <g key={route.id}>
+                          <title>{route.displayName}</title>
+                          {route.points.length > 1 ? (
+                            <>
+                              <path
+                                d={path}
+                                fill="none"
+                                opacity="0.78"
+                                stroke="#02060c"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={editing ? 4 : 5}
+                                vectorEffect="non-scaling-stroke"
+                              />
+                              <path
+                                d={path}
+                                fill="none"
+                                opacity={editing ? 0.28 : 0.34}
+                                stroke={color}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={editing ? 3.2 : 4.2}
+                                vectorEffect="non-scaling-stroke"
+                              />
+                              <path
+                                d={path}
+                                fill="none"
+                                stroke={color}
+                                strokeDasharray={editing ? '5 3' : undefined}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={editing ? 1.7 : 2.2}
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            </>
+                          ) : null}
+                          {editing
+                            ? route.points.map((point, index) => (
+                                <circle
+                                  cx={point.x}
+                                  cy={point.y}
+                                  fill={color}
+                                  key={`${route.id}-${index}`}
+                                  r="0.72"
+                                  stroke="#ffffff"
+                                  strokeOpacity="0.72"
+                                  strokeWidth="0.32"
+                                  vectorEffect="non-scaling-stroke"
+                                />
+                              ))
+                            : null}
+                          {!editing && first ? (
+                            <circle
+                              cx={first.x}
+                              cy={first.y}
+                              fill="#071018"
+                              r="0.95"
+                              stroke={color}
+                              strokeWidth="0.58"
+                              vectorEffect="non-scaling-stroke"
+                            />
+                          ) : null}
+                          {!editing && last && route.points.length > 1 ? (
+                            <>
+                              <circle
+                                cx={last.x}
+                                cy={last.y}
+                                fill={color}
+                                r="1.35"
+                                stroke="#ffffff"
+                                strokeWidth="0.52"
+                                vectorEffect="non-scaling-stroke"
+                              />
+                              <circle cx={last.x} cy={last.y} fill="#ffffff" r="0.34" />
+                            </>
+                          ) : null}
+                        </g>
+                      );
+                    })}
                   </svg>
 
                   {visibleMarkers.map((marker) => (
@@ -782,7 +878,7 @@ export default function GeneralsMetinsPage() {
                       <strong>{mode === 'route' ? '✏️ RYSOWANIE TRASY' : '📍 ZAZNACZANIE'}</strong>
                       <span>
                         {mode === 'route'
-                          ? 'Klikaj kolejne punkty wyłącznie na mapie'
+                          ? 'Klikaj kolejne punkty. Wyłącz „Trasa”, aby zakończyć rysowanie.'
                           : 'Kliknij dokładne miejsce na mapie'}
                       </span>
                     </div>
@@ -803,7 +899,7 @@ export default function GeneralsMetinsPage() {
                 ) : (
                   visibleRoutes.map((route) => (
                     <span key={route.id}>
-                      <i style={{ background: routeColor(route.userId) }} />
+                      <i style={{ background: routeDisplayColor(route, visibleRoutes) }} />
                       {route.displayName} · {route.points.length} pkt
                     </span>
                   ))
