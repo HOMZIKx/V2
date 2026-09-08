@@ -1,5 +1,5 @@
 {
-  "requestId": "inspect-deployments-return-type-20260908-1",
+  "requestId": "inspect-deployment-fields-20260908-1",
   "mode": "graphql_read",
-  "query": "query DeploymentReturnType { __schema { queryType { fields { name type { kind name ofType { kind name ofType { kind name } } } } } } }"
+  "query": "query DeploymentFields { conn: __type(name:\"DeploymentConnection\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } dep: __type(name:\"Deployment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } }"
 }
