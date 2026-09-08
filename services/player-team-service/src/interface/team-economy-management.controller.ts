@@ -32,6 +32,13 @@ const mergeItemsSchema = z.object({
   targetItemId: z.string().min(1),
   duplicateItemId: z.string().min(1),
 });
+const itemImageSchema = z.object({
+  imageDataUrl: z
+    .string()
+    .min(20)
+    .max(80_000)
+    .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/),
+});
 
 function roleFor(state: Record<string, unknown>, viewerId: string): 'owner' | 'member' | null {
   const members = Array.isArray(state.members) ? state.members : [];
@@ -121,6 +128,19 @@ export class TeamEconomyManagementController {
       status: parsed.data.status,
       updatedBy: viewerId,
     });
+  }
+
+  @Patch('items/:itemId/image')
+  public async updateItemImage(
+    @Headers() headers: RequestHeaders,
+    @Param('workspaceId') workspaceId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: unknown,
+  ) {
+    await this.assertOwner(headers, workspaceId);
+    const parsed = itemImageSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException('invalid or too large item image');
+    return this.management.updateItemImage({ itemId, imageDataUrl: parsed.data.imageDataUrl });
   }
 
   @Post('merge-items')
