@@ -104,7 +104,7 @@ export function TeamTimerNotificationSettings() {
             O tej godzinie wszyscy członkowie zespołu z włączonymi PW timerów dostają własny panel.
             Panel żyje przez cały dzień i aktualizuje się po zmianach na stronie oraz po kliknięciach w Discordzie.
           </p>
-          <form className="team-rename-form" onSubmit={save}>
+          <form className="team-rename-form" onSubmit={(event) => { save(event); }}>
             <label className="field">
               <span>Godzina wysyłki · Europe/Warsaw</span>
               <input
