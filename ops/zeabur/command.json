@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-eq-v2-47f4ee77-20260908-1855",
+  "requestId": "webapp-eq-v2-build-47f4ee77-20260908-1856",
   "mode": "cli",
-  "action": "deployment:get",
+  "action": "logs:build",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
