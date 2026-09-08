@@ -1,0 +1,79 @@
+name: Fix final runtime and economy paste
+
+on:
+  push:
+    branches:
+      - fix/team-dm-direct-player-team-20260908
+    paths:
+      - .github/workflows/fix-final-runtime-paste.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: fix/team-dm-direct-player-team-20260908
+      - name: Patch direct Player Team invocation and Ctrl+V screenshot paste
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          route = Path('apps/web/app/api/team-dm-panels/[workspaceId]/route.ts')
+          text = route.read_text(encoding='utf-8')
+          text = text.replace("import { NextResponse } from 'next/server';", "import { NextRequest, NextResponse } from 'next/server';", 1)
+          text = text.replace("import { internalWebUrl } from '../../../../src/server/internal-web-origin';", "import { GET as playerTeamGet } from '../../../player-team/[...path]/route';", 1)
+          marker = """function notifySecret(): string {\n  return (process.env.DISCORD_NOTIFY_SHARED_SECRET ?? '').trim();\n}\n"""
+          insertion = marker + """\nasync function callPlayerTeamGet(request: Request, path: readonly string[]): Promise<Response> {\n  const url = new URL(request.url);\n  url.search = '';\n  const internalRequest = new NextRequest(url, {\n    method: 'GET',\n    headers: request.headers,\n  });\n  return playerTeamGet(internalRequest, { params: Promise.resolve({ path: [...path] }) });\n}\n"""
+          if marker not in text:
+              raise SystemExit('team-dm notifySecret marker not found')
+          text = text.replace(marker, insertion, 1)
+          old_me = """    response = await fetch(internalWebUrl(request.url, '/player-team/v1/me/state'), {\n      headers: { accept: 'application/json', cookie },\n      cache: 'no-store',\n    });"""
+          new_me = """    response = await callPlayerTeamGet(request, ['v1', 'me', 'state']);"""
+          if old_me not in text:
+              raise SystemExit('team-dm me self-fetch block not found')
+          text = text.replace(old_me, new_me, 1)
+          old_ws = """    response = await fetch(internalWebUrl(request.url, `/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`), {\n      headers: { accept: 'application/json', cookie },\n      cache: 'no-store',\n    });"""
+          new_ws = """    response = await callPlayerTeamGet(request, ['v1', 'workspaces', workspaceId, 'state']);"""
+          if old_ws not in text:
+              raise SystemExit('team-dm workspace self-fetch block not found')
+          text = text.replace(old_ws, new_ws, 1)
+          route.write_text(text, encoding='utf-8')
+
+          economy = Path('apps/web/app/teams/[teamId]/economy/team-economy.tsx')
+          text = economy.read_text(encoding='utf-8')
+          old_fn = """  async function recognize(event: ChangeEvent<HTMLInputElement>) {\n    const file = event.target.files?.[0];\n    if (!file) return;\n    setBusy(true);\n    setError('');\n    try {\n      const dataUrl = await new Promise<string>((resolve, reject) => {\n        const reader = new FileReader();\n        reader.onload = () => resolve(String(reader.result));\n        reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));\n        reader.readAsDataURL(file);\n      });\n      const response = await fetch('/api/team-economy/recognize', {\n        method: 'POST',\n        headers: { 'content-type': 'application/json' },\n        body: JSON.stringify({ imageDataUrl: dataUrl }),\n      });\n      if (!response.ok) {\n        const body = (await response.json().catch(() => ({}))) as { error?: string };\n        throw new Error(\n          body.error === 'ai_not_configured'\n            ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'\n            : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',\n        );\n      }\n      const body = (await response.json()) as { items: AiItem[] };\n      setDraftItems(\n        body.items.map((item, index) => ({\n          key: `ai-${Date.now()}-${index}`,\n          itemId: null,\n          name: item.catalogMatch?.name ?? item.recognizedName,\n          category: item.catalogMatch?.category ?? 'Pozostałe',\n          totalQuantity: item.quantity,\n          ourQuantity: item.quantity,\n          unitPrice: 0,\n          currency: 'yang',\n          confidence: item.confidence,\n        })),\n      );\n      setNotice(\n        `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,\n      );\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Błąd AI.');\n    } finally {\n      setBusy(false);\n    }\n  }\n"""
+          new_fn = """  const recognizeFile = useCallback(async (file: File) => {\n    if (!file.type.startsWith('image/')) {\n      setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');\n      return;\n    }\n    setBusy(true);\n    setError('');\n    try {\n      const dataUrl = await new Promise<string>((resolve, reject) => {\n        const reader = new FileReader();\n        reader.onload = () => resolve(String(reader.result));\n        reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));\n        reader.readAsDataURL(file);\n      });\n      const response = await fetch('/api/team-economy/recognize', {\n        method: 'POST',\n        headers: { 'content-type': 'application/json' },\n        body: JSON.stringify({ imageDataUrl: dataUrl }),\n      });\n      if (!response.ok) {\n        const body = (await response.json().catch(() => ({}))) as { error?: string };\n        throw new Error(\n          body.error === 'ai_not_configured'\n            ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'\n            : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',\n        );\n      }\n      const body = (await response.json()) as { items: AiItem[] };\n      setDraftItems(\n        body.items.map((item, index) => ({\n          key: `ai-${Date.now()}-${index}`,\n          itemId: null,\n          name: item.catalogMatch?.name ?? item.recognizedName,\n          category: item.catalogMatch?.category ?? 'Pozostałe',\n          totalQuantity: item.quantity,\n          ourQuantity: item.quantity,\n          unitPrice: 0,\n          currency: 'yang',\n          confidence: item.confidence,\n        })),\n      );\n      setNotice(\n        `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,\n      );\n    } catch (err) {\n      setError(err instanceof Error ? err.message : 'Błąd AI.');\n    } finally {\n      setBusy(false);\n    }\n  }, []);\n\n  function recognize(event: ChangeEvent<HTMLInputElement>) {\n    const file = event.target.files?.[0];\n    event.target.value = '';\n    if (file) void recognizeFile(file);\n  }\n\n  useEffect(() => {\n    if (!dropOpen) return;\n    const handlePaste = (event: ClipboardEvent) => {\n      const imageItem = Array.from(event.clipboardData?.items ?? []).find(\n        (item) => item.kind === 'file' && item.type.startsWith('image/'),\n      );\n      const file = imageItem?.getAsFile() ?? null;\n      if (!file) return;\n      event.preventDefault();\n      void recognizeFile(file);\n    };\n    window.addEventListener('paste', handlePaste);\n    return () => window.removeEventListener('paste', handlePaste);\n  }, [dropOpen, recognizeFile]);\n"""
+          if old_fn not in text:
+              raise SystemExit('economy recognize function not found')
+          text = text.replace(old_fn, new_fn, 1)
+          text = text.replace(
+              '<small>AI czyta sloty, ikony i liczby. Wynik zawsze można poprawić.</small>',
+              '<small>Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik zawsze można poprawić.</small>',
+              1,
+          )
+          economy.write_text(text, encoding='utf-8')
+
+          regression = Path('apps/web/src/server/internal-routing-regression.spec.ts')
+          text = regression.read_text(encoding='utf-8')
+          text = text.replace(
+              "expect(text).toContain('internalWebUrl(request.url');\n    expect(text).not.toMatch(/new URL\\(\\s*[`'\"]\\/player-team/);",
+              "expect(text).toContain(\"GET as playerTeamGet\");\n    expect(text).toContain('callPlayerTeamGet(request');\n    expect(text).not.toContain('internalWebUrl(request.url');",
+              1,
+          )
+          regression.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git rm .github/workflows/fix-final-runtime-paste.yml
+          git add 'apps/web/app/api/team-dm-panels/[workspaceId]/route.ts' \
+                  'apps/web/app/teams/[teamId]/economy/team-economy.tsx' \
+                  apps/web/src/server/internal-routing-regression.spec.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(web): remove team panel self-fetch and support pasted screenshots"
+          git push origin HEAD:fix/team-dm-direct-player-team-20260908
