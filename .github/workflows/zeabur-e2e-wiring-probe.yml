@@ -26,6 +26,7 @@ jobs:
           import os
           import subprocess
           import sys
+          import time
 
           endpoint = 'https://api.zeabur.com/graphql'
           token = os.environ.get('ZEABUR_API_TOKEN', '').strip()
@@ -33,7 +34,7 @@ jobs:
               print('::error::Missing Zeabur API token.')
               sys.exit(1)
 
-          def gql(query, variables=None):
+          def gql(query, variables=None, fatal=True):
               payload = json.dumps({'query': query, 'variables': variables or {}})
               result = subprocess.run(
                   [
@@ -48,20 +49,26 @@ jobs:
                   timeout=40,
               )
               if result.returncode != 0:
-                  print('::error::Zeabur GraphQL transport failed.')
-                  sys.exit(1)
+                  if fatal:
+                      print('::error::Zeabur GraphQL transport failed.')
+                      sys.exit(1)
+                  return None, 'transport'
               try:
                   body = json.loads(result.stdout)
               except json.JSONDecodeError:
-                  print('::error::Zeabur GraphQL returned invalid JSON.')
-                  sys.exit(1)
+                  if fatal:
+                      print('::error::Zeabur GraphQL returned invalid JSON.')
+                      sys.exit(1)
+                  return None, 'invalid-json'
               if body.get('errors'):
                   messages = [str(item.get('message', 'unknown'))[:180] for item in body['errors'][:3]]
-                  print('::error::Zeabur GraphQL error: ' + ' | '.join(messages))
-                  sys.exit(1)
-              return body.get('data') or {}
+                  if fatal:
+                      print('::error::Zeabur GraphQL error: ' + ' | '.join(messages))
+                      sys.exit(1)
+                  return None, ' | '.join(messages)
+              return (body.get('data') or {}), None
 
-          root = gql('''
+          root, _ = gql('''
             query RuntimeRoot {
               projects { edges { node { _id name } } }
             }
@@ -76,14 +83,15 @@ jobs:
                   sys.exit(1)
 
           project_id = project.get('_id')
-          detail = gql('''
+          detail_data, _ = gql('''
             query ProjectDetail($id: ObjectID!) {
               project(_id: $id) {
                 environments { _id name }
                 services { _id name }
               }
             }
-          ''', {'id': project_id}).get('project') or {}
+          ''', {'id': project_id})
+          detail = detail_data.get('project') or {}
           environment = next((item for item in detail.get('environments') or [] if item.get('name') == 'production'), None)
           if not environment:
               print('::error::Production environment not found.')
@@ -105,13 +113,69 @@ jobs:
             }
           '''
 
+          def service_accepts_commands(service_id):
+              data, error = gql(execute_mutation, {
+                  'serviceId': service_id,
+                  'environmentId': environment_id,
+                  'command': ['node', '-e', "console.log('alive')"],
+              }, fatal=False)
+              return data is not None, error
+
+          player_active, player_error = service_accepts_commands(player_service)
+          if not player_active and player_error and 'Inactive service' in player_error:
+              print('player_team_runtime=inactive; restarting')
+              auth = subprocess.run(
+                  ['npx', '--yes', 'zeabur@latest', 'auth', 'login', '--token', token],
+                  capture_output=True,
+                  text=True,
+                  timeout=90,
+              )
+              if auth.returncode != 0:
+                  print('::error::Zeabur CLI authentication failed.')
+                  sys.exit(1)
+              restart = subprocess.run(
+                  [
+                      'npx', '--yes', 'zeabur@latest', 'service', 'restart',
+                      '--env-id', environment_id,
+                      '--service-name', 'player-team-service',
+                  ],
+                  capture_output=True,
+                  text=True,
+                  timeout=120,
+              )
+              if restart.returncode != 0:
+                  safe = (restart.stderr or restart.stdout or 'unknown CLI error').strip().splitlines()[-1:]
+                  print('::error::player-team-service restart failed: ' + (' '.join(safe)[:240] if safe else 'unknown'))
+                  sys.exit(1)
+              print('player_team_restart=requested')
+              for attempt in range(1, 13):
+                  time.sleep(5)
+                  player_active, player_error = service_accepts_commands(player_service)
+                  if player_active:
+                      print(f'player_team_runtime=active after_attempt={attempt}')
+                      break
+                  print(f'player_team_waiting attempt={attempt}')
+              if not player_active:
+                  print('::error::player-team-service did not become active after restart.')
+                  sys.exit(1)
+          elif not player_active:
+              print('::error::player-team-service command probe failed: ' + str(player_error)[:220])
+              sys.exit(1)
+          else:
+              print('player_team_runtime=active')
+
           failures = []
           def execute(service_id, script, label):
-              data = gql(execute_mutation, {
+              data, error = gql(execute_mutation, {
                   'serviceId': service_id,
                   'environmentId': environment_id,
                   'command': ['node', '-e', script],
-              })
+              }, fatal=False)
+              if data is None:
+                  print(f'--- {label} ---')
+                  print(f'command=fail reason={str(error)[:180]}')
+                  failures.append(f'{label}:command')
+                  return
               result = data.get('executeCommand') or {}
               exit_code = result.get('exitCode')
               output = str(result.get('output') or '').strip()
