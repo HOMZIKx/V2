@@ -1,6 +1,9 @@
 {
-  "requestId": "deployment-type-fields-20260908-1102",
+  "requestId": "runtime-services-inventory-20260908-1103",
   "mode": "graphql_read",
-  "query": "query DeploymentType { __type(name: \"Deployment\") { name fields { name type { kind name ofType { kind name } } } } }",
-  "variables": {}
+  "query": "query RuntimeServices($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName repoURL}}}}}",
+  "variables": {
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
