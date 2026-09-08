@@ -1,5 +1,6 @@
 {
-  "requestId": "schema-repair-mutations-20260908-1",
-  "mode": "graphql_read",
-  "query": "query RepairMutationTypes { __type(name: \"Mutation\") { fields { name type { kind name ofType { kind name ofType { kind name } } } } } }"
+  "requestId": "repair-identity-jwt-20260908-1",
+  "mode": "production_repair",
+  "phase": "identity_jwt_setup",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
