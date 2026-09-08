@@ -16,6 +16,7 @@ import {
   scheduleCharacterTimerReminder,
   type CharacterTimerReminderDeps,
 } from '../../application/notify/character-timer-reminders.js';
+import { formatCharacterTimerTemplateContent } from '../../application/notify/character-timer-template.js';
 import {
   listKingdomWarRecipients,
   mergeTeamCoordinationRecipients,
@@ -27,6 +28,7 @@ import {
 } from '../../application/notify/notify-idempotency.js';
 import {
   formatTimerNotifyContent,
+  isCharacterProgressTimerPayload,
   shouldIncludeTimerButtons,
   TimerNotifyPayloadSchema,
   TimerResetNotifyPayloadSchema,
@@ -94,6 +96,14 @@ export class NotifyController {
     return resolveActiveBotConfig(this.technikaStore);
   }
 
+  private formatNotifyContent(payload: TimerNotifyPayload): string {
+    if (!isCharacterProgressTimerPayload(payload)) {
+      return formatTimerNotifyContent(payload);
+    }
+    const characterTimers = resolveCharacterTimersConfig(this.botConfig());
+    return formatCharacterTimerTemplateContent(payload, characterTimers);
+  }
+
   private reminderDeps(gateway: DiscordJsGatewayAdapter): CharacterTimerReminderDeps {
     return {
       logger: reminderLogger,
@@ -129,7 +139,7 @@ export class NotifyController {
           includeButtons: true,
           idempotencyKey: `char-timer-ready:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
         };
-        const content = formatTimerNotifyContent(payload);
+        const content = this.formatNotifyContent(payload);
         const message = renderTimerNotifyMessage({
           payload,
           content,
@@ -350,7 +360,7 @@ export class NotifyController {
         ...(payload.roomSummary ? { roomSummary: payload.roomSummary } : {}),
         ...(payload.liveTimers ? { liveTimers: payload.liveTimers } : {}),
       };
-      const content = formatTimerNotifyContent(single);
+      const content = this.formatNotifyContent(single);
       const message = renderTimerNotifyMessage({
         payload: single,
         content,
@@ -419,7 +429,7 @@ export class NotifyController {
     const payload: TimerNotifyPayload = parsed.data;
 
     const characterTimers = resolveCharacterTimersConfig(live);
-    const isCharacter = Boolean(payload.timerId && (payload.characterId || payload.workspaceId));
+    const isCharacter = isCharacterProgressTimerPayload(payload);
     if (isCharacter || payload.kind === 'reset' || payload.kind === 'reminder') {
       const gate = evaluateTeamScopedModuleGate({
         config: live,
@@ -469,7 +479,7 @@ export class NotifyController {
       }
     }
 
-    const content = formatTimerNotifyContent(payload);
+    const content = this.formatNotifyContent(payload);
     const wantButtons = isCharacter
       ? shouldIncludeTimerButtons(payload)
       : live['notify-timer-dm-action-buttons'] && shouldIncludeTimerButtons(payload);

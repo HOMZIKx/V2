@@ -4,10 +4,11 @@ import { createLogger } from '@v2/observability';
 import { createConfig } from '@v2/configuration';
 import { guildCommandDefinitions } from '../../application/commands/command-definitions.js';
 import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
+import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
 import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import { getKingdomWarClaims } from '../../application/notify/kingdom-war-claims.js';
 import { startCharacterTimerReminderWorker } from '../../application/notify/character-timer-reminders.js';
-import { formatTimerNotifyContent } from '../../application/notify/notify-payload.js';
+import { formatCharacterTimerTemplateContent } from '../../application/notify/character-timer-template.js';
 import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import { listKingdomWarRecipients } from '../../application/notify/kingdom-war-recipients.js';
 import { KingdomWarScheduler } from '../../application/notify/kingdom-war-scheduler.js';
@@ -289,7 +290,8 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
           includeButtons: true,
           idempotencyKey: `char-timer-ready:${job.timerId}:${job.discordUserId}:${job.fireAtMs}`,
         };
-        const content = formatTimerNotifyContent(body);
+        const characterTimers = resolveCharacterTimersConfig(resolveActiveBotConfig(store));
+        const content = formatCharacterTimerTemplateContent(body, characterTimers);
         const message = renderTimerNotifyMessage({
           payload: body,
           content,
