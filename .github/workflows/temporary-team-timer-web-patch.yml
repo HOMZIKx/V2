@@ -6,6 +6,7 @@ on:
       - 'fix/team-sync-timers-war-20260908'
     paths:
       - 'tools/scripts/apply-team-timer-web-patch.mjs'
+      - 'tools/scripts/apply-team-timer-web-build-fix.mjs'
       - '.github/workflows/temporary-team-timer-web-patch.yml'
   workflow_dispatch:
 
@@ -36,7 +37,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply focused patch
-        run: node tools/scripts/apply-team-timer-web-patch.mjs
+        run: |
+          node tools/scripts/apply-team-timer-web-patch.mjs
+          node tools/scripts/apply-team-timer-web-build-fix.mjs
 
       - name: Format touched files
         run: |
@@ -45,6 +48,7 @@ jobs:
             apps/web/src/player-store.ts \
             apps/web/src/player-store.spec.ts \
             apps/web/src/character-timer-discord-notify.ts \
+            apps/web/src/character-timer-discord-notify.spec.ts \
             apps/discord-gateway/src/application/notify/notify-payload.spec.ts
 
       - name: Typecheck repository
@@ -81,6 +85,7 @@ jobs:
             apps/web/src/player-store.ts \
             apps/web/src/player-store.spec.ts \
             apps/web/src/character-timer-discord-notify.ts \
+            apps/web/src/character-timer-discord-notify.spec.ts \
             apps/discord-gateway/src/application/notify/notify-payload.spec.ts
           git commit -m 'fix(timers): allow explicit locked due refresh'
           git push origin HEAD:fix/team-sync-timers-war-20260908
