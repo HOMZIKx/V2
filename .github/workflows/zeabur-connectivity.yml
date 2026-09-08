@@ -62,3 +62,170 @@ jobs:
 
           print('::notice::Zeabur API authentication OK.')
           PY
+
+      - name: Read-only Zeabur runtime inventory
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+          import urllib.error
+
+          endpoint = 'https://api.zeabur.com/graphql'
+          token = os.environ.get('ZEABUR_API_TOKEN', '').strip()
+          if not token:
+              print('::error::Zeabur API token is unavailable.')
+              sys.exit(1)
+
+          def gql(query, variables=None, *, required=True):
+              body = json.dumps({'query': query, 'variables': variables or {}}).encode('utf-8')
+              request = urllib.request.Request(
+                  endpoint,
+                  data=body,
+                  method='POST',
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      payload = json.load(response)
+              except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                  if required:
+                      print(f'::error::Zeabur inventory request failed: {type(exc).__name__}')
+                      sys.exit(1)
+                  return None
+              if payload.get('errors'):
+                  if required:
+                      print('::error::Zeabur inventory GraphQL query failed.')
+                      sys.exit(1)
+                  return None
+              return payload.get('data') or {}
+
+          root = gql('''
+            query RuntimeInventoryRoot {
+              teams { _id name myRole }
+              projects { edges { node { _id name } } }
+            }
+          ''')
+
+          owners = [('personal', None)]
+          for team in root.get('teams') or []:
+              team_id = team.get('_id')
+              team_name = team.get('name') or 'unnamed-team'
+              role = team.get('myRole') or 'unknown'
+              if isinstance(team_id, str) and team_id:
+                  print(f'ZEABUR_TEAM name={team_name!r} id={team_id} role={role}')
+                  owners.append((f'team:{team_name}', team_id))
+
+          projects = []
+          for edge in ((root.get('projects') or {}).get('edges') or []):
+              project = edge.get('node') or {}
+              if project.get('_id'):
+                  projects.append(('personal', project))
+
+          team_projects_query = '''
+            query TeamProjects($ownerID: ObjectID!) {
+              projects(ownerID: $ownerID) { edges { node { _id name } } }
+            }
+          '''
+          for owner_label, owner_id in owners[1:]:
+              data = gql(team_projects_query, {'ownerID': owner_id}, required=False)
+              if not data:
+                  print(f'ZEABUR_OWNER owner={owner_label!r} projects=unavailable')
+                  continue
+              for edge in ((data.get('projects') or {}).get('edges') or []):
+                  project = edge.get('node') or {}
+                  if project.get('_id'):
+                      projects.append((owner_label, project))
+
+          detail_query = '''
+            query ProjectInventory($id: ObjectID!) {
+              project(id: $id) {
+                _id
+                name
+                services { _id name }
+                environments { _id name }
+              }
+            }
+          '''
+          variables_query = '''
+            query ServiceVariables($serviceID: ObjectID!, $environmentID: ObjectID!) {
+              variables(serviceID: $serviceID, environmentID: $environmentID) { key value }
+            }
+          '''
+
+          watched_keys = (
+              'DISCORD_GATEWAY_DATA_DIR',
+              'DESTILED_DATA_DIR',
+              'DISCORD_ENABLED',
+              'GEMINI_API_KEY',
+              'GEMINI_VISION_MODEL',
+              'PLAYER_TEAM_INTERNAL_JWT_ENABLED',
+          )
+
+          seen = set()
+          for owner_label, project in projects:
+              project_id = project.get('_id')
+              if not isinstance(project_id, str) or not project_id or project_id in seen:
+                  continue
+              seen.add(project_id)
+              detail = gql(detail_query, {'id': project_id}, required=False)
+              if not detail or not detail.get('project'):
+                  print(
+                      f'ZEABUR_PROJECT owner={owner_label!r} name={project.get("name")!r} '
+                      f'id={project_id} detail=unavailable'
+                  )
+                  continue
+
+              node = detail['project']
+              print(
+                  f'ZEABUR_PROJECT owner={owner_label!r} name={node.get("name")!r} '
+                  f'id={project_id}'
+              )
+              environments = node.get('environments') or []
+              services = node.get('services') or []
+              for environment in environments:
+                  environment_id = environment.get('_id')
+                  if not environment_id:
+                      continue
+                  print(
+                      f'ZEABUR_ENV project={project_id} name={environment.get("name")!r} '
+                      f'id={environment_id}'
+                  )
+                  for service in services:
+                      service_id = service.get('_id')
+                      if not service_id:
+                          continue
+                      flags = {key: 'unknown' for key in watched_keys}
+                      vars_data = gql(
+                          variables_query,
+                          {'serviceID': service_id, 'environmentID': environment_id},
+                          required=False,
+                      )
+                      if vars_data is not None:
+                          values = {
+                              item.get('key'): item.get('value')
+                              for item in (vars_data.get('variables') or [])
+                              if isinstance(item, dict) and isinstance(item.get('key'), str)
+                          }
+                          for key in watched_keys:
+                              value = values.get(key)
+                              flags[key] = 'set' if isinstance(value, str) and value.strip() else 'unset'
+
+                      safe_flags = ' '.join(f'{key}={flags[key]}' for key in watched_keys)
+                      print(
+                          f'ZEABUR_SERVICE project={project_id} env={environment_id} '
+                          f'name={service.get("name")!r} id={service_id} {safe_flags}'
+                      )
+
+          if not seen:
+              print('::warning::No Zeabur projects were visible to the configured API token.')
+          PY
