@@ -1,4 +1,5 @@
 {
-  "requestId": "post-pr68-public-e2e-20260908-1",
-  "mode": "public_e2e"
+  "requestId": "character-timer-live-dm-proof-20260908-1",
+  "mode": "character_timer_live_dm_proof",
+  "confirm": "DISCORD_TEST_DM_APPROVED"
 }
