@@ -299,7 +299,7 @@ export default function GeneralsMetinsPage() {
 
   const quickRequest = async (type: FixedHuntRequestType) => {
     const requestId = newId('request');
-    const historyType = `need_${type}` as 'need_pvp' | 'need_dps' | 'need_buff';
+    const historyType = `need_${type}`;
     await mutateRoom((current) => ({
       ...current,
       requests: [
