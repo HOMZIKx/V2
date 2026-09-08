@@ -56,18 +56,10 @@ function categoryFor(name: string, rawCategory: string): string {
   return category;
 }
 
-export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalogSeedItem[]> {
-  if (cachedItems) return cachedItems;
-
-  const response = await fetch(LEGACY_EXPORT_URL, {
-    headers: { accept: 'text/csv,text/plain;q=0.9' },
-    cache: 'no-store',
-  });
-  if (!response.ok) {
-    throw new Error(`DOBRYTEMAT Item_export.csv failed: ${response.status}`);
-  }
-
-  const rows = parseCsv(await response.text());
+export function parseLegacyEconomyCatalogCsv(
+  text: string,
+): readonly EconomyCatalogSeedItem[] {
+  const rows = parseCsv(text);
   const header = rows[0] ?? [];
   const nameIndex = header.indexOf('name');
   const categoryIndex = header.indexOf('category');
@@ -92,6 +84,20 @@ export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalo
     });
   }
 
-  cachedItems = Array.from(byName.values());
+  return Array.from(byName.values());
+}
+
+export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalogSeedItem[]> {
+  if (cachedItems) return cachedItems;
+
+  const response = await fetch(LEGACY_EXPORT_URL, {
+    headers: { accept: 'text/csv,text/plain;q=0.9' },
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`DOBRYTEMAT Item_export.csv failed: ${response.status}`);
+  }
+
+  cachedItems = parseLegacyEconomyCatalogCsv(await response.text());
   return cachedItems;
 }
