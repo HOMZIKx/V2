@@ -1,4 +1,7 @@
 {
-  "requestId": "public-e2e-after-eq-marker-20260908-1916",
-  "mode": "public_e2e"
+  "requestId": "webapp-eq-enhancements-715b7c4e-20260908-1925",
+  "mode": "cli",
+  "action": "deployment:get",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "webapp-dest"
 }
