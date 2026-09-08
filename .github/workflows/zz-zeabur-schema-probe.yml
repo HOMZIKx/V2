@@ -1,0 +1,78 @@
+name: Zeabur schema probe
+
+on:
+  push:
+    branches:
+      - fix/zeabur-safe-env-probe
+    paths:
+      - .github/workflows/zz-zeabur-schema-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe variable-related GraphQL fields
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${ZEABUR_API_TOKEN:-}" ]; then
+            echo "::error::Zeabur token unavailable"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          query = '''
+          query SchemaProbe {
+            queryType: __type(name: "Query") {
+              fields { name args { name type { kind name ofType { kind name } } } }
+            }
+            mutationType: __type(name: "Mutation") {
+              fields { name args { name type { kind name ofType { kind name } } } }
+            }
+            serviceType: __type(name: "Service") {
+              fields { name args { name type { kind name ofType { kind name } } } }
+            }
+          }
+          '''
+          payload = json.dumps({'query': query})
+          result = subprocess.run(
+              [
+                  'curl', '--silent', '--show-error', '--fail-with-body',
+                  '--request', 'POST', '--url', 'https://api.zeabur.com/graphql',
+                  '--header', f"Authorization: Bearer {os.environ['ZEABUR_API_TOKEN']}",
+                  '--header', 'Content-Type: application/json',
+                  '--data-binary', payload,
+              ],
+              check=False,
+              capture_output=True,
+              text=True,
+              timeout=20,
+          )
+          if result.returncode != 0:
+              print('::error::Zeabur schema probe transport failed')
+              sys.exit(1)
+          body = json.loads(result.stdout)
+          if body.get('errors'):
+              print('::error::Zeabur schema introspection failed')
+              for err in body.get('errors') or []:
+                  print('SCHEMA_ERROR', str(err.get('message', 'unknown'))[:240])
+              sys.exit(1)
+          for type_key in ('queryType', 'mutationType', 'serviceType'):
+              node = ((body.get('data') or {}).get(type_key) or {})
+              for field in node.get('fields') or []:
+                  name = field.get('name') or ''
+                  lowered = name.lower()
+                  if 'variab' not in lowered and 'env' not in lowered and 'config' not in lowered:
+                      continue
+                  args = ','.join(arg.get('name') or '' for arg in field.get('args') or [])
+                  print(f'SCHEMA_FIELD type={type_key} name={name} args={args}')
+          PY
