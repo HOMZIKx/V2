@@ -66,6 +66,11 @@ export class TeamInvitationsController {
     });
   }
 
+  @Get()
+  public async listIncoming(@Headers() headers: RequestHeaders) {
+    return this.useCases.listPendingInvitations(this.viewerId(headers));
+  }
+
   @Post('workspace/:workspaceId')
   public async create(
     @Headers() headers: RequestHeaders,
