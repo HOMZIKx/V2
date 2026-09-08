@@ -1,6 +1,8 @@
 {
-  "requestId": "inventory-projects-20260908-1",
+  "requestId": "inventory-services-envs-20260908-1",
   "mode": "graphql_read",
-  "query": "query OpsInventory { me { username } teams { _id name myRole } projects { edges { node { _id name } } } }",
-  "variables": {}
+  "query": "query OpsProjectInventory($projectID: ObjectID!) { environments(projectID: $projectID) { _id name } services(projectID: $projectID) { edges { node { _id name } } } }",
+  "variables": {
+    "projectID": "6a720a3e472e2c91a9e660d5"
+  }
 }
