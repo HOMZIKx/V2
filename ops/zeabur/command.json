@@ -1,6 +1,9 @@
 {
-  "requestId": "schema-config-types-20260908-1",
+  "requestId": "inventory-full-config-20260908-1",
   "mode": "graphql_read",
-  "query": "query OpsConfigTypes { envVarType: __type(name: \"EnvironmentVariable\") { fields { name type { kind name ofType { kind name } } } } domainType: __type(name: \"Domain\") { fields { name type { kind name ofType { kind name } } } } gitTriggerType: __type(name: \"GitTrigger\") { fields { name type { kind name ofType { kind name } } } } resourceLimitType: __type(name: \"ResourceLimit\") { fields { name type { kind name ofType { kind name } } } } servicePortType: __type(name: \"ServicePort\") { fields { name type { kind name ofType { kind name } } } } autoRestartType: __type(name: \"AutoRestart\") { fields { name type { kind name ofType { kind name } } } } healthType: __type(name: \"ServiceSpecHealthCheck\") { fields { name type { kind name ofType { kind name } } } } }",
-  "variables": {}
+  "query": "query OpsFullConfig($projectID: ObjectID!, $environmentID: ObjectID!) { services(projectID: $projectID) { edges { node { _id name status rootDirectory watchPaths buildEnvironmentMode customBuildCommand customStartCommand gitTrigger(environmentID: $environmentID) { provider repoID branchName repoURL } variables(environmentID: $environmentID) { key value exposed readonly } domains(environmentID: $environmentID) { domain redirectTo status portName isGenerated } ports(environmentID: $environmentID) { id port type forwardedPort } resourceLimit { cpu memory } healthCheckV2 { type port } autoRestart(environmentID: $environmentID) { enabled restartHour } failureThreshold } } } }",
+  "variables": {
+    "projectID": "6a720a3e472e2c91a9e660d5",
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
