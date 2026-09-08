@@ -1,8 +1,9 @@
 {
-  "requestId": "timers-party-runtime-deploys-20260908-1145",
+  "requestId": "technika-discord-deployments-finalcheck-20260908-1",
   "mode": "graphql_read",
-  "query": "query RuntimeDeploys($environmentID:ObjectID!){web:deployments(serviceID:\"6a985197573ada8b3bbe52a5\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}} playerTeam:deployments(serviceID:\"6a99a4d34177ab13f998c84c\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
+  "query": "query Deployments($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA ref createdAt startedAt finishedAt}}}}",
   "variables": {
+    "serviceID": "6a8211a6bdeaa87e2c52df28",
     "environmentID": "6a720a3e5f062718bc7b3421"
   }
 }
