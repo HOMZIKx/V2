@@ -6,7 +6,9 @@ const out=process.env.ZEABUR_OUTPUT_DIR||'ops/zeabur/out';
 const projectId='6a720a3e472e2c91a9e660d5';
 const environmentId='6a720a3e5f062718bc7b3421';
 const expectedBranch='preview/destiled-web';
-const active=new Set(['discord-gateway','activity-service','api-gateway','identity-service','authorization-service','webapp-dest','player-workspace-service','player-team-service']);
+const managedBranch=new Set(['discord-gateway','activity-service','api-gateway','identity-service','authorization-service','webapp-dest','player-team-service']);
+const runtimeExpected=new Set(['discord-gateway','activity-service','api-gateway','identity-service','authorization-service','webapp-dest','player-workspace-service','player-team-service']);
+const intentionalLegacyBranch=new Map([['player-workspace-service','cursor/player-workspace-team-character-board-foundation']]);
 const bools=new Set(['1','0','true','false','yes','no','on','off']);
 fs.mkdirSync(out,{recursive:true});
 
@@ -33,6 +35,17 @@ const val=(m,k)=>String((m.get(k)||[]).at(-1)??'').trim();
 const has=(m,k)=>(m.get(k)||[]).some(v=>v.trim()!=='');
 const on=(m,k,d=false)=>{const v=val(m,k).toLowerCase();return v?['1','true','yes','on'].includes(v):d};
 function need(findings,service,m,keys,why){for(const key of keys)if(!has(m,key))findings.push({severity:'critical',service,key,issue:`missing ${why}`})}
+function validateOriginList(findings,service,key,value){
+  if(!value.trim())return;
+  for(const raw of value.split(',').map(v=>v.trim()).filter(Boolean)){
+    try{
+      const u=new URL(raw);
+      if(!['http:','https:'].includes(u.protocol)||!u.hostname)throw new Error('invalid origin');
+    }catch{
+      findings.push({severity:'critical',service,key,issue:`malformed origin: ${raw}`});
+    }
+  }
+}
 if(!token)finish({ok:false,error:"GitHub secret 'zebur' is missing"},1);
 
 const query=`query Audit($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName repoURL} variables(environmentID:$environmentID){key value exposed readonly} domains(environmentID:$environmentID){domain status} ports(environmentID:$environmentID){id port type forwardedPort} healthCheckV2{type port} resourceLimit{cpu memory} autoRestart(environmentID:$environmentID){enabled restartHour}}}}}`;
@@ -43,10 +56,22 @@ for(const s of services){
   const m=mapVars(s.variables),names=[...m.keys()].sort(),safeConfig={};
   for(const k of names){
     const x=safe(k,val(m,k)); if(x!==undefined)safeConfig[k]=x;
-    const arr=m.get(k)||[]; if(arr.length>1)findings.push({severity:'warning',service:s.name,key:k,issue:`duplicate key (${arr.length})`});
+    const arr=m.get(k)||[];
+    if(arr.length>1){
+      const unique=[...new Set(arr.map(v=>v.trim()))];
+      if(unique.length>1)findings.push({severity:'warning',service:s.name,key:k,issue:`conflicting duplicate key (${arr.length} entries, ${unique.length} values)`});
+      else if(!/_HOST$/i.test(k))findings.push({severity:'info',service:s.name,key:k,issue:`duplicate key with identical value (${arr.length})`});
+    }
     if((/_ENABLED$/.test(k)||k==='ALLOW_PRODUCTION_CONNECTIONS')&&val(m,k)&&!bools.has(val(m,k).toLowerCase()))findings.push({severity:'critical',service:s.name,key:k,issue:'invalid boolean spelling'});
+    if(/(?:_ORIGIN|_ORIGINS|TRUSTED_ORIGINS)$/i.test(k))validateOriginList(findings,s.name,k,val(m,k));
   }
-  if(active.has(s.name)&&s.gitTrigger?.branchName!==expectedBranch)findings.push({severity:'critical',service:s.name,key:'git.branch',issue:`drift: ${s.gitTrigger?.branchName||'(none)'} != ${expectedBranch}`});
+  if(runtimeExpected.has(s.name)&&s.status!=='RUNNING')findings.push({severity:'critical',service:s.name,key:'service.status',issue:`expected RUNNING, got ${s.status||'(unknown)'}`});
+  if(managedBranch.has(s.name)&&s.gitTrigger?.branchName!==expectedBranch)findings.push({severity:'critical',service:s.name,key:'git.branch',issue:`drift: ${s.gitTrigger?.branchName||'(none)'} != ${expectedBranch}`});
+  const legacy=intentionalLegacyBranch.get(s.name);
+  if(legacy){
+    if(s.gitTrigger?.branchName===legacy)findings.push({severity:'info',service:s.name,key:'git.branch',issue:`intentional legacy branch retained because service source is absent on ${expectedBranch}`});
+    else findings.push({severity:'warning',service:s.name,key:'git.branch',issue:`unexpected legacy-service branch: ${s.gitTrigger?.branchName||'(none)'}`});
+  }
   for(const [k,x] of Object.entries(safeConfig))if(/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(x)&&/(?:_URL|_ORIGIN|_ORIGINS|_BASE_URL|_ISSUER|_AUD)$/i.test(k))findings.push({severity:'critical',service:s.name,key:k,issue:'loopback/local URL in production'});
   if(names.includes('UTHORIZATION_ASSERTION_AUD'))findings.push({severity:'warning',service:s.name,key:'UTHORIZATION_ASSERTION_AUD',issue:'stale typo; correct key is AUTHORIZATION_ASSERTION_AUD'});
   if(names.includes('V2_OVE_HOST'))findings.push({severity:'info',service:s.name,key:'V2_OVE_HOST',issue:'stale/generated host key; unused by current config'});
