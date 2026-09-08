@@ -4,18 +4,22 @@ import {
   cancelCharacterTimerReminder,
   scheduleCharacterTimerReminder,
 } from '../../application/notify/character-timer-reminders.js';
-import {
-  getDailyCharacterTimerPanelConfig,
-} from '../../application/notify/daily-character-timer-panel-registry.js';
+import { getDailyCharacterTimerPanelConfig } from '../../application/notify/daily-character-timer-panel-registry.js';
 import {
   refreshExistingDailyCharacterTimerPanels,
   switchDailyCharacterTimerPanelCharacter,
 } from '../../application/notify/daily-character-timer-panel-runtime.js';
+import { replaceKingdomWarPanelSelectionForUser } from '../../application/notify/kingdom-war-panel-registry.js';
+import { refreshKingdomWarPanels } from '../../application/notify/kingdom-war-panel-runtime.js';
+import { resolveTeamKingdomWarWorkspaceId } from '../../application/notify/kingdom-war-team-recipients.js';
+import { defaultBotConfigValues } from '../../application/technika/capabilities.js';
 import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
 import { readCharacterTimerCardFromBot } from '../../infrastructure/player-team/read-character-timer-card.js';
+import { readSharedKingdomWarWorkspaceContext } from '../../infrastructure/player-team/read-team-workspace-context.js';
 import { refreshSharedCharacterTimer } from '../../infrastructure/player-team/refresh-shared-character-timer.js';
 import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import { parseCharacterTimerPanelSelectCustomId } from '../../infrastructure/security/character-timer-panel-custom-id.js';
+import { parseSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
 import { TeamSyncInteractionRouter } from './team-sync-interaction-router.js';
 import type { InteractionRouterDeps } from './interaction-router.js';
 
@@ -62,6 +66,19 @@ export class DailyPanelInteractionRouter {
       } catch {
         // not the daily timer selector
       }
+
+      try {
+        const parsed = parseSignedCustomId(
+          interaction.customId,
+          this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        );
+        if (parsed.action === 'war_claim' && parsed.payload.startsWith('wps')) {
+          await this.handleKingdomWarSelection(interaction, parsed.payload.slice(3));
+          return;
+        }
+      } catch {
+        // not the new war selector
+      }
     }
 
     if (interaction.isButton()) {
@@ -70,7 +87,11 @@ export class DailyPanelInteractionRouter {
           interaction.customId,
           this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         );
-        await this.handleCharacterTimerAction(interaction, timerButton.operation, timerButton.payload.timerId);
+        await this.handleCharacterTimerAction(
+          interaction,
+          timerButton.operation,
+          timerButton.payload.timerId,
+        );
         return;
       } catch {
         // not a character timer button
@@ -80,6 +101,87 @@ export class DailyPanelInteractionRouter {
     await this.base.handle(interaction);
   }
 
+  private async handleKingdomWarSelection(
+    interaction: MessageComponentInteraction,
+    scopeToken: string,
+  ): Promise<void> {
+    if (!interaction.isStringSelectMenu()) return;
+    const workspaceId = resolveTeamKingdomWarWorkspaceId(scopeToken);
+    if (!workspaceId) {
+      await interaction.reply({
+        content: 'Ten panel wojny jest nieaktualny.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
+    const context = await readSharedKingdomWarWorkspaceContext({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: interaction.user.id,
+      workspaceId,
+    });
+    if (!context) {
+      await interaction.followUp({
+        content: 'Nie udało się potwierdzić członkostwa w tym zespole.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const allowed = new Set(context.roster.map((character) => character.id));
+    const selected = interaction.values.filter((id) => allowed.has(id));
+    if (selected.length !== interaction.values.length) {
+      await interaction.followUp({
+        content: 'Jedna z wybranych postaci nie należy już do tego zespołu.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const live = this.deps.getBotConfig?.() ?? defaultBotConfigValues();
+    const warConfig = { ...live.kingdomWar, notifyMinutesBefore: 30 };
+    const result = replaceKingdomWarPanelSelectionForUser({
+      workspaceId,
+      discordUserId: interaction.user.id,
+      characterIds: selected,
+      maxClaims: warConfig.maxClaimsPerUser,
+    });
+    if (!result.ok) {
+      await interaction.followUp({
+        content:
+          result.reason === 'taken'
+            ? 'Jedna z postaci została właśnie wybrana przez kogoś innego.'
+            : `Możesz wybrać maksymalnie ${warConfig.maxClaimsPerUser} postaci.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const actorName = interaction.user.globalName ?? interaction.user.username;
+    await refreshKingdomWarPanels({
+      gateway: this.deps.gateway,
+      discordConfig: this.deps.config,
+      warConfig,
+      context,
+      logger: this.deps.logger,
+      actorName,
+      actorAction:
+        selected.length > 0
+          ? `wybrał(a) ${selected.length} ${selected.length === 1 ? 'postać' : 'postacie'}`
+          : 'wyczyścił(a) swój wybór',
+    });
+
+    await interaction.followUp({
+      content:
+        selected.length > 0
+          ? `Zapisano ${selected.length} ${selected.length === 1 ? 'postać' : 'postacie'} na wojnę. Skład został odświeżony całemu zespołowi.`
+          : 'Wyczyszczono Twój wybór. Skład został odświeżony całemu zespołowi.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+
   private async handleCharacterTimerAction(
     interaction: MessageComponentInteraction,
     operation: 'gotowe' | 'przypomnij',
@@ -87,7 +189,8 @@ export class DailyPanelInteractionRouter {
   ): Promise<void> {
     if (operation === 'przypomnij') {
       await interaction.reply({
-        content: 'Ten stary typ przypomnienia został wyłączony. Aktualny stan jest utrzymywany w jednym dziennym panelu PW.',
+        content:
+          'Ten stary typ przypomnienia został wyłączony. Aktualny stan jest utrzymywany w jednym dziennym panelu PW.',
         flags: MessageFlags.Ephemeral,
       });
       return;
