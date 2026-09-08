@@ -42,13 +42,17 @@ type RecognizedItem = {
   alternatives: string[];
   catalogMatch: CatalogMatch | null;
 };
+type PositionedRecognizedItem = RecognizedItem & {
+  positionKey: string;
+  sortRank: number;
+};
 
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
 const DYNAMIC_LOOKUP_LIMIT = 40;
-const GRID_COLUMNS = 4;
 const MAX_RECOGNIZED_ITEMS = 200;
 const MAX_CATALOG_NAMES_IN_PROMPT = 1200;
+const MIN_AUTO_NAME_CONFIDENCE = 0.72;
 const rateBuckets = new Map<string, RateBucket>();
 
 const canonicalCatalogNames = Array.from(
@@ -106,7 +110,7 @@ function alternatives(value: unknown): string[] {
 
 function bestStaticCatalogMatch(name: string): CatalogMatch | null {
   const target = normalize(name);
-  if (!target) return null;
+  if (!target || target === normalize('Nieznany przedmiot')) return null;
   const exact = gameItemCatalog.find((item) => normalize(item.title) === target);
   const candidates = exact
     ? [exact]
@@ -186,63 +190,86 @@ async function dynamicCatalogMatch(
 
 function recognitionPrompt(): string {
   const names = canonicalCatalogNames.map((name) => `- ${name}`).join('\n');
-  return `Jesteś modułem odczytu ekwipunku Metin2. Ten obraz przedstawia siatkę ekwipunku/dropu z 4 kolumnami.
+  return `Jesteś modułem odczytu ekwipunku/dropu z Metin2.
+
+WAŻNE: screenshot może być przycięty i może mieć 2, 3, 4, 5 albo inną liczbę kolumn. NIE zakładaj stałej liczby kolumn. Najpierw sam wykryj widoczną siatkę slotów po ramkach i odstępach.
 
 ZADANIE:
-1. Analizuj KAŻDY SLOT OSOBNO, od lewej do prawej i od góry do dołu.
+1. Analizuj KAŻDY WIDOCZNY SLOT osobno, od lewej do prawej i od góry do dołu.
 2. Pomijaj puste sloty. Nie twórz przedmiotu dla pustego pola.
-3. slotIndex jest liczony od 0: row * 4 + column. row i column także liczymy od 0.
-4. Nazwę rozpoznawaj przede wszystkim po ikonie. Jeżeli pasuje do katalogu poniżej, zwróć DOKŁADNIE nazwę z katalogu. Nie wymyślaj podobnej nazwy.
-5. Ilość odczytuj WYŁĄCZNIE z białej liczby nałożonej w prawym dolnym rogu konkretnego slotu. To może być liczba jedno-, dwu- lub trzycyfrowa. Jeżeli liczby naprawdę nie ma, quantity=1. Nie wyprowadzaj ilości z wyglądu ikony ani z sąsiedniego slotu.
-6. Oceniaj osobno pewność nazwy i pewność ilości. Gdy cyfry są małe/nieostre, obniż quantityConfidence zamiast zgadywać.
-7. Jeżeli nie potrafisz wiarygodnie rozpoznać nazwy, użyj "Nieznany przedmiot" i podaj maksymalnie 3 najbardziej prawdopodobne nazwy z katalogu w alternatives.
-8. Każdy zajęty slot może wystąpić tylko raz. Nie łącz kilku różnych slotów w jeden wynik i nie przenoś ilości między slotami.
-9. Przed odpowiedzią jeszcze raz sprawdź wszystkie cyfry w prawym dolnym rogu każdego zajętego slotu.
+3. row i column liczymy od 0 względem widocznego, przyciętego obrazu. slotIndex ma tylko zachować kolejność od lewej do prawej, z góry na dół — nie wyliczaj go ze stałej liczby kolumn.
+4. Najpierw ustal wygląd IKONY w konkretnym slocie, dopiero potem nazwę. Katalog nazw poniżej jest wyłącznie słownikiem normalizującym — sama obecność nazwy na liście NIE jest dowodem, że ikona przedstawia ten przedmiot.
+5. Jeśli ikonę naprawdę rozpoznajesz i odpowiada pozycji z katalogu, zwróć DOKŁADNĄ nazwę katalogową.
+6. Jeśli pewność nazwy jest mniejsza niż ok. 0.72, NIE zgaduj. Ustaw name="Nieznany przedmiot", obniż itemConfidence i w alternatives podaj maksymalnie 3 możliwe nazwy. Lepszy wynik „nieznany” niż błędny przedmiot.
+7. Ilość odczytuj WYŁĄCZNIE z białej liczby nałożonej w prawym dolnym rogu TEGO SAMEGO slotu. Liczba może mieć 1, 2 lub 3 cyfry (np. 5, 14, 87). Jeśli liczby naprawdę nie ma, quantity=1. Nie przenoś liczby z sąsiedniego slotu.
+8. Oceniaj osobno itemConfidence i quantityConfidence. Jeśli małe cyfry są nieostre, obniż quantityConfidence zamiast wymyślać inną liczbę.
+9. Każdy zajęty slot może wystąpić tylko raz. Nie łącz slotów — sumowanie identycznych przedmiotów wykona aplikacja później.
+10. Przed odpowiedzią policz ponownie zajęte sloty i sprawdź wszystkie liczby w prawym dolnym rogu.
 
-Zwróć WYŁĄCZNIE JSON w formacie:
-{"items":[{"slotIndex":0,"row":0,"column":0,"name":"Dokładna nazwa","quantity":1,"itemConfidence":0.0,"quantityConfidence":0.0,"alternatives":[]}]}
+Zwróć WYŁĄCZNIE JSON:
+{"items":[{"slotIndex":0,"row":0,"column":0,"name":"Dokładna nazwa albo Nieznany przedmiot","quantity":1,"itemConfidence":0.0,"quantityConfidence":0.0,"alternatives":[]}]}
 
-KATALOG DOZWOLONYCH NAZW (gdy przedmiot jest rozpoznawalny):
+KATALOG NAZW DO NORMALIZACJI (nie traktuj go jako dowodu wizualnego):
 ${names}`;
 }
 
 function normalizeRecognizedItems(rawItems: RawRecognizedItem[]): RecognizedItem[] {
-  const bySlot = new Map<number, RecognizedItem>();
+  const byPosition = new Map<string, PositionedRecognizedItem>();
 
   rawItems.slice(0, MAX_RECOGNIZED_ITEMS).forEach((raw, fallbackIndex) => {
     const rawSlot = integer(raw.slotIndex, -1);
     const rawRow = integer(raw.row, -1);
     const rawColumn = integer(raw.column, -1);
-    const derivedSlot =
-      rawRow >= 0 && rawColumn >= 0 && rawColumn < GRID_COLUMNS
-        ? rawRow * GRID_COLUMNS + rawColumn
-        : -1;
-    const slotIndex = rawSlot >= 0 ? rawSlot : derivedSlot >= 0 ? derivedSlot : fallbackIndex;
-    const row = rawRow >= 0 ? rawRow : Math.floor(slotIndex / GRID_COLUMNS);
-    const column =
-      rawColumn >= 0 && rawColumn < GRID_COLUMNS ? rawColumn : slotIndex % GRID_COLUMNS;
-    const name =
+    const hasCoordinates = rawRow >= 0 && rawColumn >= 0;
+    const positionKey = hasCoordinates
+      ? `grid:${rawRow}:${rawColumn}`
+      : rawSlot >= 0
+        ? `slot:${rawSlot}`
+        : `fallback:${fallbackIndex}`;
+    const sortRank = hasCoordinates
+      ? rawRow * 10_000 + rawColumn
+      : rawSlot >= 0
+        ? 1_000_000 + rawSlot
+        : 2_000_000 + fallbackIndex;
+    const rawName =
       typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Nieznany przedmiot';
     const itemConfidence = confidence(raw.itemConfidence, confidence(raw.confidence, 0));
     const quantityConfidence = confidence(raw.quantityConfidence, confidence(raw.confidence, 0));
-    const recognized: RecognizedItem = {
-      slotIndex,
-      row,
-      column,
-      recognizedName: name,
+    const suggestionList = alternatives(raw.alternatives);
+    const trustedName = itemConfidence >= MIN_AUTO_NAME_CONFIDENCE ? rawName : 'Nieznany przedmiot';
+    const fallbackSuggestions =
+      trustedName === 'Nieznany przedmiot' && rawName !== 'Nieznany przedmiot'
+        ? [rawName, ...suggestionList].slice(0, 3)
+        : suggestionList;
+    const catalogMatch =
+      trustedName === 'Nieznany przedmiot' ? null : bestStaticCatalogMatch(trustedName);
+    const recognized: PositionedRecognizedItem = {
+      positionKey,
+      sortRank,
+      slotIndex: rawSlot >= 0 ? rawSlot : fallbackIndex,
+      row: rawRow,
+      column: rawColumn,
+      recognizedName: trustedName,
       quantity: positiveInteger(raw.quantity, 1),
       itemConfidence,
       quantityConfidence,
       confidence: Math.min(itemConfidence, quantityConfidence),
-      alternatives: alternatives(raw.alternatives),
-      catalogMatch: bestStaticCatalogMatch(name),
+      alternatives: fallbackSuggestions,
+      catalogMatch,
     };
 
-    const existing = bySlot.get(slotIndex);
-    if (!existing || recognized.confidence > existing.confidence) bySlot.set(slotIndex, recognized);
+    const existing = byPosition.get(positionKey);
+    if (!existing || recognized.confidence > existing.confidence) {
+      byPosition.set(positionKey, recognized);
+    }
   });
 
-  return Array.from(bySlot.values()).sort((left, right) => left.slotIndex - right.slotIndex);
+  return Array.from(byPosition.values())
+    .sort((left, right) => left.sortRank - right.sortRank)
+    .map(({ positionKey: _positionKey, sortRank: _sortRank, ...item }, index) => ({
+      ...item,
+      slotIndex: index,
+    }));
 }
 
 export async function POST(request: NextRequest) {
