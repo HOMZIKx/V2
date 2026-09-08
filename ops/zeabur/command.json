@@ -1,5 +1,4 @@
 {
-  "requestId": "single-origin-repair-after-settled-rollout-20260908-1",
-  "mode": "cors_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "final-origin-and-runtime-audit-after-single-repair-20260908-1",
+  "mode": "env_audit"
 }
