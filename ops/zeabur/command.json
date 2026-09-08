@@ -1,7 +1,6 @@
 {
-  "requestId": "final-identity-runtime-log-20260908-1",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "identity-service"
+  "requestId": "inspect-origin-duplicate-values-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Inspect($api:ObjectID!,$identity:ObjectID!,$env:ObjectID!){api:service(_id:$api){name variables(environmentID:$env){key value readonly exposed}} identity:service(_id:$identity){name variables(environmentID:$env){key value readonly exposed}}}",
+  "variables": {"api":"6a8211c9bdeaa87e2c52df34","identity":"6a8211cfbdeaa87e2c52df39","env":"6a720a3e5f062718bc7b3421"}
 }
