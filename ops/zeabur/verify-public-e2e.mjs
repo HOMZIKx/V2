@@ -24,7 +24,7 @@ function numberOrZero(value) {
 
 function write(result, code = 0) {
   fs.writeFileSync(`${outDir}/result.json`, JSON.stringify(result, null, 2));
-  fs.writeFileSync(`${outDir}/summary.md`, `# Public production E2E probe\n\n- Web live: **${result.health?.status ?? 'n/a'}**\n- Identity ready (DB + Redis + migrations): **${result.identityReady?.status ?? 'n/a'}**\n- Identity JWKS: **${result.jwks?.status ?? 'n/a'}**\n- Identity unauthenticated /me: **${result.identityMe?.status ?? 'n/a'}**\n- Player Team unauthenticated state: **${result.playerTeamUnauth?.status ?? 'n/a'}**\n- Discord OAuth redirect host: **${result.oauth?.locationHost ?? 'n/a'}**\n- Discord gateway ready: **${result.discord?.state ?? 'n/a'}**\n- Member activity members: **${result.memberActivity?.totalMembers ?? 'n/a'}**\n- Member activity messages: **${result.memberActivity?.messageCount ?? 'n/a'}**\n- Member activity voice minutes: **${result.memberActivity?.voiceMinutes ?? 'n/a'}**\n- Member activity integrity issues: **${result.memberActivity?.integrity?.issueCount ?? 'n/a'}**\n`);
+  fs.writeFileSync(`${outDir}/summary.md`, `# Public production E2E probe\n\n- Web live: **${result.health?.status ?? 'n/a'}**\n- Identity ready (DB + Redis + migrations): **${result.identityReady?.status ?? 'n/a'}**\n- Identity JWKS: **${result.jwks?.status ?? 'n/a'}**\n- Identity unauthenticated /me: **${result.identityMe?.status ?? 'n/a'}**\n- Player Team unauthenticated state: **${result.playerTeamUnauth?.status ?? 'n/a'}**\n- Discord OAuth redirect host: **${result.oauth?.locationHost ?? 'n/a'}**\n- Discord gateway ready: **${result.discord?.state ?? 'n/a'}**\n- Member activity enabled: **${String(result.memberActivityConfig?.enabled ?? 'n/a')}**\n- Member activity role filters: **${result.memberActivityConfig?.memberRoleCount ?? 'n/a'}**\n- Member activity members with activity: **${result.memberActivity?.totalMembers ?? 'n/a'}**\n- Member activity messages: **${result.memberActivity?.messageCount ?? 'n/a'}**\n- Member activity voice minutes: **${result.memberActivity?.voiceMinutes ?? 'n/a'}**\n- Member activity integrity issues: **${result.memberActivity?.integrity?.issueCount ?? 'n/a'}**\n`);
   process.exit(code);
 }
 
@@ -46,6 +46,9 @@ try {
   try { locationHost = new URL(location, base).hostname; } catch {}
 
   const discord = await readJson(`${base}/discord-gateway/health/discord`, { cache: 'no-store' });
+  const activeConfig = await readJson(`${base}/discord-gateway/discord/v1/config`, { cache: 'no-store' });
+  const memberActivityCfg = activeConfig.body?.config?.memberActivity ?? null;
+  const memberRoleIds = Array.isArray(memberActivityCfg?.memberRoleIds) ? memberActivityCfg.memberRoleIds : [];
   const ranking = await readJson(`${base}/discord-gateway/discord/v1/member-activity/ranking?window=since_bot&topN=500`, { cache: 'no-store' });
   const entries = Array.isArray(ranking.body?.entries) ? ranking.body.entries : [];
   const messageCount = entries.reduce((sum, row) => sum + numberOrZero(row?.messageCount), 0);
@@ -87,6 +90,7 @@ try {
       discord.response.ok &&
       discord.body?.enabled === true &&
       discord.body?.state === 'ready' &&
+      activeConfig.response.ok &&
       ranking.response.ok &&
       issueCount === 0,
     at: new Date().toISOString(),
@@ -125,6 +129,15 @@ try {
       guildCacheSize: Number(discord.body?.guildCacheSize) || 0,
       commandsRegistered: discord.body?.commandsRegistered ?? null,
       lastErrorPresent: Boolean(discord.body?.lastError),
+    },
+    memberActivityConfig: {
+      status: activeConfig.response.status,
+      ok: activeConfig.response.ok,
+      enabled: memberActivityCfg?.enabled === true,
+      guildId: typeof memberActivityCfg?.guildId === 'string' ? memberActivityCfg.guildId : null,
+      memberRoleCount: memberRoleIds.length,
+      windowDays: Number(memberActivityCfg?.windowDays) || null,
+      topN: Number(memberActivityCfg?.topN) || null,
     },
     memberActivity: {
       status: ranking.response.status,
