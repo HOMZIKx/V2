@@ -14,18 +14,25 @@ export class LegacyEconomyCatalogSeeder implements OnApplicationBootstrap {
   public async onApplicationBootstrap(): Promise<void> {
     if (process.env.NODE_ENV === 'test') return;
 
-    const items = await loadLegacyEconomyCatalog();
-    if (items.length === 0) {
-      this.logger.info('legacy DOBRYTEMAT catalogue unavailable; continuing with local V2 catalogue.');
-      return;
-    }
+    try {
+      const items = await loadLegacyEconomyCatalog();
+      if (items.length === 0) {
+        this.logger.info('legacy DOBRYTEMAT catalogue unavailable; continuing with local V2 catalogue.');
+        return;
+      }
 
-    const result = await this.economy.importItems({
-      items,
-      createdBy: 'system:dobry-temat-seed',
-    });
-    this.logger.info(
-      `legacy DOBRYTEMAT catalogue synchronized: ${result.imported} added, ${result.total} total.`,
-    );
+      const result = await this.economy.importItems({
+        items,
+        createdBy: 'system:dobry-temat-seed',
+      });
+      this.logger.info(
+        `legacy DOBRYTEMAT catalogue synchronized: ${result.imported} added, ${result.total} total.`,
+      );
+    } catch (error) {
+      // A convenience seed must never make the whole player-team service unavailable.
+      // The local V2 catalogue and manual catalog-import endpoint remain usable and a
+      // later restart/import can retry the legacy source.
+      this.logger.error('legacy DOBRYTEMAT catalogue synchronization failed; service startup continues.', error);
+    }
   }
 }
