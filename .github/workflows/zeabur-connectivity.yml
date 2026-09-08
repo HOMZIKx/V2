@@ -1,0 +1,64 @@
+name: Zeabur connectivity check
+
+on:
+  push:
+    branches:
+      - preview/destiled-web
+    paths:
+      - .github/workflows/zeabur-connectivity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zeabur-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Zeabur API token
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${ZEABUR_API_TOKEN:-}" ]; then
+            echo "::error::GitHub Actions secret 'zebur' is missing or empty."
+            exit 1
+          fi
+
+          http_code="$({ curl --silent --show-error \
+            --output zeabur-response.json \
+            --write-out '%{http_code}' \
+            --request POST \
+            --url 'https://api.zeabur.com/graphql' \
+            --header "Authorization: Bearer ${ZEABUR_API_TOKEN}" \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"query { me { username } }"}'; } 2>curl-error.log)" || {
+              cat curl-error.log >&2
+              exit 1
+            }
+
+          if [ "${http_code}" != "200" ]; then
+            echo "::error::Zeabur API returned HTTP ${http_code}."
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+          import sys
+
+          with open('zeabur-response.json', 'r', encoding='utf-8') as fh:
+              payload = json.load(fh)
+
+          if payload.get('errors'):
+              print('::error::Zeabur GraphQL API returned an authentication/query error.')
+              sys.exit(1)
+
+          username = (((payload.get('data') or {}).get('me') or {}).get('username'))
+          if not isinstance(username, str) or not username.strip():
+              print('::error::Zeabur API response did not contain an authenticated user.')
+              sys.exit(1)
+
+          print('::notice::Zeabur API authentication OK.')
+          PY
