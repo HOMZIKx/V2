@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   formatTimerNotifyContent,
@@ -49,44 +49,50 @@ describe('TimerNotifyPayload', () => {
   });
 
   it('shows every character timer and keeps elapsed running timer locked', () => {
-    const now = Date.parse('2026-09-08T18:00:00.000Z');
-    const due = {
-      id: 'soul',
-      label: 'Kamień Duchowy',
-      status: 'running',
-      remainingLabel: 'gotowe · zablokowane',
-      readyAtIso: '2026-09-08T17:59:00.000Z',
-    } as const;
-    const future = {
-      id: 'book',
-      label: 'Księga umiejętności',
-      status: 'running',
-      remainingLabel: 'do północy',
-      readyAtIso: '2026-09-08T22:00:00.000Z',
-    } as const;
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-08T18:00:00.000Z'));
+    try {
+      const now = Date.now();
+      const due = {
+        id: 'soul',
+        label: 'Kamień Duchowy',
+        status: 'running',
+        remainingLabel: 'gotowe · zablokowane',
+        readyAtIso: '2026-09-08T17:59:00.000Z',
+      } as const;
+      const future = {
+        id: 'book',
+        label: 'Księga umiejętności',
+        status: 'running',
+        remainingLabel: 'do północy',
+        readyAtIso: '2026-09-08T22:00:00.000Z',
+      } as const;
 
-    expect(isLiveTimerDue(due, now)).toBe(true);
-    expect(isLiveTimerDue(future, now)).toBe(false);
+      expect(isLiveTimerDue(due, now)).toBe(true);
+      expect(isLiveTimerDue(future, now)).toBe(false);
 
-    const content = formatTimerNotifyContent({
-      discordUserId: '111111111111111111',
-      title: 'Aktualizacja timerów',
-      body: 'Stan zespołu.',
-      deepLinkUrl: 'https://desapp.zeabur.app/teams/a/characters/b?view=timers',
-      workspaceId: 'a',
-      characterId: 'b',
-      characterName: 'KuzynPasek',
-      timerId: due.id,
-      timerLabel: due.label,
-      liveTimers: [due, future],
-      includeButtons: true,
-      kind: 'reminder',
-    });
+      const content = formatTimerNotifyContent({
+        discordUserId: '111111111111111111',
+        title: 'Aktualizacja timerów',
+        body: 'Stan zespołu.',
+        deepLinkUrl: 'https://desapp.zeabur.app/teams/a/characters/b?view=timers',
+        workspaceId: 'a',
+        characterId: 'b',
+        characterName: 'KuzynPasek',
+        timerId: due.id,
+        timerLabel: due.label,
+        liveTimers: [due, future],
+        includeButtons: true,
+        kind: 'reminder',
+      });
 
-    expect(content).toContain('Stan wszystkich timerów');
-    expect(content).toContain('Kamień Duchowy');
-    expect(content).toContain('Księga umiejętności');
-    expect(content).toContain('gotowy · zablokowany do odświeżenia');
+      expect(content).toContain('Stan wszystkich timerów');
+      expect(content).toContain('Kamień Duchowy');
+      expect(content).toContain('Księga umiejętności');
+      expect(content).toContain('gotowy · zablokowany do odświeżenia');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('includes buttons by default when timer coordinates present', () => {
