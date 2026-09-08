@@ -1,0 +1,222 @@
+name: Zeabur E2E wiring probe
+
+on:
+  push:
+    branches:
+      - fix/e2e-service-wiring-20260908
+    paths:
+      - .github/workflows/zeabur-e2e-wiring-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wiring-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe live Zeabur services without exposing secrets
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          endpoint = 'https://api.zeabur.com/graphql'
+          token = os.environ.get('ZEABUR_API_TOKEN', '').strip()
+          if not token:
+              print('::error::Missing Zeabur API token.')
+              sys.exit(1)
+
+          def gql(query, variables=None):
+              payload = json.dumps({'query': query, 'variables': variables or {}})
+              result = subprocess.run(
+                  [
+                      'curl', '--silent', '--show-error', '--fail-with-body',
+                      '--request', 'POST', '--url', endpoint,
+                      '--header', f'Authorization: Bearer {token}',
+                      '--header', 'Content-Type: application/json',
+                      '--data-binary', payload,
+                  ],
+                  capture_output=True,
+                  text=True,
+                  timeout=40,
+              )
+              if result.returncode != 0:
+                  print('::error::Zeabur GraphQL transport failed.')
+                  sys.exit(1)
+              try:
+                  body = json.loads(result.stdout)
+              except json.JSONDecodeError:
+                  print('::error::Zeabur GraphQL returned invalid JSON.')
+                  sys.exit(1)
+              if body.get('errors'):
+                  messages = [str(item.get('message', 'unknown'))[:180] for item in body['errors'][:3]]
+                  print('::error::Zeabur GraphQL error: ' + ' | '.join(messages))
+                  sys.exit(1)
+              return body.get('data') or {}
+
+          root = gql('''
+            query RuntimeRoot {
+              projects { edges { node { _id name } } }
+            }
+          ''')
+          projects = [edge.get('node') or {} for edge in ((root.get('projects') or {}).get('edges') or [])]
+          project = next((item for item in projects if item.get('name') == 'untitled-1'), None)
+          if not project:
+              if len(projects) == 1:
+                  project = projects[0]
+              else:
+                  print('::error::Could not resolve the Destiled Zeabur project.')
+                  sys.exit(1)
+
+          project_id = project.get('_id')
+          detail = gql('''
+            query ProjectDetail($id: ObjectID!) {
+              project(_id: $id) {
+                environments { _id name }
+                services { _id name }
+              }
+            }
+          ''', {'id': project_id}).get('project') or {}
+          environment = next((item for item in detail.get('environments') or [] if item.get('name') == 'production'), None)
+          if not environment:
+              print('::error::Production environment not found.')
+              sys.exit(1)
+          environment_id = environment.get('_id')
+          services = {item.get('name'): item.get('_id') for item in detail.get('services') or []}
+          web_service = services.get('webapp-dest')
+          player_service = services.get('player-team-service')
+          if not web_service or not player_service:
+              print('::error::Required webapp-dest/player-team-service service not found.')
+              sys.exit(1)
+
+          execute_mutation = '''
+            mutation ExecuteCommand($serviceId: ObjectID!, $environmentId: ObjectID!, $command: [String!]!) {
+              executeCommand(serviceID: $serviceId, environmentID: $environmentId, command: $command) {
+                exitCode
+                output
+              }
+            }
+          '''
+
+          def execute(service_id, script, label):
+              data = gql(execute_mutation, {
+                  'serviceId': service_id,
+                  'environmentId': environment_id,
+                  'command': ['node', '-e', script],
+              })
+              result = data.get('executeCommand') or {}
+              exit_code = result.get('exitCode')
+              output = str(result.get('output') or '').strip()
+              print(f'--- {label} ---')
+              if output:
+                  print(output)
+              if exit_code != 0:
+                  print(f'::error::{label} failed (exit={exit_code}).')
+                  sys.exit(1)
+
+          web_script = r'''
+          const fs = require('fs');
+          const required = [
+            'IDENTITY_PROXY_TARGET',
+            'PLAYER_TEAM_PROXY_TARGET',
+            'INTERNAL_JWT_CLIENT_ENABLED',
+            'PLAYER_TEAM_INTERNAL_JWT_ENABLED',
+            'INTERNAL_JWT_CLIENT_ID',
+            'INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM',
+            'INTERNAL_JWT_CLIENT_ACTIVE_KID',
+            'INTERNAL_JWT_ASSERTION_AUD',
+            'GEMINI_API_KEY',
+          ];
+          const missing = required.filter((key) => !(process.env[key] || '').trim());
+          const flagsOk = process.env.INTERNAL_JWT_CLIENT_ENABLED === 'true' && process.env.PLAYER_TEAM_INTERNAL_JWT_ENABLED === 'true';
+          const modelOk = Boolean((process.env.GEMINI_VISION_MODEL || process.env.GEMINI_MODEL || '').trim());
+          console.log(`web_env=${missing.length === 0 && flagsOk && modelOk ? 'ok' : 'fail'}`);
+          if (missing.length) console.log(`web_missing=${missing.join(',')}`);
+          if (!flagsOk) console.log('web_jwt_flags=fail');
+          if (!modelOk) console.log('web_gemini_model=missing');
+          const sourceChecks = [
+            '/app/apps/web/app/api/team-economy/recognize/route.ts',
+            '/app/apps/web/app/teams/[teamId]/economy/manage/page.tsx',
+            '/app/apps/web/app/player-team/[...path]/route.ts',
+          ];
+          const sourceOk = sourceChecks.every((path) => fs.existsSync(path));
+          console.log(`web_economy_source=${sourceOk ? 'ok' : 'fail'}`);
+          const base = (process.env.PLAYER_TEAM_PROXY_TARGET || '').trim().replace(/\/+$/, '');
+          async function run() {
+            if (!base || missing.length || !flagsOk || !modelOk || !sourceOk) process.exitCode = 2;
+            if (!base) return;
+            const checks = [
+              ['/health/live', [200], 'player_team_live'],
+              ['/health/ready', [200], 'player_team_ready'],
+              ['/player-team/v1/economy/workspaces/__wiring_probe__/items?q=x', [401, 403], 'economy_route_auth_guard'],
+            ];
+            for (const [path, expected, label] of checks) {
+              try {
+                const response = await fetch(base + path, { redirect: 'manual' });
+                const ok = expected.includes(response.status);
+                console.log(`${label}=${ok ? 'ok' : 'fail'} status=${response.status}`);
+                if (!ok) process.exitCode = 3;
+              } catch {
+                console.log(`${label}=fail transport`);
+                process.exitCode = 3;
+              }
+            }
+          }
+          run().catch(() => { console.log('web_probe=fail'); process.exitCode = 4; });
+          '''
+
+          player_script = r'''
+          const required = [
+            'PLAYER_TEAM_DATABASE_URL',
+            'PLAYER_TEAM_INTERNAL_JWT_ENABLED',
+            'PLAYER_TEAM_INTERNAL_JWT_ISSUER',
+            'PLAYER_TEAM_INTERNAL_JWT_JWKS_URL',
+          ];
+          const missing = required.filter((key) => !(process.env[key] || '').trim());
+          const flagsOk = process.env.PLAYER_TEAM_INTERNAL_JWT_ENABLED === 'true';
+          console.log(`player_team_env=${missing.length === 0 && flagsOk ? 'ok' : 'fail'}`);
+          if (missing.length) console.log(`player_team_missing=${missing.join(',')}`);
+          if (!flagsOk) console.log('player_team_jwt_flag=fail');
+          async function run() {
+            if (missing.length || !flagsOk) process.exitCode = 2;
+            const readyUrl = `http://127.0.0.1:${process.env.PORT || 4400}/health/ready`;
+            try {
+              const ready = await fetch(readyUrl);
+              console.log(`player_team_self_ready=${ready.status === 200 ? 'ok' : 'fail'} status=${ready.status}`);
+              if (ready.status !== 200) process.exitCode = 3;
+            } catch {
+              console.log('player_team_self_ready=fail transport');
+              process.exitCode = 3;
+            }
+            if (!process.env.PLAYER_TEAM_DATABASE_URL) return;
+            const { Pool } = require('pg');
+            const pool = new Pool({ connectionString: process.env.PLAYER_TEAM_DATABASE_URL, max: 1 });
+            try {
+              const migration = await pool.query("SELECT EXISTS(SELECT 1 FROM player_team_schema_migrations WHERE id='006_team_economy.sql') AS ok");
+              const tables = await pool.query("SELECT to_regclass('public.player_team_economy_items') IS NOT NULL AND to_regclass('public.player_team_drop_sessions') IS NOT NULL AND to_regclass('public.player_team_drop_money') IS NOT NULL AND to_regclass('public.player_team_expenses') IS NOT NULL AS ok");
+              const migrationOk = migration.rows[0]?.ok === true;
+              const tablesOk = tables.rows[0]?.ok === true;
+              console.log(`economy_migration_006=${migrationOk ? 'ok' : 'fail'}`);
+              console.log(`economy_tables=${tablesOk ? 'ok' : 'fail'}`);
+              if (!migrationOk || !tablesOk) process.exitCode = 4;
+            } catch {
+              console.log('economy_database_probe=fail');
+              process.exitCode = 4;
+            } finally {
+              await pool.end().catch(() => undefined);
+            }
+          }
+          run().catch(() => { console.log('player_probe=fail'); process.exitCode = 5; });
+          '''
+
+          execute(web_service, web_script, 'webapp-dest wiring')
+          execute(player_service, player_script, 'player-team-service wiring')
+          print('ZEABUR_E2E_WIRING=OK')
+          PY
