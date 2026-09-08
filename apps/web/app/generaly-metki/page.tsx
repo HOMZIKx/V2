@@ -198,7 +198,7 @@ function historyIcon(entry: FixedHuntHistoryEntry): string {
   }
 }
 
-function historyTone(entry: FixedHuntHistoryEntry): string {
+function historyTone(entry: FixedHuntHistoryEntry) {
   switch (entry.type) {
     case 'killed':
       return styles.historyKilled;
@@ -217,7 +217,7 @@ function historyTone(entry: FixedHuntHistoryEntry): string {
   }
 }
 
-function requestTone(type: FixedHuntRequestType): string {
+function requestTone(type: FixedHuntRequestType) {
   switch (type) {
     case 'pvp':
       return styles.requestPvp;
