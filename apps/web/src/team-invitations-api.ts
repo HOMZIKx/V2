@@ -10,6 +10,16 @@ function playerTeamUrl(path: string): string {
   return `${baseUrl}${path}`;
 }
 
+export class TeamInvitationApiError extends Error {
+  public constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'TeamInvitationApiError';
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -18,7 +28,10 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(`team invitation request failed: ${response.status} ${body}`.trim());
+    throw new TeamInvitationApiError(
+      `team invitation request failed: ${response.status} ${body}`.trim(),
+      response.status,
+    );
   }
   return (await response.json()) as T;
 }
@@ -29,6 +42,10 @@ type InvitationWorkspaceResult = {
   readonly workspace: WorkspaceRecord;
   readonly revision: number;
 };
+
+export async function listTeamInvitations(): Promise<readonly PendingInvitation[]> {
+  return requestJson<readonly PendingInvitation[]>(playerTeamUrl('/player-team/v1/invitations'));
+}
 
 export async function createTeamInvitation(input: {
   readonly workspaceId: string;
