@@ -8,6 +8,7 @@ export type MetinGeneralHuntRoute = {
   readonly userId: string;
   readonly displayName: string;
   readonly channel: number;
+  readonly color?: string;
   readonly points: readonly MetinGeneralHuntPoint[];
   readonly updatedAt: number;
 };
@@ -64,6 +65,7 @@ export type MetinGeneralHuntHistoryEntry = {
 
 export type MetinGeneralHuntState = {
   readonly huntKey: string;
+  readonly eventCycleKey?: string;
   readonly routes: readonly MetinGeneralHuntRoute[];
   readonly markers: readonly MetinGeneralHuntMarker[];
   readonly requests: readonly MetinGeneralHuntRequest[];
