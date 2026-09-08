@@ -1,5 +1,5 @@
 {
-  "requestId": "technika-discord-deployments-finalcheck-20260908-1",
+  "requestId": "technika-discord-deployments-finalcheck-20260908-2",
   "mode": "graphql_read",
   "query": "query Deployments($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA ref createdAt startedAt finishedAt}}}}",
   "variables": {
