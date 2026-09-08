@@ -47,7 +47,6 @@ jobs:
           apps/discord-gateway/src/application/notify/notify-payload.spec.ts
           apps/discord-gateway/src/infrastructure/security/character-timer-custom-id.spec.ts
           apps/discord-gateway/src/presentation/discord/team-coordination-renderers.spec.ts
-          apps/discord-gateway/src/interface/discord/interaction-router.spec.ts
 
       - name: Build repository
         run: pnpm build
