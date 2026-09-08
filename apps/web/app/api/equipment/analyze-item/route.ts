@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const DEFAULT_VISION_MODEL = 'gpt-5.6-luna';
+const DEFAULT_VISION_MODEL = 'gemini-3-flash-preview';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const EQUIPMENT_CATEGORIES = new Set([
   'weapon',
@@ -37,17 +37,18 @@ interface AnalysisDraft {
   readonly notes: string;
 }
 
-interface ResponsesApiContent {
-  readonly type?: string;
+interface GeminiPart {
   readonly text?: string;
 }
 
-interface ResponsesApiOutput {
-  readonly content?: readonly ResponsesApiContent[];
+interface GeminiCandidate {
+  readonly content?: {
+    readonly parts?: readonly GeminiPart[];
+  };
 }
 
-interface ResponsesApiPayload {
-  readonly output?: readonly ResponsesApiOutput[];
+interface GeminiPayload {
+  readonly candidates?: readonly GeminiCandidate[];
   readonly error?: {
     readonly message?: string;
   };
@@ -86,9 +87,7 @@ async function resolveAuthenticatedDiscordSession(
   request: Request,
 ): Promise<AuthenticatedDiscordSession> {
   const cookie = request.headers.get('cookie');
-  if (!cookie) {
-    return { ok: false, status: 401, error: 'unauthorized' };
-  }
+  if (!cookie) return { ok: false, status: 401, error: 'unauthorized' };
 
   const headers = new Headers({ accept: 'application/json', cookie });
   const baseUrl = identityBaseUrl();
@@ -104,12 +103,8 @@ async function resolveAuthenticatedDiscordSession(
     return { ok: false, status: 503, error: 'identity_unavailable' };
   }
 
-  if (meResponse.status === 401) {
-    return { ok: false, status: 401, error: 'unauthorized' };
-  }
-  if (!meResponse.ok) {
-    return { ok: false, status: 503, error: 'identity_unavailable' };
-  }
+  if (meResponse.status === 401) return { ok: false, status: 401, error: 'unauthorized' };
+  if (!meResponse.ok) return { ok: false, status: 503, error: 'identity_unavailable' };
 
   let accountsResponse: Response;
   try {
@@ -122,12 +117,8 @@ async function resolveAuthenticatedDiscordSession(
     return { ok: false, status: 503, error: 'identity_unavailable' };
   }
 
-  if (accountsResponse.status === 401) {
-    return { ok: false, status: 401, error: 'unauthorized' };
-  }
-  if (!accountsResponse.ok) {
-    return { ok: false, status: 503, error: 'identity_unavailable' };
-  }
+  if (accountsResponse.status === 401) return { ok: false, status: 401, error: 'unauthorized' };
+  if (!accountsResponse.ok) return { ok: false, status: 503, error: 'identity_unavailable' };
 
   let accountsBody: { readonly accounts?: readonly IdentityAccount[] };
   try {
@@ -149,11 +140,11 @@ async function resolveAuthenticatedDiscordSession(
   return { ok: true, discordUserId };
 }
 
-function extractResponseText(payload: ResponsesApiPayload): string {
-  return (payload.output ?? [])
-    .flatMap((entry) => entry.content ?? [])
-    .map((entry) => entry.text ?? '')
-    .filter((entry) => entry.length > 0)
+function extractGeminiText(payload: GeminiPayload): string {
+  return (payload.candidates ?? [])
+    .flatMap((candidate) => candidate.content?.parts ?? [])
+    .map((part) => part.text ?? '')
+    .filter(Boolean)
     .join('\n')
     .trim();
 }
@@ -243,16 +234,13 @@ Zasady:
 export async function POST(request: Request) {
   const session = await resolveAuthenticatedDiscordSession(request);
   if (!session.ok) {
-    return NextResponse.json(
-      { error: session.error },
-      { status: session.status },
-    );
+    return NextResponse.json({ error: session.error }, { status: session.status });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
     return jsonError(
-      'Analiza AI nie jest skonfigurowana na serwerze. Dodaj OPENAI_API_KEY w środowisku usługi Web.',
+      'Analiza AI nie jest skonfigurowana na serwerze. Dodaj GEMINI_API_KEY w środowisku usługi Web.',
       503,
     );
   }
@@ -265,9 +253,7 @@ export async function POST(request: Request) {
   }
 
   const upload = form.get('image');
-  if (!(upload instanceof File)) {
-    return jsonError('Brak pliku obrazu w polu image.', 400);
-  }
+  if (!(upload instanceof File)) return jsonError('Brak pliku obrazu w polu image.', 400);
   if (!ALLOWED_IMAGE_TYPES.has(upload.type)) {
     return jsonError('Obsługiwane formaty screena: PNG, JPG/JPEG i WEBP.', 415);
   }
@@ -276,58 +262,68 @@ export async function POST(request: Request) {
   }
 
   const bytes = Buffer.from(await upload.arrayBuffer());
-  const dataUrl = `data:${upload.type};base64,${bytes.toString('base64')}`;
-  const model = process.env.OPENAI_VISION_MODEL?.trim() || DEFAULT_VISION_MODEL;
+  const base64Image = bytes.toString('base64');
+  const model = process.env.GEMINI_VISION_MODEL?.trim() || DEFAULT_VISION_MODEL;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
   let response: Response;
   try {
-    response = await fetch('https://api.openai.com/v1/responses', {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        'x-goog-api-key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
-        input: [
+        contents: [
           {
             role: 'user',
-            content: [
-              { type: 'input_text', text: ANALYSIS_PROMPT },
-              { type: 'input_image', image_url: dataUrl },
+            parts: [
+              { text: ANALYSIS_PROMPT },
+              {
+                inlineData: {
+                  mimeType: upload.type,
+                  data: base64Image,
+                },
+              },
             ],
           },
         ],
-        max_output_tokens: 1200,
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1200,
+          responseMimeType: 'application/json',
+        },
       }),
     });
   } catch (error) {
-    console.error('equipment screenshot analysis request failed', error);
+    console.error('equipment screenshot Gemini request failed', error);
     return jsonError('Nie udało się połączyć z analizą AI.', 502);
   }
 
-  let payload: ResponsesApiPayload;
+  let payload: GeminiPayload;
   try {
-    payload = (await response.json()) as ResponsesApiPayload;
+    payload = (await response.json()) as GeminiPayload;
   } catch {
     return jsonError('Usługa analizy zwróciła nieprawidłową odpowiedź.', 502);
   }
 
   if (!response.ok) {
-    console.error('equipment screenshot analysis rejected', response.status, payload.error?.message);
+    console.error('equipment screenshot Gemini rejected', response.status, payload.error?.message);
     return jsonError('Analiza AI nie powiodła się. Spróbuj ponownie albo dodaj przedmiot ręcznie.', 502);
   }
 
-  const rawText = extractResponseText(payload);
+  const rawText = extractGeminiText(payload);
   const draft = parseAnalysisDraft(rawText);
   if (!draft) {
-    console.error('equipment screenshot analysis produced invalid JSON');
+    console.error('equipment screenshot Gemini produced invalid JSON');
     return jsonError('Nie udało się pewnie odczytać danych ze screena. Użyj dodawania ręcznego.', 422);
   }
 
   return NextResponse.json({
     draft,
     model,
+    provider: 'gemini',
     persisted: false,
   });
 }
