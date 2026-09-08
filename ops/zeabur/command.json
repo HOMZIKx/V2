@@ -1,9 +1,11 @@
 {
-  "requestId": "verify-identity-redeploy-20260908-2",
-  "mode": "graphql_read",
-  "query": "query VerifyIdentity($serviceID:ObjectID!,$environmentID:ObjectID!){ service(_id:$serviceID){ _id name status gitTrigger(environmentID:$environmentID){branchName} } deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:2){ edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}} } }",
+  "requestId": "repair-activity-branch-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "query": "mutation RepairActivity($serviceID:ObjectID!,$environmentID:ObjectID!,$branch:String!){ updateServiceBranch(serviceID:$serviceID,branch:$branch) redeployService(serviceID:$serviceID,environmentID:$environmentID) }",
   "variables": {
-    "serviceID": "6a8211cfbdeaa87e2c52df39",
-    "environmentID": "6a720a3e5f062718bc7b3421"
+    "serviceID": "6a8211c2a21454a2cf6ad77b",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "branch": "preview/destiled-web"
   }
 }
