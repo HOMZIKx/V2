@@ -1,7 +1,6 @@
 {
-  "requestId": "api-gateway-runtime-log-20260908-2",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "api-gateway"
+  "requestId": "player-team-jwt-prepare-20260908-1",
+  "mode": "production_repair",
+  "phase": "player_team_prepare",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
