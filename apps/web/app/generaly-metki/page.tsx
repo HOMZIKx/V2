@@ -114,13 +114,13 @@ const REQUEST_ICONS: Readonly<Record<MetinGeneralHuntRequestType, string>> = {
 
 const CHANNEL_COLORS: Readonly<Record<number, string>> = {
   1: '#3b82f6',
-  2: '#22c55e',
-  3: '#f59e0b',
-  4: '#ef4444',
-  5: '#a855f7',
-  6: '#06b6d4',
-  7: '#f97316',
-  8: '#ec4899',
+  2: '#f59e0b',
+  3: '#ef4444',
+  4: '#8b5cf6',
+  5: '#06b6d4',
+  6: '#f97316',
+  7: '#ec4899',
+  8: '#6366f1',
 };
 
 function channelColor(channel: number): string {
