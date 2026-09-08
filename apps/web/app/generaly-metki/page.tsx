@@ -9,16 +9,16 @@ import {
 } from 'react';
 
 import {
-  FixedHuntRoomApiError,
-  getFixedHuntRoom,
-  putFixedHuntRoom,
-  type FixedHuntHistoryEntry,
-  type FixedHuntRequest,
-  type FixedHuntRequestType,
-  type FixedHuntRoomPoint,
-  type FixedHuntRoomSnapshot,
-  type FixedHuntRoomState,
-} from '../../src/fixed-hunt-rooms-api';
+  MetinGeneralHuntApiError,
+  getMetinGeneralHunt,
+  putMetinGeneralHunt,
+  type MetinGeneralHuntHistoryEntry,
+  type MetinGeneralHuntPoint,
+  type MetinGeneralHuntRequest,
+  type MetinGeneralHuntRequestType,
+  type MetinGeneralHuntSnapshot,
+  type MetinGeneralHuntState,
+} from '../../src/metin-general-hunts-api';
 import { huntMapImagePath } from '../../src/hunt-map-assets';
 import { useHuntViewer } from '../../src/hunt-online';
 import { respawnMaps } from '../../src/respawn-timers';
@@ -28,7 +28,7 @@ import styles from './generaly-metki.module.css';
 type HuntKind = 'metin' | 'general';
 type MapMode = 'view' | 'route' | 'found';
 
-type RoomDefinition = {
+type HuntDefinition = {
   readonly key: 'metin-red-las' | 'metin-v1' | 'general-v1' | 'metin-v2' | 'general-v2';
   readonly label: string;
   readonly shortLabel: string;
@@ -43,7 +43,7 @@ function mapChannels(mapKey: string): readonly number[] {
   return Array.from({ length: count }, (_, index) => index + 1);
 }
 
-const ROOMS: readonly RoomDefinition[] = [
+const HUNTS: readonly HuntDefinition[] = [
   {
     key: 'metin-red-las',
     label: 'Red Las — Metin Legendarny',
@@ -91,13 +91,13 @@ const ROOMS: readonly RoomDefinition[] = [
   },
 ];
 
-const REQUEST_LABELS: Readonly<Record<FixedHuntRequestType, string>> = {
+const REQUEST_LABELS: Readonly<Record<MetinGeneralHuntRequestType, string>> = {
   pvp: 'POTRZEBNY PVP',
   dps: 'POTRZEBNY DPS',
   buff: 'POTRZEBNY BUFF',
 };
 
-const REQUEST_ICONS: Readonly<Record<FixedHuntRequestType, string>> = {
+const REQUEST_ICONS: Readonly<Record<MetinGeneralHuntRequestType, string>> = {
   pvp: '⚔️',
   dps: '💥',
   buff: '✨',
@@ -111,17 +111,17 @@ function newId(prefix: string): string {
   return `${prefix}-${random}`;
 }
 
-function emptyState(roomKey: string): FixedHuntRoomState {
-  return { roomKey, routes: [], markers: [], requests: [], history: [] };
+function emptyState(huntKey: string): MetinGeneralHuntState {
+  return { huntKey, routes: [], markers: [], requests: [], history: [] };
 }
 
 function normalizeState(
-  roomKey: string,
-  state: FixedHuntRoomState | null | undefined,
-): FixedHuntRoomState {
-  if (!state || typeof state !== 'object') return emptyState(roomKey);
+  huntKey: string,
+  state: MetinGeneralHuntState | null | undefined,
+): MetinGeneralHuntState {
+  if (!state || typeof state !== 'object') return emptyState(huntKey);
   return {
-    roomKey,
+    huntKey,
     routes: Array.isArray(state.routes) ? state.routes : [],
     markers: Array.isArray(state.markers) ? state.markers : [],
     requests: Array.isArray(state.requests) ? state.requests : [],
@@ -160,7 +160,7 @@ function formatClock(value: number): string {
   });
 }
 
-function historyLabel(entry: FixedHuntHistoryEntry): string {
+function historyLabel(entry: MetinGeneralHuntHistoryEntry): string {
   switch (entry.type) {
     case 'killed':
       return 'ZBITY';
@@ -179,7 +179,7 @@ function historyLabel(entry: FixedHuntHistoryEntry): string {
   }
 }
 
-function historyIcon(entry: FixedHuntHistoryEntry): string {
+function historyIcon(entry: MetinGeneralHuntHistoryEntry): string {
   switch (entry.type) {
     case 'killed':
       return '✅';
@@ -198,7 +198,7 @@ function historyIcon(entry: FixedHuntHistoryEntry): string {
   }
 }
 
-function historyTone(entry: FixedHuntHistoryEntry) {
+function historyTone(entry: MetinGeneralHuntHistoryEntry) {
   switch (entry.type) {
     case 'killed':
       return styles.historyKilled;
@@ -217,7 +217,7 @@ function historyTone(entry: FixedHuntHistoryEntry) {
   }
 }
 
-function requestTone(type: FixedHuntRequestType) {
+function requestTone(type: MetinGeneralHuntRequestType) {
   switch (type) {
     case 'pvp':
       return styles.requestPvp;
@@ -238,22 +238,22 @@ function routeColor(userId: string): string {
 
 export default function GeneralsMetinsPage() {
   const { viewerId, displayName, onlineEnabled, hydrated } = useHuntViewer();
-  const [roomKey, setRoomKey] = useState<RoomDefinition['key']>('metin-red-las');
-  const roomDefinition = ROOMS.find((room) => room.key === roomKey) ?? ROOMS[0]!;
+  const [huntKey, setHuntKey] = useState<HuntDefinition['key']>('metin-red-las');
+  const huntDefinition = HUNTS.find((hunt) => hunt.key === huntKey) ?? HUNTS[0]!;
   const [channel, setChannel] = useState(1);
   const [mode, setMode] = useState<MapMode>('view');
-  const [snapshot, setSnapshot] = useState<FixedHuntRoomSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<MetinGeneralHuntSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
   const [now, setNow] = useState(() => Date.now());
 
   const state = useMemo(
-    () => normalizeState(roomDefinition.key, snapshot?.state),
-    [roomDefinition.key, snapshot?.state],
+    () => normalizeState(huntDefinition.key, snapshot?.state),
+    [huntDefinition.key, snapshot?.state],
   );
 
-  const loadRoom = useCallback(
+  const loadHunt = useCallback(
     async (quiet = false) => {
       if (!onlineEnabled || !viewerId) {
         setSnapshot(null);
@@ -262,43 +262,43 @@ export default function GeneralsMetinsPage() {
       }
       if (!quiet) setLoading(true);
       try {
-        const result = await getFixedHuntRoom({ viewerId, roomKey: roomDefinition.key });
-        setSnapshot({ ...result, state: normalizeState(roomDefinition.key, result.state) });
+        const result = await getMetinGeneralHunt({ viewerId, huntKey: huntDefinition.key });
+        setSnapshot({ ...result, state: normalizeState(huntDefinition.key, result.state) });
         setNotice('');
       } catch (error) {
         if (!quiet) {
-          setNotice(error instanceof Error ? error.message : 'Nie udało się pobrać pokoju.');
+          setNotice(error instanceof Error ? error.message : 'Nie udało się pobrać polowania.');
         }
       } finally {
         if (!quiet) setLoading(false);
       }
     },
-    [onlineEnabled, roomDefinition.key, viewerId],
+    [onlineEnabled, huntDefinition.key, viewerId],
   );
 
   useEffect(() => {
     if (!hydrated) return;
-    setChannel(roomDefinition.channels[0] ?? 1);
+    setChannel(huntDefinition.channels[0] ?? 1);
     setMode('view');
     setSnapshot(null);
-    void loadRoom();
-  }, [hydrated, loadRoom, roomDefinition.channels]);
+    void loadHunt();
+  }, [hydrated, huntDefinition.channels, loadHunt]);
 
   useEffect(() => {
     if (!hydrated || !onlineEnabled || !viewerId) return;
-    const id = window.setInterval(() => void loadRoom(true), 1_000);
+    const id = window.setInterval(() => void loadHunt(true), 1_000);
     return () => window.clearInterval(id);
-  }, [hydrated, loadRoom, onlineEnabled, viewerId]);
+  }, [hydrated, loadHunt, onlineEnabled, viewerId]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 15_000);
     return () => window.clearInterval(id);
   }, []);
 
-  const mutateRoom = useCallback(
-    async (mutator: (current: FixedHuntRoomState) => FixedHuntRoomState) => {
+  const mutateHunt = useCallback(
+    async (mutator: (current: MetinGeneralHuntState) => MetinGeneralHuntState) => {
       if (!onlineEnabled || !viewerId) {
-        setNotice('Pokój wymaga aktywnego połączenia z aplikacją.');
+        setNotice('Polowanie wymaga aktywnego połączenia z aplikacją.');
         return false;
       }
       setSaving(true);
@@ -307,22 +307,22 @@ export default function GeneralsMetinsPage() {
           const base =
             attempt === 0 && snapshot
               ? snapshot
-              : await getFixedHuntRoom({ viewerId, roomKey: roomDefinition.key });
-          const current = normalizeState(roomDefinition.key, base.state);
+              : await getMetinGeneralHunt({ viewerId, huntKey: huntDefinition.key });
+          const current = normalizeState(huntDefinition.key, base.state);
           const nextState = mutator(current);
           try {
-            const result = await putFixedHuntRoom({
+            const result = await putMetinGeneralHunt({
               viewerId,
-              roomKey: roomDefinition.key,
+              huntKey: huntDefinition.key,
               expectedRevision: base.revision,
               state: nextState,
             });
-            setSnapshot({ ...result, state: normalizeState(roomDefinition.key, result.state) });
+            setSnapshot({ ...result, state: normalizeState(huntDefinition.key, result.state) });
             setNotice('');
             return true;
           } catch (error) {
             if (
-              error instanceof FixedHuntRoomApiError &&
+              error instanceof MetinGeneralHuntApiError &&
               error.status === 409 &&
               attempt < 2
             ) {
@@ -339,14 +339,14 @@ export default function GeneralsMetinsPage() {
         setSaving(false);
       }
     },
-    [onlineEnabled, roomDefinition.key, snapshot, viewerId],
+    [huntDefinition.key, onlineEnabled, snapshot, viewerId],
   );
 
   const appendHistory = useCallback(
     (
-      current: FixedHuntRoomState,
-      input: Omit<FixedHuntHistoryEntry, 'id' | 'createdAt' | 'userId' | 'displayName'>,
-    ): readonly FixedHuntHistoryEntry[] => [
+      current: MetinGeneralHuntState,
+      input: Omit<MetinGeneralHuntHistoryEntry, 'id' | 'createdAt' | 'userId' | 'displayName'>,
+    ): readonly MetinGeneralHuntHistoryEntry[] => [
       {
         id: newId('event'),
         createdAt: Date.now(),
@@ -359,10 +359,10 @@ export default function GeneralsMetinsPage() {
     [displayName, viewerId],
   );
 
-  const quickRequest = async (type: FixedHuntRequestType) => {
+  const quickRequest = async (type: MetinGeneralHuntRequestType) => {
     const requestId = newId('request');
-    const historyType: `need_${FixedHuntRequestType}` = `need_${type}`;
-    await mutateRoom((current) => ({
+    const historyType: `need_${MetinGeneralHuntRequestType}` = `need_${type}`;
+    await mutateHunt((current) => ({
       ...current,
       requests: [
         {
@@ -388,7 +388,7 @@ export default function GeneralsMetinsPage() {
   };
 
   const markKilled = async () => {
-    await mutateRoom((current) => ({
+    await mutateHunt((current) => ({
       ...current,
       routes: current.routes.filter((route) => route.channel !== channel),
       markers: current.markers.filter((marker) => marker.channel !== channel),
@@ -402,9 +402,9 @@ export default function GeneralsMetinsPage() {
     setMode('view');
   };
 
-  const respondComing = async (request: FixedHuntRequest) => {
+  const respondComing = async (request: MetinGeneralHuntRequest) => {
     if (!viewerId || request.responders.some((responder) => responder.userId === viewerId)) return;
-    await mutateRoom((current) => ({
+    await mutateHunt((current) => ({
       ...current,
       requests: current.requests.map((candidate) =>
         candidate.id === request.id
@@ -426,8 +426,8 @@ export default function GeneralsMetinsPage() {
     }));
   };
 
-  const closeRequest = async (request: FixedHuntRequest) => {
-    await mutateRoom((current) => ({
+  const closeRequest = async (request: MetinGeneralHuntRequest) => {
+    await mutateHunt((current) => ({
       ...current,
       requests: current.requests.map((candidate) =>
         candidate.id === request.id
@@ -443,7 +443,7 @@ export default function GeneralsMetinsPage() {
     }));
   };
 
-  const imagePath = huntMapImagePath(roomDefinition.mapKey);
+  const imagePath = huntMapImagePath(huntDefinition.mapKey);
 
   const handleMapClick = async (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!imagePath || mode === 'view' || saving) return;
@@ -455,10 +455,10 @@ export default function GeneralsMetinsPage() {
     const rawY = ((event.clientY - rect.top) / rect.height) * 100;
     if (rawX < 0 || rawX > 100 || rawY < 0 || rawY > 100) return;
 
-    const point: FixedHuntRoomPoint = { x: rawX, y: rawY };
+    const point: MetinGeneralHuntPoint = { x: rawX, y: rawY };
 
     if (mode === 'found') {
-      const ok = await mutateRoom((current) => ({
+      const ok = await mutateHunt((current) => ({
         ...current,
         markers: [
           ...current.markers.filter((marker) => marker.channel !== channel),
@@ -478,8 +478,8 @@ export default function GeneralsMetinsPage() {
       return;
     }
 
-    if (mode === 'route' && roomDefinition.kind === 'metin') {
-      await mutateRoom((current) => {
+    if (mode === 'route' && huntDefinition.kind === 'metin') {
+      await mutateHunt((current) => {
         const mine = current.routes.find(
           (route) => route.userId === viewerId && route.channel === channel,
         );
@@ -507,7 +507,7 @@ export default function GeneralsMetinsPage() {
 
   const undoRoutePoint = async () => {
     if (!viewerId) return;
-    await mutateRoom((current) => ({
+    await mutateHunt((current) => ({
       ...current,
       routes: current.routes.flatMap((route) => {
         if (route.userId !== viewerId || route.channel !== channel) return [route];
@@ -519,7 +519,7 @@ export default function GeneralsMetinsPage() {
 
   const clearOwnRoute = async () => {
     if (!viewerId) return;
-    await mutateRoom((current) => ({
+    await mutateHunt((current) => ({
       ...current,
       routes: current.routes.filter(
         (route) => !(route.userId === viewerId && route.channel === channel),
@@ -532,13 +532,13 @@ export default function GeneralsMetinsPage() {
   const activeRequests = state.requests
     .filter((request) => request.status === 'active')
     .sort((left, right) => right.createdAt - left.createdAt);
-  const next = nextSpawn(roomDefinition.intervalHours, now);
+  const next = nextSpawn(huntDefinition.intervalHours, now);
   const ownRoute = state.routes.find(
     (route) => route.userId === viewerId && route.channel === channel,
   );
 
   const switchToChannel = (nextChannel: number) => {
-    if (!roomDefinition.channels.includes(nextChannel)) return;
+    if (!huntDefinition.channels.includes(nextChannel)) return;
     setChannel(nextChannel);
     setMode('view');
   };
@@ -551,7 +551,7 @@ export default function GeneralsMetinsPage() {
             <span className={styles.eyebrow}>CENTRUM POLOWAŃ</span>
             <h1>Generały / Metiny</h1>
             <p>
-              Jedna mapa, szybkie komendy i wspólny stan na żywo. Wybierz pokój i CH —
+              Jedna mapa, szybkie komendy i wspólny stan na żywo. Wybierz wątek i CH —
               reszta ma być widoczna od razu.
             </p>
           </div>
@@ -559,22 +559,22 @@ export default function GeneralsMetinsPage() {
             <span className={onlineEnabled && viewerId ? styles.syncDotOnline : styles.syncDot} />
             <div>
               <strong>{onlineEnabled && viewerId ? 'Wspólny stan online' : 'Brak połączenia'}</strong>
-              <small>{snapshot ? `rewizja ${snapshot.revision}` : 'oczekiwanie na pokój'}</small>
+              <small>{snapshot ? `rewizja ${snapshot.revision}` : 'oczekiwanie na dane'}</small>
             </div>
           </div>
         </header>
 
-        <section className={styles.roomGrid} aria-label="Stałe pokoje polowania">
-          {ROOMS.map((room) => (
+        <section className={styles.roomGrid} aria-label="Wątki Metinów i Generałów">
+          {HUNTS.map((hunt) => (
             <button
-              className={`${styles.roomCard}${room.key === roomDefinition.key ? ` ${styles.roomCardActive}` : ''}`}
-              key={room.key}
-              onClick={() => setRoomKey(room.key)}
+              className={`${styles.roomCard}${hunt.key === huntDefinition.key ? ` ${styles.roomCardActive}` : ''}`}
+              key={hunt.key}
+              onClick={() => setHuntKey(hunt.key)}
               type="button"
             >
-              <span>{room.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}</span>
-              <strong>{room.shortLabel}</strong>
-              <small>{room.kind === 'metin' ? 'CH1–CH3' : `CH1–CH${room.channels.at(-1) ?? 1}`}</small>
+              <span>{hunt.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}</span>
+              <strong>{hunt.shortLabel}</strong>
+              <small>{hunt.kind === 'metin' ? 'CH1–CH3' : `CH1–CH${hunt.channels.at(-1) ?? 1}`}</small>
             </button>
           ))}
         </section>
@@ -582,10 +582,10 @@ export default function GeneralsMetinsPage() {
         <section className={styles.roomHeader}>
           <div>
             <span className={styles.roomType}>
-              {roomDefinition.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}
+              {huntDefinition.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}
             </span>
-            <h2>{roomDefinition.label}</h2>
-            <p>Harmonogram: {scheduleHours(roomDefinition.intervalHours)}</p>
+            <h2>{huntDefinition.label}</h2>
+            <p>Harmonogram: {scheduleHours(huntDefinition.intervalHours)}</p>
           </div>
           <div className={styles.nextSpawn}>
             <span>Następny spawn</span>
@@ -595,14 +595,14 @@ export default function GeneralsMetinsPage() {
         </section>
 
         <nav className={styles.channelBar} aria-label="Kanał">
-          {roomDefinition.channels.map((roomChannel) => (
+          {huntDefinition.channels.map((huntChannel) => (
             <button
-              className={roomChannel === channel ? styles.channelActive : styles.channelButton}
-              key={roomChannel}
-              onClick={() => switchToChannel(roomChannel)}
+              className={huntChannel === channel ? styles.channelActive : styles.channelButton}
+              key={huntChannel}
+              onClick={() => switchToChannel(huntChannel)}
               type="button"
             >
-              CH{roomChannel}
+              CH{huntChannel}
             </button>
           ))}
         </nav>
@@ -613,11 +613,11 @@ export default function GeneralsMetinsPage() {
           <section className={styles.mapPanel}>
             <div className={styles.mapToolbar}>
               <div>
-                <strong>🗺️ {roomDefinition.mapKey} · CH{channel}</strong>
+                <strong>🗺️ {huntDefinition.mapKey} · CH{channel}</strong>
                 <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe do działania'}</span>
               </div>
               <div className={styles.mapActions}>
-                {roomDefinition.kind === 'metin' ? (
+                {huntDefinition.kind === 'metin' ? (
                   <button
                     className={mode === 'route' ? styles.toolRouteActive : styles.toolButton}
                     disabled={!imagePath || saving}
@@ -635,7 +635,7 @@ export default function GeneralsMetinsPage() {
                 >
                   📍 Znalazłem
                 </button>
-                {roomDefinition.kind === 'metin' && ownRoute ? (
+                {huntDefinition.kind === 'metin' && ownRoute ? (
                   <>
                     <button
                       className={styles.toolButton}
@@ -661,13 +661,13 @@ export default function GeneralsMetinsPage() {
             <div className={styles.mapFrame}>
               {imagePath ? (
                 <div
-                  aria-label={`Interaktywna mapa ${roomDefinition.mapKey} CH${channel}`}
+                  aria-label={`Interaktywna mapa ${huntDefinition.mapKey} CH${channel}`}
                   className={`${styles.mapCanvas}${mode !== 'view' ? ` ${styles.mapCanvasEditing}` : ''}`}
                   onClick={(event) => void handleMapClick(event)}
                   role="presentation"
                 >
                   <img
-                    alt={`Mapa ${roomDefinition.mapKey}`}
+                    alt={`Mapa ${huntDefinition.mapKey}`}
                     className={styles.mapImage}
                     draggable={false}
                     src={imagePath}
@@ -735,7 +735,7 @@ export default function GeneralsMetinsPage() {
               )}
             </div>
 
-            {roomDefinition.kind === 'metin' ? (
+            {huntDefinition.kind === 'metin' ? (
               <div className={styles.routeLegend}>
                 {visibleRoutes.length === 0 ? (
                   <span>CH{channel}: nikt nie wyznaczył jeszcze trasy.</span>
@@ -875,14 +875,14 @@ export default function GeneralsMetinsPage() {
           <div className={styles.sectionHeading}>
             <div>
               <span>HISTORIA NA ŻYWO</span>
-              <h3>{roomDefinition.shortLabel}</h3>
+              <h3>{huntDefinition.shortLabel}</h3>
             </div>
             <em>{state.history.length}</em>
           </div>
 
           <div className={styles.historyList}>
             {state.history.length === 0 ? (
-              <p className={styles.empty}>Jeszcze bez komend w tym pokoju.</p>
+              <p className={styles.empty}>Jeszcze bez komend w tym wątku.</p>
             ) : null}
 
             {state.history.map((entry) => {

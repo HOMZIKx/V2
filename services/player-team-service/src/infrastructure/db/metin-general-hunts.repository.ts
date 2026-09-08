@@ -5,16 +5,16 @@ import { createLogger } from '@v2/observability';
 
 import { PlayerTeamError } from '../../domain/errors.js';
 import {
-  type FixedHuntRoomRecord,
-  type FixedHuntRoomsRepositoryPort,
-  type UpdateFixedHuntRoomInput,
-} from '../../domain/ports/fixed-hunt-rooms.port.js';
+  type MetinGeneralHuntRecord,
+  type MetinGeneralHuntsRepositoryPort,
+  type UpdateMetinGeneralHuntInput,
+} from '../../domain/ports/metin-general-hunts.port.js';
 import { type PlayerTeamEnv } from '../config/player-team-env.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
 
 @Injectable()
-export class FixedHuntRoomsRepository implements FixedHuntRoomsRepositoryPort, OnModuleInit {
-  private readonly logger = createLogger('fixed-hunt-rooms-repository');
+export class MetinGeneralHuntsRepository implements MetinGeneralHuntsRepositoryPort, OnModuleInit {
+  private readonly logger = createLogger('metin-general-hunts-repository');
   private pool: Pool | null = null;
 
   public constructor(@Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv) {}
@@ -24,23 +24,23 @@ export class FixedHuntRoomsRepository implements FixedHuntRoomsRepositoryPort, O
       connectionString: this.env.PLAYER_TEAM_DATABASE_URL,
       max: 10,
     });
-    this.logger.info('fixed hunt rooms database pool created.');
+    this.logger.info('metin/general hunts database pool created.');
   }
 
   private get db(): Pool {
-    if (this.pool === null) throw new Error('fixed hunt rooms pool not initialized');
+    if (this.pool === null) throw new Error('metin/general hunts pool not initialized');
     return this.pool;
   }
 
   private mapRow(row: {
-    room_key: string;
+    hunt_key: string;
     state: Record<string, unknown>;
     revision: number | string;
     updated_by_user_id: string | null;
     updated_at: string | Date;
-  }): FixedHuntRoomRecord {
+  }): MetinGeneralHuntRecord {
     return {
-      roomKey: row.room_key,
+      huntKey: row.hunt_key,
       state: row.state && typeof row.state === 'object' ? row.state : {},
       revision: Number(row.revision),
       updatedByUserId: row.updated_by_user_id,
@@ -48,62 +48,58 @@ export class FixedHuntRoomsRepository implements FixedHuntRoomsRepositoryPort, O
     };
   }
 
-  public async getOrCreateFixedHuntRoom(roomKey: string): Promise<FixedHuntRoomRecord> {
+  public async getOrCreateHunt(huntKey: string): Promise<MetinGeneralHuntRecord> {
     const existing = await this.db.query(
-      `SELECT * FROM player_team_fixed_hunt_rooms WHERE room_key = $1`,
-      [roomKey],
+      `SELECT * FROM player_team_metin_general_hunts WHERE hunt_key = $1`,
+      [huntKey],
     );
-    if (existing.rows[0] !== undefined) {
-      return this.mapRow(existing.rows[0]);
-    }
+    if (existing.rows[0] !== undefined) return this.mapRow(existing.rows[0]);
 
     const initialState = JSON.stringify({
-      roomKey,
+      huntKey,
       routes: [],
       markers: [],
       requests: [],
       history: [],
     });
     const inserted = await this.db.query(
-      `INSERT INTO player_team_fixed_hunt_rooms
-        (room_key, state, revision, updated_by_user_id, updated_at)
+      `INSERT INTO player_team_metin_general_hunts
+        (hunt_key, state, revision, updated_by_user_id, updated_at)
        VALUES ($1, $2::jsonb, 0, NULL, NOW())
-       ON CONFLICT (room_key) DO NOTHING
+       ON CONFLICT (hunt_key) DO NOTHING
        RETURNING *`,
-      [roomKey, initialState],
+      [huntKey, initialState],
     );
-    if (inserted.rows[0] !== undefined) {
-      return this.mapRow(inserted.rows[0]);
-    }
+    if (inserted.rows[0] !== undefined) return this.mapRow(inserted.rows[0]);
 
     const raced = await this.db.query(
-      `SELECT * FROM player_team_fixed_hunt_rooms WHERE room_key = $1`,
-      [roomKey],
+      `SELECT * FROM player_team_metin_general_hunts WHERE hunt_key = $1`,
+      [huntKey],
     );
     if (raced.rows[0] === undefined) {
-      throw new PlayerTeamError('NOT_FOUND', 'fixed hunt room could not be initialised');
+      throw new PlayerTeamError('NOT_FOUND', 'metin/general hunt could not be initialised');
     }
     return this.mapRow(raced.rows[0]);
   }
 
-  public async updateFixedHuntRoom(input: UpdateFixedHuntRoomInput): Promise<FixedHuntRoomRecord> {
-    await this.getOrCreateFixedHuntRoom(input.roomKey);
+  public async updateHunt(input: UpdateMetinGeneralHuntInput): Promise<MetinGeneralHuntRecord> {
+    await this.getOrCreateHunt(input.huntKey);
     const updated = await this.db.query(
-      `UPDATE player_team_fixed_hunt_rooms
+      `UPDATE player_team_metin_general_hunts
        SET state = $2::jsonb,
            revision = revision + 1,
            updated_by_user_id = $3,
            updated_at = NOW()
-       WHERE room_key = $1 AND revision = $4
+       WHERE hunt_key = $1 AND revision = $4
        RETURNING *`,
-      [input.roomKey, JSON.stringify(input.state), input.viewerId, input.expectedRevision],
+      [input.huntKey, JSON.stringify(input.state), input.viewerId, input.expectedRevision],
     );
 
     if ((updated.rowCount ?? 0) === 0) {
-      const current = await this.getOrCreateFixedHuntRoom(input.roomKey);
+      const current = await this.getOrCreateHunt(input.huntKey);
       throw new PlayerTeamError(
         'REVISION_CONFLICT',
-        `fixed hunt room revision mismatch: expected ${input.expectedRevision}, actual ${current.revision}`,
+        `metin/general hunt revision mismatch: expected ${input.expectedRevision}, actual ${current.revision}`,
         { actualRevision: current.revision },
       );
     }

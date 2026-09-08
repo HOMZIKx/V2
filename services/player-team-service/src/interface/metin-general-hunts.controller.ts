@@ -12,24 +12,24 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 
-import { FixedHuntRoomsUseCases } from '../application/use-cases/fixed-hunt-rooms.use-cases.js';
+import { MetinGeneralHuntsUseCases } from '../application/use-cases/metin-general-hunts.use-cases.js';
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
-import { FIXED_HUNT_ROOMS_USE_CASES, PLAYER_TEAM_ENV } from './player-team.tokens.js';
+import { METIN_GENERAL_HUNTS_USE_CASES, PLAYER_TEAM_ENV } from './player-team.tokens.js';
 import { resolvePlayerTeamRequestDiscordId } from './request-auth.js';
 
-const updateRoomBodySchema = z.object({
+const updateHuntBodySchema = z.object({
   expectedRevision: z.number().int().nonnegative(),
   state: z.record(z.string(), z.unknown()),
 });
 
 type RequestHeaders = Record<string, string | string[] | undefined>;
 
-@Controller('player-team/v1/fixed-hunt-rooms')
+@Controller('player-team/v1/metin-general-hunts')
 @UseFilters(PlayerTeamExceptionFilter)
-export class FixedHuntRoomsController {
+export class MetinGeneralHuntsController {
   public constructor(
-    @Inject(FIXED_HUNT_ROOMS_USE_CASES) private readonly useCases: FixedHuntRoomsUseCases,
+    @Inject(METIN_GENERAL_HUNTS_USE_CASES) private readonly useCases: MetinGeneralHuntsUseCases,
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
   ) {}
 
@@ -41,28 +41,28 @@ export class FixedHuntRoomsController {
     });
   }
 
-  @Get(':roomKey')
-  public async getRoom(
+  @Get(':huntKey')
+  public async getHunt(
     @Headers() headers: RequestHeaders,
-    @Param('roomKey') roomKey: string,
+    @Param('huntKey') huntKey: string,
   ) {
     await this.viewerId(headers);
-    return this.useCases.getRoom(roomKey);
+    return this.useCases.getHunt(huntKey);
   }
 
-  @Put(':roomKey')
+  @Put(':huntKey')
   @HttpCode(200)
-  public async updateRoom(
+  public async updateHunt(
     @Headers() headers: RequestHeaders,
-    @Param('roomKey') roomKey: string,
+    @Param('huntKey') huntKey: string,
     @Body() rawBody: unknown,
   ) {
-    const parsed = updateRoomBodySchema.safeParse(rawBody);
+    const parsed = updateHuntBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
     }
-    return this.useCases.updateRoom({
-      roomKey,
+    return this.useCases.updateHunt({
+      huntKey,
       viewerId: await this.viewerId(headers),
       state: parsed.data.state,
       expectedRevision: parsed.data.expectedRevision,

@@ -2,7 +2,7 @@
  * Primary surfaces: graphite + silver, blue/red brand glow. Green/orange/purple
  * stay reserved for semantic command/status states, not module branding.
  */
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) {
   --hunt-panel: rgba(14, 17, 24, 0.92);
   --hunt-panel-strong: #0a0c11;
   --hunt-line: var(--line, rgba(158, 169, 192, 0.16));
@@ -13,7 +13,7 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania']) {
   --hunt-muted: var(--muted, #9299a9);
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='hero'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='hero'] {
   border-color: var(--hunt-line-strong) !important;
   background:
     radial-gradient(circle at 92% 4%, rgba(57, 136, 255, 0.14), transparent 34%),
@@ -22,32 +22,32 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='he
   box-shadow: var(--shadow, 0 18px 55px rgba(0, 0, 0, 0.36)) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='hero']::after {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='hero']::after {
   display: none !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='hero'] p,
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='roomHeader'] p {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='hero'] p,
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='roomHeader'] p {
   color: #aab0be !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='syncBox'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='syncBox'] {
   border-color: rgba(217, 222, 235, 0.18) !important;
   background: rgba(9, 11, 16, 0.72) !important;
   box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.025) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='eyebrow'],
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='roomType'],
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='sectionHeading'] > div > span,
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='nextSpawn'] > span,
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='roomCard'] > span {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='eyebrow'],
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='roomType'],
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='sectionHeading'] > div > span,
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='nextSpawn'] > span,
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='roomCard'] > span {
   color: #a4abbb !important;
   font-weight: 650 !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   button {
   border-color: var(--hunt-line) !important;
   color: #b8bfcd !important;
@@ -55,15 +55,15 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania'])
   box-shadow: none !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   button:hover {
   border-color: rgba(106, 153, 234, 0.35) !important;
   background: rgba(17, 21, 30, 0.96) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   button[class*='roomCardActive'] {
   border-color: rgba(57, 136, 255, 0.52) !important;
   background:
@@ -74,29 +74,29 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania'])
     0 10px 30px rgba(0, 0, 0, 0.16) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   button[class*='roomCardActive']::after {
   background: linear-gradient(90deg, transparent, var(--hunt-blue), transparent) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   + section {
   border-color: var(--hunt-line) !important;
   background: var(--hunt-panel) !important;
   box-shadow: none !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-  section[aria-label='Stałe pokoje polowania']
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+  section[aria-label='Wątki Metinów i Generałów']
   + section
   > div:last-child
   strong {
   color: #cbdcff !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
   nav[aria-label='Kanał']
   button {
   border-color: var(--hunt-line) !important;
@@ -105,14 +105,14 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania'])
   box-shadow: none !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
   nav[aria-label='Kanał']
   button:hover {
   border-color: rgba(74, 138, 255, 0.42) !important;
   color: #aecdff !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
   nav[aria-label='Kanał']
   button[class*='channelActive'] {
   border-color: rgba(74, 138, 255, 0.65) !important;
@@ -121,29 +121,29 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania'])
   box-shadow: inset 0 0 0 1px rgba(57, 136, 255, 0.04) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapPanel'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapPanel'] {
   border-color: var(--hunt-line) !important;
   background: #090c12 !important;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.26) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapToolbar'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapToolbar'] {
   border-bottom-color: var(--hunt-line) !important;
   background: linear-gradient(180deg, #121620, #0d1016) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapFrame'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapFrame'] {
   background:
     radial-gradient(circle at 84% 0, rgba(57, 136, 255, 0.045), transparent 42%),
     #070a0f !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapCanvas'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapCanvas'] {
   border-color: rgba(158, 169, 192, 0.14) !important;
   background: #05070b !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapCanvasEditing'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapCanvasEditing'] {
   border-color: rgba(57, 136, 255, 0.5) !important;
   box-shadow:
     0 0 0 1px rgba(57, 136, 255, 0.04),
@@ -151,33 +151,33 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='ma
     inset 0 0 36px rgba(0, 0, 0, 0.3) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='toolRouteActive'],
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='toolFoundActive'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='toolRouteActive'],
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='toolFoundActive'] {
   border-color: rgba(57, 136, 255, 0.58) !important;
   color: #aecdff !important;
   background: rgba(45, 101, 212, 0.2) !important;
   box-shadow: none !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapHint'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapHint'] {
   border-color: rgba(57, 136, 255, 0.34) !important;
   color: #cbdcff !important;
   background: rgba(8, 12, 18, 0.95) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapHint'] span {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='mapHint'] span {
   color: #8d9bb1 !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='quickPanel'],
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='requestsPanel'],
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='historyPanel'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='quickPanel'],
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='requestsPanel'],
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='historyPanel'] {
   border-color: var(--hunt-line) !important;
   background-color: var(--hunt-panel) !important;
 }
 
-main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='quickPanel'] {
+main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='quickPanel'] {
   background:
     radial-gradient(circle at 100% 0, rgba(57, 136, 255, 0.045), transparent 46%),
     var(--hunt-panel) !important;
@@ -187,14 +187,14 @@ main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='qu
  * DPS=orange, BUFF=purple, found/coming status. They are actions, not branding. */
 
 @media (max-width: 760px) {
-  main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='hero'] {
+  main#main-content:has(section[aria-label='Wątki Metinów i Generałów']) [class*='hero'] {
     background:
       radial-gradient(circle at 100% 0, rgba(57, 136, 255, 0.1), transparent 38%),
       #0a0c11 !important;
   }
 
-  main#main-content:has(section[aria-label='Stałe pokoje polowania'])
-    section[aria-label='Stałe pokoje polowania']
+  main#main-content:has(section[aria-label='Wątki Metinów i Generałów'])
+    section[aria-label='Wątki Metinów i Generałów']
     button {
     background: rgba(14, 17, 24, 0.94) !important;
   }
