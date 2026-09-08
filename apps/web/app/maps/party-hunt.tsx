@@ -104,6 +104,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   const [mapKey, setMapKey] = useState((partyMaps[0] ?? respawnMaps[0])?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
   const [channel, setChannel] = useState(1);
+  const [allChannels, setAllChannels] = useState(false);
   const [party, setParty] = useState<MapParty | null>(null);
   const [savedClosedParty, setSavedClosedParty] = useState<MapParty | null>(null);
   const [pins, setPins] = useState<readonly PartyScoutPin[]>([]);
@@ -382,9 +383,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   }, []);
 
   const visiblePins = useMemo(
-    () => activeScoutPins(pins, party, mapKey, channel, now),
-    [channel, mapKey, now, party, pins],
+    () =>
+      allChannels
+        ? partyActiveScoutPins(pins, party, now).filter((pin) => pin.mapKey === mapKey)
+        : activeScoutPins(pins, party, mapKey, channel, now),
+    [allChannels, channel, mapKey, now, party, pins],
   );
+  const channelViewLabel = allChannels ? 'Wszystkie kanały' : `CH${channel}`;
   const sidebarPins = useMemo(() => partyActiveScoutPins(pins, party, now), [now, party, pins]);
   const currentMapImage = huntMapImagePath(mapKey);
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(mapKey);
@@ -393,7 +398,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     visiblePins.find((pin) => pin.id === selectedPinId) ??
     null;
   const viewingSharedPartyMap =
-    party !== null && party.mapKey === mapKey && party.activeChannel === channel;
+    !allChannels && party !== null && party.mapKey === mapKey && party.activeChannel === channel;
   const activePinLabel =
     pinCustomLabel.trim() ||
     SCOUT_PIN_KIND_PRESETS.find((item) => item.kind === pinKind)?.label ||
@@ -406,11 +411,20 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setSelectedPinId(null);
   };
   const changeChannel = (next: number) => {
+    setAllChannels(false);
     setChannel(next);
+    setSelectedPinId(null);
+  };
+  const showAllChannels = () => {
+    setAllChannels(true);
     setSelectedPinId(null);
   };
   const syncPartyToMyView = () => {
     if (!party) return;
+    if (allChannels) {
+      setNotice('Wybierz konkretny CH, aby ustawić wspólną mapę party.');
+      return;
+    }
     if (onlineEnabled && viewerId && partyRoomId && partyRevision !== null) {
       void patchPartyRoom({
         viewerId,
@@ -432,6 +446,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   };
   const jumpToPartyMap = () => {
     if (!party) return;
+    setAllChannels(false);
     setMapKey(party.mapKey);
     setChannel(party.activeChannel);
     setSelectedPinId(null);
@@ -646,6 +661,10 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   };
   const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!party) return;
+    if (allChannels) {
+      setNotice('Wybierz konkretny CH, aby postawić pinezkę.');
+      return;
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
     const location: RespawnLocation = {
       x: Math.max(
@@ -680,6 +699,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     }
   };
   const selectPinFromList = (pin: PartyScoutPin) => {
+    setAllChannels(false);
     setMapKey(pin.mapKey);
     setChannel(pin.channel);
     setSelectedPinId(pin.id);
@@ -791,7 +811,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               </p>
             ) : (
               <p className="respawn-mini-lead">
-                {mapKey} · CH{channel} · mini okno · {huntStatusLabel(connectionStatus)}
+                {mapKey} · {channelViewLabel} · mini okno · {huntStatusLabel(connectionStatus)}
               </p>
             )}
           </div>
@@ -863,6 +883,14 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           <div className="respawn-channel-select">
             <span>Kanał (Twój widok)</span>
             <div className="respawn-channels">
+              <button
+                aria-pressed={allChannels}
+                className={allChannels ? 'is-active' : ''}
+                onClick={showAllChannels}
+                type="button"
+              >
+                Wszystkie
+              </button>
               {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (
                 <button
                   aria-pressed={value === channel}
@@ -891,7 +919,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
             <header className="respawn-list-header">
               <div>
                 <span className="section-kicker">
-                  {mapKey} · CH{channel}
+                  {mapKey} · {channelViewLabel}
                   {party
                     ? viewingSharedPartyMap
                       ? ' · widok = mapa party'
@@ -954,11 +982,17 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
 
             <div className="respawn-map-stage-wrap">
               <div
-                aria-label={party ? 'Mapa party — klik stawia pinezkę' : 'Mapa party'}
-                className={`respawn-map-stage${party ? ' is-placing' : ''}`}
+                aria-label={
+                  party
+                    ? allChannels
+                      ? 'Mapa party — widok wszystkich kanałów'
+                      : 'Mapa party — klik stawia pinezkę'
+                    : 'Mapa party'
+                }
+                className={`respawn-map-stage${party && !allChannels ? ' is-placing' : ''}`}
                 onClick={placeOnMap}
-                role={party ? 'button' : undefined}
-                tabIndex={party ? 0 : undefined}
+                role={party && !allChannels ? 'button' : undefined}
+                tabIndex={party && !allChannels ? 0 : undefined}
               >
                 {canShowMapImage ? (
                   <img
@@ -980,7 +1014,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                     <div className={styles.atlasCopy}>
                       <span className={styles.atlasEyebrow}>Party</span>
                       <strong>{mapKey}</strong>
-                      <span>CH{channel}</span>
+                      <span>{channelViewLabel}</span>
                     </div>
                   </div>
                 )}
@@ -988,7 +1022,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <div className="respawn-map-caption">
                   <strong>{mapKey}</strong>
                   <span>
-                    CH{channel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min
+                    {channelViewLabel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min
                   </span>
                 </div>
                 {visiblePins.map((pin) => {
@@ -1011,6 +1045,25 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                       type="button"
                     >
                       <MapPinGlyph />
+                      {allChannels ? (
+                        <span
+                          aria-hidden
+                          style={{
+                            color: '#fff',
+                            fontSize: 8,
+                            fontWeight: 900,
+                            left: '50%',
+                            lineHeight: 1,
+                            pointerEvents: 'none',
+                            position: 'absolute',
+                            textShadow: '0 1px 3px #000',
+                            top: '42%',
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        >
+                          {pin.channel}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
@@ -1019,7 +1072,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <p className="respawn-map-help">
                   {!party
                     ? 'Najpierw utwórz party albo dołącz kodem obok — potem klik mapy stawia pinezkę.'
-                    : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}
+                    : allChannels
+                      ? 'Widok zbiorczy: pinezki ze wszystkich CH na tej mapie. Wybierz konkretny CH, aby dodać pinezkę.'
+                      : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}
                 </p>
               ) : null}
               {selectedPin ? (
@@ -1134,10 +1189,11 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                     </button>
                     <button
                       className="respawn-party-toggle is-on"
+                      disabled={allChannels}
                       onClick={syncPartyToMyView}
                       type="button"
                     >
-                      <span /> Ustaw mój widok jako mapę party
+                      <span /> {allChannels ? 'Wybierz CH, aby ustawić mapę party' : 'Ustaw mój widok jako mapę party'}
                     </button>
                   </div>
                 ) : null}
