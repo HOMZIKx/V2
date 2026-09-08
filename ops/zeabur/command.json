@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-marker-guard-final-status-a2446e42-20260908-1914",
+  "requestId": "webapp-marker-guard-runtime-a2446e42-20260908-1915",
   "mode": "cli",
-  "action": "deployment:get",
+  "action": "logs:runtime",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
