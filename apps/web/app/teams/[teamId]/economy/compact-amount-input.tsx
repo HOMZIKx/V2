@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 export function parseCompactAmount(raw: string): number | null {
   const normalized = raw
@@ -36,21 +36,27 @@ export function CompactAmountInput({
 }) {
   const [text, setText] = useState(() => initialText(value));
   const [invalid, setInvalid] = useState(false);
+  const editingRef = useRef(false);
+  const selfCommittedValueRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // Keep a compact value such as `1kk` intact after this component commits it.
-    // Only rewrite the field when the value was changed externally.
-    if (parseCompactAmount(text) !== value) setText(initialText(value));
-  }, [text, value]);
+    if (selfCommittedValueRef.current === value) {
+      selfCommittedValueRef.current = null;
+      return;
+    }
+    if (!editingRef.current) setText(initialText(value));
+  }, [value]);
 
   const commit = () => {
     const parsed = parseCompactAmount(text);
+    editingRef.current = false;
     if (parsed === null) {
       setInvalid(true);
       setText(initialText(value));
       return;
     }
     setInvalid(false);
+    selfCommittedValueRef.current = parsed;
     onValueChange(parsed);
     setText(text.trim().toLocaleLowerCase('pl-PL').replace(',', '.'));
   };
@@ -70,6 +76,9 @@ export function CompactAmountInput({
       onChange={(event) => {
         setInvalid(false);
         setText(event.target.value);
+      }}
+      onFocus={() => {
+        editingRef.current = true;
       }}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
