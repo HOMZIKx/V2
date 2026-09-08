@@ -12,7 +12,16 @@ import {
   UseFilters,
   type MessageEvent,
 } from '@nestjs/common';
-import { concat, from, map, mergeMap, type Observable } from 'rxjs';
+import {
+  concat,
+  distinctUntilChanged,
+  from,
+  map,
+  merge,
+  mergeMap,
+  timer,
+  type Observable,
+} from 'rxjs';
 import { z } from 'zod';
 
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
@@ -77,13 +86,18 @@ export class WorkspaceLiveController {
     @Param('workspaceId') workspaceId: string,
   ): Observable<MessageEvent> {
     const ownerUserId = this.viewerId(headers);
-    const initial = from(this.useCases.getWorkspaceSnapshot(ownerUserId, workspaceId)).pipe(
+    const readCurrent = () => from(this.useCases.getWorkspaceSnapshot(ownerUserId, workspaceId));
+
+    // Local bus gives near-instant updates on a single instance. The database
+    // poll makes the stream correct across multiple Player Team instances and
+    // after process restarts/redeploys because PostgreSQL is authoritative.
+    const initial = readCurrent();
+    const localUpdates = this.liveBus.events(workspaceId).pipe(mergeMap(readCurrent));
+    const databaseUpdates = timer(1_000, 1_000).pipe(mergeMap(readCurrent));
+
+    return concat(initial, merge(localUpdates, databaseUpdates)).pipe(
+      distinctUntilChanged((previous, next) => previous.revision === next.revision),
       map((record) => ({ type: 'workspace', data: record }) satisfies MessageEvent),
     );
-    const updates = this.liveBus.events(workspaceId).pipe(
-      mergeMap(() => from(this.useCases.getWorkspaceSnapshot(ownerUserId, workspaceId))),
-      map((record) => ({ type: 'workspace', data: record }) satisfies MessageEvent),
-    );
-    return concat(initial, updates);
   }
 }
