@@ -64,6 +64,15 @@ describe('project hard progression config', () => {
       'horse',
       'biologist',
     ]);
+    expect(progressionKindsForLevel(null)).toEqual([
+      'skill_book',
+      'soul_stone',
+      'leadership',
+      'polymorph',
+      'mining',
+      'horse',
+      'biologist',
+    ]);
     expect(projectHardProgressionCycles).toHaveLength(7);
     expect(projectHardSkillBookRules.dailyReset).toBe('midnight');
     expect(projectHardSoulStoneRules.cooldownHours).toBe(12);
