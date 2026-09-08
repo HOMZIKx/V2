@@ -44,6 +44,7 @@ const itemImageSchema = z.object({
 });
 const dropItemSchema = z
   .object({
+    dropItemId: z.string().min(1).nullable().optional(),
     itemId: z.string().min(1).nullable(),
     displayName: z.string().trim().min(1).max(160),
     totalQuantity: z.number().int().positive(),

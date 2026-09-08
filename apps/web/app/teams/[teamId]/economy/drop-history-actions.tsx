@@ -163,6 +163,7 @@ export function DropHistoryActions({
           splitMode,
           participants,
           items: resolved.map((item) => ({
+            dropItemId: item.id || null,
             itemId: item.itemId,
             displayName: item.displayName.trim(),
             totalQuantity: item.totalQuantity,
