@@ -1,6 +1,4 @@
 {
-  "requestId": "check-api-after-redeploy-and-origin-repair-20260908-2",
-  "mode": "graphql_read",
-  "query": "query Check($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){_id name status(environmentID:$environmentID) suspendedAt suspendedReason gitTrigger(environmentID:$environmentID){branchName repoID repoURL} deployments(environmentID:$environmentID){_id ref commitSHA commitMessage status createdAt startedAt finishedAt canceledAt}}}",
-  "variables": {"serviceID":"6a8211c9bdeaa87e2c52df34","environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "post-api-recovery-env-audit-20260908-1",
+  "mode": "env_audit"
 }
