@@ -1,0 +1,90 @@
+name: One-shot Technika docs
+
+on:
+  push:
+    branches:
+      - fix/technika-character-timer-runtime-config-20260908
+
+permissions:
+  contents: write
+
+jobs:
+  update-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/technika-character-timer-runtime-config-20260908
+      - name: Record fix state
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          fix = Path('docs/ai/FIX_LOG.md')
+          text = fix.read_text(encoding='utf-8')
+          marker = '## 2026-09-08 14:18 — Technika: live DM timerów postaci używa aktywnego szablonu\n'
+          if marker not in text:
+              entry = '''## 2026-09-08 14:18 — Technika: live DM timerów postaci używa aktywnego szablonu
+
+- **Status:** `PARTIAL` — poprawka kodowa i CI są potwierdzone; pełny runtime E2E pozostaje otwarty do momentu realnego live DM przez Discord po wdrożeniu.
+- **Obszar:** `discord-gateway`, Technika config, timery postaci, trwały worker reminderów.
+- **Problem:** zapis i aktywacja konfiguracji Technika działały oraz przetrwały restart i pełny Zeabur redeploy, ale realne live DM timerów postaci nadal używały hardcoded `formatTimerNotifyContent(...)`, więc zmiana `characterTimers.messageTemplate` była widoczna w test-DM, lecz nie w normalnym przepływie.
+- **Przyczyna:** runtime poprawnie pobierał aktywny config do gate/toggle, ale treść live wiadomości nie konsumowała `characterTimers.messageTemplate`. Ten sam brak występował w kanonicznym durable workerze odpalanym po czasie.
+- **Poprawka:** dodano osobny renderer szablonu timerów postaci oparty o `applyNotifyTemplate`; `NotifyController` rozdziela teraz character-timer payload od legacy formattera i pobiera aktywną konfigurację w chwili wysyłki. Durable worker również rozwiązuje aktywny szablon dopiero przy fire, więc zmiana w Technika działa dla kolejnej wiadomości bez restartu. Legacy map/metin formatter nie został zmieniony.
+- **Zmienione pliki:** `apps/discord-gateway/src/application/notify/character-timer-template.ts`, `character-timer-template.spec.ts`, `apps/discord-gateway/src/interface/http/notify-character-template.spec.ts`, `notify.controller.ts`, `apps/discord-gateway/src/interface/discord/discord-bootstrap.service.ts`.
+- **Commit / PR:** PR `#68`; kod `2dacfbac5faf4f58d43261e9cb34c407c40427e5`; korekta typowania testu `bb9fc801dfc7b78ad866944298ee41903ab212f3`.
+- **Walidacja:** pierwszy CI `34224933226` wykrył wyłącznie błąd typowania nowego mocka testowego; po korekcie CI `34225187832` zakończył `Quality gates`, `Infrastructure integration` i `Secret scan` statusem `success`; Discord gateway regression tests, preview typecheck/build gates i production dependency audit przeszły. PR Title `34225198774` również `success`.
+- **Persistence proof:** wcześniejsze produkcyjne probe `34221254767` → restart `34221513829` → probe `34221568915` oraz pełny native redeploy `34221697477` / RUNNING deployment `6a9ff5427b89d694354a05a8` → probe `34222690555` zachowały tę samą rewizję, `updatedAt` i fingerprinty configu. To wyklucza reset/persistence jako przyczynę obecnego błędu.
+- **Deployment:** PR nie został jeszcze zmergowany do `preview/destiled-web`, aby nie uruchamiać wspólnego rollout’u w trakcie równoległych zmian innych agentów.
+- **Runtime / E2E:** test-DM nie jest uznawany za dowód, bo ta ścieżka już wcześniej respektowała szablon. Do `DONE` potrzebny jest realny character-timer notify przez gateway → Discord z niestandardowym aktywnym template.
+- **Pozostałe ryzyka:** `reminderMinutesBefore` nadal nie jest osobnym pre-reminder jobem. Obecny job odpala się na `endsAt` i oznacza timer jako ready; nie wolno po prostu przesunąć go wcześniej. Bezpieczna poprawka wymaga osobnego `pre_reminder` (bez mark-ready) oraz `due` (z mark-ready), z migracją starych persisted jobs. To pozostaje osobnym `PARTIAL`.
+
+'''
+              text = text.replace('# Wpisy\n', '# Wpisy\n\n' + entry, 1)
+              fix.write_text(text, encoding='utf-8')
+
+          state = Path('docs/ai/PROJECT_STATE.md')
+          text = state.read_text(encoding='utf-8')
+          state_marker = '### Technika / timery postaci — 2026-09-08\n'
+          if state_marker not in text:
+              section = '''### Technika / timery postaci — 2026-09-08
+
+- PR #68 naprawia rozjazd między test-DM a realnym live DM: aktywny `characterTimers.messageTemplate` jest teraz rozwiązywany przy każdej wysyłce, również przez durable worker po restarcie.
+- Trwałość configu Technika została potwierdzona na produkcji przez restart i pełny Zeabur redeploy; przyczyną nie był reset pliku/configu.
+- CI dla `bb9fc801dfc7b78ad866944298ee41903ab212f3`: PASS (`34225187832`); pełny live Discord E2E po wdrożeniu nadal `PARTIAL`.
+- `reminderMinutesBefore` wymaga osobnego pre-reminder joba i pozostaje otwartym, świadomie niewłączonym zakresem.
+
+'''
+              text = text.replace('## Produkcja Zeabur — stan potwierdzony 2026-09-08\n', section + '## Produkcja Zeabur — stan potwierdzony 2026-09-08\n', 1)
+              state.write_text(text, encoding='utf-8')
+
+          handoff = Path('docs/ai/CURSOR_TO_CHATGPT.md')
+          text = handoff.read_text(encoding='utf-8')
+          handoff_marker = '## Technika / timery postaci — PR #68\n'
+          if handoff_marker not in text:
+              section = '''## Technika / timery postaci — PR #68
+
+- Root cause: live character-timer DM ignorował `characterTimers.messageTemplate`, mimo że config był poprawnie zapisywany/aktywowany i test-DM go używał.
+- PR #68 (`bb9fc801dfc7b78ad866944298ee41903ab212f3`) podpina aktywny template do normalnego notify/reset oraz canonical durable workera i rozwiązuje config w chwili wysyłki.
+- Legacy map/metin formatter pozostaje nietknięty.
+- CI `34225187832` PASS; PR Title `34225198774` PASS.
+- Nie oznaczać `DONE` przed realnym live DM gateway → Discord po wdrożeniu.
+- `reminderMinutesBefore` nadal nie realizuje pre-remindera; nie przesuwać istniejącego due joba wcześniej, bo worker oznacza timer jako ready.
+
+'''
+              text = text.replace('# Cursor / Agent → Owner\n\n', '# Cursor / Agent → Owner\n\n' + section, 1)
+              handoff.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit documentation
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/ai/FIX_LOG.md docs/ai/PROJECT_STATE.md docs/ai/CURSOR_TO_CHATGPT.md
+          git commit -m 'docs(ai): record Technika timer runtime fix'
+          git push origin HEAD:fix/technika-character-timer-runtime-config-20260908
