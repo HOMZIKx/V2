@@ -102,8 +102,9 @@ try {
       publicKeyEncoding: { type: 'spki', format: 'pem' },
       privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
     });
-    await setEnv(service, tempKeyName, privateKey);
-    actions.push('one-time private decrypt key stored temporarily in Zeabur');
+    const privateKeyBase64 = Buffer.from(privateKey, 'utf8').toString('base64');
+    await setEnv(service, tempKeyName, privateKeyBase64);
+    actions.push('one-time private decrypt key stored temporarily in Zeabur as base64');
     finish({ ok: true, phase: 'prepare', publicKey, actions });
   }
 
@@ -115,8 +116,16 @@ try {
 
     let service = await getService();
     const privateEntry = (service.variables || []).filter((entry) => entry.key === tempKeyName).at(-1);
-    const privateKey = String(privateEntry?.value || '');
-    if (!privateKey.includes('PRIVATE KEY')) throw new Error('one-time private decrypt key missing');
+    const encodedPrivateKey = String(privateEntry?.value || '').trim();
+    if (!encodedPrivateKey) throw new Error('one-time private decrypt key missing');
+
+    let privateKey;
+    try {
+      privateKey = Buffer.from(encodedPrivateKey, 'base64').toString('utf8');
+    } catch {
+      throw new Error('one-time private decrypt key decoding failed');
+    }
+    if (!privateKey.includes('PRIVATE KEY')) throw new Error('one-time private decrypt key invalid');
 
     let plaintext;
     try {
