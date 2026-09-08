@@ -1,7 +1,5 @@
 {
-  "requestId": "rollback-api-to-known-good-e31b81b-20260908-1",
-  "mode": "graphql_write",
-  "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Rollback($deploymentID:ObjectID!){rollbackDeployment(deploymentID:$deploymentID)}",
-  "variables": {"deploymentID":"6a9fc5547b89d6943549f756"}
+  "requestId": "inspect-trigger-cicd-source-contract-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Schema{input:__type(name:\"TriggerCICDSourceInput\"){name inputFields{name type{kind name ofType{kind name ofType{kind name}}}}} build:__type(name:\"CICDBuild\"){name fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}}}"
 }
