@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 
 const outDir = process.env.ZEABUR_OUTPUT_DIR || 'ops/zeabur/out';
@@ -12,9 +13,18 @@ async function readJson(url, init = {}) {
   return { response, body };
 }
 
+function anonymousUserKey(value) {
+  return createHash('sha256').update(String(value ?? '')).digest('hex').slice(0, 10);
+}
+
+function numberOrZero(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function write(result, code = 0) {
   fs.writeFileSync(`${outDir}/result.json`, JSON.stringify(result, null, 2));
-  fs.writeFileSync(`${outDir}/summary.md`, `# Public production E2E probe\n\n- Web live: **${result.health?.status ?? 'n/a'}**\n- Identity ready (DB + Redis + migrations): **${result.identityReady?.status ?? 'n/a'}**\n- Identity JWKS: **${result.jwks?.status ?? 'n/a'}**\n- Identity unauthenticated /me: **${result.identityMe?.status ?? 'n/a'}**\n- Player Team unauthenticated state: **${result.playerTeamUnauth?.status ?? 'n/a'}**\n- Discord OAuth redirect host: **${result.oauth?.locationHost ?? 'n/a'}**\n- Discord gateway ready: **${result.discord?.state ?? 'n/a'}**\n- Member activity members: **${result.memberActivity?.totalMembers ?? 'n/a'}**\n- Member activity messages: **${result.memberActivity?.messageCount ?? 'n/a'}**\n- Member activity voice minutes: **${result.memberActivity?.voiceMinutes ?? 'n/a'}**\n`);
+  fs.writeFileSync(`${outDir}/summary.md`, `# Public production E2E probe\n\n- Web live: **${result.health?.status ?? 'n/a'}**\n- Identity ready (DB + Redis + migrations): **${result.identityReady?.status ?? 'n/a'}**\n- Identity JWKS: **${result.jwks?.status ?? 'n/a'}**\n- Identity unauthenticated /me: **${result.identityMe?.status ?? 'n/a'}**\n- Player Team unauthenticated state: **${result.playerTeamUnauth?.status ?? 'n/a'}**\n- Discord OAuth redirect host: **${result.oauth?.locationHost ?? 'n/a'}**\n- Discord gateway ready: **${result.discord?.state ?? 'n/a'}**\n- Member activity members: **${result.memberActivity?.totalMembers ?? 'n/a'}**\n- Member activity messages: **${result.memberActivity?.messageCount ?? 'n/a'}**\n- Member activity voice minutes: **${result.memberActivity?.voiceMinutes ?? 'n/a'}**\n- Member activity integrity issues: **${result.memberActivity?.integrity?.issueCount ?? 'n/a'}**\n`);
   process.exit(code);
 }
 
@@ -38,9 +48,29 @@ try {
   const discord = await readJson(`${base}/discord-gateway/health/discord`, { cache: 'no-store' });
   const ranking = await readJson(`${base}/discord-gateway/discord/v1/member-activity/ranking?window=since_bot&topN=500`, { cache: 'no-store' });
   const entries = Array.isArray(ranking.body?.entries) ? ranking.body.entries : [];
-  const messageCount = entries.reduce((sum, row) => sum + (Number(row?.messageCount) || 0), 0);
-  const voiceMinutes = entries.reduce((sum, row) => sum + (Number(row?.voiceMinutes) || 0), 0);
+  const messageCount = entries.reduce((sum, row) => sum + numberOrZero(row?.messageCount), 0);
+  const voiceMinutes = entries.reduce((sum, row) => sum + numberOrZero(row?.voiceMinutes), 0);
   const jwksKeys = Array.isArray(jwks.body?.keys) ? jwks.body.keys : [];
+
+  const ids = entries.map((row) => String(row?.discordUserId ?? ''));
+  const uniqueIds = new Set(ids);
+  const scoreMismatches = entries.filter((row) =>
+    numberOrZero(row?.score) !== numberOrZero(row?.messageCount) + numberOrZero(row?.voiceMinutes));
+  const invalidCounters = entries.filter((row) =>
+    [row?.messageCount, row?.voiceMinutes, row?.score].some((value) => {
+      const n = Number(value);
+      return !Number.isFinite(n) || n < 0;
+    }));
+  const invalidRanks = entries.filter((row, index) => Number(row?.rank) !== index + 1);
+  const duplicateCount = ids.length - uniqueIds.size;
+  const issueCount = duplicateCount + scoreMismatches.length + invalidCounters.length + invalidRanks.length;
+  const anonymousRows = entries.map((row) => ({
+    rank: numberOrZero(row?.rank),
+    userKey: anonymousUserKey(row?.discordUserId),
+    messageCount: numberOrZero(row?.messageCount),
+    voiceMinutes: numberOrZero(row?.voiceMinutes),
+    score: numberOrZero(row?.score),
+  }));
 
   const result = {
     ok:
@@ -57,7 +87,8 @@ try {
       discord.response.ok &&
       discord.body?.enabled === true &&
       discord.body?.state === 'ready' &&
-      ranking.response.ok,
+      ranking.response.ok &&
+      issueCount === 0,
     at: new Date().toISOString(),
     health: { status: health.response.status, ok: health.response.ok },
     identityReady: {
@@ -105,6 +136,14 @@ try {
       window: ranking.body?.window ?? null,
       fromDayInclusive: ranking.body?.fromDayInclusive ?? null,
       toDayInclusive: ranking.body?.toDayInclusive ?? null,
+      integrity: {
+        issueCount,
+        duplicateCount,
+        scoreMismatchCount: scoreMismatches.length,
+        invalidCounterCount: invalidCounters.length,
+        invalidRankCount: invalidRanks.length,
+      },
+      anonymousRows,
     },
   };
   write(result, result.ok ? 0 : 1);
