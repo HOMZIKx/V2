@@ -38,8 +38,10 @@ export function CompactAmountInput({
   const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
-    setText(initialText(value));
-  }, [value]);
+    // Keep a compact value such as `1kk` intact after this component commits it.
+    // Only rewrite the field when the value was changed externally.
+    if (parseCompactAmount(text) !== value) setText(initialText(value));
+  }, [text, value]);
 
   const commit = () => {
     const parsed = parseCompactAmount(text);
@@ -66,11 +68,8 @@ export function CompactAmountInput({
       inputMode="decimal"
       onBlur={commit}
       onChange={(event) => {
-        const nextText = event.target.value;
         setInvalid(false);
-        setText(nextText);
-        const parsed = parseCompactAmount(nextText);
-        if (parsed !== null) onValueChange(parsed);
+        setText(event.target.value);
       }}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
