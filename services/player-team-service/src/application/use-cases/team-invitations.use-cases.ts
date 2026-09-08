@@ -10,6 +10,8 @@ export type TeamInvitationsAccessConfig = {
   readonly allowDemoWrite: boolean;
 };
 
+const INVITATION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -49,6 +51,28 @@ function memberMatchesDiscord(member: Record<string, unknown>, discordId: string
   return asString(member.discordAccountId) === discordId || asString(member.id) === discordId;
 }
 
+function expiryTimestamp(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isExpired(invitation: Pick<TeamInvitationRecord, 'status' | 'expiresAtIso'>, now = Date.now()): boolean {
+  if (invitation.status !== 'pending') return false;
+  const expiresAt = expiryTimestamp(invitation.expiresAtIso);
+  return expiresAt !== null && expiresAt <= now;
+}
+
+function rawInvitationExpired(entry: Record<string, unknown>, now = Date.now()): boolean {
+  if (asString(entry.status) !== 'pending') return false;
+  const expiresAt = expiryTimestamp(asString(entry.expiresAtIso) || undefined);
+  return expiresAt !== null && expiresAt <= now;
+}
+
+function withEffectiveExpiry(invitation: TeamInvitationRecord, now = Date.now()): TeamInvitationRecord {
+  return isExpired(invitation, now) ? { ...invitation, status: 'expired' } : invitation;
+}
+
 export class TeamInvitationsUseCases {
   public constructor(
     private readonly repository: TeamInvitationsRepositoryPort,
@@ -72,7 +96,9 @@ export class TeamInvitationsUseCases {
   public async listPendingInvitations(
     recipientDiscordId: string,
   ): Promise<readonly TeamInvitationRecord[]> {
-    return this.repository.listPendingForRecipient(recipientDiscordId);
+    const invitations = await this.repository.listPendingForRecipient(recipientDiscordId);
+    const now = Date.now();
+    return invitations.filter((invitation) => !isExpired(invitation, now));
   }
 
   public async createInvitation(input: {
@@ -108,10 +134,12 @@ export class TeamInvitationsUseCases {
         throw new PlayerTeamError('VALIDATION_FAILED', 'recipient is already a team member');
       }
 
+      const now = Date.now();
       const existing = invitationsOf(current.state).find(
         (entry) =>
           asString(entry.recipientDiscordId) === input.recipientDiscordId &&
-          asString(entry.status) === 'pending',
+          asString(entry.status) === 'pending' &&
+          !rawInvitationExpired(entry, now),
       );
       if (existing !== undefined) {
         const existingId = asString(existing.id);
@@ -120,7 +148,7 @@ export class TeamInvitationsUseCases {
           : null;
         if (parsed !== null) {
           return {
-            invitation: parsed.invitation,
+            invitation: withEffectiveExpiry(parsed.invitation, now),
             workspaceId: current.workspaceId,
             workspace: current.state,
             revision: current.revision,
@@ -132,6 +160,8 @@ export class TeamInvitationsUseCases {
       const recipientDisplayName =
         input.recipientDisplayName.trim() || `Gracz ${input.recipientDiscordId.slice(-4)}`;
       const revision = nextStateRevision(current.state);
+      const createdAtIso = new Date(now).toISOString();
+      const expiresAtIso = new Date(now + INVITATION_TTL_MS).toISOString();
       const invitation: TeamInvitationRecord = {
         id: `inv-${randomUUID()}`,
         teamId: current.workspaceId,
@@ -142,6 +172,8 @@ export class TeamInvitationsUseCases {
         status: 'pending',
         createdLabel: 'przed chwilą',
         expiresLabel: 'za 3 dni',
+        createdAtIso,
+        expiresAtIso,
         revision: 1,
       };
       const history = Array.isArray(current.state.history) ? current.state.history : [];
@@ -205,7 +237,7 @@ export class TeamInvitationsUseCases {
     if (found === null) {
       throw new PlayerTeamError('NOT_FOUND', 'team invitation not found');
     }
-    return found.invitation;
+    return withEffectiveExpiry(found.invitation);
   }
 
   public async respond(input: {
@@ -225,6 +257,9 @@ export class TeamInvitationsUseCases {
     );
     if (found === null) {
       throw new PlayerTeamError('NOT_FOUND', 'team invitation not found');
+    }
+    if (isExpired(found.invitation)) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'team invitation has expired');
     }
     if (found.invitation.status !== 'pending') {
       throw new PlayerTeamError('VALIDATION_FAILED', 'team invitation is no longer pending');
@@ -290,6 +325,8 @@ export class TeamInvitationsUseCases {
       updatedLabel: 'przed chwilą',
     };
 
+    // Membership grant and invitation status transition remain a single optimistic
+    // workspace UPDATE, so acceptance cannot persist only half of the operation.
     const updated = await this.repository.updateWorkspace({
       workspaceId: found.workspaceId,
       state: nextState,
