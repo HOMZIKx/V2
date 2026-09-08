@@ -97,6 +97,12 @@ const REQUEST_LABELS: Readonly<Record<FixedHuntRequestType, string>> = {
   buff: 'POTRZEBNY BUFF',
 };
 
+const REQUEST_ICONS: Readonly<Record<FixedHuntRequestType, string>> = {
+  pvp: '⚔️',
+  dps: '💥',
+  buff: '✨',
+};
+
 function newId(prefix: string): string {
   const random =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -109,7 +115,10 @@ function emptyState(roomKey: string): FixedHuntRoomState {
   return { roomKey, routes: [], markers: [], requests: [], history: [] };
 }
 
-function normalizeState(roomKey: string, state: FixedHuntRoomState | null | undefined): FixedHuntRoomState {
+function normalizeState(
+  roomKey: string,
+  state: FixedHuntRoomState | null | undefined,
+): FixedHuntRoomState {
   if (!state || typeof state !== 'object') return emptyState(roomKey);
   return {
     roomKey,
@@ -145,7 +154,10 @@ function timeUntil(target: Date, now: number): string {
 }
 
 function formatClock(value: number): string {
-  return new Date(value).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+  return new Date(value).toLocaleTimeString('pl-PL', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function historyLabel(entry: FixedHuntHistoryEntry): string {
@@ -164,6 +176,55 @@ function historyLabel(entry: FixedHuntHistoryEntry): string {
       return 'ZNALEZIONY';
     case 'request_closed':
       return 'POMOC OGARNIĘTA';
+  }
+}
+
+function historyIcon(entry: FixedHuntHistoryEntry): string {
+  switch (entry.type) {
+    case 'killed':
+      return '✅';
+    case 'need_pvp':
+      return '⚔️';
+    case 'need_dps':
+      return '💥';
+    case 'need_buff':
+      return '✨';
+    case 'coming':
+      return '🏃';
+    case 'found':
+      return '📍';
+    case 'request_closed':
+      return '✔️';
+  }
+}
+
+function historyTone(entry: FixedHuntHistoryEntry): string {
+  switch (entry.type) {
+    case 'killed':
+      return styles.historyKilled;
+    case 'need_pvp':
+      return styles.historyPvp;
+    case 'need_dps':
+      return styles.historyDps;
+    case 'need_buff':
+      return styles.historyBuff;
+    case 'coming':
+      return styles.historyComing;
+    case 'found':
+      return styles.historyFound;
+    case 'request_closed':
+      return styles.historyClosed;
+  }
+}
+
+function requestTone(type: FixedHuntRequestType): string {
+  switch (type) {
+    case 'pvp':
+      return styles.requestPvp;
+    case 'dps':
+      return styles.requestDps;
+    case 'buff':
+      return styles.requestBuff;
   }
 }
 
@@ -211,7 +272,8 @@ export default function GeneralsMetinsPage() {
       } finally {
         if (!quiet) setLoading(false);
       }
-    }, [onlineEnabled, roomDefinition.key, viewerId],
+    },
+    [onlineEnabled, roomDefinition.key, viewerId],
   );
 
   useEffect(() => {
@@ -247,13 +309,13 @@ export default function GeneralsMetinsPage() {
               ? snapshot
               : await getFixedHuntRoom({ viewerId, roomKey: roomDefinition.key });
           const current = normalizeState(roomDefinition.key, base.state);
-          const next = mutator(current);
+          const nextState = mutator(current);
           try {
             const result = await putFixedHuntRoom({
               viewerId,
               roomKey: roomDefinition.key,
               expectedRevision: base.revision,
-              state: next,
+              state: nextState,
             });
             setSnapshot({ ...result, state: normalizeState(roomDefinition.key, result.state) });
             setNotice('');
@@ -381,14 +443,19 @@ export default function GeneralsMetinsPage() {
     }));
   };
 
+  const imagePath = huntMapImagePath(roomDefinition.mapKey);
+
   const handleMapClick = async (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (mode === 'view' || saving) return;
+    if (!imagePath || mode === 'view' || saving) return;
+
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    const point: FixedHuntRoomPoint = {
-      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
-      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
-    };
+
+    const rawX = ((event.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((event.clientY - rect.top) / rect.height) * 100;
+    if (rawX < 0 || rawX > 100 || rawY < 0 || rawY > 100) return;
+
+    const point: FixedHuntRoomPoint = { x: rawX, y: rawY };
 
     if (mode === 'found') {
       const ok = await mutateRoom((current) => ({
@@ -466,10 +533,15 @@ export default function GeneralsMetinsPage() {
     .filter((request) => request.status === 'active')
     .sort((left, right) => right.createdAt - left.createdAt);
   const next = nextSpawn(roomDefinition.intervalHours, now);
-  const imagePath = huntMapImagePath(roomDefinition.mapKey);
   const ownRoute = state.routes.find(
     (route) => route.userId === viewerId && route.channel === channel,
   );
+
+  const switchToChannel = (nextChannel: number) => {
+    if (!roomDefinition.channels.includes(nextChannel)) return;
+    setChannel(nextChannel);
+    setMode('view');
+  };
 
   return (
     <AppShell activeSection="generaly-metki" viewerName={displayName}>
@@ -478,7 +550,10 @@ export default function GeneralsMetinsPage() {
           <div>
             <span className={styles.eyebrow}>CENTRUM POLOWAŃ</span>
             <h1>Generały / Metiny</h1>
-            <p>Pięć stałych pokojów. Kanał wybierasz wewnątrz pokoju — nic nie miesza się między mapami i typami polowania.</p>
+            <p>
+              Jedna mapa, szybkie komendy i wspólny stan na żywo. Wybierz pokój i CH —
+              reszta ma być widoczna od razu.
+            </p>
           </div>
           <div className={styles.syncBox}>
             <span className={onlineEnabled && viewerId ? styles.syncDotOnline : styles.syncDot} />
@@ -506,7 +581,9 @@ export default function GeneralsMetinsPage() {
 
         <section className={styles.roomHeader}>
           <div>
-            <span className={styles.roomType}>{roomDefinition.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}</span>
+            <span className={styles.roomType}>
+              {roomDefinition.kind === 'metin' ? 'METIN LEGENDARNY' : 'GENERAŁ'}
+            </span>
             <h2>{roomDefinition.label}</h2>
             <p>Harmonogram: {scheduleHours(roomDefinition.intervalHours)}</p>
           </div>
@@ -522,10 +599,7 @@ export default function GeneralsMetinsPage() {
             <button
               className={roomChannel === channel ? styles.channelActive : styles.channelButton}
               key={roomChannel}
-              onClick={() => {
-                setChannel(roomChannel);
-                setMode('view');
-              }}
+              onClick={() => switchToChannel(roomChannel)}
               type="button"
             >
               CH{roomChannel}
@@ -539,87 +613,126 @@ export default function GeneralsMetinsPage() {
           <section className={styles.mapPanel}>
             <div className={styles.mapToolbar}>
               <div>
-                <strong>{roomDefinition.mapKey} · CH{channel}</strong>
-                <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe'}</span>
+                <strong>🗺️ {roomDefinition.mapKey} · CH{channel}</strong>
+                <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe do działania'}</span>
               </div>
               <div className={styles.mapActions}>
                 {roomDefinition.kind === 'metin' ? (
                   <button
-                    className={mode === 'route' ? styles.toolActive : styles.toolButton}
+                    className={mode === 'route' ? styles.toolRouteActive : styles.toolButton}
+                    disabled={!imagePath || saving}
                     onClick={() => setMode((current) => (current === 'route' ? 'view' : 'route'))}
                     type="button"
                   >
-                    Trasa
+                    ✏️ Trasa
                   </button>
                 ) : null}
                 <button
-                  className={mode === 'found' ? styles.toolActive : styles.toolButton}
+                  className={mode === 'found' ? styles.toolFoundActive : styles.toolButton}
+                  disabled={!imagePath || saving}
                   onClick={() => setMode((current) => (current === 'found' ? 'view' : 'found'))}
                   type="button"
                 >
-                  Znalazłem
+                  📍 Znalazłem
                 </button>
                 {roomDefinition.kind === 'metin' && ownRoute ? (
                   <>
-                    <button className={styles.toolButton} onClick={() => void undoRoutePoint()} type="button">
-                      Cofnij punkt
+                    <button
+                      className={styles.toolButton}
+                      disabled={saving}
+                      onClick={() => void undoRoutePoint()}
+                      type="button"
+                    >
+                      ↶ Cofnij
                     </button>
-                    <button className={styles.toolButton} onClick={() => void clearOwnRoute()} type="button">
-                      Wyczyść moją trasę
+                    <button
+                      className={styles.toolButton}
+                      disabled={saving}
+                      onClick={() => void clearOwnRoute()}
+                      type="button"
+                    >
+                      🧹 Wyczyść
                     </button>
                   </>
                 ) : null}
               </div>
             </div>
 
-            <div
-              className={`${styles.mapStage}${mode !== 'view' ? ` ${styles.mapStageEditing}` : ''}`}
-              onClick={(event) => void handleMapClick(event)}
-              role="presentation"
-            >
-              {imagePath ? <img alt={`Mapa ${roomDefinition.mapKey}`} className={styles.mapImage} src={imagePath} /> : null}
-              <svg aria-hidden className={styles.routeLayer} preserveAspectRatio="none" viewBox="0 0 100 100">
-                {visibleRoutes.map((route) => (
-                  <g key={route.id}>
-                    {route.points.length > 1 ? (
-                      <polyline
-                        fill="none"
-                        points={route.points.map((point) => `${point.x},${point.y}`).join(' ')}
-                        stroke={routeColor(route.userId)}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="0.8"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ) : null}
-                    {route.points.map((point, index) => (
-                      <circle
-                        cx={point.x}
-                        cy={point.y}
-                        fill={routeColor(route.userId)}
-                        key={`${route.id}-${index}`}
-                        r="0.8"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                  </g>
-                ))}
-              </svg>
-              {visibleMarkers.map((marker) => (
+            <div className={styles.mapFrame}>
+              {imagePath ? (
                 <div
-                  className={styles.foundMarker}
-                  key={marker.id}
-                  style={{ left: `${marker.location.x}%`, top: `${marker.location.y}%` }}
-                  title={`${marker.displayName} · CH${marker.channel}`}
+                  aria-label={`Interaktywna mapa ${roomDefinition.mapKey} CH${channel}`}
+                  className={`${styles.mapCanvas}${mode !== 'view' ? ` ${styles.mapCanvasEditing}` : ''}`}
+                  onClick={(event) => void handleMapClick(event)}
+                  role="presentation"
                 >
-                  <span>!</span>
+                  <img
+                    alt={`Mapa ${roomDefinition.mapKey}`}
+                    className={styles.mapImage}
+                    draggable={false}
+                    src={imagePath}
+                  />
+                  <svg
+                    aria-hidden
+                    className={styles.routeLayer}
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 100"
+                  >
+                    {visibleRoutes.map((route) => (
+                      <g key={route.id}>
+                        {route.points.length > 1 ? (
+                          <polyline
+                            fill="none"
+                            points={route.points.map((point) => `${point.x},${point.y}`).join(' ')}
+                            stroke={routeColor(route.userId)}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="0.85"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ) : null}
+                        {route.points.map((point, index) => (
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            fill={routeColor(route.userId)}
+                            key={`${route.id}-${index}`}
+                            r="0.85"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        ))}
+                      </g>
+                    ))}
+                  </svg>
+
+                  {visibleMarkers.map((marker) => (
+                    <div
+                      className={styles.foundMarker}
+                      key={marker.id}
+                      style={{ left: `${marker.location.x}%`, top: `${marker.location.y}%` }}
+                      title={`${marker.displayName} · CH${marker.channel}`}
+                    >
+                      <span>📍</span>
+                    </div>
+                  ))}
+
+                  {mode !== 'view' ? (
+                    <div className={styles.mapHint}>
+                      <strong>{mode === 'route' ? '✏️ RYSOWANIE TRASY' : '📍 ZAZNACZANIE'}</strong>
+                      <span>
+                        {mode === 'route'
+                          ? 'Klikaj kolejne punkty wyłącznie na mapie'
+                          : 'Kliknij dokładne miejsce na mapie'}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
-              ))}
-              {mode !== 'view' ? (
-                <div className={styles.mapHint}>
-                  {mode === 'route' ? 'Klikaj kolejne punkty swojej trasy' : 'Kliknij dokładne miejsce znalezienia'}
+              ) : (
+                <div className={styles.mapUnavailable}>
+                  <strong>Brak grafiki mapy</strong>
+                  <span>Rysowanie i zaznaczanie są zablokowane.</span>
                 </div>
-              ) : null}
+              )}
             </div>
 
             {roomDefinition.kind === 'metin' ? (
@@ -642,17 +755,49 @@ export default function GeneralsMetinsPage() {
             <section className={styles.quickPanel}>
               <div className={styles.sectionHeading}>
                 <div>
-                  <span>SZYBKIE INFORMACJE</span>
+                  <span>SZYBKIE KOMENDY</span>
                   <h3>CH{channel}</h3>
                 </div>
+                <em>1 klik</em>
               </div>
-              <button className={styles.killedButton} disabled={saving} onClick={() => void markKilled()} type="button">
-                ZBITY
-              </button>
-              <div className={styles.helpButtons}>
-                <button disabled={saving} onClick={() => void quickRequest('pvp')} type="button">POTRZEBNY PVP</button>
-                <button disabled={saving} onClick={() => void quickRequest('dps')} type="button">POTRZEBNY DPS</button>
-                <button disabled={saving} onClick={() => void quickRequest('buff')} type="button">POTRZEBNY BUFF</button>
+
+              <div className={styles.commandGrid}>
+                <button
+                  className={styles.killedButton}
+                  disabled={saving}
+                  onClick={() => void markKilled()}
+                  type="button"
+                >
+                  <span>✅</span>
+                  <strong>ZBITY</strong>
+                </button>
+                <button
+                  className={styles.pvpButton}
+                  disabled={saving}
+                  onClick={() => void quickRequest('pvp')}
+                  type="button"
+                >
+                  <span>⚔️</span>
+                  <strong>POTRZEBNY PVP</strong>
+                </button>
+                <button
+                  className={styles.dpsButton}
+                  disabled={saving}
+                  onClick={() => void quickRequest('dps')}
+                  type="button"
+                >
+                  <span>💥</span>
+                  <strong>POTRZEBNY DPS</strong>
+                </button>
+                <button
+                  className={styles.buffButton}
+                  disabled={saving}
+                  onClick={() => void quickRequest('buff')}
+                  type="button"
+                >
+                  <span>✨</span>
+                  <strong>POTRZEBNY BUFF</strong>
+                </button>
               </div>
             </section>
 
@@ -664,21 +809,38 @@ export default function GeneralsMetinsPage() {
                 </div>
                 <em>{activeRequests.length}</em>
               </div>
+
               <div className={styles.requestList}>
-                {activeRequests.length === 0 ? <p className={styles.empty}>Brak aktywnych zgłoszeń.</p> : null}
+                {activeRequests.length === 0 ? (
+                  <p className={styles.empty}>Brak aktywnych zgłoszeń.</p>
+                ) : null}
                 {activeRequests.map((request) => {
-                  const alreadyComing = request.responders.some((responder) => responder.userId === viewerId);
+                  const alreadyComing = request.responders.some(
+                    (responder) => responder.userId === viewerId,
+                  );
                   return (
-                    <article className={styles.requestCard} key={request.id}>
+                    <article
+                      className={`${styles.requestCard} ${requestTone(request.type)}`}
+                      key={request.id}
+                    >
                       <header>
-                        <span>CH{request.channel}</span>
-                        <strong>{REQUEST_LABELS[request.type]}</strong>
+                        <button
+                          className={styles.requestChannel}
+                          onClick={() => switchToChannel(request.channel)}
+                          type="button"
+                        >
+                          CH{request.channel}
+                        </button>
+                        <strong>
+                          {REQUEST_ICONS[request.type]} {REQUEST_LABELS[request.type]}
+                        </strong>
                         <small>{formatClock(request.createdAt)}</small>
                       </header>
-                      <p>{request.displayName}</p>
+                      <p>Zgłosił: {request.displayName}</p>
                       {request.responders.length > 0 ? (
                         <div className={styles.responders}>
-                          <span>IDĄ:</span> {request.responders.map((responder) => responder.displayName).join(', ')}
+                          <span>🏃 IDĄ:</span>{' '}
+                          {request.responders.map((responder) => responder.displayName).join(', ')}
                         </div>
                       ) : null}
                       <footer>
@@ -688,11 +850,16 @@ export default function GeneralsMetinsPage() {
                           onClick={() => void respondComing(request)}
                           type="button"
                         >
-                          {alreadyComing ? 'IDĘ ✓' : 'IDĘ'}
+                          {alreadyComing ? '🏃 IDĘ ✓' : '🏃 IDĘ'}
                         </button>
                         {request.userId === viewerId ? (
-                          <button className={styles.closeButton} onClick={() => void closeRequest(request)} type="button">
-                            Ogarniete
+                          <button
+                            className={styles.closeButton}
+                            disabled={saving}
+                            onClick={() => void closeRequest(request)}
+                            type="button"
+                          >
+                            ✔️ Ogarnięte
                           </button>
                         ) : null}
                       </footer>
@@ -707,21 +874,61 @@ export default function GeneralsMetinsPage() {
         <section className={styles.historyPanel}>
           <div className={styles.sectionHeading}>
             <div>
-              <span>HISTORIA KOMEND</span>
+              <span>HISTORIA NA ŻYWO</span>
               <h3>{roomDefinition.shortLabel}</h3>
             </div>
             <em>{state.history.length}</em>
           </div>
+
           <div className={styles.historyList}>
-            {state.history.length === 0 ? <p className={styles.empty}>Jeszcze bez komend w tym pokoju.</p> : null}
-            {state.history.map((entry) => (
-              <div className={styles.historyRow} key={entry.id}>
-                <time>{formatClock(entry.createdAt)}</time>
-                <span className={styles.historyChannel}>CH{entry.channel}</span>
-                <strong>{entry.displayName}</strong>
-                <span>{historyLabel(entry)}</span>
-              </div>
-            ))}
+            {state.history.length === 0 ? (
+              <p className={styles.empty}>Jeszcze bez komend w tym pokoju.</p>
+            ) : null}
+
+            {state.history.map((entry) => {
+              const isHelpEntry =
+                entry.type === 'need_pvp' ||
+                entry.type === 'need_dps' ||
+                entry.type === 'need_buff';
+              const linkedRequest =
+                isHelpEntry && entry.requestId
+                  ? activeRequests.find((request) => request.id === entry.requestId)
+                  : undefined;
+              const canRespond =
+                linkedRequest !== undefined &&
+                !linkedRequest.responders.some((responder) => responder.userId === viewerId);
+
+              return (
+                <div
+                  className={`${styles.historyRow} ${historyTone(entry)}`}
+                  key={entry.id}
+                >
+                  <span className={styles.historyIcon}>{historyIcon(entry)}</span>
+                  <time>{formatClock(entry.createdAt)}</time>
+                  <button
+                    className={styles.historyChannel}
+                    onClick={() => switchToChannel(entry.channel)}
+                    type="button"
+                  >
+                    CH{entry.channel}
+                  </button>
+                  <strong>{entry.displayName}</strong>
+                  <span className={styles.historyMessage}>{historyLabel(entry)}</span>
+                  {linkedRequest ? (
+                    <button
+                      className={canRespond ? styles.historyComingButton : styles.historyComingDone}
+                      disabled={!canRespond || saving}
+                      onClick={() => void respondComing(linkedRequest)}
+                      type="button"
+                    >
+                      {canRespond ? '🏃 IDĘ' : '✓'}
+                    </button>
+                  ) : (
+                    <span className={styles.historySpacer} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       </main>
