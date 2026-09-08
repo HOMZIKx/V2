@@ -73,9 +73,8 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import subprocess
           import sys
-          import urllib.request
-          import urllib.error
 
           endpoint = 'https://api.zeabur.com/graphql'
           token = os.environ.get('ZEABUR_API_TOKEN', '').strip()
@@ -83,29 +82,59 @@ jobs:
               print('::error::Zeabur API token is unavailable.')
               sys.exit(1)
 
-          def gql(query, variables=None, *, required=True):
-              body = json.dumps({'query': query, 'variables': variables or {}}).encode('utf-8')
-              request = urllib.request.Request(
-                  endpoint,
-                  data=body,
-                  method='POST',
-                  headers={
-                      'Authorization': f'Bearer {token}',
-                      'Content-Type': 'application/json',
-                  },
-              )
+          def error_summary(payload):
+              if not isinstance(payload, dict):
+                  return 'unknown GraphQL error'
+              messages = []
+              for item in payload.get('errors') or []:
+                  if isinstance(item, dict) and isinstance(item.get('message'), str):
+                      messages.append(item['message'].replace('\n', ' ')[:240])
+              return ' | '.join(messages[:3]) or 'unknown GraphQL error'
+
+          def gql(query, variables=None, *, required=True, label='query'):
+              body = json.dumps({'query': query, 'variables': variables or {}})
               try:
-                  with urllib.request.urlopen(request, timeout=20) as response:
-                      payload = json.load(response)
-              except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                  result = subprocess.run(
+                      [
+                          'curl', '--silent', '--show-error',
+                          '--request', 'POST', '--url', endpoint,
+                          '--header', f'Authorization: Bearer {token}',
+                          '--header', 'Content-Type: application/json',
+                          '--data-binary', body,
+                          '--write-out', '\n%{http_code}',
+                      ],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                      timeout=25,
+                  )
+              except subprocess.TimeoutExpired:
                   if required:
-                      print(f'::error::Zeabur inventory request failed: {type(exc).__name__}')
+                      print(f'::error::Zeabur {label} timed out.')
                       sys.exit(1)
                   return None
-              if payload.get('errors'):
+
+              raw, separator, status = result.stdout.rpartition('\n')
+              if result.returncode != 0 or not separator:
                   if required:
-                      print('::error::Zeabur inventory GraphQL query failed.')
+                      print(f'::error::Zeabur {label} transport failed (curl={result.returncode}).')
                       sys.exit(1)
+                  return None
+
+              try:
+                  payload = json.loads(raw)
+              except json.JSONDecodeError:
+                  if required:
+                      print(f'::error::Zeabur {label} returned non-JSON HTTP {status}.')
+                      sys.exit(1)
+                  return None
+
+              if status != '200' or payload.get('errors'):
+                  summary = error_summary(payload)
+                  if required:
+                      print(f'::error::Zeabur {label} failed HTTP {status}: {summary}')
+                      sys.exit(1)
+                  print(f'ZEABUR_QUERY label={label!r} status=unavailable detail={summary!r}')
                   return None
               return payload.get('data') or {}
 
@@ -114,7 +143,7 @@ jobs:
               teams { _id name myRole }
               projects { edges { node { _id name } } }
             }
-          ''')
+          ''', label='inventory-root')
 
           owners = [('personal', None)]
           for team in root.get('teams') or []:
@@ -137,7 +166,12 @@ jobs:
             }
           '''
           for owner_label, owner_id in owners[1:]:
-              data = gql(team_projects_query, {'ownerID': owner_id}, required=False)
+              data = gql(
+                  team_projects_query,
+                  {'ownerID': owner_id},
+                  required=False,
+                  label=f'projects:{owner_label}',
+              )
               if not data:
                   print(f'ZEABUR_OWNER owner={owner_label!r} projects=unavailable')
                   continue
@@ -177,7 +211,12 @@ jobs:
               if not isinstance(project_id, str) or not project_id or project_id in seen:
                   continue
               seen.add(project_id)
-              detail = gql(detail_query, {'id': project_id}, required=False)
+              detail = gql(
+                  detail_query,
+                  {'id': project_id},
+                  required=False,
+                  label=f'project:{project_id}',
+              )
               if not detail or not detail.get('project'):
                   print(
                       f'ZEABUR_PROJECT owner={owner_label!r} name={project.get("name")!r} '
@@ -209,6 +248,7 @@ jobs:
                           variables_query,
                           {'serviceID': service_id, 'environmentID': environment_id},
                           required=False,
+                          label=f'variables:{service.get("name") or service_id}',
                       )
                       if vars_data is not None:
                           values = {
