@@ -3,19 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  PLAYER_STORE_KEY,
-  findInvitation,
-  parsePlayerStore,
-  serializePlayerStore,
-  type PlayerStoreState,
-  type WorkspaceRecord,
-} from '../../../src/player-store';
-import {
-  getMyPlayerTeamState,
-  putMyPlayerTeamState,
-  resolvePlayerTeamDemoViewerId,
-} from '../../../src/player-team-online-api';
+import { findInvitation } from '../../../src/player-store';
 import {
   acceptTeamInvitation,
   declineTeamInvitation,
@@ -25,22 +13,6 @@ import {
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell } from '../../app-shell';
 import { DiscordEntryScreen } from '../../discord-entry';
-
-function withAcceptedWorkspace(
-  current: PlayerStoreState,
-  workspace: WorkspaceRecord,
-  invitationId: string,
-): PlayerStoreState {
-  return {
-    ...current,
-    workspaces: [workspace, ...current.workspaces.filter((entry) => entry.id !== workspace.id)],
-    pendingIncomingInvitations: current.pendingIncomingInvitations.filter(
-      (entry) => entry.id !== invitationId,
-    ),
-    lastOpenedWorkspaceId: workspace.id,
-    lastOpenedCharacterId: null,
-  };
-}
 
 export function InvitationResponse() {
   const params = useParams<{ invitationId: string }>();
@@ -159,30 +131,6 @@ export function InvitationResponse() {
     (invitation.recipientDiscordId === viewerDiscordId ||
       invitation.recipientDiscordId === legacyViewerDiscordId);
 
-  const persistAcceptedWorkspace = async (workspace: WorkspaceRecord): Promise<void> => {
-    const viewerId = resolvePlayerTeamDemoViewerId(state.viewer!);
-    let latest = await getMyPlayerTeamState({ viewerId });
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const parsed = latest.state ? parsePlayerStore(JSON.stringify(latest.state)) : null;
-      const base = parsed ?? state;
-      const next = withAcceptedWorkspace(base, workspace, params.invitationId);
-      const put = await putMyPlayerTeamState({
-        viewerId,
-        state: next as unknown as Record<string, unknown>,
-        expectedRevision: latest.revision,
-      });
-      if (put.ok) {
-        window.localStorage.setItem(PLAYER_STORE_KEY, serializePlayerStore(next));
-        return;
-      }
-      if (!put.conflict || attempt === 1) {
-        throw new Error(put.conflict ? 'Konflikt zapisu zespołu.' : put.error);
-      }
-      latest = await getMyPlayerTeamState({ viewerId });
-    }
-  };
-
   const handleAccept = async () => {
     if (!invitation || !isRecipient || working) return;
     setWorking(true);
@@ -190,8 +138,9 @@ export function InvitationResponse() {
     try {
       if (serverInvitation !== null) {
         const result = await acceptTeamInvitation(invitation.id);
-        await persistAcceptedWorkspace(result.workspace);
         setOutcome('accepted');
+        // The backend commits shared membership and this viewer's private workspace
+        // snapshot in one transaction, so navigation can safely hydrate from server.
         window.location.assign(`/teams/${result.workspaceId}`);
         return;
       }
