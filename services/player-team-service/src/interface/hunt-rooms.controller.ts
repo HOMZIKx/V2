@@ -44,7 +44,7 @@ const patchPartyBodySchema = z.object({
   mapKey: z.string().min(1).optional(),
   activeChannel: z.number().int().positive().optional(),
   sessionKills: z.number().int().nonnegative().optional(),
-  sessionKillsDelta: z.number().int().optional(),
+  sessionKillsDelta: z.literal(1).optional(),
   visibility: z.enum(['open', 'closed']).optional(),
   requests: z.array(partyRequestSchema).max(100).optional(),
 });
