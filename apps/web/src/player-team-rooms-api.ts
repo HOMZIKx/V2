@@ -180,18 +180,33 @@ export async function patchPartyRoom(input: {
     readonly requests?: PartyRoomSnapshot['requests'];
   };
 }): Promise<PartyRoomSnapshot> {
-  const res = await fetch(
-    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`,
-    {
+  const post = (expectedRevision: number) =>
+    fetch(`${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}`, {
       method: 'PATCH',
       headers: headers(input.viewerId, true),
       credentials: requestCredentials,
       body: JSON.stringify({
-        expectedRevision: input.expectedRevision,
+        expectedRevision,
         ...input.patch,
       }),
-    },
-  );
+    });
+
+  let res = await post(input.expectedRevision);
+  const isKillIncrementOnly =
+    input.patch.sessionKillsDelta === 1 &&
+    input.patch.mapKey === undefined &&
+    input.patch.activeChannel === undefined &&
+    input.patch.sessionKills === undefined &&
+    input.patch.visibility === undefined &&
+    input.patch.requests === undefined;
+
+  if (res.status === 409 && isKillIncrementOnly) {
+    // Session +1 is a commutative action. If another member changed the room
+    // between poll and click, refresh the revision and replay this one increment.
+    const latest = await getPartyRoom({ viewerId: input.viewerId, roomId: input.roomId });
+    res = await post(latest.revision);
+  }
+
   if (!res.ok) throw new Error(`patchPartyRoom failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }
