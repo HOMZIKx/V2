@@ -396,11 +396,12 @@ export function CharacterEquipmentV2() {
       if (!response.ok || !payload.draft?.name) {
         throw new Error(payload.error || 'Nie udało się odczytać przedmiotu ze screena.');
       }
+      const analysisDraft = payload.draft;
 
       const parsedEnhancement = clampEnhancement(
-        payload.draft.enhancement ?? parseEnhancementFromName(payload.draft.name),
+        analysisDraft.enhancement ?? parseEnhancementFromName(analysisDraft.name),
       );
-      const baseName = stripEnhancementFromName(payload.draft.name);
+      const baseName = stripEnhancementFromName(analysisDraft.name);
       const matches = searchGameItems(baseName)
         .filter((item) => {
           const slot = equipmentSlotForCategory(item.category);
@@ -411,8 +412,8 @@ export function CharacterEquipmentV2() {
       const exactMatches = matches.filter(
         (item) => item.title.trim().toLocaleLowerCase('pl') === normalizedBaseName,
       );
-      const sameSlotMatches = payload.draft.category
-        ? matches.filter((item) => equipmentSlotForCategory(item.category) === payload.draft.category)
+      const sameSlotMatches = analysisDraft.category
+        ? matches.filter((item) => equipmentSlotForCategory(item.category) === analysisDraft.category)
         : matches;
       const best =
         exactMatches.length === 1
@@ -421,7 +422,7 @@ export function CharacterEquipmentV2() {
             ? sameSlotMatches[0]!
             : null;
       const bestSlot = best ? equipmentSlotForCategory(best.category) : null;
-      const analyzedSlot = bestSlot ?? payload.draft.category ?? null;
+      const analyzedSlot = bestSlot ?? analysisDraft.category ?? null;
 
       setSelectedCatalogId(best?.id ?? null);
       setCategoryReviewRequired(analyzedSlot === null);
