@@ -18,8 +18,8 @@ export interface EconomyCatalogSeedItem {
   readonly id: string;
   readonly canonicalName: string;
   readonly category: string;
-  readonly imageUrl?: string | null;
-  readonly aliases?: readonly string[];
+  readonly imageUrl?: string | null | undefined;
+  readonly aliases?: readonly string[] | undefined;
 }
 
 export interface EconomyDropItemInput {
@@ -29,7 +29,7 @@ export interface EconomyDropItemInput {
   readonly ourQuantity: number;
   readonly unitPrice: number;
   readonly currency: EconomyCurrency;
-  readonly aiConfidence?: number | null;
+  readonly aiConfidence?: number | null | undefined;
 }
 
 export interface EconomyDropMoneyInput {
@@ -48,9 +48,9 @@ export interface EconomyDropSessionInput {
   readonly workspaceId: string;
   readonly source: string;
   readonly occurredAtIso: string;
-  readonly notes?: string | null;
-  readonly screenshotRef?: string | null;
-  /** Suggested ownership share for items; final ownership is stored as integer ourQuantity per item. */
+  readonly notes?: string | null | undefined;
+  readonly screenshotRef?: string | null | undefined;
+  /** Metadata/default percentage for direct money in this run; item ownership remains integer-only. */
   readonly ourShareBasisPoints: number;
   readonly pileCount: number;
   readonly splitMode: TeamEconomySplitMode;
@@ -89,7 +89,7 @@ export interface EconomyDropSessionRecord {
 
 export interface EconomyExpenseInput {
   readonly workspaceId: string;
-  readonly dropSessionId?: string | null;
+  readonly dropSessionId?: string | null | undefined;
   readonly label: string;
   readonly expenseType: 'item' | 'yang' | 'gem' | 'other';
   readonly quantity: number;
@@ -114,16 +114,16 @@ export interface TeamEconomyRepositoryPort {
   createItem(input: {
     canonicalName: string;
     category: string;
-    imageUrl?: string | null;
-    alias?: string | null;
+    imageUrl?: string | null | undefined;
+    alias?: string | null | undefined;
     createdBy: string;
   }): Promise<EconomyCatalogItem>;
   updateItem(input: {
     itemId: string;
-    canonicalName?: string;
-    category?: string;
-    imageUrl?: string | null;
-    alias?: string | null;
+    canonicalName?: string | undefined;
+    category?: string | undefined;
+    imageUrl?: string | null | undefined;
+    alias?: string | null | undefined;
     updatedBy: string;
   }): Promise<EconomyCatalogItem>;
   addPrice(input: {
