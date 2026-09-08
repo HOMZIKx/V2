@@ -1,5 +1,4 @@
 {
-  "requestId": "deploy-corrected-origin-snapshots-20260908-1",
-  "mode": "deploy_env_snapshot",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "audit-explicit-env-snapshot-runtime-20260908-1",
+  "mode": "env_audit"
 }
