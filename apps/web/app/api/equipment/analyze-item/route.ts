@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-const DEFAULT_VISION_MODEL = 'gemini-3-flash-preview';
+const DEFAULT_VISION_MODEL = 'gemini-3.8-flash';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const EQUIPMENT_CATEGORIES = new Set([
   'weapon',
@@ -17,6 +17,50 @@ const EQUIPMENT_CATEGORIES = new Set([
   'bracelet',
   'shoes',
 ]);
+
+const ANALYSIS_RESPONSE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['name', 'enhancement', 'category', 'bonuses', 'confidence', 'notes'],
+  properties: {
+    name: {
+      type: 'string',
+      description: 'Bazowa nazwa przedmiotu odczytana z tooltipa.',
+    },
+    enhancement: {
+      type: 'integer',
+      minimum: 0,
+      maximum: 9,
+      description: 'Poziom ulepszenia +N; 0 gdy nie da się go odczytać.',
+    },
+    category: {
+      anyOf: [
+        {
+          type: 'string',
+          enum: ['weapon', 'armor', 'helmet', 'shield', 'earrings', 'necklace', 'bracelet', 'shoes'],
+        },
+        { type: 'null' },
+      ],
+      description: 'Slot ekwipunku albo null, gdy typ jest niepewny.',
+    },
+    bonuses: {
+      type: 'array',
+      maxItems: 12,
+      items: { type: 'string' },
+      description: 'Dokładnie odczytane linie bonusów z tooltipa.',
+    },
+    confidence: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+      description: 'Ogólna pewność odczytu w skali 0–1.',
+    },
+    notes: {
+      type: 'string',
+      description: 'Krótka informacja o nieczytelnych lub niepewnych fragmentach.',
+    },
+  },
+} as const;
 
 type EquipmentCategory =
   | 'weapon'
@@ -211,17 +255,10 @@ const ANALYSIS_PROMPT = `
 Analizujesz WYŁĄCZNIE pojedynczy tooltip przedmiotu z gry Metin2 / Projekt Hard.
 To jest etap roboczy: NIE zapisujesz niczego do bazy i NIE wymyślasz brakujących danych.
 
-Zwróć wyłącznie poprawny JSON bez markdownu w formacie:
-{
-  "name": "nazwa bazowa przedmiotu, bez +N jeżeli +N jest widoczne osobno",
-  "enhancement": 0,
-  "category": "weapon|armor|helmet|shield|earrings|necklace|bracelet|shoes albo null",
-  "bonuses": ["dokładnie odczytane linie bonusów"],
-  "confidence": 0.0,
-  "notes": "krótka informacja o niepewnych / nieczytelnych fragmentach"
-}
+Odczytaj pola zgodne z wymaganym schematem JSON.
 
 Zasady:
+- name = nazwa bazowa przedmiotu, bez +N jeżeli +N jest widoczne osobno;
 - enhancement musi być liczbą 0–9; jeśli nie widać poziomu ulepszenia, użyj 0 i opisz niepewność w notes;
 - category określaj wyłącznie, jeśli z nazwy/tooltipa da się rozpoznać typ przedmiotu; jeśli nie, zwróć null;
 - weapon = broń, armor = zbroja, helmet = hełm/czapka, shield = tarcza, earrings = kolczyki, necklace = naszyjnik, bracelet = bransoleta, shoes = buty;
@@ -293,6 +330,10 @@ export async function POST(request: Request) {
           temperature: 0.1,
           maxOutputTokens: 1200,
           responseMimeType: 'application/json',
+          responseJsonSchema: ANALYSIS_RESPONSE_JSON_SCHEMA,
+          thinkingConfig: {
+            thinkingLevel: 'low',
+          },
         },
       }),
     });
