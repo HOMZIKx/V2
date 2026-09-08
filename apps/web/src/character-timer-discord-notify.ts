@@ -1,8 +1,8 @@
 /**
  * Discord notify for character ProgressTimers (EQ/Timer tab).
- * Team coordination is deliberate here: timer changes are broadcast to every
- * current team member that has a resolvable Discord account. This never expands
- * to a Discord guild roster.
+ * Team coordination is deliberate here: timer changes are broadcast only to
+ * current team members whose effective character-timer DM preference is enabled.
+ * This never expands to a Discord guild roster.
  */
 
 import {
@@ -15,6 +15,7 @@ import {
   type DiscordTimerNotifyResult,
 } from './discord-notify-api';
 import {
+  listTeamNotifyDiscordRecipients,
   resolveMemberDiscordAccountId,
   type PlayerIdentity,
   type ProgressTimer,
@@ -28,16 +29,14 @@ export type CharacterTimerNotifyContext = {
   readonly viewer: PlayerIdentity | null;
   readonly actorName: string;
   readonly kind: 'reset' | 'reminder' | 'manual';
-  /** Optional extra Discord snowflakes — still intersected with team membership. */
+  /** Optional extra Discord snowflakes — still intersected with opted-in team membership. */
   readonly extraRecipientDiscordIds?: readonly string[];
 };
 
 function recipientIds(ctx: CharacterTimerNotifyContext): string[] {
-  const allowed = new Set<string>();
-  for (const member of ctx.workspace.members) {
-    const discordId = resolveMemberDiscordAccountId(member, ctx.viewer);
-    if (discordId) allowed.add(discordId);
-  }
+  const allowed = new Set(
+    listTeamNotifyDiscordRecipients(ctx.workspace, 'characterTimers', ctx.viewer),
+  );
   if (allowed.size === 0) return [];
 
   const extras = ctx.extraRecipientDiscordIds;
@@ -115,7 +114,7 @@ export function buildCharacterTimerNotifyCopy(input: {
 }
 
 /**
- * Broadcast a character timer card to team DMs.
+ * Broadcast a character timer card to opted-in team DMs.
  * Every message contains the full timer state for the affected character.
  */
 export async function notifyCharacterProgressTimer(
