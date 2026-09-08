@@ -1,4 +1,6 @@
 {
-  "requestId": "verify-origin-repair-after-restart-20260908-2",
-  "mode": "env_audit"
+  "requestId": "inspect-gitref-and-active-deployment-snapshot-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Inspect($environmentID:ObjectID!){gitRefType:__type(name:\"GitRef\"){inputFields{name type{kind name ofType{kind name}}}} api:service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status deployments(environmentID:$environmentID){_id status ref commitSHA createdAt startedAt finishedAt}} identity:service(_id:\"6a8211cfbdeaa87e2c52df39\"){name status deployments(environmentID:$environmentID){_id status ref commitSHA createdAt startedAt finishedAt}}}",
+  "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
 }
