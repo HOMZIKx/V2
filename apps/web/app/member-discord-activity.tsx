@@ -343,7 +343,21 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
                           </td>
                           <td>
                             <div className={styles.playerCell}>
-                              <span className={styles.avatar} aria-hidden>{playerInitials(row.displayName)}</span>
+                              <span
+                                className={styles.avatar}
+                                aria-hidden
+                                style={
+                                  row.avatarUrl
+                                    ? {
+                                        backgroundImage: `url(${JSON.stringify(row.avatarUrl)})`,
+                                        backgroundPosition: 'center',
+                                        backgroundSize: 'cover',
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {row.avatarUrl ? null : playerInitials(row.displayName)}
+                              </span>
                               <div className={styles.playerInfo}>
                                 <div>
                                   <DiscordNick discordUserId={row.discordUserId} displayName={row.displayName} />

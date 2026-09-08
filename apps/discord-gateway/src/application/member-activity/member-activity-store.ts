@@ -7,6 +7,14 @@ export type DayUserBucket = {
   readonly messageCount: number;
   readonly voiceMinutes: number;
   readonly displayName?: string;
+  readonly avatarUrl?: string;
+};
+
+export type AggregatedUserActivity = {
+  readonly messageCount: number;
+  readonly voiceMinutes: number;
+  readonly displayName?: string | undefined;
+  readonly avatarUrl?: string | undefined;
 };
 
 export type DayFile = Record<string, DayUserBucket>;
@@ -82,6 +90,7 @@ export class MemberActivityStore {
     readonly discordUserId: string;
     readonly delta?: number;
     readonly displayName?: string;
+    readonly avatarUrl?: string;
     readonly at?: Date;
   }): void {
     const day = this.dayKey(input.at);
@@ -93,6 +102,7 @@ export class MemberActivityStore {
       ...(input.displayName || prev.displayName
         ? { displayName: input.displayName ?? prev.displayName }
         : {}),
+      ...(input.avatarUrl || prev.avatarUrl ? { avatarUrl: input.avatarUrl ?? prev.avatarUrl } : {}),
     };
     atomicWriteJson(this.dayFilePath(input.guildId, day), file);
   }
@@ -102,6 +112,7 @@ export class MemberActivityStore {
     readonly discordUserId: string;
     readonly minutes: number;
     readonly displayName?: string | undefined;
+    readonly avatarUrl?: string | undefined;
     readonly at?: Date;
   }): void {
     if (input.minutes <= 0) return;
@@ -114,6 +125,7 @@ export class MemberActivityStore {
       ...(input.displayName || prev.displayName
         ? { displayName: input.displayName ?? prev.displayName }
         : {}),
+      ...(input.avatarUrl || prev.avatarUrl ? { avatarUrl: input.avatarUrl ?? prev.avatarUrl } : {}),
     };
     atomicWriteJson(this.dayFilePath(input.guildId, day), file);
   }
@@ -122,8 +134,8 @@ export class MemberActivityStore {
     readonly guildId: string;
     readonly fromDayInclusive: string;
     readonly toDayInclusive: string;
-  }): Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }> {
-    const out = new Map<string, { messageCount: number; voiceMinutes: number; displayName?: string | undefined }>();
+  }): Map<string, AggregatedUserActivity> {
+    const out = new Map<string, AggregatedUserActivity>();
     for (const day of this.listDayKeys(input.guildId)) {
       if (day < input.fromDayInclusive || day > input.toDayInclusive) continue;
       const file = this.readDay(input.guildId, day);
@@ -133,6 +145,7 @@ export class MemberActivityStore {
           messageCount: prev.messageCount + bucket.messageCount,
           voiceMinutes: prev.voiceMinutes + bucket.voiceMinutes,
           displayName: bucket.displayName ?? prev.displayName,
+          avatarUrl: bucket.avatarUrl ?? prev.avatarUrl,
         });
       }
     }
