@@ -196,16 +196,14 @@ function createUpstreamHeaders(
   headers.delete('x-forwarded-host');
   headers.delete('x-forwarded-proto');
 
-  // Compatibility identity for legacy Player Team controllers (fixed hunt
-  // rooms/workspace live). This value is created only after server-side Discord
-  // session verification above, so the browser cannot forge it. Keep it even
-  // when internal JWT is enabled until those controllers share the JWT auth path.
+  // These compatibility identity headers are generated only after server-side
+  // Discord session verification, never trusted from the browser.
   headers.set('x-demo-viewer-id', identity.discordId);
+  headers.set('x-authenticated-discord-id', identity.discordId);
+  headers.set('x-v2-user-id', identity.v2UserId);
 
   if (accessToken !== null) {
     headers.set('authorization', `Bearer ${accessToken}`);
-    headers.set('x-authenticated-discord-id', identity.discordId);
-    headers.set('x-v2-user-id', identity.v2UserId);
   }
 
   return headers;
