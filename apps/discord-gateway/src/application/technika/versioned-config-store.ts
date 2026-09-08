@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -40,6 +47,10 @@ type PersistedState = {
   updatedAt: string;
 };
 
+type LoadedState = PersistedState & {
+  readonly migrated: boolean;
+};
+
 export type VersionedConfigStoreOptions = {
   readonly dataDir: string;
   readonly fileName?: string;
@@ -69,6 +80,31 @@ function normalizeBotConfig(values: BotConfigValues): BotConfigValues {
   return validated.ok ? validated.config : cloneBotConfig(values);
 }
 
+/**
+ * Read-time compatibility layer for persisted Technika config.
+ *
+ * A deployment may add new required config keys. Older persisted snapshots must
+ * not be discarded just because they predate those keys. First accept a fully
+ * current snapshot unchanged. If that fails, merge it onto today's defaults so
+ * only missing fields are hydrated while existing operator values (including
+ * message templates) win.
+ */
+function loadCompatibleBotConfig(input: unknown): {
+  readonly config: BotConfigValues;
+  readonly migrated: boolean;
+} | null {
+  const current = validateBotConfigDraft(input);
+  if (current.ok) {
+    return { config: current.config, migrated: false };
+  }
+
+  const migrated = mergePartialDraft(defaultBotConfigValues(), input);
+  if (!migrated.ok) {
+    return null;
+  }
+  return { config: migrated.config, migrated: true };
+}
+
 export class VersionedConfigStore {
   private readonly filePath: string;
   private readonly now: () => Date;
@@ -90,6 +126,9 @@ export class VersionedConfigStore {
       this.draft = loaded.draft;
       this.previous = loaded.previous;
       this.updatedAt = loaded.updatedAt;
+      if (loaded.migrated) {
+        this.persist();
+      }
     } else {
       this.revision = 1;
       this.active = normalizeBotConfig(defaultBotConfigValues());
@@ -224,39 +263,69 @@ export class VersionedConfigStore {
     this.persist();
   }
 
-  private tryLoad(): PersistedState | null {
+  private tryLoad(): LoadedState | null {
     if (!existsSync(this.filePath)) {
       return null;
     }
     try {
-      const raw = JSON.parse(readFileSync(this.filePath, 'utf8')) as PersistedState;
-      const activeCheck = validateBotConfigDraft(raw.active);
-      if (!activeCheck.ok) {
+      const parsed = JSON.parse(readFileSync(this.filePath, 'utf8')) as unknown;
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        this.backupInvalidPersistedFile();
         return null;
       }
+      const raw = parsed as Partial<PersistedState>;
+      const active = loadCompatibleBotConfig(raw.active);
+      if (!active) {
+        this.backupInvalidPersistedFile();
+        return null;
+      }
+
+      let migrated = active.migrated;
       let draft: BotConfigValues | null = null;
       if (raw.draft !== null && raw.draft !== undefined) {
-        const draftCheck = validateBotConfigDraft(raw.draft);
-        if (draftCheck.ok) {
+        const draftCheck = loadCompatibleBotConfig(raw.draft);
+        if (draftCheck) {
           draft = draftCheck.config;
+          migrated ||= draftCheck.migrated;
+        } else {
+          migrated = true;
         }
       }
+
       let previous: BotConfigValues | null = null;
       if (raw.previous !== null && raw.previous !== undefined) {
-        const prevCheck = validateBotConfigDraft(raw.previous);
-        if (prevCheck.ok) {
+        const prevCheck = loadCompatibleBotConfig(raw.previous);
+        if (prevCheck) {
           previous = prevCheck.config;
+          migrated ||= prevCheck.migrated;
+        } else {
+          migrated = true;
         }
       }
+
       return {
         revision: typeof raw.revision === 'number' && raw.revision >= 1 ? raw.revision : 1,
-        active: activeCheck.config,
+        active: active.config,
         draft,
         previous,
         updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : this.now().toISOString(),
+        migrated,
       };
     } catch {
+      this.backupInvalidPersistedFile();
       return null;
+    }
+  }
+
+  private backupInvalidPersistedFile(): void {
+    if (!existsSync(this.filePath)) {
+      return;
+    }
+    const backupPath = `${this.filePath}.invalid-${Date.now()}.json`;
+    try {
+      copyFileSync(this.filePath, backupPath);
+    } catch {
+      // Best-effort safety copy. Startup fallback still needs to remain available.
     }
   }
 
