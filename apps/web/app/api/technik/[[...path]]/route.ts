@@ -12,7 +12,6 @@ const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
 const PRODUCTION_GATEWAY = 'http://discord-gateway.zeabur.internal:4100';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
-const DEFAULT_TECHNIKA_ADMIN_DISCORD_ID = '808066932753563668';
 
 function trimTrailingSlash(value: string): string {
   return value.trim().replace(/\/$/, '');
@@ -45,10 +44,9 @@ function technikaSecret(): string {
 }
 
 function technikaAdminDiscordIds(): ReadonlySet<string> {
-  const configured = process.env.TECHNIKA_ADMIN_DISCORD_IDS?.trim();
-  const raw = configured || DEFAULT_TECHNIKA_ADMIN_DISCORD_ID;
+  const configured = process.env.TECHNIKA_ADMIN_DISCORD_IDS?.trim() ?? '';
   return new Set(
-    raw
+    configured
       .split(',')
       .map((value) => value.trim())
       .filter((value) => /^\d{17,20}$/.test(value)),
