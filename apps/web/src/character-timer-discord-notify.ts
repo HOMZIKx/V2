@@ -1,9 +1,8 @@
 /**
- * Additive Discord notify for character ProgressTimers (EQ/Timer tab).
- * Does not touch EQ inventory UI — call from Start / complete paths only.
- *
- * HARD RULE: DM fan-out is ONLY team members with notifyPrefs.characterTimers
- * true (default true if missing). Never expands to a Discord guild roster.
+ * Discord notify for character ProgressTimers (EQ/Timer tab).
+ * Team coordination is deliberate here: timer changes are broadcast to every
+ * current team member that has a resolvable Discord account. This never expands
+ * to a Discord guild roster.
  */
 
 import {
@@ -11,10 +10,11 @@ import {
   buildCharacterTimersDeepLinkUrl,
   postDiscordTimerNotify,
   postDiscordTimerResetNotify,
+  type DiscordLiveTimerSnapshot,
   type DiscordTimerNotifyResult,
 } from './discord-notify-api';
 import {
-  listTeamNotifyDiscordRecipients,
+  resolveMemberDiscordAccountId,
   type ProgressTimer,
   type WorkspaceRecord,
   type PlayerIdentity,
@@ -27,17 +27,16 @@ export type CharacterTimerNotifyContext = {
   readonly viewer: PlayerIdentity | null;
   readonly actorName: string;
   readonly kind: 'reset' | 'reminder' | 'manual';
-  /**
-   * Optional extra Discord snowflakes — HARD-intersected with team notifyPrefs
-   * allowlist (never used to bypass prefs or reach non-members).
-   */
+  /** Optional extra Discord snowflakes — still intersected with team membership. */
   readonly extraRecipientDiscordIds?: readonly string[];
 };
 
 function recipientIds(ctx: CharacterTimerNotifyContext): string[] {
-  const allowed = new Set(
-    listTeamNotifyDiscordRecipients(ctx.workspace, 'characterTimers', ctx.viewer),
-  );
+  const allowed = new Set<string>();
+  for (const member of ctx.workspace.members) {
+    const discordId = resolveMemberDiscordAccountId(member, ctx.viewer);
+    if (discordId) allowed.add(discordId);
+  }
   if (allowed.size === 0) return [];
 
   const extras = ctx.extraRecipientDiscordIds;
@@ -47,7 +46,7 @@ function recipientIds(ctx: CharacterTimerNotifyContext): string[] {
       const id = raw.trim();
       if (allowed.has(id)) out.push(id);
     }
-    return out;
+    return [...new Set(out)];
   }
   return [...allowed];
 }
@@ -71,6 +70,24 @@ function timerForNotify(ctx: CharacterTimerNotifyContext): ProgressTimer {
   };
 }
 
+function liveTimerSnapshots(
+  workspace: WorkspaceRecord,
+  focusTimer: ProgressTimer,
+): DiscordLiveTimerSnapshot[] {
+  const timers = workspace.timers
+    .filter((timer) => timer.characterId === focusTimer.characterId)
+    .map((timer) => (timer.id === focusTimer.id ? focusTimer : timer));
+
+  return timers.slice(0, 12).map((timer) => ({
+    id: timer.id,
+    label: timer.label,
+    status: timer.status,
+    ...(timer.remainingLabel ? { remainingLabel: timer.remainingLabel } : {}),
+    ...(timer.detail ? { detail: timer.detail } : {}),
+    ...(timer.readyAtIso ? { readyAtIso: timer.readyAtIso } : {}),
+  }));
+}
+
 export function buildCharacterTimerNotifyCopy(input: {
   readonly characterName: string;
   readonly timer: ProgressTimer;
@@ -81,24 +98,24 @@ export function buildCharacterTimerNotifyCopy(input: {
   if (kind === 'reminder') {
     return {
       title: `${timer.label} · ${characterName}`,
-      body: `Timer postaci kończy się wkrótce (${timer.remainingLabel || 'wkrótce'}). Oznacz Gotowe w Discord albo na karcie postaci.`,
+      body: 'Timer jest gotowy. Stan całej karty znajduje się poniżej.',
     };
   }
   if (kind === 'reset') {
     return {
       title: `${timer.label} · ${characterName}`,
-      body: `${actorName} uruchomił timer postaci. Koniec: ${timer.readyAtIso ?? timer.remainingLabel ?? 'w toku'}.`,
+      body: `${actorName} odświeżył timer. Cały zespół widzi poniżej aktualny stan timerów tej postaci.`,
     };
   }
   return {
     title: `${timer.label} · ${characterName}`,
-    body: `Ping: timer postaci ${timer.label} na ${characterName}.`,
+    body: `Aktualizacja timera ${timer.label} na ${characterName}.`,
   };
 }
 
 /**
- * Fire-and-forget Discord DMs for a character progress timer.
- * Returns results per recipient (for tests / optional UI notice).
+ * Broadcast a character timer card to team DMs.
+ * Every message contains the full timer state for the affected character.
  */
 export async function notifyCharacterProgressTimer(
   ctx: CharacterTimerNotifyContext,
@@ -123,6 +140,7 @@ export async function notifyCharacterProgressTimer(
     ctx.workspace.characters,
     timer.id,
   );
+  const liveTimers = liveTimerSnapshots(ctx.workspace, timer);
 
   const results: DiscordTimerNotifyResult[] = [];
   let sent = 0;
@@ -133,7 +151,7 @@ export async function notifyCharacterProgressTimer(
       ? ctx.viewer.discordAccountId.trim()
       : null;
 
-  // Fan-out to other team recipients (prefs-filtered). Actor skipped here.
+  // Reset event: one team broadcast to everyone except actor, plus actor confirmation.
   if (ctx.kind === 'reset') {
     const others = recipients.filter((id) => id !== actorDiscord);
     if (others.length > 0 && actorDiscord) {
@@ -150,6 +168,7 @@ export async function notifyCharacterProgressTimer(
         timerLabel: timer.label,
         ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
         roomSummary,
+        liveTimers,
         recipientDiscordUserIds: others,
         idempotencyKey: `char-timer-reset:${timer.id}:${timer.operationId ?? Date.now()}`,
       });
@@ -157,8 +176,6 @@ export async function notifyCharacterProgressTimer(
     }
   }
 
-  // Direct DMs: for reset, actor only (others already via reset fan-out);
-  // for reminder/manual, all prefs-allowed team recipients.
   const directRecipients =
     ctx.kind === 'reset'
       ? recipients.filter((id) => id === actorDiscord)
@@ -177,6 +194,7 @@ export async function notifyCharacterProgressTimer(
       timerLabel: timer.label,
       ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
       roomSummary,
+      liveTimers,
       includeButtons: true,
       kind: ctx.kind,
       actorName: ctx.actorName,
@@ -191,18 +209,14 @@ export async function notifyCharacterProgressTimer(
   return { sent, results };
 }
 
-/** Schedule browser reminder ~reminderMinutesBefore endsAt (best-effort local). */
-export function scheduleCharacterTimerReminder(input: {
+/**
+ * Browser timers are intentionally disabled. Durable reminders belong to the
+ * discord-gateway queue so closing the tab or refreshing the web app cannot lose them.
+ */
+export function scheduleCharacterTimerReminder(_input: {
   readonly endsAtIso: string | null;
   readonly reminderMinutesBefore: number;
   readonly fire: () => void;
 }): (() => void) | null {
-  if (!input.endsAtIso || typeof window === 'undefined') return null;
-  const ends = Date.parse(input.endsAtIso);
-  if (!Number.isFinite(ends)) return null;
-  const fireAt = ends - input.reminderMinutesBefore * 60_000;
-  const delay = fireAt - Date.now();
-  if (delay < 5_000 || delay > 48 * 3_600_000) return null;
-  const handle = window.setTimeout(() => input.fire(), delay);
-  return () => window.clearTimeout(handle);
+  return null;
 }
