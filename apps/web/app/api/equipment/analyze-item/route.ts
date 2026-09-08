@@ -6,10 +6,31 @@ export const dynamic = 'force-dynamic';
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const DEFAULT_VISION_MODEL = 'gpt-5.6-luna';
+const EQUIPMENT_CATEGORIES = new Set([
+  'weapon',
+  'armor',
+  'helmet',
+  'shield',
+  'earrings',
+  'necklace',
+  'bracelet',
+  'shoes',
+]);
+
+type EquipmentCategory =
+  | 'weapon'
+  | 'armor'
+  | 'helmet'
+  | 'shield'
+  | 'earrings'
+  | 'necklace'
+  | 'bracelet'
+  | 'shoes';
 
 interface AnalysisDraft {
   readonly name: string;
   readonly enhancement: number;
+  readonly category: EquipmentCategory | null;
   readonly bonuses: readonly string[];
   readonly confidence: number;
   readonly notes: string;
@@ -65,6 +86,12 @@ function clampConfidence(value: unknown): number {
   return Math.min(1, Math.max(0, parsed));
 }
 
+function parseCategory(value: unknown): EquipmentCategory | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLocaleLowerCase('en-US');
+  return EQUIPMENT_CATEGORIES.has(normalized) ? (normalized as EquipmentCategory) : null;
+}
+
 function parseAnalysisDraft(raw: string): AnalysisDraft | null {
   let parsed: unknown;
   try {
@@ -89,6 +116,7 @@ function parseAnalysisDraft(raw: string): AnalysisDraft | null {
   return {
     name,
     enhancement: clampInteger(source.enhancement, 0, 9, 0),
+    category: parseCategory(source.category),
     bonuses,
     confidence: clampConfidence(source.confidence),
     notes: typeof source.notes === 'string' ? source.notes.trim().slice(0, 500) : '',
@@ -103,6 +131,7 @@ Zwróć wyłącznie poprawny JSON bez markdownu w formacie:
 {
   "name": "nazwa bazowa przedmiotu, bez +N jeżeli +N jest widoczne osobno",
   "enhancement": 0,
+  "category": "weapon|armor|helmet|shield|earrings|necklace|bracelet|shoes albo null",
   "bonuses": ["dokładnie odczytane linie bonusów"],
   "confidence": 0.0,
   "notes": "krótka informacja o niepewnych / nieczytelnych fragmentach"
@@ -110,6 +139,8 @@ Zwróć wyłącznie poprawny JSON bez markdownu w formacie:
 
 Zasady:
 - enhancement musi być liczbą 0–9; jeśli nie widać poziomu ulepszenia, użyj 0 i opisz niepewność w notes;
+- category określaj wyłącznie, jeśli z nazwy/tooltipa da się rozpoznać typ przedmiotu; jeśli nie, zwróć null;
+- weapon = broń, armor = zbroja, helmet = hełm/czapka, shield = tarcza, earrings = kolczyki, necklace = naszyjnik, bracelet = bransoleta, shoes = buty;
 - bonusy przepisuj w języku i wartościach widocznych na tooltipie; nie dopowiadaj wartości z wiedzy o grze;
 - pomijaj cenę, wagę, opis fabularny, wymagania handlu i tekst interfejsu, jeśli nie są bonusem przedmiotu;
 - jeśli nazwa jest częściowo nieczytelna, podaj najlepszy odczyt i obniż confidence;
