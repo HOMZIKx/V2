@@ -21,6 +21,10 @@ import {
   readCharacterTimerCardFromBot,
   readSharedCharacterTimerCardFromBot,
 } from '../../infrastructure/player-team/read-character-timer-card.js';
+import {
+  readSharedWorkspaceTeamRecipients,
+  readTeamWorkspaceContextFromBot,
+} from '../../infrastructure/player-team/read-team-workspace-context.js';
 import { refreshSharedCharacterTimer } from '../../infrastructure/player-team/refresh-shared-character-timer.js';
 import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import { parseSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
@@ -32,7 +36,7 @@ import {
 import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import { InteractionRouter, type InteractionRouterDeps } from './interaction-router.js';
 
-function teamRecipients(actorDiscordUserId: string): string[] {
+function fallbackTeamRecipients(actorDiscordUserId: string): string[] {
   return [...new Set([...listKingdomWarRecipients(), actorDiscordUserId])];
 }
 
@@ -43,8 +47,8 @@ function timerDeepLink(workspaceId: string | null, characterId: string | null): 
 
 /**
  * Team coordination layer around the legacy interaction router.
- * Character timer and war choices are team events: the shared state changes once,
- * then the bot distributes the same current snapshot to the rest of the team.
+ * Character timer and war choices are team events: shared player-team state is the
+ * source of truth, then the bot distributes the same snapshot to every team member.
  */
 export class TeamSyncInteractionRouter {
   private readonly base: InteractionRouter;
@@ -100,8 +104,6 @@ export class TeamSyncInteractionRouter {
     const actorName = interaction.user.globalName ?? interaction.user.username;
     const ownerViewerId = canonicalOwnerViewerId(interaction.user.id);
 
-    // Personal state is used only to locate the workspace. The actual mutation below
-    // is always a shared-workspace PUT, which is what every web client subscribes to.
     const located = await readCharacterTimerCardFromBot({
       baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
       demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
@@ -139,10 +141,17 @@ export class TeamSyncInteractionRouter {
     const characterId = result.characterId;
     const characterName = result.characterName;
     const deepLinkUrl = timerDeepLink(workspaceId, characterId);
-    const recipients = teamRecipients(interaction.user.id);
+    const sharedRecipients = await readSharedWorkspaceTeamRecipients({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: interaction.user.id,
+      workspaceId,
+    });
+    const recipients =
+      sharedRecipients.length > 0
+        ? [...new Set([...sharedRecipients, interaction.user.id])]
+        : fallbackTeamRecipients(interaction.user.id);
 
-    // Refresh starts a new cycle. Remove stale due/snooze jobs and arm the next due
-    // event for every team recipient.
     for (const discordUserId of recipients) {
       cancelCharacterTimerReminder(discordUserId, timerId);
     }
@@ -162,8 +171,6 @@ export class TeamSyncInteractionRouter {
         },
         {
           logger: this.deps.logger,
-          // The startup worker is the canonical sender; this callback is only a
-          // fallback before bootstrap has installed it.
           send: (job) => this.sendDueTimerCard(job),
         },
       );
@@ -311,13 +318,19 @@ export class TeamSyncInteractionRouter {
       return;
     }
 
-    const characterName =
-      KINGDOM_WAR_CHARACTER_STUB.find((character) => character.id === characterId)?.name ?? characterId;
+    const context = await readTeamWorkspaceContextFromBot({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: interaction.user.id,
+    });
+    const roster = context?.roster.length ? context.roster : [...KINGDOM_WAR_CHARACTER_STUB];
+    const characterName = roster.find((character) => character.id === characterId)?.name ?? characterId;
     const actorName = interaction.user.globalName ?? interaction.user.username;
     const panel = renderKingdomWarReminder({
       config: cfg,
       signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
       claims: getKingdomWarClaims(),
+      roster,
       actorName,
       actorAction: `wybrał postać **${characterName}**`,
     });
@@ -334,7 +347,11 @@ export class TeamSyncInteractionRouter {
       });
     }
 
-    for (const discordUserId of teamRecipients(interaction.user.id)) {
+    const recipients =
+      context?.recipients.length
+        ? [...new Set([...context.recipients, interaction.user.id])]
+        : fallbackTeamRecipients(interaction.user.id);
+    for (const discordUserId of recipients) {
       if (discordUserId === interaction.user.id) continue;
       try {
         await this.deps.gateway.sendTimerNotify({
