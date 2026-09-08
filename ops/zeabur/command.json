@@ -1,5 +1,5 @@
 {
-  "requestId": "inspect-cicd-source-types-20260908-1",
+  "requestId": "list-cicd-sources-for-api-recovery-20260908-1",
   "mode": "graphql_read",
-  "query": "query Schema{source:__type(name:\"CICDSource\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}} conn:__type(name:\"CICDSourceConnection\"){fields{name type{kind name ofType{kind name}}}} edge:__type(name:\"CICDSourceEdge\"){fields{name type{kind name ofType{kind name}}}}}"
+  "query": "query Sources{cicdSources(first:100){edges{node{id url ref region rootDirectory dockerfile generation createdAt updatedAt}} pageInfo{hasNextPage endCursor}}}"
 }
