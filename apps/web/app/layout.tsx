@@ -6,6 +6,7 @@ import { TeamKingdomWarRecipientSync } from '../src/team-kingdom-war-recipient-s
 import { TeamMembershipGuard } from '../src/team-membership-guard';
 import { PlayerStoreProvider } from '../src/player-store-react';
 import { AuthGate } from './auth-gate';
+import { MapMarkerBoundaryGuard } from './map-marker-boundary-guard';
 import './globals.css';
 import './generaly-metki-theme.css';
 import './map-marker-bounds.css';
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
     <html lang="pl">
       <body>
         <PlayerStoreProvider>
+          <MapMarkerBoundaryGuard />
           <TeamInvitationSync />
           <TeamKingdomWarRecipientSync />
           <TeamMembershipGuard />
