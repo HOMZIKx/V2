@@ -1,6 +1,4 @@
 {
-  "requestId": "inspect-api-runtime-and-mutations-20260908-2",
-  "mode": "graphql_read",
-  "query": "query Inspect($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status(environmentID:$environmentID) suspendedAt suspendedReason gitTrigger(environmentID:$environmentID){branchName repoID repoURL} deployments(environmentID:$environmentID){_id gitProvider repoOwner repoName ref commitSHA commitMessage status createdAt startedAt finishedAt canceledAt}}}} __schema{mutationType{fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}}}}",
-  "variables": {"projectID":"6a720a3e472e2c91a9e660d5","environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "pre-api-redeploy-env-audit-20260908-1",
+  "mode": "env_audit"
 }
