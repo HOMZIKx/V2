@@ -5,9 +5,14 @@ import { Pool, type PoolClient } from 'pg';
 
 import { createLogger } from '@v2/observability';
 
-import { splitOwnedQuantity, type TeamEconomySplitMode } from '../../domain/team-economy.js';
+import {
+  attributedAmount,
+  splitOwnedQuantity,
+  type TeamEconomySplitMode,
+} from '../../domain/team-economy.js';
 import {
   type EconomyCatalogItem,
+  type EconomyCatalogSeedItem,
   type EconomyCurrency,
   type EconomyDropSessionInput,
   type EconomyDropSessionRecord,
@@ -36,23 +41,35 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
   }
 
   private mapCatalogRow(row: Record<string, unknown>): EconomyCatalogItem {
-    const price = row.last_unit_price === null || row.last_unit_price === undefined
-      ? null
-      : {
-          unitPrice: Number(row.last_unit_price),
-          currency: String(row.last_currency) as EconomyCurrency,
-          createdAtIso: new Date(String(row.last_price_at)).toISOString(),
-        };
+    const price =
+      row.last_unit_price === null || row.last_unit_price === undefined
+        ? null
+        : {
+            unitPrice: Number(row.last_unit_price),
+            currency: String(row.last_currency) as EconomyCurrency,
+            createdAtIso: new Date(String(row.last_price_at)).toISOString(),
+          };
     return {
       id: String(row.id),
       canonicalName: String(row.canonical_name),
       category: String(row.category),
-      imageUrl: row.image_url === null || row.image_url === undefined ? null : String(row.image_url),
+      imageUrl:
+        row.image_url === null || row.image_url === undefined ? null : String(row.image_url),
       lastPrice: price,
     };
   }
 
-  public async searchItems(workspaceId: string, query: string): Promise<readonly EconomyCatalogItem[]> {
+  public async catalogStatus(): Promise<{ readonly total: number }> {
+    const result = await this.db.query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM player_team_economy_items',
+    );
+    return { total: Number(result.rows[0]?.count ?? 0) };
+  }
+
+  public async searchItems(
+    workspaceId: string,
+    query: string,
+  ): Promise<readonly EconomyCatalogItem[]> {
     const needle = query.trim();
     const result = await this.db.query(
       `SELECT DISTINCT ON (i.id)
@@ -74,7 +91,88 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     return result.rows.map((row) => this.mapCatalogRow(row));
   }
 
-  private async catalogItemById(client: Pool | PoolClient, itemId: string, workspaceId = ''): Promise<EconomyCatalogItem> {
+  public async importItems(input: {
+    readonly items: readonly EconomyCatalogSeedItem[];
+    readonly createdBy: string;
+  }): Promise<{ readonly imported: number; readonly total: number }> {
+    const client = await this.db.connect();
+    let imported = 0;
+    try {
+      await client.query('BEGIN');
+      for (const raw of input.items) {
+        const canonicalName = raw.canonicalName.trim();
+        if (!canonicalName) continue;
+        const existing = await client.query<{ id: string }>(
+          'SELECT id FROM player_team_economy_items WHERE LOWER(canonical_name) = LOWER($1) LIMIT 1',
+          [canonicalName],
+        );
+        let itemId = existing.rows[0]?.id;
+        if (!itemId) {
+          itemId = raw.id.trim() || randomUUID();
+          const inserted = await client.query<{ id: string }>(
+            `INSERT INTO player_team_economy_items
+               (id, canonical_name, category, image_url, created_by, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,NOW(),NOW())
+             ON CONFLICT DO NOTHING
+             RETURNING id`,
+            [
+              itemId,
+              canonicalName,
+              raw.category.trim() || 'Pozostałe',
+              raw.imageUrl ?? null,
+              input.createdBy,
+            ],
+          );
+          if (inserted.rows[0]?.id) {
+            imported += 1;
+          } else {
+            const raced = await client.query<{ id: string }>(
+              'SELECT id FROM player_team_economy_items WHERE LOWER(canonical_name) = LOWER($1) LIMIT 1',
+              [canonicalName],
+            );
+            itemId = raced.rows[0]?.id ?? itemId;
+          }
+        } else {
+          await client.query(
+            `UPDATE player_team_economy_items
+             SET category = CASE WHEN category = 'Pozostałe' THEN $2 ELSE category END,
+                 image_url = COALESCE(image_url, $3),
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [itemId, raw.category.trim() || 'Pozostałe', raw.imageUrl ?? null],
+          );
+        }
+
+        for (const aliasRaw of raw.aliases ?? []) {
+          const alias = aliasRaw.trim();
+          if (!alias || alias.toLocaleLowerCase('pl-PL') === canonicalName.toLocaleLowerCase('pl-PL')) {
+            continue;
+          }
+          await client.query(
+            `INSERT INTO player_team_economy_item_aliases (item_id, alias, created_by)
+             VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
+            [itemId, alias, input.createdBy],
+          );
+        }
+      }
+      const count = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM player_team_economy_items',
+      );
+      await client.query('COMMIT');
+      return { imported, total: Number(count.rows[0]?.count ?? 0) };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async catalogItemById(
+    client: Pool | PoolClient,
+    itemId: string,
+    workspaceId = '',
+  ): Promise<EconomyCatalogItem> {
     const result = await client.query(
       `SELECT i.id, i.canonical_name, i.category, i.image_url,
          lp.unit_price AS last_unit_price, lp.currency AS last_currency, lp.created_at AS last_price_at
@@ -116,7 +214,13 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
           `INSERT INTO player_team_economy_items
              (id, canonical_name, category, image_url, created_by, created_at, updated_at)
            VALUES ($1,$2,$3,$4,$5,NOW(),NOW())`,
-          [itemId, input.canonicalName.trim(), input.category.trim() || 'Pozostałe', input.imageUrl ?? null, input.createdBy],
+          [
+            itemId,
+            input.canonicalName.trim(),
+            input.category.trim() || 'Pozostałe',
+            input.imageUrl ?? null,
+            input.createdBy,
+          ],
         );
       }
       const alias = input.alias?.trim();
@@ -192,7 +296,14 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
       `INSERT INTO player_team_economy_prices
          (id, item_id, workspace_id, unit_price, currency, created_by, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,NOW())`,
-      [randomUUID(), input.itemId, input.workspaceId, input.unitPrice, input.currency, input.createdBy],
+      [
+        randomUUID(),
+        input.itemId,
+        input.workspaceId,
+        input.unitPrice,
+        input.currency,
+        input.createdBy,
+      ],
     );
   }
 
@@ -206,15 +317,30 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
            (id, workspace_id, source, occurred_at, notes, screenshot_ref, our_share_basis_points,
             pile_count, split_mode, created_by, created_at, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),NOW())`,
-        [sessionId, input.workspaceId, input.source, input.occurredAtIso, input.notes ?? null,
-          input.screenshotRef ?? null, input.ourShareBasisPoints, input.pileCount, input.splitMode, input.createdBy],
+        [
+          sessionId,
+          input.workspaceId,
+          input.source,
+          input.occurredAtIso,
+          input.notes ?? null,
+          input.screenshotRef ?? null,
+          input.ourShareBasisPoints,
+          input.pileCount,
+          input.splitMode,
+          input.createdBy,
+        ],
       );
       for (const participant of input.participants) {
         await client.query(
           `INSERT INTO player_team_drop_participants
              (session_id, participant_id, display_name, is_team_member)
            VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-          [sessionId, participant.participantId, participant.displayName, participant.isTeamMember],
+          [
+            sessionId,
+            participant.participantId,
+            participant.displayName,
+            participant.isTeamMember,
+          ],
         );
       }
       for (const item of input.items) {
@@ -223,8 +349,17 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
           `INSERT INTO player_team_drop_items
              (id, session_id, item_id, display_name, total_quantity, our_quantity, unit_price, currency, ai_confidence)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-          [dropItemId, sessionId, item.itemId, item.displayName, item.totalQuantity, item.ourQuantity,
-            item.unitPrice, item.currency, item.aiConfidence ?? null],
+          [
+            dropItemId,
+            sessionId,
+            item.itemId,
+            item.displayName,
+            item.totalQuantity,
+            item.ourQuantity,
+            item.unitPrice,
+            item.currency,
+            item.aiConfidence ?? null,
+          ],
         );
         const split = splitOwnedQuantity(item.ourQuantity, input.pileCount, input.splitMode);
         await client.query(
@@ -232,14 +367,35 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
            VALUES ($1,$2,'stored',$3,NOW())`,
           [dropItemId, split.leftover, input.createdBy],
         );
-        if (item.itemId && item.unitPrice >= 0) {
+        if (item.itemId && item.unitPrice > 0) {
           await client.query(
             `INSERT INTO player_team_economy_prices
                (id, item_id, workspace_id, unit_price, currency, created_by, created_at)
              VALUES ($1,$2,$3,$4,$5,$6,NOW())`,
-            [randomUUID(), item.itemId, input.workspaceId, item.unitPrice, item.currency, input.createdBy],
+            [
+              randomUUID(),
+              item.itemId,
+              input.workspaceId,
+              item.unitPrice,
+              item.currency,
+              input.createdBy,
+            ],
           );
         }
+      }
+      for (const money of input.money) {
+        await client.query(
+          `INSERT INTO player_team_drop_money
+             (id, session_id, currency, total_amount, our_share_basis_points, created_at)
+           VALUES ($1,$2,$3,$4,$5,NOW())`,
+          [
+            randomUUID(),
+            sessionId,
+            money.currency,
+            money.totalAmount,
+            money.ourShareBasisPoints,
+          ],
+        );
       }
       await client.query('COMMIT');
       const created = await this.listDrops(input.workspaceId);
@@ -254,7 +410,10 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     }
   }
 
-  public async listDrops(workspaceId: string, sinceIso?: string): Promise<readonly EconomyDropSessionRecord[]> {
+  public async listDrops(
+    workspaceId: string,
+    sinceIso?: string,
+  ): Promise<readonly EconomyDropSessionRecord[]> {
     const sessions = await this.db.query(
       `SELECT * FROM player_team_drop_sessions
        WHERE workspace_id = $1 AND ($2::timestamptz IS NULL OR occurred_at >= $2::timestamptz)
@@ -263,12 +422,18 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     );
     const result: EconomyDropSessionRecord[] = [];
     for (const row of sessions.rows) {
-      const [itemsResult, participantsResult] = await Promise.all([
+      const [itemsResult, moneyResult, participantsResult] = await Promise.all([
         this.db.query(
           `SELECT i.*, l.quantity AS leftover
            FROM player_team_drop_items i
            LEFT JOIN player_team_drop_leftovers l ON l.drop_item_id = i.id
            WHERE i.session_id = $1 ORDER BY i.created_at, i.id`,
+          [row.id],
+        ),
+        this.db.query(
+          `SELECT id, currency, total_amount, our_share_basis_points
+           FROM player_team_drop_money
+           WHERE session_id = $1 ORDER BY created_at, id`,
           [row.id],
         ),
         this.db.query(
@@ -309,6 +474,17 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
             leftover: Number(item.leftover ?? split.leftover),
           };
         }),
+        money: moneyResult.rows.map((money) => {
+          const totalAmount = Number(money.total_amount);
+          const ourShareBasisPoints = Number(money.our_share_basis_points);
+          return {
+            id: String(money.id),
+            currency: String(money.currency) as EconomyCurrency,
+            totalAmount,
+            ourShareBasisPoints,
+            ourAmount: attributedAmount(totalAmount, ourShareBasisPoints),
+          };
+        }),
       });
     }
     return result;
@@ -321,13 +497,27 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
          (id, workspace_id, drop_session_id, label, expense_type, quantity, unit_price, currency,
           our_share_basis_points, occurred_at, created_by, created_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())`,
-      [id, input.workspaceId, input.dropSessionId ?? null, input.label, input.expenseType, input.quantity,
-        input.unitPrice, input.currency, input.ourShareBasisPoints, input.occurredAtIso, input.createdBy],
+      [
+        id,
+        input.workspaceId,
+        input.dropSessionId ?? null,
+        input.label,
+        input.expenseType,
+        input.quantity,
+        input.unitPrice,
+        input.currency,
+        input.ourShareBasisPoints,
+        input.occurredAtIso,
+        input.createdBy,
+      ],
     );
     return { ...input, id };
   }
 
-  public async listExpenses(workspaceId: string, sinceIso?: string): Promise<readonly EconomyExpenseRecord[]> {
+  public async listExpenses(
+    workspaceId: string,
+    sinceIso?: string,
+  ): Promise<readonly EconomyExpenseRecord[]> {
     const result = await this.db.query(
       `SELECT * FROM player_team_expenses
        WHERE workspace_id = $1 AND ($2::timestamptz IS NULL OR occurred_at >= $2::timestamptz)
@@ -335,12 +525,17 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
       [workspaceId, sinceIso ?? null],
     );
     return result.rows.map((row) => ({
-      id: String(row.id), workspaceId: String(row.workspace_id),
+      id: String(row.id),
+      workspaceId: String(row.workspace_id),
       dropSessionId: row.drop_session_id === null ? null : String(row.drop_session_id),
-      label: String(row.label), expenseType: String(row.expense_type) as EconomyExpenseRecord['expenseType'],
-      quantity: Number(row.quantity), unitPrice: Number(row.unit_price), currency: String(row.currency) as EconomyCurrency,
+      label: String(row.label),
+      expenseType: String(row.expense_type) as EconomyExpenseRecord['expenseType'],
+      quantity: Number(row.quantity),
+      unitPrice: Number(row.unit_price),
+      currency: String(row.currency) as EconomyCurrency,
       ourShareBasisPoints: Number(row.our_share_basis_points),
-      occurredAtIso: new Date(row.occurred_at).toISOString(), createdBy: String(row.created_by),
+      occurredAtIso: new Date(row.occurred_at).toISOString(),
+      createdBy: String(row.created_by),
     }));
   }
 }
