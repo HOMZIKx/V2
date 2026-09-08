@@ -27,28 +27,24 @@ function makeConfig() {
 }
 
 describe('DiscordJsGatewayAdapter', () => {
-  it('permits Guilds-only when sync is off and Guilds+GuildMembers when sync is on', () => {
-    expect(() => assertAllowedGatewayIntents([GatewayIntentBits.Guilds], false)).not.toThrow();
-    expect(() => assertOnlyGuildsIntent([GatewayIntentBits.Guilds])).not.toThrow();
+  it('permits activity intents with sync off and adds GuildMembers only when sync is on', () => {
+    const activityIntents = [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildVoiceStates,
+    ];
+    const syncIntents = [...activityIntents, GatewayIntentBits.GuildMembers];
+
+    expect(() => assertAllowedGatewayIntents(activityIntents, false)).not.toThrow();
+    expect(() => assertOnlyGuildsIntent(activityIntents)).not.toThrow();
+    expect(() => assertAllowedGatewayIntents(syncIntents, true)).not.toThrow();
     expect(() =>
       assertAllowedGatewayIntents([GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers], true),
-    ).not.toThrow();
-    expect(() =>
-      assertAllowedGatewayIntents(
-        [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
-        false,
-      ),
     ).toThrow();
-    expect(() => assertAllowedGatewayIntents([GatewayIntentBits.Guilds], true)).toThrow();
+    expect(() => assertAllowedGatewayIntents(syncIntents, false)).toThrow();
+    expect(() => assertAllowedGatewayIntents(activityIntents, true)).toThrow();
     expect(() =>
-      assertAllowedGatewayIntents(
-        [
-          GatewayIntentBits.Guilds,
-          GatewayIntentBits.GuildMembers,
-          GatewayIntentBits.GuildPresences,
-        ],
-        true,
-      ),
+      assertAllowedGatewayIntents([...syncIntents, GatewayIntentBits.GuildPresences], true),
     ).toThrow();
   });
 
