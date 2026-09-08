@@ -1,8 +1,10 @@
 /**
- * Discord user IDs eligible for team coordination DMs (timers + kingdom war).
- * File-backed so restart keeps the current team recipient set.
- * HARD RULE: delivery uses ONLY explicit team IDs received from the web/workspace —
- * never guild.members and never implicit whole-guild fan-out.
+ * Legacy global coordination-recipient registry.
+ *
+ * IMPORTANT: kingdom-war delivery is no longer allowed to read this global set.
+ * Team-scoped war recipients live in kingdom-war-team-recipients.ts and are keyed
+ * by workspaceId. We keep this file only for backward-compatible timer/team sync
+ * endpoints while old web clients are still rolling out.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -70,7 +72,7 @@ function addValidRecipients(discordUserIds: readonly string[]): void {
   }
 }
 
-/** Replace from an authoritative web snapshot. */
+/** @deprecated Global war delivery is disabled. Kept only for old sync callers. */
 export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): {
   readonly ok: true;
   readonly count: number;
@@ -82,10 +84,7 @@ export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): 
   return { ok: true, count: recipients.size };
 }
 
-/**
- * Add team IDs observed on a character-timer event. Web sends an explicit list of
- * current workspace members, so this lets later bot-originated actions reach the same team.
- */
+/** @deprecated Kept only for old team-coordination sync callers. */
 export function mergeTeamCoordinationRecipients(discordUserIds: readonly string[]): {
   readonly ok: true;
   readonly count: number;
@@ -96,9 +95,13 @@ export function mergeTeamCoordinationRecipients(discordUserIds: readonly string[
   return { ok: true, count: recipients.size };
 }
 
+/**
+ * HARD SAFETY BOUNDARY: never expose the legacy global set to a sender.
+ * Returning an empty list also makes old fallback paths actor-only instead of
+ * accidentally mixing members from unrelated workspaces.
+ */
 export function listKingdomWarRecipients(): readonly string[] {
-  loadFromDisk();
-  return [...recipients];
+  return [];
 }
 
 /** Test helper */
