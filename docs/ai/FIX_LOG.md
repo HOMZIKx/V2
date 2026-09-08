@@ -44,6 +44,20 @@ oraz dla integracji Discord:
 
 # Wpisy
 
+## 2026-09-08 17:31 — EQ: Torby / Magazyn + import pojedynczego itemu ze screena
+
+- **Status:** `PARTIAL` — implementacja oraz CI są potwierdzone; produkcyjny runtime analizy AI pozostaje zablokowany wyłącznie przez brak `OPENAI_API_KEY` w usłudze `webapp-dest`. Sam moduł EQ nie wymaga tego klucza.
+- **Obszar:** DESTILED Web, karta postaci / EQ, Player Team persistence, katalog itemów, screenshot import.
+- **Problem / kierunek właściciela:** dotychczasowy ekran EQ nie odpowiadał docelowemu modelowi dużej torby. Właściciel wymaga osobnych widoków `Założone` i `Torba`, zakładek `Torba I`, `Torba II`, `Magazyn`, ręcznego zarządzania itemami oraz importu pojedynczego tooltipa ze screena z obowiązkowym podglądem/korektą przed zapisem.
+- **Poprawka:** dodano nowy widok EQ z 8 slotami założonego sprzętu, pojemnymi siatkami Torba I/Torba II/Magazyn, panelem szczegółów, zakładaniem/zdejmowaniem/przenoszeniem, miękkim usuwaniem, ręcznym dodawaniem oraz edycją `+N` i bonusów. Lokalizacja wykorzystuje istniejące `lastConfirmedLocation`, więc przechodzi przez obecny `PlayerStoreState → player-team-service snapshot sync → PostgreSQL` bez nowej migracji. Timery pozostają na istniejącym komponencie.
+- **Screenshot import:** `POST /api/equipment/analyze-item` przyjmuje tylko PNG/JPEG/WEBP do 8 MB, wysyła pojedynczy tooltip do OpenAI Responses API i zwraca wyłącznie draft `{name, enhancement, bonuses, confidence, notes}`. Endpoint nigdy nie zapisuje danych. UI wymaga jawnego `Potwierdź i dodaj`; po analizie użytkownik może skorygować nazwę, +N, slot i bonusy.
+- **Katalog:** istniejący `dobry-temat-item-catalog.json` pozostaje źródłem głównym V2. Audyt potwierdził, że dane kategorii `Ulepszacze` już są w tym dumpie (m.in. Agat, Amulet Orka, Biała Perła); nie wykonano duplikującego importu starej bazy.
+- **Zmienione pliki:** `apps/web/app/api/equipment/analyze-item/route.ts`, `apps/web/app/teams/[teamId]/characters/[characterId]/character-equipment-v2.tsx`, `.module.css`, `.module.css.d.ts`, `page.tsx`, `.env.example`.
+- **Commit / PR:** branch `feat/equipment-inventory-screenshot-import-20260908`, PR `#72` do `preview/destiled-web`.
+- **Walidacja:** pierwszy CI `34244773241` poprawnie wykrył TS2322 dla klas CSS slotów. Po lokalnym typowaniu CSS drugi CI `34244943904` zakończył `Quality gates`, `Infrastructure integration` i `Secret scan` statusem `success`; preview `pnpm typecheck` + `pnpm build`, dependency audit i 28 regresji Discord Gateway przeszły.
+- **Zeabur audit:** read-only run `34245160534` potwierdził `webapp-dest` jako `RUNNING` na `preview/destiled-web`, bez `OPENAI_API_KEY`; wartości sekretów pozostają zredagowane przez bridge. Legacy `web` jest osobnym zawieszonym serwisem i nie jest celem deployu.
+- **Pozostałe ryzyka:** screenshot AI po deployu będzie zwracał kontrolowane `503`, dopóki właściciel nie doda `OPENAI_API_KEY` do Variables `webapp-dest`. `OPENAI_VISION_MODEL` jest opcjonalny; domyślny model to `gpt-5.6-luna`. Pełny produkcyjny `WWW → API → Player Team → DB → reload` dla nowego EQ należy potwierdzić po merge/deploy i realnym zalogowaniu Discord OAuth.
+
 ## 2026-09-08 14:18 — Technika: live DM timerów postaci używa aktywnego szablonu
 
 - **Status:** `DONE` — poprawka kodowa, deployment dokładnego SHA oraz realny produkcyjny przepływ `Web/API → Discord Gateway → Discord DM` zostały potwierdzone. `reminderMinutesBefore` pozostaje osobnym, świadomie otwartym zakresem i nie zmienia statusu tej naprawy.

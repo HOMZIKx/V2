@@ -6,6 +6,15 @@
 Właściciel wznowił 2026-09-08 produkcyjne spięcie Web + Discord + backend na Zeaburze.
 Aktualny priorytet runtime: prawdziwy Discord OAuth, trwały Player Team oraz niezależny collector aktywności bota.
 
+### EQ / Torby / Magazyn / screenshot import — 2026-09-08
+
+- PR #72 przebudowuje kartę EQ na osobne `Założone` i `Torba` oraz `Torba I` / `Torba II` / `Magazyn`; zachowuje istniejące timery.
+- Ręczne itemy korzystają z obecnego Player Team snapshot persistence; lokalizacja torby jest zapisywana przez `lastConfirmedLocation`, bez nowej migracji DB.
+- Import pojedynczego tooltipa ze screena działa jako `analiza → draft → korekta → jawne potwierdzenie`; analiza sama nie zapisuje danych ani nie modyfikuje globalnego katalogu.
+- Katalog V2 już zawiera kategorię `Ulepszacze`; nie duplikować importu z DOBRYTEMAT. Brak dotyczy warstwy użycia tych danych, nie samego dumpa.
+- CI #34244943904 PASS po korekcie lokalnego typowania CSS.
+- Runtime screenshot AI: kod gotowy, lecz `webapp-dest` nie ma jeszcze `OPENAI_API_KEY`; do czasu dodania klucza endpoint celowo odpowiada 503. Zeabur env audit: #34245160534.
+
 ### Technika / timery postaci — 2026-09-08
 
 - PR #68 naprawia rozjazd między test-DM a realnym live DM: aktywny `characterTimers.messageTemplate` jest teraz rozwiązywany przy każdej wysyłce, również przez durable worker po restarcie.

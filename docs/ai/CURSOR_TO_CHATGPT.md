@@ -1,5 +1,13 @@
 # Cursor / Agent → Owner
 
+## EQ / inventory — PR #72
+
+- Nowy widok: `Założone` + `Torba`, zakładki `Torba I`, `Torba II`, `Magazyn`, większa siatka, panel szczegółów i ręczne zarządzanie.
+- Persistence pozostaje w istniejącym Player Team snapshot sync; nie dodano równoległego storage ani migracji.
+- Screenshot import jest pojedynczym tooltipem i zawsze kończy się draftem do korekty; zapis dopiero po `Potwierdź i dodaj`.
+- `dobry-temat-item-catalog.json` już zawiera wpisy `Ulepszacze`; nie importować ponownie.
+- CI #34244943904 PASS. Zeabur audit #34245160534: `webapp-dest` działa na preview, ale brak `OPENAI_API_KEY`, więc analiza screena pozostaje runtime `PARTIAL` do dodania klucza.
+
 ## Technika / timery postaci — PR #68
 
 - Root cause: live character-timer DM ignorował `characterTimers.messageTemplate`, mimo że config był poprawnie zapisywany/aktywowany i test-DM go używał.
