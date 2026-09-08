@@ -1,6 +1,6 @@
 {
-  "requestId": "inspect-api-deployments-before-recovery-20260908-1",
+  "requestId": "inspect-api-git-trigger-before-recover-20260908-1",
   "mode": "graphql_read",
-  "query": "query Inspect($environmentID:ObjectID!){service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status deployments(environmentID:$environmentID){_id status commitSHA createdAt startedAt finishedAt}}}",
+  "query": "query Inspect($environmentID:ObjectID!){service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status gitTrigger(environmentID:$environmentID){repoID branchName}}}",
   "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
 }
