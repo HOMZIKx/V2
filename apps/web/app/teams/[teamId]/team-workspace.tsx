@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { getReadyTimers } from '../../../src/player-store';
 import { usePlayerStore } from '../../../src/player-store-react';
+import { WORKSPACE_SYNC_CONFLICT_EVENT } from '../../../src/player-team-workspace-live-api';
 import {
   progressionTimerIcons,
   progressionTimerLabels,
@@ -18,6 +19,13 @@ function taskStatusLabel(status: string, dueLabel: string): string {
   if (status === 'snoozed') return 'Później';
   if (status === 'unavailable') return 'Nie mogę';
   return dueLabel;
+}
+
+function connectionLabel(connection: string): string {
+  if (connection === 'connected') return 'Synchronizacja online';
+  if (connection === 'reconnecting') return 'Ponowne łączenie';
+  if (connection === 'offline') return 'Brak połączenia';
+  return 'Dostęp zakończony';
 }
 
 export function TeamWorkspace() {
@@ -34,6 +42,18 @@ export function TeamWorkspace() {
   useEffect(() => {
     if (workspace) openWorkspace(workspace.id);
   }, [workspace, openWorkspace]);
+
+  useEffect(() => {
+    const onConflict = (event: Event) => {
+      const detail = (event as CustomEvent<{ readonly workspaceId?: string }>).detail;
+      if (detail?.workspaceId !== teamId) return;
+      setAnnouncement(
+        'Ktoś zapisał zmianę w tym samym momencie. Pobrano nowszą wersję z serwera — sprawdź swoją ostatnią akcję i w razie potrzeby wykonaj ją ponownie.',
+      );
+    };
+    window.addEventListener(WORKSPACE_SYNC_CONFLICT_EVENT, onConflict);
+    return () => window.removeEventListener(WORKSPACE_SYNC_CONFLICT_EVENT, onConflict);
+  }, [teamId]);
 
   const livingCharacters = useMemo(
     () => workspace?.characters.filter((character) => !character.archived) ?? [],
@@ -65,7 +85,7 @@ export function TeamWorkspace() {
         <main className="team-workspace" id="main-content">
           <section className="panel">
             <h1>Nie znaleziono zespołu</h1>
-            <p>Ten zespół nie jest w lokalnej sesji.</p>
+            <p>Nie masz dostępu do tego zespołu albo jego dane nie zostały jeszcze zsynchronizowane.</p>
             <a className="secondary-button" href="/">
               Wróć na pulpit
             </a>
@@ -114,7 +134,9 @@ export function TeamWorkspace() {
               <strong>
                 {workspace.members.length} {workspace.members.length === 1 ? 'osoba' : 'osób'}
               </strong>
-              <span>Zapis lokalny · {workspace.updatedLabel}</span>
+              <span>
+                {connectionLabel(state.connection)} · {workspace.updatedLabel}
+              </span>
             </div>
           </div>
           <div className="workspace-member-fan" aria-label="Członkowie zespołu">
@@ -172,7 +194,9 @@ export function TeamWorkspace() {
           <section className="panel" id="changes">
             <header>
               <h2>Ostatnie zmiany</h2>
-              <a className="panel-text-link" href={`/teams/${workspace.id}/history`}>Pełna historia</a>
+              <a className="panel-text-link" href={`/teams/${workspace.id}/history`}>
+                Pełna historia
+              </a>
             </header>
             {recentHistory.length === 0 ? (
               <p className="empty-copy">Po pierwszej zmianie w EQ, składzie lub timerze pojawi się wpis.</p>
@@ -261,15 +285,15 @@ export function TeamWorkspace() {
                 {workspace.notes
                   .filter((note) => note.scope !== 'equipment')
                   .map((note) => (
-                  <li className="team-note" key={note.id}>
-                    <div className="team-note-meta">
-                      <strong>{note.authorName}</strong>
-                      <span aria-hidden="true"> · </span>
-                      <time>{note.createdAtLabel}</time>
-                    </div>
-                    <p>{note.body}</p>
-                  </li>
-                ))}
+                    <li className="team-note" key={note.id}>
+                      <div className="team-note-meta">
+                        <strong>{note.authorName}</strong>
+                        <span aria-hidden="true"> · </span>
+                        <time>{note.createdAtLabel}</time>
+                      </div>
+                      <p>{note.body}</p>
+                    </li>
+                  ))}
               </ul>
             )}
           </section>
