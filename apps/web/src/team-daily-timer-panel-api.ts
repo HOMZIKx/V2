@@ -8,6 +8,27 @@ async function parseJson(response: Response): Promise<Record<string, unknown>> {
   return (await response.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
+const TEAM_PANEL_ERROR_MESSAGES: Readonly<Record<string, string>> = {
+  player_team_unavailable: 'Nie udało się połączyć z usługą zespołu. Spróbuj ponownie za chwilę.',
+  workspace_unavailable: 'Nie udało się pobrać danych zespołu. Spróbuj ponownie za chwilę.',
+  workspace_access_denied: 'Nie masz dostępu do ustawień tego zespołu.',
+  discord_identity_required: 'Sesja Discord wymaga ponownego zalogowania.',
+  unauthorized: 'Sesja wygasła. Zaloguj się ponownie przez Discord.',
+  owner_required: 'Godzinę panelu może zmienić tylko właściciel zespołu.',
+  notify_not_configured: 'Powiadomienia Discord nie są jeszcze skonfigurowane na serwerze.',
+  gateway_unreachable: 'Bot Discord jest chwilowo niedostępny. Spróbuj ponownie za chwilę.',
+  daily_timer_panel_config_unavailable: 'Nie udało się pobrać konfiguracji panelu timerów.',
+  invalid_daily_timer_panel_config: 'Konfiguracja panelu timerów na serwerze jest nieprawidłowa.',
+  invalid_daily_time: 'Podaj prawidłową godzinę wysyłki.',
+};
+
+function friendlyTeamPanelError(body: Record<string, unknown>, status: number): Error {
+  const code = typeof body.error === 'string' ? body.error : '';
+  const message = TEAM_PANEL_ERROR_MESSAGES[code];
+  if (message) return new Error(message);
+  return new Error(`Nie udało się wykonać operacji panelu PW (${status}).`);
+}
+
 export async function getTeamDailyTimerPanelConfig(
   workspaceId: string,
 ): Promise<TeamDailyTimerPanelConfig | null> {
@@ -15,7 +36,10 @@ export async function getTeamDailyTimerPanelConfig(
     method: 'GET',
     cache: 'no-store',
   });
-  if (!response.ok) throw new Error(`daily_timer_panel_config_${response.status}`);
+  if (!response.ok) {
+    const body = await parseJson(response);
+    throw friendlyTeamPanelError(body, response.status);
+  }
   const body = await parseJson(response);
   const config = body.config;
   if (!config || typeof config !== 'object') return null;
@@ -42,11 +66,11 @@ export async function setTeamDailyTimerPanelTime(
   });
   const body = await parseJson(response);
   if (!response.ok) {
-    throw new Error(typeof body.error === 'string' ? body.error : `daily_timer_panel_time_${response.status}`);
+    throw friendlyTeamPanelError(body, response.status);
   }
   const config = body.config as Record<string, unknown> | undefined;
   if (!config || typeof config.workspaceId !== 'string' || typeof config.dailyTime !== 'string') {
-    throw new Error('invalid_daily_timer_panel_config');
+    throw new Error(TEAM_PANEL_ERROR_MESSAGES.invalid_daily_timer_panel_config);
   }
   return {
     workspaceId: config.workspaceId,
