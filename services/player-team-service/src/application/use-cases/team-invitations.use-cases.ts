@@ -10,6 +10,8 @@ export type TeamInvitationsAccessConfig = {
   readonly allowDemoWrite: boolean;
 };
 
+const INVITATION_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -47,6 +49,35 @@ function invitationsOf(state: Record<string, unknown>): Record<string, unknown>[
 
 function memberMatchesDiscord(member: Record<string, unknown>, discordId: string): boolean {
   return asString(member.discordAccountId) === discordId || asString(member.id) === discordId;
+}
+
+function isExpiredInvitation(entry: { readonly expiresAtIso?: string }, nowMs = Date.now()): boolean {
+  if (!entry.expiresAtIso) return false;
+  const expiresAtMs = Date.parse(entry.expiresAtIso);
+  return Number.isFinite(expiresAtMs) && expiresAtMs <= nowMs;
+}
+
+function recordIsExpired(entry: Record<string, unknown>, nowMs = Date.now()): boolean {
+  const expiresAtIso = asString(entry.expiresAtIso);
+  return expiresAtIso ? isExpiredInvitation({ expiresAtIso }, nowMs) : false;
+}
+
+function normalizeExpiredInvitations(
+  invitations: readonly Record<string, unknown>[],
+  nowMs = Date.now(),
+): Record<string, unknown>[] {
+  return invitations.map((entry) => {
+    if (asString(entry.status) !== 'pending' || !recordIsExpired(entry, nowMs)) return entry;
+    return {
+      ...entry,
+      status: 'expired',
+      expiresLabel: 'wygasło',
+      revision:
+        typeof entry.revision === 'number' && Number.isFinite(entry.revision)
+          ? Math.trunc(entry.revision) + 1
+          : 1,
+    };
+  });
 }
 
 export class TeamInvitationsUseCases {
@@ -108,7 +139,8 @@ export class TeamInvitationsUseCases {
         throw new PlayerTeamError('VALIDATION_FAILED', 'recipient is already a team member');
       }
 
-      const existing = invitationsOf(current.state).find(
+      const normalizedInvitations = normalizeExpiredInvitations(invitationsOf(current.state));
+      const existing = normalizedInvitations.find(
         (entry) =>
           asString(entry.recipientDiscordId) === input.recipientDiscordId &&
           asString(entry.status) === 'pending',
@@ -118,7 +150,7 @@ export class TeamInvitationsUseCases {
         const parsed = existingId
           ? await this.repository.findForRecipient(existingId, input.recipientDiscordId)
           : null;
-        if (parsed !== null) {
+        if (parsed !== null && !isExpiredInvitation(parsed.invitation)) {
           return {
             invitation: parsed.invitation,
             workspaceId: current.workspaceId,
@@ -132,6 +164,8 @@ export class TeamInvitationsUseCases {
       const recipientDisplayName =
         input.recipientDisplayName.trim() || `Gracz ${input.recipientDiscordId.slice(-4)}`;
       const revision = nextStateRevision(current.state);
+      const createdAt = new Date();
+      const expiresAt = new Date(createdAt.getTime() + INVITATION_TTL_MS);
       const invitation: TeamInvitationRecord = {
         id: `inv-${randomUUID()}`,
         teamId: current.workspaceId,
@@ -142,13 +176,15 @@ export class TeamInvitationsUseCases {
         status: 'pending',
         createdLabel: 'przed chwilą',
         expiresLabel: 'za 3 dni',
+        createdAtIso: createdAt.toISOString(),
+        expiresAtIso: expiresAt.toISOString(),
         revision: 1,
       };
       const history = Array.isArray(current.state.history) ? current.state.history : [];
       const nextState: Record<string, unknown> = {
         ...current.state,
         revision,
-        invitations: [invitation, ...invitationsOf(current.state)],
+        invitations: [invitation, ...normalizedInvitations],
         history: [
           {
             id: `hist-${randomUUID()}`,
@@ -160,7 +196,7 @@ export class TeamInvitationsUseCases {
             characterName: null,
             resource: 'member',
             title: `Wysłano zaproszenie: ${recipientDisplayName}`,
-            detail: `Discord ID ${input.recipientDiscordId}`,
+            detail: `Discord ID ${input.recipientDiscordId} · ważne 3 dni`,
             occurredAtLabel: 'przed chwilą',
             revision,
           },
@@ -202,10 +238,116 @@ export class TeamInvitationsUseCases {
     invitationId: string,
   ): Promise<TeamInvitationRecord> {
     const found = await this.repository.findForRecipient(invitationId, recipientDiscordId);
-    if (found === null) {
-      throw new PlayerTeamError('NOT_FOUND', 'team invitation not found');
+    if (found === null || isExpiredInvitation(found.invitation)) {
+      throw new PlayerTeamError('NOT_FOUND', 'team invitation not found or expired');
     }
     return found.invitation;
+  }
+
+  public async cancelInvitation(input: {
+    readonly ownerDiscordId: string;
+    readonly workspaceId: string;
+    readonly invitationId: string;
+  }): Promise<{
+    readonly invitation: TeamInvitationRecord;
+    readonly workspaceId: string;
+    readonly workspace: Record<string, unknown>;
+    readonly revision: number;
+  }> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const current = await this.repository.getWorkspace(input.workspaceId);
+      if (current === null) throw new PlayerTeamError('NOT_FOUND', 'workspace not found');
+
+      const members = membersOf(current.state);
+      const owner = members.find((member) => memberMatchesDiscord(member, input.ownerDiscordId));
+      if (owner === undefined || asString(owner.role) !== 'owner') {
+        throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can cancel invitations');
+      }
+
+      let cancelled: TeamInvitationRecord | null = null;
+      const revision = nextStateRevision(current.state);
+      const invitations = normalizeExpiredInvitations(invitationsOf(current.state)).map((entry) => {
+        if (asString(entry.id) !== input.invitationId) return entry;
+        if (asString(entry.status) !== 'pending') {
+          throw new PlayerTeamError('VALIDATION_FAILED', 'invitation is no longer pending');
+        }
+        const next = {
+          ...entry,
+          status: 'cancelled',
+          revision:
+            typeof entry.revision === 'number' && Number.isFinite(entry.revision)
+              ? Math.trunc(entry.revision) + 1
+              : 1,
+        };
+        cancelled = {
+          id: asString(next.id),
+          teamId: asString(next.teamId),
+          teamName: asString(next.teamName),
+          inviterName: asString(next.inviterName),
+          recipientDiscordId: asString(next.recipientDiscordId),
+          recipientDisplayName: asString(next.recipientDisplayName),
+          status: 'cancelled',
+          createdLabel: asString(next.createdLabel),
+          expiresLabel: asString(next.expiresLabel),
+          ...(asString(next.createdAtIso) ? { createdAtIso: asString(next.createdAtIso) } : {}),
+          ...(asString(next.expiresAtIso) ? { expiresAtIso: asString(next.expiresAtIso) } : {}),
+          revision: typeof next.revision === 'number' ? next.revision : 1,
+        };
+        return next;
+      });
+      if (cancelled === null) throw new PlayerTeamError('NOT_FOUND', 'invitation not found');
+
+      const history = Array.isArray(current.state.history) ? current.state.history : [];
+      const nextState: Record<string, unknown> = {
+        ...current.state,
+        revision,
+        invitations,
+        history: [
+          {
+            id: `hist-${randomUUID()}`,
+            teamId: current.workspaceId,
+            actorId: asString(owner.id) || input.ownerDiscordId,
+            actorName: asString(owner.displayName) || 'Właściciel',
+            actorInitials: initials(asString(owner.displayName) || 'W'),
+            characterId: null,
+            characterName: null,
+            resource: 'member',
+            title: `Anulowano zaproszenie: ${cancelled.recipientDisplayName}`,
+            detail: `Discord ID ${cancelled.recipientDiscordId}`,
+            occurredAtLabel: 'przed chwilą',
+            revision,
+          },
+          ...history,
+        ],
+        updatedLabel: 'przed chwilą',
+      };
+
+      try {
+        const updated = await this.repository.updateWorkspace({
+          workspaceId: current.workspaceId,
+          state: nextState,
+          expectedRevision: current.revision,
+          updatedByUserId: input.ownerDiscordId,
+        });
+        return {
+          invitation: cancelled,
+          workspaceId: updated.workspaceId,
+          workspace: updated.state,
+          revision: updated.revision,
+        };
+      } catch (error) {
+        if (
+          error instanceof PlayerTeamError &&
+          error.code === 'REVISION_CONFLICT' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new PlayerTeamError('REVISION_CONFLICT', 'could not cancel invitation after retries');
   }
 
   public async respond(input: {
@@ -226,12 +368,15 @@ export class TeamInvitationsUseCases {
     if (found === null) {
       throw new PlayerTeamError('NOT_FOUND', 'team invitation not found');
     }
+    if (isExpiredInvitation(found.invitation)) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'team invitation has expired');
+    }
     if (found.invitation.status !== 'pending') {
       throw new PlayerTeamError('VALIDATION_FAILED', 'team invitation is no longer pending');
     }
 
     const revision = nextStateRevision(found.state);
-    const invitations = invitationsOf(found.state).map((entry) => {
+    const invitations = normalizeExpiredInvitations(invitationsOf(found.state)).map((entry) => {
       if (asString(entry.id) !== input.invitationId) return entry;
       return {
         ...entry,
@@ -290,12 +435,22 @@ export class TeamInvitationsUseCases {
       updatedLabel: 'przed chwilą',
     };
 
-    const updated = await this.repository.updateWorkspace({
-      workspaceId: found.workspaceId,
-      state: nextState,
-      expectedRevision: found.revision,
-      updatedByUserId: input.recipientDiscordId,
-    });
+    const updated =
+      input.decision === 'accept' && this.repository.acceptInvitationAtomically
+        ? await this.repository.acceptInvitationAtomically({
+            workspaceId: found.workspaceId,
+            state: nextState,
+            expectedRevision: found.revision,
+            updatedByUserId: input.recipientDiscordId,
+            recipientDiscordId: input.recipientDiscordId,
+            invitationId: input.invitationId,
+          })
+        : await this.repository.updateWorkspace({
+            workspaceId: found.workspaceId,
+            state: nextState,
+            expectedRevision: found.revision,
+            updatedByUserId: input.recipientDiscordId,
+          });
 
     const updatedInvitation = {
       ...found.invitation,
