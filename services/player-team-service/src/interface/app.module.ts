@@ -10,6 +10,7 @@ import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
 import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
+import { TeamEconomyDropManagementRepository } from '../infrastructure/db/team-economy-drop-management.repository.js';
 import { TeamEconomyManagementRepository } from '../infrastructure/db/team-economy-management.repository.js';
 import { TeamEconomyRepository } from '../infrastructure/db/team-economy.repository.js';
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
@@ -56,6 +57,7 @@ import {
     TeamInvitationsRepository,
     TeamEconomyRepository,
     TeamEconomyManagementRepository,
+    TeamEconomyDropManagementRepository,
     LegacyEconomyCatalogSeeder,
     WorkspaceLiveBus,
     {
