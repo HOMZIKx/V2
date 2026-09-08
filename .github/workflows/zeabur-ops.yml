@@ -1,0 +1,51 @@
+name: Zeabur operations bridge
+
+on:
+  push:
+    branches:
+      - ops/zeabur-control
+    paths:
+      - ops/zeabur/command.json
+      - ops/zeabur/run.mjs
+      - .github/workflows/zeabur-ops.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zeabur-operations
+  cancel-in-progress: false
+
+jobs:
+  zeabur-ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+      ZEABUR_COMMAND_PATH: ops/zeabur/command.json
+      ZEABUR_OUTPUT_DIR: ops/zeabur/out
+
+    steps:
+      - name: Checkout control branch
+        uses: actions/checkout@v4
+
+      - name: Execute guarded Zeabur operation
+        run: node ops/zeabur/run.mjs
+
+      - name: Publish operation summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f ops/zeabur/out/summary.md ]; then
+            cat ops/zeabur/out/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload sanitized result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeabur-result-${{ github.run_id }}
+          path: ops/zeabur/out/
+          if-no-files-found: warn
+          retention-days: 7
