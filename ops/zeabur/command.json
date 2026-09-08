@@ -1,7 +1,4 @@
 {
-  "requestId": "restart-discord-after-ranking-fix-20260908-1",
-  "mode": "service_restart",
-  "serviceId": "6a8211a6bdeaa87e2c52df28",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "activity-after-gateway-restart-20260908-1",
+  "mode": "public_e2e"
 }
