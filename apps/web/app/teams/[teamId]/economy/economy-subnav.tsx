@@ -13,7 +13,11 @@ export function EconomySubnav() {
   const overview = !manage && !analysis && !images;
 
   return (
-    <nav aria-label="Narzędzia ekonomii" className={styles.quickNav}>
+    <nav
+      aria-label="Narzędzia ekonomii"
+      className={styles.quickNav}
+      style={{ flexWrap: 'wrap' }}
+    >
       <a data-active={overview} href={`/teams/${teamId}/economy`}>
         Panel ekonomii
       </a>
