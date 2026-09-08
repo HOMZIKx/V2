@@ -140,12 +140,10 @@ export class TeamEconomyController {
     @Param('workspaceId') workspaceId: string,
     @Body() body: unknown,
   ) {
+    const viewerId = await this.viewerId(headers);
     const parsed = this.parse(importItemsSchema, body);
     const legacyItems = await loadLegacyEconomyCatalog();
-    return this.economy.importItems(await this.viewerId(headers), workspaceId, [
-      ...parsed.items,
-      ...legacyItems,
-    ]);
+    return this.economy.importItems(viewerId, workspaceId, [...parsed.items, ...legacyItems]);
   }
 
   @Get('items')
