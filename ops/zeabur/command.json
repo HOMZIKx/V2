@@ -1,6 +1,5 @@
 {
-  "requestId": "inspect-discord-stale-vars-20260908-1",
+  "requestId": "inspect-zeabur-service-env-storage-schema-20260908-1",
   "mode": "graphql_read",
-  "query": "query Inspect($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name variables(environmentID:$environmentID){key readonly exposed}}}",
-  "variables": {"serviceID":"6a8211a6bdeaa87e2c52df28","environmentID":"6a720a3e5f062718bc7b3421"}
+  "query": "query Inspect{__type(name:\"Service\"){fields{name type{kind name ofType{kind name}}}}}"
 }
