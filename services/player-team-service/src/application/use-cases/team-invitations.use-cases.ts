@@ -123,7 +123,8 @@ export class TeamInvitationsUseCases {
         throw new PlayerTeamError('VALIDATION_FAILED', 'pending invitation already exists');
       }
 
-      const recipientDisplayName = input.recipientDisplayName.trim() || `Gracz ${input.recipientDiscordId.slice(-4)}`;
+      const recipientDisplayName =
+        input.recipientDisplayName.trim() || `Gracz ${input.recipientDiscordId.slice(-4)}`;
       const revision = nextStateRevision(current.state);
       const invitation: TeamInvitationRecord = {
         id: `inv-${randomUUID()}`,
@@ -146,7 +147,7 @@ export class TeamInvitationsUseCases {
           {
             id: `hist-${randomUUID()}`,
             teamId: current.workspaceId,
-            actorId: input.ownerDiscordId,
+            actorId: asString(owner.id) || input.ownerDiscordId,
             actorName: invitation.inviterName,
             actorInitials: initials(invitation.inviterName),
             characterId: null,
@@ -203,6 +204,7 @@ export class TeamInvitationsUseCases {
 
   public async respond(input: {
     readonly recipientDiscordId: string;
+    readonly recipientAppId?: string | null;
     readonly invitationId: string;
     readonly decision: 'accept' | 'decline';
   }): Promise<{
@@ -235,6 +237,7 @@ export class TeamInvitationsUseCases {
       };
     });
 
+    const memberAppId = input.recipientAppId?.trim() || input.recipientDiscordId;
     const members = [...membersOf(found.state)];
     if (input.decision === 'accept') {
       const alreadyMember = members.some((member) =>
@@ -242,7 +245,7 @@ export class TeamInvitationsUseCases {
       );
       if (!alreadyMember) {
         members.push({
-          id: input.recipientDiscordId,
+          id: memberAppId,
           discordAccountId: input.recipientDiscordId,
           displayName: found.invitation.recipientDisplayName || input.recipientDiscordId,
           initials: initials(found.invitation.recipientDisplayName || '?'),
@@ -262,7 +265,7 @@ export class TeamInvitationsUseCases {
         {
           id: `hist-${randomUUID()}`,
           teamId: found.workspaceId,
-          actorId: input.recipientDiscordId,
+          actorId: memberAppId,
           actorName: found.invitation.recipientDisplayName || input.recipientDiscordId,
           actorInitials: initials(found.invitation.recipientDisplayName || '?'),
           characterId: null,
