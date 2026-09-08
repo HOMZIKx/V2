@@ -1,7 +1,7 @@
 {
-  "requestId": "activity-runtime-log-20260908-1",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "activity-service"
+  "requestId": "repair-authorization-branch-20260908-1",
+  "mode": "production_repair",
+  "phase": "repair_git_branch",
+  "service": "authorization-service",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
