@@ -1,6 +1,5 @@
 {
-  "requestId": "list-owned-cicd-sources-for-api-recovery-20260908-1",
+  "requestId": "inspect-service-deployment-source-contract-20260908-1",
   "mode": "graphql_read",
-  "query": "query Sources($ownerID:ObjectID!){cicdSources(ownerID:$ownerID,first:100){edges{node{id url ref region rootDirectory dockerfile authenticationType generation createdAt updatedAt}} pageInfo{hasNextPage endCursor}}}",
-  "variables": {"ownerID":"69db8545e74c7fad2eb83767"}
+  "query": "query Schema{service:__type(name:\"Service\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}} deployment:__type(name:\"Deployment\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}} source:__type(name:\"DeploymentSource\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}}}"
 }
