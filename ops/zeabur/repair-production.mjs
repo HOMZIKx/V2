@@ -27,7 +27,7 @@ async function gql(query,variables={}){
   if(!r.ok||b.errors?.length)throw new Error((b.errors||[]).map(e=>e.message).join('; ')||`HTTP ${r.status}`);
   return b.data;
 }
-const q=`query RepairInventory($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName} variables(environmentID:$environmentID){key value readonly exposed}}}}}`;
+const q=`query RepairInventory($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){provider repoID branchName repoURL} variables(environmentID:$environmentID){key value readonly exposed}}}}}`;
 const data=await gql(q,{projectID:projectId,environmentID:environmentId});
 const services=new Map(data.services.edges.map(e=>[e.node.name,e.node]));
 const actions=[];
@@ -48,10 +48,13 @@ async function setEnv(name,key,value){
     actions.push(`${name}: updated ${key}`);
   }
 }
-async function setBranch(name,branch){
-  const service=svc(name);if(service.gitTrigger?.branchName===branch){actions.push(`${name}: branch already ${branch}`);return}
-  await gql(`mutation Branch($serviceID:ObjectID!,$branch:String!){updateServiceBranch(serviceID:$serviceID,branch:$branch)}`,{serviceID:service._id,branch});
-  actions.push(`${name}: branch -> ${branch}`);
+async function setGitTrigger(name,branch){
+  const service=svc(name);const trigger=service.gitTrigger;
+  if(trigger?.branchName===branch){actions.push(`${name}: branch already ${branch}`);return}
+  if(!trigger?.repoID)throw new Error(`${name}: GitHub repoID missing; refusing to rebind source blindly`);
+  await gql(`mutation Trigger($serviceID:ObjectID!,$environmentID:ObjectID!,$trigger:TriggerInput!){updateGitTrigger(serviceID:$serviceID,environmentID:$environmentID,trigger:$trigger)}`,{serviceID:service._id,environmentID:environmentId,trigger:{repoID:trigger.repoID,branchName:branch}});
+  service.gitTrigger={...trigger,branchName:branch};
+  actions.push(`${name}: git trigger -> ${branch}`);
 }
 async function redeploy(name){const service=svc(name);await gql(`mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}`,{serviceID:service._id,environmentID:environmentId});actions.push(`${name}: redeploy requested`)}
 
@@ -62,7 +65,6 @@ async function identitySetup(){
   if(!rawClients.trim())throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is empty');
   let clients;try{clients=JSON.parse(rawClients)}catch{throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is invalid JSON')}
   if(!Array.isArray(clients))throw new Error('IDENTITY_SERVICE_CLIENTS_JSON must be an array');
-
   const clientId='v2.webapp-dest';
   let client=clients.find(c=>c?.client_id===clientId);
   const existingPrivate=lastValue(web,'INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM').trim();
@@ -83,7 +85,6 @@ async function identitySetup(){
   }
   if(registryChanged)await setEnv(identity,'IDENTITY_SERVICE_CLIENTS_JSON',JSON.stringify(clients));
   else actions.push('identity-service: existing web JWT client/key retained');
-
   const issueUrl=lastValue(identity,'IDENTITY_INTERNAL_JWT_ISSUE_URL').trim();
   const issuer=lastValue(identity,'IDENTITY_INTERNAL_JWT_ISSUER').trim();
   if(!issueUrl||!issuer)throw new Error('Identity internal JWT issuer/issue URL missing');
@@ -101,16 +102,19 @@ async function identitySetup(){
   await redeploy(identity);
 }
 
-async function coreBranches(){
-  for(const name of ['activity-service','authorization-service','api-gateway'])await setBranch(name,'preview/destiled-web');
-  for(const name of ['activity-service','authorization-service','api-gateway'])await redeploy(name);
-  actions.push('player-workspace-service intentionally left on its current branch: source is absent from preview/destiled-web');
+async function repairGitBranch(){
+  const name=String(command.service||'').trim();
+  const allowed=new Set(['activity-service','authorization-service','api-gateway','player-team-service']);
+  if(!allowed.has(name))throw new Error(`unsupported branch repair service: ${name||'(empty)'}`);
+  await setGitTrigger(name,'preview/destiled-web');
+  await redeploy(name);
 }
 
-async function playerTeamSetup(){
-  const pt='player-team-service';const web='webapp-dest';const identity='identity-service';
-  await setBranch(pt,'preview/destiled-web');
-  const issuer=lastValue(identity,'IDENTITY_INTERNAL_JWT_ISSUER').trim();if(!issuer)throw new Error('Identity issuer missing');
+async function playerTeamPrepare(){
+  const pt='player-team-service',identity='identity-service';
+  await setGitTrigger(pt,'preview/destiled-web');
+  const issuer=lastValue(identity,'IDENTITY_INTERNAL_JWT_ISSUER').trim();
+  if(!issuer)throw new Error('Identity issuer missing');
   const jwks='http://service-6a8211cfbdeaa87e2c52df39:8080/identity/.well-known/jwks.json';
   await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_ENABLED','true');
   await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_ISSUER',issuer);
@@ -120,6 +124,11 @@ async function playerTeamSetup(){
   await setEnv(pt,'PLAYER_TEAM_ALLOW_DEMO_WRITE','false');
   await setEnv(pt,'PLAYER_TEAM_CORS_ORIGINS','https://desapp.zeabur.app');
   await redeploy(pt);
+  actions.push('webapp-dest intentionally left on compatibility mode until Player Team deployment is verified');
+}
+
+async function webJwtEnable(){
+  const web='webapp-dest';
   await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_ENABLED','true');
   await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_AUDIENCE','v2.api-gateway');
   await setEnv(web,'INTERNAL_JWT_CLIENT_ENABLED','true');
@@ -128,8 +137,9 @@ async function playerTeamSetup(){
 
 try{
   if(command.phase==='identity_jwt_setup')await identitySetup();
-  else if(command.phase==='core_branches')await coreBranches();
-  else if(command.phase==='player_team_jwt_cutover')await playerTeamSetup();
+  else if(command.phase==='repair_git_branch')await repairGitBranch();
+  else if(command.phase==='player_team_prepare')await playerTeamPrepare();
+  else if(command.phase==='web_jwt_enable')await webJwtEnable();
   else throw new Error(`unknown repair phase ${command.phase}`);
   finish({ok:true,phase:command.phase,actions});
 }catch(error){finish({ok:false,phase:command.phase,actions,error:error?.message||String(error)},1)}
