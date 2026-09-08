@@ -1,4 +1,7 @@
 {
-  "requestId": "webapp-ai-env-recheck-20260908-1925",
-  "mode": "env_audit"
+  "requestId": "webapp-gemini-deploy-43a99c6e-20260908-1938",
+  "mode": "cli",
+  "action": "deployment:get",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "webapp-dest"
 }
