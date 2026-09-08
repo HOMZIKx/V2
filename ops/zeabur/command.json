@@ -1,6 +1,4 @@
 {
-  "requestId": "verify-web-api-player-team-final-rollout-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Verify($api:ObjectID!,$pt:ObjectID!,$web:ObjectID!,$env:ObjectID!){api:service(_id:$api){name status gitTrigger(environmentID:$env){branchName}} pt:service(_id:$pt){name status gitTrigger(environmentID:$env){branchName}} web:service(_id:$web){name status gitTrigger(environmentID:$env){branchName}} apiDeployments:deployments(serviceID:$api,environmentID:$env,perPage:3){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} ptDeployments:deployments(serviceID:$pt,environmentID:$env,perPage:2){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} webDeployments:deployments(serviceID:$web,environmentID:$env,perPage:3){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
-  "variables": {"api":"6a8211c9bdeaa87e2c52df34","pt":"6a99a4d34177ab13f998c84c","web":"6a985197573ada8b3bbe52a5","env":"6a720a3e5f062718bc7b3421"}
+  "requestId": "full-production-env-audit-after-fixes-20260908-1",
+  "mode": "env_audit"
 }
