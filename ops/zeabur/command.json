@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-gemini-deploy-43a99c6e-20260908-1938",
+  "requestId": "webapp-gemini-build-43a99c6e-20260908-1939",
   "mode": "cli",
-  "action": "deployment:get",
+  "action": "logs:build",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
