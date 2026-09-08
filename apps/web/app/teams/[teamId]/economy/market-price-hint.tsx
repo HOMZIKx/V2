@@ -49,13 +49,11 @@ export function MarketPriceHint({
   workspaceId,
   itemName,
   currency,
-  onResolvedItem,
   onUsePrice,
 }: {
   readonly workspaceId: string;
   readonly itemName: string;
   readonly currency: Currency;
-  readonly onResolvedItem: (item: CatalogItem) => void;
   readonly onUsePrice: (value: number) => void;
 }) {
   const [item, setItem] = useState<CatalogItem | null>(null);
@@ -85,7 +83,6 @@ export function MarketPriceHint({
             setPrices([]);
             return;
           }
-          onResolvedItem(exact);
           const priceResponse = await fetch(
             api(workspaceId, `management/prices?itemId=${encodeURIComponent(exact.id)}&limit=100`),
             { cache: 'no-store' },
@@ -99,7 +96,7 @@ export function MarketPriceHint({
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [itemName, onResolvedItem, workspaceId]);
+  }, [itemName, workspaceId]);
 
   const selected = useMemo(
     () => prices.find((price) => price.currency === currency) ?? null,
