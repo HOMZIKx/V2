@@ -1,7 +1,6 @@
 {
-  "requestId": "repair-authorization-branch-20260908-1",
-  "mode": "production_repair",
-  "phase": "repair_git_branch",
-  "service": "authorization-service",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "verify-authorization-rollout-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Verify($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name status gitTrigger(environmentID:$environmentID){branchName repoID}} deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
+  "variables":{"serviceID":"6a8211d5a21454a2cf6ad783","environmentID":"6a720a3e5f062718bc7b3421"}
 }
