@@ -34,6 +34,8 @@ function parseInvitation(value: unknown): TeamInvitationRecord | null {
   const teamId = asString(entry.teamId);
   const recipientDiscordId = asString(entry.recipientDiscordId);
   if (!id || !teamId || !recipientDiscordId) return null;
+  const createdAtIso = asString(entry.createdAtIso);
+  const expiresAtIso = asString(entry.expiresAtIso);
   return {
     id,
     teamId,
@@ -44,6 +46,8 @@ function parseInvitation(value: unknown): TeamInvitationRecord | null {
     status: status as TeamInvitationRecord['status'],
     createdLabel: asString(entry.createdLabel),
     expiresLabel: asString(entry.expiresLabel),
+    ...(createdAtIso ? { createdAtIso } : {}),
+    ...(expiresAtIso ? { expiresAtIso } : {}),
     revision: asNumber(entry.revision),
   };
 }
@@ -98,6 +102,10 @@ export class TeamInvitationsRepository implements TeamInvitationsRepositoryPort,
        ) WITH ORDINALITY AS invitation(value, position)
        WHERE invitation.value->>'recipientDiscordId' = $1
          AND invitation.value->>'status' = 'pending'
+         AND (
+           COALESCE(invitation.value->>'expiresAtIso', '') = ''
+           OR (invitation.value->>'expiresAtIso')::timestamptz > NOW()
+         )
        ORDER BY snapshot.updated_at DESC, invitation.position ASC`,
       [recipientDiscordId],
     );
@@ -191,5 +199,108 @@ export class TeamInvitationsRepository implements TeamInvitationsRepositoryPort,
       state: row.state,
       revision: Number(row.revision),
     };
+  }
+
+  public async acceptInvitationAtomically(input: {
+    readonly workspaceId: string;
+    readonly state: Record<string, unknown>;
+    readonly expectedRevision: number;
+    readonly updatedByUserId: string;
+    readonly recipientDiscordId: string;
+    readonly invitationId: string;
+  }): Promise<TeamInvitationWorkspaceUpdate> {
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+
+      const workspaceResult = await client.query<{
+        state: Record<string, unknown>;
+        revision: number;
+      }>(
+        `UPDATE player_team_workspace_snapshots
+         SET state = $2::jsonb,
+             revision = revision + 1,
+             updated_by_user_id = $3,
+             updated_at = NOW()
+         WHERE workspace_id = $1
+           AND revision = $4
+         RETURNING state, revision`,
+        [
+          input.workspaceId,
+          JSON.stringify(input.state),
+          input.updatedByUserId,
+          input.expectedRevision,
+        ],
+      );
+
+      const workspaceRow = workspaceResult.rows[0];
+      if (workspaceRow === undefined) {
+        throw new PlayerTeamError(
+          'REVISION_CONFLICT',
+          'team invitation workspace changed concurrently',
+        );
+      }
+
+      const viewerResult = await client.query<{
+        state: Record<string, unknown>;
+        revision: number;
+      }>(
+        `SELECT state, revision
+         FROM player_team_viewer_snapshots
+         WHERE owner_user_id = $1
+         FOR UPDATE`,
+        [input.recipientDiscordId],
+      );
+      const viewerRow = viewerResult.rows[0];
+      if (viewerRow === undefined) {
+        throw new PlayerTeamError(
+          'NOT_FOUND',
+          'recipient player state must be initialised before accepting an invitation',
+        );
+      }
+
+      const viewerState = asRecord(viewerRow.state) ?? {};
+      const currentWorkspaces = Array.isArray(viewerState.workspaces) ? viewerState.workspaces : [];
+      const pendingIncomingInvitations = Array.isArray(viewerState.pendingIncomingInvitations)
+        ? viewerState.pendingIncomingInvitations
+        : [];
+      const nextViewerState: Record<string, unknown> = {
+        ...viewerState,
+        workspaces: [
+          workspaceRow.state,
+          ...currentWorkspaces.filter((entry) => {
+            const record = asRecord(entry);
+            return record === null || asString(record.id) !== input.workspaceId;
+          }),
+        ],
+        pendingIncomingInvitations: pendingIncomingInvitations.filter((entry) => {
+          const record = asRecord(entry);
+          return record === null || asString(record.id) !== input.invitationId;
+        }),
+        lastOpenedWorkspaceId: input.workspaceId,
+        lastOpenedCharacterId: null,
+      };
+
+      await client.query(
+        `UPDATE player_team_viewer_snapshots
+         SET state = $2::jsonb,
+             revision = revision + 1,
+             updated_at = NOW()
+         WHERE owner_user_id = $1`,
+        [input.recipientDiscordId, JSON.stringify(nextViewerState)],
+      );
+
+      await client.query('COMMIT');
+      return {
+        workspaceId: input.workspaceId,
+        state: workspaceRow.state,
+        revision: Number(workspaceRow.revision),
+      };
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 }
