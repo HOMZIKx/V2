@@ -9,13 +9,13 @@ describe('server-side Player Team routing', () => {
   it('does not route Team DM panel auth through the public request origin', () => {
     const text = source('../../app/api/team-dm-panels/[workspaceId]/route.ts');
     expect(text).toContain('internalWebUrl(request.url');
-    expect(text).not.toMatch(/new URL\(\s*[`'\"]\/player-team/);
+    expect(text).not.toMatch(/new URL\(\s*[`'"]\/player-team/);
   });
 
   it('does not route Discord notify auth through the public request origin', () => {
     const text = source('../../app/api/discord-notify/route.ts');
     expect(text).toContain('internalWebUrl(request.url');
-    expect(text).not.toMatch(/new URL\(\s*[`'\"]\/player-team/);
+    expect(text).not.toMatch(/new URL\(\s*[`'"]\/player-team/);
   });
 
   it('does not reuse the Activity service target for Player Team', () => {
