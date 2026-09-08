@@ -71,7 +71,7 @@ export class TeamInvitationsUseCases {
   }): Promise<{
     readonly invitation: TeamInvitationRecord;
     readonly workspaceId: string;
-    readonly workspace: Record<string, unknown> | null;
+    readonly workspace: Record<string, unknown>;
     readonly revision: number;
   }> {
     const found = await this.repository.findForRecipient(
@@ -168,7 +168,7 @@ export class TeamInvitationsUseCases {
     return {
       invitation: updatedInvitation,
       workspaceId: updated.workspaceId,
-      workspace: input.decision === 'accept' ? updated.state : null,
+      workspace: updated.state,
       revision: updated.revision,
     };
   }
