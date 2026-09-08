@@ -1,7 +1,7 @@
 /**
- * Discord user IDs eligible for kingdom-war DMs (team notifyPrefs.kingdomWar).
- * File-backed so restart keeps tonight's allowlist.
- * HARD RULE: war scheduler DMs ONLY this list — never guild.members / never whole guild.
+ * Discord user IDs eligible for kingdom-war DMs.
+ * File-backed so restart keeps tonight's team recipient set.
+ * HARD RULE: war scheduler DMs ONLY this list — never guild.members / never guild fan-out.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -18,10 +18,13 @@ function isSnowflake(id: string): boolean {
 }
 
 function persistPath(): string {
-  const fromEnv = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  const base = fromEnv
-    ? join(fromEnv, 'kingdom-war')
-    : join(tmpdir(), 'destiled-kingdom-war');
+  const gatewayData = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
+  const legacyData = (process.env.DESTILED_DATA_DIR ?? '').trim();
+  const base = gatewayData
+    ? join(gatewayData, 'kingdom-war')
+    : legacyData
+      ? join(legacyData, 'kingdom-war')
+      : join(tmpdir(), 'destiled-kingdom-war');
   if (!existsSync(base)) mkdirSync(base, { recursive: true });
   return join(base, 'recipients.json');
 }
@@ -49,7 +52,7 @@ function loadFromDisk(): void {
 function saveToDisk(): void {
   try {
     const target = persistPath();
-    const tmp = target + '.' + process.pid + '.tmp';
+    const tmp = `${target}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify({ recipients: [...recipients] }), 'utf8');
     renameSync(tmp, target);
   } catch {
