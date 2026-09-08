@@ -45,8 +45,13 @@ export class HuntRoomsUseCases {
     return this.repository.joinPartyRoom(input);
   }
 
-  public async getPartyRoom(roomId: string): Promise<PartyRoomRecord | null> {
-    return this.repository.getPartyRoom(roomId);
+  public async getPartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null> {
+    const room = await this.repository.getPartyRoom(roomId);
+    if (room === null) return null;
+    if (!room.members.some((member) => member.id === viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
+    return room;
   }
 
   public leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null> {
@@ -57,12 +62,20 @@ export class HuntRoomsUseCases {
     return this.repository.patchPartyRoom(input);
   }
 
-  public addPartyRoomPin(roomId: string, pin: PartyRoomPin): Promise<PartyRoomRecord> {
-    return this.repository.addPartyRoomPin(roomId, pin);
+  public addPartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pin: PartyRoomPin,
+  ): Promise<PartyRoomRecord> {
+    return this.repository.addPartyRoomPin(roomId, viewerId, pin);
   }
 
-  public removePartyRoomPin(roomId: string, pinId: string): Promise<PartyRoomRecord> {
-    return this.repository.removePartyRoomPin(roomId, pinId);
+  public removePartyRoomPin(
+    roomId: string,
+    viewerId: string,
+    pinId: string,
+  ): Promise<PartyRoomRecord> {
+    return this.repository.removePartyRoomPin(roomId, viewerId, pinId);
   }
 
   public getOrCreateTimerRoom(

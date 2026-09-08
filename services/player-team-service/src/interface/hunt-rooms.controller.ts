@@ -7,6 +7,7 @@ import {
   Headers,
   HttpCode,
   Inject,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -32,12 +33,20 @@ const joinPartyBodySchema = z.object({
   joinCode: z.string().min(1),
 });
 
+const partyRequestSchema = z.object({
+  id: z.string().min(1),
+  displayName: z.string().min(1),
+  status: z.enum(['pending', 'accepted', 'rejected']),
+});
+
 const patchPartyBodySchema = z.object({
   expectedRevision: z.number().int().nonnegative(),
   mapKey: z.string().min(1).optional(),
   activeChannel: z.number().int().positive().optional(),
   sessionKills: z.number().int().nonnegative().optional(),
+  sessionKillsDelta: z.number().int().optional(),
   visibility: z.enum(['open', 'closed']).optional(),
+  requests: z.array(partyRequestSchema).max(100).optional(),
 });
 
 const pinSchema = z.object({
@@ -133,8 +142,10 @@ export class HuntRoomsController {
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('roomId') roomId: string,
   ) {
-    this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
-    return this.useCases.getPartyRoom(roomId);
+    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const room = await this.useCases.getPartyRoom(roomId, viewerId);
+    if (room === null) throw new NotFoundException('party room not found');
+    return room;
   }
 
   @Post('party-rooms/:roomId/leave')
@@ -167,12 +178,12 @@ export class HuntRoomsController {
       ...(parsed.data.activeChannel !== undefined
         ? { activeChannel: parsed.data.activeChannel }
         : {}),
-      ...(parsed.data.sessionKills !== undefined
-        ? { sessionKills: parsed.data.sessionKills }
+      ...(parsed.data.sessionKills !== undefined ? { sessionKills: parsed.data.sessionKills } : {}),
+      ...(parsed.data.sessionKillsDelta !== undefined
+        ? { sessionKillsDelta: parsed.data.sessionKillsDelta }
         : {}),
-      ...(parsed.data.visibility !== undefined
-        ? { visibility: parsed.data.visibility }
-        : {}),
+      ...(parsed.data.visibility !== undefined ? { visibility: parsed.data.visibility } : {}),
+      ...(parsed.data.requests !== undefined ? { requests: parsed.data.requests } : {}),
     });
   }
 
@@ -183,13 +194,13 @@ export class HuntRoomsController {
     @Param('roomId') roomId: string,
     @Body() rawBody: unknown,
   ) {
-    this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
     const parsed = addPinBodySchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
     }
     const pin = parsed.data.pin;
-    return this.useCases.addPartyRoomPin(roomId, {
+    return this.useCases.addPartyRoomPin(roomId, viewerId, {
       ...pin,
       partyId: pin.partyId ?? roomId,
     });
@@ -201,8 +212,8 @@ export class HuntRoomsController {
     @Param('roomId') roomId: string,
     @Param('pinId') pinId: string,
   ) {
-    this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
-    return this.useCases.removePartyRoomPin(roomId, pinId);
+    const viewerId = this.useCases.assertDemoAccess(this.demoViewerIdFromHeaders(headers));
+    return this.useCases.removePartyRoomPin(roomId, viewerId, pinId);
   }
 
   @Get('timer-rooms/:mapKey/:channel')
