@@ -1,8 +1,7 @@
 {
-  "requestId": "party-timer-consistency-deploy-proof-20260908-r2",
-  "mode": "graphql_read",
-  "query": "query HuntDeployments($environmentID:ObjectID!){web:deployments(serviceID:\"6a985197573ada8b3bbe52a5\",environmentID:$environmentID,perPage:3){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}} playerTeam:deployments(serviceID:\"6a99a4d34177ab13f998c84c\",environmentID:$environmentID,perPage:3){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
-  "variables": {
-    "environmentID": "6a720a3e5f062718bc7b3421"
-  }
+  "requestId": "party-timer-web-build-log-20260908",
+  "mode": "cli",
+  "action": "logs:build",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "webapp-dest"
 }
