@@ -55,8 +55,25 @@ Operacje destrukcyjne (`delete`, `remove`, `destroy`, `purge`, `drop`, `terminat
 
 Nie używaj tego pola bez wyraźnego polecenia właściciela dotyczącego destrukcyjnej operacji.
 
+### `service_restart`
+Kontrolowany restart usługi przez Zeabur GraphQL `restartService`. Wymaga `serviceId`, `environmentId` i:
+
+`"confirm": "ZEABUR_WRITE_APPROVED"`
+
+```json
+{
+  "requestId": "restart-example-1",
+  "mode": "service_restart",
+  "serviceId": "<zeabur-service-id>",
+  "environmentId": "<zeabur-environment-id>",
+  "confirm": "ZEABUR_WRITE_APPROVED"
+}
+```
+
+Restart nie korzysta z Zeabur CLI, ponieważ jego składnia zmieniała się między wersjami i wcześniej złamała automatyzację przez usuniętą flagę `--service-name`.
+
 ### `cli`
-Dozwolone akcje:
+Dozwolone akcje odczytowe:
 
 - `workspace:list`
 - `workspace:current`
@@ -65,7 +82,6 @@ Dozwolone akcje:
 - `deployment:get`
 - `logs:runtime`
 - `logs:build`
-- `service:restart` — wymaga `ZEABUR_WRITE_APPROVED`
 
 ## Zasady operacyjne
 
