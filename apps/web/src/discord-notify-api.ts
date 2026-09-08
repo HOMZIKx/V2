@@ -225,21 +225,53 @@ export async function registerDiscordTimerWatcher(input: {
   }
 }
 
+function normalizeRecipientSnowflakes(recipients: readonly string[]): string[] {
+  return [
+    ...new Set(
+      recipients
+        .map((id) => id.trim())
+        .filter((id) => /^\d{17,20}$/.test(id)),
+    ),
+  ].slice(0, 40);
+}
+
+/** Register explicit player-team members as the bot's coordination audience. */
+export async function syncTeamCoordinationRecipients(
+  recipients: readonly string[],
+): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
+  try {
+    const snowflakes = normalizeRecipientSnowflakes(recipients);
+    const parsed = await postNotify('/api/discord-notify', {
+      action: 'team-recipients',
+      recipients: snowflakes,
+    });
+    if (!parsed.okHttp || parsed.ok !== true) {
+      return {
+        ok: false,
+        error: typeof parsed.error === 'string' ? parsed.error : 'team_recipients_sync_failed',
+      };
+    }
+    return {
+      ok: true,
+      count: typeof parsed.count === 'number' ? parsed.count : snowflakes.length,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'network_error',
+    };
+  }
+}
+
 /**
- * Push team notifyPrefs.kingdomWar allowlist to gateway war scheduler.
+ * Replace kingdom-war recipient snapshot from explicit team settings.
  * HARD: empty recipients => gateway sends zero war DMs (never guild fan-out).
  */
 export async function syncKingdomWarRecipients(
   recipients: readonly string[],
 ): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
   try {
-    const snowflakes = [
-      ...new Set(
-        recipients
-          .map((id) => id.trim())
-          .filter((id) => /^\d{17,20}$/.test(id)),
-      ),
-    ].slice(0, 40);
+    const snowflakes = normalizeRecipientSnowflakes(recipients);
     const parsed = await postNotify('/api/discord-notify', {
       action: 'war-recipients',
       recipients: snowflakes,
