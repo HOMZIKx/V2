@@ -1,10 +1,4 @@
 {
-  "requestId": "identity-restart-graphql-20260908-1",
-  "mode": "graphql_write",
-  "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Restart($serviceID:ObjectID!,$environmentID:ObjectID!){restartService(serviceID:$serviceID,environmentID:$environmentID)}",
-  "variables": {
-    "serviceID": "6a8211cfbdeaa87e2c52df39",
-    "environmentID": "6a720a3e5f062718bc7b3421"
-  }
+  "requestId": "production-auth-after-identity-restart-20260908-1",
+  "mode": "public_e2e"
 }
