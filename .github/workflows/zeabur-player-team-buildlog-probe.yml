@@ -1,0 +1,40 @@
+name: Zeabur player-team buildlog probe
+on:
+  push:
+    branches: [fix/e2e-service-wiring-20260908]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect latest deployment build logs
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, re
+          token=os.environ['ZEABUR_API_TOKEN'].strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=40)
+            if r.returncode: print('::error::Zeabur transport failed');sys.exit(1)
+            b=json.loads(r.stdout)
+            if b.get('errors'): print('::error::Zeabur GraphQL: '+str(b['errors'][0].get('message','unknown'))[:180]);sys.exit(1)
+            return b.get('data') or {}
+          root=gql('query{projects{edges{node{_id name}}}}'); ps=[e['node'] for e in root['projects']['edges']]
+          p=next((x for x in ps if x['name']=='untitled-1'),None) or (ps[0] if len(ps)==1 else None)
+          d=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':p['_id']})['project']
+          env=next(x for x in d['environments'] if x['name']=='production'); svc=next(x for x in d['services'] if x['name']=='player-team-service')
+          latest=gql('query($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:1){edges{node{_id status commitSHA commitMessage}}}}',{'serviceID':svc['_id'],'environmentID':env['_id']})
+          edges=(latest.get('deployments') or {}).get('edges') or []
+          if not edges: print('::error::No deployments');sys.exit(1)
+          dep=edges[0]['node']; print('latest_status='+str(dep.get('status'))); print('latest_sha='+str(dep.get('commitSHA') or '')[:12])
+          logs=gql('query($deploymentID:ObjectID!){buildLogs(deploymentID:$deploymentID){timestamp message}}',{'deploymentID':dep['_id']}).get('buildLogs') or []
+          # Keep only safe diagnostics and last 120 lines; mask URLs/tokens conservatively.
+          msgs=[]
+          for entry in logs:
+            m=str(entry.get('message') or '')
+            m=re.sub(r'https?://\S+','<url>',m)
+            m=re.sub(r'(?i)(token|secret|password|key)=\S+',r'\1=<redacted>',m)
+            msgs.append(m)
+          for m in msgs[-120:]: print(m[:500])
+          PY
