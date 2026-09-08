@@ -51,7 +51,6 @@ function identityTarget(): string {
 function playerTeamTarget(): string {
   return (
     normalizeTarget(process.env.PLAYER_TEAM_PROXY_TARGET) ??
-    normalizeTarget(process.env.ACTIVITY_PROXY_TARGET) ??
     (isProduction ? productionBackendOrigin : 'http://127.0.0.1:4400')
   );
 }
@@ -182,8 +181,6 @@ function createUpstreamHeaders(
 ): Headers {
   const headers = new Headers(request.headers);
 
-  // Never trust identity/auth headers supplied by the browser. Identity is
-  // resolved server-side above and all security-sensitive headers are replaced.
   headers.delete('host');
   headers.delete('cookie');
   headers.delete('content-length');
@@ -196,8 +193,6 @@ function createUpstreamHeaders(
   headers.delete('x-forwarded-host');
   headers.delete('x-forwarded-proto');
 
-  // These compatibility identity headers are generated only after server-side
-  // Discord session verification, never trusted from the browser.
   headers.set('x-demo-viewer-id', identity.discordId);
   headers.set('x-authenticated-discord-id', identity.discordId);
   headers.set('x-v2-user-id', identity.v2UserId);

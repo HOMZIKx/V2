@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { authoritativeNotifyRecipients } from '../../../../src/discord-notify-recipients';
+import { internalWebUrl } from '../../../../src/server/internal-web-origin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,14 +31,20 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
   if (!cookie) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   let response: Response;
   try {
-    response = await fetch(new URL('/player-team/v1/me/state', request.url), {
+    response = await fetch(internalWebUrl(request.url, '/player-team/v1/me/state'), {
       headers: { accept: 'application/json', cookie },
       cache: 'no-store',
     });
-  } catch {
+  } catch (error) {
+    console.error('team-dm-panels: viewer state lookup failed', error);
     return NextResponse.json({ ok: false, error: 'player_team_unavailable' }, { status: 503 });
   }
-  if (!response.ok) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: response.status === 401 ? 401 : 503 });
+  if (!response.ok) {
+    return NextResponse.json(
+      { ok: false, error: response.status === 401 ? 'unauthorized' : 'player_team_unavailable' },
+      { status: response.status === 401 ? 401 : 503 },
+    );
+  }
   const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
   const state = asRecord(body?.state);
   const viewer = asRecord(state?.viewer);
@@ -57,14 +64,20 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
 async function workspaceState(request: Request, cookie: string, workspaceId: string): Promise<JsonRecord | Response> {
   let response: Response;
   try {
-    response = await fetch(new URL(`/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`, request.url), {
+    response = await fetch(internalWebUrl(request.url, `/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`), {
       headers: { accept: 'application/json', cookie },
       cache: 'no-store',
     });
-  } catch {
+  } catch (error) {
+    console.error('team-dm-panels: workspace lookup failed', error);
     return NextResponse.json({ ok: false, error: 'workspace_unavailable' }, { status: 503 });
   }
-  if (!response.ok) return NextResponse.json({ ok: false, error: 'workspace_access_denied' }, { status: response.status === 401 || response.status === 404 ? 403 : 503 });
+  if (!response.ok) {
+    return NextResponse.json(
+      { ok: false, error: response.status === 401 || response.status === 404 ? 'workspace_access_denied' : 'workspace_unavailable' },
+      { status: response.status === 401 || response.status === 404 ? 403 : 503 },
+    );
+  }
   const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
   const state = asRecord(body?.state);
   if (!state) return NextResponse.json({ ok: false, error: 'invalid_workspace_state' }, { status: 503 });

@@ -44,8 +44,13 @@ export function TeamTimerNotificationSettings() {
         setDailyTime(value);
         setSavedTime(value);
       })
-      .catch(() => {
-        if (active) setMessage('Nie udało się pobrać ustawienia panelu PW.');
+      .catch((error: unknown) => {
+        if (!active) return;
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : 'Nie udało się pobrać ustawienia panelu PW.',
+        );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -77,7 +82,7 @@ export function TeamTimerNotificationSettings() {
         setMessage(`Zapisano. Zespół otrzyma panel timerów codziennie o ${config.dailyTime}.`);
       })
       .catch((error: unknown) => {
-        setMessage(error instanceof Error ? `Nie udało się zapisać: ${error.message}` : 'Nie udało się zapisać.');
+        setMessage(error instanceof Error ? error.message : 'Nie udało się zapisać ustawienia panelu PW.');
       })
       .finally(() => {
         setSaving(false);
