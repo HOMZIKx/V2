@@ -25,19 +25,47 @@ function notifySecret(): string {
   return (process.env.DISCORD_NOTIFY_SHARED_SECRET ?? '').trim();
 }
 
+/**
+ * Server routes should not call the public deployment URL just to reach another
+ * route in the same Next process. On Zeabur that adds external DNS/TLS/routing
+ * to an otherwise local hop and can fail even while the page itself is online.
+ * Prefer loopback in production; keep the request origin in local development.
+ */
+function internalWebOrigin(request: Request): string {
+  const configured = process.env.WEB_INTERNAL_ORIGIN?.trim().replace(/\/$/, '');
+  if (configured) return configured;
+
+  if (process.env.NODE_ENV === 'production') {
+    const port = (process.env.PORT ?? process.env.WEB_PORT ?? '3000').trim();
+    if (/^\d{2,5}$/.test(port)) return `http://127.0.0.1:${port}`;
+  }
+
+  return new URL(request.url).origin;
+}
+
+function internalWebUrl(request: Request, path: string): URL {
+  return new URL(path, `${internalWebOrigin(request)}/`);
+}
+
 async function verifyViewer(request: Request): Promise<VerifiedViewer | Response> {
   const cookie = request.headers.get('cookie')?.trim() ?? '';
   if (!cookie) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   let response: Response;
   try {
-    response = await fetch(new URL('/player-team/v1/me/state', request.url), {
+    response = await fetch(internalWebUrl(request, '/player-team/v1/me/state'), {
       headers: { accept: 'application/json', cookie },
       cache: 'no-store',
     });
-  } catch {
+  } catch (error) {
+    console.error('team-dm-panels: viewer state lookup failed', error);
     return NextResponse.json({ ok: false, error: 'player_team_unavailable' }, { status: 503 });
   }
-  if (!response.ok) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: response.status === 401 ? 401 : 503 });
+  if (!response.ok) {
+    return NextResponse.json(
+      { ok: false, error: response.status === 401 ? 'unauthorized' : 'player_team_unavailable' },
+      { status: response.status === 401 ? 401 : 503 },
+    );
+  }
   const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
   const state = asRecord(body?.state);
   const viewer = asRecord(state?.viewer);
@@ -57,14 +85,20 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
 async function workspaceState(request: Request, cookie: string, workspaceId: string): Promise<JsonRecord | Response> {
   let response: Response;
   try {
-    response = await fetch(new URL(`/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`, request.url), {
+    response = await fetch(internalWebUrl(request, `/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`), {
       headers: { accept: 'application/json', cookie },
       cache: 'no-store',
     });
-  } catch {
+  } catch (error) {
+    console.error('team-dm-panels: workspace lookup failed', error);
     return NextResponse.json({ ok: false, error: 'workspace_unavailable' }, { status: 503 });
   }
-  if (!response.ok) return NextResponse.json({ ok: false, error: 'workspace_access_denied' }, { status: response.status === 401 || response.status === 404 ? 403 : 503 });
+  if (!response.ok) {
+    return NextResponse.json(
+      { ok: false, error: response.status === 401 || response.status === 404 ? 'workspace_access_denied' : 'workspace_unavailable' },
+      { status: response.status === 401 || response.status === 404 ? 403 : 503 },
+    );
+  }
   const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
   const state = asRecord(body?.state);
   if (!state) return NextResponse.json({ ok: false, error: 'invalid_workspace_state' }, { status: 503 });
