@@ -30,6 +30,7 @@ export type RankingWindow = '7d' | '14d' | '30d' | 'since_bot';
 export type RankingRow = {
   readonly discordUserId: string;
   readonly displayName: string;
+  readonly avatarUrl?: string;
   readonly score: number;
   readonly rank?: number;
   readonly messages?: number;
@@ -74,6 +75,20 @@ function isOfflineStatus(status: number, parsed: Record<string, unknown>): boole
   return parsed.error === 'gateway_unreachable';
 }
 
+function discordAvatarUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return undefined;
+    if (url.hostname !== 'cdn.discordapp.com' && url.hostname !== 'media.discordapp.net') {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function mapEntry(r: Record<string, unknown>): RankingRow {
   const display =
     typeof r.displayName === 'string' && r.displayName.trim()
@@ -83,6 +98,7 @@ function mapEntry(r: Record<string, unknown>): RankingRow {
         : typeof r.username === 'string'
           ? r.username
           : 'Gracz';
+  const avatarUrl = discordAvatarUrl(r.avatarUrl);
   const row: RankingRow = {
     discordUserId:
       typeof r.discordUserId === 'string'
@@ -93,6 +109,7 @@ function mapEntry(r: Record<string, unknown>): RankingRow {
             ? r.id
             : '',
     displayName: display,
+    ...(avatarUrl ? { avatarUrl } : {}),
     score: Number(r.score ?? r.total ?? 0),
   };
   const messages =
