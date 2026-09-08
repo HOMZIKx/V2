@@ -1,0 +1,14 @@
+{
+  "extends": "../typescript-config/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "noEmit": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"]
+}
