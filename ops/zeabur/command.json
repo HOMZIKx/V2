@@ -1,5 +1,5 @@
 {
-  "requestId": "inspect-env-mutation-signatures-20260908-1",
+  "requestId": "inspect-env-mutation-return-types-20260908-1",
   "mode": "graphql_read",
-  "query": "query Inspect{__schema{mutationType{fields{name args{name type{kind name ofType{kind name ofType{kind name}}}}}}}}"
+  "query": "query Inspect{__schema{mutationType{fields{name type{kind name ofType{kind name ofType{kind name}}}}}}}"
 }
