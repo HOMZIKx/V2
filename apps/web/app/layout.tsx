@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html lang="pl">">
+    <html lang="pl">
       <body>
         <PlayerStoreProvider>
           <TeamInvitationSync />
