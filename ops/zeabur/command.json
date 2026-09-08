@@ -1,5 +1,5 @@
 {
-  "requestId": "check-post-project-state-push-runtime-20260908-1",
+  "requestId": "check-post-project-state-push-runtime-20260908-2",
   "mode": "graphql_read",
   "query": "query Check($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status(environmentID:$environmentID) gitTrigger(environmentID:$environmentID){branchName} deployments(environmentID:$environmentID){_id ref commitSHA status createdAt startedAt finishedAt canceledAt}}}}}",
   "variables": {"projectID":"6a720a3e472e2c91a9e660d5","environmentID":"6a720a3e5f062718bc7b3421"}
