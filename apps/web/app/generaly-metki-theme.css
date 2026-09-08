@@ -1,0 +1,143 @@
+/* Route-scoped polish for Generały / Metiny.
+ * Keep the module inside the established DESTILED language: deep graphite,
+ * restrained jade and warm muted gold. Command/status colours remain distinct.
+ */
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) {
+  --hunt-jade: #3f8f70;
+  --hunt-jade-bright: #72b89d;
+  --hunt-jade-soft: rgba(63, 143, 112, 0.16);
+  --hunt-gold: #d5b36a;
+  --hunt-gold-bright: #ead39b;
+  --hunt-gold-soft: rgba(213, 179, 106, 0.14);
+  --hunt-panel: #10131a;
+  --hunt-panel-deep: #0b0e13;
+  --hunt-line: rgba(184, 191, 205, 0.14);
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  section[aria-label='Stałe pokoje polowania']
+  button {
+  border-color: var(--hunt-line) !important;
+  background: linear-gradient(145deg, rgba(17, 20, 27, 0.98), rgba(11, 14, 19, 0.99)) !important;
+  box-shadow: none !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  section[aria-label='Stałe pokoje polowania']
+  button:hover {
+  border-color: rgba(213, 179, 106, 0.32) !important;
+}
+
+/* CSS-module local name is retained in Next's generated class name. This
+ * override is deliberately scoped to this one route. */
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  section[aria-label='Stałe pokoje polowania']
+  button[class*='roomCardActive'] {
+  border-color: rgba(63, 143, 112, 0.52) !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(63, 143, 112, 0.12), transparent 48%),
+    linear-gradient(145deg, rgba(20, 37, 32, 0.88), rgba(11, 14, 19, 0.99)) !important;
+  box-shadow: inset 0 0 0 1px rgba(114, 184, 157, 0.035) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  section[aria-label='Stałe pokoje polowania']
+  + section {
+  border-color: var(--hunt-line) !important;
+  background: linear-gradient(145deg, rgba(16, 19, 26, 0.98), rgba(12, 15, 20, 0.99)) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  section[aria-label='Stałe pokoje polowania']
+  + section
+  > div:last-child
+  strong {
+  color: var(--hunt-gold) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  nav[aria-label='Kanał']
+  button {
+  border-color: var(--hunt-line) !important;
+  color: #aeb5c2 !important;
+  background: #0d1117 !important;
+  box-shadow: none !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  nav[aria-label='Kanał']
+  button:hover {
+  border-color: rgba(213, 179, 106, 0.3) !important;
+  color: var(--hunt-gold-bright) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+  nav[aria-label='Kanał']
+  button[class*='channelActive'] {
+  border-color: rgba(63, 143, 112, 0.58) !important;
+  color: #9bcdb9 !important;
+  background: rgba(31, 75, 59, 0.28) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(114, 184, 157, 0.035),
+    0 0 14px rgba(63, 143, 112, 0.05) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapPanel'] {
+  border-color: rgba(213, 179, 106, 0.16) !important;
+  background: var(--hunt-panel-deep) !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.28) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapToolbar'] {
+  border-bottom-color: var(--hunt-line) !important;
+  background: linear-gradient(180deg, #12161d, #0d1117) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapFrame'] {
+  background:
+    radial-gradient(circle at 50% 0, rgba(63, 143, 112, 0.035), transparent 48%),
+    #090c11 !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapCanvas'] {
+  border-color: rgba(213, 179, 106, 0.11) !important;
+  background: #07090d !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='mapCanvasEditing'] {
+  border-color: rgba(213, 179, 106, 0.42) !important;
+  box-shadow:
+    0 0 0 1px rgba(213, 179, 106, 0.04),
+    0 0 22px rgba(213, 179, 106, 0.07),
+    inset 0 0 36px rgba(0, 0, 0, 0.3) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='quickPanel'],
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='requestsPanel'],
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='historyPanel'] {
+  border-color: var(--hunt-line) !important;
+  background-color: rgba(16, 19, 26, 0.97) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='quickPanel'] {
+  background:
+    radial-gradient(circle at 100% 0, rgba(213, 179, 106, 0.045), transparent 46%),
+    rgba(16, 19, 26, 0.97) !important;
+}
+
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='eyebrow'],
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='roomType'],
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='sectionHeading'] > div > span,
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='nextSpawn'] > span,
+main#main-content:has(section[aria-label='Stałe pokoje polowania']) [class*='roomCard'] > span {
+  color: var(--hunt-gold) !important;
+}
+
+@media (max-width: 760px) {
+  main#main-content:has(section[aria-label='Stałe pokoje polowania'])
+    section[aria-label='Stałe pokoje polowania']
+    button {
+    background: #0f1218 !important;
+  }
+}
