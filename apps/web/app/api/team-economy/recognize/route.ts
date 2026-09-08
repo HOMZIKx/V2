@@ -266,9 +266,17 @@ function normalizeRecognizedItems(rawItems: RawRecognizedItem[]): RecognizedItem
 
   return Array.from(byPosition.values())
     .sort((left, right) => left.sortRank - right.sortRank)
-    .map(({ positionKey: _positionKey, sortRank: _sortRank, ...item }, index) => ({
-      ...item,
+    .map((positioned, index) => ({
       slotIndex: index,
+      row: positioned.row,
+      column: positioned.column,
+      recognizedName: positioned.recognizedName,
+      quantity: positioned.quantity,
+      itemConfidence: positioned.itemConfidence,
+      quantityConfidence: positioned.quantityConfidence,
+      confidence: positioned.confidence,
+      alternatives: positioned.alternatives,
+      catalogMatch: positioned.catalogMatch,
     }));
 }
 
