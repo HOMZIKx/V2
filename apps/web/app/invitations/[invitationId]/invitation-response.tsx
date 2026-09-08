@@ -20,6 +20,7 @@ import {
   acceptTeamInvitation,
   declineTeamInvitation,
   getTeamInvitation,
+  TeamInvitationApiError,
 } from '../../../src/team-invitations-api';
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell } from '../../app-shell';
@@ -47,6 +48,7 @@ export function InvitationResponse() {
   const [outcome, setOutcome] = useState<'accepted' | 'declined' | null>(null);
   const [serverInvitation, setServerInvitation] = useState<Awaited<ReturnType<typeof getTeamInvitation>> | null>(null);
   const [serverChecked, setServerChecked] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [working, setWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -57,29 +59,39 @@ export function InvitationResponse() {
 
   useEffect(() => {
     if (!hydrated || state.authStatus !== 'authenticated' || !state.viewer) return;
-    if (localInvitation !== null) {
-      setServerChecked(true);
-      return;
-    }
 
     let cancelled = false;
     setServerChecked(false);
+    setServerError(null);
+    setServerInvitation(null);
+
     void getTeamInvitation(params.invitationId)
       .then((invitation) => {
         if (!cancelled) setServerInvitation(invitation);
       })
-      .catch(() => {
-        if (!cancelled) setServerInvitation(null);
+      .catch((error) => {
+        if (cancelled) return;
+        if (error instanceof TeamInvitationApiError && error.status === 404) {
+          setServerInvitation(null);
+          return;
+        }
+        setServerError('Nie udało się zweryfikować zaproszenia z serwerem. Spróbuj ponownie.');
       })
       .finally(() => {
         if (!cancelled) setServerChecked(true);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [hydrated, localInvitation, params.invitationId, state.authStatus, state.viewer]);
+  }, [hydrated, params.invitationId, state.authStatus, state.viewer]);
 
-  const invitation = localInvitation ?? serverInvitation;
+  const allowLocalDemoFallback =
+    process.env.NODE_ENV !== 'production' &&
+    serverChecked &&
+    serverError === null &&
+    serverInvitation === null;
+  const invitation = serverInvitation ?? (allowLocalDemoFallback ? localInvitation : null);
 
   if (!hydrated) {
     return (
@@ -93,11 +105,26 @@ export function InvitationResponse() {
     return <DiscordEntryScreen />;
   }
 
-  if (!invitation && !serverChecked) {
+  if (!serverChecked) {
     return (
       <main className="discord-entry" id="main-content">
         <p className="entry-status">Sprawdzanie zaproszenia…</p>
       </main>
+    );
+  }
+
+  if (serverError) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className="invitation-page" id="main-content">
+          <span className="eyebrow">Zaproszenie</span>
+          <h1>Nie można zweryfikować zaproszenia</h1>
+          <p>{serverError}</p>
+          <button className="primary-button" onClick={() => window.location.reload()} type="button">
+            Spróbuj ponownie
+          </button>
+        </main>
+      </AppShell>
     );
   }
 
@@ -169,7 +196,7 @@ export function InvitationResponse() {
         return;
       }
 
-      // Compatibility for seeded/local demo invitations.
+      // Development-only compatibility for explicitly seeded local demo invitations.
       acceptInvitation(invitation.id);
       setOutcome('accepted');
     } catch (error) {
@@ -186,7 +213,9 @@ export function InvitationResponse() {
     try {
       if (serverInvitation !== null) {
         await declineTeamInvitation(invitation.id);
+        declineInvitation(invitation.id);
       } else {
+        // Development-only compatibility for explicitly seeded local demo invitations.
         declineInvitation(invitation.id);
       }
       setOutcome('declined');
