@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-final-buildlog-084dbb16-20260908-1841",
+  "requestId": "webapp-final-status-084dbb16-20260908-1842",
   "mode": "cli",
-  "action": "logs:build",
+  "action": "deployment:get",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
