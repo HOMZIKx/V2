@@ -225,26 +225,29 @@ describe('character-timer-discord-notify', () => {
     expect(postDiscordTimerResetNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientDiscordUserIds: ['223456789012345678'],
-        liveTimers: expect.arrayContaining([
-          expect.objectContaining({ id: 'timer-ksiega-1' }),
-          expect.objectContaining({ id: 'timer-kamien-1' }),
-        ]),
       }),
     );
+    const resetPayload = vi.mocked(postDiscordTimerResetNotify).mock.calls[0]?.[0];
+    expect(resetPayload?.liveTimers?.map((timer) => timer.id)).toEqual([
+      'timer-ksiega-1',
+      'timer-kamien-1',
+    ]);
+
     expect(postDiscordTimerNotify).toHaveBeenCalledWith(
       expect.objectContaining({
         discordUserId: '123456789012345678',
         characterId: 'nerwnicht',
         timerId: 'timer-ksiega-1',
         timerLabel: 'Księga umiejętności',
-        liveTimers: expect.arrayContaining([
-          expect.objectContaining({ id: 'timer-ksiega-1' }),
-          expect.objectContaining({ id: 'timer-kamien-1' }),
-        ]),
         includeButtons: true,
         kind: 'reset',
       }),
     );
+    const actorPayload = vi.mocked(postDiscordTimerNotify).mock.calls[0]?.[0];
+    expect(actorPayload?.liveTimers?.map((timer) => timer.id)).toEqual([
+      'timer-ksiega-1',
+      'timer-kamien-1',
+    ]);
   });
 
   it('does not schedule browser-local reminders', () => {

@@ -16,9 +16,9 @@ import {
 } from './discord-notify-api';
 import {
   resolveMemberDiscordAccountId,
+  type PlayerIdentity,
   type ProgressTimer,
   type WorkspaceRecord,
-  type PlayerIdentity,
 } from './player-store';
 import { inferProgressionKind, restartAfterDone } from './project-hard-progression';
 
@@ -150,9 +150,10 @@ export async function notifyCharacterProgressTimer(
   const results: DiscordTimerNotifyResult[] = [];
   let sent = 0;
 
-  const actorDiscord =
-    ctx.viewer?.discordAccountId?.trim() &&
-    /^\d{17,20}$/.test(ctx.viewer.discordAccountId.trim())
+  const actorMember = ctx.workspace.members.find((member) => member.id === ctx.viewer?.id) ?? null;
+  const actorDiscord = actorMember
+    ? resolveMemberDiscordAccountId(actorMember, ctx.viewer)
+    : ctx.viewer?.discordAccountId?.trim() && /^\d{17,20}$/.test(ctx.viewer.discordAccountId.trim())
       ? ctx.viewer.discordAccountId.trim()
       : null;
 
@@ -183,7 +184,9 @@ export async function notifyCharacterProgressTimer(
 
   const directRecipients =
     ctx.kind === 'reset'
-      ? recipients.filter((id) => id === actorDiscord)
+      ? actorDiscord
+        ? recipients.filter((id) => id === actorDiscord)
+        : recipients
       : recipients;
 
   for (const discordUserId of directRecipients) {
@@ -223,5 +226,6 @@ export function scheduleCharacterTimerReminder(_input: {
   readonly reminderMinutesBefore: number;
   readonly fire: () => void;
 }): (() => void) | null {
+  void _input;
   return null;
 }
