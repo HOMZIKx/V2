@@ -39,7 +39,6 @@ function dataDir(): string {
   const legacyDataDir = (process.env.DESTILED_DATA_DIR ?? '').trim();
   if (legacyDataDir) return join(legacyDataDir, 'character-timer-reminders');
 
-  // Repo-root .data when running locally from apps/discord-gateway or monorepo root.
   const candidates = [
     join(process.cwd(), '.data', 'character-timer-reminders'),
     join(process.cwd(), '..', '..', '.data', 'character-timer-reminders'),
@@ -83,7 +82,6 @@ function loadFromDisk(): void {
     for (const job of parsed.jobs) {
       if (!job || typeof job.key !== 'string' || typeof job.fireAtMs !== 'number') continue;
       if (!job.discordUserId || !job.timerId) continue;
-      // Drop ancient jobs (>48h overdue) — avoid surprise spam after long downtime.
       if (job.fireAtMs < now - 48 * 3_600_000) continue;
       metaByKey.set(job.key, {
         key: job.key,
@@ -128,10 +126,6 @@ function armTimeout(job: CharacterTimerReminderJob): void {
   pending.set(job.key, handle);
 }
 
-/**
- * Wire send/logger once on gateway start, then reload + arm queue from disk.
- * Safe to call again (rebinds deps and re-arms).
- */
 export function startCharacterTimerReminderWorker(deps: CharacterTimerReminderDeps): {
   readonly reloaded: number;
 } {
@@ -165,8 +159,11 @@ export function scheduleCharacterTimerReminder(
   sendDeps = deps;
   loadFromDisk();
   const delayMs = Math.max(5_000, Math.min(24 * 3_600_000, Math.round(input.delayMs)));
-  const key = `${input.discordUserId}:${input.timerId}`;
   const fireAtMs = Date.now() + delayMs;
+
+  // Multiple jobs for the same timer/user are valid: the canonical due reminder and
+  // one or more explicit "Przypomnij później" requests must never overwrite each other.
+  const key = `${input.discordUserId}:${input.timerId}:${fireAtMs}`;
   const job: CharacterTimerReminderJob = {
     key,
     discordUserId: input.discordUserId,
@@ -190,13 +187,18 @@ export function scheduleCharacterTimerReminder(
   return { ok: true, fireAtMs };
 }
 
+/** Cancel every outstanding due/snooze job for this user+timer after a refresh. */
 export function cancelCharacterTimerReminder(discordUserId: string, timerId: string): void {
   loadFromDisk();
-  const key = `${discordUserId}:${timerId}`;
-  const handle = pending.get(key);
-  if (handle) clearTimeout(handle);
-  pending.delete(key);
-  metaByKey.delete(key);
+  const prefix = `${discordUserId}:${timerId}:`;
+  for (const [key, handle] of pending) {
+    if (!key.startsWith(prefix)) continue;
+    clearTimeout(handle);
+    pending.delete(key);
+  }
+  for (const key of [...metaByKey.keys()]) {
+    if (key.startsWith(prefix)) metaByKey.delete(key);
+  }
   saveToDisk();
 }
 
