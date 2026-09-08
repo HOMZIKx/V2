@@ -1,4 +1,5 @@
 {
-  "requestId": "final-production-env-audit-after-restarts-20260908-1",
-  "mode": "env_audit"
+  "requestId": "persistent-origin-repair-final-20260908-1",
+  "mode": "persistent_origin_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
