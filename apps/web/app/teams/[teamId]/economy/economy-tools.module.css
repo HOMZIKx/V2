@@ -205,6 +205,21 @@
 .card {
   padding: 15px;
   border-radius: 12px;
+  color: inherit;
+  text-align: left;
+}
+
+button.card {
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.card:hover,
+button.card:focus-visible {
+  border-color: rgba(240, 189, 100, 0.34);
+  outline: none;
+  background: linear-gradient(135deg, rgba(240, 189, 100, 0.06), var(--panel));
 }
 
 .card header {
