@@ -12,6 +12,7 @@ on:
       - ops/zeabur/repair-api-gateway.mjs
       - ops/zeabur/repair-cors.mjs
       - ops/zeabur/repair-persistent-origins.mjs
+      - ops/zeabur/verify-public-e2e.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -45,6 +46,7 @@ jobs:
             api_gateway_repair) node ops/zeabur/repair-api-gateway.mjs ;;
             cors_repair) node ops/zeabur/repair-cors.mjs ;;
             persistent_origin_repair) node ops/zeabur/repair-persistent-origins.mjs ;;
+            public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
             *) node ops/zeabur/run.mjs ;;
           esac
 
