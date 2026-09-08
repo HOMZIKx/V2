@@ -1,0 +1,1084 @@
+'use client';
+
+import { useParams } from 'next/navigation';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from 'react';
+
+import { gameItemCatalog } from '../../../../src/item-catalog';
+import { usePlayerStore } from '../../../../src/player-store-react';
+import { AppShell } from '../../../app-shell';
+import { DiscordEntryScreen } from '../../../discord-entry';
+import { WorkspaceSectionNav } from '../workspace-section-nav';
+import styles from './team-economy.module.css';
+
+type Currency = 'yang' | 'won' | 'gem';
+type Tab = 'drop' | 'costs' | 'history' | 'ranking';
+
+type Summary = {
+  runCount: number;
+  totals: Array<{
+    currency: Currency;
+    gross: number;
+    itemGross: number;
+    moneyGross: number;
+    costs: number;
+    net: number;
+  }>;
+};
+
+type DropItem = {
+  id: string;
+  displayName: string;
+  totalQuantity: number;
+  ourQuantity: number;
+  unitPrice: number;
+  currency: Currency;
+  perPile: number;
+  leftover: number;
+};
+
+type DropMoney = {
+  id: string;
+  currency: Currency;
+  totalAmount: number;
+  ourShareBasisPoints: number;
+  ourAmount: number;
+};
+
+type Drop = {
+  id: string;
+  source: string;
+  occurredAtIso: string;
+  ourShareBasisPoints: number;
+  pileCount: number;
+  splitMode: 'max_equal' | 'strict_equal';
+  items: DropItem[];
+  money: DropMoney[];
+  participants: Array<{
+    participantId: string;
+    displayName: string;
+    isTeamMember: boolean;
+  }>;
+};
+
+type Expense = {
+  id: string;
+  label: string;
+  quantity: number;
+  unitPrice: number;
+  currency: Currency;
+  ourShareBasisPoints: number;
+  occurredAtIso: string;
+};
+
+type DraftItem = {
+  key: string;
+  itemId: string | null;
+  name: string;
+  category: string;
+  totalQuantity: number;
+  ourQuantity: number;
+  unitPrice: number;
+  currency: Currency;
+  confidence: number | null;
+};
+
+type DraftMoney = {
+  key: string;
+  currency: Currency;
+  totalAmount: number;
+  sharePercent: number;
+};
+
+type AiItem = {
+  recognizedName: string;
+  quantity: number;
+  confidence: number;
+  catalogMatch: {
+    id: string;
+    name: string;
+    category: string;
+    imageUrl: string | null;
+  } | null;
+};
+
+const dobryTematSeed = Array.from(
+  gameItemCatalog.reduce(
+    (map, item) => {
+      const key = item.title.trim().toLocaleLowerCase('pl-PL');
+      if (!map.has(key)) {
+        map.set(key, {
+          id: item.id,
+          canonicalName: item.title,
+          category: item.category || 'Pozostałe',
+          imageUrl: item.sourceImageUrl ?? item.imagePath,
+        });
+      }
+      return map;
+    },
+    new Map<
+      string,
+      { id: string; canonicalName: string; category: string; imageUrl: string | null }
+    >(),
+  ).values(),
+);
+
+function weekStartIso(): string {
+  const now = new Date();
+  const day = (now.getDay() + 6) % 7;
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0);
+  return start.toISOString();
+}
+
+function money(value: number, currency: Currency): string {
+  if (currency === 'won') {
+    return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} Won`;
+  }
+  if (currency === 'gem') {
+    return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} GEM`;
+  }
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1_000_000_000) {
+    return `${sign}${(abs / 1_000_000_000).toLocaleString('pl-PL', {
+      maximumFractionDigits: 2,
+    })} kkk`;
+  }
+  if (abs >= 1_000_000) {
+    return `${sign}${(abs / 1_000_000).toLocaleString('pl-PL', {
+      maximumFractionDigits: 2,
+    })} kk`;
+  }
+  if (abs >= 1_000) {
+    return `${sign}${(abs / 1_000).toLocaleString('pl-PL', {
+      maximumFractionDigits: 1,
+    })}k`;
+  }
+  return `${value.toLocaleString('pl-PL')} Yang`;
+}
+
+function api(workspaceId: string, path: string): string {
+  return `/player-team/v1/economy/workspaces/${encodeURIComponent(workspaceId)}/${path}`;
+}
+
+function directMoneyShare(row: DraftMoney): number {
+  return (row.totalAmount * row.sharePercent) / 100;
+}
+
+export function TeamEconomy() {
+  const { teamId } = useParams<{ teamId: string }>();
+  const { state, hydrated } = usePlayerStore();
+  const workspace = state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
+
+  const [tab, setTab] = useState<Tab>('drop');
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [drops, setDrops] = useState<Drop[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [catalogReady, setCatalogReady] = useState(false);
+
+  const [dropOpen, setDropOpen] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
+  const [source, setSource] = useState('Azrael');
+  const [share, setShare] = useState(100);
+  const [piles, setPiles] = useState(1);
+  const [splitMode, setSplitMode] = useState<'max_equal' | 'strict_equal'>('max_equal');
+  const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
+  const [draftMoney, setDraftMoney] = useState<DraftMoney[]>([]);
+  const [outsiders, setOutsiders] = useState('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+
+  const [expenseLabel, setExpenseLabel] = useState('');
+  const [expenseQty, setExpenseQty] = useState(1);
+  const [expensePrice, setExpensePrice] = useState(0);
+  const [expenseCurrency, setExpenseCurrency] = useState<Currency>('yang');
+  const [expenseShare, setExpenseShare] = useState(100);
+
+  useEffect(() => {
+    if (workspace && selectedMembers.length === 0) {
+      setSelectedMembers(workspace.members.map((member) => member.id));
+    }
+  }, [workspace, selectedMembers.length]);
+
+  const ensureCatalog = useCallback(async () => {
+    if (!workspace || catalogReady) return;
+    try {
+      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), {
+        cache: 'no-store',
+      });
+      if (!statusResponse.ok) throw new Error('Nie udało się sprawdzić bazy przedmiotów.');
+      const status = (await statusResponse.json()) as { total?: number };
+      const currentTotal = Number(status.total ?? 0);
+      if (currentTotal < dobryTematSeed.length) {
+        const importResponse = await fetch(api(workspace.id, 'catalog-import'), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ items: dobryTematSeed }),
+        });
+        if (!importResponse.ok) throw new Error('Nie udało się zaimportować bazy DOBRYTEMAT.');
+        const imported = (await importResponse.json()) as { imported?: number; total?: number };
+        if (Number(imported.imported ?? 0) > 0) {
+          setNotice(
+            `Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`,
+          );
+        }
+      }
+      setCatalogReady(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd synchronizacji katalogu.');
+    }
+  }, [workspace, catalogReady]);
+
+  const load = useCallback(async () => {
+    if (!workspace) return;
+    setError('');
+    const since = encodeURIComponent(weekStartIso());
+    try {
+      const [summaryResponse, dropsResponse, expensesResponse] = await Promise.all([
+        fetch(api(workspace.id, `summary?since=${since}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `drops?since=${since}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `expenses?since=${since}`), { cache: 'no-store' }),
+      ]);
+      if (!summaryResponse.ok || !dropsResponse.ok || !expensesResponse.ok) {
+        throw new Error('Nie udało się pobrać ekonomii zespołu.');
+      }
+      setSummary((await summaryResponse.json()) as Summary);
+      setDrops((await dropsResponse.json()) as Drop[]);
+      setExpenses((await expensesResponse.json()) as Expense[]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd pobierania danych.');
+    }
+  }, [workspace]);
+
+  useEffect(() => {
+    void ensureCatalog();
+    void load();
+  }, [ensureCatalog, load]);
+
+  const yang = summary?.totals.find((total) => total.currency === 'yang') ?? {
+    gross: 0,
+    itemGross: 0,
+    moneyGross: 0,
+    costs: 0,
+    net: 0,
+    currency: 'yang' as const,
+  };
+
+  const ranking = useMemo(
+    () =>
+      Object.entries(
+        drops.reduce<Record<string, number>>((acc, drop) => {
+          const itemValue = drop.items
+            .filter((item) => item.currency === 'yang')
+            .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
+          const cashValue = drop.money
+            .filter((entry) => entry.currency === 'yang')
+            .reduce((sum, entry) => sum + entry.ourAmount, 0);
+          acc[drop.source] = (acc[drop.source] ?? 0) + itemValue + cashValue;
+          return acc;
+        }, {}),
+      ).sort((left, right) => right[1] - left[1]),
+    [drops],
+  );
+
+  async function recognize(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));
+        reader.readAsDataURL(file);
+      });
+      const response = await fetch('/api/team-economy/recognize', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ imageDataUrl: dataUrl }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(
+          body.error === 'ai_not_configured'
+            ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
+            : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
+        );
+      }
+      const body = (await response.json()) as { items: AiItem[] };
+      setDraftItems(
+        body.items.map((item, index) => ({
+          key: `ai-${Date.now()}-${index}`,
+          itemId: null,
+          name: item.catalogMatch?.name ?? item.recognizedName,
+          category: item.catalogMatch?.category ?? 'Pozostałe',
+          totalQuantity: item.quantity,
+          ourQuantity: item.quantity,
+          unitPrice: 0,
+          currency: 'yang',
+          confidence: item.confidence,
+        })),
+      );
+      setNotice(
+        `AI rozpoznało ${body.items.length} pozycji. Sprawdź nazwę, liczbę wszystkich sztuk i wpisz liczbę sztuk należących do nas.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd AI.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function patchItem(key: string, patch: Partial<DraftItem>) {
+    setDraftItems((items) =>
+      items.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function patchMoney(key: string, patch: Partial<DraftMoney>) {
+    setDraftMoney((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  }
+
+  function applyShareToMoney() {
+    setDraftMoney((rows) => rows.map((row) => ({ ...row, sharePercent: share })));
+  }
+
+  function addManualItem() {
+    setDraftItems((items) => [
+      ...items,
+      {
+        key: `manual-${Date.now()}`,
+        itemId: null,
+        name: '',
+        category: 'Pozostałe',
+        totalQuantity: 1,
+        ourQuantity: 1,
+        unitPrice: 0,
+        currency: 'yang',
+        confidence: null,
+      },
+    ]);
+  }
+
+  function addMoney() {
+    setDraftMoney((rows) => [
+      ...rows,
+      {
+        key: `money-${Date.now()}`,
+        currency: 'yang',
+        totalAmount: 0,
+        sharePercent: share,
+      },
+    ]);
+  }
+
+  async function submitDrop(event: FormEvent) {
+    event.preventDefault();
+    if (!workspace || (draftItems.length === 0 && !draftMoney.some((row) => row.totalAmount > 0))) {
+      setError('Dodaj przynajmniej jeden przedmiot albo kwotę pieniędzy.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const resolved: DraftItem[] = [];
+      for (const item of draftItems) {
+        if (!item.name.trim()) throw new Error('Każdy przedmiot musi mieć nazwę.');
+        let itemId = item.itemId;
+        if (!itemId) {
+          const response = await fetch(api(workspace.id, 'items'), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              canonicalName: item.name.trim(),
+              category: item.category || 'Pozostałe',
+            }),
+          });
+          if (!response.ok) throw new Error(`Nie udało się zapisać przedmiotu: ${item.name}.`);
+          const saved = (await response.json()) as { id: string };
+          itemId = saved.id;
+        }
+        resolved.push({ ...item, itemId });
+      }
+
+      const participants = [
+        ...workspace.members
+          .filter((member) => selectedMembers.includes(member.id))
+          .map((member) => ({
+            participantId: member.id,
+            displayName: member.displayName,
+            isTeamMember: true,
+          })),
+        ...outsiders
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .map((name, index) => ({
+            participantId: `external-${Date.now()}-${index}`,
+            displayName: name,
+            isTeamMember: false,
+          })),
+      ];
+
+      const response = await fetch(api(workspace.id, 'drops'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          source,
+          occurredAtIso: new Date().toISOString(),
+          ourShareBasisPoints: Math.round(share * 100),
+          pileCount: piles,
+          splitMode,
+          participants,
+          items: resolved.map((item) => ({
+            itemId: item.itemId,
+            displayName: item.name,
+            totalQuantity: item.totalQuantity,
+            ourQuantity: item.ourQuantity,
+            unitPrice: item.unitPrice,
+            currency: item.currency,
+            aiConfidence: item.confidence,
+          })),
+          money: draftMoney
+            .filter((row) => row.totalAmount > 0)
+            .map((row) => ({
+              currency: row.currency,
+              totalAmount: row.totalAmount,
+              ourShareBasisPoints: Math.round(row.sharePercent * 100),
+            })),
+        }),
+      });
+      if (!response.ok) throw new Error('Serwer odrzucił zapis dropu.');
+      setDraftItems([]);
+      setDraftMoney([]);
+      setDropOpen(false);
+      setNotice('Drop zapisany i doliczony do ekonomii zespołu.');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd zapisu dropu.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitExpense(event: FormEvent) {
+    event.preventDefault();
+    if (!workspace || !expenseLabel.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await fetch(api(workspace.id, 'expenses'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          label: expenseLabel,
+          expenseType: 'other',
+          quantity: expenseQty,
+          unitPrice: expensePrice,
+          currency: expenseCurrency,
+          ourShareBasisPoints: Math.round(expenseShare * 100),
+          occurredAtIso: new Date().toISOString(),
+        }),
+      });
+      if (!response.ok) throw new Error('Serwer odrzucił koszt.');
+      setExpenseOpen(false);
+      setExpenseLabel('');
+      setNotice('Koszt zapisany.');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd zapisu kosztu.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!hydrated) {
+    return (
+      <main className="discord-entry">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
+    );
+  }
+  if (state.authStatus !== 'authenticated' || !state.viewer) return <DiscordEntryScreen />;
+  if (!workspace) {
+    return (
+      <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+        <main className={styles.page}>
+          <section className="panel">
+            <h1>Nie znaleziono zespołu</h1>
+          </section>
+        </main>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+      <main className={styles.page} id="main-content">
+        <section className={styles.hero}>
+          <div>
+            <span className={styles.eyebrow}>Zespół · Ekonomia</span>
+            <h1>{workspace.name}</h1>
+            <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik tygodnia.</p>
+          </div>
+          <div className={styles.actions}>
+            <button className={styles.button} onClick={() => setDropOpen((value) => !value)} type="button">
+              + Dodaj drop
+            </button>
+            <button
+              className={styles.buttonGhost}
+              onClick={() => setExpenseOpen((value) => !value)}
+              type="button"
+            >
+              + Koszt
+            </button>
+          </div>
+        </section>
+
+        <WorkspaceSectionNav active="economy" workspaceId={workspace.id} />
+
+        <section className={styles.metrics}>
+          <article className={styles.metric}>
+            <span>Przychód · ten tydzień</span>
+            <strong>{money(yang.gross, 'yang')}</strong>
+            <small>
+              przedmioty {money(yang.itemGross, 'yang')} · kasa {money(yang.moneyGross, 'yang')}
+            </small>
+          </article>
+          <article className={styles.metric}>
+            <span>Koszty</span>
+            <strong>{money(yang.costs, 'yang')}</strong>
+          </article>
+          <article className={styles.metric}>
+            <span>Wynik netto</span>
+            <strong className={styles.net}>{money(yang.net, 'yang')}</strong>
+          </article>
+          <article className={styles.metric}>
+            <span>Wyprawy</span>
+            <strong>{summary?.runCount ?? 0}</strong>
+            <small>
+              {catalogReady
+                ? `${dobryTematSeed.length} pozycji DOBRYTEMAT w źródle`
+                : 'synchronizacja katalogu…'}
+            </small>
+          </article>
+        </section>
+
+        {error ? <p className={styles.error}>{error}</p> : null}
+        {notice ? <p className={styles.warning}>{notice}</p> : null}
+
+        {dropOpen ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Nowy drop</h2>
+              <span className={styles.tag}>AI + ręczna kontrola</span>
+            </div>
+            <form onSubmit={submitDrop}>
+              <div className={styles.formGrid}>
+                <label className={styles.field}>
+                  Źródło
+                  <input value={source} onChange={(event) => setSource(event.target.value)} />
+                </label>
+                <label className={styles.field}>
+                  Domyślny udział pieniędzy %
+                  <input
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    type="number"
+                    value={share}
+                    onChange={(event) =>
+                      setShare(Math.max(0, Math.min(100, Number(event.target.value))))
+                    }
+                  />
+                  <small className={styles.shareHint}>
+                    Pieniądze dzielimy procentowo. Przedmioty wpisujesz wyłącznie w pełnych sztukach.
+                  </small>
+                </label>
+                <label className={styles.field}>
+                  Liczba kupek
+                  <input
+                    min="1"
+                    max="100"
+                    type="number"
+                    value={piles}
+                    onChange={(event) =>
+                      setPiles(Math.max(1, Math.min(100, Math.floor(Number(event.target.value)))))
+                    }
+                  />
+                </label>
+                <label className={styles.field}>
+                  Tryb podziału przedmiotów
+                  <select
+                    value={splitMode}
+                    onChange={(event) => setSplitMode(event.target.value as typeof splitMode)}
+                  >
+                    <option value="max_equal">Maksymalnie równo + reszta</option>
+                    <option value="strict_equal">Tylko idealnie równo</option>
+                  </select>
+                </label>
+
+                <label className={`${styles.field} ${styles.full}`}>
+                  <span>Screen dropu</span>
+                  <span className={styles.dropZone}>
+                    <input
+                      accept="image/png,image/jpeg,image/webp"
+                      disabled={busy}
+                      onChange={recognize}
+                      type="file"
+                    />
+                    <small>AI rozpozna przedmioty i ilości. Wynik zawsze można poprawić.</small>
+                  </span>
+                </label>
+
+                <div className={`${styles.actions} ${styles.full}`}>
+                  <button className={styles.buttonGhost} type="button" onClick={addManualItem}>
+                    + Przedmiot ręcznie
+                  </button>
+                  <button className={styles.buttonGhost} type="button" onClick={addMoney}>
+                    + Pieniądze
+                  </button>
+                  <button className={styles.buttonGhost} type="button" onClick={applyShareToMoney}>
+                    Ustaw kasę na {share}%
+                  </button>
+                </div>
+              </div>
+
+              {draftItems.length ? (
+                <>
+                  <h3 className={styles.sectionTitle}>Przedmioty · podział liczbowy</h3>
+                  <table className={styles.itemTable}>
+                    <thead>
+                      <tr>
+                        <th>Przedmiot</th>
+                        <th>Całość</th>
+                        <th>Nasze szt.</th>
+                        <th>Cena / szt.</th>
+                        <th>Waluta ceny</th>
+                        <th>Na kupkę</th>
+                        <th>Reszta</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draftItems.map((item) => {
+                        const perPile =
+                          splitMode === 'strict_equal' && item.ourQuantity % piles !== 0
+                            ? 0
+                            : Math.floor(item.ourQuantity / piles);
+                        const leftover = item.ourQuantity - perPile * piles;
+                        return (
+                          <tr key={item.key}>
+                            <td>
+                              <input
+                                list="economy-item-catalog"
+                                value={item.name}
+                                onChange={(event) => patchItem(item.key, { name: event.target.value })}
+                              />
+                              {item.confidence !== null ? (
+                                <small>AI {Math.round(item.confidence * 100)}%</small>
+                              ) : null}
+                            </td>
+                            <td>
+                              <input
+                                min="1"
+                                type="number"
+                                value={item.totalQuantity}
+                                onChange={(event) => {
+                                  const totalQuantity = Math.max(1, Math.floor(Number(event.target.value)));
+                                  patchItem(item.key, {
+                                    totalQuantity,
+                                    ourQuantity: Math.min(item.ourQuantity, totalQuantity),
+                                  });
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                min="0"
+                                max={item.totalQuantity}
+                                type="number"
+                                value={item.ourQuantity}
+                                onChange={(event) =>
+                                  patchItem(item.key, {
+                                    ourQuantity: Math.max(
+                                      0,
+                                      Math.min(item.totalQuantity, Math.floor(Number(event.target.value))),
+                                    ),
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                min="0"
+                                type="number"
+                                value={item.unitPrice}
+                                onChange={(event) =>
+                                  patchItem(item.key, {
+                                    unitPrice: Math.max(0, Number(event.target.value)),
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <select
+                                value={item.currency}
+                                onChange={(event) =>
+                                  patchItem(item.key, { currency: event.target.value as Currency })
+                                }
+                              >
+                                <option value="yang">Yang</option>
+                                <option value="won">Won</option>
+                                <option value="gem">GEM</option>
+                              </select>
+                            </td>
+                            <td>{perPile}</td>
+                            <td>{leftover}</td>
+                            <td>
+                              <button
+                                className={styles.buttonGhost}
+                                type="button"
+                                onClick={() =>
+                                  setDraftItems((items) =>
+                                    items.filter((candidate) => candidate.key !== item.key),
+                                  )
+                                }
+                              >
+                                Usuń
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              ) : null}
+
+              <datalist id="economy-item-catalog">
+                {dobryTematSeed.map((item) => (
+                  <option key={item.id} value={item.canonicalName} />
+                ))}
+              </datalist>
+
+              {draftMoney.length ? (
+                <div className={styles.moneyBlock}>
+                  <h3 className={styles.sectionTitle}>Pieniądze · podział procentowy</h3>
+                  <div className={styles.moneyRows}>
+                    {draftMoney.map((row) => (
+                      <div className={styles.moneyRow} key={row.key}>
+                        <label className={styles.field}>
+                          Kwota całkowita
+                          <input
+                            min="0"
+                            step="0.01"
+                            type="number"
+                            value={row.totalAmount}
+                            onChange={(event) =>
+                              patchMoney(row.key, {
+                                totalAmount: Math.max(0, Number(event.target.value)),
+                              })
+                            }
+                          />
+                        </label>
+                        <label className={styles.field}>
+                          Waluta
+                          <select
+                            value={row.currency}
+                            onChange={(event) =>
+                              patchMoney(row.key, { currency: event.target.value as Currency })
+                            }
+                          >
+                            <option value="yang">Yang</option>
+                            <option value="won">Won</option>
+                            <option value="gem">GEM</option>
+                          </select>
+                        </label>
+                        <label className={styles.field}>
+                          Nasz udział %
+                          <input
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            type="number"
+                            value={row.sharePercent}
+                            onChange={(event) =>
+                              patchMoney(row.key, {
+                                sharePercent: Math.max(0, Math.min(100, Number(event.target.value))),
+                              })
+                            }
+                          />
+                        </label>
+                        <div className={styles.moneyResult}>
+                          <span>Nasza kwota</span>
+                          <strong>{money(directMoneyShare(row), row.currency)}</strong>
+                        </div>
+                        <button
+                          className={styles.buttonGhost}
+                          type="button"
+                          onClick={() =>
+                            setDraftMoney((rows) =>
+                              rows.filter((candidate) => candidate.key !== row.key),
+                            )
+                          }
+                        >
+                          Usuń
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className={styles.grid}>
+                <fieldset className={styles.participants}>
+                  <legend>Członkowie zespołu na wyprawie</legend>
+                  {workspace.members.map((member) => (
+                    <label key={member.id}>
+                      <input
+                        checked={selectedMembers.includes(member.id)}
+                        onChange={(event) =>
+                          setSelectedMembers((current) =>
+                            event.target.checked
+                              ? [...new Set([...current, member.id])]
+                              : current.filter((id) => id !== member.id),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      {member.displayName}
+                    </label>
+                  ))}
+                </fieldset>
+                <label className={styles.field}>
+                  Osoby / ekipy z zewnątrz
+                  <textarea
+                    placeholder="np. Hated, Kowalski — oddziel przecinkami"
+                    value={outsiders}
+                    onChange={(event) => setOutsiders(event.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.rowActions}>
+                <button className={styles.button} disabled={busy} type="submit">
+                  {busy ? 'Zapisywanie…' : 'Zapisz drop'}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
+        {expenseOpen ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Nowy koszt</h2>
+            </div>
+            <form className={styles.formGrid} onSubmit={submitExpense}>
+              <label className={`${styles.field} ${styles.wide}`}>
+                Opis
+                <input
+                  placeholder="np. Przepustki na Azraela"
+                  value={expenseLabel}
+                  onChange={(event) => setExpenseLabel(event.target.value)}
+                />
+              </label>
+              <label className={styles.field}>
+                Ilość
+                <input
+                  min="0.0001"
+                  step="0.0001"
+                  type="number"
+                  value={expenseQty}
+                  onChange={(event) => setExpenseQty(Math.max(0.0001, Number(event.target.value)))}
+                />
+              </label>
+              <label className={styles.field}>
+                Cena / jednostkę
+                <input
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  value={expensePrice}
+                  onChange={(event) => setExpensePrice(Math.max(0, Number(event.target.value)))}
+                />
+              </label>
+              <label className={styles.field}>
+                Waluta
+                <select
+                  value={expenseCurrency}
+                  onChange={(event) => setExpenseCurrency(event.target.value as Currency)}
+                >
+                  <option value="yang">Yang</option>
+                  <option value="won">Won</option>
+                  <option value="gem">GEM</option>
+                </select>
+              </label>
+              <label className={styles.field}>
+                Nasza część kosztu %
+                <input
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  type="number"
+                  value={expenseShare}
+                  onChange={(event) =>
+                    setExpenseShare(Math.max(0, Math.min(100, Number(event.target.value))))
+                  }
+                />
+              </label>
+              <div className={`${styles.rowActions} ${styles.full}`}>
+                <button className={styles.button} disabled={busy} type="submit">
+                  Zapisz koszt
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
+
+        <div className={styles.tabs}>
+          <button data-active={tab === 'drop'} onClick={() => setTab('drop')} type="button">
+            Tydzień
+          </button>
+          <button data-active={tab === 'costs'} onClick={() => setTab('costs')} type="button">
+            Koszty
+          </button>
+          <button data-active={tab === 'history'} onClick={() => setTab('history')} type="button">
+            Historia dropów
+          </button>
+          <button data-active={tab === 'ranking'} onClick={() => setTab('ranking')} type="button">
+            Dochodowość
+          </button>
+        </div>
+
+        {tab === 'drop' ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Bilans tygodnia</h2>
+            </div>
+            <div className={styles.grid}>
+              {(summary?.totals ?? []).map((total) => (
+                <article className={styles.breakdown} key={total.currency}>
+                  <span>{total.currency.toUpperCase()}</span>
+                  <strong>{money(total.net, total.currency)}</strong>
+                  <small>
+                    przedmioty {money(total.itemGross, total.currency)} · kasa{' '}
+                    {money(total.moneyGross, total.currency)} · koszty {money(total.costs, total.currency)}
+                  </small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {tab === 'costs' ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Koszty</h2>
+            </div>
+            {expenses.length ? (
+              <div className={styles.history}>
+                {expenses.map((expense) => (
+                  <article key={expense.id}>
+                    <header>
+                      <h3>{expense.label}</h3>
+                      <strong>
+                        {money(
+                          (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000,
+                          expense.currency,
+                        )}
+                      </strong>
+                    </header>
+                    <p>
+                      {new Date(expense.occurredAtIso).toLocaleString('pl-PL')} · udział{' '}
+                      {(expense.ourShareBasisPoints / 100).toLocaleString('pl-PL')}%
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.empty}>Brak kosztów w tym tygodniu.</p>
+            )}
+          </section>
+        ) : null}
+
+        {tab === 'history' ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Historia dropów</h2>
+            </div>
+            {drops.length ? (
+              <div className={styles.history}>
+                {drops.map((drop) => (
+                  <article key={drop.id}>
+                    <header>
+                      <h3>{drop.source}</h3>
+                      <strong>{new Date(drop.occurredAtIso).toLocaleString('pl-PL')}</strong>
+                    </header>
+                    <p>
+                      Udział pieniędzy {(drop.ourShareBasisPoints / 100).toLocaleString('pl-PL')}% ·{' '}
+                      {drop.pileCount} kupek ·{' '}
+                      {drop.participants.map((entry) => entry.displayName).join(', ') || 'bez listy'}
+                    </p>
+                    {drop.items.length ? (
+                      <p>
+                        Przedmioty:{' '}
+                        {drop.items
+                          .map((item) => `${item.displayName} ${item.ourQuantity}/${item.totalQuantity}`)
+                          .join(' · ')}
+                      </p>
+                    ) : null}
+                    {drop.money.length ? (
+                      <p>
+                        Kasa:{' '}
+                        {drop.money
+                          .map(
+                            (entry) =>
+                              `${money(entry.ourAmount, entry.currency)} z ${money(entry.totalAmount, entry.currency)} (${(entry.ourShareBasisPoints / 100).toLocaleString('pl-PL')}%)`,
+                          )
+                          .join(' · ')}
+                      </p>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.empty}>Brak zapisanych dropów w tym tygodniu.</p>
+            )}
+          </section>
+        ) : null}
+
+        {tab === 'ranking' ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <h2>Dochodowość aktywności · Yang</h2>
+            </div>
+            {ranking.length ? (
+              <div className={styles.rank}>
+                {ranking.map(([name, value], index) => (
+                  <div key={name}>
+                    <b>{index + 1}</b>
+                    <span>{name}</span>
+                    <strong>{money(value, 'yang')}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.empty}>Za mało danych do rankingu.</p>
+            )}
+          </section>
+        ) : null}
+      </main>
+    </AppShell>
+  );
+}
