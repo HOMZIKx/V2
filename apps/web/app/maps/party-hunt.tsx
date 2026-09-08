@@ -893,8 +893,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               </button>
               {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (
                 <button
-                  aria-pressed={value === channel}
-                  className={value === channel ? 'is-active' : ''}
+                  aria-pressed={!allChannels && value === channel}
+                  className={!allChannels && value === channel ? 'is-active' : ''}
                   key={value}
                   onClick={() => changeChannel(value)}
                   type="button"
