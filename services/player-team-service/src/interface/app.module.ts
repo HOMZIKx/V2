@@ -5,6 +5,7 @@ import { MetinGeneralHuntsUseCases } from '../application/use-cases/metin-genera
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
 import { TeamEconomyUseCases } from '../application/use-cases/team-economy.use-cases.js';
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
+import { LegacyEconomyCatalogSeeder } from '../infrastructure/catalog/legacy-economy-catalog.seeder.js';
 import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.provider.js';
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
 import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
@@ -55,6 +56,7 @@ import {
     TeamInvitationsRepository,
     TeamEconomyRepository,
     TeamEconomyManagementRepository,
+    LegacyEconomyCatalogSeeder,
     WorkspaceLiveBus,
     {
       provide: PLAYER_TEAM_STATE_USE_CASES,
