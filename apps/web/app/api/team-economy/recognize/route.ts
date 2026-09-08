@@ -11,7 +11,43 @@ type RateBucket = { count: number; resetAt: number };
 
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
+const DEFAULT_VISION_MODEL = 'gemini-3.8-flash';
 const rateBuckets = new Map<string, RateBucket>();
+
+const RECOGNITION_RESPONSE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items'],
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: 200,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['name', 'quantity', 'confidence'],
+        properties: {
+          name: {
+            type: 'string',
+            description: 'Nazwa stosu przedmiotu odczytana ze screena.',
+          },
+          quantity: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 999999,
+            description: 'Liczba sztuk widoczna na stosie; 1, gdy liczby nie widać.',
+          },
+          confidence: {
+            type: 'number',
+            minimum: 0,
+            maximum: 1,
+            description: 'Pewność rozpoznania nazwy i ilości w skali 0–1.',
+          },
+        },
+      },
+    },
+  },
+} as const;
 
 function rateLimited(viewerId: string): boolean {
   const now = Date.now();
@@ -70,28 +106,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
 
-  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3-flash-preview';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: 'To jest screenshot dropu z Metin2. Rozpoznaj każdy widoczny stos przedmiotów. Zwróć WYŁĄCZNIE JSON: {"items":[{"name":"nazwa przedmiotu","quantity":1,"confidence":0.0}]}. quantity to liczba sztuk widoczna na stosie; jeśli brak liczby przyjmij 1. Nie zgaduj nazwy, gdy nie jesteś pewny — użyj krótkiego opisu wizualnego i niskiego confidence.',
-              },
-              { inlineData: { mimeType: match[1], data: match[2] } },
-            ],
+  const model = process.env.GEMINI_VISION_MODEL?.trim() || DEFAULT_VISION_MODEL;
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': key,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: 'To jest screenshot dropu z Metin2. Rozpoznaj każdy widoczny stos przedmiotów. Nie zgaduj nazwy, gdy nie jesteś pewny — użyj krótkiego opisu wizualnego i obniż confidence. quantity to liczba sztuk widoczna na stosie; jeśli brak liczby przyjmij 1.',
+                },
+                { inlineData: { mimeType: match[1], data: match[2] } },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4000,
+            responseMimeType: 'application/json',
+            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
+            thinkingConfig: {
+              thinkingLevel: 'low',
+            },
           },
-        ],
-        generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
-      }),
-      cache: 'no-store',
-    },
-  );
+        }),
+        cache: 'no-store',
+      },
+    );
+  } catch (error) {
+    console.error('team economy Gemini recognition request failed', error);
+    return NextResponse.json({ error: 'ai_unavailable' }, { status: 502 });
+  }
+
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
     console.error('team economy Gemini recognition failed', response.status, detail.slice(0, 500));
@@ -136,5 +191,5 @@ export async function POST(request: NextRequest) {
         : null,
     };
   });
-  return NextResponse.json({ items });
+  return NextResponse.json({ items, provider: 'gemini', model });
 }
