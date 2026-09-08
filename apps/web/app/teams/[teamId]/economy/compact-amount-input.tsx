@@ -66,8 +66,11 @@ export function CompactAmountInput({
       inputMode="decimal"
       onBlur={commit}
       onChange={(event) => {
+        const nextText = event.target.value;
         setInvalid(false);
-        setText(event.target.value);
+        setText(nextText);
+        const parsed = parseCompactAmount(nextText);
+        if (parsed !== null) onValueChange(parsed);
       }}
       onKeyDown={onKeyDown}
       placeholder={placeholder}
