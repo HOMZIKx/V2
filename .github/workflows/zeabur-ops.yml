@@ -18,6 +18,7 @@ on:
       - ops/zeabur/verify-public-e2e.mjs
       - ops/zeabur/verify-technika-persistence.mjs
       - ops/zeabur/verify-character-timer-live-dm.mjs
+      - ops/zeabur/secure-secret-bridge.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -57,6 +58,7 @@ jobs:
             public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
             technika_persistence_probe) node ops/zeabur/verify-technika-persistence.mjs ;;
             character_timer_live_dm_proof) node ops/zeabur/verify-character-timer-live-dm.mjs ;;
+            secure_secret_bridge) node ops/zeabur/secure-secret-bridge.mjs ;;
             *) node ops/zeabur/run.mjs ;;
           esac
 
