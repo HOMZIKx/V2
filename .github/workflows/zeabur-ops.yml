@@ -7,6 +7,7 @@ on:
     paths:
       - ops/zeabur/command.json
       - ops/zeabur/run.mjs
+      - ops/zeabur/audit-env.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -31,7 +32,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Execute guarded Zeabur operation
-        run: node ops/zeabur/run.mjs
+        shell: bash
+        run: |
+          MODE="$(node -e "const c=require('./ops/zeabur/command.json'); process.stdout.write(c.mode || 'auth')")"
+          if [ "$MODE" = "env_audit" ]; then
+            node ops/zeabur/audit-env.mjs
+          else
+            node ops/zeabur/run.mjs
+          fi
 
       - name: Publish operation summary
         if: always()
