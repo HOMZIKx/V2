@@ -1,7 +1,6 @@
 {
-  "requestId": "activity-build-log-20260908-3",
-  "mode": "cli",
-  "action": "logs:build",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "activity-service"
+  "requestId": "activity-deployment-state-20260908-1",
+  "mode": "graphql_read",
+  "query": "query ActivityState($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){_id name status gitTrigger(environmentID:$environmentID){branchName repoID}} deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:8){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
+  "variables":{"serviceID":"6a8211c2a21454a2cf6ad77b","environmentID":"6a720a3e5f062718bc7b3421"}
 }
