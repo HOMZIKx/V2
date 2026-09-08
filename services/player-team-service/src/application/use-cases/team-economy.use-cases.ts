@@ -64,8 +64,8 @@ export class TeamEconomyUseCases {
     input: {
       canonicalName: string;
       category: string;
-      imageUrl?: string | null;
-      alias?: string | null;
+      imageUrl?: string | null | undefined;
+      alias?: string | null | undefined;
     },
   ) {
     await this.workspace(viewerId, workspaceId);
@@ -77,10 +77,10 @@ export class TeamEconomyUseCases {
     workspaceId: string,
     input: {
       itemId: string;
-      canonicalName?: string;
-      category?: string;
-      imageUrl?: string | null;
-      alias?: string | null;
+      canonicalName?: string | undefined;
+      category?: string | undefined;
+      imageUrl?: string | null | undefined;
+      alias?: string | null | undefined;
     },
   ) {
     await this.assertOwner(viewerId, workspaceId);
