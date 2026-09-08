@@ -24,6 +24,11 @@ const createInvitationSchema = z.object({
   recipientDisplayName: z.string().trim().min(1).max(80),
 });
 
+function firstHeader(headers: RequestHeaders, name: string): string | undefined {
+  const value = headers[name.toLowerCase()];
+  return Array.isArray(value) ? value[0] : value;
+}
+
 @Controller('player-team/v1/invitations')
 @UseFilters(PlayerTeamExceptionFilter)
 export class TeamInvitationsController {
@@ -34,9 +39,14 @@ export class TeamInvitationsController {
   ) {}
 
   private viewerId(headers: RequestHeaders): string {
-    const headerName = this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER.toLowerCase();
-    const value = headers[headerName];
-    return this.useCases.assertAccess(Array.isArray(value) ? value[0] : value);
+    return this.useCases.assertAccess(
+      firstHeader(headers, this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER),
+    );
+  }
+
+  private viewerAppId(headers: RequestHeaders): string | null {
+    const value = firstHeader(headers, 'x-v2-user-id')?.trim();
+    return value ? value : null;
   }
 
   private publishWorkspace(
@@ -93,6 +103,7 @@ export class TeamInvitationsController {
     const viewerId = this.viewerId(headers);
     const result = await this.useCases.respond({
       recipientDiscordId: viewerId,
+      recipientAppId: this.viewerAppId(headers),
       invitationId,
       decision: 'accept',
     });
@@ -108,6 +119,7 @@ export class TeamInvitationsController {
     const viewerId = this.viewerId(headers);
     const result = await this.useCases.respond({
       recipientDiscordId: viewerId,
+      recipientAppId: this.viewerAppId(headers),
       invitationId,
       decision: 'decline',
     });
