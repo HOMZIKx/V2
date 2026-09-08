@@ -16,11 +16,14 @@ import { FixedHuntRoomsUseCases } from '../application/use-cases/fixed-hunt-room
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
 import { FIXED_HUNT_ROOMS_USE_CASES, PLAYER_TEAM_ENV } from './player-team.tokens.js';
+import { resolvePlayerTeamRequestDiscordId } from './request-auth.js';
 
 const updateRoomBodySchema = z.object({
   expectedRevision: z.number().int().nonnegative(),
   state: z.record(z.string(), z.unknown()),
 });
+
+type RequestHeaders = Record<string, string | string[] | undefined>;
 
 @Controller('player-team/v1/fixed-hunt-rooms')
 @UseFilters(PlayerTeamExceptionFilter)
@@ -30,25 +33,27 @@ export class FixedHuntRoomsController {
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
   ) {}
 
-  private viewerId(headers: Record<string, string | string[] | undefined>): string {
-    const headerName = this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER.toLowerCase();
-    const value = headers[headerName];
-    return this.useCases.assertDemoAccess(Array.isArray(value) ? value[0] : value);
+  private viewerId(headers: RequestHeaders): Promise<string> {
+    return resolvePlayerTeamRequestDiscordId({
+      headers,
+      env: this.env,
+      assertDemoAccess: (value) => this.useCases.assertDemoAccess(value),
+    });
   }
 
   @Get(':roomKey')
   public async getRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomKey') roomKey: string,
   ) {
-    this.viewerId(headers);
+    await this.viewerId(headers);
     return this.useCases.getRoom(roomKey);
   }
 
   @Put(':roomKey')
   @HttpCode(200)
   public async updateRoom(
-    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Headers() headers: RequestHeaders,
     @Param('roomKey') roomKey: string,
     @Body() rawBody: unknown,
   ) {
@@ -58,7 +63,7 @@ export class FixedHuntRoomsController {
     }
     return this.useCases.updateRoom({
       roomKey,
-      viewerId: this.viewerId(headers),
+      viewerId: await this.viewerId(headers),
       state: parsed.data.state,
       expectedRevision: parsed.data.expectedRevision,
     });
