@@ -2,18 +2,23 @@
 
 import { Suspense } from 'react';
 
-import { CharacterEquipmentV2 } from './character-equipment-v2';
+import { CharacterEquipment } from './character-equipment';
+import { EquipmentScreenshotAdd } from './equipment-screenshot-add';
+import styles from './team-equipment-board.module.css';
 
 export default function CharacterEquipmentPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="discord-entry" id="main-content">
-          <p className="entry-status">Ładowanie…</p>
-        </main>
-      }
-    >
-      <CharacterEquipmentV2 />
-    </Suspense>
+    <div className={styles.boardScope}>
+      <Suspense
+        fallback={
+          <main className="discord-entry" id="main-content">
+            <p className="entry-status">Ładowanie…</p>
+          </main>
+        }
+      >
+        <CharacterEquipment />
+        <EquipmentScreenshotAdd />
+      </Suspense>
+    </div>
   );
 }

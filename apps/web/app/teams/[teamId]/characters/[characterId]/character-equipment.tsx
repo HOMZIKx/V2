@@ -806,7 +806,7 @@ export function CharacterEquipment() {
   const [newItemEnhancement, setNewItemEnhancement] = useState(9);
   const [newItemSelectedBonuses, setNewItemSelectedBonuses] = useState<readonly string[]>([]);
   const [newItemAdditionalBonuses, setNewItemAdditionalBonuses] = useState<readonly string[]>([]);
-  const [showAssigned, setShowAssigned] = useState(false);
+  const [showAssigned, setShowAssigned] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [addTimerKind, setAddTimerKind] = useState<ProgressionKind | 'custom'>('custom');
   const [customTimerLabel, setCustomTimerLabel] = useState('');
@@ -1436,7 +1436,7 @@ export function CharacterEquipment() {
                   <>
                     <div className="eq-pool-header">
                       <div>
-                        <h2>Ekwipunek</h2>
+                        <h2>Wspólna torba</h2>
                       </div>
                       <div className="eq-pool-actions">
                         <button

@@ -2882,6 +2882,180 @@ export function updateEquipmentItemBonuses(
   });
 }
 
+/** Update the same physical item card. Catalog data remains authoritative when a match exists. */
+export function updateEquipmentItemCard(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+  input: {
+    readonly name: string;
+    readonly category: EquipmentSlot;
+    readonly enhancement?: number;
+    readonly bonuses: readonly string[];
+    readonly forCharacterClass?: CharacterClass;
+  },
+): { readonly state: PlayerStoreState; readonly ok: boolean } {
+  const baseName = stripEnhancementFromName(input.name);
+  if (baseName.length < 2) return { state, ok: false };
+  const enhancement = clampEnhancement(input.enhancement ?? parseEnhancementFromName(input.name));
+  const name = formatEnhancedItemName(baseName, enhancement);
+  const catalogHit = findGameItemByCardName(baseName) ?? findGameItemByCardName(name);
+
+  let category = input.category;
+  if (catalogHit) {
+    const catalogSlot = equipmentSlotForCategory(catalogHit.category);
+    if (catalogSlot === null) return { state, ok: false };
+    if (
+      input.forCharacterClass &&
+      !isItemCompatibleWithClass(catalogHit.category, input.forCharacterClass)
+    ) {
+      return { state, ok: false };
+    }
+    category = catalogSlot;
+  }
+
+  const cleaned = input.bonuses.map((line) => line.trim()).filter((line) => line.length > 0);
+  let ok = false;
+  const next = updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing || existing.archived) return workspace;
+    ok = true;
+
+    const { additional } = splitItemBonuses(name, enhancement, cleaned);
+    const nextBonuses = mergeItemBonusStorage(name, enhancement, additional, category);
+    const categoryChanged = existing.category !== category;
+    let clearedAssignments = 0;
+
+    const characters = workspace.characters.map((character) => {
+      if (!categoryChanged) return character;
+      const sets = character.sets.map((set) => {
+        const assignments = { ...set.assignments };
+        let touched = false;
+        for (const slot of equipmentSlots) {
+          if (assignments[slot] === itemId) {
+            assignments[slot] = null;
+            clearedAssignments += 1;
+            touched = true;
+          }
+        }
+        return touched ? { ...set, assignments } : set;
+      });
+      const changed = sets.some((set, index) => set !== character.sets[index]);
+      return changed ? { ...character, sets, revision: character.revision + 1 } : character;
+    });
+
+    const keepAverageSkill = category === 'weapon' && weaponHasAverageSkillDamage(name);
+    const keepPvm = category === 'weapon' && weaponHasPhPvmAttackBonuses(name);
+    const nextItem: EquipmentItem = {
+      ...existing,
+      name,
+      enhancement,
+      category,
+      iconPath: resolveItemIconPath(name),
+      bonuses: nextBonuses,
+      levelLabel: catalogHit ? `katalog: ${catalogHit.category}` : 'własny wpis zespołu',
+      catalogLayer: catalogHit ? 'project_hard_source' : 'team_private',
+      averageDamagePercent: keepAverageSkill ? existing.averageDamagePercent : null,
+      skillDamagePercent: keepAverageSkill ? existing.skillDamagePercent : null,
+      attackValuePvm: keepPvm ? existing.attackValuePvm : null,
+      magicAttackValuePvm: keepPvm ? existing.magicAttackValuePvm : null,
+      lastConfirmedLocation:
+        categoryChanged && clearedAssignments > 0 ? 'Torba I' : existing.lastConfirmedLocation,
+      lastConfirmedBy:
+        categoryChanged && clearedAssignments > 0 ? viewer.displayName : existing.lastConfirmedBy,
+      lastConfirmedAt:
+        categoryChanged && clearedAssignments > 0 ? nowLabel() : existing.lastConfirmedAt,
+      revision: existing.revision + 1,
+    };
+
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters,
+      items: workspace.items.map((item) => (item.id === itemId ? nextItem : item)),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'equipment',
+          title: `Zaktualizowano przedmiot: ${name}`,
+          detail:
+            categoryChanged && clearedAssignments > 0
+              ? `Zmieniono typ na ${slotLabels[category]} · zdjęto z setu i przeniesiono do Torby I`
+              : `Typ: ${slotLabels[category]} · dodatkowe bonusy: ${additional.length}`,
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+
+  return { state: next, ok };
+}
+
+/** Soft-delete an item while preserving audit/history; all set assignments are cleared. */
+export function archiveEquipmentItem(
+  state: PlayerStoreState,
+  workspaceId: string,
+  itemId: string,
+): PlayerStoreState {
+  return updateWorkspace(state, workspaceId, (workspace, viewer) => {
+    const existing = workspace.items.find((item) => item.id === itemId);
+    if (!existing || existing.archived) return workspace;
+
+    let clearedAssignments = 0;
+    const characters = workspace.characters.map((character) => {
+      const sets = character.sets.map((set) => {
+        const assignments = { ...set.assignments };
+        let touched = false;
+        for (const slot of equipmentSlots) {
+          if (assignments[slot] === itemId) {
+            assignments[slot] = null;
+            clearedAssignments += 1;
+            touched = true;
+          }
+        }
+        return touched ? { ...set, assignments } : set;
+      });
+      const changed = sets.some((set, index) => set !== character.sets[index]);
+      return changed ? { ...character, sets, revision: character.revision + 1 } : character;
+    });
+
+    return {
+      ...workspace,
+      revision: workspace.revision + 1,
+      characters,
+      items: workspace.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              archived: true,
+              planned: false,
+              lastConfirmedLocation: null,
+              lastConfirmedBy: viewer.displayName,
+              lastConfirmedAt: nowLabel(),
+              revision: item.revision + 1,
+            }
+          : item,
+      ),
+      history: [
+        historyEntry(workspace.id, viewer, {
+          characterId: null,
+          characterName: null,
+          resource: 'equipment',
+          title: `Usunięto przedmiot: ${existing.name}`,
+          detail:
+            clearedAssignments > 0
+              ? `Karta zarchiwizowana · wyczyszczono przypisania setów: ${clearedAssignments}`
+              : 'Karta zarchiwizowana.',
+          revision: workspace.revision + 1,
+        }),
+        ...workspace.history,
+      ],
+    };
+  });
+}
+
 export function updateEquipmentItemWeaponStats(
   state: PlayerStoreState,
   workspaceId: string,
@@ -3206,6 +3380,9 @@ export function parsePlayerStore(raw: string): PlayerStoreState | null {
           const name = formatEnhancedItemName(item.name, enhancement);
           return {
             ...item,
+            archived:
+              Boolean(item.archived) ||
+              item.lastConfirmedLocation?.trim().toLocaleLowerCase('pl') === 'usunięte',
             notes: Array.isArray(item.notes) ? item.notes : [],
             enhancement,
             name,

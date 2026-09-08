@@ -52,6 +52,8 @@ import {
   touchLastOpened,
   updateCharacter,
   archiveCharacter,
+  archiveEquipmentItem,
+  updateEquipmentItemCard,
   updateEquipmentItemBonuses,
   updateEquipmentItemWeaponStats,
   type AuthStatus,
@@ -191,6 +193,18 @@ interface PlayerStoreApi {
       readonly forCharacterClass?: CharacterClass;
     },
   ) => string | null;
+  updateItem: (
+    workspaceId: string,
+    itemId: string,
+    input: {
+      readonly name: string;
+      readonly category: EquipmentSlot;
+      readonly enhancement?: number;
+      readonly bonuses: readonly string[];
+      readonly forCharacterClass?: CharacterClass;
+    },
+  ) => boolean;
+  archiveItem: (workspaceId: string, itemId: string) => void;
   updateItemBonuses: (
     workspaceId: string,
     itemId: string,
@@ -683,6 +697,18 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
           return result.state;
         });
         return createdId;
+      },
+      updateItem: (workspaceId, itemId, input) => {
+        let ok = false;
+        apply((current) => {
+          const result = updateEquipmentItemCard(current, workspaceId, itemId, input);
+          ok = result.ok;
+          return result.state;
+        });
+        return ok;
+      },
+      archiveItem: (workspaceId, itemId) => {
+        apply((current) => archiveEquipmentItem(current, workspaceId, itemId));
       },
       updateItemBonuses: (workspaceId, itemId, bonuses, options) => {
         apply((current) =>
