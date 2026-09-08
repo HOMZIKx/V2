@@ -274,7 +274,7 @@ export async function syncKingdomWarRecipients(
   workspaceIdOrLegacyRecipients: string | readonly string[],
   recipientsMaybe?: readonly string[],
 ): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
-  if (Array.isArray(workspaceIdOrLegacyRecipients)) {
+  if (typeof workspaceIdOrLegacyRecipients !== 'string') {
     return { ok: true, count: 0 };
   }
 
