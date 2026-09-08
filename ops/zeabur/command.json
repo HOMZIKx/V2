@@ -1,9 +1,8 @@
 {
-  "requestId": "timers-party-runtime-services-20260908-1144",
+  "requestId": "timers-party-runtime-deploys-20260908-1145",
   "mode": "graphql_read",
-  "query": "query RuntimeServices($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName repoURL}}}}}",
+  "query": "query RuntimeDeploys($environmentID:ObjectID!){web:deployments(serviceID:\"6a985197573ada8b3bbe52a5\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}} playerTeam:deployments(serviceID:\"6a99a4d34177ab13f998c84c\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
   "variables": {
-    "projectID": "6a720a3e472e2c91a9e660d5",
     "environmentID": "6a720a3e5f062718bc7b3421"
   }
 }
