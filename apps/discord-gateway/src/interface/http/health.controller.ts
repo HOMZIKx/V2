@@ -1,6 +1,7 @@
 import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/common';
 
 import type { GatewayHealthSnapshot } from '../../application/ports/gateway.ports.js';
+import { getGatewayPersistenceStatus } from '../../application/notify/gateway-persistence.js';
 import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import type { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import { DISCORD_CONFIG_TOKEN, DISCORD_GATEWAY_TOKEN } from '../discord/discord.tokens.js';
@@ -61,10 +62,15 @@ export class HealthController {
     readonly lastError: string | null;
     readonly gitCommitSha: string;
     readonly panelRenderer: string;
+    readonly panelPersistenceSource: 'configured' | 'legacy' | 'temporary';
+    readonly panelPersistenceTemporaryFallback: boolean;
+    readonly panelPersistenceDataDirConfigured: boolean;
     readonly joinedGuildCount: number;
     readonly joinedGuildIds: readonly string[];
     readonly guildCacheSize: number;
   } {
+    const persistence = getGatewayPersistenceStatus();
+
     if (!this.config.DISCORD_ENABLED || this.gateway === null) {
       return {
         enabled: false,
@@ -77,6 +83,9 @@ export class HealthController {
         lastError: null,
         gitCommitSha: this.config.GIT_COMMIT_SHA,
         panelRenderer: 'components-v2-container',
+        panelPersistenceSource: persistence.source,
+        panelPersistenceTemporaryFallback: persistence.temporaryFallback,
+        panelPersistenceDataDirConfigured: persistence.dataDirConfigured,
         joinedGuildCount: 0,
         joinedGuildIds: [],
         guildCacheSize: 0,
@@ -95,6 +104,9 @@ export class HealthController {
       lastError: snapshot.lastError,
       gitCommitSha: this.config.GIT_COMMIT_SHA,
       panelRenderer: 'components-v2-container',
+      panelPersistenceSource: persistence.source,
+      panelPersistenceTemporaryFallback: persistence.temporaryFallback,
+      panelPersistenceDataDirConfigured: persistence.dataDirConfigured,
       joinedGuildCount: snapshot.joinedGuildCount ?? 0,
       joinedGuildIds: snapshot.joinedGuildIds ?? [],
       guildCacheSize: snapshot.guildCacheSize ?? 0,
