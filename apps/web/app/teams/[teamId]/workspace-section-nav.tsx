@@ -1,6 +1,6 @@
 'use client';
 
-export type WorkspaceSection = 'overview' | 'characters' | 'members' | 'notifications' | 'history';
+export type WorkspaceSection = 'overview' | 'characters' | 'members' | 'notifications' | 'economy' | 'history';
 
 export function WorkspaceSectionNav({
   workspaceId,
@@ -11,21 +11,10 @@ export function WorkspaceSectionNav({
 }) {
   const items = [
     { id: 'overview' as const, href: `/teams/${workspaceId}`, label: 'Przegląd' },
-    {
-      id: 'characters' as const,
-      href: `/teams/${workspaceId}/characters`,
-      label: 'Postacie',
-    },
-    {
-      id: 'members' as const,
-      href: `/teams/${workspaceId}/members`,
-      label: 'Zarządzanie',
-    },
-    {
-      id: 'notifications' as const,
-      href: `/teams/${workspaceId}/timer-notifications`,
-      label: 'PW / Timery',
-    },
+    { id: 'characters' as const, href: `/teams/${workspaceId}/characters`, label: 'Postacie' },
+    { id: 'members' as const, href: `/teams/${workspaceId}/members`, label: 'Zarządzanie' },
+    { id: 'notifications' as const, href: `/teams/${workspaceId}/timer-notifications`, label: 'PW / Timery' },
+    { id: 'economy' as const, href: `/teams/${workspaceId}/economy`, label: 'Ekonomia' },
     { id: 'history' as const, href: `/teams/${workspaceId}/history`, label: 'Historia' },
   ];
 
