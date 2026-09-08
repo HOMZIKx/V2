@@ -30,6 +30,36 @@ function createRepository(
   };
 }
 
+function viewerSnapshot(input: {
+  discordId: string;
+  appId: string;
+  workspace: Record<string, unknown>;
+}): ViewerSnapshotRecord {
+  return {
+    ownerUserId: input.discordId,
+    state: {
+      viewer: { id: input.appId, discordAccountId: input.discordId },
+      workspaces: [input.workspace],
+    },
+    revision: 3,
+    updatedAtIso: '2026-09-07T18:00:00.000Z',
+  };
+}
+
+function sharedSnapshot(
+  workspaceId: string,
+  state: Record<string, unknown>,
+  revision = 4,
+): WorkspaceSnapshotRecord {
+  return {
+    workspaceId,
+    state,
+    revision,
+    updatedByUserId: '111122223333444455',
+    updatedAtIso: '2026-09-07T18:00:01.000Z',
+  };
+}
+
 describe('PlayerTeamStateUseCases', () => {
   it('rejects missing demo header', () => {
     const useCases = new PlayerTeamStateUseCases(createRepository(), { allowDemoWrite: true });
@@ -96,22 +126,12 @@ describe('PlayerTeamStateUseCases', () => {
       ],
       invitations: [],
     };
-    const viewerRecord: ViewerSnapshotRecord = {
-      ownerUserId: discordId,
-      state: {
-        viewer: { id: 'viewer-app-id', discordAccountId: discordId },
-        workspaces: [workspace],
-      },
-      revision: 3,
-      updatedAtIso: '2026-09-07T18:00:00.000Z',
-    };
-    const created: WorkspaceSnapshotRecord = {
-      workspaceId: 'destiled-main',
-      state: workspace,
-      revision: 0,
-      updatedByUserId: discordId,
-      updatedAtIso: '2026-09-07T18:00:01.000Z',
-    };
+    const viewerRecord = viewerSnapshot({
+      discordId,
+      appId: 'viewer-app-id',
+      workspace,
+    });
+    const created = sharedSnapshot('destiled-main', workspace, 0);
     const upsertWorkspaceSnapshot = vi.fn(() => Promise.resolve(created));
     const useCases = new PlayerTeamStateUseCases(
       createRepository({
@@ -129,5 +149,164 @@ describe('PlayerTeamStateUseCases', () => {
       expectedRevision: null,
       updatedByUserId: discordId,
     });
+  });
+
+  it('does not trust a forged private owner role when shared membership belongs to another team', async () => {
+    const attackerDiscordId = '808066932753563668';
+    const privateWorkspace = {
+      id: 'same-name',
+      archived: false,
+      members: [
+        {
+          id: 'attacker-app-id',
+          discordAccountId: attackerDiscordId,
+          role: 'owner',
+        },
+      ],
+      invitations: [],
+    };
+    const realShared = {
+      id: 'same-name',
+      archived: false,
+      members: [
+        {
+          id: 'real-owner',
+          discordAccountId: '111122223333444455',
+          role: 'owner',
+        },
+      ],
+      invitations: [],
+    };
+    const useCases = new PlayerTeamStateUseCases(
+      createRepository({
+        getViewerSnapshot: vi.fn(() =>
+          Promise.resolve(
+            viewerSnapshot({
+              discordId: attackerDiscordId,
+              appId: 'attacker-app-id',
+              workspace: privateWorkspace,
+            }),
+          ),
+        ),
+        getWorkspaceSnapshot: vi.fn(() => Promise.resolve(sharedSnapshot('same-name', realShared))),
+      }),
+      { allowDemoWrite: true },
+    );
+
+    await expect(
+      useCases.getWorkspaceSnapshot(attackerDiscordId, 'same-name'),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('blocks a member from changing owner-only workspace fields', async () => {
+    const memberDiscordId = '994001220033445566';
+    const memberAppId = 'member-app-id';
+    const current = {
+      id: 'team-1',
+      name: 'Destiled',
+      description: 'Team',
+      archived: false,
+      notifyPrefs: { characterTimers: true, kingdomWar: true },
+      members: [
+        {
+          id: 'owner-app-id',
+          discordAccountId: '111122223333444455',
+          role: 'owner',
+        },
+        {
+          id: memberAppId,
+          discordAccountId: memberDiscordId,
+          role: 'member',
+        },
+      ],
+      invitations: [],
+    };
+    const privateWorkspace = structuredClone(current);
+    const useCases = new PlayerTeamStateUseCases(
+      createRepository({
+        getViewerSnapshot: vi.fn(() =>
+          Promise.resolve(
+            viewerSnapshot({
+              discordId: memberDiscordId,
+              appId: memberAppId,
+              workspace: privateWorkspace,
+            }),
+          ),
+        ),
+        getWorkspaceSnapshot: vi.fn(() => Promise.resolve(sharedSnapshot('team-1', current))),
+      }),
+      { allowDemoWrite: true },
+    );
+
+    await expect(
+      useCases.upsertWorkspaceSnapshot({
+        ownerUserId: memberDiscordId,
+        workspaceId: 'team-1',
+        state: { ...current, name: 'Przejęty zespół' },
+        expectedRevision: 4,
+      }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('allows a member to change only their own notification override', async () => {
+    const memberDiscordId = '994001220033445566';
+    const memberAppId = 'member-app-id';
+    const current = {
+      id: 'team-1',
+      name: 'Destiled',
+      description: 'Team',
+      archived: false,
+      notifyPrefs: { characterTimers: true, kingdomWar: true },
+      members: [
+        {
+          id: 'owner-app-id',
+          discordAccountId: '111122223333444455',
+          role: 'owner',
+        },
+        {
+          id: memberAppId,
+          discordAccountId: memberDiscordId,
+          role: 'member',
+        },
+      ],
+      invitations: [],
+    };
+    const privateWorkspace = structuredClone(current);
+    const next = {
+      ...current,
+      members: [
+        current.members[0],
+        { ...current.members[1], notifyPrefs: { characterTimers: false } },
+      ],
+    };
+    const upsertWorkspaceSnapshot = vi.fn((input) =>
+      Promise.resolve(sharedSnapshot('team-1', input.state, 5)),
+    );
+    const useCases = new PlayerTeamStateUseCases(
+      createRepository({
+        getViewerSnapshot: vi.fn(() =>
+          Promise.resolve(
+            viewerSnapshot({
+              discordId: memberDiscordId,
+              appId: memberAppId,
+              workspace: privateWorkspace,
+            }),
+          ),
+        ),
+        getWorkspaceSnapshot: vi.fn(() => Promise.resolve(sharedSnapshot('team-1', current))),
+        upsertWorkspaceSnapshot,
+      }),
+      { allowDemoWrite: true },
+    );
+
+    await expect(
+      useCases.upsertWorkspaceSnapshot({
+        ownerUserId: memberDiscordId,
+        workspaceId: 'team-1',
+        state: next,
+        expectedRevision: 4,
+      }),
+    ).resolves.toMatchObject({ revision: 5 });
+    expect(upsertWorkspaceSnapshot).toHaveBeenCalledOnce();
   });
 });
