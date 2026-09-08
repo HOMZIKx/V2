@@ -14,6 +14,8 @@ export type EconomyPriceHistoryRecord = {
   readonly itemName: string;
   readonly unitPrice: number;
   readonly currency: 'yang' | 'won' | 'gem';
+  readonly averagePrice: number;
+  readonly sampleCount: number;
   readonly createdBy: string;
   readonly createdAtIso: string;
 };
@@ -55,21 +57,28 @@ export class TeamEconomyManagementRepository implements OnModuleInit {
     readonly itemId?: string | undefined;
     readonly limit: number;
   }): Promise<readonly EconomyPriceHistoryRecord[]> {
+    // Authorization remains workspace-scoped in the controller, but market prices are shared
+    // globally across Destiled workspaces. One team must not build a separate market history.
     const result = await this.db.query(
-      `SELECT p.id,
-              p.item_id,
-              i.canonical_name AS item_name,
-              p.unit_price,
-              p.currency,
-              p.created_by,
-              p.created_at
-       FROM player_team_economy_prices p
-       JOIN player_team_economy_items i ON i.id = p.item_id
-       WHERE p.workspace_id = $1
-         AND ($2::text IS NULL OR p.item_id = $2)
-       ORDER BY p.created_at DESC
-       LIMIT $3`,
-      [input.workspaceId, input.itemId ?? null, input.limit],
+      `WITH priced AS (
+         SELECT p.id,
+                p.item_id,
+                i.canonical_name AS item_name,
+                p.unit_price,
+                p.currency,
+                p.created_by,
+                p.created_at,
+                AVG(p.unit_price) OVER (PARTITION BY p.item_id, p.currency) AS average_price,
+                COUNT(*) OVER (PARTITION BY p.item_id, p.currency) AS sample_count
+         FROM player_team_economy_prices p
+         JOIN player_team_economy_items i ON i.id = p.item_id
+         WHERE ($1::text IS NULL OR p.item_id = $1)
+       )
+       SELECT *
+       FROM priced
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [input.itemId ?? null, input.limit],
     );
 
     return result.rows.map((row) => ({
@@ -78,6 +87,8 @@ export class TeamEconomyManagementRepository implements OnModuleInit {
       itemName: String(row.item_name),
       unitPrice: Number(row.unit_price),
       currency: String(row.currency) as EconomyPriceHistoryRecord['currency'],
+      averagePrice: Number(row.average_price),
+      sampleCount: Number(row.sample_count),
       createdBy: String(row.created_by),
       createdAtIso: new Date(String(row.created_at)).toISOString(),
     }));
