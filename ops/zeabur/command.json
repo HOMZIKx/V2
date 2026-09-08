@@ -1,4 +1,6 @@
 {
-  "requestId": "schema-deployment-fields-20260908-1101",
-  "mode": "schema"
+  "requestId": "deployment-type-fields-20260908-1102",
+  "mode": "graphql_read",
+  "query": "query DeploymentType { __type(name: \"Deployment\") { name fields { name type { kind name ofType { kind name } } } } }",
+  "variables": {}
 }
