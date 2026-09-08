@@ -12,6 +12,16 @@ type VoiceSession = {
 
 const LIVE_VOICE_FLUSH_MS = 60_000;
 
+/**
+ * Product activity is intentionally split between these two Discord servers.
+ * `memberActivity.guildId` remains a backwards-compatible default/query guild,
+ * but collection must never collapse the second server into the first one.
+ */
+export const MEMBER_ACTIVITY_GUILD_IDS = [
+  '1543972927719080016', // Destiled
+  '1531318787058696424', // Projekt Sojusz
+] as const;
+
 function isAfkVoiceState(state: VoiceState): boolean {
   if (state.channelId === null) return false;
 
@@ -45,7 +55,7 @@ export class MemberActivityCollector {
   public handleMessageCreate(message: Message): void {
     const cfg = this.getConfig();
     if (!cfg.enabled) return;
-    if (!message.guildId || message.guildId !== cfg.guildId) return;
+    if (!message.guildId || !this.isTrackedGuild(message.guildId, cfg)) return;
     if (message.author.bot) return;
     if (!message.member) return;
     if (!this.memberEligible(message.member, cfg.memberRoleIds)) return;
@@ -73,7 +83,7 @@ export class MemberActivityCollector {
     const joinedAtMs = Date.now();
     let seeded = 0;
     for (const state of states) {
-      if (state.guild.id !== cfg.guildId) continue;
+      if (!this.isTrackedGuild(state.guild.id, cfg)) continue;
       if (state.channelId === null || isAfkVoiceState(state)) continue;
 
       const member = state.member;
@@ -97,7 +107,7 @@ export class MemberActivityCollector {
     if (!cfg.enabled) return;
 
     const guildId = after.guild.id || before.guild.id;
-    if (guildId !== cfg.guildId) return;
+    if (!this.isTrackedGuild(guildId, cfg)) return;
 
     const member = after.member ?? before.member;
     if (!member || member.user.bot) return;
@@ -141,9 +151,8 @@ export class MemberActivityCollector {
     for (const [key, session] of [...this.voiceJoined.entries()]) {
       const [guildId, userId] = key.split(':');
       if (!guildId || !userId) continue;
-      if (guildId !== cfg.guildId) {
-        // The configured source guild may be changed live in Technika. Do not
-        // keep charging stale sessions to the previous guild after that switch.
+      if (!this.isTrackedGuild(guildId, cfg)) {
+        // Do not keep charging stale sessions after a guild leaves the tracked set.
         this.voiceJoined.delete(key);
         continue;
       }
@@ -180,6 +189,11 @@ export class MemberActivityCollector {
       minutes,
       displayName: displayName ?? session.displayName,
     });
+  }
+
+  private isTrackedGuild(guildId: string, cfg: MemberActivityConfig): boolean {
+    if (guildId === cfg.guildId) return true;
+    return MEMBER_ACTIVITY_GUILD_IDS.some((trackedGuildId) => trackedGuildId === guildId);
   }
 
   private memberEligible(member: GuildMember, memberRoleIds: readonly string[]): boolean {
