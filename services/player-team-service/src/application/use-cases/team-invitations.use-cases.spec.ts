@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { TeamInvitationsUseCases } from './team-invitations.use-cases.js';
 import { PlayerTeamError } from '../../domain/errors.js';
 import type {
+  TeamInvitationRecord,
   TeamInvitationsRepositoryPort,
   TeamInvitationWorkspaceUpdate,
 } from '../../domain/ports/team-invitations.port.js';
@@ -30,6 +31,24 @@ function baseWorkspace(): Record<string, unknown> {
   };
 }
 
+function parseInvitation(raw: unknown): TeamInvitationRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const entry = raw as Record<string, unknown>;
+  if (typeof entry.id !== 'string' || typeof entry.recipientDiscordId !== 'string') return null;
+  return {
+    id: entry.id,
+    teamId: String(entry.teamId),
+    teamName: String(entry.teamName),
+    inviterName: String(entry.inviterName),
+    recipientDiscordId: entry.recipientDiscordId,
+    recipientDisplayName: String(entry.recipientDisplayName),
+    status: String(entry.status) as TeamInvitationRecord['status'],
+    createdLabel: String(entry.createdLabel),
+    expiresLabel: String(entry.expiresLabel),
+    revision: Number(entry.revision),
+  };
+}
+
 function repository(initialState = baseWorkspace()): TeamInvitationsRepositoryPort {
   let snapshot: TeamInvitationWorkspaceUpdate = {
     workspaceId: 'team-1',
@@ -41,35 +60,37 @@ function repository(initialState = baseWorkspace()): TeamInvitationsRepositoryPo
     getWorkspace: vi.fn(async (workspaceId: string) =>
       workspaceId === snapshot.workspaceId ? snapshot : null,
     ),
+    listPendingForRecipient: vi.fn(async (recipientDiscordId: string) => {
+      const invitations = Array.isArray(snapshot.state.invitations)
+        ? snapshot.state.invitations
+        : [];
+      return invitations
+        .map(parseInvitation)
+        .filter(
+          (entry): entry is TeamInvitationRecord =>
+            entry !== null &&
+            entry.recipientDiscordId === recipientDiscordId &&
+            entry.status === 'pending',
+        );
+    }),
     findForRecipient: vi.fn(async (invitationId: string, recipientDiscordId: string) => {
       const invitations = Array.isArray(snapshot.state.invitations)
         ? snapshot.state.invitations
         : [];
-      const raw = invitations.find((candidate) => {
-        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return false;
-        const entry = candidate as Record<string, unknown>;
-        return (
-          entry.id === invitationId && entry.recipientDiscordId === recipientDiscordId
+      const invitation = invitations
+        .map(parseInvitation)
+        .find(
+          (entry) =>
+            entry !== null &&
+            entry.id === invitationId &&
+            entry.recipientDiscordId === recipientDiscordId,
         );
-      });
-      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-      const entry = raw as Record<string, unknown>;
+      if (!invitation) return null;
       return {
         workspaceId: snapshot.workspaceId,
         state: snapshot.state,
         revision: snapshot.revision,
-        invitation: {
-          id: String(entry.id),
-          teamId: String(entry.teamId),
-          teamName: String(entry.teamName),
-          inviterName: String(entry.inviterName),
-          recipientDiscordId: String(entry.recipientDiscordId),
-          recipientDisplayName: String(entry.recipientDisplayName),
-          status: String(entry.status) as 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled',
-          createdLabel: String(entry.createdLabel),
-          expiresLabel: String(entry.expiresLabel),
-          revision: Number(entry.revision),
-        },
+        invitation,
       };
     }),
     updateWorkspace: vi.fn(async (input) => {
@@ -129,6 +150,22 @@ describe('TeamInvitationsUseCases', () => {
     ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 
+  it('lists only pending invitations addressed to the authenticated recipient', async () => {
+    const repo = repository();
+    const useCases = new TeamInvitationsUseCases(repo, { allowDemoWrite: true });
+    const mine = await useCases.createInvitation({
+      ownerDiscordId: OWNER_ID,
+      workspaceId: 'team-1',
+      recipientDiscordId: RECIPIENT_ID,
+      recipientDisplayName: 'MobbynZS',
+    });
+
+    await expect(useCases.listPendingInvitations(RECIPIENT_ID)).resolves.toEqual([
+      mine.invitation,
+    ]);
+    await expect(useCases.listPendingInvitations('777788889999000011')).resolves.toEqual([]);
+  });
+
   it('accepts only the invitation addressed to the authenticated Discord account', async () => {
     const repo = repository();
     const useCases = new TeamInvitationsUseCases(repo, { allowDemoWrite: true });
@@ -145,11 +182,40 @@ describe('TeamInvitationsUseCases', () => {
 
     const accepted = await useCases.respond({
       recipientDiscordId: RECIPIENT_ID,
+      recipientAppId: 'v2-user-recipient',
       invitationId: created.invitation.id,
       decision: 'accept',
     });
     const members = accepted.workspace.members as Array<Record<string, unknown>>;
-    expect(members.some((member) => member.discordAccountId === RECIPIENT_ID)).toBe(true);
+    expect(
+      members.some(
+        (member) =>
+          member.id === 'v2-user-recipient' && member.discordAccountId === RECIPIENT_ID,
+      ),
+    ).toBe(true);
     expect(accepted.invitation.status).toBe('accepted');
+    await expect(useCases.listPendingInvitations(RECIPIENT_ID)).resolves.toEqual([]);
+  });
+
+  it('declining an invitation does not grant membership', async () => {
+    const repo = repository();
+    const useCases = new TeamInvitationsUseCases(repo, { allowDemoWrite: true });
+    const created = await useCases.createInvitation({
+      ownerDiscordId: OWNER_ID,
+      workspaceId: 'team-1',
+      recipientDiscordId: RECIPIENT_ID,
+      recipientDisplayName: 'MobbynZS',
+    });
+
+    const declined = await useCases.respond({
+      recipientDiscordId: RECIPIENT_ID,
+      recipientAppId: 'v2-user-recipient',
+      invitationId: created.invitation.id,
+      decision: 'decline',
+    });
+
+    const members = declined.workspace.members as Array<Record<string, unknown>>;
+    expect(members.some((member) => member.discordAccountId === RECIPIENT_ID)).toBe(false);
+    expect(declined.invitation.status).toBe('declined');
   });
 });
