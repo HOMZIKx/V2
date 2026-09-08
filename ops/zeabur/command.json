@@ -1,7 +1,4 @@
 {
-  "requestId": "webapp-marker-guard-runtime-a2446e42-20260908-1915",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "webapp-dest"
+  "requestId": "public-e2e-after-eq-marker-20260908-1916",
+  "mode": "public_e2e"
 }
