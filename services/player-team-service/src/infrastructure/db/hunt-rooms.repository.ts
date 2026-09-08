@@ -175,9 +175,6 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
         await client.query('COMMIT');
         return this.mapPartyRow(row);
       }
-      if (row.visibility !== 'open') {
-        throw new PlayerTeamError('VALIDATION_FAILED', 'party room is closed');
-      }
 
       const nextMembers = [
         ...members,
