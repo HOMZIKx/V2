@@ -44,6 +44,21 @@ oraz dla integracji Discord:
 
 # Wpisy
 
+## 2026-09-08 11:28 — API Gateway odzyskany kanonicznym redeployem + trwałe originy + public E2E
+
+- **Status:** `DONE` dla odzyskania API Gateway, korekty trwałych originów, pełnego audytu środowiska i publicznego E2E. Interaktywny `Discord OAuth → session → Player Team write → DB → restart/reload → read` pozostaje osobnym `PARTIAL`, zgodnie z wcześniejszym wpisem, ponieważ wymaga realnej zgody użytkownika na Discordzie.
+- **Obszar:** Zeabur production, `api-gateway`, `identity-service`, GitHub trigger, CORS/trusted origins, public E2E.
+- **Problem:** po niekanonicznych ręcznych operacjach Zeabur `api-gateway` pozostał `SUSPENDED`; zwykłe pushe nie reaktywowały zawieszonej usługi. `deploy(..., vars)` wcześniej wywołał regresję runtime, a ręczny `deploy(..., gitRef)` mimo wskazania preview uruchamiał build z `main`. Dodatkowo w trwałej konfiguracji nadal występował wadliwy origin `https//v2-web.zeabur.app`.
+- **Przyczyna:** dla istniejącego GitHub-service właściwą ścieżką reaktywacji jest natywne `redeployService(serviceID, environmentID)` korzystające z bieżącego `gitTrigger`, a nie ręczne `deploy(...)`. Nowy globalny rejestr `cicdSources` nie zawierał źródła tej legacy usługi (również po podaniu ownerID), więc `triggerCICDSource` nie był właściwą ścieżką dla tego API Gateway. Stale origin był zapisany w persistent environment variables.
+- **Poprawka:** potwierdzono `gitTrigger` API na `repoID=1323125581`, `branchName=preview/destiled-web`, następnie wykonano `redeployService` bez przekazywania ręcznych vars/gitRef. Trwałe `API_GATEWAY_CORS_ORIGINS` oraz `IDENTITY_TRUSTED_ORIGINS` poprawiono przez `updateEnvironmentVariable` i zweryfikowano ponownym odczytem; nie użyto regresyjnego `deploy(..., vars)`.
+- **Zmienione pliki / konfiguracja:** `Dockerfile.api-gateway` dokumentuje kanoniczne źródło Zeabur (`preview/destiled-web`); runtime env API/Identity zostały poprawione po stronie Zeabura. Operacje wykonano przez istniejący bridge na `ops/zeabur-control` (`run.mjs`, `repair-persistent-origins.mjs`, `audit-env.mjs`, `verify-public-e2e.mjs`).
+- **Commit produkcyjnego źródła:** `eb66226297a57ef4401a2f35635bbbb956856272` (`preview/destiled-web`).
+- **Deployment:** Zeabur deployment `6a9fd4677b89d6943549fbb1` uruchomiony przez `redeployService`, `ref=refs/heads/preview/destiled-web`, `commitSHA=eb66226297a57ef4401a2f35635bbbb956856272`; finalnie `RUNNING`, `suspendedAt=null`, `suspendedReason=null`.
+- **Runy ops:** native redeploy `34209849959` (`e089d0facc9a717c1bf7d2df20d35bf228c10eed`); persistent origin repair `34209921025` (`9b35ccb315a35b2ae096b25239e3f358ac09843e`); finalny check API `34210022416`; post-recovery env audit `34210074022` (`f83bb86ffca696529ad473f67e341028766f9294`); public E2E `34210146628` (`b0f5eeb6150b62e13d4698fbd8fbfa0a59760c04`).
+- **Walidacja środowiska:** finalny audyt: 14 usług, `critical=0`, `warning=1`, `info=8`. Jedyny warning to nieużywany/stary typo `UTHORIZATION_ASSERTION_AUD` w Discord Gateway obok poprawnego `AUTHORIZATION_ASSERTION_AUD`; nie blokuje runtime. `player-workspace-service` pozostaje świadomie na legacy branchu zgodnie z wcześniejszą decyzją.
+- **Runtime / public E2E:** `https://desapp.zeabur.app/health/live` `200`; Identity ready `200` i `status=ok`; JWKS `200`, 1 klucz z `kid`; anonimowe Identity `/me` `401`; anonimowy Player Team state `401`; start OAuth `302` do `discord.com` i ustawia cookie; Discord Gateway `200`, `enabled=true`, `state=ready`, `isolationOk=true`, 3 guildie, komendy zarejestrowane, brak `lastError`; member-activity `200`, `6` członków, `12` wiadomości i `34` min voice.
+- **Pozostałe ryzyka:** nie usuwać stale typo env automatycznie — to operacja destrukcyjna i nie jest potrzebna do działania. Nadal otwarty jest wcześniejszy manualny proof realnego loginu użytkownika i zapisu Player Team do DB po zgodzie OAuth; ten recovery go nie udaje ani nie oznacza jako zakończony.
+
 ## 2026-09-08 09:42 — Produkcyjny OAuth / Identity internal JWT / Player Team po restartach
 
 - **Status:** `PARTIAL` dla pełnego login→write E2E; `DONE` dla konfiguracji runtime, readiness i odporności usług na restart.
