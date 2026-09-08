@@ -159,6 +159,21 @@ export class TeamEconomyManagementRepository implements OnModuleInit {
     return updated;
   }
 
+  public async updateItemImage(input: {
+    readonly itemId: string;
+    readonly imageDataUrl: string;
+  }): Promise<{ readonly ok: true }> {
+    const result = await this.db.query(
+      `UPDATE player_team_economy_items
+       SET image_url = $2, updated_at = NOW()
+       WHERE id = $1
+       RETURNING id`,
+      [input.itemId, input.imageDataUrl],
+    );
+    if (!result.rows[0]) throw new Error('item_not_found');
+    return { ok: true } as const;
+  }
+
   public async mergeItems(input: {
     readonly targetItemId: string;
     readonly duplicateItemId: string;
