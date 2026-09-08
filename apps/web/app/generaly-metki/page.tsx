@@ -20,7 +20,9 @@ import {
   type MetinGeneralHuntState,
 } from '../../src/metin-general-hunts-api';
 import {
+  formatWarsawHuntClock,
   metinGeneralHuntEventCycleKey,
+  nextMetinGeneralHuntSpawn,
   pickRouteColor,
   routeDisplayColor,
   smoothRoutePath,
@@ -153,29 +155,12 @@ function scheduleHours(intervalHours: number): string {
   ).join(' · ');
 }
 
-function nextSpawn(intervalHours: number, now: number): Date {
-  const current = new Date(now);
-  const start = new Date(current);
-  start.setHours(0, 0, 0, 0);
-  const intervalMs = intervalHours * 60 * 60 * 1000;
-  const elapsed = Math.max(0, current.getTime() - start.getTime());
-  const slot = Math.floor(elapsed / intervalMs) + 1;
-  return new Date(start.getTime() + slot * intervalMs);
-}
-
-function timeUntil(target: Date, now: number): string {
-  const diff = Math.max(0, target.getTime() - now);
+function timeUntil(target: number, now: number): string {
+  const diff = Math.max(0, target - now);
   const hours = Math.floor(diff / 3_600_000);
   const minutes = Math.floor((diff % 3_600_000) / 60_000);
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${Math.max(1, minutes)} min`;
-}
-
-function formatClock(value: number): string {
-  return new Date(value).toLocaleTimeString('pl-PL', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 function historyLabel(entry: MetinGeneralHuntHistoryEntry): string {
@@ -567,7 +552,7 @@ export default function GeneralsMetinsPage() {
   const activeRequests = state.requests
     .filter((request) => request.status === 'active')
     .sort((left, right) => right.createdAt - left.createdAt);
-  const next = nextSpawn(huntDefinition.intervalHours, now);
+  const next = nextMetinGeneralHuntSpawn(huntDefinition.intervalHours, now);
   const ownRoute = state.routes.find(
     (route) => route.userId === viewerId && route.channel === channel,
   );
@@ -624,7 +609,7 @@ export default function GeneralsMetinsPage() {
           </div>
           <div className={styles.nextSpawn}>
             <span>Następny spawn</span>
-            <strong>{next.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</strong>
+            <strong>{formatWarsawHuntClock(next)}</strong>
             <small>za {timeUntil(next, now)}</small>
           </div>
         </section>
@@ -678,7 +663,7 @@ export default function GeneralsMetinsPage() {
                     key={entry.id}
                   >
                     <span className={styles.historyIcon}>{historyIcon(entry)}</span>
-                    <time>{formatClock(entry.createdAt)}</time>
+                    <time>{formatWarsawHuntClock(entry.createdAt)}</time>
                     <button
                       className={styles.historyChannel}
                       onClick={() => switchToChannel(entry.channel)}
@@ -991,7 +976,7 @@ export default function GeneralsMetinsPage() {
                         <strong>
                           {REQUEST_ICONS[request.type]} {REQUEST_LABELS[request.type]}
                         </strong>
-                        <small>{formatClock(request.createdAt)}</small>
+                        <small>{formatWarsawHuntClock(request.createdAt)}</small>
                       </header>
                       <p>Zgłosił: {request.displayName}</p>
                       {request.responders.length > 0 ? (
