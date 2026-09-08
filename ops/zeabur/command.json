@@ -1,5 +1,4 @@
 {
-  "requestId": "production-trusted-origins-repair-20260908-1",
-  "mode": "cors_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "production-auth-chain-after-origin-repair-20260908-1",
+  "mode": "public_e2e"
 }
