@@ -49,13 +49,29 @@ const baseSchema = z.object({
   PLAYER_TEAM_DATABASE_URL: z.string().min(1),
 
   /**
-   * When true (default in dev), allow demo writes/reads using a demo header.
-   * This is temporary until real identity/auth wiring is enabled.
+   * Legacy compatibility path. Keep enabled only while the web proxy is not yet
+   * configured to mint Identity internal JWTs. The header is never trusted when
+   * PLAYER_TEAM_INTERNAL_JWT_ENABLED=true.
    */
   PLAYER_TEAM_ALLOW_DEMO_WRITE: booleanFromEnv(true),
 
   PLAYER_TEAM_DEMO_VIEWER_HEADER: optionalTrimmed
     .transform((v) => (v === undefined ? 'x-demo-viewer-id' : v))
+    .pipe(z.string().min(1)),
+
+  /**
+   * Preferred production auth: Identity-issued internal JWT from the trusted
+   * server-side gateway/web proxy. Discord id remains the persistence key for
+   * backward compatibility and is accepted only alongside a verified JWT.
+   */
+  PLAYER_TEAM_INTERNAL_JWT_ENABLED: booleanFromEnv(false),
+  PLAYER_TEAM_INTERNAL_JWT_ISSUER: optionalTrimmed,
+  PLAYER_TEAM_INTERNAL_JWT_AUDIENCE: optionalTrimmed
+    .transform((v) => (v === undefined ? 'v2.api-gateway' : v))
+    .pipe(z.string().min(1)),
+  PLAYER_TEAM_INTERNAL_JWT_JWKS_URL: optionalTrimmed,
+  PLAYER_TEAM_AUTHENTICATED_DISCORD_HEADER: optionalTrimmed
+    .transform((v) => (v === undefined ? 'x-authenticated-discord-id' : v))
     .pipe(z.string().min(1)),
 
   PLAYER_TEAM_CORS_ORIGINS: csvOrigins,
@@ -79,11 +95,21 @@ export function parsePlayerTeamEnv(env: NodeJS.ProcessEnv): PlayerTeamEnv {
     throw new PlayerTeamConfigError(`Invalid player-team configuration: ${details}`);
   }
 
-  // In production we default to safer behavior unless explicitly enabled.
-  if (parsed.data.NODE_ENV === 'production' && parsed.data.PLAYER_TEAM_ALLOW_DEMO_WRITE) {
-    // still allowed if explicitly set, but we leave it as-is; only guard is below
+  const config = parsed.data;
+  if (config.PLAYER_TEAM_INTERNAL_JWT_ENABLED) {
+    const missing: string[] = [];
+    if (config.PLAYER_TEAM_INTERNAL_JWT_ISSUER === undefined) {
+      missing.push('PLAYER_TEAM_INTERNAL_JWT_ISSUER');
+    }
+    if (config.PLAYER_TEAM_INTERNAL_JWT_JWKS_URL === undefined) {
+      missing.push('PLAYER_TEAM_INTERNAL_JWT_JWKS_URL');
+    }
+    if (missing.length > 0) {
+      throw new PlayerTeamConfigError(
+        `Player-team internal JWT is enabled but missing: ${missing.join(', ')}`,
+      );
+    }
   }
 
-  return parsed.data;
+  return config;
 }
-

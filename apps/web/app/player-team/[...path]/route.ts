@@ -1,3 +1,4 @@
+import { createPrivateKey, randomUUID, sign as signBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -12,9 +13,28 @@ type IdentityAccount = {
   readonly accountId?: string;
 };
 
+type ResolvedIdentity = {
+  readonly v2UserId: string;
+  readonly discordId: string;
+};
+
+type InternalJwtConfig = {
+  readonly clientId: string;
+  readonly privateKeyPem: string;
+  readonly kid: string;
+  readonly assertionAudience: string;
+  readonly targetAudience: string;
+};
+
 function normalizeTarget(value: string | undefined): string | null {
   const trimmed = value?.trim().replace(/\/$/, '');
   return trimmed ? trimmed : null;
+}
+
+function requiredEnv(value: string | undefined, name: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new Error(`${name} is required for player-team internal JWT`);
+  return trimmed;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -36,7 +56,77 @@ function playerTeamTarget(): string {
   );
 }
 
-async function resolveDiscordViewerId(request: NextRequest): Promise<string | null> {
+function internalJwtConfig(): InternalJwtConfig | null {
+  if (
+    process.env.INTERNAL_JWT_CLIENT_ENABLED !== 'true' ||
+    process.env.PLAYER_TEAM_INTERNAL_JWT_ENABLED !== 'true'
+  ) {
+    return null;
+  }
+
+  return {
+    clientId: requiredEnv(process.env.INTERNAL_JWT_CLIENT_ID, 'INTERNAL_JWT_CLIENT_ID'),
+    privateKeyPem: requiredEnv(
+      process.env.INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM,
+      'INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM',
+    ).replace(/\\n/g, '\n'),
+    kid: requiredEnv(process.env.INTERNAL_JWT_CLIENT_ACTIVE_KID, 'INTERNAL_JWT_CLIENT_ACTIVE_KID'),
+    assertionAudience: requiredEnv(
+      process.env.INTERNAL_JWT_ASSERTION_AUD,
+      'INTERNAL_JWT_ASSERTION_AUD',
+    ),
+    targetAudience:
+      process.env.PLAYER_TEAM_INTERNAL_JWT_AUDIENCE?.trim() ||
+      process.env.INTERNAL_JWT_DEFAULT_AUDIENCE?.trim() ||
+      'v2.api-gateway',
+  };
+}
+
+function encodeJwtJson(value: Record<string, unknown>): string {
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
+}
+
+function buildClientAssertion(config: InternalJwtConfig): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = encodeJwtJson({ alg: 'EdDSA', kid: config.kid });
+  const payload = encodeJwtJson({
+    jti: randomUUID(),
+    iss: config.clientId,
+    sub: config.clientId,
+    aud: config.assertionAudience,
+    iat: now,
+    exp: now + 60,
+  });
+  const signingInput = `${header}.${payload}`;
+  const privateKey = createPrivateKey(config.privateKeyPem);
+  const signature = signBytes(null, Buffer.from(signingInput), privateKey).toString('base64url');
+  return `${signingInput}.${signature}`;
+}
+
+async function issuePlayerTeamToken(cookie: string, config: InternalJwtConfig): Promise<string> {
+  const assertion = buildClientAssertion(config);
+  const response = await fetch(`${identityTarget()}/identity/internal-token`, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      cookie,
+      'identity-client-assertion': assertion,
+    },
+    body: JSON.stringify({ audience: config.targetAudience }),
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`identity /internal-token failed: ${response.status}`);
+  }
+  const body = (await response.json()) as { access_token?: unknown };
+  if (typeof body.access_token !== 'string' || body.access_token.length === 0) {
+    throw new Error('identity /internal-token returned no access token');
+  }
+  return body.access_token;
+}
+
+async function resolveIdentity(request: NextRequest): Promise<ResolvedIdentity | null> {
   const identityBaseUrl = identityTarget();
 
   const cookie = request.headers.get('cookie');
@@ -57,6 +147,11 @@ async function resolveDiscordViewerId(request: NextRequest): Promise<string | nu
   if (!meResponse.ok) {
     throw new Error(`identity /me failed: ${meResponse.status}`);
   }
+  const meBody = (await meResponse.json()) as { readonly id?: unknown };
+  const v2UserId = typeof meBody.id === 'string' ? meBody.id.trim() : '';
+  if (!v2UserId) {
+    throw new Error('identity /me returned no user id');
+  }
 
   const accountsResponse = await fetch(`${identityBaseUrl}/identity/accounts`, {
     method: 'GET',
@@ -76,24 +171,40 @@ async function resolveDiscordViewerId(request: NextRequest): Promise<string | nu
     ?.find((account) => account.provider === 'discord')
     ?.accountId?.trim();
 
-  return discordId && /^\d{17,20}$/.test(discordId) ? discordId : null;
+  if (!discordId || !/^\d{17,20}$/.test(discordId)) return null;
+  return { v2UserId, discordId };
 }
 
-function createUpstreamHeaders(request: NextRequest, viewerId: string): Headers {
+function createUpstreamHeaders(
+  request: NextRequest,
+  identity: ResolvedIdentity,
+  accessToken: string | null,
+): Headers {
   const headers = new Headers(request.headers);
 
-  // Never trust identity/auth headers supplied by the browser. The viewer id is
-  // derived from the real Identity session above and injected here server-side.
+  // Never trust identity/auth headers supplied by the browser. Identity is
+  // resolved server-side above and all security-sensitive headers are replaced.
   headers.delete('host');
   headers.delete('cookie');
   headers.delete('content-length');
   headers.delete('connection');
   headers.delete('authorization');
   headers.delete('x-demo-viewer-id');
+  headers.delete('x-authenticated-discord-id');
+  headers.delete('x-v2-user-id');
   headers.delete('x-forwarded-for');
   headers.delete('x-forwarded-host');
   headers.delete('x-forwarded-proto');
-  headers.set('x-demo-viewer-id', viewerId);
+
+  if (accessToken !== null) {
+    headers.set('authorization', `Bearer ${accessToken}`);
+    headers.set('x-authenticated-discord-id', identity.discordId);
+    headers.set('x-v2-user-id', identity.v2UserId);
+  } else {
+    // Explicit compatibility mode until Zeabur has the internal-JWT client
+    // variables enabled on both the web and player-team services.
+    headers.set('x-demo-viewer-id', identity.discordId);
+  }
 
   return headers;
 }
@@ -111,9 +222,9 @@ function createClientHeaders(upstream: Response): Headers {
 async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const playerTeamBaseUrl = playerTeamTarget();
 
-  let viewerId: string | null;
+  let identity: ResolvedIdentity | null;
   try {
-    viewerId = await resolveDiscordViewerId(request);
+    identity = await resolveIdentity(request);
   } catch (error) {
     console.error('player-team proxy: identity lookup failed', error);
     return NextResponse.json(
@@ -122,10 +233,32 @@ async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Pro
     );
   }
 
-  if (!viewerId) {
+  if (!identity) {
     return NextResponse.json(
       { error: 'unauthorized', message: 'Valid Discord session required' },
       { status: 401 },
+    );
+  }
+
+  let accessToken: string | null = null;
+  let jwtConfig: InternalJwtConfig | null;
+  try {
+    jwtConfig = internalJwtConfig();
+    if (jwtConfig !== null) {
+      const cookie = request.headers.get('cookie');
+      if (!cookie) {
+        return NextResponse.json(
+          { error: 'unauthorized', message: 'Valid Discord session required' },
+          { status: 401 },
+        );
+      }
+      accessToken = await issuePlayerTeamToken(cookie, jwtConfig);
+    }
+  } catch (error) {
+    console.error('player-team proxy: internal JWT issue failed', error);
+    return NextResponse.json(
+      { error: 'identity_token_unavailable', message: 'Unable to authorize Player Team request' },
+      { status: 503 },
     );
   }
 
@@ -141,7 +274,7 @@ async function proxyPlayerTeam(request: NextRequest, context: RouteContext): Pro
   try {
     upstream = await fetch(upstreamUrl, {
       method,
-      headers: createUpstreamHeaders(request, viewerId),
+      headers: createUpstreamHeaders(request, identity, accessToken),
       ...(requestBody !== null ? { body: requestBody } : {}),
       cache: 'no-store',
       redirect: 'manual',
