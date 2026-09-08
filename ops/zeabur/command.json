@@ -1,4 +1,4 @@
 {
-  "requestId": "post-auth-restart-production-audit-20260908-1",
-  "mode": "env_audit"
+  "requestId": "final-production-auth-probe-20260908-1",
+  "mode": "public_e2e"
 }
