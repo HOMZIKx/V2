@@ -27,44 +27,92 @@ async function gql(query,variables={}){
   if(!r.ok||b.errors?.length)throw new Error((b.errors||[]).map(e=>e.message).join('; ')||`HTTP ${r.status}`);
   return b.data;
 }
-const q=`query RepairInventory($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){provider repoID branchName repoURL} variables(environmentID:$environmentID){key value readonly exposed}}}}}`;
-const data=await gql(q,{projectID:projectId,environmentID:environmentId});
+const inventoryQuery=`query RepairInventory($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){provider repoID branchName repoURL} variables(environmentID:$environmentID){key value readonly exposed}}}}}`;
+const data=await gql(inventoryQuery,{projectID:projectId,environmentID:environmentId});
 const services=new Map(data.services.edges.map(e=>[e.node.name,e.node]));
 const actions=[];
 function svc(name){const s=services.get(name);if(!s)throw new Error(`service ${name} not found`);return s}
 function vars(name){const m=new Map();for(const v of svc(name).variables||[]){if(!m.has(v.key))m.set(v.key,[]);m.get(v.key).push(v)}return m}
 function lastValue(name,key){const arr=vars(name).get(key)||[];return String(arr.at(-1)?.value??'')}
+async function readService(name){
+  const service=svc(name);
+  const state=await gql(`query ServiceState($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){_id name status gitTrigger(environmentID:$environmentID){provider repoID branchName repoURL} variables(environmentID:$environmentID){key value readonly exposed}}}`,{serviceID:service._id,environmentID:environmentId});
+  services.set(name,state.service);
+  return state.service;
+}
+async function verifyEnv(name,key,expected){
+  const service=await readService(name);
+  const entries=(service.variables||[]).filter(v=>v.key===key);
+  const actual=String(entries.at(-1)?.value??'');
+  if(actual!==valueString(expected))throw new Error(`${name}.${key} verification failed`);
+  return entries;
+}
+const valueString=(value)=>String(value);
 
 async function setEnv(name,key,value){
-  const service=svc(name);const entries=vars(name).get(key)||[];
+  let service=svc(name);let entries=vars(name).get(key)||[];
   if(entries.some(e=>e.readonly))throw new Error(`${name}.${key} is readonly`);
   if(entries.length===0){
-    await gql(`mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID:service._id,environmentID:environmentId,key,value});
-    service.variables.push({key,value,readonly:false,exposed:false});
+    await gql(`mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID:service._id,environmentID:environmentId,key,value:valueString(value)});
     actions.push(`${name}: created ${key}`);
   }else{
-    await gql(`mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$oldKey:String!,$newKey:String!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:$oldKey,newKey:$newKey,value:$value){key}}`,{serviceID:service._id,environmentID:environmentId,oldKey:key,newKey:key,value});
-    for(const e of entries)e.value=value;
+    await gql(`mutation Set($serviceID:ObjectID!,$environmentID:ObjectID!,$oldKey:String!,$newKey:String!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:$oldKey,newKey:$newKey,value:$value){key}}`,{serviceID:service._id,environmentID:environmentId,oldKey:key,newKey:key,value:valueString(value)});
     actions.push(`${name}: updated ${key}`);
   }
+  service=await readService(name);
+  entries=(service.variables||[]).filter(v=>v.key===key);
+  if(String(entries.at(-1)?.value??'')!==valueString(value)){
+    if(entries.some(e=>e.readonly))throw new Error(`${name}.${key} became readonly before fallback write`);
+    if(entries.length>0){
+      await gql(`mutation DeleteEnv($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!){deleteSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key)}`,{serviceID:service._id,environmentID:environmentId,key});
+    }
+    await gql(`mutation CreateEnv($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID:service._id,environmentID:environmentId,key,value:valueString(value)});
+    actions.push(`${name}: forced ${key} recreate after ineffective update`);
+  }
+  await verifyEnv(name,key,value);
+  actions.push(`${name}: verified ${key}`);
 }
 async function setGitTrigger(name,branch){
-  const service=svc(name);const trigger=service.gitTrigger;
+  let service=await readService(name);const trigger=service.gitTrigger;
   if(trigger?.branchName===branch){actions.push(`${name}: branch already ${branch}`);return}
   if(!trigger?.repoID)throw new Error(`${name}: GitHub repoID missing; refusing to rebind source blindly`);
   await gql(`mutation Trigger($serviceID:ObjectID!,$environmentID:ObjectID!,$trigger:TriggerInput!){updateGitTrigger(serviceID:$serviceID,environmentID:$environmentID,trigger:$trigger)}`,{serviceID:service._id,environmentID:environmentId,trigger:{repoID:trigger.repoID,branchName:branch}});
-  service.gitTrigger={...trigger,branchName:branch};
-  actions.push(`${name}: git trigger -> ${branch}`);
+  service=await readService(name);
+  if(service.gitTrigger?.branchName!==branch)throw new Error(`${name}: branch verification failed`);
+  actions.push(`${name}: git trigger verified -> ${branch}`);
 }
 async function redeploy(name){const service=svc(name);await gql(`mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}`,{serviceID:service._id,environmentID:environmentId});actions.push(`${name}: redeploy requested`)}
+
+function parseIdentityClients(){
+  const raw=lastValue('identity-service','IDENTITY_SERVICE_CLIENTS_JSON');
+  if(!raw.trim())throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is empty');
+  let clients;try{clients=JSON.parse(raw)}catch{throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is invalid JSON')}
+  if(!Array.isArray(clients))throw new Error('IDENTITY_SERVICE_CLIENTS_JSON must be an array');
+  return clients;
+}
+function assertWebJwtRegistryReady(){
+  const web='webapp-dest';
+  const clientId=lastValue(web,'INTERNAL_JWT_CLIENT_ID').trim();
+  const privatePem=lastValue(web,'INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM').trim();
+  const kid=lastValue(web,'INTERNAL_JWT_CLIENT_ACTIVE_KID').trim();
+  const assertionAud=lastValue(web,'INTERNAL_JWT_ASSERTION_AUD').trim();
+  const defaultAud=lastValue(web,'INTERNAL_JWT_DEFAULT_AUDIENCE').trim()||'v2.api-gateway';
+  if(!clientId||!privatePem||!kid||!assertionAud)throw new Error('web internal JWT client material is incomplete');
+  const clients=parseIdentityClients();
+  const client=clients.find(c=>c?.client_id===clientId);
+  if(!client)throw new Error(`Identity registry has no web client ${clientId}`);
+  if(!Array.isArray(client.allowed_audiences)||!client.allowed_audiences.includes(defaultAud))throw new Error(`Identity registry does not allow audience ${defaultAud} for web client`);
+  if(!Array.isArray(client.keys)||!client.keys.some(k=>k?.kid===kid&&k?.status!=='retired'))throw new Error(`Identity registry has no active key matching web kid`);
+  const issueUrl=lastValue('identity-service','IDENTITY_INTERNAL_JWT_ISSUE_URL').trim();
+  if(!issueUrl||assertionAud!==issueUrl)throw new Error('web assertion audience does not match Identity issue URL');
+  actions.push('preflight: web client ID/kid/audience matches Identity registry');
+  return {defaultAud};
+}
 
 async function identitySetup(){
   const identity='identity-service',web='webapp-dest';
   await setEnv(identity,'IDENTITY_TRUSTED_ORIGINS','https://desapp.zeabur.app,https://v2-web.zeabur.app,https://v2-admin.zeabur.app,https://v2-api.zeabur.app,https://v2222.zeabur.app');
-  const rawClients=lastValue(identity,'IDENTITY_SERVICE_CLIENTS_JSON');
-  if(!rawClients.trim())throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is empty');
-  let clients;try{clients=JSON.parse(rawClients)}catch{throw new Error('IDENTITY_SERVICE_CLIENTS_JSON is invalid JSON')}
-  if(!Array.isArray(clients))throw new Error('IDENTITY_SERVICE_CLIENTS_JSON must be an array');
+  const clients=parseIdentityClients();
   const clientId='v2.webapp-dest';
   let client=clients.find(c=>c?.client_id===clientId);
   const existingPrivate=lastValue(web,'INTERNAL_JWT_CLIENT_PRIVATE_KEY_PEM').trim();
@@ -99,6 +147,7 @@ async function identitySetup(){
   await setEnv(web,'INTERNAL_JWT_DEFAULT_AUDIENCE','v2.api-gateway');
   await setEnv(web,'INTERNAL_JWT_CLIENT_ENABLED','false');
   await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_ENABLED','false');
+  assertWebJwtRegistryReady();
   await redeploy(identity);
 }
 
@@ -112,13 +161,14 @@ async function repairGitBranch(){
 
 async function playerTeamPrepare(){
   const pt='player-team-service',identity='identity-service';
+  const {defaultAud}=assertWebJwtRegistryReady();
   await setGitTrigger(pt,'preview/destiled-web');
   const issuer=lastValue(identity,'IDENTITY_INTERNAL_JWT_ISSUER').trim();
   if(!issuer)throw new Error('Identity issuer missing');
   const jwks='http://service-6a8211cfbdeaa87e2c52df39:8080/identity/.well-known/jwks.json';
   await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_ENABLED','true');
   await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_ISSUER',issuer);
-  await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_AUDIENCE','v2.api-gateway');
+  await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_AUDIENCE',defaultAud);
   await setEnv(pt,'PLAYER_TEAM_INTERNAL_JWT_JWKS_URL',jwks);
   await setEnv(pt,'PLAYER_TEAM_AUTHENTICATED_DISCORD_HEADER','x-authenticated-discord-id');
   await setEnv(pt,'PLAYER_TEAM_ALLOW_DEMO_WRITE','false');
@@ -129,8 +179,15 @@ async function playerTeamPrepare(){
 
 async function webJwtEnable(){
   const web='webapp-dest';
+  const {defaultAud}=assertWebJwtRegistryReady();
+  const pt=await readService('player-team-service');
+  if(pt.status!=='RUNNING')throw new Error(`refusing web JWT cutover while player-team-service status=${pt.status}`);
+  if(pt.gitTrigger?.branchName!=='preview/destiled-web')throw new Error('refusing web JWT cutover while Player Team branch is stale');
+  const ptVars=new Map((pt.variables||[]).map(v=>[v.key,String(v.value??'')]));
+  if(ptVars.get('PLAYER_TEAM_INTERNAL_JWT_ENABLED')!=='true')throw new Error('Player Team internal JWT is not enabled');
+  if(ptVars.get('PLAYER_TEAM_ALLOW_DEMO_WRITE')!=='false')throw new Error('Player Team demo write is not disabled');
   await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_ENABLED','true');
-  await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_AUDIENCE','v2.api-gateway');
+  await setEnv(web,'PLAYER_TEAM_INTERNAL_JWT_AUDIENCE',defaultAud);
   await setEnv(web,'INTERNAL_JWT_CLIENT_ENABLED','true');
   await redeploy(web);
 }
