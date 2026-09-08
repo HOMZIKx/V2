@@ -10,6 +10,7 @@ import {
   buildCharacterTimersDeepLinkUrl,
   postDiscordTimerNotify,
   postDiscordTimerResetNotify,
+  syncTeamCoordinationRecipients,
   type DiscordLiveTimerSnapshot,
   type DiscordTimerNotifyResult,
 } from './discord-notify-api';
@@ -124,6 +125,10 @@ export async function notifyCharacterProgressTimer(
   if (recipients.length === 0) {
     return { sent: 0, results: [] };
   }
+
+  // Keep a durable, explicit team audience in the gateway for bot-originated actions
+  // (e.g. a later war reminder). This is a merge operation, not guild enumeration.
+  void syncTeamCoordinationRecipients(recipients);
 
   const timer = timerForNotify(ctx);
   const characterName =
