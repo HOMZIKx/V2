@@ -1,7 +1,5 @@
 {
-  "requestId": "redeploy-api-gateway-canonical-source-20260908-1",
-  "mode": "graphql_write",
-  "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}",
-  "variables": {"serviceID":"6a8211c9bdeaa87e2c52df34","environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "repair-persistent-origins-after-api-redeploy-trigger-20260908-1",
+  "mode": "persistent_origin_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
