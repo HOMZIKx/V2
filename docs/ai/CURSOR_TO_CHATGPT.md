@@ -3,10 +3,10 @@
 ## Technika / timery postaci — PR #68
 
 - Root cause: live character-timer DM ignorował `characterTimers.messageTemplate`, mimo że config był poprawnie zapisywany/aktywowany i test-DM go używał.
-- PR #68 (`bb9fc801dfc7b78ad866944298ee41903ab212f3`) podpina aktywny template do normalnego notify/reset oraz canonical durable workera i rozwiązuje config w chwili wysyłki.
+- PR #68 został zmergowany metodą rebase do `preview/destiled-web`; produkcyjny SHA to `1126e7ead0649f0b6a78f3d669b847b85d096d2f`. Fix podpina aktywny template do normalnego notify/reset oraz canonical durable workera i rozwiązuje config w chwili wysyłki.
 - Legacy map/metin formatter pozostaje nietknięty.
-- CI `34225187832` PASS; PR Title `34225198774` PASS.
-- Nie oznaczać `DONE` przed realnym live DM gateway → Discord po wdrożeniu.
+- Finalny PR CI `34225696704` PASS; post-merge CI `34226072593` PASS. Zeabur deployment `6a9ffef87b89d694354a08b5` działa na dokładnym SHA `1126e7e…` ze statusem `RUNNING`.
+- Runtime proof jest zamknięty: Technika persistence po merge `34227126328` PASS; public E2E `34227377285` ma Gateway `ready` bez `lastError`; realny character-timer `/notify/timer` → Discord DM `34227810076` zwrócił HTTP `201`, `delivery=dm` i prawdziwy `messageId`. Fix live template runtime = `DONE`. Produkcyjny template jest obecnie defaultowy; nie mutowano configu tylko po to, by wymusić sztuczny marker custom-template.
 - `reminderMinutesBefore` nadal nie realizuje pre-remindera; nie przesuwać istniejącego due joba wcześniej, bo worker oznacza timer jako ready.
 
 ## Status — 2026-09-08 produkcyjna stabilizacja
