@@ -4,12 +4,20 @@ import {
   cancelCharacterTimerReminder,
   scheduleCharacterTimerReminder,
 } from '../../application/notify/character-timer-reminders.js';
-import { getDailyCharacterTimerPanelConfig } from '../../application/notify/daily-character-timer-panel-registry.js';
+import {
+  getDailyCharacterTimerPanelConfig,
+  getDailyCharacterTimerPanelMessage,
+} from '../../application/notify/daily-character-timer-panel-registry.js';
 import {
   refreshExistingDailyCharacterTimerPanels,
   switchDailyCharacterTimerPanelCharacter,
+  warsawClock,
 } from '../../application/notify/daily-character-timer-panel-runtime.js';
-import { replaceKingdomWarPanelSelectionForUser } from '../../application/notify/kingdom-war-panel-registry.js';
+import {
+  currentKingdomWarPanelDayKey,
+  getKingdomWarPanelMessage,
+  replaceKingdomWarPanelSelectionForUser,
+} from '../../application/notify/kingdom-war-panel-registry.js';
 import { refreshKingdomWarPanels } from '../../application/notify/kingdom-war-panel-runtime.js';
 import { resolveTeamKingdomWarWorkspaceId } from '../../application/notify/kingdom-war-team-recipients.js';
 import { defaultBotConfigValues } from '../../application/technika/capabilities.js';
@@ -42,6 +50,15 @@ export class DailyPanelInteractionRouter {
           interaction.customId,
           this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
         );
+        const panel = getDailyCharacterTimerPanelMessage(selector.workspaceId, interaction.user.id);
+        const today = warsawClock().dayKey;
+        if (!panel || panel.dayKey !== today || panel.messageId !== interaction.message.id) {
+          await interaction.reply({
+            content: 'Ten panel timerów jest nieaktualny. Użyj dzisiejszej wiadomości PW.',
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
         const characterId = interaction.values[0]?.trim();
         if (!characterId) {
           await interaction.reply({ content: 'Nie wybrano postaci.', flags: MessageFlags.Ephemeral });
@@ -55,6 +72,7 @@ export class DailyPanelInteractionRouter {
           workspaceId: selector.workspaceId,
           discordUserId: interaction.user.id,
           characterId,
+          dayKey: today,
         });
         if (!ok) {
           await interaction.followUp({
@@ -110,6 +128,16 @@ export class DailyPanelInteractionRouter {
     if (!workspaceId) {
       await interaction.reply({
         content: 'Ten panel wojny jest nieaktualny.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const panel = getKingdomWarPanelMessage(workspaceId, interaction.user.id);
+    const dayKey = currentKingdomWarPanelDayKey();
+    if (!panel || panel.dayKey !== dayKey || panel.messageId !== interaction.message.id) {
+      await interaction.reply({
+        content: 'Ten panel wojny jest nieaktualny. Użyj bieżącej wiadomości PW.',
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -196,7 +224,6 @@ export class DailyPanelInteractionRouter {
       return;
     }
 
-    await interaction.deferUpdate();
     const viewerId = canonicalOwnerViewerId(interaction.user.id);
     const located = await readCharacterTimerCardFromBot({
       baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
@@ -205,13 +232,24 @@ export class DailyPanelInteractionRouter {
       timerId,
     });
     if (!located?.workspaceId) {
-      await interaction.followUp({
+      await interaction.reply({
         content: 'Nie udało się odnaleźć timera w zespole.',
         flags: MessageFlags.Ephemeral,
       });
       return;
     }
 
+    const panel = getDailyCharacterTimerPanelMessage(located.workspaceId, interaction.user.id);
+    const today = warsawClock().dayKey;
+    if (!panel || panel.dayKey !== today || panel.messageId !== interaction.message.id) {
+      await interaction.reply({
+        content: 'Ten panel timerów jest nieaktualny. Użyj dzisiejszej wiadomości PW.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.deferUpdate();
     const actorName = interaction.user.globalName ?? interaction.user.username;
     const result = await refreshSharedCharacterTimer({
       baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
