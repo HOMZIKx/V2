@@ -10,6 +10,7 @@ import {
   buildCharacterTimersDeepLinkUrl,
   postDiscordTimerNotify,
   postDiscordTimerResetNotify,
+  syncKingdomWarRecipients,
   type DiscordLiveTimerSnapshot,
   type DiscordTimerNotifyResult,
 } from './discord-notify-api';
@@ -124,6 +125,11 @@ export async function notifyCharacterProgressTimer(
   if (recipients.length === 0) {
     return { sent: 0, results: [] };
   }
+
+  // Register the explicit current workspace roster as the bot's team-coordination
+  // audience as well. This keeps later Discord-originated timer/war actions on the
+  // same team boundary instead of falling back to guild membership.
+  void syncKingdomWarRecipients(recipients);
 
   const timer = timerForNotify(ctx);
   const characterName =
