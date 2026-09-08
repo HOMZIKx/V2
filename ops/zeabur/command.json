@@ -1,5 +1,4 @@
 {
-  "requestId": "verified-cors-trusted-origin-repair-20260908-1",
-  "mode": "cors_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "ops-safe-idle-after-cors-repair-20260908-1",
+  "mode": "auth"
 }
