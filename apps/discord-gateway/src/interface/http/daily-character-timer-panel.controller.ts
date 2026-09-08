@@ -12,6 +12,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { createLogger } from '@v2/observability';
 
 import {
+  cancelCharacterTimerReminder,
+  scheduleCharacterTimerReminder,
+} from '../../application/notify/character-timer-reminders.js';
+import {
   getDailyCharacterTimerPanelConfig,
   replaceDailyCharacterTimerPanelConfig,
 } from '../../application/notify/daily-character-timer-panel-registry.js';
@@ -41,7 +45,14 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function snowflakes(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return [...new Set(value.filter((id): id is string => typeof id === 'string').map((id) => id.trim()).filter((id) => /^\d{17,20}$/.test(id)))].slice(0, 40);
+  return [
+    ...new Set(
+      value
+        .filter((id): id is string => typeof id === 'string')
+        .map((id) => id.trim())
+        .filter((id) => /^\d{17,20}$/.test(id)),
+    ),
+  ].slice(0, 40);
 }
 
 @Controller('notify')
@@ -71,7 +82,9 @@ export class DailyCharacterTimerPanelController {
       dailyTime,
       recipients: snowflakes(row?.recipients),
     });
-    if (!config) throw new BadRequestException({ ok: false, error: 'invalid_daily_timer_panel_config' });
+    if (!config) {
+      throw new BadRequestException({ ok: false, error: 'invalid_daily_timer_panel_config' });
+    }
     return { ok: true, config };
   }
 
@@ -83,7 +96,9 @@ export class DailyCharacterTimerPanelController {
     this.assertSecret(secret);
     const row = asRecord(body);
     const workspaceId = typeof row?.workspaceId === 'string' ? row.workspaceId.trim() : '';
-    if (!workspaceId) throw new BadRequestException({ ok: false, error: 'workspace_id_required' });
+    if (!workspaceId) {
+      throw new BadRequestException({ ok: false, error: 'workspace_id_required' });
+    }
     return { ok: true, config: getDailyCharacterTimerPanelConfig(workspaceId) };
   }
 
@@ -98,7 +113,57 @@ export class DailyCharacterTimerPanelController {
     }
     const row = asRecord(body);
     const workspaceId = typeof row?.workspaceId === 'string' ? row.workspaceId.trim() : '';
-    if (!workspaceId) throw new BadRequestException({ ok: false, error: 'workspace_id_required' });
+    if (!workspaceId) {
+      throw new BadRequestException({ ok: false, error: 'workspace_id_required' });
+    }
+
+    const timerId = typeof row?.timerId === 'string' ? row.timerId.trim() : '';
+    const endsAt = typeof row?.endsAt === 'string' ? row.endsAt.trim() : '';
+    const panelConfig = getDailyCharacterTimerPanelConfig(workspaceId);
+    const schedulerUser = panelConfig?.recipients[0] ?? null;
+    const readyAtMs = endsAt ? Date.parse(endsAt) : Number.NaN;
+
+    if (timerId && schedulerUser && Number.isFinite(readyAtMs)) {
+      cancelCharacterTimerReminder(schedulerUser, timerId);
+      const deps = {
+        logger,
+        send: async () => {
+          await refreshExistingDailyCharacterTimerPanels({
+            config: this.config,
+            gateway: this.gateway!,
+            logger,
+            workspaceId,
+          });
+        },
+      };
+      const warningDelay = readyAtMs - Date.now() - 10 * 60_000;
+      if (warningDelay > 5_000) {
+        scheduleCharacterTimerReminder(
+          {
+            discordUserId: schedulerUser,
+            timerId,
+            label: `${timerId}:warning`,
+            workspaceId,
+            delayMs: warningDelay,
+          },
+          deps,
+        );
+      }
+      const readyDelay = readyAtMs - Date.now();
+      if (readyDelay > 5_000) {
+        scheduleCharacterTimerReminder(
+          {
+            discordUserId: schedulerUser,
+            timerId,
+            label: `${timerId}:ready`,
+            workspaceId,
+            delayMs: readyDelay,
+          },
+          deps,
+        );
+      }
+    }
+
     const result = await refreshExistingDailyCharacterTimerPanels({
       config: this.config,
       gateway: this.gateway,
