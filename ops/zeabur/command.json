@@ -1,5 +1,4 @@
 {
-  "requestId": "persistent-origin-repair-after-rollout-settled-20260908-1",
-  "mode": "persistent_origin_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "verify-origins-after-settled-repair-20260908-1",
+  "mode": "env_audit"
 }
