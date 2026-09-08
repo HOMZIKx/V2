@@ -194,7 +194,8 @@ export function CharacterEquipmentV2() {
     unequipItem,
     setActiveSet,
     createItem,
-    updateItemBonuses,
+    updateItem,
+    archiveItem,
     confirmLocation,
   } = usePlayerStore();
 
@@ -433,9 +434,22 @@ export function CharacterEquipmentV2() {
 
     const bonuses = cleanBonusLines(draft.bonusesText);
     if (editorMode === 'edit' && selectedItem) {
-      updateItemBonuses(workspace.id, selectedItem.id, bonuses, {
+      const categoryChanged = draft.category !== selectedItem.category;
+      const updated = updateItem(workspace.id, selectedItem.id, {
+        name: draft.name.trim(),
+        category: draft.category,
         enhancement: clampEnhancement(draft.enhancement),
+        bonuses,
+        forCharacterClass: character.characterClass,
       });
+      if (!updated) {
+        setEditorError('Nie udało się zapisać zmian. Sprawdź nazwę, typ i zgodność przedmiotu z klasą.');
+        return;
+      }
+      if (categoryChanged) {
+        setBagLocation('Torba I');
+        setInventoryMode('bag');
+      }
       closeEditor();
       return;
     }
@@ -490,11 +504,10 @@ export function CharacterEquipmentV2() {
     setSelectedItemId(item.id);
   };
 
-  const removeItemSoft = (item: EquipmentItem) => {
+  const removeItem = (item: EquipmentItem) => {
     if (!writesEnabled) return;
     if (!window.confirm(`Usunąć „${item.name}” z ekwipunku zespołu?`)) return;
-    if (equipLocations.get(item.id)) unequipItem(workspace.id, item.id);
-    confirmLocation(workspace.id, item.id, REMOVED_LOCATION);
+    archiveItem(workspace.id, item.id);
     setSelectedItemId(null);
   };
 
@@ -714,7 +727,7 @@ export function CharacterEquipmentV2() {
                     onClick={() => openEdit(selectedItem)}
                     type="button"
                   >
-                    Edytuj +{selectedItem.enhancement} / bonusy
+                    Edytuj przedmiot
                   </button>
                 </div>
 
@@ -737,7 +750,7 @@ export function CharacterEquipmentV2() {
                 <button
                   className={styles.removeButton}
                   disabled={!writesEnabled}
-                  onClick={() => removeItemSoft(selectedItem)}
+                  onClick={() => removeItem(selectedItem)}
                   type="button"
                 >
                   Usuń przedmiot
@@ -826,7 +839,6 @@ export function CharacterEquipmentV2() {
                 <label className={styles.field}>
                   <span>Nazwa przedmiotu</span>
                   <input
-                    disabled={editorMode === 'edit'}
                     onChange={(event) => {
                       setSelectedCatalogId(null);
                       setDraft((current) => ({ ...current, name: event.target.value }));
@@ -836,7 +848,7 @@ export function CharacterEquipmentV2() {
                   />
                 </label>
 
-                {editorMode !== 'edit' && catalogSuggestions.length > 0 ? (
+                {catalogSuggestions.length > 0 ? (
                   <div className={styles.catalogSuggestions}>
                     <span>Dopasowanie do bazy V2</span>
                     <div>
@@ -869,7 +881,6 @@ export function CharacterEquipmentV2() {
                   <label className={styles.field}>
                     <span>Typ / slot{categoryReviewRequired ? ' — potwierdź' : ''}</span>
                     <select
-                      disabled={editorMode === 'edit'}
                       onChange={(event) => {
                         setCategoryReviewRequired(false);
                         setDraft((current) => ({
