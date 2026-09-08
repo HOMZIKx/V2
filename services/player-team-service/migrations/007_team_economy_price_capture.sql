@@ -10,7 +10,9 @@ BEGIN
     INSERT INTO player_team_economy_prices
       (id, item_id, workspace_id, unit_price, currency, created_by, created_at)
     SELECT
-      gen_random_uuid()::text,
+      'drop_price_' || md5(
+        NEW.id || ':' || s.workspace_id || ':' || clock_timestamp()::text || ':' || random()::text
+      ),
       NEW.item_id,
       s.workspace_id,
       NEW.unit_price,
