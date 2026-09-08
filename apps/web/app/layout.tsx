@@ -8,6 +8,7 @@ import { PlayerStoreProvider } from '../src/player-store-react';
 import { AuthGate } from './auth-gate';
 import './globals.css';
 import './generaly-metki-theme.css';
+import './map-marker-bounds.css';
 
 export const metadata: Metadata = {
   title: 'DESTILED — centrum gracza i zespołów',
