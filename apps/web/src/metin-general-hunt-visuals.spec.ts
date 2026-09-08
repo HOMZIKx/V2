@@ -14,7 +14,7 @@ function route(userId: string, color?: string): MetinGeneralHuntRoute {
     userId,
     displayName: userId,
     channel: 1,
-    color,
+    ...(color === undefined ? {} : { color }),
     points: [{ x: 10, y: 10 }],
     updatedAt: 1,
   };
