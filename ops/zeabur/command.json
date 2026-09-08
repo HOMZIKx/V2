@@ -1,10 +1,7 @@
 {
-  "requestId": "webapp-redeploy-after-dockerhub-429-20260908-1756",
-  "mode": "graphql_write",
-  "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}",
-  "variables": {
-    "serviceID": "6a985197573ada8b3bbe52a5",
-    "environmentID": "6a720a3e5f062718bc7b3421"
-  }
+  "requestId": "webapp-redeploy-verify-20260908-1757",
+  "mode": "cli",
+  "action": "deployment:get",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "webapp-dest"
 }
