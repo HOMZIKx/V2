@@ -15,6 +15,7 @@ import { TeamInvitationsUseCases } from '../application/use-cases/team-invitatio
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
 import { PLAYER_TEAM_ENV, TEAM_INVITATIONS_USE_CASES } from './player-team.tokens.js';
+import { resolvePlayerTeamRequestDiscordId } from './request-auth.js';
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
 
 type RequestHeaders = Record<string, string | string[] | undefined>;
@@ -38,10 +39,12 @@ export class TeamInvitationsController {
     private readonly liveBus: WorkspaceLiveBus,
   ) {}
 
-  private viewerId(headers: RequestHeaders): string {
-    return this.useCases.assertAccess(
-      firstHeader(headers, this.env.PLAYER_TEAM_DEMO_VIEWER_HEADER),
-    );
+  private viewerId(headers: RequestHeaders): Promise<string> {
+    return resolvePlayerTeamRequestDiscordId({
+      headers,
+      env: this.env,
+      assertDemoAccess: (value) => this.useCases.assertAccess(value),
+    });
   }
 
   private viewerAppId(headers: RequestHeaders): string | null {
@@ -68,7 +71,7 @@ export class TeamInvitationsController {
 
   @Get()
   public async listIncoming(@Headers() headers: RequestHeaders) {
-    return this.useCases.listPendingInvitations(this.viewerId(headers));
+    return this.useCases.listPendingInvitations(await this.viewerId(headers));
   }
 
   @Post('workspace/:workspaceId')
@@ -81,7 +84,7 @@ export class TeamInvitationsController {
     if (!parsed.success) {
       throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
     }
-    const viewerId = this.viewerId(headers);
+    const viewerId = await this.viewerId(headers);
     const result = await this.useCases.createInvitation({
       ownerDiscordId: viewerId,
       workspaceId,
@@ -98,7 +101,7 @@ export class TeamInvitationsController {
     @Param('workspaceId') workspaceId: string,
     @Param('invitationId') invitationId: string,
   ) {
-    const viewerId = this.viewerId(headers);
+    const viewerId = await this.viewerId(headers);
     const result = await this.useCases.cancelInvitation({
       ownerDiscordId: viewerId,
       workspaceId,
@@ -113,7 +116,7 @@ export class TeamInvitationsController {
     @Headers() headers: RequestHeaders,
     @Param('invitationId') invitationId: string,
   ) {
-    return this.useCases.getInvitation(this.viewerId(headers), invitationId);
+    return this.useCases.getInvitation(await this.viewerId(headers), invitationId);
   }
 
   @Post(':invitationId/accept')
@@ -121,7 +124,7 @@ export class TeamInvitationsController {
     @Headers() headers: RequestHeaders,
     @Param('invitationId') invitationId: string,
   ) {
-    const viewerId = this.viewerId(headers);
+    const viewerId = await this.viewerId(headers);
     const result = await this.useCases.respond({
       recipientDiscordId: viewerId,
       recipientAppId: this.viewerAppId(headers),
@@ -137,7 +140,7 @@ export class TeamInvitationsController {
     @Headers() headers: RequestHeaders,
     @Param('invitationId') invitationId: string,
   ) {
-    const viewerId = this.viewerId(headers);
+    const viewerId = await this.viewerId(headers);
     const result = await this.useCases.respond({
       recipientDiscordId: viewerId,
       recipientAppId: this.viewerAppId(headers),
