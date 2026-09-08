@@ -47,7 +47,7 @@ const ANALYSIS_RESPONSE_JSON_SCHEMA = {
       type: 'array',
       maxItems: 12,
       items: { type: 'string' },
-      description: 'Dokładnie odczytane linie bonusów z tooltipa.',
+      description: 'Wyłącznie linie faktycznie widoczne na tooltipie, bez duplikatów i dopowiadania.',
     },
     confidence: {
       type: 'number',
@@ -220,6 +220,21 @@ function parseCategory(value: unknown): EquipmentCategory | null {
   return EQUIPMENT_CATEGORIES.has(normalized) ? (normalized as EquipmentCategory) : null;
 }
 
+function normalizeExtractedLines(lines: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\s+/gu, ' ').trim();
+    if (!line) continue;
+    const key = line.toLocaleLowerCase('pl-PL');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(line);
+    if (result.length >= 12) break;
+  }
+  return result;
+}
+
 function parseAnalysisDraft(raw: string): AnalysisDraft | null {
   let parsed: unknown;
   try {
@@ -233,13 +248,11 @@ function parseAnalysisDraft(raw: string): AnalysisDraft | null {
   const name = typeof source.name === 'string' ? source.name.trim() : '';
   if (name.length < 2) return null;
 
-  const bonuses = Array.isArray(source.bonuses)
-    ? source.bonuses
-        .filter((entry): entry is string => typeof entry === 'string')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry.length > 0)
-        .slice(0, 12)
-    : [];
+  const bonuses = normalizeExtractedLines(
+    Array.isArray(source.bonuses)
+      ? source.bonuses.filter((entry): entry is string => typeof entry === 'string')
+      : [],
+  );
 
   return {
     name,
@@ -253,18 +266,27 @@ function parseAnalysisDraft(raw: string): AnalysisDraft | null {
 
 const ANALYSIS_PROMPT = `
 Analizujesz WYŁĄCZNIE pojedynczy tooltip przedmiotu z gry Metin2 / Projekt Hard.
-To jest etap roboczy: NIE zapisujesz niczego do bazy i NIE wymyślasz brakujących danych.
+To jest etap roboczy: NIE zapisujesz niczego do bazy i NIE uzupełniasz danych z wiedzy o grze.
+
+Najważniejsza zasada: zwracaj WYŁĄCZNIE tekst, który naprawdę widać na dostarczonym screenie.
+Nazwa przedmiotu NIE jest źródłem bonusów. Jeśli w nazwie jest np. „Białe Złoto”, nie wolno z tego powodu tworzyć linii „Białe Złoto ...”.
 
 Odczytaj pola zgodne z wymaganym schematem JSON.
 
 Zasady:
 - name = nazwa bazowa przedmiotu, bez +N jeżeli +N jest widoczne osobno;
-- enhancement musi być liczbą 0–9; jeśli nie widać poziomu ulepszenia, użyj 0 i opisz niepewność w notes;
-- category określaj wyłącznie, jeśli z nazwy/tooltipa da się rozpoznać typ przedmiotu; jeśli nie, zwróć null;
+- enhancement = liczba 0–9; jeśli nie widać poziomu ulepszenia, użyj 0 i opisz niepewność w notes;
+- category określaj wyłącznie, jeśli z nazwy lub widocznego tooltipa da się rozpoznać typ; jeśli nie, zwróć null;
 - weapon = broń, armor = zbroja, helmet = hełm/czapka, shield = tarcza, earrings = kolczyki, necklace = naszyjnik, bracelet = bransoleta, shoes = buty;
-- bonusy przepisuj w języku i wartościach widocznych na tooltipie; nie dopowiadaj wartości z wiedzy o grze;
-- pomijaj cenę, wagę, opis fabularny, wymagania handlu i tekst interfejsu, jeśli nie są bonusem przedmiotu;
-- jeśli nazwa jest częściowo nieczytelna, podaj najlepszy odczyt i obniż confidence;
+- bonuses = wszystkie faktycznie widoczne linie statystyk/bonusów w kolejności z tooltipa, bez duplikowania i bez normalizowania wartości;
+- NIE dopisuj typowych statystyk przedmiotu z pamięci, katalogu ani nazwy;
+- NIE zamieniaj skrótów na inne bonusy i NIE zgaduj brakujących liczb;
+- pomijaj cenę, wagę, opis fabularny, wymagania handlu i tekst interfejsu;
+- linie kamieni i wtopów/socketów zachowuj jako osobne linie i umieszczaj na KOŃCU bonuses, po zwykłych bonusach;
+- gdy widzisz „Kamień Duszy ...”, zachowaj tę linię oraz bezpośrednio związane z nią linie efektu (np. szansa na krytyczne/przeszywające uderzenie) dopiero w końcowej części listy;
+- linie wtopów biżuterii, np. zaczynające się od „Białe Złoto ...”, „Złoto ...”, „Srebro ...” itp., również umieszczaj na końcu listy; tylko jeśli faktycznie są widoczne;
+- jeśli jedna linia jest nieczytelna, nie twórz jej na siłę: pomiń ją albo opisz niepewność w notes;
+- jeśli nazwa jest częściowo nieczytelna, podaj najlepszy literalny odczyt i obniż confidence;
 - confidence to ogólna pewność odczytu w skali 0–1.
 `.trim();
 
@@ -327,7 +349,7 @@ export async function POST(request: Request) {
           },
         ],
         generationConfig: {
-          temperature: 0.1,
+          temperature: 0,
           maxOutputTokens: 1200,
           responseMimeType: 'application/json',
           responseJsonSchema: ANALYSIS_RESPONSE_JSON_SCHEMA,
