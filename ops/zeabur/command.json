@@ -1,4 +1,8 @@
 {
-  "requestId": "production-auth-chain-after-origin-repair-20260908-1",
-  "mode": "public_e2e"
+  "requestId": "identity-restart-proof-20260908-1",
+  "mode": "cli",
+  "action": "service:restart",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "identity-service",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
