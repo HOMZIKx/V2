@@ -1,6 +1,6 @@
 /** War character claims for the day — file-backed so restart keeps tonight's claims. */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -25,7 +25,13 @@ function warsawDayKey(now = new Date()): string {
 }
 
 function persistPath(): string {
-  const dir = join(tmpdir(), 'destiled-kingdom-war');
+  const gatewayData = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
+  const legacyData = (process.env.DESTILED_DATA_DIR ?? '').trim();
+  const dir = gatewayData
+    ? join(gatewayData, 'kingdom-war')
+    : legacyData
+      ? join(legacyData, 'kingdom-war')
+      : join(tmpdir(), 'destiled-kingdom-war');
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return join(dir, 'claims.json');
 }
@@ -48,7 +54,10 @@ function loadFromDisk(): void {
 function saveToDisk(): void {
   try {
     const payload: PersistShape = { dayKey: claimDayKey, claims: { ...claims } };
-    writeFileSync(persistPath(), JSON.stringify(payload), 'utf8');
+    const target = persistPath();
+    const tmp = `${target}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(payload), 'utf8');
+    renameSync(tmp, target);
   } catch {
     /* memory still works */
   }
@@ -92,7 +101,6 @@ export function claimKingdomWarCharacter(input: {
   if (existing && existing !== input.discordUserId) {
     return { ok: false, reason: 'taken' };
   }
-  // Re-selecting own claim is idempotent and does not consume an extra slot.
   if (existing === input.discordUserId) {
     return { ok: true, claims: { ...claims } };
   }
