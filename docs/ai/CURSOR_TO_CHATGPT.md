@@ -1,8 +1,41 @@
-# Cursor → Owner
+# Cursor / Agent → Owner
 
-## Status
+## Status — 2026-09-08 produkcyjna stabilizacja
 
-Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
+### Discord OAuth / Identity / Player Team
+
+- Produkcyjny internal JWT cutover jest aktywny: Identity issuance, Web client i Player Team verification mają komplet wymaganych envów.
+- Legacy `PLAYER_TEAM_ALLOW_DEMO_WRITE` jest wyłączone; anonimowy `/player-team/v1/me/state` zwraca 401.
+- Identity `/health/ready` potwierdza PostgreSQL, Redis i migrację; JWKS działa z aktywnym `kid`.
+- OAuth start z `https://desapp.zeabur.app` zwraca 302 do `discord.com` i ustawia state cookie.
+- Trusted origins/CORS zostały znormalizowane i zapisane na Zeaburze; API Gateway + Identity zostały redeployowane.
+- Identity oraz Player Team zostały osobno zrestartowane przez Zeabur GraphQL `restartService`; po restartach audyt produkcji i publiczny auth probe nadal przechodzą.
+- Brakujący dowód: realny użytkownik musi zatwierdzić Discord OAuth. Dopiero wtedy można wykonać finalny proof callback → session → internal JWT → Player Team PUT → DB → restart/reload → GET.
+
+### Aktywność Discord
+
+- Bot zbiera aktywność niezależnie od WWW: bezpośrednio z `MessageCreate` i `VoiceStateUpdate`.
+- Poprzednio dane były na efemerycznym filesystemie kontenera.
+- `discord-gateway` ma teraz persistent volume `discord-gateway-data` pod `/data` i `DISCORD_GATEWAY_DATA_DIR=/data`.
+- Restart proof (`34198415994`) potwierdził realny restart procesu oraz zachowanie configu Technika, `collectorStartedAt` i liczników.
+- Bot po restarcie: `ready`, 3 guildie w cache, komendy zarejestrowane, brak runtime error.
+- W czasie testu ranking nadal miał 0 członków / 0 wiadomości / 0 minut voice; do dowodu niezerowej trwałości potrzebny jest jeden prawdziwy event człowieka, potem ponowny restart/check.
+- Dług: zgodnie z ADR-0014 docelowym SoT Activity powinien być `activity-service`; volume jest bieżącym zabezpieczeniem produkcyjnym przed resetami, nie końcową migracją domenową.
+
+### Produkcyjny audyt
+
+- Po restartach: 14 usług, `critical=0`.
+- Główne usługi runtime są `RUNNING` i na `preview/destiled-web`; `player-workspace-service` pozostaje celowo na legacy branchu, bo jego źródło nie istnieje na preview.
+- Pozostał jeden warning: stale typo env `UTHORIZATION_ASSERTION_AUD` w Discord Gateway obok poprawnego klucza. Nie wpływa na działanie; usunięcie zmiennej jest operacją kasującą i nie było potrzebne do naprawy.
+- Zeabur CLI `service restart --service-name` jest obecnie niekompatybilne z aktualnym CLI; skuteczne restarty wykonano przez GraphQL `restartService`.
+
+Pełne run IDs, commity i statusy są w `docs/ai/FIX_LOG.md`.
+
+---
+
+## Poprzedni raport Web — 2026-09-03
+
+Dopięta spójność Timery ↔ Party oraz EQ camp wg follow-upów właściciela.
 
 ### Timery (`/timers`)
 
@@ -41,19 +74,6 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg Twoich follow-upów.
 - Nav: **Zespół**. Przegląd = zmiany, notatki, akcje, członkowie, gotowe timery.
 - Postacie / EQ nie są już siatką na tej stronie — skład w `/characters`.
 
-## Plan Web (SoT z gita)
-
-Dalej wg `WEB_PRODUCT_DESIGN_AND_DELIVERY.md` / D-061: stabilizacja first-player
-
-- create/edit setów/itemów/timerów za mockami. **Bez** API/Discord prod i bez
-  bota, dopóki Web nie będzie zaakceptowany.
-- Włączone dev-safe online persistence MVP (snapshot `PlayerStoreState` przez `player-team-service`)
-  — login dalej wyłączony; używany demo header.
-- SQL schema: tabele relacyjne (workspaces, characters, EQ items/sets/slots, timers, notes, history, viewer snapshots); migracje zarządzane przez `scripts/migrate.mts`.
-- OpenAPI v1 kontrakt: `services/player-team-service/openapi/player-team-v1.yaml`.
-- ADR-0015: player-team-service boundary (właściciel danych, bot-web, dev-safe auth bridge).
-- Web: 409 conflict → blind retry; CORS przez `app.enableCors`.
-
 ## Marker
 
-`READY_FOR_OWNER_REVIEW` + `DEC-066` + `DEC-067` + `DEC-068`
+`PRODUCTION_RUNTIME_STABILIZATION` + `REAL_OAUTH_USER_PROOF_PENDING`
