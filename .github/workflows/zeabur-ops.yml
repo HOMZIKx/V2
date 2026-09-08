@@ -13,6 +13,7 @@ on:
       - ops/zeabur/repair-cors.mjs
       - ops/zeabur/repair-persistent-origins.mjs
       - ops/zeabur/repair-discord-persistence.mjs
+      - ops/zeabur/verify-discord-persistence-proof.mjs
       - ops/zeabur/verify-public-e2e.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
@@ -48,6 +49,7 @@ jobs:
             cors_repair) node ops/zeabur/repair-cors.mjs ;;
             persistent_origin_repair) node ops/zeabur/repair-persistent-origins.mjs ;;
             discord_persistence_repair) node ops/zeabur/repair-discord-persistence.mjs ;;
+            discord_persistence_proof) node ops/zeabur/verify-discord-persistence-proof.mjs ;;
             public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
             *) node ops/zeabur/run.mjs ;;
           esac
