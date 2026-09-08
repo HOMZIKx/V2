@@ -25,16 +25,19 @@ jobs:
           d=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':p['_id']})['project']
           env=next(x for x in d['environments'] if x['name']=='production'); svc=next(x for x in d['services'] if x['name']=='player-team-service')
           latest=gql('query($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:1){edges{node{_id status commitSHA commitMessage}}}}',{'serviceID':svc['_id'],'environmentID':env['_id']})
-          edges=(latest.get('deployments') or {}).get('edges') or []
-          if not edges: print('::error::No deployments');sys.exit(1)
-          dep=edges[0]['node']; print('latest_status='+str(dep.get('status'))); print('latest_sha='+str(dep.get('commitSHA') or '')[:12])
+          dep=((latest.get('deployments') or {}).get('edges') or [])[0]['node']; print('latest_status='+str(dep.get('status'))); print('latest_sha='+str(dep.get('commitSHA') or '')[:12])
           logs=gql('query($deploymentID:ObjectID!){buildLogs(deploymentID:$deploymentID){timestamp message}}',{'deploymentID':dep['_id']}).get('buildLogs') or []
-          # Keep only safe diagnostics and last 120 lines; mask URLs/tokens conservatively.
           msgs=[]
           for entry in logs:
             m=str(entry.get('message') or '')
             m=re.sub(r'https?://\S+','<url>',m)
             m=re.sub(r'(?i)(token|secret|password|key)=\S+',r'\1=<redacted>',m)
             msgs.append(m)
-          for m in msgs[-120:]: print(m[:500])
+          print('--- newest build lines ---')
+          for m in msgs[:160]: print(m[:700])
+          print('--- error/failure lines ---')
+          seen=set()
+          for m in msgs:
+            if re.search(r'(?i)error|failed|failure|exit code|cannot find|not found|npm err|pnpm.*err|ts\d{4}',m) and m not in seen:
+              seen.add(m); print(m[:900])
           PY
