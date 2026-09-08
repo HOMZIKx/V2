@@ -9,7 +9,7 @@ import {
   Put,
   UseFilters,
 } from '@nestjs/common';
-import { createPublicKey, verify as verifySignature, type JsonWebKey } from 'node:crypto';
+import { createPublicKey, verify as verifySignature } from 'node:crypto';
 import { z } from 'zod';
 
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
@@ -26,14 +26,22 @@ const putViewerStateBodySchema = z.object({
 type PutViewerStateBody = z.infer<typeof putViewerStateBodySchema>;
 type RequestHeaders = Record<string, string | string[] | undefined>;
 type JwtRecord = Record<string, unknown>;
+type PublicJwkInput = {
+  readonly kty?: string;
+  readonly crv?: string;
+  readonly x?: string;
+};
 
 const DISCORD_ID_RE = /^\d{17,20}$/;
 const JWT_MAX_TTL_SECONDS = 300;
 const JWT_CLOCK_TOLERANCE_SECONDS = 60;
 const JWKS_CACHE_MS = 60_000;
 
-let cachedJwks: { readonly url: string; readonly expiresAt: number; readonly keys: JwtRecord[] } | null =
-  null;
+let cachedJwks: {
+  readonly url: string;
+  readonly expiresAt: number;
+  readonly keys: JwtRecord[];
+} | null = null;
 
 function firstHeader(headers: RequestHeaders, name: string): string | undefined {
   const value = headers[name.toLowerCase()];
@@ -114,7 +122,7 @@ async function verifyIdentityInternalJwt(token: string, env: PlayerTeamEnv): Pro
 
   let signatureValid = false;
   try {
-    const publicKey = createPublicKey({ key: jwk as JsonWebKey, format: 'jwk' });
+    const publicKey = createPublicKey({ key: jwk as PublicJwkInput, format: 'jwk' });
     signatureValid = verifySignature(
       null,
       Buffer.from(`${encodedHeader}.${encodedPayload}`),
