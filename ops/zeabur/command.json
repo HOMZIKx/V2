@@ -1,4 +1,8 @@
 {
-  "requestId": "final-public-probe-after-restart-bridge-fix-20260908-1",
-  "mode": "public_e2e"
+  "requestId": "inspect-origin-variable-sources-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Inspect($environmentID:ObjectID!){api:service(_id:\"6a8211c9bdeaa87e2c52df34\"){name variables(environmentID:$environmentID){key value readonly exposed}} identity:service(_id:\"6a8211cfbdeaa87e2c52df39\"){name variables(environmentID:$environmentID){key value readonly exposed}}}",
+  "variables": {
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
