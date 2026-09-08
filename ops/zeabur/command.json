@@ -1,5 +1,9 @@
 {
-  "requestId": "inspect-deployment-fields-20260908-1",
+  "requestId": "read-discord-deployments-after-redeploy-20260908-1",
   "mode": "graphql_read",
-  "query": "query DeploymentFields { conn: __type(name:\"DeploymentConnection\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } dep: __type(name:\"Deployment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } }"
+  "query": "query Deployments($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:3){edges{node{_id status commitSHA ref createdAt startedAt finishedAt}}}}",
+  "variables": {
+    "serviceID": "6a8211a6bdeaa87e2c52df28",
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
