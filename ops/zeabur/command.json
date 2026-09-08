@@ -1,9 +1,9 @@
 {
-  "requestId": "read-discord-deployments-after-redeploy-20260908-3",
+  "requestId": "timers-party-runtime-services-20260908-1144",
   "mode": "graphql_read",
-  "query": "query Deployments($serviceID:ObjectID!,$environmentID:ObjectID!){deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:3){edges{node{_id status commitSHA ref createdAt startedAt finishedAt}}}}",
+  "query": "query RuntimeServices($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName repoURL}}}}}",
   "variables": {
-    "serviceID": "6a8211a6bdeaa87e2c52df28",
+    "projectID": "6a720a3e472e2c91a9e660d5",
     "environmentID": "6a720a3e5f062718bc7b3421"
   }
 }
