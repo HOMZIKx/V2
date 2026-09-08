@@ -1,10 +1,4 @@
 {
-  "requestId": "player-team-restart-graphql-20260908-1",
-  "mode": "graphql_write",
-  "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Restart($serviceID:ObjectID!,$environmentID:ObjectID!){restartService(serviceID:$serviceID,environmentID:$environmentID)}",
-  "variables": {
-    "serviceID": "6a99a4d34177ab13f998c84c",
-    "environmentID": "6a720a3e5f062718bc7b3421"
-  }
+  "requestId": "post-auth-restart-production-audit-20260908-1",
+  "mode": "env_audit"
 }
