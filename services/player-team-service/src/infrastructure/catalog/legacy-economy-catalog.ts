@@ -90,14 +90,23 @@ export function parseLegacyEconomyCatalogCsv(
 export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalogSeedItem[]> {
   if (cachedItems) return cachedItems;
 
-  const response = await fetch(LEGACY_EXPORT_URL, {
-    headers: { accept: 'text/csv,text/plain;q=0.9' },
-    cache: 'no-store',
-  });
-  if (!response.ok) {
-    throw new Error(`DOBRYTEMAT Item_export.csv failed: ${response.status}`);
-  }
+  try {
+    const response = await fetch(LEGACY_EXPORT_URL, {
+      headers: { accept: 'text/csv,text/plain;q=0.9' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) {
+      cachedItems = [];
+      return cachedItems;
+    }
 
-  cachedItems = parseLegacyEconomyCatalogCsv(await response.text());
-  return cachedItems;
+    cachedItems = parseLegacyEconomyCatalogCsv(await response.text());
+    return cachedItems;
+  } catch {
+    // The current V2 catalogue remains the primary source. A temporary GitHub/network
+    // failure must never block opening the Economy module or importing the local seed.
+    cachedItems = [];
+    return cachedItems;
+  }
 }
