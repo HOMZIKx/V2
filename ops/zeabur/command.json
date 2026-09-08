@@ -1,5 +1,7 @@
 {
-  "requestId": "inspect-triggerinput-and-updategittrigger-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Schema{trigger:__type(name:\"TriggerInput\"){name inputFields{name type{kind name ofType{kind name ofType{kind name}}}}} mutation:__type(name:\"Mutation\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}}}"
+  "requestId": "cancel-second-stale-api-main-build-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "query": "mutation Cancel($deploymentID:ObjectID!){cancelOngoingDeployment(deploymentID:$deploymentID)}",
+  "variables": {"deploymentID":"6a9fccd311e40dee1a693c5e"}
 }
