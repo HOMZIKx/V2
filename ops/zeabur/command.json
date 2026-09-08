@@ -1,5 +1,8 @@
 {
-  "requestId": "inspect-zeabur-environment-variable-schema-20260908-1",
+  "requestId": "inspect-zeabur-service-config-sources-20260908-1",
   "mode": "graphql_read",
-  "query": "query Schema{env:__type(name:\"Environment\"){fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}} project:__type(name:\"Project\"){fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}} service:__type(name:\"Service\"){fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}} mutation:__schema{mutationType{fields{name args{name type{kind name ofType{kind name}}}}}}}"
+  "query": "query Inspect($environmentID:ObjectID!){api:service(_id:\"6a8211c9bdeaa87e2c52df34\"){name environmentVariableStorage buildEnvironmentMode configPaths(environmentID:$environmentID)} identity:service(_id:\"6a8211cfbdeaa87e2c52df39\"){name environmentVariableStorage buildEnvironmentMode configPaths(environmentID:$environmentID)}}",
+  "variables": {
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
