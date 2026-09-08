@@ -129,6 +129,8 @@ function armTimeout(job: CharacterTimerReminderJob): void {
 export function startCharacterTimerReminderWorker(deps: CharacterTimerReminderDeps): {
   readonly reloaded: number;
 } {
+  // The bootstrap worker is the canonical sender. Scheduling calls must not later
+  // replace it with request-scoped callbacks, otherwise persisted jobs become inconsistent.
   sendDeps = deps;
   loadFromDisk();
   let reloaded = 0;
@@ -156,7 +158,7 @@ export function scheduleCharacterTimerReminder(
   },
   deps: CharacterTimerReminderDeps,
 ): { readonly ok: true; readonly fireAtMs: number } | { readonly ok: false; readonly reason: string } {
-  sendDeps = deps;
+  if (sendDeps === null) sendDeps = deps;
   loadFromDisk();
   const delayMs = Math.max(5_000, Math.min(24 * 3_600_000, Math.round(input.delayMs)));
   const fireAtMs = Date.now() + delayMs;
