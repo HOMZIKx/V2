@@ -1,6 +1,6 @@
 {
-  "requestId": "inspect-production-env-storage-mode-20260908-1",
+  "requestId": "verify-api-web-runtime-final-20260908-3",
   "mode": "graphql_read",
-  "query": "query Inspect($identity:ObjectID!,$api:ObjectID!,$pt:ObjectID!,$web:ObjectID!){identity:service(_id:$identity){name environmentVariableStorage} api:service(_id:$api){name environmentVariableStorage} pt:service(_id:$pt){name environmentVariableStorage} web:service(_id:$web){name environmentVariableStorage}}",
-  "variables": {"identity":"6a8211cfbdeaa87e2c52df39","api":"6a8211c9bdeaa87e2c52df34","pt":"6a99a4d34177ab13f998c84c","web":"6a985197573ada8b3bbe52a5"}
+  "query": "query Verify($api:ObjectID!,$web:ObjectID!,$pt:ObjectID!,$env:ObjectID!){api:service(_id:$api){name status gitTrigger(environmentID:$env){branchName}} web:service(_id:$web){name status gitTrigger(environmentID:$env){branchName} variables(environmentID:$env){key value readonly}} pt:service(_id:$pt){name status gitTrigger(environmentID:$env){branchName}} apiDeployments:deployments(serviceID:$api,environmentID:$env,perPage:4){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} webDeployments:deployments(serviceID:$web,environmentID:$env,perPage:4){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
+  "variables": {"api":"6a8211c9bdeaa87e2c52df34","web":"6a985197573ada8b3bbe52a5","pt":"6a99a4d34177ab13f998c84c","env":"6a720a3e5f062718bc7b3421"}
 }
