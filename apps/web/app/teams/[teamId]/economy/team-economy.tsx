@@ -15,6 +15,9 @@ import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
 import { WorkspaceSectionNav } from '../workspace-section-nav';
+import { CompactAmountInput } from './compact-amount-input';
+import { DropHistoryActions } from './drop-history-actions';
+import { MarketPriceHint } from './market-price-hint';
 import styles from './team-economy.module.css';
 
 type Currency = 'yang' | 'won' | 'gem';
@@ -34,11 +37,13 @@ type Summary = {
 
 type DropItem = {
   id: string;
+  itemId: string | null;
   displayName: string;
   totalQuantity: number;
   ourQuantity: number;
   unitPrice: number;
   currency: Currency;
+  aiConfidence?: number | null;
   perPile: number;
   leftover: number;
 };
@@ -211,10 +216,11 @@ export function TeamEconomy() {
   const ensureCatalog = useCallback(async () => {
     if (!workspace || catalogReady) return;
     try {
-      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), {
-        cache: 'no-store',
-      });
-      if (!statusResponse.ok) throw new Error('Nie udało się sprawdzić bazy przedmiotów.');
+      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), { cache: 'no-store' });
+      if (!statusResponse.ok) {
+        setNotice('Nie udało się sprawdzić dodatkowego katalogu. Ekonomia nadal działa.');
+        return;
+      }
       const status = (await statusResponse.json()) as { total?: number };
       const currentTotal = Number(status.total ?? 0);
       if (currentTotal < dobryTematSeed.length) {
@@ -223,17 +229,19 @@ export function TeamEconomy() {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ items: dobryTematSeed }),
         });
-        if (!importResponse.ok) throw new Error('Nie udało się zaimportować bazy DOBRYTEMAT.');
-        const imported = (await importResponse.json()) as { imported?: number; total?: number };
+        if (!importResponse.ok) {
+          setNotice('Dodatkowy katalog DOBRYTEMAT nie zsynchronizował się w pełni. Ekonomia nadal działa.');
+          return;
+        }
+        const imported = (await importResponse.json()) as { imported?: number };
         if (Number(imported.imported ?? 0) > 0) {
-          setNotice(
-            `Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`,
-          );
+          setNotice(`Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`);
         }
       }
+    } catch {
+      setNotice('Dodatkowy katalog jest chwilowo niedostępny. Ekonomia nadal działa.');
+    } finally {
       setCatalogReady(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Błąd synchronizacji katalogu.');
     }
   }, [workspace, catalogReady]);
 
@@ -329,7 +337,7 @@ export function TeamEconomy() {
         })),
       );
       setNotice(
-        `AI rozpoznało ${body.items.length} pozycji. Sprawdź nazwę, liczbę wszystkich sztuk i wpisz liczbę sztuk należących do nas.`,
+        `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Błąd AI.');
@@ -460,6 +468,7 @@ export function TeamEconomy() {
       if (!response.ok) throw new Error('Serwer odrzucił zapis dropu.');
       setDraftItems([]);
       setDraftMoney([]);
+      setOutsiders('');
       setDropOpen(false);
       setNotice('Drop zapisany i doliczony do ekonomii zespołu.');
       await load();
@@ -492,6 +501,7 @@ export function TeamEconomy() {
       if (!response.ok) throw new Error('Serwer odrzucił koszt.');
       setExpenseOpen(false);
       setExpenseLabel('');
+      setExpensePrice(0);
       setNotice('Koszt zapisany.');
       await load();
     } catch (err) {
@@ -567,7 +577,7 @@ export function TeamEconomy() {
             <strong>{summary?.runCount ?? 0}</strong>
             <small>
               {catalogReady
-                ? `${dobryTematSeed.length} pozycji DOBRYTEMAT w źródle`
+                ? `${dobryTematSeed.length} pozycji katalogu lokalnego`
                 : 'synchronizacja katalogu…'}
             </small>
           </article>
@@ -601,7 +611,7 @@ export function TeamEconomy() {
                     }
                   />
                   <small className={styles.shareHint}>
-                    Pieniądze dzielimy procentowo. Przedmioty wpisujesz wyłącznie w pełnych sztukach.
+                    Pieniądze dzielimy procentowo. Przedmioty wyłącznie w pełnych sztukach.
                   </small>
                 </label>
                 <label className={styles.field}>
@@ -636,7 +646,7 @@ export function TeamEconomy() {
                       onChange={recognize}
                       type="file"
                     />
-                    <small>AI rozpozna przedmioty i ilości. Wynik zawsze można poprawić.</small>
+                    <small>AI czyta sloty, ikony i liczby. Wynik zawsze można poprawić.</small>
                   </span>
                 </label>
 
@@ -682,7 +692,9 @@ export function TeamEconomy() {
                               <input
                                 list="economy-item-catalog"
                                 value={item.name}
-                                onChange={(event) => patchItem(item.key, { name: event.target.value })}
+                                onChange={(event) =>
+                                  patchItem(item.key, { name: event.target.value, itemId: null })
+                                }
                               />
                               {item.confidence !== null ? (
                                 <small>AI {Math.round(item.confidence * 100)}%</small>
@@ -719,15 +731,15 @@ export function TeamEconomy() {
                               />
                             </td>
                             <td>
-                              <input
-                                min="0"
-                                type="number"
+                              <CompactAmountInput
                                 value={item.unitPrice}
-                                onChange={(event) =>
-                                  patchItem(item.key, {
-                                    unitPrice: Math.max(0, Number(event.target.value)),
-                                  })
-                                }
+                                onValueChange={(value) => patchItem(item.key, { unitPrice: value })}
+                              />
+                              <MarketPriceHint
+                                currency={item.currency}
+                                itemName={item.name}
+                                onUsePrice={(value) => patchItem(item.key, { unitPrice: value })}
+                                workspaceId={workspace.id}
                               />
                             </td>
                             <td>
@@ -779,16 +791,9 @@ export function TeamEconomy() {
                       <div className={styles.moneyRow} key={row.key}>
                         <label className={styles.field}>
                           Kwota całkowita
-                          <input
-                            min="0"
-                            step="0.01"
-                            type="number"
+                          <CompactAmountInput
                             value={row.totalAmount}
-                            onChange={(event) =>
-                              patchMoney(row.key, {
-                                totalAmount: Math.max(0, Number(event.target.value)),
-                              })
-                            }
+                            onValueChange={(value) => patchMoney(row.key, { totalAmount: value })}
                           />
                         </label>
                         <label className={styles.field}>
@@ -905,13 +910,7 @@ export function TeamEconomy() {
               </label>
               <label className={styles.field}>
                 Cena / jednostkę
-                <input
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  value={expensePrice}
-                  onChange={(event) => setExpensePrice(Math.max(0, Number(event.target.value)))}
-                />
+                <CompactAmountInput value={expensePrice} onValueChange={setExpensePrice} />
               </label>
               <label className={styles.field}>
                 Waluta
@@ -1049,6 +1048,12 @@ export function TeamEconomy() {
                           .join(' · ')}
                       </p>
                     ) : null}
+                    <DropHistoryActions
+                      drop={drop}
+                      members={workspace.members}
+                      onChanged={load}
+                      workspaceId={workspace.id}
+                    />
                   </article>
                 ))}
               </div>
