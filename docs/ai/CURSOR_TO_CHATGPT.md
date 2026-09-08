@@ -8,25 +8,28 @@
 - Legacy `PLAYER_TEAM_ALLOW_DEMO_WRITE` jest wyłączone; anonimowy `/player-team/v1/me/state` zwraca 401.
 - Identity `/health/ready` potwierdza PostgreSQL, Redis i migrację; JWKS działa z aktywnym `kid`.
 - OAuth start z `https://desapp.zeabur.app` zwraca 302 do `discord.com` i ustawia state cookie.
-- Trusted origins/CORS zostały znormalizowane i zapisane na Zeaburze; API Gateway + Identity zostały redeployowane.
-- Identity oraz Player Team zostały osobno zrestartowane przez Zeabur GraphQL `restartService`; po restartach audyt produkcji i publiczny auth probe nadal przechodzą.
+- `API_GATEWAY_CORS_ORIGINS` i `IDENTITY_TRUSTED_ORIGINS` są zapisane trwale z poprawnym `https://v2-web.zeabur.app`; wcześniejszy błędny `https//v2-web.zeabur.app` został usunięty z aktywnej konfiguracji przez `updateEnvironmentVariable`.
+- `api-gateway` został odzyskany ze stanu `SUSPENDED` natywną mutacją Zeabur `redeployService` z istniejącego Git triggera `preview/destiled-web`. Recovery deployment `6a9fd4677b89d6943549fbb1` uruchomił commit `eb66226297a57ef4401a2f35635bbbb956856272` i osiągnął `RUNNING`.
+- Dla tych GitHub-services nie używać jako recovery ręcznych `deploy(..., vars)` ani `deploy(..., gitRef)`: pierwszy wariant wywołał regresję runtime, drugi rozwiązywał source do `main`. `cicdSources`/`triggerCICDSource` również nie odpowiada temu legacy Git source — globalna i owner-scoped lista źródeł była pusta.
+- Identity oraz Player Team zostały wcześniej osobno zrestartowane przez Zeabur GraphQL `restartService`; po restartach audyt produkcji i publiczny auth probe nadal przechodzą.
 - Brakujący dowód: realny użytkownik musi zatwierdzić Discord OAuth. Dopiero wtedy można wykonać finalny proof callback → session → internal JWT → Player Team PUT → DB → restart/reload → GET.
 
 ### Aktywność Discord
 
 - Bot zbiera aktywność niezależnie od WWW: bezpośrednio z `MessageCreate` i `VoiceStateUpdate`.
 - Poprzednio dane były na efemerycznym filesystemie kontenera.
-- `discord-gateway` ma teraz persistent volume `discord-gateway-data` pod `/data` i `DISCORD_GATEWAY_DATA_DIR=/data`.
+- `discord-gateway` ma persistent volume `discord-gateway-data` pod `/data` i `DISCORD_GATEWAY_DATA_DIR=/data`.
 - Restart proof (`34198415994`) potwierdził realny restart procesu oraz zachowanie configu Technika, `collectorStartedAt` i liczników.
 - Bot po restarcie: `ready`, 3 guildie w cache, komendy zarejestrowane, brak runtime error.
-- W czasie testu ranking nadal miał 0 członków / 0 wiadomości / 0 minut voice; do dowodu niezerowej trwałości potrzebny jest jeden prawdziwy event człowieka, potem ponowny restart/check.
+- Publiczny E2E po API recovery ma już realne niezerowe dane: 6 członków, 12 wiadomości, 34 min voice. Osobny proof `niezerowe liczniki → ponowny restart → te same niezerowe liczniki` nie był jeszcze wykonywany.
 - Dług: zgodnie z ADR-0014 docelowym SoT Activity powinien być `activity-service`; volume jest bieżącym zabezpieczeniem produkcyjnym przed resetami, nie końcową migracją domenową.
 
 ### Produkcyjny audyt
 
-- Po restartach: 14 usług, `critical=0`.
-- Główne usługi runtime są `RUNNING` i na `preview/destiled-web`; `player-workspace-service` pozostaje celowo na legacy branchu, bo jego źródło nie istnieje na preview.
+- Finalny audyt po API recovery: 14 usług, `critical=0`, `warning=1`, `info=8`.
+- Główne usługi runtime są na właściwym `preview/destiled-web`; `player-workspace-service` pozostaje celowo na legacy branchu, bo jego źródło nie istnieje na preview.
 - Pozostał jeden warning: stale typo env `UTHORIZATION_ASSERTION_AUD` w Discord Gateway obok poprawnego klucza. Nie wpływa na działanie; usunięcie zmiennej jest operacją kasującą i nie było potrzebne do naprawy.
+- Finalny public E2E run `34210146628` zakończył się PASS: web live 200; Identity ready 200/status ok; JWKS 200 z `kid`; unauth Identity i Player Team 401; OAuth 302 do `discord.com`; Discord Gateway 200/ready/isolation OK/3 guildie/commands registered; member-activity 200 z 6 członkami, 12 wiadomościami i 34 min voice.
 - Zeabur CLI `service restart --service-name` jest obecnie niekompatybilne z aktualnym CLI; skuteczne restarty wykonano przez GraphQL `restartService`.
 
 Pełne run IDs, commity i statusy są w `docs/ai/FIX_LOG.md`.
@@ -76,4 +79,4 @@ Dopięta spójność Timery ↔ Party oraz EQ camp wg follow-upów właściciela
 
 ## Marker
 
-`PRODUCTION_RUNTIME_STABILIZATION` + `REAL_OAUTH_USER_PROOF_PENDING`
+`PRODUCTION_RUNTIME_STABILIZED` + `API_GATEWAY_RECOVERED` + `REAL_OAUTH_USER_PROOF_PENDING`
