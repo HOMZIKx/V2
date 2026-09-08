@@ -12,6 +12,7 @@ on:
       - ops/zeabur/repair-api-gateway.mjs
       - ops/zeabur/repair-cors.mjs
       - ops/zeabur/repair-persistent-origins.mjs
+      - ops/zeabur/deploy-with-env-snapshot.mjs
       - ops/zeabur/repair-discord-persistence.mjs
       - ops/zeabur/verify-discord-persistence-proof.mjs
       - ops/zeabur/verify-public-e2e.mjs
@@ -48,6 +49,7 @@ jobs:
             api_gateway_repair) node ops/zeabur/repair-api-gateway.mjs ;;
             cors_repair) node ops/zeabur/repair-cors.mjs ;;
             persistent_origin_repair) node ops/zeabur/repair-persistent-origins.mjs ;;
+            deploy_env_snapshot) node ops/zeabur/deploy-with-env-snapshot.mjs ;;
             discord_persistence_repair) node ops/zeabur/repair-discord-persistence.mjs ;;
             discord_persistence_proof) node ops/zeabur/verify-discord-persistence-proof.mjs ;;
             public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
