@@ -32,8 +32,6 @@ function notifySecret(): string {
 function gatewayPathForAction(action: unknown): string {
   if (action === 'watch') return '/notify/timer-watch';
   if (action === 'reset') return '/notify/timer-reset';
-  if (action === 'team-recipients') return '/notify/team-recipients';
-  if (action === 'war-recipients') return '/notify/kingdom-war-recipients';
   if (action === 'team-war-recipients') return '/notify/team-war-recipients';
   return '/notify/timer';
 }
@@ -173,6 +171,15 @@ async function sanitizeForwardBody(
 ): Promise<JsonRecord | Response> {
   const forwardBody = Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'action'));
 
+  // Old global recipient registries are deliberately not exposed to browser callers.
+  // Current team flows are workspace-scoped and rebuilt from authoritative membership.
+  if (action === 'team-recipients' || action === 'war-recipients') {
+    return NextResponse.json(
+      { ok: false, error: 'legacy_global_recipient_action_disabled' },
+      { status: 403 },
+    );
+  }
+
   if (action === 'watch') {
     return { ...forwardBody, discordUserId: viewer.discordId };
   }
@@ -211,9 +218,7 @@ async function sanitizeForwardBody(
     return { ...forwardBody, discordUserId: viewer.discordId };
   }
 
-  // Legacy/admin compatibility actions remain available only to an authenticated
-  // app user. Team-scoped fan-out above is always rebuilt from authoritative state.
-  return forwardBody;
+  return NextResponse.json({ ok: false, error: 'unsupported_notify_action' }, { status: 400 });
 }
 
 /**
