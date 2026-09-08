@@ -10,8 +10,8 @@ Aktualny priorytet runtime: prawdziwy Discord OAuth, trwały Player Team oraz ni
 
 - PR #68 naprawia rozjazd między test-DM a realnym live DM: aktywny `characterTimers.messageTemplate` jest teraz rozwiązywany przy każdej wysyłce, również przez durable worker po restarcie.
 - Trwałość configu Technika została potwierdzona na produkcji przez restart i pełny Zeabur redeploy; przyczyną nie był reset pliku/configu.
-- CI dla `bb9fc801dfc7b78ad866944298ee41903ab212f3`: PASS (`34225187832`); pełny live Discord E2E po wdrożeniu nadal `PARTIAL`.
-- `reminderMinutesBefore` wymaga osobnego pre-reminder joba i pozostaje otwartym, świadomie niewłączonym zakresem.
+- PR #68 jest zmergowany jako `1126e7ead0649f0b6a78f3d669b847b85d096d2f`; post-merge CI `34226072593` PASS. Zeabur wdrożył dokładnie ten SHA (`6a9ffef87b89d694354a08b5`, `RUNNING`), a realny produkcyjny character-timer notify zakończył się DM z prawdziwym `messageId` (`34227810076`) — naprawa live template runtime ma status `DONE`.
+- Aktywny produkcyjny template jest obecnie defaultowy (`ae4c4b0323d6d028`); nie zmieniano go tylko dla testu. `reminderMinutesBefore` wymaga osobnego pre-reminder joba i pozostaje otwartym, świadomie niewłączonym zakresem.
 
 ## Produkcja Zeabur — stan potwierdzony 2026-09-08
 
