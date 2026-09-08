@@ -428,7 +428,7 @@ export default function GeneralsMetinsPage() {
           ? { ...request, status: 'closed' as const, closedAt: Date.now() }
           : request,
       ),
-      history: appendHistory(current, { type: 'killed', channel: activeChannel }),
+      history: appendHistory(current, { type: 'killed', channel }),
     }));
     setMode('view');
   };
@@ -503,7 +503,7 @@ export default function GeneralsMetinsPage() {
             createdAt: Date.now(),
           },
         ],
-        history: appendHistory(current, { type: 'found', channel: activeChannel }),
+        history: appendHistory(current, { type: 'found', channel }),
       }));
       if (ok) setMode('view');
       return;
