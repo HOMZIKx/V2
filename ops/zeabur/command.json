@@ -1,4 +1,5 @@
 {
-  "requestId": "public-login-member-activity-probe-20260908-1",
-  "mode": "public_e2e"
+  "requestId": "discord-persistence-repair-20260908-1",
+  "mode": "discord_persistence_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
