@@ -1,5 +1,6 @@
 {
-  "requestId": "inspect-service-deployment-source-contract-20260908-1",
+  "requestId": "inspect-api-runtime-and-mutations-20260908-1",
   "mode": "graphql_read",
-  "query": "query Schema{service:__type(name:\"Service\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}} deployment:__type(name:\"Deployment\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}} source:__type(name:\"DeploymentSource\"){fields{name type{kind name ofType{kind name}} args{name type{kind name ofType{kind name}}}}}}"
+  "query": "query Inspect($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status(environmentID:$environmentID) suspendedAt suspendedReason gitTrigger(environmentID:$environmentID){branchName repoID repoURL} arbitraryGitSource{url ref} deployments(environmentID:$environmentID){_id gitProvider repoOwner repoName ref commitSHA commitMessage status createdAt startedAt finishedAt canceledAt}}}} __schema{mutationType{fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}}}}",
+  "variables": {"projectID":"6a720a3e472e2c91a9e660d5","environmentID":"6a720a3e5f062718bc7b3421"}
 }
