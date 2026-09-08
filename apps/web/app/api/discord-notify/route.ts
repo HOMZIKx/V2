@@ -194,9 +194,10 @@ async function sanitizeForwardBody(
     return {
       ...forwardBody,
       actorDiscordUserId: viewer.discordId,
-      recipientDiscordUserIds: notifyRecipients(workspace, 'characterTimers').filter(
-        (id) => id !== viewer.discordId,
-      ),
+      // A character timer must keep its owner in the authoritative recipient set.
+      // Discord Gateway schedules the completion DM only for recipientDiscordUserIds;
+      // filtering the actor here silently removed the owner's own reminder.
+      recipientDiscordUserIds: notifyRecipients(workspace, 'characterTimers'),
     };
   }
 
