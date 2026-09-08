@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Repair temporary patcher
+        run: node tools/scripts/fix-timers-party-online-sync-patcher.mjs
+
       - name: Apply online sync hardening
         run: node tools/scripts/apply-timers-party-online-sync.mjs
 
