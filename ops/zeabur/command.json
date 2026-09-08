@@ -1,7 +1,11 @@
 {
-  "requestId": "cancel-second-stale-api-main-build-20260908-1",
+  "requestId": "refresh-api-git-trigger-preview-20260908-1",
   "mode": "graphql_write",
   "confirm": "ZEABUR_WRITE_APPROVED",
-  "query": "mutation Cancel($deploymentID:ObjectID!){cancelOngoingDeployment(deploymentID:$deploymentID)}",
-  "variables": {"deploymentID":"6a9fccd311e40dee1a693c5e"}
+  "query": "mutation Refresh($serviceID:ObjectID!,$environmentID:ObjectID!,$trigger:TriggerInput){updateGitTrigger(serviceID:$serviceID,environmentID:$environmentID,trigger:$trigger)}",
+  "variables": {
+    "serviceID":"6a8211c9bdeaa87e2c52df34",
+    "environmentID":"6a720a3e5f062718bc7b3421",
+    "trigger":{"repoID":1323125581,"branchName":"preview/destiled-web"}
+  }
 }
