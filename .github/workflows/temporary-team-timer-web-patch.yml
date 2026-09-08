@@ -1,0 +1,86 @@
+name: Temporary Team Timer Web Patch
+
+on:
+  push:
+    branches:
+      - 'fix/team-sync-timers-war-20260908'
+    paths:
+      - 'tools/scripts/apply-team-timer-web-patch.mjs'
+      - '.github/workflows/temporary-team-timer-web-patch.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.14.0 --activate
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply focused patch
+        run: node tools/scripts/apply-team-timer-web-patch.mjs
+
+      - name: Format touched files
+        run: |
+          pnpm exec prettier --write \
+            'apps/web/app/teams/[teamId]/characters/[characterId]/character-equipment.tsx' \
+            apps/web/src/player-store.ts \
+            apps/web/src/player-store.spec.ts \
+            apps/web/src/character-timer-discord-notify.ts \
+            apps/discord-gateway/src/application/notify/notify-payload.spec.ts
+
+      - name: Typecheck repository
+        run: pnpm typecheck
+
+      - name: Test Discord team coordination
+        run: |
+          pnpm exec vitest run --config apps/discord-gateway/vitest.config.ts \
+            apps/discord-gateway/src/application/notify/notify-payload.spec.ts \
+            apps/discord-gateway/src/application/notify/kingdom-war-claims.spec.ts \
+            apps/discord-gateway/src/infrastructure/player-team/confirm-character-timer.spec.ts \
+            apps/discord-gateway/src/presentation/discord/team-coordination-renderers.spec.ts
+
+      - name: Test web timer coordination
+        run: |
+          pnpm exec vitest run --config apps/web/vitest.config.ts \
+            apps/web/src/player-store.spec.ts \
+            apps/web/src/character-timer-discord-notify.spec.ts \
+            apps/web/src/discord-notify-api.spec.ts
+
+      - name: Build repository
+        run: pnpm build
+
+      - name: Commit verified patch
+        run: |
+          if git diff --quiet; then
+            echo 'No patch changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            'apps/web/app/teams/[teamId]/characters/[characterId]/character-equipment.tsx' \
+            apps/web/src/player-store.ts \
+            apps/web/src/player-store.spec.ts \
+            apps/web/src/character-timer-discord-notify.ts \
+            apps/discord-gateway/src/application/notify/notify-payload.spec.ts
+          git commit -m 'fix(timers): allow explicit locked due refresh'
+          git push origin HEAD:fix/team-sync-timers-war-20260908
