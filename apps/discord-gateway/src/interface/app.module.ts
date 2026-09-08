@@ -8,6 +8,7 @@ import {
   DiscordBootstrapService,
   loadDiscordConfig,
 } from './discord/discord-bootstrap.service.js';
+import { MemberActivityVoiceBootstrapService } from './discord/member-activity-voice-bootstrap.service.js';
 import {
   DISCORD_CONFIG_TOKEN,
   DISCORD_GATEWAY_TOKEN,
@@ -84,6 +85,7 @@ function resolveTechnikaDataDir(config: DiscordGatewayConfig): string {
       inject: [DISCORD_CONFIG_TOKEN, TECHNIKA_CONFIG_STORE_TOKEN, MEMBER_ACTIVITY_COLLECTOR_TOKEN],
     },
     DiscordBootstrapService,
+    MemberActivityVoiceBootstrapService,
   ],
 })
 export class AppModule {}

@@ -58,6 +58,40 @@ export class MemberActivityCollector {
     });
   }
 
+  /**
+   * Rebuild open voice sessions from Discord's ready-time voice-state cache.
+   *
+   * We intentionally start each recovered session at "now": persisted daily
+   * buckets already contain every full minute flushed before the restart, while
+   * Discord does not expose the original voice join timestamp in VoiceState.
+   * Backfilling an invented join time would risk double-counting.
+   */
+  public seedCurrentVoiceStates(states: Iterable<VoiceState>): number {
+    const cfg = this.getConfig();
+    if (!cfg.enabled) return 0;
+
+    const joinedAtMs = Date.now();
+    let seeded = 0;
+    for (const state of states) {
+      if (state.guild.id !== cfg.guildId) continue;
+      if (state.channelId === null || isAfkVoiceState(state)) continue;
+
+      const member = state.member;
+      if (!member || member.user.bot) continue;
+      if (!this.memberEligible(member, cfg.memberRoleIds)) continue;
+
+      const key = `${state.guild.id}:${member.id}`;
+      if (this.voiceJoined.has(key)) continue;
+
+      this.voiceJoined.set(key, {
+        joinedAtMs,
+        displayName: member.displayName || member.user.username,
+      });
+      seeded += 1;
+    }
+    return seeded;
+  }
+
   public handleVoiceStateUpdate(before: VoiceState, after: VoiceState): void {
     const cfg = this.getConfig();
     if (!cfg.enabled) return;
@@ -95,10 +129,24 @@ export class MemberActivityCollector {
   }
 
   public flushAllOpenSessions(): void {
+    const cfg = this.getConfig();
+    if (!cfg.enabled) {
+      // Never let sessions opened under an older config keep accruing after the
+      // collector is disabled.
+      this.voiceJoined.clear();
+      return;
+    }
+
     const now = Date.now();
     for (const [key, session] of [...this.voiceJoined.entries()]) {
       const [guildId, userId] = key.split(':');
       if (!guildId || !userId) continue;
+      if (guildId !== cfg.guildId) {
+        // The configured source guild may be changed live in Technika. Do not
+        // keep charging stale sessions to the previous guild after that switch.
+        this.voiceJoined.delete(key);
+        continue;
+      }
       const minutes = Math.max(0, Math.floor((now - session.joinedAtMs) / 60_000));
       if (minutes > 0) {
         this.store.addVoiceMinutes({

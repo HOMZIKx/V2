@@ -1,0 +1,125 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import type { VoiceState } from 'discord.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { MemberActivityConfig } from '../technika/capabilities.js';
+import { MemberActivityCollector } from './member-activity-collector.js';
+import { MemberActivityStore } from './member-activity-store.js';
+
+const GUILD_ID = '1543972927719080016';
+const USER_ID = '111111111111111111';
+const OTHER_GUILD_ID = '1531318787058696424';
+
+const tempDirs: string[] = [];
+
+function createStore(): MemberActivityStore {
+  const dir = mkdtempSync(path.join(tmpdir(), 'v2-member-activity-'));
+  tempDirs.push(dir);
+  return new MemberActivityStore(dir);
+}
+
+function state(input?: {
+  guildId?: string;
+  channelId?: string | null;
+  channelName?: string;
+  afkChannelId?: string | null;
+  bot?: boolean;
+  userId?: string;
+}): VoiceState {
+  const channelId = input?.channelId === undefined ? '222222222222222222' : input.channelId;
+  const userId = input?.userId ?? USER_ID;
+  return {
+    guild: {
+      id: input?.guildId ?? GUILD_ID,
+      afkChannelId: input?.afkChannelId ?? null,
+    },
+    channelId,
+    channel: channelId === null ? null : { name: input?.channelName ?? 'Głosowy' },
+    member: {
+      id: userId,
+      displayName: 'Tester',
+      user: { bot: input?.bot ?? false, username: 'tester' },
+      roles: { cache: new Map() },
+    },
+  } as unknown as VoiceState;
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  while (tempDirs.length > 0) {
+    const dir = tempDirs.pop();
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe('MemberActivityCollector voice restart recovery', () => {
+  it('seeds an already-connected member after restart and counts from recovery time once', () => {
+    const store = createStore();
+    const cfg: MemberActivityConfig = {
+      enabled: true,
+      guildId: GUILD_ID,
+      memberRoleIds: [],
+      windowDays: 7,
+      topN: 10,
+    };
+    let now = 1_800_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const collector = new MemberActivityCollector(store, () => cfg);
+    const current = state();
+
+    expect(collector.seedCurrentVoiceStates([current])).toBe(1);
+    expect(collector.seedCurrentVoiceStates([current])).toBe(0);
+
+    now += 2 * 60_000;
+    collector.flushAllOpenSessions();
+
+    const bucket = store.readDay(GUILD_ID, store.dayKey())[USER_ID];
+    expect(bucket?.voiceMinutes).toBe(2);
+    expect(bucket?.displayName).toBe('Tester');
+  });
+
+  it('does not seed AFK, bot, disconnected, or another guild voice states', () => {
+    const store = createStore();
+    const cfg: MemberActivityConfig = {
+      enabled: true,
+      guildId: GUILD_ID,
+      memberRoleIds: [],
+      windowDays: 7,
+      topN: 10,
+    };
+    const collector = new MemberActivityCollector(store, () => cfg);
+    const afkChannelId = '333333333333333333';
+
+    expect(
+      collector.seedCurrentVoiceStates([
+        state({ channelId: afkChannelId, afkChannelId }),
+        state({ bot: true, userId: '444444444444444444' }),
+        state({ channelId: null, userId: '555555555555555555' }),
+        state({ guildId: OTHER_GUILD_ID, userId: '666666666666666666' }),
+      ]),
+    ).toBe(0);
+  });
+
+  it('stops stale open sessions when activity collection is disabled', () => {
+    const store = createStore();
+    let cfg: MemberActivityConfig = {
+      enabled: true,
+      guildId: GUILD_ID,
+      memberRoleIds: [],
+      windowDays: 7,
+      topN: 10,
+    };
+    let now = 1_800_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const collector = new MemberActivityCollector(store, () => cfg);
+
+    expect(collector.seedCurrentVoiceStates([state()])).toBe(1);
+    cfg = { ...cfg, enabled: false };
+    now += 5 * 60_000;
+    collector.flushAllOpenSessions();
+
+    expect(store.readDay(GUILD_ID, store.dayKey())[USER_ID]).toBeUndefined();
+  });
+});
