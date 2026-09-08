@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -95,8 +96,12 @@ export class TeamEconomyManagementController {
     @Query('status') rawStatus?: string,
   ) {
     await this.assertMember(headers, workspaceId);
-    const parsed = rawStatus ? leftoverStatus.safeParse(rawStatus) : null;
-    const status: EconomyLeftoverStatus | undefined = parsed?.success ? parsed.data : undefined;
+    let status: EconomyLeftoverStatus | undefined;
+    if (rawStatus) {
+      const parsed = leftoverStatus.safeParse(rawStatus);
+      if (!parsed.success) throw new BadRequestException('invalid leftover status');
+      status = parsed.data;
+    }
     return this.management.listLeftovers({ workspaceId, status });
   }
 
@@ -109,7 +114,7 @@ export class TeamEconomyManagementController {
   ) {
     const viewerId = await this.assertOwner(headers, workspaceId);
     const parsed = updateLeftoverSchema.safeParse(body);
-    if (!parsed.success) throw new Error('invalid_leftover_status');
+    if (!parsed.success) throw new BadRequestException('invalid leftover status');
     return this.management.updateLeftover({
       workspaceId,
       dropItemId,
@@ -126,7 +131,7 @@ export class TeamEconomyManagementController {
   ) {
     const viewerId = await this.assertOwner(headers, workspaceId);
     const parsed = mergeItemsSchema.safeParse(body);
-    if (!parsed.success) throw new Error('invalid_merge_request');
+    if (!parsed.success) throw new BadRequestException('invalid merge request');
     return this.management.mergeItems({ ...parsed.data, updatedBy: viewerId });
   }
 }
