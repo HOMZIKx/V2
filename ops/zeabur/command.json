@@ -1,6 +1,6 @@
 {
-  "requestId": "schema-service-field-args-20260908-2",
+  "requestId": "schema-config-types-20260908-1",
   "mode": "graphql_read",
-  "query": "query OpsServiceFieldArgs { __type(name: \"Service\") { fields { name args { name type { kind name ofType { kind name } } } type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } }",
+  "query": "query OpsConfigTypes { envVarType: __type(name: \"EnvironmentVariable\") { fields { name type { kind name ofType { kind name } } } } domainType: __type(name: \"Domain\") { fields { name type { kind name ofType { kind name } } } } gitTriggerType: __type(name: \"GitTrigger\") { fields { name type { kind name ofType { kind name } } } } resourceLimitType: __type(name: \"ResourceLimit\") { fields { name type { kind name ofType { kind name } } } } servicePortType: __type(name: \"ServicePort\") { fields { name type { kind name ofType { kind name } } } } autoRestartType: __type(name: \"AutoRestart\") { fields { name type { kind name ofType { kind name } } } } healthType: __type(name: \"ServiceSpecHealthCheck\") { fields { name type { kind name ofType { kind name } } } } }",
   "variables": {}
 }
