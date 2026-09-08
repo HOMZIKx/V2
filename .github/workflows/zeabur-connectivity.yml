@@ -155,7 +155,6 @@ jobs:
                   if project.get('_id'):
                       projects.append((owner_label, project))
 
-          # Zeabur's project query uses `_id`, not `id`.
           detail_query = '''
             query ProjectInventory($id: ObjectID!) {
               project(_id: $id) {
@@ -166,9 +165,15 @@ jobs:
               }
             }
           '''
-          variables_query = '''
-            query ServiceVariables($serviceID: ObjectID!, $environmentID: ObjectID!) {
-              variables(serviceID: $serviceID, environmentID: $environmentID) { key value }
+          service_variables_query = '''
+            query ServiceVariables($id: ObjectID!, $environmentID: ObjectID!) {
+              project(_id: $id) {
+                services {
+                  _id
+                  name
+                  variables(environmentID: $environmentID) { key value }
+                }
+              }
             }
           '''
 
@@ -202,36 +207,36 @@ jobs:
               node = detail['project']
               print(f'ZEABUR_PROJECT owner={owner_label!r} name={node.get("name")!r} id={project_id}')
               environments = node.get('environments') or []
-              services = node.get('services') or []
               for environment in environments:
                   environment_id = environment.get('_id')
                   if not environment_id:
                       continue
                   print(f'ZEABUR_ENV project={project_id} name={environment.get("name")!r} id={environment_id}')
+                  vars_data = gql(
+                      service_variables_query,
+                      {'id': project_id, 'environmentID': environment_id},
+                      required=False,
+                      label=f'service-variables:{project_id}:{environment_id}',
+                  )
+                  services = (((vars_data or {}).get('project') or {}).get('services') or [])
                   for service in services:
                       service_id = service.get('_id')
+                      service_name = service.get('name') or service_id
                       if not service_id:
                           continue
-                      flags = {key: 'unknown' for key in watched_keys}
-                      vars_data = gql(
-                          variables_query,
-                          {'serviceID': service_id, 'environmentID': environment_id},
-                          required=False,
-                          label=f'variables:{service.get("name") or service_id}',
-                      )
-                      if vars_data is not None:
-                          values = {
-                              item.get('key'): item.get('value')
-                              for item in (vars_data.get('variables') or [])
-                              if isinstance(item, dict) and isinstance(item.get('key'), str)
-                          }
-                          for key in watched_keys:
-                              value = values.get(key)
-                              flags[key] = 'set' if isinstance(value, str) and value.strip() else 'unset'
+                      values = {
+                          item.get('key'): item.get('value')
+                          for item in (service.get('variables') or [])
+                          if isinstance(item, dict) and isinstance(item.get('key'), str)
+                      }
+                      flags = {}
+                      for key in watched_keys:
+                          value = values.get(key)
+                          flags[key] = 'set' if isinstance(value, str) and value.strip() else 'unset'
                       safe_flags = ' '.join(f'{key}={flags[key]}' for key in watched_keys)
                       print(
                           f'ZEABUR_SERVICE project={project_id} env={environment_id} '
-                          f'name={service.get("name")!r} id={service_id} {safe_flags}'
+                          f'name={service_name!r} id={service_id} {safe_flags}'
                       )
 
           if not seen:
