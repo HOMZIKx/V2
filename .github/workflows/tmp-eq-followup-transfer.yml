@@ -1,0 +1,38 @@
+name: Temporary EQ follow-up transfer
+
+on:
+  push:
+    branches:
+      - "fix/equipment-post-merge-hardening-20260908"
+    paths:
+      - ".github/workflows/tmp-eq-followup-transfer.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out clean branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/equipment-post-merge-hardening-20260908
+          fetch-depth: 0
+      - name: Copy post-merge EQ files
+        run: |
+          git fetch origin feat/equipment-inventory-screenshot-import-20260908
+          git checkout origin/feat/equipment-inventory-screenshot-import-20260908 -- \
+            apps/web/app/api/equipment/analyze-item/route.ts \
+            'apps/web/app/teams/[teamId]/characters/[characterId]/character-equipment-v2.tsx' \
+            apps/web/src/player-store-react.tsx \
+            apps/web/src/player-store.ts \
+            docs/ai/EQUIPMENT_FOLLOWUP_20260908.md
+          rm .github/workflows/tmp-eq-followup-transfer.yml
+      - name: Commit clean follow-up
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(web): harden equipment editing and screenshot import"
+          git push origin HEAD:fix/equipment-post-merge-hardening-20260908
