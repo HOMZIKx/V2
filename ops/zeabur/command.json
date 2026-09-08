@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-redeploy-verify-20260908-1757",
+  "requestId": "webapp-retry-build-log-20260908-1758",
   "mode": "cli",
-  "action": "deployment:get",
+  "action": "logs:build",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
