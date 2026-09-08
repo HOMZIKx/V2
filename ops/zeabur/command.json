@@ -1,5 +1,6 @@
 {
-  "requestId": "inspect-gitref-input-20260908-1",
+  "requestId": "check-api-recovery-build-before-exact-sha-20260908-1",
   "mode": "graphql_read",
-  "query": "query Schema{__type(name:\"GitRef\"){name inputFields{name type{kind name ofType{kind name}}}}}"
+  "query": "query Check($environmentID:ObjectID!){service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status deployments(environmentID:$environmentID){_id status commitSHA createdAt startedAt finishedAt}}}",
+  "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
 }
