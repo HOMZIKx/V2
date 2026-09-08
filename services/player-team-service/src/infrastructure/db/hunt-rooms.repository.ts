@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { Pool } from 'pg';
 
 import { createLogger } from '@v2/observability';
@@ -26,7 +26,7 @@ function newId(prefix: string): string {
 }
 
 function newPartyJoinCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase();
+  return String(randomInt(10_000_000, 100_000_000));
 }
 
 function isUniqueViolation(error: unknown): boolean {
