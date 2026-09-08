@@ -6,8 +6,13 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   normalizeTeamNotifyPrefs,
   resolveEffectiveNotifyPrefs,
+  type PendingInvitation,
 } from '../../../../src/player-store';
 import { usePlayerStore } from '../../../../src/player-store-react';
+import {
+  cancelTeamInvitation,
+  createTeamInvitation,
+} from '../../../../src/team-invitations-api';
 import {
   discordDirectoryFixture,
   isDiscordUserId,
@@ -23,7 +28,6 @@ export function TeamMembershipManagement() {
   const {
     state,
     hydrated,
-    sendInvitation,
     renameWorkspace,
     removeWorkspaceMember,
     archiveWorkspace,
@@ -35,20 +39,33 @@ export function TeamMembershipManagement() {
   const [discordId, setDiscordId] = useState('');
   const [displayNameHint, setDisplayNameHint] = useState('');
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [justSentDiscordId, setJustSentDiscordId] = useState<string | null>(null);
+  const [justSent, setJustSent] = useState<PendingInvitation | null>(null);
+  const [inviteWorking, setInviteWorking] = useState(false);
+  const [cancellingInvitationId, setCancellingInvitationId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [announcement, setAnnouncement] = useState('');
 
   const isOwner = useMemo(() => {
     if (!workspace || !state.viewer) return false;
+    const viewerDiscordId = state.viewer.discordAccountId?.trim() ?? '';
     return workspace.members.some(
-      (member) => member.id === state.viewer?.id && member.role === 'owner',
+      (member) =>
+        member.role === 'owner' &&
+        (member.id === state.viewer?.id ||
+          (!!viewerDiscordId && member.discordAccountId === viewerDiscordId)),
     );
   }, [workspace, state.viewer]);
 
   const myMember = useMemo(() => {
     if (!workspace || !state.viewer) return null;
-    return workspace.members.find((member) => member.id === state.viewer?.id) ?? null;
+    const viewerDiscordId = state.viewer.discordAccountId?.trim() ?? '';
+    return (
+      workspace.members.find(
+        (member) =>
+          member.id === state.viewer?.id ||
+          (!!viewerDiscordId && member.discordAccountId === viewerDiscordId),
+      ) ?? null
+    );
   }, [workspace, state.viewer]);
 
   const teamPrefs = useMemo(
@@ -64,9 +81,19 @@ export function TeamMembershipManagement() {
     if (workspace) setRenameDraft(workspace.name);
   }, [workspace?.id, workspace?.name]);
 
+  useEffect(() => {
+    const onConflict = (event: Event) => {
+      const detail = (event as CustomEvent<{ readonly workspaceId?: string }>).detail;
+      if (detail?.workspaceId !== params.teamId) return;
+      setAnnouncement(
+        'Ktoś zmienił ten zespół w tym samym momencie. Pobrano nowszą wersję z serwera — sprawdź swoją ostatnią zmianę i w razie potrzeby wykonaj ją ponownie.',
+      );
+    };
+    window.addEventListener('destiled:workspace-sync-conflict', onConflict);
+    return () => window.removeEventListener('destiled:workspace-sync-conflict', onConflict);
+  }, [params.teamId]);
+
   const pending = workspace?.invitations.filter((entry) => entry.status === 'pending') ?? [];
-  const justSent =
-    pending.find((entry) => entry.recipientDiscordId === justSentDiscordId) ?? null;
 
   if (!hydrated) {
     return (
@@ -88,7 +115,7 @@ export function TeamMembershipManagement() {
           <p>
             {workspace?.archived
               ? 'Ten zespół został zamknięty.'
-              : `Ta sesja nie ma przestrzeni o ID „${params.teamId}”.`}
+              : `Nie masz dostępu do przestrzeni o ID „${params.teamId}” albo nie została jeszcze zsynchronizowana.`}
           </p>
           <a className="primary-button" href="/">
             Wróć na pulpit
@@ -110,9 +137,9 @@ export function TeamMembershipManagement() {
     setAnnouncement(`Zmieniono nazwę zespołu na „${trimmed}”.`);
   };
 
-  const handleInvite = (event: FormEvent<HTMLFormElement>) => {
+  const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!writesEnabled || !isOwner) return;
+    if (!writesEnabled || !isOwner || inviteWorking) return;
     const result = resolveInviteDiscordIdentity(
       discordDirectoryFixture,
       discordId,
@@ -126,19 +153,55 @@ export function TeamMembershipManagement() {
       );
       return;
     }
+
     const identity = result.identity;
-    sendInvitation(workspace.id, {
-      discordUserId: identity.discordUserId,
-      displayName: identity.displayName,
-      initials: identity.initials,
-    });
+    setInviteWorking(true);
     setInviteError(null);
-    setJustSentDiscordId(identity.discordUserId);
-    setDiscordId('');
-    setDisplayNameHint('');
-    setAnnouncement(
-      `Wysłano zaproszenie do ${identity.displayName}. Przekaż link z listy poniżej.`,
+    try {
+      const saved = await createTeamInvitation({
+        workspaceId: workspace.id,
+        recipientDiscordId: identity.discordUserId,
+        recipientDisplayName: identity.displayName,
+      });
+      setJustSent(saved.invitation);
+      setDiscordId('');
+      setDisplayNameHint('');
+      setAnnouncement(
+        `Zaproszenie do ${saved.invitation.recipientDisplayName} zostało zapisane na serwerze. Jest ważne 3 dni.`,
+      );
+    } catch (error) {
+      setInviteError(
+        error instanceof Error
+          ? `Nie udało się wysłać zaproszenia: ${error.message}`
+          : 'Nie udało się wysłać zaproszenia.',
+      );
+    } finally {
+      setInviteWorking(false);
+    }
+  };
+
+  const handleCancelInvitation = async (invitation: PendingInvitation) => {
+    if (!isOwner || cancellingInvitationId) return;
+    const ok = window.confirm(
+      `Anulować zaproszenie dla „${invitation.recipientDisplayName}”? Link przestanie działać.`,
     );
+    if (!ok) return;
+
+    setCancellingInvitationId(invitation.id);
+    setInviteError(null);
+    try {
+      await cancelTeamInvitation({ workspaceId: workspace.id, invitationId: invitation.id });
+      if (justSent?.id === invitation.id) setJustSent(null);
+      setAnnouncement(`Anulowano zaproszenie dla „${invitation.recipientDisplayName}”.`);
+    } catch (error) {
+      setInviteError(
+        error instanceof Error
+          ? `Nie udało się anulować zaproszenia: ${error.message}`
+          : 'Nie udało się anulować zaproszenia.',
+      );
+    } finally {
+      setCancellingInvitationId(null);
+    }
   };
 
   const writesTitle = writesEnabled ? undefined : 'Zapis niedostępny — sesja offline.';
@@ -356,10 +419,10 @@ export function TeamMembershipManagement() {
           <section className="panel">
             <h2>Dodaj członka — wyślij zaproszenie</h2>
             <p className="empty-copy">
-              Wpisz Discord ID (17–20 cyfr). Opcjonalnie podaj wyświetlaną nazwę — zaproszenie
-              zapisuje się w zespole i działa przez link akceptacji.
+              Wpisz Discord ID (17–20 cyfr). Opcjonalnie podaj wyświetlaną nazwę. Sukces pokazujemy
+              dopiero po zapisaniu zaproszenia na serwerze; link jest ważny 3 dni.
             </p>
-            <form className="team-invite-form" onSubmit={handleInvite}>
+            <form className="team-invite-form" onSubmit={(event) => void handleInvite(event)}>
               <label className="field">
                 <span>Discord ID</span>
                 <input
@@ -386,19 +449,19 @@ export function TeamMembershipManagement() {
               ) : null}
               <button
                 className="primary-button"
-                disabled={!writesEnabled || !isDiscordUserId(discordId)}
+                disabled={!writesEnabled || inviteWorking || !isDiscordUserId(discordId)}
                 title={
                   writesTitle ??
                   (!isDiscordUserId(discordId) ? 'Podaj prawidłowy Discord ID.' : undefined)
                 }
                 type="submit"
               >
-                Wyślij zaproszenie
+                {inviteWorking ? 'Zapisywanie…' : 'Wyślij zaproszenie'}
               </button>
             </form>
             {justSent ? (
               <p className="entry-status" role="status">
-                Wysłano. Link:{' '}
+                Zapisano na serwerze. Link:{' '}
                 <a href={`/invitations/${justSent.id}`}>{`/invitations/${justSent.id}`}</a>
               </p>
             ) : null}
@@ -418,12 +481,23 @@ export function TeamMembershipManagement() {
                   <div>
                     <strong>{entry.recipientDisplayName}</strong>
                     <span>
-                      Discord {entry.recipientDiscordId} · oczekuje · {entry.createdLabel}
+                      Discord {entry.recipientDiscordId} · oczekuje · {entry.createdLabel} ·{' '}
+                      {entry.expiresLabel}
                     </span>
                   </div>
                   <a className="secondary-button" href={`/invitations/${entry.id}`}>
                     Otwórz link
                   </a>
+                  {isOwner ? (
+                    <button
+                      className="secondary-button is-danger"
+                      disabled={cancellingInvitationId !== null}
+                      onClick={() => void handleCancelInvitation(entry)}
+                      type="button"
+                    >
+                      {cancellingInvitationId === entry.id ? 'Anulowanie…' : 'Anuluj'}
+                    </button>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -436,8 +510,8 @@ export function TeamMembershipManagement() {
               <h2>Zamknij zespół</h2>
             </header>
             <p className="empty-copy">
-              Archiwizacja ukrywa zespół z aktywnej listy. Dane zostają w tej sesji — bez kasowania
-              historii. Tylko właściciel może zamknąć zespół.
+              Archiwizacja ukrywa zespół z aktywnej listy. Dane i historia pozostają zapisane na
+              serwerze. Tylko właściciel może zamknąć zespół.
             </p>
             <button
               className="secondary-button is-danger"

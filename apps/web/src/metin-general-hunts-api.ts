@@ -78,6 +78,15 @@ export type MetinGeneralHuntSnapshot = {
   readonly updatedAtIso: string;
 };
 
+type LegacyFixedHuntRoomState = Omit<MetinGeneralHuntState, 'huntKey'> & {
+  readonly roomKey: string;
+};
+
+type LegacyFixedHuntRoomSnapshot = Omit<MetinGeneralHuntSnapshot, 'huntKey' | 'state'> & {
+  readonly roomKey: string;
+  readonly state: LegacyFixedHuntRoomState;
+};
+
 const configuredBaseUrl =
   process.env.NODE_ENV === 'production'
     ? ''
@@ -115,6 +124,82 @@ async function apiError(res: Response, operation: string): Promise<MetinGeneralH
   }
 }
 
+async function dedicatedRouteIsMissing(res: Response, method: 'GET' | 'PUT'): Promise<boolean> {
+  if (res.status !== 404) return false;
+  try {
+    const body = (await res.clone().json()) as { readonly message?: unknown };
+    return (
+      typeof body.message === 'string' &&
+      body.message.startsWith(`Cannot ${method} /player-team/v1/metin-general-hunts/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function fromLegacySnapshot(
+  huntKey: string,
+  snapshot: LegacyFixedHuntRoomSnapshot,
+): MetinGeneralHuntSnapshot {
+  const { roomKey: _roomKey, ...legacyState } = snapshot.state;
+  void _roomKey;
+  return {
+    huntKey,
+    state: {
+      ...legacyState,
+      huntKey,
+    },
+    revision: snapshot.revision,
+    updatedByUserId: snapshot.updatedByUserId,
+    updatedAtIso: snapshot.updatedAtIso,
+  };
+}
+
+function toLegacyState(state: MetinGeneralHuntState): LegacyFixedHuntRoomState {
+  const { huntKey, ...rest } = state;
+  return {
+    ...rest,
+    roomKey: huntKey,
+  };
+}
+
+async function getLegacyFallback(huntKey: string): Promise<MetinGeneralHuntSnapshot> {
+  const fallback = await fetch(
+    playerTeamUrl(`/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(huntKey)}`),
+    {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'include',
+    },
+  );
+  if (!fallback.ok) throw await apiError(fallback, 'getMetinGeneralHunt fallback failed');
+  return fromLegacySnapshot(huntKey, (await fallback.json()) as LegacyFixedHuntRoomSnapshot);
+}
+
+async function putLegacyFallback(input: {
+  readonly huntKey: string;
+  readonly expectedRevision: number;
+  readonly state: MetinGeneralHuntState;
+}): Promise<MetinGeneralHuntSnapshot> {
+  const fallback = await fetch(
+    playerTeamUrl(`/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(input.huntKey)}`),
+    {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        expectedRevision: input.expectedRevision,
+        state: toLegacyState(input.state),
+      }),
+    },
+  );
+  if (!fallback.ok) throw await apiError(fallback, 'putMetinGeneralHunt fallback failed');
+  return fromLegacySnapshot(
+    input.huntKey,
+    (await fallback.json()) as LegacyFixedHuntRoomSnapshot,
+  );
+}
+
 export async function getMetinGeneralHunt(input: {
   readonly viewerId: string;
   readonly huntKey: string;
@@ -129,8 +214,16 @@ export async function getMetinGeneralHunt(input: {
       credentials: 'include',
     },
   );
-  if (!res.ok) throw await apiError(res, 'getMetinGeneralHunt failed');
-  return (await res.json()) as MetinGeneralHuntSnapshot;
+  if (res.ok) return (await res.json()) as MetinGeneralHuntSnapshot;
+
+  // Rolling-deploy compatibility: the web can be newer than Player Team on Zeabur.
+  // Use the historical endpoint only when Nest explicitly says the new route itself
+  // is missing. Once Player Team deploys the dedicated route this path is never used.
+  if (await dedicatedRouteIsMissing(res, 'GET')) {
+    return getLegacyFallback(input.huntKey);
+  }
+
+  throw await apiError(res, 'getMetinGeneralHunt failed');
 }
 
 export async function putMetinGeneralHunt(input: {
@@ -153,6 +246,11 @@ export async function putMetinGeneralHunt(input: {
       }),
     },
   );
-  if (!res.ok) throw await apiError(res, 'putMetinGeneralHunt failed');
-  return (await res.json()) as MetinGeneralHuntSnapshot;
+  if (res.ok) return (await res.json()) as MetinGeneralHuntSnapshot;
+
+  if (await dedicatedRouteIsMissing(res, 'PUT')) {
+    return putLegacyFallback(input);
+  }
+
+  throw await apiError(res, 'putMetinGeneralHunt failed');
 }

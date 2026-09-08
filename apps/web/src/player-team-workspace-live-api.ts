@@ -1,5 +1,7 @@
 import type { WorkspaceRecord } from './player-store';
 
+export const WORKSPACE_SYNC_CONFLICT_EVENT = 'destiled:workspace-sync-conflict';
+
 export type SharedWorkspaceSnapshot = {
   readonly workspaceId: string;
   readonly state: Record<string, unknown>;
@@ -53,6 +55,15 @@ function isLockedDueTimer(timer: Record<string, unknown>): boolean {
     timer.status === 'running' &&
     timer.progressPercent === 100 &&
     timer.remainingLabel === 'gotowe · zablokowane'
+  );
+}
+
+function announceWorkspaceConflict(workspaceId: string, actualRevision: number | null): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(WORKSPACE_SYNC_CONFLICT_EVENT, {
+      detail: { workspaceId, actualRevision },
+    }),
   );
 }
 
@@ -183,6 +194,7 @@ export async function putSharedWorkspaceState(input: {
     } catch {
       // ignored
     }
+    announceWorkspaceConflict(input.workspace.id, actualRevision);
     return { ok: false, conflict: true, actualRevision };
   }
 

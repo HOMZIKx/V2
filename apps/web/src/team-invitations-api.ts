@@ -67,6 +67,18 @@ export async function createTeamInvitation(input: {
   );
 }
 
+export async function cancelTeamInvitation(input: {
+  readonly workspaceId: string;
+  readonly invitationId: string;
+}): Promise<InvitationWorkspaceResult> {
+  return requestJson<InvitationWorkspaceResult>(
+    playerTeamUrl(
+      `/player-team/v1/invitations/workspace/${encodeURIComponent(input.workspaceId)}/${encodeURIComponent(input.invitationId)}/cancel`,
+    ),
+    { method: 'POST' },
+  );
+}
+
 export async function getTeamInvitation(invitationId: string): Promise<PendingInvitation> {
   return requestJson<PendingInvitation>(
     playerTeamUrl(`/player-team/v1/invitations/${encodeURIComponent(invitationId)}`),

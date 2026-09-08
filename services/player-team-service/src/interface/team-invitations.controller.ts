@@ -92,6 +92,22 @@ export class TeamInvitationsController {
     return result;
   }
 
+  @Post('workspace/:workspaceId/:invitationId/cancel')
+  public async cancel(
+    @Headers() headers: RequestHeaders,
+    @Param('workspaceId') workspaceId: string,
+    @Param('invitationId') invitationId: string,
+  ) {
+    const viewerId = this.viewerId(headers);
+    const result = await this.useCases.cancelInvitation({
+      ownerDiscordId: viewerId,
+      workspaceId,
+      invitationId,
+    });
+    this.publishWorkspace(result, viewerId);
+    return result;
+  }
+
   @Get(':invitationId')
   public async getInvitation(
     @Headers() headers: RequestHeaders,
