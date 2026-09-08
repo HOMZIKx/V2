@@ -11,9 +11,9 @@ export const metadata: Metadata = {
   description: 'Prywatna przestrzeń graczy, zespołów i administracji gildii DESTILED.',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { readonly children: ReactNode }) {
   return (
-    <html lang="pl">">
+    <html lang="pl">
       <body>
         <PlayerStoreProvider>
           <AuthGate>{children}</AuthGate>
