@@ -32,7 +32,9 @@ export class LegacyEconomyCatalogSeeder implements OnApplicationBootstrap {
       // A convenience seed must never make the whole player-team service unavailable.
       // The local V2 catalogue and manual catalog-import endpoint remain usable and a
       // later restart/import can retry the legacy source.
-      this.logger.error('legacy DOBRYTEMAT catalogue synchronization failed; service startup continues.', error);
+      this.logger.error('legacy DOBRYTEMAT catalogue synchronization failed; service startup continues.', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
