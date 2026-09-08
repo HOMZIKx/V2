@@ -21,5 +21,6 @@ describe('aggregate channel view placement', () => {
     expect(text).not.toContain('Wszystkie kanały');
     expect(text).not.toContain("channel === 'all'");
     expect(text).not.toContain("setChannel('all')");
+    expect(text).not.toContain('activeChannel');
   });
 });
