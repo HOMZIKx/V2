@@ -1,6 +1,6 @@
 {
-  "requestId": "schema-service-field-args-20260908-1",
+  "requestId": "schema-service-field-args-20260908-2",
   "mode": "graphql_read",
-  "query": "query OpsServiceFieldArgs { __type(name: \"Service\") { fields { name args { name type { kind name ofType { kind name ofType { kind name } } } } } type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } }",
+  "query": "query OpsServiceFieldArgs { __type(name: \"Service\") { fields { name args { name type { kind name ofType { kind name } } } type { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } }",
   "variables": {}
 }
