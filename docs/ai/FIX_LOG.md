@@ -104,6 +104,22 @@ oraz dla integracji Discord:
 - **Runtime / E2E:** potwierdzono realne połączenie GitHub-hosted runner → `api.zeabur.com` → uwierzytelniony Zeabur Public API.
 - **Niepotwierdzone / ryzyka:** nie oznacza to jeszcze, że mamy gotowe workflow do każdej mutacji Zeabura. Kolejne operacje powinny być dodawane jako jawna allowlista (np. odczyt usług/logów/env presence, restart/redeploy) z blokadą operacji destrukcyjnych.
 
+## 2026-09-08 06:55 — Pełny most operacyjny GitHub Actions → Zeabur + audyt produkcji
+
+- **Status:** `DONE` dla kanału administracyjnego; `PARTIAL` dla naprawy wykrytego driftu produkcyjnego.
+- **Obszar:** Zeabur Public API/GraphQL, GitHub Actions, deployment/runtime, konfiguracja usług.
+- **Problem:** samo sprawdzenie tokenu nie dawało kolejnym sesjom możliwości realnego audytu i korekty ustawień Zeabura. Nie było też trwałego sposobu pobierania konfiguracji, logów, deploymentów ani wykonywania kontrolowanych restartów/redeployów/mutacji.
+- **Poprawka:** utworzono dedykowany branch sterujący `ops/zeabur-control` oraz trwały most: `ops/zeabur/run.mjs`, `ops/zeabur/command.json`, `ops/zeabur/README.md`, `.github/workflows/zeabur-ops.yml`. Most obsługuje uwierzytelnienie, introspekcję aktualnego GraphQL schema, dowolne bezpieczne `graphql_read`, kontrolowane `graphql_write`, odczyt build/runtime logs oraz restart usług przez oficjalny Zeabur CLI. Mutacje wymagają jawnego `ZEABUR_WRITE_APPROVED`; operacje destrukcyjne mają dodatkową blokadę. Wyniki są sanitizowane i publikowane jako krótkotrwałe artefakty bez wartości sekretów.
+- **Dlaczego osobny branch:** operacje administracyjne nie są zapisywane na `preview/destiled-web`, więc sam odczyt logów/config nie powoduje przebudowy produkcji.
+- **Zweryfikowany projekt Zeabur:** `untitled-1`, project ID `6a720a3e472e2c91a9e660d5`, środowisko `production` ID `6a720a3e5f062718bc7b3421`.
+- **Zweryfikowane usługi:** `v2`, `postgresql`, `redis`, `discord-gateway`, `activity-service`, `api-gateway`, `identity-service`, `authorization-service`, `web`, `admin`, `webapp-dest`, `player-workspace-service`, `postgres-player-team`, `player-team-service`.
+- **Walidacja mostu:** `auth` PASS (`34188296846`), GraphQL schema discovery PASS (`34188321497`), project/service/environment inventory PASS (`34188373587`, `34188412520`), service/deployment settings PASS (`34188534275`), env/domain/port/git/resource/health configuration audit PASS (`34188701088`).
+- **Potwierdzone możliwości zapisu API:** m.in. create/update/delete env var, restart/redeploy, update branch, build/start command, Git trigger, health check, ports, resource limits i auto-restart. Operacje usuwające są blokowane przez most bez dodatkowej jawnej zgody.
+- **Wykryty drift produkcji:** nie wszystkie usługi śledzą główny branch wdrożeniowy. `activity-service` i `authorization-service` są na `cursor/p4-1-activity-domain`; `api-gateway` i `player-workspace-service` na `cursor/player-workspace-team-character-board-foundation`; `player-team-service` na `cursor/player-team-online-persistence-dfe5`. `web` i `admin` są zawieszone. Aktualne `v2`, `discord-gateway`, `identity-service` i `webapp-dest` śledzą `preview/destiled-web`.
+- **Kluczowe ustalenie Player Team:** produkcyjny `player-team-service` nie ma obecnie zmiennych `PLAYER_TEAM_INTERNAL_JWT_ENABLED`, `PLAYER_TEAM_INTERNAL_JWT_ISSUER`, `PLAYER_TEAM_INTERNAL_JWT_AUDIENCE`, `PLAYER_TEAM_INTERNAL_JWT_JWKS_URL`, `PLAYER_TEAM_AUTHENTICATED_DISCORD_HEADER`, a sam service działa z branch `cursor/player-team-online-persistence-dfe5`. `webapp-dest` również nie ma obecnie generic `INTERNAL_JWT_CLIENT_*` wymaganych do aktywacji nowego web proxy auth. Oznacza to, że wcześniejszy kod internal-JWT jest w repo, ale nie jest jeszcze faktycznie aktywnym produkcyjnym przepływem.
+- **Deployment/runtime:** w tym kroku nie zmieniano jeszcze branchy, env ani danych produkcyjnych; wykonano wyłącznie odczyt i budowę kontrolowanego kanału administracyjnego.
+- **Następny priorytet:** wyrównać stale branch/service deploymenty do właściwych SHA, następnie skonfigurować i zweryfikować Identity internal JWT oraz pełny przepływ `Discord OAuth → session → web → player-team → DB → reload/restart → read`.
+
 ---
 
 ## Szablon nowego wpisu
