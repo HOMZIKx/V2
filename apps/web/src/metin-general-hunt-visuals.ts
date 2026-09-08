@@ -17,6 +17,8 @@ const WARSAW_CLOCK = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
   hourCycle: 'h23',
 });
 
@@ -38,6 +40,84 @@ const ROUTE_PALETTE = [
   '#ef476f',
   '#90e0ef',
 ] as const;
+
+type WarsawClockParts = {
+  readonly year: number;
+  readonly month: number;
+  readonly day: number;
+  readonly hour: number;
+  readonly minute: number;
+  readonly second: number;
+};
+
+function warsawClockParts(now: number): WarsawClockParts {
+  const values = new Map(
+    WARSAW_CLOCK.formatToParts(new Date(now)).map((part) => [part.type, part.value] as const),
+  );
+  const result = {
+    year: Number(values.get('year')),
+    month: Number(values.get('month')),
+    day: Number(values.get('day')),
+    hour: Number(values.get('hour')),
+    minute: Number(values.get('minute')),
+    second: Number(values.get('second')),
+  };
+  if (Object.values(result).some((value) => !Number.isInteger(value))) {
+    throw new Error('could not resolve Europe/Warsaw hunt clock');
+  }
+  return result;
+}
+
+function calendarPartsAsUtc(parts: WarsawClockParts): number {
+  return Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+}
+
+/** Convert an unambiguous Europe/Warsaw wall-clock time to an epoch timestamp. */
+function warsawWallClockToEpoch(parts: WarsawClockParts): number {
+  const targetCalendar = calendarPartsAsUtc(parts);
+  let guess = targetCalendar;
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const resolvedCalendar = calendarPartsAsUtc(warsawClockParts(guess));
+    const delta = targetCalendar - resolvedCalendar;
+    if (Math.abs(delta) < 1_000) return guess;
+    guess += delta;
+  }
+
+  return guess;
+}
+
+export function nextMetinGeneralHuntSpawn(intervalHours: 4 | 6, now = Date.now()): number {
+  const current = warsawClockParts(now);
+  const nextHour = (Math.floor(current.hour / intervalHours) + 1) * intervalHours;
+  const calendarTarget = new Date(
+    Date.UTC(current.year, current.month - 1, current.day, nextHour, 0, 0),
+  );
+
+  return warsawWallClockToEpoch({
+    year: calendarTarget.getUTCFullYear(),
+    month: calendarTarget.getUTCMonth() + 1,
+    day: calendarTarget.getUTCDate(),
+    hour: calendarTarget.getUTCHours(),
+    minute: 0,
+    second: 0,
+  });
+}
+
+export function formatWarsawHuntClock(value: number): string {
+  return new Date(value).toLocaleTimeString('pl-PL', {
+    timeZone: 'Europe/Warsaw',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 function userHash(userId: string): number {
   let hash = 0;
@@ -142,16 +222,7 @@ export function smoothRoutePath(points: readonly MetinGeneralHuntPoint[]): strin
 export function metinGeneralHuntEventCycleKey(huntKey: string, now = Date.now()): string {
   const intervalHours = HUNT_INTERVAL_HOURS[huntKey];
   if (!intervalHours) throw new Error(`unknown metin/general hunt key: ${huntKey}`);
-  const values = new Map(
-    WARSAW_CLOCK.formatToParts(new Date(now)).map((part) => [part.type, part.value] as const),
-  );
-  const year = values.get('year');
-  const month = values.get('month');
-  const day = values.get('day');
-  const hour = Number(values.get('hour'));
-  if (!year || !month || !day || !Number.isInteger(hour)) {
-    throw new Error('could not resolve Europe/Warsaw hunt cycle clock');
-  }
-  const slotHour = Math.floor(hour / intervalHours) * intervalHours;
-  return `${year}-${month}-${day}T${String(slotHour).padStart(2, '0')}:00@Europe/Warsaw/${intervalHours}h`;
+  const values = warsawClockParts(now);
+  const slotHour = Math.floor(values.hour / intervalHours) * intervalHours;
+  return `${values.year}-${String(values.month).padStart(2, '0')}-${String(values.day).padStart(2, '0')}T${String(slotHour).padStart(2, '0')}:00@Europe/Warsaw/${intervalHours}h`;
 }
