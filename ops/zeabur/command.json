@@ -1,7 +1,12 @@
 {
-  "requestId": "service-restart-mode-proof-20260908-1",
-  "mode": "service_restart",
-  "serviceId": "6a99a4d34177ab13f998c84c",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "cleanup-discord-assertion-aud-typo-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "confirmDestructive": "DESTILED_DESTRUCTIVE_APPROVED",
+  "query": "mutation Drop($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!){deleteSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key)}",
+  "variables": {
+    "serviceID": "6a8211a6bdeaa87e2c52df28",
+    "environmentID": "6a720a3e5f062718bc7b3421",
+    "key": "UTHORIZATION_ASSERTION_AUD"
+  }
 }
