@@ -57,16 +57,16 @@ function formatVoice(minutes: number | undefined): { value: string; unit: string
 }
 
 function rankClass(rank: number): string {
-  if (rank === 1) return styles.rankOne;
-  if (rank === 2) return styles.rankTwo;
-  if (rank === 3) return styles.rankThree;
+  if (rank === 1) return styles.rankOne ?? '';
+  if (rank === 2) return styles.rankTwo ?? '';
+  if (rank === 3) return styles.rankThree ?? '';
   return '';
 }
 
 function rowClass(rank: number): string {
-  if (rank === 1) return styles.topOne;
-  if (rank === 2) return styles.topTwo;
-  if (rank === 3) return styles.topThree;
+  if (rank === 1) return styles.topOne ?? '';
+  if (rank === 2) return styles.topTwo ?? '';
+  if (rank === 3) return styles.topThree ?? '';
   return '';
 }
 
