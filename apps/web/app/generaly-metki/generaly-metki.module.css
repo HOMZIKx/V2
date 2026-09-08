@@ -1,0 +1,641 @@
+.page {
+  width: min(1540px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 56px;
+  color: #e8edf2;
+}
+
+.hero,
+.roomHeader,
+.workspace,
+.sectionHeading,
+.mapToolbar,
+.requestCard header,
+.requestCard footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero {
+  padding: 22px 24px;
+  border: 1px solid rgba(210, 170, 72, 0.18);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(19, 28, 32, 0.98), rgba(10, 16, 20, 0.98));
+}
+
+.eyebrow,
+.roomType,
+.sectionHeading span,
+.nextSpawn span,
+.roomCard > span {
+  display: block;
+  color: #c9a34f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.hero h1,
+.roomHeader h2,
+.sectionHeading h3 {
+  margin: 4px 0 0;
+  color: #f7f8f8;
+}
+
+.hero h1 {
+  font-size: clamp(26px, 3vw, 38px);
+}
+
+.hero p,
+.roomHeader p {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: #8f9da5;
+  line-height: 1.55;
+}
+
+.syncBox {
+  display: flex;
+  min-width: 190px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.syncBox strong,
+.syncBox small {
+  display: block;
+}
+
+.syncBox strong {
+  font-size: 13px;
+}
+
+.syncBox small {
+  margin-top: 2px;
+  color: #718087;
+  font-size: 11px;
+}
+
+.syncDot,
+.syncDotOnline {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #6d7478;
+}
+
+.syncDotOnline {
+  background: #49b994;
+  box-shadow: 0 0 0 4px rgba(73, 185, 148, 0.1);
+}
+
+.roomGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.roomCard {
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  color: #cbd3d7;
+  text-align: left;
+  background: rgba(12, 19, 23, 0.86);
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease, background 120ms ease;
+}
+
+.roomCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(210, 170, 72, 0.28);
+}
+
+.roomCard strong,
+.roomCard small {
+  display: block;
+}
+
+.roomCard strong {
+  margin-top: 7px;
+  color: #f1f3f4;
+  font-size: 14px;
+}
+
+.roomCard small {
+  margin-top: 4px;
+  color: #718087;
+}
+
+.roomCardActive {
+  border-color: rgba(79, 185, 150, 0.55);
+  background: linear-gradient(145deg, rgba(27, 61, 51, 0.52), rgba(12, 20, 23, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(79, 185, 150, 0.08);
+}
+
+.roomHeader {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: #0c1418;
+}
+
+.roomHeader h2 {
+  font-size: 22px;
+}
+
+.roomHeader p {
+  font-size: 12px;
+}
+
+.nextSpawn {
+  min-width: 155px;
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.nextSpawn strong,
+.nextSpawn small {
+  display: block;
+}
+
+.nextSpawn strong {
+  margin-top: 3px;
+  color: #f1cf77;
+  font-size: 22px;
+}
+
+.nextSpawn small {
+  margin-top: 2px;
+  color: #829097;
+}
+
+.channelBar {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 12px 2px 4px;
+}
+
+.channelButton,
+.channelActive,
+.toolButton,
+.toolActive,
+.helpButtons button,
+.comingButton,
+.comingDone,
+.closeButton {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  color: #aeb9be;
+  background: #10191e;
+  cursor: pointer;
+}
+
+.channelButton,
+.channelActive {
+  min-width: 58px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.channelActive,
+.toolActive {
+  border-color: rgba(79, 185, 150, 0.58);
+  color: #82d7bb;
+  background: rgba(36, 104, 82, 0.24);
+}
+
+.notice {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(205, 93, 83, 0.28);
+  border-radius: 10px;
+  color: #e6aba4;
+  background: rgba(117, 39, 35, 0.17);
+  font-size: 12px;
+}
+
+.workspace {
+  align-items: stretch;
+  margin-top: 14px;
+}
+
+.mapPanel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: #0a1115;
+}
+
+.mapToolbar {
+  min-height: 62px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mapToolbar strong,
+.mapToolbar span {
+  display: block;
+}
+
+.mapToolbar strong {
+  font-size: 13px;
+}
+
+.mapToolbar span {
+  margin-top: 3px;
+  color: #6f7d84;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.mapActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.toolButton,
+.toolActive {
+  padding: 7px 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.mapStage {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+  background: #080e11;
+  user-select: none;
+}
+
+.mapStageEditing {
+  cursor: crosshair;
+}
+
+.mapImage {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.routeLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.foundMarker {
+  position: absolute;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -100%);
+  border: 2px solid #f5df9c;
+  border-radius: 50% 50% 50% 0;
+  color: #09100e;
+  background: #d9b458;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  rotate: -45deg;
+}
+
+.foundMarker span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1;
+  rotate: 45deg;
+}
+
+.mapHint {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 4;
+  transform: translateX(-50%);
+  padding: 8px 11px;
+  border: 1px solid rgba(218, 181, 88, 0.32);
+  border-radius: 9px;
+  color: #edd28c;
+  background: rgba(8, 13, 16, 0.92);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.routeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #849198;
+  font-size: 11px;
+}
+
+.routeLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.routeLegend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sidePanel {
+  width: 360px;
+  flex: 0 0 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quickPanel,
+.requestsPanel,
+.historyPanel {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: #0c1418;
+}
+
+.quickPanel,
+.requestsPanel {
+  padding: 14px;
+}
+
+.sectionHeading {
+  margin-bottom: 10px;
+}
+
+.sectionHeading h3 {
+  font-size: 15px;
+}
+
+.sectionHeading em {
+  min-width: 26px;
+  padding: 4px 7px;
+  border-radius: 8px;
+  color: #84ccb4;
+  background: rgba(64, 151, 122, 0.14);
+  font-size: 11px;
+  font-style: normal;
+  text-align: center;
+}
+
+.killedButton {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid rgba(197, 77, 68, 0.42);
+  border-radius: 10px;
+  color: #f1bbb6;
+  background: rgba(143, 49, 43, 0.24);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+}
+
+.helpButtons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.helpButtons button {
+  padding: 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.helpButtons button:hover,
+.comingButton:hover {
+  border-color: rgba(210, 170, 72, 0.38);
+  color: #e3c878;
+}
+
+.requestList {
+  display: flex;
+  max-height: 430px;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.requestCard {
+  padding: 11px;
+  border: 1px solid rgba(219, 177, 75, 0.13);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.requestCard header {
+  justify-content: flex-start;
+  gap: 7px;
+}
+
+.requestCard header > span {
+  padding: 3px 6px;
+  border-radius: 6px;
+  color: #7fd0b4;
+  background: rgba(55, 149, 119, 0.14);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.requestCard header strong {
+  flex: 1 1 auto;
+  font-size: 11px;
+}
+
+.requestCard header small {
+  color: #68767d;
+  font-size: 10px;
+}
+
+.requestCard > p {
+  margin: 7px 0 0;
+  color: #aab5ba;
+  font-size: 12px;
+}
+
+.responders {
+  margin-top: 8px;
+  color: #89969c;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.responders span {
+  color: #63b99d;
+  font-weight: 800;
+}
+
+.requestCard footer {
+  justify-content: flex-start;
+  margin-top: 9px;
+}
+
+.comingButton,
+.comingDone,
+.closeButton {
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.comingButton {
+  border-color: rgba(73, 184, 148, 0.3);
+  color: #81d3b6;
+}
+
+.comingDone {
+  color: #6d7d76;
+  cursor: default;
+}
+
+.closeButton {
+  color: #8d999e;
+}
+
+.empty {
+  margin: 6px 0;
+  color: #69777e;
+  font-size: 11px;
+}
+
+.historyPanel {
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.historyList {
+  max-height: 300px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: 54px 48px minmax(120px, 180px) 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 38px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  font-size: 11px;
+}
+
+.historyRow time {
+  color: #68767d;
+}
+
+.historyChannel {
+  color: #79c7ad;
+  font-weight: 800;
+}
+
+.historyRow strong {
+  overflow: hidden;
+  color: #c3cbd0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyRow > span:last-child {
+  color: #d5b864;
+  font-weight: 800;
+}
+
+button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+@media (max-width: 1120px) {
+  .roomGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .workspace {
+    display: block;
+  }
+
+  .sidePanel {
+    width: 100%;
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: min(100% - 20px, 1540px);
+    padding-top: 14px;
+  }
+
+  .hero,
+  .roomHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .syncBox {
+    width: 100%;
+  }
+
+  .roomGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .nextSpawn {
+    width: 100%;
+    padding: 12px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 0;
+  }
+
+  .mapToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mapActions {
+    justify-content: flex-start;
+  }
+
+  .sidePanel {
+    display: flex;
+  }
+
+  .historyRow {
+    grid-template-columns: 45px 42px minmax(80px, 120px) 1fr;
+    gap: 6px;
+    font-size: 10px;
+  }
+}
