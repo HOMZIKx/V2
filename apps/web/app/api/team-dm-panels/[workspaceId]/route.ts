@@ -130,9 +130,18 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
   if (viewer instanceof Response) return viewer;
   const workspace = await workspaceState(request, viewer.cookie, workspaceId);
   if (workspace instanceof Response) return workspace;
+
   const current = await callGateway('/notify/daily-timer-panel-config/get', { workspaceId });
+  if (!current.ok) {
+    return NextResponse.json({ ok: false, error: 'daily_timer_panel_config_unavailable' }, { status: current.status });
+  }
+
   const parsed = (await current.clone().json().catch(() => null)) as { readonly config?: { readonly dailyTime?: unknown } | null } | null;
-  const dailyTime = typeof parsed?.config?.dailyTime === 'string' ? parsed.config.dailyTime : '08:00';
+  const dailyTime = typeof parsed?.config?.dailyTime === 'string' ? parsed.config.dailyTime.trim() : '';
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dailyTime)) {
+    return NextResponse.json({ ok: false, error: 'invalid_daily_timer_panel_config' }, { status: 502 });
+  }
+
   return callGateway('/notify/daily-timer-panel-config', {
     workspaceId,
     dailyTime,
