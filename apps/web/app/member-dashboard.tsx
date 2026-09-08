@@ -7,9 +7,26 @@ import { AppShell } from './app-shell';
 import { DiscordEntryScreen } from './discord-entry';
 import { MemberDiscordActivity } from './member-discord-activity';
 
+function globallyUniqueWorkspaceSeed(displayName: string): string {
+  const random =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+  // createWorkspace derives its technical id from the supplied slug. Put the
+  // entropy first because player-store intentionally truncates slugs to 32 chars.
+  return `team-${random}-${displayName}`;
+}
+
 export function MemberDashboard() {
-  const { state, hydrated, createWorkspace, loadDemo, resetStore, writesEnabled } =
-    usePlayerStore();
+  const {
+    state,
+    hydrated,
+    createWorkspace,
+    renameWorkspace,
+    loadDemo,
+    resetStore,
+    writesEnabled,
+  } = usePlayerStore();
   const [workspaceName, setWorkspaceName] = useState('');
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -43,7 +60,8 @@ export function MemberDashboard() {
       setCreateError('Podaj nazwę zespołu (min. 2 znaki).');
       return;
     }
-    const id = createWorkspace(trimmed);
+    const id = createWorkspace(globallyUniqueWorkspaceSeed(trimmed));
+    if (id) renameWorkspace(id, trimmed);
     setCreateError(null);
     setCreatedId(id);
     setWorkspaceName('');
@@ -230,11 +248,7 @@ export function MemberDashboard() {
               <p className="empty-copy">Skład i ekwipunek w module Postacie.</p>
               <a
                 className="secondary-button"
-                href={
-                  lastWorkspace
-                    ? `/teams/${lastWorkspace.id}/characters`
-                    : '/#first-use'
-                }
+                href={lastWorkspace ? `/teams/${lastWorkspace.id}/characters` : '/#first-use'}
               >
                 Otwórz postacie
               </a>
