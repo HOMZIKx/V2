@@ -12,12 +12,14 @@ replaceOnce(
   \`                patch: { sessionKills: nextKills },\`,
   \`                patch: { sessionKillsDelta: 1 },\`,
 );`;
-const to = `replaceAllChecked(
-  partyUi,
-  /(^\\s*)patch: \\{ sessionKills: nextKills \\},/gm,
-  (_match, indent) => \\`${'${indent}'}patch: { sessionKillsDelta: 1 },\\`,
-  2,
-);`;
+const to = [
+  'replaceAllChecked(',
+  '  partyUi,',
+  '  /(^\\s*)patch: \\{ sessionKills: nextKills \\},/gm,',
+  '  (_match, indent) => `${indent}patch: { sessionKillsDelta: 1 },`,',
+  '  2,',
+  ');',
+].join('\n');
 if (!source.includes(from)) {
   throw new Error('Expected sessionKills patcher block was not found');
 }
