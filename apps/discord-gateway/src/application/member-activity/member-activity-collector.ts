@@ -8,6 +8,7 @@ import { MemberActivityStore } from './member-activity-store.js';
 type VoiceSession = {
   readonly joinedAtMs: number;
   readonly displayName?: string | undefined;
+  readonly avatarUrl?: string | undefined;
 };
 
 const LIVE_VOICE_FLUSH_MS = 60_000;
@@ -65,6 +66,7 @@ export class MemberActivityCollector {
       discordUserId: message.author.id,
       delta: 1,
       displayName: message.member.displayName || message.author.username,
+      avatarUrl: message.author.displayAvatarURL({ size: 64 }),
     });
   }
 
@@ -96,6 +98,7 @@ export class MemberActivityCollector {
       this.voiceJoined.set(key, {
         joinedAtMs,
         displayName: member.displayName || member.user.username,
+        avatarUrl: member.user.displayAvatarURL({ size: 64 }),
       });
       seeded += 1;
     }
@@ -117,23 +120,24 @@ export class MemberActivityCollector {
     const wasCounted = before.channelId !== null && !isAfkVoiceState(before);
     const isCounted = after.channelId !== null && !isAfkVoiceState(after);
     const displayName = member.displayName || member.user.username;
+    const avatarUrl = member.user.displayAvatarURL({ size: 64 });
 
     // Join a normal voice channel OR move from AFK → normal voice.
     if (!wasCounted && isCounted) {
-      this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName });
+      this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName, avatarUrl });
       return;
     }
 
     // Leave voice OR move from normal voice → AFK. Only the normal-channel time is saved.
     if (wasCounted && !isCounted) {
-      this.flushVoice(key, guildId, member.id, displayName);
+      this.flushVoice(key, guildId, member.id, displayName, avatarUrl);
       return;
     }
 
     // Switching between two normal voice channels keeps one continuous counted session.
     if (wasCounted && isCounted && before.channelId !== after.channelId) {
       if (!this.voiceJoined.has(key)) {
-        this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName });
+        this.voiceJoined.set(key, { joinedAtMs: Date.now(), displayName, avatarUrl });
       }
     }
   }
@@ -163,10 +167,12 @@ export class MemberActivityCollector {
           discordUserId: userId,
           minutes,
           displayName: session.displayName,
+          avatarUrl: session.avatarUrl,
         });
         this.voiceJoined.set(key, {
           joinedAtMs: session.joinedAtMs + minutes * 60_000,
           displayName: session.displayName,
+          avatarUrl: session.avatarUrl,
         });
       }
     }
@@ -177,6 +183,7 @@ export class MemberActivityCollector {
     guildId: string,
     discordUserId: string,
     displayName?: string,
+    avatarUrl?: string,
   ): void {
     const session = this.voiceJoined.get(key);
     this.voiceJoined.delete(key);
@@ -188,6 +195,7 @@ export class MemberActivityCollector {
       discordUserId,
       minutes,
       displayName: displayName ?? session.displayName,
+      avatarUrl: avatarUrl ?? session.avatarUrl,
     });
   }
 
