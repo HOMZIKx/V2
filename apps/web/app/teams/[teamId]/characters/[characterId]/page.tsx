@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react';
 
+import { TeamEquipmentEnhancements } from './team-equipment-enhancements';
 import { TeamEquipmentV2 } from './team-equipment-v2';
 
 export default function CharacterEquipmentPage() {
@@ -14,6 +15,7 @@ export default function CharacterEquipmentPage() {
       }
     >
       <TeamEquipmentV2 />
+      <TeamEquipmentEnhancements />
     </Suspense>
   );
 }

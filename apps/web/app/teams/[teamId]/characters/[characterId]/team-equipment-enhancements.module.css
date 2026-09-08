@@ -1,0 +1,382 @@
+.newSetButton,
+.confirmButton,
+.cancelButton,
+.filterButton,
+.filterActive,
+.modalHeader button,
+.pickerItem {
+  font: inherit;
+}
+
+.newSetButton {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(126, 87, 194, 0.42);
+  border-radius: 12px;
+  padding: 0 16px;
+  color: #f7f8fb;
+  background: linear-gradient(120deg, rgba(180, 34, 59, 0.34), rgba(112, 66, 154, 0.42) 52%, rgba(36, 100, 204, 0.38));
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.newSetButton:hover:not(:disabled) {
+  border-color: rgba(161, 118, 230, 0.72);
+  transform: translateY(-1px);
+}
+
+.newSetButton:disabled,
+.pickerItem:disabled,
+.confirmButton:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+
+.pasteZone {
+  min-height: 122px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  margin: 12px 0 4px;
+  padding: 18px;
+  border: 1px dashed rgba(91, 139, 226, 0.62);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(180, 34, 59, 0.11), transparent 42%),
+    radial-gradient(circle at 85% 0%, rgba(36, 100, 204, 0.14), transparent 44%),
+    rgba(10, 14, 22, 0.52);
+  color: #e9edf5;
+  cursor: copy;
+  text-align: center;
+  outline: none;
+}
+
+.pasteZone:hover,
+.pasteZone:focus {
+  border-color: rgba(130, 166, 235, 0.95);
+  box-shadow: 0 0 0 3px rgba(50, 103, 202, 0.12);
+}
+
+.pasteZone strong {
+  font-size: 0.94rem;
+}
+
+.pasteZone span,
+.pasteZone small {
+  color: #9ba8bd;
+  font-size: 0.78rem;
+}
+
+.pasteZone small {
+  color: #b9c9e7;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 6, 12, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.pickerModal,
+.setModal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(82vh, 820px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(121, 98, 177, 0.4);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(28, 31, 42, 0.98), rgba(12, 15, 23, 0.99)),
+    #11151e;
+  color: #f6f7fa;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+}
+
+.setModal {
+  width: min(480px, calc(100vw - 32px));
+  padding-bottom: 18px;
+}
+
+.modalHeader {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(110deg, rgba(180, 34, 59, 0.16), rgba(112, 66, 154, 0.12) 52%, rgba(36, 100, 204, 0.14));
+}
+
+.modalHeader span {
+  display: block;
+  margin-bottom: 4px;
+  color: #9ea9bc;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.modalHeader button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  color: #dce3ef;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.pickerControls {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr);
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.filterTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filterButton,
+.filterActive {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #aeb8c8;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+}
+
+.filterActive {
+  color: #fff;
+  border-color: rgba(119, 96, 200, 0.58);
+  background: linear-gradient(110deg, rgba(180, 34, 59, 0.22), rgba(112, 66, 154, 0.34), rgba(36, 100, 204, 0.26));
+}
+
+.pickerControls input,
+.field input,
+.field select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  padding: 0 12px;
+  color: #eef2f8;
+  background: rgba(6, 9, 15, 0.72);
+  outline: none;
+}
+
+.pickerControls input:focus,
+.field input:focus,
+.field select:focus {
+  border-color: rgba(91, 139, 226, 0.72);
+  box-shadow: 0 0 0 3px rgba(36, 100, 204, 0.11);
+}
+
+.pickerList {
+  overflow: auto;
+  padding: 12px 14px 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.pickerItem {
+  width: 100%;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 13px;
+  color: #eef2f8;
+  background: rgba(255, 255, 255, 0.026);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pickerItem:hover:not(:disabled) {
+  border-color: rgba(100, 132, 210, 0.52);
+  background: rgba(42, 61, 103, 0.16);
+}
+
+.itemArtwork {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(4, 7, 12, 0.7);
+  overflow: hidden;
+}
+
+.itemArtwork img {
+  max-width: 46px;
+  max-height: 46px;
+  object-fit: contain;
+}
+
+.itemFallback {
+  color: #9ba9c1;
+}
+
+.itemCopy {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.itemCopy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemCopy small {
+  overflow: hidden;
+  color: #8996aa;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.equippedBadge,
+.bagBadge {
+  max-width: 240px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  font-size: 0.69rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+
+.equippedBadge {
+  color: #e8d8ff;
+  border: 1px solid rgba(132, 83, 190, 0.35);
+  background: rgba(112, 66, 154, 0.18);
+}
+
+.bagBadge {
+  color: #c9dbff;
+  border: 1px solid rgba(59, 102, 188, 0.35);
+  background: rgba(36, 100, 204, 0.15);
+}
+
+.emptyPicker {
+  min-height: 210px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  color: #b3bdcd;
+  text-align: center;
+}
+
+.emptyPicker span {
+  color: #7f8a9d;
+  font-size: 0.82rem;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  padding: 0 20px;
+  margin-top: 16px;
+}
+
+.field span {
+  color: #aab4c5;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.setNote {
+  margin: 13px 20px 0;
+  color: #8e9aae;
+  font-size: 0.78rem;
+}
+
+.error {
+  margin: 12px 20px 0;
+  color: #ff9aab;
+  font-size: 0.8rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 18px 20px 0;
+}
+
+.cancelButton,
+.confirmButton {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 15px;
+  border-radius: 11px;
+  cursor: pointer;
+}
+
+.cancelButton {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #c4ccda;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.confirmButton {
+  border: 1px solid rgba(91, 103, 203, 0.38);
+  color: #fff;
+  background: linear-gradient(110deg, rgba(180, 34, 59, 0.72), rgba(112, 66, 154, 0.78) 52%, rgba(36, 100, 204, 0.76));
+}
+
+@media (max-width: 720px) {
+  .backdrop {
+    padding: 10px;
+  }
+
+  .pickerControls {
+    grid-template-columns: 1fr;
+  }
+
+  .pickerItem {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .equippedBadge,
+  .bagBadge {
+    grid-column: 1 / -1;
+    max-width: none;
+    text-align: left;
+  }
+
+  .pasteZone {
+    min-height: 138px;
+  }
+}
