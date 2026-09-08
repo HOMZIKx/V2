@@ -1,0 +1,131 @@
+name: tmp-party-all-channels-patch
+
+on:
+  push:
+    branches:
+      - fix/party-all-channels-remove-hunts-all-20260908
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/party-all-channels-remove-hunts-all-20260908
+
+      - name: Apply targeted correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/app/maps/party-hunt.tsx')
+          text = path.read_text()
+
+          def repl(old: str, new: str, *, count: int = 1):
+              global text
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f'expected {count} occurrence(s), found {actual}: {old[:120]!r}')
+              text = text.replace(old, new, count)
+
+          repl(
+              "  const [channel, setChannel] = useState(1);\n  const [party, setParty] = useState<MapParty | null>(null);",
+              "  const [channel, setChannel] = useState(1);\n  const [allChannels, setAllChannels] = useState(false);\n  const [party, setParty] = useState<MapParty | null>(null);",
+          )
+
+          repl(
+              "  const visiblePins = useMemo(\n    () => activeScoutPins(pins, party, mapKey, channel, now),\n    [channel, mapKey, now, party, pins],\n  );\n  const sidebarPins = useMemo(() => partyActiveScoutPins(pins, party, now), [now, party, pins]);",
+              "  const visiblePins = useMemo(\n    () =>\n      allChannels\n        ? partyActiveScoutPins(pins, party, now).filter((pin) => pin.mapKey === mapKey)\n        : activeScoutPins(pins, party, mapKey, channel, now),\n    [allChannels, channel, mapKey, now, party, pins],\n  );\n  const channelViewLabel = allChannels ? 'Wszystkie kanały' : `CH${channel}`;\n  const sidebarPins = useMemo(() => partyActiveScoutPins(pins, party, now), [now, party, pins]);",
+          )
+
+          repl(
+              "  const viewingSharedPartyMap =\n    party !== null && party.mapKey === mapKey && party.activeChannel === channel;",
+              "  const viewingSharedPartyMap =\n    !allChannels && party !== null && party.mapKey === mapKey && party.activeChannel === channel;",
+          )
+
+          repl(
+              "  const changeChannel = (next: number) => {\n    setChannel(next);\n    setSelectedPinId(null);\n  };\n  const syncPartyToMyView = () => {\n    if (!party) return;",
+              "  const changeChannel = (next: number) => {\n    setAllChannels(false);\n    setChannel(next);\n    setSelectedPinId(null);\n  };\n  const showAllChannels = () => {\n    setAllChannels(true);\n    setSelectedPinId(null);\n  };\n  const syncPartyToMyView = () => {\n    if (!party) return;\n    if (allChannels) {\n      setNotice('Wybierz konkretny CH, aby ustawić wspólną mapę party.');\n      return;\n    }",
+          )
+
+          repl(
+              "  const jumpToPartyMap = () => {\n    if (!party) return;\n    setMapKey(party.mapKey);\n    setChannel(party.activeChannel);",
+              "  const jumpToPartyMap = () => {\n    if (!party) return;\n    setAllChannels(false);\n    setMapKey(party.mapKey);\n    setChannel(party.activeChannel);",
+          )
+
+          repl(
+              "  const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {\n    if (!party) return;",
+              "  const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {\n    if (!party) return;\n    if (allChannels) {\n      setNotice('Wybierz konkretny CH, aby postawić pinezkę.');\n      return;\n    }",
+          )
+
+          repl(
+              "  const selectPinFromList = (pin: PartyScoutPin) => {\n    setMapKey(pin.mapKey);\n    setChannel(pin.channel);",
+              "  const selectPinFromList = (pin: PartyScoutPin) => {\n    setAllChannels(false);\n    setMapKey(pin.mapKey);\n    setChannel(pin.channel);",
+          )
+
+          repl(
+              "                {mapKey} · CH{channel} · mini okno · {huntStatusLabel(connectionStatus)}",
+              "                {mapKey} · {channelViewLabel} · mini okno · {huntStatusLabel(connectionStatus)}",
+          )
+
+          repl(
+              "            <div className=\"respawn-channels\">\n              {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (",
+              "            <div className=\"respawn-channels\">\n              <button\n                aria-pressed={allChannels}\n                className={allChannels ? 'is-active' : ''}\n                onClick={showAllChannels}\n                type=\"button\"\n              >\n                Wszystkie\n              </button>\n              {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (",
+          )
+
+          repl(
+              "                  {mapKey} · CH{channel}\n                  {party",
+              "                  {mapKey} · {channelViewLabel}\n                  {party",
+          )
+
+          repl(
+              "                aria-label={party ? 'Mapa party — klik stawia pinezkę' : 'Mapa party'}\n                className={`respawn-map-stage${party ? ' is-placing' : ''}`}\n                onClick={placeOnMap}\n                role={party ? 'button' : undefined}\n                tabIndex={party ? 0 : undefined}",
+              "                aria-label={\n                  party\n                    ? allChannels\n                      ? 'Mapa party — widok wszystkich kanałów'\n                      : 'Mapa party — klik stawia pinezkę'\n                    : 'Mapa party'\n                }\n                className={`respawn-map-stage${party && !allChannels ? ' is-placing' : ''}`}\n                onClick={placeOnMap}\n                role={party && !allChannels ? 'button' : undefined}\n                tabIndex={party && !allChannels ? 0 : undefined}",
+          )
+
+          repl(
+              "                      <span>CH{channel}</span>",
+              "                      <span>{channelViewLabel}</span>",
+          )
+
+          repl(
+              "                    CH{channel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min",
+              "                    {channelViewLabel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min",
+          )
+
+          repl(
+              "                      <MapPinGlyph />\n                    </button>",
+              "                      <MapPinGlyph />\n                      {allChannels ? (\n                        <span\n                          aria-hidden\n                          style={{\n                            color: '#fff',\n                            fontSize: 8,\n                            fontWeight: 900,\n                            left: '50%',\n                            lineHeight: 1,\n                            pointerEvents: 'none',\n                            position: 'absolute',\n                            textShadow: '0 1px 3px #000',\n                            top: '42%',\n                            transform: 'translate(-50%, -50%)',\n                          }}\n                        >\n                          {pin.channel}\n                        </span>\n                      ) : null}\n                    </button>",
+          )
+
+          repl(
+              "                  {!party\n                    ? 'Najpierw utwórz party albo dołącz kodem obok — potem klik mapy stawia pinezkę.'\n                    : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}",
+              "                  {!party\n                    ? 'Najpierw utwórz party albo dołącz kodem obok — potem klik mapy stawia pinezkę.'\n                    : allChannels\n                      ? 'Widok zbiorczy: pinezki ze wszystkich CH na tej mapie. Wybierz konkretny CH, aby dodać pinezkę.'\n                      : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}",
+          )
+
+          repl(
+              "                    <button\n                      className=\"respawn-party-toggle is-on\"\n                      onClick={syncPartyToMyView}\n                      type=\"button\"\n                    >\n                      <span /> Ustaw mój widok jako mapę party\n                    </button>",
+              "                    <button\n                      className=\"respawn-party-toggle is-on\"\n                      disabled={allChannels}\n                      onClick={syncPartyToMyView}\n                      type=\"button\"\n                    >\n                      <span /> {allChannels ? 'Wybierz CH, aby ustawić mapę party' : 'Ustaw mój widok jako mapę party'}\n                    </button>",
+          )
+
+          path.write_text(text)
+          PY
+
+          # Cofamy omyłkowo dodany widok „Wszystkie kanały” z Generałów/Metinów
+          # do wersji sprzed PR #99. Pozostałe moduły zostają nietknięte.
+          git show 6f95a528a930ab61d19f87ab96d1bb5698ccb0ab:apps/web/app/generaly-metki/page.tsx > apps/web/app/generaly-metki/page.tsx
+
+          rm .github/workflows/tmp-party-all-channels-patch.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/app/maps/party-hunt.tsx apps/web/app/generaly-metki/page.tsx .github/workflows/tmp-party-all-channels-patch.yml
+          git commit -m "fix(web): move all-channel view from hunts to Party"
+          git push origin HEAD:fix/party-all-channels-remove-hunts-all-20260908
