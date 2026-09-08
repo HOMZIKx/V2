@@ -1,6 +1,6 @@
 {
-  "requestId": "resolve-cicd-owner-scope-20260908-1",
+  "requestId": "list-owned-cicd-sources-for-api-recovery-20260908-1",
   "mode": "graphql_read",
-  "query": "query Resolve($projectID:ObjectID!){me{_id username} project(_id:$projectID){_id name ownershipKind owner{_id username} owningTeam{_id name}} teams{_id name}}",
-  "variables": {"projectID":"6a720a3e472e2c91a9e660d5"}
+  "query": "query Sources($ownerID:ObjectID!){cicdSources(ownerID:$ownerID,first:100){edges{node{id url ref region rootDirectory dockerfile authenticationType generation createdAt updatedAt}} pageInfo{hasNextPage endCursor}}}",
+  "variables": {"ownerID":"69db8545e74c7fad2eb83767"}
 }
