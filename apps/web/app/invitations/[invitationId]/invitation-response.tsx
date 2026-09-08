@@ -1,22 +1,85 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { findInvitation } from '../../../src/player-store';
+import {
+  PLAYER_STORE_KEY,
+  findInvitation,
+  parsePlayerStore,
+  serializePlayerStore,
+  type PlayerStoreState,
+  type WorkspaceRecord,
+} from '../../../src/player-store';
+import {
+  getMyPlayerTeamState,
+  putMyPlayerTeamState,
+  resolvePlayerTeamDemoViewerId,
+} from '../../../src/player-team-online-api';
+import {
+  acceptTeamInvitation,
+  declineTeamInvitation,
+  getTeamInvitation,
+} from '../../../src/team-invitations-api';
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell } from '../../app-shell';
 import { DiscordEntryScreen } from '../../discord-entry';
+
+function withAcceptedWorkspace(
+  current: PlayerStoreState,
+  workspace: WorkspaceRecord,
+  invitationId: string,
+): PlayerStoreState {
+  return {
+    ...current,
+    workspaces: [workspace, ...current.workspaces.filter((entry) => entry.id !== workspace.id)],
+    pendingIncomingInvitations: current.pendingIncomingInvitations.filter(
+      (entry) => entry.id !== invitationId,
+    ),
+    lastOpenedWorkspaceId: workspace.id,
+    lastOpenedCharacterId: null,
+  };
+}
 
 export function InvitationResponse() {
   const params = useParams<{ invitationId: string }>();
   const { state, hydrated, acceptInvitation, declineInvitation } = usePlayerStore();
   const [outcome, setOutcome] = useState<'accepted' | 'declined' | null>(null);
+  const [serverInvitation, setServerInvitation] = useState<Awaited<ReturnType<typeof getTeamInvitation>> | null>(null);
+  const [serverChecked, setServerChecked] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const invitation = useMemo(
+  const localInvitation = useMemo(
     () => (hydrated ? findInvitation(state, params.invitationId) : null),
     [hydrated, state, params.invitationId],
   );
+
+  useEffect(() => {
+    if (!hydrated || state.authStatus !== 'authenticated' || !state.viewer) return;
+    if (localInvitation !== null) {
+      setServerChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    setServerChecked(false);
+    void getTeamInvitation(params.invitationId)
+      .then((invitation) => {
+        if (!cancelled) setServerInvitation(invitation);
+      })
+      .catch(() => {
+        if (!cancelled) setServerInvitation(null);
+      })
+      .finally(() => {
+        if (!cancelled) setServerChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, localInvitation, params.invitationId, state.authStatus, state.viewer]);
+
+  const invitation = localInvitation ?? serverInvitation;
 
   if (!hydrated) {
     return (
@@ -30,7 +93,14 @@ export function InvitationResponse() {
     return <DiscordEntryScreen />;
   }
 
-  // Keep local outcome even if invitation moves off the pending list after accept.
+  if (!invitation && !serverChecked) {
+    return (
+      <main className="discord-entry" id="main-content">
+        <p className="entry-status">Sprawdzanie zaproszenia…</p>
+      </main>
+    );
+  }
+
   const alreadyHandled =
     outcome !== null || (invitation !== null && invitation.status !== 'pending');
 
@@ -41,8 +111,7 @@ export function InvitationResponse() {
           <span className="eyebrow">Zaproszenie</span>
           <h1>Nie znaleziono zaproszenia</h1>
           <p>
-            ID <code>{params.invitationId}</code> nie ma w tej sesji. Wczytaj demo albo wyślij
-            zaproszenie z poziomu członków przestrzeni.
+            Zaproszenie nie istnieje, wygasło albo jest przypisane do innego konta Discord.
           </p>
           <a className="primary-button" href="/">
             Wróć na pulpit
@@ -56,12 +125,77 @@ export function InvitationResponse() {
   const workspaceId = invitation?.teamId ?? state.lastOpenedWorkspaceId ?? '/';
   const inviterName = invitation?.inviterName ?? '—';
   const recipientName = invitation?.recipientDisplayName ?? '—';
+  const viewerDiscordId = state.viewer.discordAccountId?.trim() ?? '';
+  const legacyViewerDiscordId = /^\d{17,20}$/.test(state.viewer.id) ? state.viewer.id : '';
   const isRecipient =
     !!invitation &&
-    (invitation.recipientDiscordId === state.viewer.discordAccountId ||
-      invitation.recipientDiscordId === state.viewer.id ||
-      invitation.recipientDisplayName === state.viewer.displayName ||
-      invitation.recipientDisplayName === state.viewer.discordDisplayName);
+    (invitation.recipientDiscordId === viewerDiscordId ||
+      invitation.recipientDiscordId === legacyViewerDiscordId);
+
+  const persistAcceptedWorkspace = async (workspace: WorkspaceRecord): Promise<void> => {
+    const viewerId = resolvePlayerTeamDemoViewerId(state.viewer!);
+    let latest = await getMyPlayerTeamState({ viewerId });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const parsed = latest.state ? parsePlayerStore(JSON.stringify(latest.state)) : null;
+      const base = parsed ?? state;
+      const next = withAcceptedWorkspace(base, workspace, params.invitationId);
+      const put = await putMyPlayerTeamState({
+        viewerId,
+        state: next as unknown as Record<string, unknown>,
+        expectedRevision: latest.revision,
+      });
+      if (put.ok) {
+        window.localStorage.setItem(PLAYER_STORE_KEY, serializePlayerStore(next));
+        return;
+      }
+      if (!put.conflict || attempt === 1) {
+        throw new Error(put.conflict ? 'Konflikt zapisu zespołu.' : put.error);
+      }
+      latest = await getMyPlayerTeamState({ viewerId });
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!invitation || !isRecipient || working) return;
+    setWorking(true);
+    setActionError(null);
+    try {
+      if (serverInvitation !== null) {
+        const result = await acceptTeamInvitation(invitation.id);
+        await persistAcceptedWorkspace(result.workspace);
+        setOutcome('accepted');
+        window.location.assign(`/teams/${result.workspaceId}`);
+        return;
+      }
+
+      // Compatibility for seeded/local demo invitations.
+      acceptInvitation(invitation.id);
+      setOutcome('accepted');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Nie udało się przyjąć zaproszenia.');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!invitation || !isRecipient || working) return;
+    setWorking(true);
+    setActionError(null);
+    try {
+      if (serverInvitation !== null) {
+        await declineTeamInvitation(invitation.id);
+      } else {
+        declineInvitation(invitation.id);
+      }
+      setOutcome('declined');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Nie udało się odrzucić zaproszenia.');
+    } finally {
+      setWorking(false);
+    }
+  };
 
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
@@ -70,14 +204,20 @@ export function InvitationResponse() {
         <h1>{teamName}</h1>
         <p>
           Od <strong>{inviterName}</strong> dla <strong>{recipientName}</strong>. Zalogowano jako{' '}
-          <strong>{state.viewer.discordDisplayName}</strong>. Dane prywatne pojawią się dopiero po
-          akceptacji.
+          <strong>{state.viewer.discordDisplayName}</strong>. Dostęp zostanie przyznany dopiero po
+          akceptacji przez właściwe konto Discord.
         </p>
+
+        {actionError ? (
+          <p className="field-error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         {!alreadyHandled && invitation && !isRecipient ? (
           <p className="entry-status" role="status">
-            To zaproszenie jest dla <strong>{recipientName}</strong>. Zaloguj się na to konto
-            Discord, żeby je przyjąć albo odrzucić.
+            To zaproszenie jest przypisane do innego konta Discord. Zaloguj się na właściwe konto,
+            żeby je przyjąć albo odrzucić.
           </p>
         ) : null}
 
@@ -85,20 +225,16 @@ export function InvitationResponse() {
           <div className="invitation-actions">
             <button
               className="primary-button"
-              onClick={() => {
-                acceptInvitation(invitation.id);
-                setOutcome('accepted');
-              }}
+              disabled={working}
+              onClick={() => void handleAccept()}
               type="button"
             >
-              Akceptuję i dołączam
+              {working ? 'Zapisywanie…' : 'Akceptuję i dołączam'}
             </button>
             <button
               className="secondary-button"
-              onClick={() => {
-                declineInvitation(invitation.id);
-                setOutcome('declined');
-              }}
+              disabled={working}
+              onClick={() => void handleDecline()}
               type="button"
             >
               Odrzuć
@@ -116,13 +252,13 @@ export function InvitationResponse() {
             ) : (
               <>
                 <h2>Zaproszenie zaakceptowane</h2>
-                <p>Dostęp do zespołu został przyznany po Twoim potwierdzeniu.</p>
+                <p>Dostęp do zespołu został przyznany Twojemu kontu Discord.</p>
               </>
             )}
             <a href={`/teams/${workspaceId}`}>Otwórz przestrzeń zespołu</a>
           </div>
         ) : null}
-</main>
+      </main>
     </AppShell>
   );
 }
