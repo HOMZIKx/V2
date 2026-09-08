@@ -1,6 +1,5 @@
 {
-  "requestId": "inspect-deployment-history-corrected-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Inspect($environmentID:ObjectID!){deploymentType:__type(name:\"Deployment\"){fields{name type{kind name ofType{kind name}}}} authz:service(_id:\"6a8211d5a21454a2cf6ad783\"){name status deployments(environmentID:$environmentID){_id status createdAt startedAt ref}} api:service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status deployments(environmentID:$environmentID){_id status createdAt startedAt ref}} identity:service(_id:\"6a8211cfbdeaa87e2c52df39\"){name status deployments(environmentID:$environmentID){_id status createdAt startedAt ref}}}",
-  "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "persistent-origin-repair-after-rollout-settled-20260908-1",
+  "mode": "persistent_origin_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
