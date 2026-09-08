@@ -8,9 +8,22 @@ export const dynamic = 'force-dynamic';
 
 type RawRecognizedItem = { name?: unknown; quantity?: unknown; confidence?: unknown };
 type RateBucket = { count: number; resetAt: number };
+type DynamicCatalogItem = {
+  id: string;
+  canonicalName: string;
+  category: string;
+  imageUrl: string | null;
+};
+type CatalogMatch = {
+  id: string;
+  name: string;
+  category: string;
+  imageUrl: string | null;
+};
 
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
+const DYNAMIC_LOOKUP_LIMIT = 40;
 const rateBuckets = new Map<string, RateBucket>();
 
 function rateLimited(viewerId: string): boolean {
@@ -37,16 +50,84 @@ function normalize(value: string): string {
     .trim();
 }
 
-function bestCatalogMatch(name: string) {
+function bestStaticCatalogMatch(name: string): CatalogMatch | null {
   const target = normalize(name);
   if (!target) return null;
   const exact = gameItemCatalog.find((item) => normalize(item.title) === target);
-  if (exact) return exact;
-  const candidates = gameItemCatalog.filter((item) => {
-    const title = normalize(item.title);
-    return title.includes(target) || target.includes(title);
+  const candidates = exact
+    ? [exact]
+    : gameItemCatalog.filter((item) => {
+        const title = normalize(item.title);
+        return title.includes(target) || target.includes(title);
+      });
+  const catalog = candidates.length === 1 ? candidates[0] : null;
+  return catalog
+    ? {
+        id: catalog.id,
+        name: catalog.title,
+        category: catalog.category,
+        imageUrl: catalog.sourceImageUrl ?? catalog.imagePath,
+      }
+    : null;
+}
+
+function workspaceIdFromRequest(request: NextRequest): string | null {
+  const referer = request.headers.get('referer');
+  if (!referer) return null;
+  try {
+    const path = new URL(referer).pathname;
+    const match = /^\/teams\/([^/]+)\/economy(?:\/|$)/.exec(path);
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function chooseDynamicMatch(name: string, rows: readonly DynamicCatalogItem[]): CatalogMatch | null {
+  const target = normalize(name);
+  if (!target) return null;
+  const exact = rows.find((item) => normalize(item.canonicalName) === target);
+  if (exact) {
+    return {
+      id: exact.id,
+      name: exact.canonicalName,
+      category: exact.category,
+      imageUrl: exact.imageUrl,
+    };
+  }
+  const candidates = rows.filter((item) => {
+    const candidate = normalize(item.canonicalName);
+    return candidate.includes(target) || target.includes(candidate);
   });
-  return candidates.length === 1 ? candidates[0] : null;
+  const match = candidates.length === 1 ? candidates[0] : null;
+  return match
+    ? { id: match.id, name: match.canonicalName, category: match.category, imageUrl: match.imageUrl }
+    : null;
+}
+
+async function dynamicCatalogMatch(
+  request: NextRequest,
+  workspaceId: string,
+  name: string,
+): Promise<CatalogMatch | null> {
+  const cookie = request.headers.get('cookie');
+  if (!cookie) return null;
+  try {
+    const url = new URL(
+      `/player-team/v1/economy/workspaces/${encodeURIComponent(workspaceId)}/items?q=${encodeURIComponent(name)}`,
+      request.nextUrl.origin,
+    );
+    const response = await fetch(url, {
+      headers: { accept: 'application/json', cookie },
+      cache: 'no-store',
+    });
+    if (!response.ok) return null;
+    const rows = (await response.json()) as DynamicCatalogItem[];
+    return chooseDynamicMatch(name, Array.isArray(rows) ? rows : []);
+  } catch (error) {
+    console.error('team economy dynamic catalogue lookup failed', error);
+    return null;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -112,29 +193,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'ai_invalid_result' }, { status: 502 });
   }
 
-  const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 200).map((raw) => {
+  const recognized = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 200).map((raw) => {
     const name =
       typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Nieznany przedmiot';
-    const quantity = Number.isFinite(Number(raw.quantity))
-      ? Math.max(1, Math.floor(Number(raw.quantity)))
-      : 1;
-    const confidence = Number.isFinite(Number(raw.confidence))
-      ? Math.max(0, Math.min(1, Number(raw.confidence)))
-      : 0;
-    const catalog = bestCatalogMatch(name);
     return {
       recognizedName: name,
-      quantity,
-      confidence,
-      catalogMatch: catalog
-        ? {
-            id: catalog.id,
-            name: catalog.title,
-            category: catalog.category,
-            imageUrl: catalog.sourceImageUrl ?? catalog.imagePath,
-          }
-        : null,
+      quantity: Number.isFinite(Number(raw.quantity))
+        ? Math.max(1, Math.floor(Number(raw.quantity)))
+        : 1,
+      confidence: Number.isFinite(Number(raw.confidence))
+        ? Math.max(0, Math.min(1, Number(raw.confidence)))
+        : 0,
+      catalogMatch: bestStaticCatalogMatch(name),
     };
   });
-  return NextResponse.json({ items });
+
+  const workspaceId = workspaceIdFromRequest(request);
+  if (workspaceId) {
+    const unmatched = recognized
+      .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.catalogMatch === null)
+      .slice(0, DYNAMIC_LOOKUP_LIMIT);
+    const dynamicMatches = await Promise.all(
+      unmatched.map(({ item }) => dynamicCatalogMatch(request, workspaceId, item.recognizedName)),
+    );
+    dynamicMatches.forEach((catalogMatch, resultIndex) => {
+      const target = unmatched[resultIndex];
+      if (target && catalogMatch) recognized[target.index] = { ...target.item, catalogMatch };
+    });
+  }
+
+  return NextResponse.json({ items: recognized });
 }
