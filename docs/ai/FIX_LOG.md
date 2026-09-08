@@ -74,6 +74,22 @@ oraz dla integracji Discord:
 - **Deployment:** Zeabur — `Deployed successfully` dla SHA `350891f10a037b73edcca670a508de693e96ba20`.
 - **Runtime:** sam deployment potwierdzony; pełny Discord OAuth → session → Player Team write → DB → reload/restart → read nadal wymaga osobnego potwierdzenia.
 
+## 2026-09-08 — Obowiązkowy rejestr poprawek dla wszystkich przyszłych sesji AI
+
+- **Status:** `DONE`.
+- **Obszar:** dokumentacja operacyjna AI / ciągłość pracy.
+- **Problem:** wykonane poprawki mogły zostać utracone między chatami lub agentami, co zwiększało ryzyko powtarzania pracy, cofania wcześniejszych napraw i opierania się na nieaktualnym kontekście.
+- **Przyczyna:** repo nie miało jednego obowiązkowego, trwałego rejestru wykonanych napraw wymuszonego przez nadrzędne instrukcje dla agentów.
+- **Poprawka:** utworzono `docs/ai/FIX_LOG.md` jako obowiązkowy rejestr oraz zmieniono `AGENTS.md`, aby każdy ChatGPT/Cursor/Codex/agent AI musiał przeczytać rejestr przed pracą i dopisać wpis przed uznaniem poprawki za zakończoną. Dodano też zasadę `DONE/PARTIAL/BLOCKED/REGRESSION` i wymóg rozróżniania build/deploy od realnego E2E.
+- **Zmienione pliki:**
+  - `docs/ai/FIX_LOG.md`
+  - `AGENTS.md`
+- **Commity:** utworzenie rejestru `4d9b0c3fc37a53269fe84362989e613995e1bb91`; wymuszenie w `AGENTS.md` `ec1676700e59e4dccfa738b65b87de75de138807`.
+- **Walidacja:** zmiana dokumentacyjna; sprawdzono zapis obu plików na `preview/destiled-web`.
+- **Deployment:** nie jest wymagany funkcjonalnie do działania tej reguły; pliki są już zapisane w branchu roboczym repo.
+- **Runtime / E2E:** nie dotyczy.
+- **Niepotwierdzone / ryzyka:** reguła działa dla agentów, które respektują `AGENTS.md`; dlatego `FIX_LOG.md` został również wpisany bezpośrednio do obowiązkowej kolejności czytania.
+
 ---
 
 ## Szablon nowego wpisu
