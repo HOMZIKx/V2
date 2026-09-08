@@ -19,6 +19,7 @@ export type LiveTimerSnapshot = {
   readonly status: string;
   readonly remainingLabel?: string;
   readonly detail?: string;
+  readonly readyAtIso?: string;
 };
 
 export type ConfirmCharacterTimerFromBotResult =
@@ -60,6 +61,7 @@ type LooseTimer = {
   durationMinutes?: number;
   remainingLabel?: string;
   detail?: string;
+  readyAtIso?: string;
   [key: string]: unknown;
 };
 
@@ -196,14 +198,6 @@ async function resolveLoadedTimer(
   return { ok: false, error: lastMiss.error, status: lastMiss.status };
 }
 
-/**
- * Marks a character ProgressTimer done in player-team /me/state
- * so Discord "Gotowe" works without opening WWW.
- *
- * Uses the same restart rules as web `markTimerDone` (Ksiega midnight, Kamien 12h, ...).
- * Tries bare Discord snowflake first, then `discord:<id>` alias.
- */
-
 function snapshotLiveTimers(
   timers: readonly LooseTimer[],
   characterId: string | null | undefined,
@@ -217,18 +211,32 @@ function snapshotLiveTimers(
     const remainingLabel =
       typeof timer.remainingLabel === 'string' ? timer.remainingLabel : undefined;
     const detail = typeof timer.detail === 'string' ? timer.detail : undefined;
+    const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : undefined;
     out.push({
       id: timer.id,
       label,
       status,
       ...(remainingLabel ? { remainingLabel } : {}),
       ...(detail ? { detail } : {}),
+      ...(readyAtIso ? { readyAtIso } : {}),
     });
-    if (out.length >= 10) break;
+    if (out.length >= 12) break;
   }
   return out;
 }
 
+function timerCanRefresh(timer: LooseTimer): boolean {
+  if (!timer.status || timer.status === 'ready') return true;
+  if (timer.status !== 'running' || typeof timer.readyAtIso !== 'string') return false;
+  const readyAtMs = Date.parse(timer.readyAtIso);
+  return Number.isFinite(readyAtMs) && readyAtMs <= Date.now() + 1_000;
+}
+
+/**
+ * Refreshes a character ProgressTimer from Discord without opening WWW.
+ * Running timers stay locked in state after wall-clock completion; the signed DM
+ * action is the explicit acknowledgement that starts the next cycle.
+ */
 export async function confirmCharacterProgressTimerFromBot(
   input: ConfirmCharacterTimerFromBotInput,
 ): Promise<ConfirmCharacterTimerFromBotResult> {
@@ -239,7 +247,7 @@ export async function confirmCharacterProgressTimerFromBot(
 
   try {
     const { foundTimer, foundWorkspaceIndex, workspaces, state, body, viewerId } = resolved.loaded;
-    if (foundTimer.status && foundTimer.status !== 'ready') {
+    if (!timerCanRefresh(foundTimer)) {
       return { ok: false, error: 'timer_not_ready', status: 409 };
     }
 
@@ -287,8 +295,8 @@ export async function confirmCharacterProgressTimerFromBot(
           characterId: foundTimer.characterId ?? null,
           characterName,
           resource: 'timer',
-          title: `Oznaczono wykonane: ${label}`,
-          detail: `${restart.detailHint} Gotowe z Discord PW (bez WWW).`,
+          title: `Odświeżono timer: ${label}`,
+          detail: `${restart.detailHint} Odświeżono z Discord PW (bez WWW).`,
           occurredAtLabel: 'teraz',
           revision: nextRevision,
         },
@@ -339,8 +347,7 @@ export async function confirmCharacterProgressTimerFromBot(
 }
 
 /**
- * "Przypomnij pozniej" — marks reminder prefs on the EQ timer so the web card matches
- * (discordReminder/reminderState) without starting a new cycle.
+ * "Przypomnij później" — records reminder state without starting a new cycle.
  */
 export async function snoozeCharacterProgressTimerFromBot(
   input: SnoozeCharacterTimerFromBotInput,
@@ -386,7 +393,7 @@ export async function snoozeCharacterProgressTimerFromBot(
           characterId: foundTimer.characterId ?? null,
           characterName,
           resource: 'timer',
-          title: `Przypomnij pozniej: ${label}`,
+          title: `Przypomnij później: ${label}`,
           detail: `Discord PW — przypomnienie za ok. ${minutes} min (bez WWW).`,
           occurredAtLabel: 'teraz',
           revision: nextRevision,

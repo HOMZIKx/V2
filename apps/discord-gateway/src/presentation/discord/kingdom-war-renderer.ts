@@ -1,6 +1,7 @@
 import {
   ActionRowBuilder,
-  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type MessageCreateOptions,
 } from 'discord.js';
 
@@ -8,8 +9,7 @@ import { applyMessageTemplate, computeNotifyAt } from '../../application/config/
 import type { KingdomWarConfig } from '../../application/technika/capabilities.js';
 import { createSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
 
-/** Stub roster until Kuzyn profile is the SoT — not a fake roster API. */
-/** Clear tonight labels — stub until Kuzyn roster SoT. Claims still durable (max 3 / user). */
+/** Stub roster until the player/team character source is wired into war reminders. */
 export const KINGDOM_WAR_CHARACTER_STUB = [
   { id: 'stub-1', name: 'Postać 1 · deklaracja na wojnę' },
   { id: 'stub-2', name: 'Postać 2 · deklaracja na wojnę' },
@@ -18,11 +18,18 @@ export const KINGDOM_WAR_CHARACTER_STUB = [
   { id: 'stub-5', name: 'Postać 5 · deklaracja na wojnę' },
 ] as const;
 
+function buttonLabel(value: string): string {
+  const trimmed = value.trim();
+  return trimmed.length <= 70 ? trimmed : `${trimmed.slice(0, 67)}…`;
+}
+
 export function renderKingdomWarReminder(input: {
   readonly config: KingdomWarConfig;
   readonly signingSecret: string;
   readonly claims?: Readonly<Record<string, string>>;
   readonly roster?: ReadonlyArray<{ readonly id: string; readonly name: string }>;
+  readonly actorName?: string;
+  readonly actorAction?: string;
 }): MessageCreateOptions {
   const notifyAt = computeNotifyAt(input.config.warAt, input.config.notifyMinutesBefore);
   const content = [
@@ -33,36 +40,51 @@ export function renderKingdomWarReminder(input: {
       notifyMinutesBefore: input.config.notifyMinutesBefore,
       notifyAt,
     }),
-    '',
-    'Wybierz postać na wojnę (lista tymczasowa na dziś — claimy trzymane do końca dnia PL):',
   ];
 
+  if (input.actorName && input.actorAction) {
+    content.push('', `Aktualizacja zespołu: **${input.actorName}** ${input.actorAction}.`);
+  }
+
+  content.push('', '**Aktualny stan wyboru postaci:**');
+
   const claims = input.claims ?? {};
-  const roster = [...(input.roster ?? KINGDOM_WAR_CHARACTER_STUB)];
+  const roster = [...(input.roster ?? KINGDOM_WAR_CHARACTER_STUB)].slice(0, 20);
   for (const character of roster) {
     const claimedBy = claims[character.id];
     content.push(
       claimedBy
-        ? `• ${character.name} — zajęta (<@${claimedBy}>)`
-        : `• ${character.name} — wolna`,
+        ? `• **${character.name}** — zajęta przez <@${claimedBy}>`
+        : `• **${character.name}** — wolna`,
     );
   }
 
-  const free = roster.filter((c) => !claims[c.id]);
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(createSignedCustomId('war_claim', 'kw1', input.signingSecret))
-    .setPlaceholder(free.length ? 'Wybierz postać na wojnę' : 'Brak wolnych postaci')
-    .setDisabled(free.length === 0)
-    .addOptions(
-      (free.length ? free : roster.slice(0, 1)).map((c) => ({
-        label: c.name.slice(0, 100),
-        value: c.id.slice(0, 100),
-        description: claims[c.id] ? 'Zajęta' : 'Wolna',
-      })),
-    );
+  content.push('', '_Kliknij przycisk z nazwą wolnej postaci. Po wyborze cały zespół dostanie zaktualizowany stan._');
+
+  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  for (let i = 0; i < roster.length; i += 5) {
+    const row = new ActionRowBuilder<ButtonBuilder>();
+    for (const character of roster.slice(i, i + 5)) {
+      const claimedBy = claims[character.id];
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(
+            createSignedCustomId(
+              'war_claim',
+              character.id.slice(0, 80),
+              input.signingSecret,
+            ),
+          )
+          .setLabel(buttonLabel(character.name))
+          .setStyle(claimedBy ? ButtonStyle.Secondary : ButtonStyle.Primary)
+          .setDisabled(Boolean(claimedBy)),
+      );
+    }
+    rows.push(row);
+  }
 
   return {
     content: content.join('\n').slice(0, 1900),
-    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
+    components: rows.slice(0, 5),
   };
 }

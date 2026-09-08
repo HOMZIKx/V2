@@ -48,10 +48,18 @@ function timerRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function isLockedDueTimer(timer: Record<string, unknown>): boolean {
+  return (
+    timer.status === 'running' &&
+    timer.progressPercent === 100 &&
+    timer.remainingLabel === 'gotowe · zablokowane'
+  );
+}
+
 /**
- * Timers are stored with an absolute readyAtIso. Persisted `status` can stay `running`
- * after wall clock time passes, so derive `ready` from time and reconcile it back to
- * the shared workspace. This keeps every open client and the next reload consistent.
+ * Timers keep an absolute readyAtIso, but wall-clock expiry must NOT unlock the
+ * action. The shared state is reconciled to a locked-due marker; a signed team
+ * action (Discord) explicitly starts the next cycle.
  */
 function normalizeExpiredTimers(
   state: Record<string, unknown>,
@@ -62,7 +70,7 @@ function normalizeExpiredTimers(
   const rawTimers = state.timers as unknown[];
   const timers = rawTimers.map((raw) => {
     const timer = timerRecord(raw);
-    if (!timer || timer.status === 'ready') return raw;
+    if (!timer || timer.status === 'ready' || isLockedDueTimer(timer)) return raw;
     const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
     if (!readyAtIso) return raw;
     const readyAtMs = Date.parse(readyAtIso);
@@ -70,9 +78,9 @@ function normalizeExpiredTimers(
     changed = true;
     return {
       ...timer,
-      status: 'ready',
+      status: 'running',
       progressPercent: 100,
-      remainingLabel: 'gotowe',
+      remainingLabel: 'gotowe · zablokowane',
     };
   });
   return changed ? { state: { ...state, timers }, changed: true } : { state, changed: false };
@@ -88,7 +96,7 @@ function nextRunningTimerExpiry(state: Record<string, unknown>, nowMs = Date.now
   let earliest: number | null = null;
   for (const raw of state.timers) {
     const timer = timerRecord(raw);
-    if (!timer || timer.status === 'ready') continue;
+    if (!timer || timer.status === 'ready' || isLockedDueTimer(timer)) continue;
     const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
     if (!readyAtIso) continue;
     const readyAtMs = Date.parse(readyAtIso);
@@ -112,8 +120,6 @@ async function reconcileExpiredTimers(workspaceId: string): Promise<void> {
     const normalized = normalizeExpiredTimers(snapshot.state);
     if (!normalized.changed) return;
 
-    // Optimistic revision protects a simultaneous EQ/timer edit. On 409 the winning
-    // writer publishes a fresh SSE snapshot and this connection schedules again.
     await fetch(workspaceUrl(workspaceId, 'state'), {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -207,7 +213,6 @@ export function subscribeSharedWorkspaceState(
     const now = Date.now();
     const nextExpiry = nextRunningTimerExpiry(snapshot.state, now);
     if (nextExpiry === null) return;
-    // Small grace avoids racing a write that started the timer in this same tick.
     const delay = Math.max(100, Math.min(2_147_000_000, nextExpiry - now + 150));
     expiryTimer = setTimeout(() => {
       expiryTimer = null;
@@ -222,10 +227,8 @@ export function subscribeSharedWorkspaceState(
       if (!parsed) return;
       const normalized = normalizedSnapshot(parsed);
       onSnapshot(normalized);
-      scheduleExpiryReconciliation(parsed);
+      scheduleExpiryReconciliation(normalized);
       if (normalized.state !== parsed.state) {
-        // Already expired before this event arrived — persist immediately to bump revision
-        // and make the derived state authoritative for every connected client.
         void reconcileExpiredTimers(workspaceId);
       }
     } catch {

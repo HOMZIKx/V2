@@ -4,6 +4,15 @@
  * Product: EQ/Timer tab timers (Księga, Kamień…) — not map/metin.
  */
 
+export interface DiscordLiveTimerSnapshot {
+  readonly id: string;
+  readonly label: string;
+  readonly status: string;
+  readonly remainingLabel?: string;
+  readonly detail?: string;
+  readonly readyAtIso?: string;
+}
+
 export interface DiscordTimerNotifyInput {
   readonly discordUserId: string;
   readonly title: string;
@@ -22,6 +31,7 @@ export interface DiscordTimerNotifyInput {
   readonly idempotencyKey?: string;
   readonly discordChannelId?: string;
   readonly roomSummary?: readonly string[];
+  readonly liveTimers?: readonly DiscordLiveTimerSnapshot[];
   readonly includeButtons?: boolean;
   readonly kind?: 'manual' | 'reset' | 'reminder';
   readonly actorName?: string;
@@ -131,6 +141,7 @@ export async function postDiscordTimerResetNotify(input: {
   readonly channel?: number;
   readonly timerKey?: string;
   readonly roomSummary?: readonly string[];
+  readonly liveTimers?: readonly DiscordLiveTimerSnapshot[];
   readonly recipientDiscordUserIds?: readonly string[];
   readonly idempotencyKey?: string;
 }): Promise<{ readonly ok: boolean; readonly sent?: number; readonly error?: string }> {
@@ -158,7 +169,7 @@ export function buildCharacterTimersDeepLinkUrl(
   teamId: string,
   characterId: string,
 ): string {
-  const path = `/teams/${encodeURIComponent(teamId)}/characters/${encodeURIComponent(characterId)}?board=timers`;
+  const path = `/teams/${encodeURIComponent(teamId)}/characters/${encodeURIComponent(characterId)}?view=timers`;
   if (typeof window === 'undefined') {
     return `http://127.0.0.1:3000${path}`;
   }
@@ -214,21 +225,53 @@ export async function registerDiscordTimerWatcher(input: {
   }
 }
 
+function normalizeRecipientSnowflakes(recipients: readonly string[]): string[] {
+  return [
+    ...new Set(
+      recipients
+        .map((id) => id.trim())
+        .filter((id) => /^\d{17,20}$/.test(id)),
+    ),
+  ].slice(0, 40);
+}
+
+/** Register explicit player-team members as the bot's coordination audience. */
+export async function syncTeamCoordinationRecipients(
+  recipients: readonly string[],
+): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
+  try {
+    const snowflakes = normalizeRecipientSnowflakes(recipients);
+    const parsed = await postNotify('/api/discord-notify', {
+      action: 'team-recipients',
+      recipients: snowflakes,
+    });
+    if (!parsed.okHttp || parsed.ok !== true) {
+      return {
+        ok: false,
+        error: typeof parsed.error === 'string' ? parsed.error : 'team_recipients_sync_failed',
+      };
+    }
+    return {
+      ok: true,
+      count: typeof parsed.count === 'number' ? parsed.count : snowflakes.length,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'network_error',
+    };
+  }
+}
+
 /**
- * Push team notifyPrefs.kingdomWar allowlist to gateway war scheduler.
+ * Replace kingdom-war recipient snapshot from explicit team settings.
  * HARD: empty recipients => gateway sends zero war DMs (never guild fan-out).
  */
 export async function syncKingdomWarRecipients(
   recipients: readonly string[],
 ): Promise<{ readonly ok: boolean; readonly count?: number; readonly error?: string }> {
   try {
-    const snowflakes = [
-      ...new Set(
-        recipients
-          .map((id) => id.trim())
-          .filter((id) => /^\d{17,20}$/.test(id)),
-      ),
-    ].slice(0, 40);
+    const snowflakes = normalizeRecipientSnowflakes(recipients);
     const parsed = await postNotify('/api/discord-notify', {
       action: 'war-recipients',
       recipients: snowflakes,

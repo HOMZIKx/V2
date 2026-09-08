@@ -37,7 +37,7 @@ async function loadWorkspace(input: {
   return { state, revision: body.revision };
 }
 
-function readyState(
+function lockedDueState(
   state: Record<string, unknown>,
   timerId: string,
 ): { readonly changed: boolean; readonly state: Record<string, unknown> } {
@@ -45,27 +45,34 @@ function readyState(
   let changed = false;
   const timers = state.timers.map((raw) => {
     const timer = asRecord(raw);
-    if (!timer || timer.id !== timerId || timer.status === 'ready') return raw;
+    if (!timer || timer.id !== timerId) return raw;
     const readyAtIso = typeof timer.readyAtIso === 'string' ? timer.readyAtIso : null;
     if (readyAtIso) {
       const readyAtMs = Date.parse(readyAtIso);
       // A stale/early worker must never finish a newly restarted cycle.
       if (Number.isFinite(readyAtMs) && readyAtMs > Date.now() + 1_000) return raw;
     }
+    const alreadyLockedDue =
+      timer.status === 'running' &&
+      timer.progressPercent === 100 &&
+      timer.remainingLabel === 'gotowe · zablokowane';
+    if (alreadyLockedDue) return raw;
     changed = true;
     return {
       ...timer,
-      status: 'ready',
+      // Important product rule: expiration does not unlock/restart the timer.
+      // It stays running/locked until a signed team action explicitly refreshes it.
+      status: 'running',
       progressPercent: 100,
-      remainingLabel: 'gotowe',
+      remainingLabel: 'gotowe · zablokowane',
     };
   });
   return changed ? { changed: true, state: { ...state, timers } } : { changed: false, state };
 }
 
 /**
- * Persist wall-clock completion into the shared workspace. Revision conflicts are
- * retried once so an unrelated live EQ edit cannot leave the timer permanently running.
+ * Persist wall-clock completion into the shared workspace without unlocking it.
+ * Revision conflicts are retried once so unrelated live EQ edits cannot lose the due state.
  */
 export async function markCharacterTimerReadyInWorkspace(input: {
   readonly baseUrl: string;
@@ -77,7 +84,7 @@ export async function markCharacterTimerReadyInWorkspace(input: {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const current = await loadWorkspace(input);
     if (!current) return false;
-    const normalized = readyState(current.state, input.timerId);
+    const normalized = lockedDueState(current.state, input.timerId);
     if (!normalized.changed) return true;
 
     const response = await fetch(

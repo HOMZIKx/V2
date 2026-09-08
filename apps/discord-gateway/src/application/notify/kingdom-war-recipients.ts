@@ -1,7 +1,8 @@
 /**
- * Discord user IDs eligible for kingdom-war DMs (team notifyPrefs.kingdomWar).
- * File-backed so restart keeps tonight's allowlist.
- * HARD RULE: war scheduler DMs ONLY this list — never guild.members / never whole guild.
+ * Discord user IDs eligible for team coordination DMs (timers + kingdom war).
+ * File-backed so restart keeps the current team recipient set.
+ * HARD RULE: delivery uses ONLY explicit team IDs received from the web/workspace —
+ * never guild.members and never implicit whole-guild fan-out.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -18,10 +19,13 @@ function isSnowflake(id: string): boolean {
 }
 
 function persistPath(): string {
-  const fromEnv = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  const base = fromEnv
-    ? join(fromEnv, 'kingdom-war')
-    : join(tmpdir(), 'destiled-kingdom-war');
+  const gatewayData = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
+  const legacyData = (process.env.DESTILED_DATA_DIR ?? '').trim();
+  const base = gatewayData
+    ? join(gatewayData, 'kingdom-war')
+    : legacyData
+      ? join(legacyData, 'kingdom-war')
+      : join(tmpdir(), 'destiled-kingdom-war');
   if (!existsSync(base)) mkdirSync(base, { recursive: true });
   return join(base, 'recipients.json');
 }
@@ -49,7 +53,7 @@ function loadFromDisk(): void {
 function saveToDisk(): void {
   try {
     const target = persistPath();
-    const tmp = target + '.' + process.pid + '.tmp';
+    const tmp = `${target}.${process.pid}.tmp`;
     writeFileSync(tmp, JSON.stringify({ recipients: [...recipients] }), 'utf8');
     renameSync(tmp, target);
   } catch {
@@ -57,18 +61,37 @@ function saveToDisk(): void {
   }
 }
 
-export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): {
-  readonly ok: true;
-  readonly count: number;
-} {
-  loadFromDisk();
-  recipients.clear();
+function addValidRecipients(discordUserIds: readonly string[]): void {
   for (const raw of discordUserIds) {
     const id = raw.trim();
     if (!isSnowflake(id)) continue;
     recipients.add(id);
     if (recipients.size >= MAX_RECIPIENTS) break;
   }
+}
+
+/** Replace from an authoritative web snapshot. */
+export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): {
+  readonly ok: true;
+  readonly count: number;
+} {
+  loadFromDisk();
+  recipients.clear();
+  addValidRecipients(discordUserIds);
+  saveToDisk();
+  return { ok: true, count: recipients.size };
+}
+
+/**
+ * Add team IDs observed on a character-timer event. Web sends an explicit list of
+ * current workspace members, so this lets later bot-originated actions reach the same team.
+ */
+export function mergeTeamCoordinationRecipients(discordUserIds: readonly string[]): {
+  readonly ok: true;
+  readonly count: number;
+} {
+  loadFromDisk();
+  addValidRecipients(discordUserIds);
   saveToDisk();
   return { ok: true, count: recipients.size };
 }

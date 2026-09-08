@@ -12,10 +12,15 @@ import {
 import { createLogger } from '@v2/observability';
 import { timingSafeEqual } from 'node:crypto';
 
-import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
-import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
-import { evaluateTeamScopedModuleGate } from '../../application/technika/guild-module-gate.js';
-import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
+import {
+  scheduleCharacterTimerReminder,
+  type CharacterTimerReminderDeps,
+} from '../../application/notify/character-timer-reminders.js';
+import {
+  listKingdomWarRecipients,
+  mergeTeamCoordinationRecipients,
+  replaceKingdomWarRecipients,
+} from '../../application/notify/kingdom-war-recipients.js';
 import {
   claimNotifyIdempotencyKey,
   releaseNotifyIdempotencyKey,
@@ -29,22 +34,18 @@ import {
   type TimerNotifyPayload,
 } from '../../application/notify/notify-payload.js';
 import {
-  scheduleCharacterTimerReminder,
-  type CharacterTimerReminderDeps,
-} from '../../application/notify/character-timer-reminders.js';
-import {
   listTimerRoomWatchersExcept,
   registerTimerRoomWatcher,
 } from '../../application/notify/timer-room-watchers.js';
-import {
-  listKingdomWarRecipients,
-  replaceKingdomWarRecipients,
-} from '../../application/notify/kingdom-war-recipients.js';
-import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
+import { resolveActiveBotConfig } from '../../application/technika/active-bot-config.js';
+import { resolveCharacterTimersConfig } from '../../application/technika/capabilities.js';
+import { evaluateTeamScopedModuleGate } from '../../application/technika/guild-module-gate.js';
+import type { VersionedConfigStore } from '../../application/technika/versioned-config-store.js';
 import {
   NotifyDmClosedError,
   type DiscordJsGatewayAdapter,
 } from '../../infrastructure/discord/discord-js-adapter.js';
+import type { DiscordGatewayConfig } from '../../infrastructure/discord/discord-config.js';
 import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
 import { renderTimerNotifyMessage } from '../../presentation/discord/timer-notify-renderer.js';
 import {
@@ -66,6 +67,16 @@ function secretsMatch(provided: string | undefined, expected: string): boolean {
     return false;
   }
   return timingSafeEqual(a, b);
+}
+
+function recipientList(body: unknown): string[] {
+  return body &&
+    typeof body === 'object' &&
+    Array.isArray((body as { recipients?: unknown }).recipients)
+    ? (body as { recipients: unknown[] }).recipients
+        .filter((id): id is string => typeof id === 'string')
+        .slice(0, 40)
+    : [];
 }
 
 @Controller('notify')
@@ -106,7 +117,7 @@ export class NotifyController {
         const payload: TimerNotifyPayload = {
           discordUserId: job.discordUserId,
           title: `${job.label}${job.characterName ? ` · ${job.characterName}` : ''}`,
-          body: 'Timer zakończony — możesz rozpocząć kolejny cykl.',
+          body: 'Timer jest gotowy, ale pozostaje zablokowany do jawnego odświeżenia przez zespół.',
           deepLinkUrl: job.deepLinkUrl ?? 'https://desapp.zeabur.app/timers',
           ...(job.workspaceId ? { workspaceId: job.workspaceId } : {}),
           ...(job.characterId ? { characterId: job.characterId } : {}),
@@ -206,7 +217,21 @@ export class NotifyController {
   }
 
   /**
-   * Replace kingdom-war DM recipients (team notifyPrefs.kingdomWar allowlist from web).
+   * Merge explicit current player-team members into the durable bot coordination
+   * audience. This endpoint never enumerates a Discord guild.
+   */
+  @Post('team-recipients')
+  public syncTeamRecipients(
+    @Headers(HEADER_NAME) notifySecret: string | undefined,
+    @Body() body: unknown,
+  ): { readonly ok: true; readonly count: number } {
+    this.assertNotifySecret(notifySecret);
+    const result = mergeTeamCoordinationRecipients(recipientList(body));
+    return { ok: true, count: result.count };
+  }
+
+  /**
+   * Replace kingdom-war DM recipients from an explicit web snapshot.
    * HARD: empty list => scheduler sends nothing. Never accepts a guild fan-out flag.
    */
   @Post('kingdom-war-recipients')
@@ -215,15 +240,7 @@ export class NotifyController {
     @Body() body: unknown,
   ): { readonly ok: true; readonly count: number } {
     this.assertNotifySecret(notifySecret);
-    const recipients =
-      body &&
-      typeof body === 'object' &&
-      Array.isArray((body as { recipients?: unknown }).recipients)
-        ? ((body as { recipients: unknown[] }).recipients
-            .filter((id): id is string => typeof id === 'string')
-            .slice(0, 40))
-        : [];
-    const result = replaceKingdomWarRecipients(recipients);
+    const result = replaceKingdomWarRecipients(recipientList(body));
     return { ok: true, count: result.count };
   }
 
@@ -277,7 +294,7 @@ export class NotifyController {
       }
     }
 
-    // Character-timer path (workspaceId/timerId): ONLY explicit prefs-filtered recipients from web.
+    // Character-timer path: ONLY explicit team recipients from web/shared player-team.
     // Legacy map-room watchers remain for mapKey rooms — never expand to guild roster.
     const isCharacterTimerPath = Boolean(
       payload.workspaceId || payload.timerId || payload.characterId,
@@ -293,7 +310,6 @@ export class NotifyController {
               })
             : []));
 
-    // Legacy map rooms only — never register character EQ timers as map watchers.
     if (payload.mapKey && payload.channel !== undefined) {
       registerTimerRoomWatcher({
         mapKey: payload.mapKey,
