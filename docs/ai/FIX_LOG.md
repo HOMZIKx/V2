@@ -44,6 +44,32 @@ oraz dla integracji Discord:
 
 # Wpisy
 
+## 2026-09-08 09:42 — Produkcyjny OAuth / Identity internal JWT / Player Team po restartach
+
+- **Status:** `PARTIAL` dla pełnego login→write E2E; `DONE` dla konfiguracji runtime, readiness i odporności usług na restart.
+- **Obszar:** `identity-service`, `webapp-dest`, `player-team-service`, API Gateway CORS/trusted origins, Zeabur production.
+- **Problem:** wcześniejszy audyt wykazał, że kod internal JWT był wdrożony, ale produkcja nie miała kompletnego cutoveru; dodatkowo `IDENTITY_TRUSTED_ORIGINS` zawierało błędny origin `https//v2-web.zeabur.app`.
+- **Przyczyna:** drift branch/env między usługami oraz niekanoniczna lista trusted origins.
+- **Poprawka / stan końcowy:** produkcyjne `identity-service`, `webapp-dest` i `player-team-service` działają na `preview/destiled-web`; `IDENTITY_INTERNAL_JWT_ENABLED=true`, `INTERNAL_JWT_CLIENT_ENABLED=true`, `PLAYER_TEAM_INTERNAL_JWT_ENABLED=true`; wymagane client ID/private key/kid/audience/issuer/JWKS są obecne; legacy `PLAYER_TEAM_ALLOW_DEMO_WRITE` jest wyłączone. Listy API Gateway CORS i Identity trusted origins zostały zapisane w kanonicznej postaci i wymusiły redeploy.
+- **Zmienione pliki operacyjne:** `ops/zeabur/verify-public-e2e.mjs` na `ops/zeabur-control` rozszerzony o Identity readiness, JWKS i unauthenticated Player Team probe; użyto istniejącego `ops/zeabur/repair-cors.mjs`.
+- **Commity / runy ops:** env audit commit `db3a0e28a463d6d58064e3a6af5c8d5872d44793`, run `34199474406`; rozszerzony public probe commit `9338e99647d2ca08df63ecdc662442b7c1171243`, run `34199624952`; CORS repair commit `d609caa8d870fa2a710d5008ba0be9430ba0af4e`, run `34199921886`; post-repair probe run `34200077997`; Identity restart GraphQL run `34200224098`; post-Identity probe run `34200277880`; Player Team restart GraphQL run `34200334249`; post-restart env audit run `34200385455`; final public probe commit `6ff4025624a201feabe0634ebeb454df0d84e480`, run `34200597631`.
+- **Walidacja runtime:** audyt po restartach: 14 usług, `critical=0`; `player-team-service=RUNNING`, internal JWT nadal włączony, baza skonfigurowana. Finalny public probe: web live `200`; Identity `/identity/health/ready` `200` (`database + redis + migration`); JWKS `200`, 1 klucz z `kid`; `/identity/me` bez sesji `401`; `/player-team/v1/me/state` bez sesji `401`; start OAuth `302` do `discord.com` i ustawia state cookie; Discord Gateway `ready`, 3 guildie, brak runtime error.
+- **Restart proof:** po rzeczywistym `restartService` Identity publiczny auth probe nadal PASS; po `restartService` Player Team końcowy env audit i public probe również PASS.
+- **Uwaga operacyjna:** stara ścieżka `cli service:restart` w bridge używa nieaktualnej flagi Zeabur CLI `--service-name` (run `34200126227` failure). Produkcyjne restarty wykonano poprawnie przez zweryfikowaną mutację GraphQL `restartService`; to jest dług narzędziowy bridge, nie awaria aplikacji.
+- **Niepotwierdzone / ryzyka:** nie da się automatycznie wykonać zgody użytkownika na Discord OAuth. Nadal brakuje jednego realnego proof: użytkownik klika „Autoryzuj” → callback → aktywna sesja → web → internal JWT → zapis Player Team → DB → restart/reload → odczyt. Do tego potrzebna jest prawdziwa sesja użytkownika.
+
+## 2026-09-08 09:16 — Trwała aktywność Discord i konfiguracja Technika na Zeaburze
+
+- **Status:** `DONE` dla odporności bieżącego collectora na restart/redeploy filesystemu; docelowa migracja SoT do `activity-service` pozostaje osobnym długiem architektonicznym.
+- **Obszar:** `discord-gateway`, member activity (`MessageCreate` + voice), Technika config, Zeabur persistent volume.
+- **Problem:** `MemberActivityStore` i `VersionedConfigStore` zapisywały dane do lokalnych plików JSON, a produkcyjny `discord-gateway` miał `0` trwałych wolumenów. Restart/redeploy kontenera mógł więc wyzerować ranking aktywności i konfigurację Technika.
+- **Przyczyna:** brak persistent volume oraz brak produkcyjnego `DISCORD_GATEWAY_DATA_DIR` wskazującego trwały mount.
+- **Poprawka:** utworzono/montowano volume `discord-gateway-data` pod `/data` i ustawiono `DISCORD_GATEWAY_DATA_DIR=/data`. Bieżący aktywny config został zachowany; collector zapisuje daily buckets na trwałym dysku.
+- **Zmienione pliki operacyjne (branch `ops/zeabur-control`):** `ops/zeabur/repair-discord-persistence.mjs`, `ops/zeabur/verify-discord-persistence-proof.mjs`, `.github/workflows/zeabur-ops.yml`.
+- **Walidacja:** po cutoverze volume było zamontowane pod `/data` i miało realne użycie (~18 KB). Run `34198415994` wykonał kontrolowany restart procesu i zakończył się `success`: uptime spadł z ~494 s do ~4 s, config hash/revision przetrwały, `collectorStartedAt` pozostał identyczny, liczniki pozostały identyczne, bot wrócił do `ready` bez błędu.
+- **Runtime:** Discord Gateway jest `enabled=true`, `state=ready`, `isolationOk=true`, ma 3 guildie w cache i zarejestrowane komendy. Collector działa bez zależności od WWW: adapter nasłuchuje bezpośrednio eventów Discord `MessageCreate` i `VoiceStateUpdate`.
+- **Niepotwierdzone / ryzyka:** w chwili proof ranking miał `0` członków / `0` wiadomości / `0` minut voice, więc potwierdzono trwałość mechanizmu/config/meta, ale nie wykonano jeszcze proof `niezerowy licznik → restart → ten sam niezerowy licznik`. Dodatkowo ADR-0014 wskazuje `activity-service` jako docelowe SoT dla danych domeny Activity; bieżący volume usuwa ryzyko resetów teraz, ale nie zastępuje przyszłej migracji tych bucketów do bazy Activity.
+
 ## 2026-09-08 — Player Team persistence: przejście z demo-header auth na Identity internal JWT
 
 - **Status:** `PARTIAL`
