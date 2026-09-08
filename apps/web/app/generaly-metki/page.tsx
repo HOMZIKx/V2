@@ -35,7 +35,6 @@ import styles from './generaly-metki.module.css';
 
 type HuntKind = 'metin' | 'general';
 type MapMode = 'view' | 'route' | 'found';
-type ChannelView = number | 'all';
 
 type HuntDefinition = {
   readonly key: 'metin-red-las' | 'metin-v1' | 'general-v1' | 'metin-v2' | 'general-v2';
@@ -127,8 +126,8 @@ function channelColor(channel: number): string {
   return CHANNEL_COLORS[channel] ?? '#94a3b8';
 }
 
-function channelLabel(channel: ChannelView): string {
-  return channel === 'all' ? 'Wszystkie kanały' : `CH${channel}`;
+function channelLabel(channel: number): string {
+  return `CH${channel}`;
 }
 
 function newId(prefix: string): string {
@@ -255,7 +254,7 @@ export default function GeneralsMetinsPage() {
   const { viewerId, displayName, onlineEnabled, hydrated } = useHuntViewer();
   const [huntKey, setHuntKey] = useState<HuntDefinition['key']>('metin-red-las');
   const huntDefinition = HUNTS.find((hunt) => hunt.key === huntKey) ?? HUNTS[0]!;
-  const [channel, setChannel] = useState<ChannelView>(1);
+  const [channel, setChannel] = useState(1);
   const [mode, setMode] = useState<MapMode>('view');
   const [snapshot, setSnapshot] = useState<MetinGeneralHuntSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -392,11 +391,6 @@ export default function GeneralsMetinsPage() {
   );
 
   const quickRequest = async (type: MetinGeneralHuntRequestType) => {
-    if (channel === 'all') {
-      setNotice('W widoku „Wszystkie kanały” wybierz konkretny CH, aby dodać komendę.');
-      return;
-    }
-    const activeChannel = channel;
     const requestId = newId('request');
     const historyType: `need_${MetinGeneralHuntRequestType}` = `need_${type}`;
     await mutateHunt((current) => ({
@@ -405,7 +399,7 @@ export default function GeneralsMetinsPage() {
         {
           id: requestId,
           type,
-          channel: activeChannel,
+          channel,
           userId: viewerId ?? 'unknown',
           displayName,
           status: 'active',
@@ -417,7 +411,7 @@ export default function GeneralsMetinsPage() {
       ].slice(0, 60),
       history: appendHistory(current, {
         type: historyType,
-        channel: activeChannel,
+        channel,
         requestId,
         requestType: type,
       }),
@@ -425,21 +419,16 @@ export default function GeneralsMetinsPage() {
   };
 
   const markKilled = async () => {
-    if (channel === 'all') {
-      setNotice('Wybierz konkretny CH, aby oznaczyć „Zbity”.');
-      return;
-    }
-    const activeChannel = channel;
     await mutateHunt((current) => ({
       ...current,
-      routes: current.routes.filter((route) => route.channel !== activeChannel),
-      markers: current.markers.filter((marker) => marker.channel !== activeChannel),
+      routes: current.routes.filter((route) => route.channel !== channel),
+      markers: current.markers.filter((marker) => marker.channel !== channel),
       requests: current.requests.map((request) =>
-        request.channel === activeChannel && request.status === 'active'
+        request.channel === channel && request.status === 'active'
           ? { ...request, status: 'closed' as const, closedAt: Date.now() }
           : request,
       ),
-      history: appendHistory(current, { type: 'killed', channel: activeChannel }),
+      history: appendHistory(current, { type: 'killed', channel }),
     }));
     setMode('view');
   };
@@ -488,8 +477,7 @@ export default function GeneralsMetinsPage() {
   const imagePath = huntMapImagePath(huntDefinition.mapKey);
 
   const handleMapClick = async (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!imagePath || mode === 'view' || saving || channel === 'all') return;
-    const activeChannel = channel;
+    if (!imagePath || mode === 'view' || saving) return;
 
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
@@ -504,18 +492,18 @@ export default function GeneralsMetinsPage() {
       const ok = await mutateHunt((current) => ({
         ...current,
         markers: [
-          ...current.markers.filter((marker) => marker.channel !== activeChannel),
+          ...current.markers.filter((marker) => marker.channel !== channel),
           {
             id: newId('found'),
             userId: viewerId ?? 'unknown',
             displayName,
-            channel: activeChannel,
+            channel,
             kind: 'found' as const,
             location: point,
             createdAt: Date.now(),
           },
         ],
-        history: appendHistory(current, { type: 'found', channel: activeChannel }),
+        history: appendHistory(current, { type: 'found', channel }),
       }));
       if (ok) setMode('view');
       return;
@@ -525,7 +513,7 @@ export default function GeneralsMetinsPage() {
       await mutateHunt((current) => {
         const routeUserId = viewerId ?? 'unknown';
         const mine = current.routes.find(
-          (route) => route.userId === routeUserId && route.channel === activeChannel,
+          (route) => route.userId === routeUserId && route.channel === channel,
         );
         const color = mine?.color ?? pickRouteColor(routeUserId, current.routes);
         const routes = mine
@@ -545,7 +533,7 @@ export default function GeneralsMetinsPage() {
                 id: newId('route'),
                 userId: routeUserId,
                 displayName,
-                channel: activeChannel,
+                channel,
                 color,
                 points: [point],
                 updatedAt: Date.now(),
@@ -557,12 +545,11 @@ export default function GeneralsMetinsPage() {
   };
 
   const undoRoutePoint = async () => {
-    if (!viewerId || channel === 'all') return;
-    const activeChannel = channel;
+    if (!viewerId) return;
     await mutateHunt((current) => ({
       ...current,
       routes: current.routes.flatMap((route) => {
-        if (route.userId !== viewerId || route.channel !== activeChannel) return [route];
+        if (route.userId !== viewerId || route.channel !== channel) return [route];
         const points = route.points.slice(0, -1);
         return points.length > 0 ? [{ ...route, points, updatedAt: Date.now() }] : [];
       }),
@@ -570,34 +557,24 @@ export default function GeneralsMetinsPage() {
   };
 
   const clearOwnRoute = async () => {
-    if (!viewerId || channel === 'all') return;
-    const activeChannel = channel;
+    if (!viewerId) return;
     await mutateHunt((current) => ({
       ...current,
       routes: current.routes.filter(
-        (route) => !(route.userId === viewerId && route.channel === activeChannel),
+        (route) => !(route.userId === viewerId && route.channel === channel),
       ),
     }));
   };
 
-  const visibleRoutes =
-    channel === 'all' ? state.routes : state.routes.filter((route) => route.channel === channel);
-  const visibleMarkers =
-    channel === 'all' ? state.markers : state.markers.filter((marker) => marker.channel === channel);
+  const visibleRoutes = state.routes.filter((route) => route.channel === channel);
+  const visibleMarkers = state.markers.filter((marker) => marker.channel === channel);
   const activeRequests = state.requests
     .filter((request) => request.status === 'active')
     .sort((left, right) => right.createdAt - left.createdAt);
   const next = nextMetinGeneralHuntSpawn(huntDefinition.intervalHours, now);
-  const ownRoute =
-    channel === 'all'
-      ? undefined
-      : state.routes.find((route) => route.userId === viewerId && route.channel === channel);
-
-  const switchToAllChannels = () => {
-    setChannel('all');
-    setMode('view');
-    setNotice('');
-  };
+  const ownRoute = state.routes.find(
+    (route) => route.userId === viewerId && route.channel === channel,
+  );
 
   const switchToChannel = (nextChannel: number) => {
     if (!huntDefinition.channels.includes(nextChannel)) return;
@@ -658,13 +635,6 @@ export default function GeneralsMetinsPage() {
         </section>
 
         <nav className={styles.channelBar} aria-label="Kanał">
-          <button
-            className={channel === 'all' ? styles.channelActive : styles.channelButton}
-            onClick={switchToAllChannels}
-            type="button"
-          >
-            Wszystkie kanały
-          </button>
           {huntDefinition.channels.map((huntChannel) => (
             <button
               className={huntChannel === channel ? styles.channelActive : styles.channelButton}
@@ -762,21 +732,13 @@ export default function GeneralsMetinsPage() {
             <div className={styles.mapToolbar}>
               <div>
                 <strong>🗺️ {huntDefinition.mapKey} · {channelLabel(channel)}</strong>
-                <span>
-                  {loading
-                    ? 'Ładowanie…'
-                    : saving
-                      ? 'Zapisywanie…'
-                      : channel === 'all'
-                        ? 'Widok zbiorczy — wszystkie oznaczenia na tej mapie'
-                        : 'Gotowe do działania'}
-                </span>
+                <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe do działania'}</span>
               </div>
               <div className={styles.mapActions}>
                 {huntDefinition.kind === 'metin' ? (
                   <button
                     className={mode === 'route' ? styles.toolRouteActive : styles.toolButton}
-                    disabled={!imagePath || saving || channel === 'all'}
+                    disabled={!imagePath || saving}
                     onClick={() => setMode((current) => (current === 'route' ? 'view' : 'route'))}
                     type="button"
                   >
@@ -785,7 +747,7 @@ export default function GeneralsMetinsPage() {
                 ) : null}
                 <button
                   className={mode === 'found' ? styles.toolFoundActive : styles.toolButton}
-                  disabled={!imagePath || saving || channel === 'all'}
+                  disabled={!imagePath || saving}
                   onClick={() => setMode((current) => (current === 'found' ? 'view' : 'found'))}
                   type="button"
                 >
@@ -835,13 +797,9 @@ export default function GeneralsMetinsPage() {
                     viewBox="0 0 100 100"
                   >
                     {visibleRoutes.map((route) => {
-                      const color =
-                        channel === 'all'
-                          ? channelColor(route.channel)
-                          : routeDisplayColor(route, visibleRoutes);
+                      const color = routeDisplayColor(route, visibleRoutes);
                       const path = smoothRoutePath(route.points);
-                      const editing =
-                        channel !== 'all' && mode === 'route' && route.userId === viewerId;
+                      const editing = mode === 'route' && route.userId === viewerId;
                       const first = route.points[0];
                       const last = route.points.at(-1);
                       return (
@@ -973,16 +931,7 @@ export default function GeneralsMetinsPage() {
               )}
             </div>
 
-            {channel === 'all' ? (
-              <div className={styles.routeLegend}>
-                {huntDefinition.channels.map((huntChannel) => (
-                  <span key={huntChannel}>
-                    <i style={{ background: channelColor(huntChannel) }} />
-                    CH{huntChannel}
-                  </span>
-                ))}
-              </div>
-            ) : huntDefinition.kind === 'metin' ? (
+            {huntDefinition.kind === 'metin' ? (
               <div className={styles.routeLegend}>
                 {visibleRoutes.length === 0 ? (
                   <span>CH{channel}: nikt nie wyznaczył jeszcze trasy.</span>
@@ -1005,19 +954,14 @@ export default function GeneralsMetinsPage() {
                   <span>SZYBKIE KOMENDY</span>
                   <h3>{channelLabel(channel)}</h3>
                 </div>
-                <em>{channel === 'all' ? 'podgląd' : '1 klik'}</em>
+                <em>1 klik</em>
               </div>
 
-              {channel === 'all' ? (
-                <p className={styles.empty}>
-                  Widok zbiorczy jest tylko do podglądu. Wybierz CH, aby dodać pinezkę lub komendę.
-                </p>
-              ) : null}
 
               <div className={styles.commandGrid}>
                 <button
                   className={styles.killedButton}
-                  disabled={saving || channel === 'all'}
+                  disabled={saving}
                   onClick={() => void markKilled()}
                   type="button"
                 >
@@ -1026,7 +970,7 @@ export default function GeneralsMetinsPage() {
                 </button>
                 <button
                   className={styles.pvpButton}
-                  disabled={saving || channel === 'all'}
+                  disabled={saving}
                   onClick={() => void quickRequest('pvp')}
                   type="button"
                 >
@@ -1035,7 +979,7 @@ export default function GeneralsMetinsPage() {
                 </button>
                 <button
                   className={styles.dpsButton}
-                  disabled={saving || channel === 'all'}
+                  disabled={saving}
                   onClick={() => void quickRequest('dps')}
                   type="button"
                 >
@@ -1044,7 +988,7 @@ export default function GeneralsMetinsPage() {
                 </button>
                 <button
                   className={styles.buffButton}
-                  disabled={saving || channel === 'all'}
+                  disabled={saving}
                   onClick={() => void quickRequest('buff')}
                   type="button"
                 >
