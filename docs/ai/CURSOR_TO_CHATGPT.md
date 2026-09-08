@@ -1,5 +1,14 @@
 # Cursor / Agent → Owner
 
+## Technika / timery postaci — PR #68
+
+- Root cause: live character-timer DM ignorował `characterTimers.messageTemplate`, mimo że config był poprawnie zapisywany/aktywowany i test-DM go używał.
+- PR #68 (`bb9fc801dfc7b78ad866944298ee41903ab212f3`) podpina aktywny template do normalnego notify/reset oraz canonical durable workera i rozwiązuje config w chwili wysyłki.
+- Legacy map/metin formatter pozostaje nietknięty.
+- CI `34225187832` PASS; PR Title `34225198774` PASS.
+- Nie oznaczać `DONE` przed realnym live DM gateway → Discord po wdrożeniu.
+- `reminderMinutesBefore` nadal nie realizuje pre-remindera; nie przesuwać istniejącego due joba wcześniej, bo worker oznacza timer jako ready.
+
 ## Status — 2026-09-08 produkcyjna stabilizacja
 
 ### Discord OAuth / Identity / Player Team
