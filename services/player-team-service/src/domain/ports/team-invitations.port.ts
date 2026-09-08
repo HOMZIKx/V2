@@ -27,6 +27,8 @@ export type TeamInvitationWorkspaceUpdate = {
 };
 
 export interface TeamInvitationsRepositoryPort {
+  getWorkspace(workspaceId: string): Promise<TeamInvitationWorkspaceUpdate | null>;
+
   findForRecipient(
     invitationId: string,
     recipientDiscordId: string,
