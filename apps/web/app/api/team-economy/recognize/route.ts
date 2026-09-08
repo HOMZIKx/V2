@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { gameItemCatalog } from '../../../../src/item-catalog';
+import { verifiedViewerId } from '../../../../src/server/verified-session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,39 +12,6 @@ type RateBucket = { count: number; resetAt: number };
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
 const rateBuckets = new Map<string, RateBucket>();
-
-function normalizeTarget(value: string | undefined): string | null {
-  const trimmed = value?.trim().replace(/\/$/, '');
-  return trimmed ? trimmed : null;
-}
-
-function identityTarget(): string {
-  const productionBackendOrigin =
-    normalizeTarget(process.env.V2_BACKEND_PUBLIC_ORIGIN) ?? 'https://v2-api.zeabur.app';
-  return (
-    normalizeTarget(process.env.IDENTITY_PROXY_TARGET) ??
-    (process.env.NODE_ENV === 'production' ? productionBackendOrigin : 'http://127.0.0.1:4200')
-  );
-}
-
-async function verifiedViewerId(request: NextRequest): Promise<string | null> {
-  const cookie = request.headers.get('cookie');
-  if (!cookie) return null;
-  try {
-    const response = await fetch(`${identityTarget()}/identity/me`, {
-      method: 'GET',
-      headers: { accept: 'application/json', cookie },
-      cache: 'no-store',
-    });
-    if (response.status === 401 || response.status === 403) return null;
-    if (!response.ok) throw new Error(`identity /me failed: ${response.status}`);
-    const body = (await response.json()) as { id?: unknown };
-    return typeof body.id === 'string' && body.id.trim() ? body.id.trim() : null;
-  } catch (error) {
-    console.error('team economy AI: identity verification failed', error);
-    return null;
-  }
-}
 
 function rateLimited(viewerId: string): boolean {
   const now = Date.now();
