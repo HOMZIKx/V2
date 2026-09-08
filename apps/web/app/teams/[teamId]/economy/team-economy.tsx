@@ -297,9 +297,11 @@ export function TeamEconomy() {
     [drops],
   );
 
-  async function recognize(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const recognizeFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -344,7 +346,28 @@ export function TeamEconomy() {
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  function recognize(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) void recognizeFile(file);
   }
+
+  useEffect(() => {
+    if (!dropOpen) return;
+    const handlePaste = (event: ClipboardEvent) => {
+      const imageItem = Array.from(event.clipboardData?.items ?? []).find(
+        (item) => item.kind === 'file' && item.type.startsWith('image/'),
+      );
+      const file = imageItem?.getAsFile() ?? null;
+      if (!file) return;
+      event.preventDefault();
+      void recognizeFile(file);
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [dropOpen, recognizeFile]);
 
   function patchItem(key: string, patch: Partial<DraftItem>) {
     setDraftItems((items) =>
@@ -646,7 +669,7 @@ export function TeamEconomy() {
                       onChange={recognize}
                       type="file"
                     />
-                    <small>AI czyta sloty, ikony i liczby. Wynik zawsze można poprawić.</small>
+                    <small>Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik zawsze można poprawić.</small>
                   </span>
                 </label>
 
