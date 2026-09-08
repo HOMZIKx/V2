@@ -1,0 +1,128 @@
+name: tmp-narrow-hunts-all-removal
+
+on:
+  push:
+    branches:
+      - fix/party-all-channels-remove-hunts-all-20260908
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/party-all-channels-remove-hunts-all-20260908
+
+      - name: Restore current base and remove only aggregate CH mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show 3d543ffcf5a8c52181e522cf39c7e7c8b0bbb1f6:apps/web/app/generaly-metki/page.tsx > apps/web/app/generaly-metki/page.tsx
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/web/app/generaly-metki/page.tsx')
+          text = path.read_text()
+
+          def repl(old: str, new: str, *, count: int = 1):
+              global text
+              actual = text.count(old)
+              if actual != count:
+                  raise SystemExit(f'expected {count} occurrence(s), found {actual}: {old[:120]!r}')
+              text = text.replace(old, new, count)
+
+          repl("type ChannelView = number | 'all';\n", "")
+          repl(
+              "function channelLabel(channel: ChannelView): string {\n  return channel === 'all' ? 'Wszystkie kanały' : `CH${channel}`;\n}",
+              "function channelLabel(channel: number): string {\n  return `CH${channel}`;\n}",
+          )
+          repl("  const [channel, setChannel] = useState<ChannelView>(1);", "  const [channel, setChannel] = useState(1);")
+
+          repl(
+              "  const quickRequest = async (type: MetinGeneralHuntRequestType) => {\n    if (channel === 'all') {\n      setNotice('W widoku „Wszystkie kanały” wybierz konkretny CH, aby dodać komendę.');\n      return;\n    }\n    const activeChannel = channel;",
+              "  const quickRequest = async (type: MetinGeneralHuntRequestType) => {",
+          )
+          text = text.replace('channel: activeChannel,', 'channel,')
+
+          repl(
+              "  const markKilled = async () => {\n    if (channel === 'all') {\n      setNotice('Wybierz konkretny CH, aby oznaczyć „Zbity”.');\n      return;\n    }\n    const activeChannel = channel;",
+              "  const markKilled = async () => {",
+          )
+          text = text.replace('route.channel !== activeChannel', 'route.channel !== channel')
+          text = text.replace('marker.channel !== activeChannel', 'marker.channel !== channel')
+          text = text.replace('request.channel === activeChannel', 'request.channel === channel')
+
+          repl(
+              "  const handleMapClick = async (event: ReactMouseEvent<HTMLDivElement>) => {\n    if (!imagePath || mode === 'view' || saving || channel === 'all') return;\n    const activeChannel = channel;",
+              "  const handleMapClick = async (event: ReactMouseEvent<HTMLDivElement>) => {\n    if (!imagePath || mode === 'view' || saving) return;",
+          )
+          text = text.replace('marker.channel !== activeChannel', 'marker.channel !== channel')
+          text = text.replace('route.channel === activeChannel', 'route.channel === channel')
+
+          repl(
+              "  const undoRoutePoint = async () => {\n    if (!viewerId || channel === 'all') return;\n    const activeChannel = channel;",
+              "  const undoRoutePoint = async () => {\n    if (!viewerId) return;",
+          )
+          text = text.replace('route.channel !== activeChannel', 'route.channel !== channel')
+
+          repl(
+              "  const clearOwnRoute = async () => {\n    if (!viewerId || channel === 'all') return;\n    const activeChannel = channel;",
+              "  const clearOwnRoute = async () => {\n    if (!viewerId) return;",
+          )
+          text = text.replace('route.channel === activeChannel', 'route.channel === channel')
+
+          repl(
+              "  const visibleRoutes =\n    channel === 'all' ? state.routes : state.routes.filter((route) => route.channel === channel);\n  const visibleMarkers =\n    channel === 'all' ? state.markers : state.markers.filter((marker) => marker.channel === channel);",
+              "  const visibleRoutes = state.routes.filter((route) => route.channel === channel);\n  const visibleMarkers = state.markers.filter((marker) => marker.channel === channel);",
+          )
+          repl(
+              "  const ownRoute =\n    channel === 'all'\n      ? undefined\n      : state.routes.find((route) => route.userId === viewerId && route.channel === channel);\n\n  const switchToAllChannels = () => {\n    setChannel('all');\n    setMode('view');\n    setNotice('');\n  };",
+              "  const ownRoute = state.routes.find(\n    (route) => route.userId === viewerId && route.channel === channel,\n  );",
+          )
+
+          repl(
+              "        <nav className={styles.channelBar} aria-label=\"Kanał\">\n          <button\n            className={channel === 'all' ? styles.channelActive : styles.channelButton}\n            onClick={switchToAllChannels}\n            type=\"button\"\n          >\n            Wszystkie kanały\n          </button>\n          {huntDefinition.channels.map((huntChannel) => (",
+              "        <nav className={styles.channelBar} aria-label=\"Kanał\">\n          {huntDefinition.channels.map((huntChannel) => (",
+          )
+
+          repl(
+              "                <span>\n                  {loading\n                    ? 'Ładowanie…'\n                    : saving\n                      ? 'Zapisywanie…'\n                      : channel === 'all'\n                        ? 'Widok zbiorczy — wszystkie oznaczenia na tej mapie'\n                        : 'Gotowe do działania'}\n                </span>",
+              "                <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe do działania'}</span>",
+          )
+          text = text.replace("disabled={!imagePath || saving || channel === 'all'}", "disabled={!imagePath || saving}")
+
+          repl(
+              "                      const color =\n                        channel === 'all'\n                          ? channelColor(route.channel)\n                          : routeDisplayColor(route, visibleRoutes);\n                      const path = smoothRoutePath(route.points);\n                      const editing =\n                        channel !== 'all' && mode === 'route' && route.userId === viewerId;",
+              "                      const color = routeDisplayColor(route, visibleRoutes);\n                      const path = smoothRoutePath(route.points);\n                      const editing = mode === 'route' && route.userId === viewerId;",
+          )
+
+          repl(
+              "            {channel === 'all' ? (\n              <div className={styles.routeLegend}>\n                {huntDefinition.channels.map((huntChannel) => (\n                  <span key={huntChannel}>\n                    <i style={{ background: channelColor(huntChannel) }} />\n                    CH{huntChannel}\n                  </span>\n                ))}\n              </div>\n            ) : huntDefinition.kind === 'metin' ? (",
+              "            {huntDefinition.kind === 'metin' ? (",
+          )
+
+          text = text.replace("<em>{channel === 'all' ? 'podgląd' : '1 klik'}</em>", "<em>1 klik</em>")
+          repl(
+              "\n              {channel === 'all' ? (\n                <p className={styles.empty}>\n                  Widok zbiorczy jest tylko do podglądu. Wybierz CH, aby dodać pinezkę lub komendę.\n                </p>\n              ) : null}\n",
+              "\n",
+          )
+          text = text.replace("disabled={saving || channel === 'all'}", "disabled={saving}")
+
+          if "'all'" in text or 'Wszystkie kanały' in text or "channel === 'all'" in text:
+              raise SystemExit('aggregate channel remnants remain in Generały/Metiny')
+
+          path.write_text(text)
+          PY
+
+          rm .github/workflows/tmp-narrow-hunts-all-removal.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/app/generaly-metki/page.tsx .github/workflows/tmp-narrow-hunts-all-removal.yml
+          git commit -m "fix(web): remove only aggregate channel mode from hunts"
+          git push origin HEAD:fix/party-all-channels-remove-hunts-all-20260908
