@@ -1,7 +1,7 @@
 {
-  "requestId": "final-web-runtime-log-20260908-1",
+  "requestId": "final-identity-runtime-log-20260908-1",
   "mode": "cli",
   "action": "logs:runtime",
   "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "webapp-dest"
+  "serviceName": "identity-service"
 }
