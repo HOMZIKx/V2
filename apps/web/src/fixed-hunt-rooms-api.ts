@@ -78,17 +78,18 @@ export type FixedHuntRoomSnapshot = {
   readonly updatedAtIso: string;
 };
 
-const baseUrl =
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim() || 'http://127.0.0.1:4400';
+// Production must go through the authenticated same-origin Next proxy.
+// Direct browser calls to the Player Team service caused every fixed hunt room
+// to fail on Zeabur when NEXT_PUBLIC_PLAYER_TEAM_BASE_URL was absent or blocked
+// by cross-origin/network policy. Local development may still override it.
+const configuredBaseUrl =
+  process.env.NODE_ENV === 'production'
+    ? ''
+    : (process.env.NEXT_PUBLIC_PLAYER_TEAM_BASE_URL ?? '').trim();
+const baseUrl = configuredBaseUrl.replace(/\/$/, '');
 
-const demoHeaderName = (
-  (process.env.NEXT_PUBLIC_PLAYER_TEAM_DEMO_VIEWER_HEADER ?? '').trim() || 'x-demo-viewer-id'
-).toLowerCase();
-
-function headers(viewerId: string, json = false): HeadersInit {
-  const result: Record<string, string> = { [demoHeaderName]: viewerId };
-  if (json) result['content-type'] = 'application/json';
-  return result;
+function playerTeamUrl(path: string): string {
+  return `${baseUrl}${path}`;
 }
 
 export class FixedHuntRoomApiError extends Error {
@@ -122,12 +123,16 @@ export async function getFixedHuntRoom(input: {
   readonly viewerId: string;
   readonly roomKey: string;
 }): Promise<FixedHuntRoomSnapshot> {
+  // viewerId stays in the client signature for call-site compatibility. In
+  // production identity is resolved by the authenticated server proxy.
+  void input.viewerId;
+
   const res = await fetch(
-    `${baseUrl}/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(input.roomKey)}`,
+    playerTeamUrl(`/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(input.roomKey)}`),
     {
       method: 'GET',
-      headers: headers(input.viewerId),
       cache: 'no-store',
+      credentials: 'include',
     },
   );
   if (!res.ok) throw await apiError(res, 'getFixedHuntRoom failed');
@@ -140,11 +145,14 @@ export async function putFixedHuntRoom(input: {
   readonly expectedRevision: number;
   readonly state: FixedHuntRoomState;
 }): Promise<FixedHuntRoomSnapshot> {
+  void input.viewerId;
+
   const res = await fetch(
-    `${baseUrl}/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(input.roomKey)}`,
+    playerTeamUrl(`/player-team/v1/fixed-hunt-rooms/${encodeURIComponent(input.roomKey)}`),
     {
       method: 'PUT',
-      headers: headers(input.viewerId, true),
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         expectedRevision: input.expectedRevision,
         state: input.state,
