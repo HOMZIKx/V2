@@ -33,6 +33,22 @@ function nextStateRevision(state: Record<string, unknown>): number {
     : 1;
 }
 
+function membersOf(state: Record<string, unknown>): Record<string, unknown>[] {
+  return (Array.isArray(state.members) ? state.members : [])
+    .map(asRecord)
+    .filter((entry): entry is Record<string, unknown> => entry !== null);
+}
+
+function invitationsOf(state: Record<string, unknown>): Record<string, unknown>[] {
+  return (Array.isArray(state.invitations) ? state.invitations : [])
+    .map(asRecord)
+    .filter((entry): entry is Record<string, unknown> => entry !== null);
+}
+
+function memberMatchesDiscord(member: Record<string, unknown>, discordId: string): boolean {
+  return asString(member.discordAccountId) === discordId || asString(member.id) === discordId;
+}
+
 export class TeamInvitationsUseCases {
   public constructor(
     private readonly repository: TeamInvitationsRepositoryPort,
@@ -51,6 +67,127 @@ export class TeamInvitationsUseCases {
       throw new PlayerTeamError('UNAUTHORIZED', 'authenticated Discord identity required');
     }
     return viewerId;
+  }
+
+  public async createInvitation(input: {
+    readonly ownerDiscordId: string;
+    readonly workspaceId: string;
+    readonly recipientDiscordId: string;
+    readonly recipientDisplayName: string;
+  }): Promise<{
+    readonly invitation: TeamInvitationRecord;
+    readonly workspaceId: string;
+    readonly workspace: Record<string, unknown>;
+    readonly revision: number;
+  }> {
+    if (!/^\d{17,20}$/.test(input.recipientDiscordId)) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'recipient Discord id is invalid');
+    }
+    if (input.recipientDiscordId === input.ownerDiscordId) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'cannot invite yourself');
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const current = await this.repository.getWorkspace(input.workspaceId);
+      if (current === null) {
+        throw new PlayerTeamError('NOT_FOUND', 'shared workspace is not initialised');
+      }
+
+      const members = membersOf(current.state);
+      const owner = members.find((member) => memberMatchesDiscord(member, input.ownerDiscordId));
+      if (owner === undefined || asString(owner.role) !== 'owner') {
+        throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can invite members');
+      }
+      if (members.some((member) => memberMatchesDiscord(member, input.recipientDiscordId))) {
+        throw new PlayerTeamError('VALIDATION_FAILED', 'recipient is already a team member');
+      }
+
+      const existing = invitationsOf(current.state).find(
+        (entry) =>
+          asString(entry.recipientDiscordId) === input.recipientDiscordId &&
+          asString(entry.status) === 'pending',
+      );
+      if (existing !== undefined) {
+        const existingId = asString(existing.id);
+        const parsed = existingId
+          ? await this.repository.findForRecipient(existingId, input.recipientDiscordId)
+          : null;
+        if (parsed !== null) {
+          return {
+            invitation: parsed.invitation,
+            workspaceId: current.workspaceId,
+            workspace: current.state,
+            revision: current.revision,
+          };
+        }
+        throw new PlayerTeamError('VALIDATION_FAILED', 'pending invitation already exists');
+      }
+
+      const recipientDisplayName = input.recipientDisplayName.trim() || `Gracz ${input.recipientDiscordId.slice(-4)}`;
+      const revision = nextStateRevision(current.state);
+      const invitation: TeamInvitationRecord = {
+        id: `inv-${randomUUID()}`,
+        teamId: current.workspaceId,
+        teamName: asString(current.state.name) || 'Zespół',
+        inviterName: asString(owner.displayName) || 'Właściciel',
+        recipientDiscordId: input.recipientDiscordId,
+        recipientDisplayName,
+        status: 'pending',
+        createdLabel: 'przed chwilą',
+        expiresLabel: 'za 3 dni',
+        revision: 1,
+      };
+      const history = Array.isArray(current.state.history) ? current.state.history : [];
+      const nextState: Record<string, unknown> = {
+        ...current.state,
+        revision,
+        invitations: [invitation, ...invitationsOf(current.state)],
+        history: [
+          {
+            id: `hist-${randomUUID()}`,
+            teamId: current.workspaceId,
+            actorId: input.ownerDiscordId,
+            actorName: invitation.inviterName,
+            actorInitials: initials(invitation.inviterName),
+            characterId: null,
+            characterName: null,
+            resource: 'member',
+            title: `Wysłano zaproszenie: ${recipientDisplayName}`,
+            detail: `Discord ID ${input.recipientDiscordId}`,
+            occurredAtLabel: 'przed chwilą',
+            revision,
+          },
+          ...history,
+        ],
+        updatedLabel: 'przed chwilą',
+      };
+
+      try {
+        const updated = await this.repository.updateWorkspace({
+          workspaceId: current.workspaceId,
+          state: nextState,
+          expectedRevision: current.revision,
+          updatedByUserId: input.ownerDiscordId,
+        });
+        return {
+          invitation,
+          workspaceId: updated.workspaceId,
+          workspace: updated.state,
+          revision: updated.revision,
+        };
+      } catch (error) {
+        if (
+          error instanceof PlayerTeamError &&
+          error.code === 'REVISION_CONFLICT' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new PlayerTeamError('REVISION_CONFLICT', 'could not create invitation after retries');
   }
 
   public async getInvitation(
@@ -86,31 +223,23 @@ export class TeamInvitationsUseCases {
     }
 
     const revision = nextStateRevision(found.state);
-    const invitations = (Array.isArray(found.state.invitations) ? found.state.invitations : []).map(
-      (raw) => {
-        const entry = asRecord(raw);
-        if (entry === null || asString(entry.id) !== input.invitationId) return raw;
-        return {
-          ...entry,
-          status: input.decision === 'accept' ? 'accepted' : 'declined',
-          revision:
-            typeof entry.revision === 'number' && Number.isFinite(entry.revision)
-              ? Math.trunc(entry.revision) + 1
-              : 1,
-        };
-      },
-    );
+    const invitations = invitationsOf(found.state).map((entry) => {
+      if (asString(entry.id) !== input.invitationId) return entry;
+      return {
+        ...entry,
+        status: input.decision === 'accept' ? 'accepted' : 'declined',
+        revision:
+          typeof entry.revision === 'number' && Number.isFinite(entry.revision)
+            ? Math.trunc(entry.revision) + 1
+            : 1,
+      };
+    });
 
-    const members = Array.isArray(found.state.members) ? [...found.state.members] : [];
+    const members = [...membersOf(found.state)];
     if (input.decision === 'accept') {
-      const alreadyMember = members.some((raw) => {
-        const member = asRecord(raw);
-        if (member === null) return false;
-        return (
-          asString(member.discordAccountId) === input.recipientDiscordId ||
-          asString(member.id) === input.recipientDiscordId
-        );
-      });
+      const alreadyMember = members.some((member) =>
+        memberMatchesDiscord(member, input.recipientDiscordId),
+      );
       if (!alreadyMember) {
         members.push({
           id: input.recipientDiscordId,
