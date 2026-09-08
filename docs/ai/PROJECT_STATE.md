@@ -18,6 +18,7 @@ Aktualny priorytet runtime: prawdziwy Discord OAuth, trwały Player Team oraz ni
 - Ranking aktywności w chwili proof miał 0 członków / 0 wiadomości / 0 minut voice. Do proof niezerowych liczników potrzebny jest realny event człowieka na Discordzie, a następnie ponowny restart/check.
 - Dług architektoniczny: daily member-activity buckets są obecnie trwałe na volume Gateway, ale ADR-0014 wskazuje `activity-service` jako docelowe SoT danych Activity. Migracja do bazy Activity jest osobnym etapem.
 - Audyt produkcji po restartach: 14 usług, `critical=0`; pozostał niegroźny stale typo env `UTHORIZATION_ASSERTION_AUD` obok poprawnego `AUTHORIZATION_ASSERTION_AUD` w Discord Gateway oraz informacyjne stare generated host keys.
+- Ustalona semantyka Zeabur env/deployment: zmiana `updateSingleEnvironmentVariable` jest konfiguracją źródłową usługi, natomiast `redeployService`/`restartService` potrafią odtworzyć poprzedni snapshot deploymentu. `API_GATEWAY_CORS_ORIGINS` i `IDENTITY_TRUSTED_ORIGINS` zostały ponownie zapisane w kanonicznej postaci na poziomie usługi bez replay starego deploymentu; ten commit celowo uruchamia świeży Git deployment, który ma przejąć aktualne variables. Po jego zakończeniu wymagany jest ponowny env audit i public E2E.
 
 Szczegóły dowodów i run IDs: `docs/ai/FIX_LOG.md`.
 
