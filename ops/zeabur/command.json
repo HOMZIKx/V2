@@ -1,9 +1,8 @@
 {
-  "requestId": "runtime-services-inventory-20260908-1103",
+  "requestId": "runtime-deploy-sha-check-20260908-1104",
   "mode": "graphql_read",
-  "query": "query RuntimeServices($projectID:ObjectID!,$environmentID:ObjectID!){services(projectID:$projectID){edges{node{_id name status gitTrigger(environmentID:$environmentID){branchName repoURL}}}}}",
+  "query": "query RuntimeDeploys($environmentID:ObjectID!){web:deployments(serviceID:\"6a985197573ada8b3bbe52a5\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}} gateway:deployments(serviceID:\"6a8211a6bdeaa87e2c52df28\",environmentID:$environmentID,perPage:5){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
   "variables": {
-    "projectID": "6a720a3e472e2c91a9e660d5",
     "environmentID": "6a720a3e5f062718bc7b3421"
   }
 }
