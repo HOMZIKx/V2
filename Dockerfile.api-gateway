@@ -4,6 +4,7 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY packages/typescript-config ./packages/typescript-config
 COPY packages/configuration/package.json ./packages/configuration/package.json
 COPY packages/observability/package.json ./packages/observability/package.json
