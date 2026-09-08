@@ -27,13 +27,14 @@ function gatewayPathForAction(action: unknown): string {
   if (action === 'reset') return '/notify/timer-reset';
   if (action === 'team-recipients') return '/notify/team-recipients';
   if (action === 'war-recipients') return '/notify/kingdom-war-recipients';
+  if (action === 'team-war-recipients') return '/notify/team-war-recipients';
   return '/notify/timer';
 }
 
 /**
  * Server-only forwarder: browser → web → discord-gateway notify endpoints.
  * Secret never exposed as NEXT_PUBLIC_*.
- * Body.action: timer | watch | reset | team-recipients | war-recipients
+ * Body.action: timer | watch | reset | team-recipients | war-recipients | team-war-recipients
  */
 export async function POST(request: Request): Promise<Response> {
   const secret = notifySecret();
