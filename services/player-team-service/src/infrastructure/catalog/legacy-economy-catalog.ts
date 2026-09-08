@@ -88,7 +88,7 @@ export function parseLegacyEconomyCatalogCsv(
 }
 
 export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalogSeedItem[]> {
-  if (cachedItems) return cachedItems;
+  if (cachedItems !== null) return cachedItems;
 
   try {
     const response = await fetch(LEGACY_EXPORT_URL, {
@@ -96,17 +96,16 @@ export async function loadLegacyEconomyCatalog(): Promise<readonly EconomyCatalo
       cache: 'no-store',
       signal: AbortSignal.timeout(5_000),
     });
-    if (!response.ok) {
-      cachedItems = [];
-      return cachedItems;
-    }
+    if (!response.ok) return [];
 
-    cachedItems = parseLegacyEconomyCatalogCsv(await response.text());
-    return cachedItems;
+    const parsed = parseLegacyEconomyCatalogCsv(await response.text());
+    // Cache only a successful, non-empty import. A temporary GitHub/network/parser
+    // failure must be retryable by a later catalog import in the same process.
+    if (parsed.length > 0) cachedItems = parsed;
+    return parsed;
   } catch {
     // The current V2 catalogue remains the primary source. A temporary GitHub/network
-    // failure must never block opening the Economy module or importing the local seed.
-    cachedItems = [];
-    return cachedItems;
+    // failure must never block opening the Economy module or poison future retries.
+    return [];
   }
 }

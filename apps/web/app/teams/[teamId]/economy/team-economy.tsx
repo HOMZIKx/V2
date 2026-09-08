@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -200,6 +201,7 @@ export function TeamEconomy() {
   const [draftMoney, setDraftMoney] = useState<DraftMoney[]>([]);
   const [outsiders, setOutsiders] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const initializedMembersForWorkspaceRef = useRef<string | null>(null);
 
   const [expenseLabel, setExpenseLabel] = useState('');
   const [expenseQty, setExpenseQty] = useState(1);
@@ -208,10 +210,14 @@ export function TeamEconomy() {
   const [expenseShare, setExpenseShare] = useState(100);
 
   useEffect(() => {
-    if (workspace && selectedMembers.length === 0) {
-      setSelectedMembers(workspace.members.map((member) => member.id));
+    if (!workspace) {
+      initializedMembersForWorkspaceRef.current = null;
+      return;
     }
-  }, [workspace, selectedMembers.length]);
+    if (initializedMembersForWorkspaceRef.current === workspace.id) return;
+    initializedMembersForWorkspaceRef.current = workspace.id;
+    setSelectedMembers(workspace.members.map((member) => member.id));
+  }, [workspace]);
 
   const ensureCatalog = useCallback(async () => {
     if (!workspace || catalogReady) return;

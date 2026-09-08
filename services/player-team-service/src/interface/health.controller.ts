@@ -3,9 +3,8 @@ import { Controller, Get, Inject, ServiceUnavailableException } from '@nestjs/co
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
 
 // Readiness must represent the schema required by the currently deployed binary,
-// not merely the first historical migration. This keeps traffic away from a new
-// Player Team instance until the Metin/General split schema is actually present.
-const REQUIRED_MIGRATION_ID = '005_metin_general_hunts.sql';
+// not merely an older historical migration. Economy endpoints depend on migration 006.
+const REQUIRED_MIGRATION_ID = '006_team_economy.sql';
 
 @Controller('health')
 export class HealthController {

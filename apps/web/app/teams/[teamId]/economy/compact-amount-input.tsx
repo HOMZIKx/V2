@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 export function parseCompactAmount(raw: string): number | null {
   const normalized = raw
@@ -36,19 +36,27 @@ export function CompactAmountInput({
 }) {
   const [text, setText] = useState(() => initialText(value));
   const [invalid, setInvalid] = useState(false);
+  const editingRef = useRef(false);
+  const selfCommittedValueRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setText(initialText(value));
+    if (selfCommittedValueRef.current === value) {
+      selfCommittedValueRef.current = null;
+      return;
+    }
+    if (!editingRef.current) setText(initialText(value));
   }, [value]);
 
   const commit = () => {
     const parsed = parseCompactAmount(text);
+    editingRef.current = false;
     if (parsed === null) {
       setInvalid(true);
       setText(initialText(value));
       return;
     }
     setInvalid(false);
+    selfCommittedValueRef.current = parsed;
     onValueChange(parsed);
     setText(text.trim().toLocaleLowerCase('pl-PL').replace(',', '.'));
   };
@@ -66,11 +74,11 @@ export function CompactAmountInput({
       inputMode="decimal"
       onBlur={commit}
       onChange={(event) => {
-        const nextText = event.target.value;
         setInvalid(false);
-        setText(nextText);
-        const parsed = parseCompactAmount(nextText);
-        if (parsed !== null) onValueChange(parsed);
+        setText(event.target.value);
+      }}
+      onFocus={() => {
+        editingRef.current = true;
       }}
       onKeyDown={onKeyDown}
       placeholder={placeholder}

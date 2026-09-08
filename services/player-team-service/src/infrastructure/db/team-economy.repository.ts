@@ -70,6 +70,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     workspaceId: string,
     query: string,
   ): Promise<readonly EconomyCatalogItem[]> {
+    void workspaceId;
     const needle = query.trim();
     const result = await this.db.query(
       `SELECT DISTINCT ON (i.id)
@@ -80,13 +81,13 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
        LEFT JOIN LATERAL (
          SELECT p.unit_price, p.currency, p.created_at
          FROM player_team_economy_prices p
-         WHERE p.item_id = i.id AND p.workspace_id = $1
+         WHERE p.item_id = i.id
          ORDER BY p.created_at DESC LIMIT 1
        ) lp ON TRUE
-       WHERE $2 = '' OR i.canonical_name ILIKE '%' || $2 || '%' OR a.alias ILIKE '%' || $2 || '%'
+       WHERE $1 = '' OR i.canonical_name ILIKE '%' || $1 || '%' OR a.alias ILIKE '%' || $1 || '%'
        ORDER BY i.id, i.canonical_name
        LIMIT 40`,
-      [workspaceId, needle],
+      [needle],
     );
     return result.rows.map((row) => this.mapCatalogRow(row));
   }
@@ -171,7 +172,6 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
   private async catalogItemById(
     client: Pool | PoolClient,
     itemId: string,
-    workspaceId = '',
   ): Promise<EconomyCatalogItem> {
     const result = await client.query(
       `SELECT i.id, i.canonical_name, i.category, i.image_url,
@@ -180,11 +180,11 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
        LEFT JOIN LATERAL (
          SELECT p.unit_price, p.currency, p.created_at
          FROM player_team_economy_prices p
-         WHERE p.item_id = i.id AND ($2 = '' OR p.workspace_id = $2)
+         WHERE p.item_id = i.id
          ORDER BY p.created_at DESC LIMIT 1
        ) lp ON TRUE
        WHERE i.id = $1`,
-      [itemId, workspaceId],
+      [itemId],
     );
     const row = result.rows[0];
     if (row === undefined) throw new Error('economy item not found');

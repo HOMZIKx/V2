@@ -157,7 +157,12 @@ function chooseDynamicMatch(name: string, rows: readonly DynamicCatalogItem[]): 
     const candidate = normalize(item.canonicalName);
     return candidate.includes(target) || target.includes(candidate);
   });
-  const match = candidates.length === 1 ? candidates[0] : null;
+  const match =
+    candidates.length === 1
+      ? candidates[0]
+      : candidates.length === 0 && rows.length === 1
+        ? rows[0]
+        : null;
   return match
     ? { id: match.id, name: match.canonicalName, category: match.category, imageUrl: match.imageUrl }
     : null;
@@ -301,7 +306,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
 
-  const model = process.env.GEMINI_MODEL?.trim() || 'gemini-3-flash-preview';
+  const model =
+    process.env.GEMINI_VISION_MODEL?.trim() ||
+    process.env.GEMINI_MODEL?.trim() ||
+    'gemini-3-flash-preview';
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
     {
