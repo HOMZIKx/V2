@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import { TeamInvitationSync } from '../src/team-invitation-sync';
+import { TeamKingdomWarRecipientSync } from '../src/team-kingdom-war-recipient-sync';
 import { TeamMembershipGuard } from '../src/team-membership-guard';
 import { PlayerStoreProvider } from '../src/player-store-react';
 import { AuthGate } from './auth-gate';
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
       <body>
         <PlayerStoreProvider>
           <TeamInvitationSync />
+          <TeamKingdomWarRecipientSync />
           <TeamMembershipGuard />
           <AuthGate>{children}</AuthGate>
         </PlayerStoreProvider>
