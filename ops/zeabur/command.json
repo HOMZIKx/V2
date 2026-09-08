@@ -1,5 +1,4 @@
 {
-  "requestId": "discord-persistence-proof-20260908-1",
-  "mode": "discord_persistence_proof",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "production-auth-persistence-audit-20260908-2",
+  "mode": "env_audit"
 }
