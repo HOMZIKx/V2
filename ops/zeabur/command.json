@@ -1,5 +1,6 @@
 {
-  "requestId": "persistent-origin-repair-20260908-1",
-  "mode": "persistent_origin_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "verify-persistent-origin-deployments-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Verify($api:ObjectID!,$identity:ObjectID!,$env:ObjectID!){api:service(_id:$api){name status} identity:service(_id:$identity){name status} apiDeployments:deployments(serviceID:$api,environmentID:$env,perPage:3){edges{node{_id status commitSHA createdAt startedAt finishedAt}}} identityDeployments:deployments(serviceID:$identity,environmentID:$env,perPage:3){edges{node{_id status commitSHA createdAt startedAt finishedAt}}}}",
+  "variables": {"api":"6a8211c9bdeaa87e2c52df34","identity":"6a8211cfbdeaa87e2c52df39","env":"6a720a3e5f062718bc7b3421"}
 }
