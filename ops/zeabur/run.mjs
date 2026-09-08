@@ -124,12 +124,23 @@ function buildCliArgs(command) {
     case 'logs:build':
       if (!e || !s) fail('logs:build requires environmentId and serviceName');
       return ['deployment', 'log', '-t=build', '--env-id', e, '--service-name', s];
-    case 'service:restart':
-      if (command.confirm !== 'ZEABUR_WRITE_APPROVED') fail('service:restart requires confirm=ZEABUR_WRITE_APPROVED');
-      if (!e || !s) fail('service:restart requires environmentId and serviceName');
-      return ['service', 'restart', '--env-id', e, '--service-name', s];
     default: fail(`Unsupported CLI action: ${action}`);
   }
+}
+
+async function restartService(command) {
+  if (command.confirm !== 'ZEABUR_WRITE_APPROVED') {
+    fail('service_restart requires confirm=ZEABUR_WRITE_APPROVED');
+  }
+  const serviceID = String(command.serviceId || '').trim();
+  const environmentID = String(command.environmentId || '').trim();
+  if (!serviceID || !environmentID) {
+    fail('service_restart requires serviceId and environmentId');
+  }
+  return gql(
+    'mutation Restart($serviceID:ObjectID!,$environmentID:ObjectID!){restartService(serviceID:$serviceID,environmentID:$environmentID)}',
+    { serviceID, environmentID },
+  );
 }
 
 async function run() {
@@ -154,6 +165,8 @@ async function run() {
   } else if (mode === 'graphql_write') {
     assertWriteMutation(command);
     data = await gql(command.query, command.variables || {});
+  } else if (mode === 'service_restart') {
+    data = await restartService(command);
   } else if (mode === 'cli') {
     cliLogin();
     const args = buildCliArgs(command);
