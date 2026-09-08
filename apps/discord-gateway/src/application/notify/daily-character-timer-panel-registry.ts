@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+
+import { resolveGatewayPersistenceBaseDir } from './gateway-persistence.js';
 
 const VERSION = 1 as const;
 const MAX_WORKSPACES = 100;
@@ -54,13 +55,10 @@ function panelKey(workspaceId: string, discordUserId: string): string {
 }
 
 function persistPath(): string {
-  const configured = (process.env.DISCORD_GATEWAY_DATA_DIR ?? '').trim();
-  const legacy = (process.env.DESTILED_DATA_DIR ?? '').trim();
-  const base = configured
-    ? join(configured, 'daily-character-timer-panels')
-    : legacy
-      ? join(legacy, 'daily-character-timer-panels')
-      : join(tmpdir(), 'destiled-daily-character-timer-panels');
+  const { baseDir, status } = resolveGatewayPersistenceBaseDir();
+  const base = status.temporaryFallback
+    ? join(baseDir, 'destiled-daily-character-timer-panels')
+    : join(baseDir, 'daily-character-timer-panels');
   if (!existsSync(base)) mkdirSync(base, { recursive: true });
   return join(base, 'state-v1.json');
 }
@@ -80,7 +78,10 @@ function load(): void {
         const workspaceId = normalizeWorkspaceId(rawWorkspaceId);
         const dailyTime = normalizeTime(rawConfig?.dailyTime ?? '');
         if (!workspaceId || !dailyTime || !Array.isArray(rawConfig?.recipients)) continue;
-        const recipients = [...new Set(rawConfig.recipients.filter(isSnowflake))].slice(0, MAX_RECIPIENTS);
+        const recipients = [...new Set(rawConfig.recipients.filter(isSnowflake))].slice(
+          0,
+          MAX_RECIPIENTS,
+        );
         configs.set(workspaceId, { workspaceId, dailyTime, recipients });
       }
     }
@@ -88,7 +89,8 @@ function load(): void {
       for (const rawPanel of Object.values(parsed.panels)) {
         if (!rawPanel || typeof rawPanel !== 'object') continue;
         const workspaceId = normalizeWorkspaceId(rawPanel.workspaceId ?? '');
-        const discordUserId = typeof rawPanel.discordUserId === 'string' ? rawPanel.discordUserId : '';
+        const discordUserId =
+          typeof rawPanel.discordUserId === 'string' ? rawPanel.discordUserId : '';
         const dayKey = typeof rawPanel.dayKey === 'string' ? rawPanel.dayKey : '';
         const messageId = typeof rawPanel.messageId === 'string' ? rawPanel.messageId : '';
         if (!workspaceId || !isSnowflake(discordUserId) || !dayKey || !messageId) continue;
@@ -114,12 +116,23 @@ function save(): void {
     const configObject: PersistShape['configs'] = {};
     const panelObject: PersistShape['panels'] = {};
     for (const [workspaceId, config] of configs) {
-      configObject[workspaceId] = { dailyTime: config.dailyTime, recipients: [...config.recipients] };
+      configObject[workspaceId] = {
+        dailyTime: config.dailyTime,
+        recipients: [...config.recipients],
+      };
     }
     for (const [key, panel] of panels) panelObject[key] = panel;
     const target = persistPath();
     const tmp = `${target}.${process.pid}.tmp`;
-    writeFileSync(tmp, JSON.stringify({ version: VERSION, configs: configObject, panels: panelObject } satisfies PersistShape), 'utf8');
+    writeFileSync(
+      tmp,
+      JSON.stringify({
+        version: VERSION,
+        configs: configObject,
+        panels: panelObject,
+      } satisfies PersistShape),
+      'utf8',
+    );
     renameSync(tmp, target);
   } catch {
     // memory remains authoritative until restart
@@ -136,17 +149,27 @@ export function replaceDailyCharacterTimerPanelConfig(input: {
   const dailyTime = normalizeTime(input.dailyTime);
   if (!workspaceId || !dailyTime) return null;
   if (!configs.has(workspaceId) && configs.size >= MAX_WORKSPACES) return null;
-  const recipients = [...new Set(input.recipients.map((id) => id.trim()).filter(isSnowflake))].slice(0, MAX_RECIPIENTS);
-  const config = { workspaceId, dailyTime, recipients } satisfies DailyCharacterTimerPanelConfig;
+  const recipients = [
+    ...new Set(input.recipients.map((id) => id.trim()).filter(isSnowflake)),
+  ].slice(0, MAX_RECIPIENTS);
+  const config = {
+    workspaceId,
+    dailyTime,
+    recipients,
+  } satisfies DailyCharacterTimerPanelConfig;
   configs.set(workspaceId, config);
   for (const [key, panel] of panels) {
-    if (panel.workspaceId === workspaceId && !recipients.includes(panel.discordUserId)) panels.delete(key);
+    if (panel.workspaceId === workspaceId && !recipients.includes(panel.discordUserId)) {
+      panels.delete(key);
+    }
   }
   save();
   return config;
 }
 
-export function getDailyCharacterTimerPanelConfig(workspaceId: string): DailyCharacterTimerPanelConfig | null {
+export function getDailyCharacterTimerPanelConfig(
+  workspaceId: string,
+): DailyCharacterTimerPanelConfig | null {
   load();
   return configs.get(workspaceId) ?? null;
 }
