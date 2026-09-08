@@ -1,0 +1,22 @@
+/* Real map images are rendered with object-fit: contain inside a full-width stage.
+   Only the visible bitmap is a valid placement target; letterbox/padding must not
+   accept marker clicks. Clicks on the image still bubble to the stage handler, so
+   existing stage-relative pin coordinates and persisted pins stay compatible. */
+.respawn-map-stage:has(> img) {
+  pointer-events: none;
+}
+
+.respawn-map-stage:has(> img) > img {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.respawn-map-stage:has(> img) > .respawn-map-marker {
+  pointer-events: auto;
+}
+
+.respawn-map-stage:has(> img) > .respawn-map-shade,
+.respawn-map-stage:has(> img) > .respawn-map-caption,
+.respawn-map-stage:has(> img) > .respawn-placement-callout {
+  pointer-events: none;
+}
