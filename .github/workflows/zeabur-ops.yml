@@ -16,6 +16,7 @@ on:
       - ops/zeabur/repair-discord-persistence.mjs
       - ops/zeabur/verify-discord-persistence-proof.mjs
       - ops/zeabur/verify-public-e2e.mjs
+      - ops/zeabur/verify-technika-persistence.mjs
       - .github/workflows/zeabur-ops.yml
   workflow_dispatch:
 
@@ -53,6 +54,7 @@ jobs:
             discord_persistence_repair) node ops/zeabur/repair-discord-persistence.mjs ;;
             discord_persistence_proof) node ops/zeabur/verify-discord-persistence-proof.mjs ;;
             public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
+            technika_persistence_probe) node ops/zeabur/verify-technika-persistence.mjs ;;
             *) node ops/zeabur/run.mjs ;;
           esac
 
