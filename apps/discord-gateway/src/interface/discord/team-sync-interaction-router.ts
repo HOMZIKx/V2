@@ -20,10 +20,8 @@ import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-
 import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
 import { readCharacterTimerCardFromBot } from '../../infrastructure/player-team/read-character-timer-card.js';
 import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
-import {
-  isWarClaimAction,
-  parseSignedCustomId,
-} from '../../infrastructure/security/signed-custom-id.js';
+import { parseSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
+import { isWarClaimAction } from '../../infrastructure/security/timer-custom-id.js';
 import {
   KINGDOM_WAR_CHARACTER_STUB,
   renderKingdomWarReminder,
@@ -130,8 +128,6 @@ export class TeamSyncInteractionRouter {
     const deepLinkUrl = timerDeepLink(workspaceId, characterId);
     const recipients = teamRecipients(interaction.user.id);
 
-    // A refresh starts a new cycle. Remove every previous due/snooze job for the team,
-    // then arm the next due notification for every current team recipient.
     for (const discordUserId of recipients) {
       cancelCharacterTimerReminder(discordUserId, timerId);
     }
@@ -240,14 +236,17 @@ export class TeamSyncInteractionRouter {
     });
     const deepLinkUrl =
       job.deepLinkUrl ?? timerDeepLink(card?.workspaceId ?? job.workspaceId, card?.characterId ?? job.characterId);
+    const resolvedWorkspaceId = card?.workspaceId ?? job.workspaceId;
+    const resolvedCharacterId = card?.characterId ?? job.characterId;
+    const resolvedCharacterName = card?.characterName ?? job.characterName;
     const payload: TimerNotifyPayload = {
       discordUserId: job.discordUserId,
-      title: `${job.label}${(card?.characterName ?? job.characterName) ? ` · ${card?.characterName ?? job.characterName}` : ''}`,
+      title: `${job.label}${resolvedCharacterName ? ` · ${resolvedCharacterName}` : ''}`,
       body: 'Timer jest gotowy, ale pozostaje zablokowany do jawnego odświeżenia przez zespół.',
       deepLinkUrl,
-      ...(card?.workspaceId ?? job.workspaceId ? { workspaceId: card?.workspaceId ?? job.workspaceId ?? undefined } : {}),
-      ...(card?.characterId ?? job.characterId ? { characterId: card?.characterId ?? job.characterId ?? undefined } : {}),
-      ...(card?.characterName ?? job.characterName ? { characterName: card?.characterName ?? job.characterName ?? undefined } : {}),
+      ...(resolvedWorkspaceId ? { workspaceId: resolvedWorkspaceId } : {}),
+      ...(resolvedCharacterId ? { characterId: resolvedCharacterId } : {}),
+      ...(resolvedCharacterName ? { characterName: resolvedCharacterName } : {}),
       timerId: job.timerId,
       timerLabel: job.label,
       endsAt: new Date(job.fireAtMs).toISOString(),
