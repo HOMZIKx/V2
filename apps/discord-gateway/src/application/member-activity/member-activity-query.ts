@@ -9,6 +9,7 @@ export type RankedMember = {
   readonly rank: number;
   readonly discordUserId: string;
   readonly displayName: string | null;
+  readonly avatarUrl: string | null;
   readonly messageCount: number;
   readonly voiceMinutes: number;
   readonly score: number;
@@ -71,6 +72,7 @@ export class MemberActivityQuery {
     let rows = [...agg.entries()].map(([discordUserId, v]) => ({
       discordUserId,
       displayName: v.displayName ?? null,
+      avatarUrl: v.avatarUrl ?? null,
       messageCount: v.messageCount,
       voiceMinutes: v.voiceMinutes,
       score: v.messageCount + v.voiceMinutes,
@@ -95,6 +97,7 @@ export class MemberActivityQuery {
       rank: i + 1,
       discordUserId: r.discordUserId,
       displayName: r.displayName,
+      avatarUrl: r.avatarUrl,
       messageCount: r.messageCount,
       voiceMinutes: r.voiceMinutes,
       score: r.score,
