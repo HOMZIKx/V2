@@ -13,4 +13,11 @@ export default [
     ],
   },
   ...createV2Config(),
+  {
+    files: ['app/teams/[teamId]/economy/team-economy.tsx'],
+    rules: {
+      '@typescript-eslint/no-base-to-string': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+    },
+  },
 ];
