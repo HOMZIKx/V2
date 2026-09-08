@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 
-import { CharacterEquipment } from './character-equipment';
+import { CharacterEquipmentV2 } from './character-equipment-v2';
 
 export default function CharacterEquipmentPage() {
   return (
@@ -13,7 +13,7 @@ export default function CharacterEquipmentPage() {
         </main>
       }
     >
-      <CharacterEquipment />
+      <CharacterEquipmentV2 />
     </Suspense>
   );
 }
