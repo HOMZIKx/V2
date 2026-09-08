@@ -1,0 +1,57 @@
+name: Apply PR100 TypeScript narrowing fix
+
+on:
+  push:
+    branches:
+      - fix/feedback-eq-hunts-timers-20260908
+    paths:
+      - .github/workflows/fix-pr100-narrowing.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/feedback-eq-hunts-timers-20260908
+          fetch-depth: 0
+      - name: Patch exact block
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('apps/web/app/teams/[teamId]/characters/[characterId]/character-equipment-v2.tsx')
+          text = p.read_text(encoding='utf-8')
+          old = """      if (!response.ok || !payload.draft?.name) {\n        throw new Error(payload.error || 'Nie udało się odczytać przedmiotu ze screena.');\n      }\n\n      const parsedEnhancement = clampEnhancement(\n        payload.draft.enhancement ?? parseEnhancementFromName(payload.draft.name),\n      );\n      const baseName = stripEnhancementFromName(payload.draft.name);\n"""
+          new = """      if (!response.ok || !payload.draft?.name) {\n        throw new Error(payload.error || 'Nie udało się odczytać przedmiotu ze screena.');\n      }\n      const analysisDraft = payload.draft;\n\n      const parsedEnhancement = clampEnhancement(\n        analysisDraft.enhancement ?? parseEnhancementFromName(analysisDraft.name),\n      );\n      const baseName = stripEnhancementFromName(analysisDraft.name);\n"""
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one header match, found {text.count(old)}')
+          text = text.replace(old, new)
+          text = text.replace(
+              """      const sameSlotMatches = payload.draft.category\n        ? matches.filter((item) => equipmentSlotForCategory(item.category) === payload.draft.category)\n        : matches;\n""",
+              """      const sameSlotMatches = analysisDraft.category\n        ? matches.filter((item) => equipmentSlotForCategory(item.category) === analysisDraft.category)\n        : matches;\n""",
+              1,
+          )
+          text = text.replace(
+              """      const analyzedSlot = bestSlot ?? payload.draft.category ?? null;\n""",
+              """      const analyzedSlot = bestSlot ?? analysisDraft.category ?? null;\n""",
+              1,
+          )
+          text = text.replace(
+              """        bonusesText: (payload.draft.bonuses ?? []).join('\\n'),\n        confidence:\n          typeof payload.draft.confidence === 'number'\n            ? Math.min(1, Math.max(0, payload.draft.confidence))\n            : null,\n        notes: payload.draft.notes?.trim() ?? '',\n""",
+              """        bonusesText: (analysisDraft.bonuses ?? []).join('\\n'),\n        confidence:\n          typeof analysisDraft.confidence === 'number'\n            ? Math.min(1, Math.max(0, analysisDraft.confidence))\n            : null,\n        notes: analysisDraft.notes?.trim() ?? '',\n""",
+              1,
+          )
+          p.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git rm .github/workflows/fix-pr100-narrowing.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/app/teams/'[teamId]'/characters/'[characterId]'/character-equipment-v2.tsx
+          git commit -m 'fix(web): preserve screenshot analysis narrowing'
+          git push origin HEAD:fix/feedback-eq-hunts-timers-20260908
