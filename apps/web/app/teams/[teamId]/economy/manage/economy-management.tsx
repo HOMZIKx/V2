@@ -7,6 +7,7 @@ import { usePlayerStore } from '../../../../../src/player-store-react';
 import { AppShell } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
 import { WorkspaceSectionNav } from '../../workspace-section-nav';
+import { CompactAmountInput } from '../compact-amount-input';
 import { EconomySubnav } from '../economy-subnav';
 import styles from '../economy-tools.module.css';
 
@@ -33,6 +34,8 @@ type PriceRecord = {
   itemName: string;
   unitPrice: number;
   currency: Currency;
+  averagePrice: number;
+  sampleCount: number;
   createdBy: string;
   createdAtIso: string;
 };
@@ -201,15 +204,21 @@ export function EconomyManagement() {
     [items, selectedItemId],
   );
 
+  const latestGlobalPriceFor = useCallback(
+    (itemId: string) => prices.find((row) => row.itemId === itemId) ?? null,
+    [prices],
+  );
+
   useEffect(() => {
     if (!selected) return;
     setEditName(selected.canonicalName);
     setEditCategory(selected.category);
     setEditImageUrl(selected.imageUrl ?? '');
     setEditAlias('');
-    setPriceValue(selected.lastPrice?.unitPrice ?? 0);
-    setPriceCurrency(selected.lastPrice?.currency ?? 'yang');
-  }, [selected]);
+    const latest = latestGlobalPriceFor(selected.id);
+    setPriceValue(latest?.unitPrice ?? 0);
+    setPriceCurrency(latest?.currency ?? 'yang');
+  }, [selected, latestGlobalPriceFor]);
 
   useEffect(() => {
     void loadLeftovers().catch((err: unknown) => {
@@ -320,7 +329,7 @@ export function EconomyManagement() {
         }),
       });
       if (!response.ok) throw new Error('Nie udało się zapisać ceny.');
-      setNotice(`Cena ${selected.canonicalName} zapisana z aktualną datą.`);
+      setNotice(`Cena ${selected.canonicalName} zapisana do wspólnej historii rynku.`);
       await Promise.all([loadPrices(), loadCatalog()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Błąd zapisu ceny.');
@@ -464,22 +473,25 @@ export function EconomyManagement() {
               </div>
 
               <div className={styles.cardGrid}>
-                {items.map((item) => (
-                  <button
-                    className={styles.card}
-                    key={item.id}
-                    onClick={() => setSelectedItemId(item.id)}
-                    type="button"
-                  >
-                    <span className={styles.itemHead}>
-                      <span className={styles.image} style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined} />
-                      <span>
-                        <strong>{item.canonicalName}</strong><br />
-                        <small>{item.category}{item.lastPrice ? ` · ostatnio ${money(item.lastPrice.unitPrice, item.lastPrice.currency)}` : ' · brak ceny'}</small>
+                {items.map((item) => {
+                  const latest = latestGlobalPriceFor(item.id);
+                  return (
+                    <button
+                      className={styles.card}
+                      key={item.id}
+                      onClick={() => setSelectedItemId(item.id)}
+                      type="button"
+                    >
+                      <span className={styles.itemHead}>
+                        <span className={styles.image} style={item.imageUrl ? { backgroundImage: `url(${item.imageUrl})` } : undefined} />
+                        <span>
+                          <strong>{item.canonicalName}</strong><br />
+                          <small>{item.category}{latest ? ` · ostatnio ${money(latest.unitPrice, latest.currency)}` : ' · brak ceny'}</small>
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className={styles.cardGrid} style={{ marginTop: 14 }}>
@@ -522,10 +534,10 @@ export function EconomyManagement() {
 
           {tab === 'prices' ? (
             <section className={styles.panel}>
-              <div className={styles.panelHeader}><div><h2>Historia cen</h2><small>Każda cena ma datę i autora. Ceny wpisane w dropie zapisują się automatycznie.</small></div></div>
+              <div className={styles.panelHeader}><div><h2>Historia cen · baza ogólna</h2><small>Każda cena ma datę i autora. Ceny wpisane w dropie zapisują się automatycznie i są wspólne dla wszystkich zespołów.</small></div></div>
               <form className={styles.inline} onSubmit={(event) => void addPrice(event)}>
                 <label className={styles.field}>Przedmiot<select value={selectedItemId} onChange={(event) => setSelectedItemId(event.target.value)}><option value="">Wybierz…</option>{items.map((item) => <option key={item.id} value={item.id}>{item.canonicalName}</option>)}</select></label>
-                <label className={styles.field}>Cena<input min="0" step="0.01" type="number" value={priceValue} onChange={(event) => setPriceValue(Math.max(0, Number(event.target.value)))} /></label>
+                <label className={styles.field}>Cena<CompactAmountInput value={priceValue} onValueChange={setPriceValue} /></label>
                 <label className={styles.field}>Waluta<select value={priceCurrency} onChange={(event) => setPriceCurrency(event.target.value as Currency)}><option value="yang">Yang</option><option value="won">Won</option><option value="gem">GEM</option></select></label>
                 <button className={styles.button} disabled={!selected || priceValue <= 0 || busy} type="submit">Zapisz cenę</button>
               </form>
@@ -534,8 +546,8 @@ export function EconomyManagement() {
                   <div className={styles.row} key={row.id}>
                     <span><strong>{row.itemName}</strong><br /><small>{new Date(row.createdAtIso).toLocaleString('pl-PL')}</small></span>
                     <strong>{money(row.unitPrice, row.currency)}</strong>
+                    <span className={styles.muted}>średnia: {money(row.averagePrice, row.currency)} · {row.sampleCount} wpisów</span>
                     <span className={styles.muted}>wprowadził: {row.createdBy}</span>
-                    <span className={styles.status}>historyczna</span>
                   </div>
                 ))}
                 {!prices.length ? <p className={styles.empty}>Brak zapisanych cen.</p> : null}
