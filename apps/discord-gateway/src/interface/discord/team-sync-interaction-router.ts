@@ -15,10 +15,13 @@ import {
   type TimerNotifyPayload,
 } from '../../application/notify/notify-payload.js';
 import { defaultBotConfigValues } from '../../application/technika/capabilities.js';
-import { confirmCharacterProgressTimerFromBot } from '../../infrastructure/player-team/confirm-character-timer.js';
 import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
 import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-viewer-id.js';
-import { readCharacterTimerCardFromBot } from '../../infrastructure/player-team/read-character-timer-card.js';
+import {
+  readCharacterTimerCardFromBot,
+  readSharedCharacterTimerCardFromBot,
+} from '../../infrastructure/player-team/read-character-timer-card.js';
+import { refreshSharedCharacterTimer } from '../../infrastructure/player-team/refresh-shared-character-timer.js';
 import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import { parseSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
 import { isWarClaimAction } from '../../infrastructure/security/timer-custom-id.js';
@@ -39,11 +42,9 @@ function timerDeepLink(workspaceId: string | null, characterId: string | null): 
 }
 
 /**
- * Thin coordination layer around the legacy interaction router.
- * It owns only two team-wide actions:
- * - character timer refresh -> update actor DM + broadcast full timer card to team,
- * - kingdom-war character claim -> update actor DM + broadcast full claim state to team.
- * Everything else is delegated unchanged.
+ * Team coordination layer around the legacy interaction router.
+ * Character timer and war choices are team events: the shared state changes once,
+ * then the bot distributes the same current snapshot to the rest of the team.
  */
 export class TeamSyncInteractionRouter {
   private readonly base: InteractionRouter;
@@ -98,10 +99,28 @@ export class TeamSyncInteractionRouter {
   ): Promise<void> {
     const actorName = interaction.user.globalName ?? interaction.user.username;
     const ownerViewerId = canonicalOwnerViewerId(interaction.user.id);
-    const result = await confirmCharacterProgressTimerFromBot({
+
+    // Personal state is used only to locate the workspace. The actual mutation below
+    // is always a shared-workspace PUT, which is what every web client subscribes to.
+    const located = await readCharacterTimerCardFromBot({
       baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
       demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
       viewerId: ownerViewerId,
+      timerId,
+    });
+    if (!located?.workspaceId) {
+      await interaction.reply({
+        content: 'Nie udało się odnaleźć wspólnej karty tego timera.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const result = await refreshSharedCharacterTimer({
+      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+      viewerId: ownerViewerId,
+      workspaceId: located.workspaceId,
       timerId,
       actorName,
     });
@@ -115,24 +134,19 @@ export class TeamSyncInteractionRouter {
       return;
     }
 
-    const card = await readCharacterTimerCardFromBot({
-      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
-      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-      viewerId: result.resolvedViewerId,
-      timerId,
-    });
-    const liveTimers = card?.liveTimers ?? result.liveTimers;
-    const workspaceId = card?.workspaceId ?? null;
-    const characterId = card?.characterId ?? result.characterId;
-    const characterName = card?.characterName ?? result.characterName;
+    const liveTimers = result.liveTimers;
+    const workspaceId = result.workspaceId;
+    const characterId = result.characterId;
+    const characterName = result.characterName;
     const deepLinkUrl = timerDeepLink(workspaceId, characterId);
     const recipients = teamRecipients(interaction.user.id);
 
+    // Refresh starts a new cycle. Remove stale due/snooze jobs and arm the next due
+    // event for every team recipient.
     for (const discordUserId of recipients) {
       cancelCharacterTimerReminder(discordUserId, timerId);
     }
-    const focus = liveTimers.find((timer) => timer.id === timerId);
-    const readyAtMs = focus?.readyAtIso ? Date.parse(focus.readyAtIso) : Number.NaN;
+    const readyAtMs = Date.parse(result.readyAtIso);
     const delayMs = Number.isFinite(readyAtMs) ? Math.max(5_000, readyAtMs - Date.now()) : 60 * 60_000;
     for (const discordUserId of recipients) {
       scheduleCharacterTimerReminder(
@@ -148,6 +162,8 @@ export class TeamSyncInteractionRouter {
         },
         {
           logger: this.deps.logger,
+          // The startup worker is the canonical sender; this callback is only a
+          // fallback before bootstrap has installed it.
           send: (job) => this.sendDueTimerCard(job),
         },
       );
@@ -158,12 +174,12 @@ export class TeamSyncInteractionRouter {
       title: `${result.label}${characterName ? ` · ${characterName}` : ''}`,
       body: `${actorName} odświeżył timer. Cały zespół ma poniżej ten sam aktualny stan karty.`,
       deepLinkUrl,
-      ...(workspaceId ? { workspaceId } : {}),
+      workspaceId,
       ...(characterId ? { characterId } : {}),
       ...(characterName ? { characterName } : {}),
       timerId,
       timerLabel: result.label,
-      ...(focus?.readyAtIso ? { endsAt: focus.readyAtIso } : {}),
+      endsAt: result.readyAtIso,
       liveTimers: [...liveTimers],
       includeButtons: true,
       kind: 'reset',
@@ -228,12 +244,20 @@ export class TeamSyncInteractionRouter {
       }).catch(() => false);
     }
 
-    const card = await readCharacterTimerCardFromBot({
-      baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
-      demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-      viewerId: job.discordUserId,
-      timerId: job.timerId,
-    });
+    const card = job.workspaceId
+      ? await readSharedCharacterTimerCardFromBot({
+          baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+          demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+          viewerId: job.discordUserId,
+          workspaceId: job.workspaceId,
+          timerId: job.timerId,
+        })
+      : await readCharacterTimerCardFromBot({
+          baseUrl: this.deps.config.PLAYER_TEAM_BASE_URL,
+          demoViewerHeader: this.deps.config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+          viewerId: job.discordUserId,
+          timerId: job.timerId,
+        });
     const deepLinkUrl =
       job.deepLinkUrl ?? timerDeepLink(card?.workspaceId ?? job.workspaceId, card?.characterId ?? job.characterId);
     const resolvedWorkspaceId = card?.workspaceId ?? job.workspaceId;
