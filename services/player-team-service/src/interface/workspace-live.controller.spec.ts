@@ -1,76 +1,169 @@
-import { firstValueFrom } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
-import { PlayerTeamError } from '../domain/errors.js';
+import { firstValueFrom } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { type PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
+import { parsePlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { WorkspaceLiveController } from './workspace-live.controller.js';
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
 
-describe('WorkspaceLiveController production auth', () => {
-  const env = {
-    PLAYER_TEAM_DEMO_VIEWER_HEADER: 'x-demo-viewer',
-    PLAYER_TEAM_AUTHENTICATED_DISCORD_HEADER: 'x-authenticated-discord-user-id',
-    PLAYER_TEAM_INTERNAL_JWT_ENABLED: true,
-    PLAYER_TEAM_INTERNAL_JWT_JWKS_URL: undefined,
-    PLAYER_TEAM_INTERNAL_JWT_ISSUER: undefined,
-    PLAYER_TEAM_INTERNAL_JWT_AUDIENCE: 'player-team',
-  } as never;
+const ISSUER = 'https://workspace-identity.test';
+const JWKS_URL = `${ISSUER}/identity/.well-known/jwks.json`;
+const AUDIENCE = 'v2.api-gateway';
+const DISCORD_ID = '123456789012345678';
+const WORKSPACE_ID = 'workspace-a';
 
-  function controller() {
-    const useCases = {
-      assertDemoAccess: vi.fn(() => {
-        throw new Error('demo auth must not be used in production JWT mode');
+function encode(value: unknown): string {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function productionAuthFixture() {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const publicJwk = publicKey.export({ format: 'jwk' });
+  const kid = 'workspace-live-test-key';
+  const now = Math.floor(Date.now() / 1000);
+  const header = encode({ alg: 'EdDSA', typ: 'JWT', kid });
+  const payload = encode({
+    iss: ISSUER,
+    aud: AUDIENCE,
+    sub: 'viewer-test',
+    iat: now,
+    exp: now + 120,
+  });
+  const unsigned = `${header}.${payload}`;
+  const signature = sign(null, Buffer.from(unsigned), privateKey).toString('base64url');
+  const token = `${unsigned}.${signature}`;
+  const env = parsePlayerTeamEnv({
+    NODE_ENV: 'test',
+    PLAYER_TEAM_DATABASE_URL: 'postgresql://test:test@127.0.0.1:5432/test',
+    PLAYER_TEAM_ALLOW_DEMO_WRITE: 'false',
+    PLAYER_TEAM_INTERNAL_JWT_ENABLED: 'true',
+    PLAYER_TEAM_INTERNAL_JWT_ISSUER: ISSUER,
+    PLAYER_TEAM_INTERNAL_JWT_AUDIENCE: AUDIENCE,
+    PLAYER_TEAM_INTERNAL_JWT_JWKS_URL: JWKS_URL,
+  });
+  return { env, kid, publicJwk, token };
+}
+
+const fixture = productionAuthFixture();
+
+const SNAPSHOT = {
+  workspaceId: WORKSPACE_ID,
+  state: { id: WORKSPACE_ID },
+  revision: 3,
+  updatedByUserId: DISCORD_ID,
+  updatedAtIso: '2026-09-08T19:00:00.000Z',
+};
+
+function stubJwks(): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string | URL | Request) => {
+      expect(String(url)).toBe(JWKS_URL);
+      return new Response(
+        JSON.stringify({ keys: [{ ...fixture.publicJwk, kid: fixture.kid, alg: 'EdDSA' }] }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }),
+  );
+}
+
+function createController() {
+  const assertDemoAccess = vi.fn(() => {
+    throw new Error('demo auth must not be used in production JWT mode');
+  });
+  const getWorkspaceSnapshot = vi.fn().mockResolvedValue(SNAPSHOT);
+  const upsertWorkspaceSnapshot = vi.fn().mockResolvedValue(SNAPSHOT);
+  const useCases = {
+    assertDemoAccess,
+    getWorkspaceSnapshot,
+    upsertWorkspaceSnapshot,
+  } as unknown as PlayerTeamStateUseCases;
+
+  return {
+    instance: new WorkspaceLiveController(useCases, fixture.env, new WorkspaceLiveBus()),
+    assertDemoAccess,
+    getWorkspaceSnapshot,
+    upsertWorkspaceSnapshot,
+  };
+}
+
+function authHeaders(): Record<string, string> {
+  return {
+    authorization: `Bearer ${fixture.token}`,
+    'x-authenticated-discord-id': DISCORD_ID,
+    'x-demo-viewer-id': 'forged-demo-id',
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe('WorkspaceLiveController production authentication', () => {
+  it('reads shared workspace state with a verified Identity JWT while demo writes are disabled', async () => {
+    stubJwks();
+    const { instance, assertDemoAccess, getWorkspaceSnapshot } = createController();
+
+    await expect(instance.getState(authHeaders(), WORKSPACE_ID)).resolves.toEqual(SNAPSHOT);
+
+    expect(assertDemoAccess).not.toHaveBeenCalled();
+    expect(getWorkspaceSnapshot).toHaveBeenCalledWith(DISCORD_ID, WORKSPACE_ID);
+  });
+
+  it('writes shared workspace state with the verified Discord identity', async () => {
+    stubJwks();
+    const { instance, assertDemoAccess, upsertWorkspaceSnapshot } = createController();
+
+    await expect(
+      instance.putState(authHeaders(), WORKSPACE_ID, {
+        state: { id: WORKSPACE_ID },
+        expectedRevision: 2,
       }),
-      getWorkspaceSnapshot: vi.fn(),
-      upsertWorkspaceSnapshot: vi.fn(),
-    } as never;
-    return {
-      instance: new WorkspaceLiveController(useCases, env, new WorkspaceLiveBus()),
-      useCases: useCases as unknown as {
-        getWorkspaceSnapshot: ReturnType<typeof vi.fn>;
-        upsertWorkspaceSnapshot: ReturnType<typeof vi.fn>;
-      },
-    };
-  }
+    ).resolves.toEqual(SNAPSHOT);
 
-  it('rejects GET without a verified internal bearer token instead of falling back to demo access', async () => {
-    const { instance, useCases } = controller();
-
-    await expect(
-      instance.getState(
-        { 'x-authenticated-discord-user-id': '123456789012345678' },
-        'workspace-a',
-      ),
-    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' } satisfies Partial<PlayerTeamError>);
-
-    expect(useCases.getWorkspaceSnapshot).not.toHaveBeenCalled();
+    expect(assertDemoAccess).not.toHaveBeenCalled();
+    expect(upsertWorkspaceSnapshot).toHaveBeenCalledWith({
+      ownerUserId: DISCORD_ID,
+      workspaceId: WORKSPACE_ID,
+      state: { id: WORKSPACE_ID },
+      expectedRevision: 2,
+    });
   });
 
-  it('rejects PUT without a verified internal bearer token before writing shared workspace state', async () => {
-    const { instance, useCases } = controller();
+  it('authenticates the SSE stream before the first workspace read', async () => {
+    stubJwks();
+    const { instance, assertDemoAccess, getWorkspaceSnapshot } = createController();
 
-    await expect(
-      instance.putState(
-        { 'x-authenticated-discord-user-id': '123456789012345678' },
-        'workspace-a',
-        { state: { id: 'workspace-a' }, expectedRevision: 0 },
-      ),
-    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' } satisfies Partial<PlayerTeamError>);
+    await expect(firstValueFrom(instance.events(authHeaders(), WORKSPACE_ID))).resolves.toEqual({
+      type: 'workspace',
+      data: SNAPSHOT,
+    });
 
-    expect(useCases.upsertWorkspaceSnapshot).not.toHaveBeenCalled();
+    expect(assertDemoAccess).not.toHaveBeenCalled();
+    expect(getWorkspaceSnapshot).toHaveBeenCalledWith(DISCORD_ID, WORKSPACE_ID);
   });
 
-  it('rejects SSE subscription without a verified internal bearer token before reading workspace data', async () => {
-    const { instance, useCases } = controller();
+  it('rejects GET, PUT and SSE without an internal bearer token in production mode', async () => {
+    const headers = { 'x-authenticated-discord-id': DISCORD_ID };
+    const { instance, getWorkspaceSnapshot, upsertWorkspaceSnapshot } = createController();
 
+    await expect(instance.getState(headers, WORKSPACE_ID)).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
     await expect(
-      firstValueFrom(
-        instance.events(
-          { 'x-authenticated-discord-user-id': '123456789012345678' },
-          'workspace-a',
-        ),
-      ),
-    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' } satisfies Partial<PlayerTeamError>);
+      instance.putState(headers, WORKSPACE_ID, {
+        state: { id: WORKSPACE_ID },
+        expectedRevision: 2,
+      }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+    await expect(firstValueFrom(instance.events(headers, WORKSPACE_ID))).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+    });
 
-    expect(useCases.getWorkspaceSnapshot).not.toHaveBeenCalled();
+    expect(getWorkspaceSnapshot).not.toHaveBeenCalled();
+    expect(upsertWorkspaceSnapshot).not.toHaveBeenCalled();
   });
 });
