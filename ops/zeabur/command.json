@@ -1,6 +1,11 @@
 {
-  "requestId": "inspect-api-git-trigger-before-recover-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Inspect($environmentID:ObjectID!){service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status gitTrigger(environmentID:$environmentID){repoID branchName}}}",
-  "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "recover-api-with-git-deploy-no-vars-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "query": "mutation Recover($serviceID:ObjectID!,$environmentID:ObjectID!,$gitRef:GitRef!){deploy(serviceID:$serviceID,environmentID:$environmentID,gitRef:$gitRef)}",
+  "variables": {
+    "serviceID":"6a8211c9bdeaa87e2c52df34",
+    "environmentID":"6a720a3e5f062718bc7b3421",
+    "gitRef":{"repoID":1323125581,"ref":"refs/heads/preview/destiled-web"}
+  }
 }
