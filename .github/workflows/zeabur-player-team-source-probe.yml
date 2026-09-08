@@ -8,7 +8,7 @@ jobs:
     steps:
       - name: Inspect player-team deployment metadata
         env:
-          ZEABUR_API_TOKEN: ${{ secrets.ZEABUR_API_TOKEN }}
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -31,7 +31,6 @@ jobs:
           q='query($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){_id name rootDirectory customBuildCommand customStartCommand watchPaths template gitTrigger(environmentID:$environmentID){branchName provider repoID} status(environmentID:$environmentID)}}'
           detail=gql(q,{'serviceID':service['_id'],'environmentID':env['_id']})['service']
           gt=detail.get('gitTrigger') or {}
-          # Print only non-secret deployment metadata.
           print('status='+str(detail.get('status')))
           print('template='+str(detail.get('template')))
           print('branch='+str(gt.get('branchName')))
