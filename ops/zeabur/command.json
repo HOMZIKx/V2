@@ -1,7 +1,7 @@
 {
-  "requestId": "webapp-retry-build-log-20260908-1758",
+  "requestId": "webapp-after-ecr-hotfix-20260908-1806",
   "mode": "cli",
-  "action": "logs:build",
+  "action": "deployment:get",
   "environmentId": "6a720a3e5f062718bc7b3421",
   "serviceName": "webapp-dest"
 }
