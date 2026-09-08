@@ -1,8 +1,6 @@
 {
-  "requestId": "inventory-services-envs-20260908-1",
+  "requestId": "schema-service-types-20260908-1",
   "mode": "graphql_read",
-  "query": "query OpsProjectInventory($projectID: ObjectID!) { environments(projectID: $projectID) { _id name } services(projectID: $projectID) { edges { node { _id name } } } }",
-  "variables": {
-    "projectID": "6a720a3e472e2c91a9e660d5"
-  }
+  "query": "query OpsTypes { serviceType: __type(name: \"Service\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } environmentType: __type(name: \"Environment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } deploymentType: __type(name: \"Deployment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } projectType: __type(name: \"Project\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } }",
+  "variables": {}
 }
