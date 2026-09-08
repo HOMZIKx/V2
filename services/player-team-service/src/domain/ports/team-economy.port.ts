@@ -22,6 +22,11 @@ export interface EconomyCatalogSeedItem {
   readonly aliases?: readonly string[] | undefined;
 }
 
+export interface EconomyCatalogStatus {
+  readonly total: number;
+  readonly importedSources: readonly string[];
+}
+
 export interface EconomyDropItemInput {
   readonly itemId: string | null;
   readonly displayName: string;
@@ -106,11 +111,12 @@ export interface EconomyExpenseRecord extends EconomyExpenseInput {
 
 export interface TeamEconomyRepositoryPort {
   searchItems(workspaceId: string, query: string): Promise<readonly EconomyCatalogItem[]>;
-  catalogStatus(): Promise<{ readonly total: number }>;
+  catalogStatus(): Promise<EconomyCatalogStatus>;
   importItems(input: {
+    readonly sourceKey: string;
     readonly items: readonly EconomyCatalogSeedItem[];
     readonly createdBy: string;
-  }): Promise<{ readonly imported: number; readonly total: number }>;
+  }): Promise<{ readonly imported: number; readonly total: number; readonly alreadyImported: boolean }>;
   createItem(input: {
     canonicalName: string;
     category: string;
