@@ -405,7 +405,9 @@ export function progressionKindsForLevel(level: number | null): readonly Progres
     .filter((cycle) => {
       if (cycle.alwaysTracked) return true;
       if (cycle.unlockLevel === null) return true;
-      if (level === null) return cycle.kind === 'horse';
+      // No saved level means "unknown", not "below unlock level". Keep the full
+      // selector available; apply PH level gates only when a real level is known.
+      if (level === null) return true;
       return level >= cycle.unlockLevel;
     })
     .map((cycle) => cycle.kind);

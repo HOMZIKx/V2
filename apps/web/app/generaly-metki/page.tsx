@@ -610,6 +610,67 @@ export default function GeneralsMetinsPage() {
         {notice ? <div className={styles.notice}>{notice}</div> : null}
 
         <div className={styles.workspace}>
+          <section className={styles.historyPanel}>
+            <div className={styles.sectionHeading}>
+              <div>
+                <span>HISTORIA NA ŻYWO</span>
+                <h3>{huntDefinition.shortLabel}</h3>
+              </div>
+              <em>{state.history.length}</em>
+            </div>
+
+            <div className={styles.historyList}>
+              {state.history.length === 0 ? (
+                <p className={styles.empty}>Jeszcze bez komend w tym wątku.</p>
+              ) : null}
+
+              {state.history.map((entry) => {
+                const isHelpEntry =
+                  entry.type === 'need_pvp' ||
+                  entry.type === 'need_dps' ||
+                  entry.type === 'need_buff';
+                const linkedRequest =
+                  isHelpEntry && entry.requestId
+                    ? activeRequests.find((request) => request.id === entry.requestId)
+                    : undefined;
+                const canRespond =
+                  linkedRequest !== undefined &&
+                  !linkedRequest.responders.some((responder) => responder.userId === viewerId);
+
+                return (
+                  <div
+                    className={`${styles.historyRow} ${historyTone(entry)}`}
+                    key={entry.id}
+                  >
+                    <span className={styles.historyIcon}>{historyIcon(entry)}</span>
+                    <time>{formatClock(entry.createdAt)}</time>
+                    <button
+                      className={styles.historyChannel}
+                      onClick={() => switchToChannel(entry.channel)}
+                      type="button"
+                    >
+                      CH{entry.channel}
+                    </button>
+                    <strong>{entry.displayName}</strong>
+                    <span className={styles.historyMessage}>{historyLabel(entry)}</span>
+                    {linkedRequest ? (
+                      <button
+                        className={canRespond ? styles.historyComingButton : styles.historyComingDone}
+                        disabled={!canRespond || saving}
+                        onClick={() => void respondComing(linkedRequest)}
+                        type="button"
+                      >
+                        {canRespond ? '🏃 IDĘ' : '✓'}
+                      </button>
+                    ) : (
+                      <span className={styles.historySpacer} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
           <section className={styles.mapPanel}>
             <div className={styles.mapToolbar}>
               <div>
@@ -870,67 +931,6 @@ export default function GeneralsMetinsPage() {
             </section>
           </aside>
         </div>
-
-        <section className={styles.historyPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span>HISTORIA NA ŻYWO</span>
-              <h3>{huntDefinition.shortLabel}</h3>
-            </div>
-            <em>{state.history.length}</em>
-          </div>
-
-          <div className={styles.historyList}>
-            {state.history.length === 0 ? (
-              <p className={styles.empty}>Jeszcze bez komend w tym wątku.</p>
-            ) : null}
-
-            {state.history.map((entry) => {
-              const isHelpEntry =
-                entry.type === 'need_pvp' ||
-                entry.type === 'need_dps' ||
-                entry.type === 'need_buff';
-              const linkedRequest =
-                isHelpEntry && entry.requestId
-                  ? activeRequests.find((request) => request.id === entry.requestId)
-                  : undefined;
-              const canRespond =
-                linkedRequest !== undefined &&
-                !linkedRequest.responders.some((responder) => responder.userId === viewerId);
-
-              return (
-                <div
-                  className={`${styles.historyRow} ${historyTone(entry)}`}
-                  key={entry.id}
-                >
-                  <span className={styles.historyIcon}>{historyIcon(entry)}</span>
-                  <time>{formatClock(entry.createdAt)}</time>
-                  <button
-                    className={styles.historyChannel}
-                    onClick={() => switchToChannel(entry.channel)}
-                    type="button"
-                  >
-                    CH{entry.channel}
-                  </button>
-                  <strong>{entry.displayName}</strong>
-                  <span className={styles.historyMessage}>{historyLabel(entry)}</span>
-                  {linkedRequest ? (
-                    <button
-                      className={canRespond ? styles.historyComingButton : styles.historyComingDone}
-                      disabled={!canRespond || saving}
-                      onClick={() => void respondComing(linkedRequest)}
-                      type="button"
-                    >
-                      {canRespond ? '🏃 IDĘ' : '✓'}
-                    </button>
-                  ) : (
-                    <span className={styles.historySpacer} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
       </main>
     </AppShell>
   );
