@@ -139,3 +139,17 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
     recipients: authoritativeNotifyRecipients(workspace, 'characterTimers'),
   });
 }
+
+export async function PATCH(request: Request, context: { params: Promise<{ workspaceId: string }> }): Promise<Response> {
+  const { workspaceId } = await context.params;
+  const viewer = await verifyViewer(request);
+  if (viewer instanceof Response) return viewer;
+  const workspace = await workspaceState(request, viewer.cookie, workspaceId);
+  if (workspace instanceof Response) return workspace;
+  const body = (await request.json().catch(() => null)) as { readonly timerId?: unknown; readonly endsAt?: unknown } | null;
+  return callGateway('/notify/daily-timer-panel-refresh', {
+    workspaceId,
+    ...(typeof body?.timerId === 'string' ? { timerId: body.timerId } : {}),
+    ...(typeof body?.endsAt === 'string' ? { endsAt: body.endsAt } : {}),
+  });
+}
