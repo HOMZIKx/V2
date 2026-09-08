@@ -1,6 +1,7 @@
 {
-  "requestId": "check-api-recovery-build-before-exact-sha-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Check($environmentID:ObjectID!){service(_id:\"6a8211c9bdeaa87e2c52df34\"){name status deployments(environmentID:$environmentID){_id status commitSHA createdAt startedAt finishedAt}}}",
-  "variables": {"environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "cancel-stale-api-build-a871959-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "query": "mutation Cancel($deploymentID:ObjectID!){cancelOngoingDeployment(deploymentID:$deploymentID)}",
+  "variables": {"deploymentID":"6a9fcbc411e40dee1a693be8"}
 }
