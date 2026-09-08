@@ -111,6 +111,25 @@ const REQUEST_ICONS: Readonly<Record<MetinGeneralHuntRequestType, string>> = {
   buff: '✨',
 };
 
+const CHANNEL_COLORS: Readonly<Record<number, string>> = {
+  1: '#3b82f6',
+  2: '#f59e0b',
+  3: '#ef4444',
+  4: '#8b5cf6',
+  5: '#06b6d4',
+  6: '#f97316',
+  7: '#ec4899',
+  8: '#6366f1',
+};
+
+function channelColor(channel: number): string {
+  return CHANNEL_COLORS[channel] ?? '#94a3b8';
+}
+
+function channelLabel(channel: number): string {
+  return `CH${channel}`;
+}
+
 function newId(prefix: string): string {
   const random =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -409,7 +428,7 @@ export default function GeneralsMetinsPage() {
           ? { ...request, status: 'closed' as const, closedAt: Date.now() }
           : request,
       ),
-      history: appendHistory(current, { type: 'killed', channel }),
+      history: appendHistory(current, { type: 'killed', channel: activeChannel }),
     }));
     setMode('view');
   };
@@ -484,7 +503,7 @@ export default function GeneralsMetinsPage() {
             createdAt: Date.now(),
           },
         ],
-        history: appendHistory(current, { type: 'found', channel }),
+        history: appendHistory(current, { type: 'found', channel: activeChannel }),
       }));
       if (ok) setMode('view');
       return;
@@ -561,6 +580,7 @@ export default function GeneralsMetinsPage() {
     if (!huntDefinition.channels.includes(nextChannel)) return;
     setChannel(nextChannel);
     setMode('view');
+    setNotice('');
   };
 
   return (
@@ -620,8 +640,24 @@ export default function GeneralsMetinsPage() {
               className={huntChannel === channel ? styles.channelActive : styles.channelButton}
               key={huntChannel}
               onClick={() => switchToChannel(huntChannel)}
+              style={{
+                borderColor: channelColor(huntChannel),
+                boxShadow:
+                  huntChannel === channel ? `0 0 0 1px ${channelColor(huntChannel)}` : undefined,
+              }}
               type="button"
             >
+              <span
+                aria-hidden
+                style={{
+                  background: channelColor(huntChannel),
+                  borderRadius: '999px',
+                  display: 'inline-block',
+                  height: 8,
+                  marginRight: 6,
+                  width: 8,
+                }}
+              />
               CH{huntChannel}
             </button>
           ))}
@@ -667,6 +703,7 @@ export default function GeneralsMetinsPage() {
                     <button
                       className={styles.historyChannel}
                       onClick={() => switchToChannel(entry.channel)}
+                      style={{ borderColor: channelColor(entry.channel) }}
                       type="button"
                     >
                       CH{entry.channel}
@@ -694,7 +731,7 @@ export default function GeneralsMetinsPage() {
           <section className={styles.mapPanel}>
             <div className={styles.mapToolbar}>
               <div>
-                <strong>🗺️ {huntDefinition.mapKey} · CH{channel}</strong>
+                <strong>🗺️ {huntDefinition.mapKey} · {channelLabel(channel)}</strong>
                 <span>{loading ? 'Ładowanie…' : saving ? 'Zapisywanie…' : 'Gotowe do działania'}</span>
               </div>
               <div className={styles.mapActions}>
@@ -742,7 +779,7 @@ export default function GeneralsMetinsPage() {
             <div className={styles.mapFrame}>
               {imagePath ? (
                 <div
-                  aria-label={`Interaktywna mapa ${huntDefinition.mapKey} CH${channel}`}
+                  aria-label={`Interaktywna mapa ${huntDefinition.mapKey} ${channelLabel(channel)}`}
                   className={`${styles.mapCanvas}${mode !== 'view' ? ` ${styles.mapCanvasEditing}` : ''}`}
                   onClick={(event) => void handleMapClick(event)}
                   role="presentation"
@@ -767,7 +804,7 @@ export default function GeneralsMetinsPage() {
                       const last = route.points.at(-1);
                       return (
                         <g key={route.id}>
-                          <title>{route.displayName}</title>
+                          <title>{`${route.displayName} · CH${route.channel}`}</title>
                           {route.points.length > 1 ? (
                             <>
                               <path
@@ -854,7 +891,24 @@ export default function GeneralsMetinsPage() {
                       style={{ left: `${marker.location.x}%`, top: `${marker.location.y}%` }}
                       title={`${marker.displayName} · CH${marker.channel}`}
                     >
-                      <span>📍</span>
+                      <span
+                        style={{
+                          alignItems: 'center',
+                          background: channelColor(marker.channel),
+                          border: '2px solid rgba(255,255,255,.92)',
+                          borderRadius: '999px',
+                          boxShadow: '0 2px 10px rgba(0,0,0,.55)',
+                          color: '#fff',
+                          display: 'inline-flex',
+                          fontSize: 10,
+                          fontWeight: 900,
+                          height: 24,
+                          justifyContent: 'center',
+                          width: 24,
+                        }}
+                      >
+                        {marker.channel}
+                      </span>
                     </div>
                   ))}
 
@@ -898,10 +952,11 @@ export default function GeneralsMetinsPage() {
               <div className={styles.sectionHeading}>
                 <div>
                   <span>SZYBKIE KOMENDY</span>
-                  <h3>CH{channel}</h3>
+                  <h3>{channelLabel(channel)}</h3>
                 </div>
                 <em>1 klik</em>
               </div>
+
 
               <div className={styles.commandGrid}>
                 <button
@@ -969,6 +1024,7 @@ export default function GeneralsMetinsPage() {
                         <button
                           className={styles.requestChannel}
                           onClick={() => switchToChannel(request.channel)}
+                          style={{ borderColor: channelColor(request.channel) }}
                           type="button"
                         >
                           CH{request.channel}
