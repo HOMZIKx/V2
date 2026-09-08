@@ -20,7 +20,11 @@ import {
 } from '../../infrastructure/discord/discord-config.js';
 import { DiscordJsGatewayAdapter } from '../../infrastructure/discord/discord-js-adapter.js';
 import { markCharacterTimerReadyInWorkspace } from '../../infrastructure/player-team/mark-character-timer-ready.js';
-import { readCharacterTimerCardFromBot } from '../../infrastructure/player-team/read-character-timer-card.js';
+import {
+  readCharacterTimerCardFromBot,
+  readSharedCharacterTimerCardFromBot,
+} from '../../infrastructure/player-team/read-character-timer-card.js';
+import { readTeamWorkspaceContextFromBot } from '../../infrastructure/player-team/read-team-workspace-context.js';
 import type { MemberActivityCollector } from '../../application/member-activity/member-activity-collector.js';
 import { renderKingdomWarReminder } from '../../presentation/discord/kingdom-war-renderer.js';
 import {
@@ -179,16 +183,13 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
       getKingdomWar: () => resolveActiveBotConfig(store).kingdomWar,
       onFire: async ({ warAt, notifyAt, dayKey }) => {
         const warCfg = resolveActiveBotConfig(store).kingdomWar;
-        if (!warCfg.enabled) {
-          return;
-        }
-        const message = renderKingdomWarReminder({
-          config: warCfg,
-          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
-          claims: getKingdomWarClaims(),
-        });
-        const warRecipients = listKingdomWarRecipients();
-        if (warRecipients.length === 0) {
+        if (!warCfg.enabled) return;
+
+        // Recipient registry provides a safe team-scoped seed. From one current
+        // member we resolve the live player-team workspace and then use its real
+        // roster + all explicit Discord member IDs for the actual broadcast.
+        const registeredRecipients = listKingdomWarRecipients();
+        if (registeredRecipients.length === 0) {
           logger.info('Kingdom war reminder skipped — no team recipients', {
             warAt,
             notifyAt,
@@ -196,6 +197,20 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
           });
           return;
         }
+        const context = await readTeamWorkspaceContextFromBot({
+          baseUrl: config.PLAYER_TEAM_BASE_URL,
+          demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+          viewerId: registeredRecipients[0]!,
+        });
+        const warRecipients =
+          context?.recipients.length ? [...context.recipients] : [...registeredRecipients];
+        const message = renderKingdomWarReminder({
+          config: warCfg,
+          signingSecret: config.DISCORD_COMPONENT_SIGNING_SECRET,
+          claims: getKingdomWarClaims(),
+          ...(context?.roster.length ? { roster: context.roster } : {}),
+        });
+
         let sent = 0;
         let skipped = 0;
         for (const discordUserId of warRecipients) {
@@ -223,6 +238,7 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
           sent,
           skipped,
           recipientCount: warRecipients.length,
+          workspaceId: context?.workspaceId ?? null,
         });
       },
     });
@@ -240,22 +256,33 @@ export class DiscordBootstrapService implements OnModuleInit, OnModuleDestroy {
             timerId: job.timerId,
           }).catch(() => false);
         }
-        const card = await readCharacterTimerCardFromBot({
-          baseUrl: config.PLAYER_TEAM_BASE_URL,
-          demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
-          viewerId: job.discordUserId,
-          timerId: job.timerId,
-        });
+        const card = job.workspaceId
+          ? await readSharedCharacterTimerCardFromBot({
+              baseUrl: config.PLAYER_TEAM_BASE_URL,
+              demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+              viewerId: job.discordUserId,
+              workspaceId: job.workspaceId,
+              timerId: job.timerId,
+            })
+          : await readCharacterTimerCardFromBot({
+              baseUrl: config.PLAYER_TEAM_BASE_URL,
+              demoViewerHeader: config.PLAYER_TEAM_DEMO_VIEWER_HEADER,
+              viewerId: job.discordUserId,
+              timerId: job.timerId,
+            });
+        const resolvedWorkspaceId = card?.workspaceId ?? job.workspaceId;
+        const resolvedCharacterId = card?.characterId ?? job.characterId;
+        const resolvedCharacterName = card?.characterName ?? job.characterName;
         const body = {
           discordUserId: job.discordUserId,
-          title: `${job.label}${(card?.characterName ?? job.characterName) ? ` · ${card?.characterName ?? job.characterName}` : ''}`,
+          title: `${job.label}${resolvedCharacterName ? ` · ${resolvedCharacterName}` : ''}`,
           body: 'Timer jest gotowy, ale pozostaje zablokowany do jawnego odświeżenia przez zespół.',
           deepLinkUrl: job.deepLinkUrl ?? 'https://desapp.zeabur.app/timers',
           timerId: job.timerId,
           timerLabel: job.label,
-          ...(card?.workspaceId ?? job.workspaceId ? { workspaceId: card?.workspaceId ?? job.workspaceId ?? undefined } : {}),
-          ...(card?.characterId ?? job.characterId ? { characterId: card?.characterId ?? job.characterId ?? undefined } : {}),
-          ...(card?.characterName ?? job.characterName ? { characterName: card?.characterName ?? job.characterName ?? undefined } : {}),
+          ...(resolvedWorkspaceId ? { workspaceId: resolvedWorkspaceId } : {}),
+          ...(resolvedCharacterId ? { characterId: resolvedCharacterId } : {}),
+          ...(resolvedCharacterName ? { characterName: resolvedCharacterName } : {}),
           ...(card?.liveTimers ? { liveTimers: [...card.liveTimers] } : {}),
           endsAt: new Date(job.fireAtMs).toISOString(),
           kind: 'reminder' as const,
@@ -310,9 +337,7 @@ export function createDiscordGatewayOrNull(
     getRuntimeAllowedGuildIds: () => resolveRuntimeAllowedGuildIds(config, technikaStore),
     memberActivityCollector: memberActivityCollector ?? null,
     onInteraction: async (interaction) => {
-      if (routerHolder.current === null) {
-        return;
-      }
+      if (routerHolder.current === null) return;
       await routerHolder.current.handle(interaction);
     },
   });
