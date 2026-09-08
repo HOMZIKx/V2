@@ -1,7 +1,7 @@
 {
-  "requestId": "discord-gateway-post-doc-merge-proof-20260908-3",
+  "requestId": "party-timer-consistency-deploy-proof-20260908",
   "mode": "graphql_read",
-  "query": "query DiscordDeployment($environmentID:ObjectID!){discord:deployments(serviceID:\"6a8211a6bdeaa87e2c52df28\",environmentID:$environmentID,perPage:2){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
+  "query": "query HuntDeployments($environmentID:ObjectID!){web:deployments(serviceID:\"6a985197573ada8b3bbe52a5\",environmentID:$environmentID,perPage:3){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}} playerTeam:deployments(serviceID:\"6a99a4d34177ab13f998c84c\",environmentID:$environmentID,perPage:3){edges{node{_id ref commitSHA commitMessage status createdAt startedAt finishedAt}}}}",
   "variables": {
     "environmentID": "6a720a3e5f062718bc7b3421"
   }
