@@ -23,13 +23,6 @@ CREATE TABLE IF NOT EXISTS player_team_economy_item_aliases (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pteia_alias_ci
   ON player_team_economy_item_aliases (LOWER(alias));
 
-CREATE TABLE IF NOT EXISTS player_team_economy_catalog_imports (
-  source_key      TEXT PRIMARY KEY,
-  imported_count INTEGER NOT NULL DEFAULT 0 CHECK (imported_count >= 0),
-  imported_by     TEXT NOT NULL,
-  imported_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS player_team_economy_prices (
   id              TEXT PRIMARY KEY,
   item_id         TEXT NOT NULL REFERENCES player_team_economy_items(id) ON DELETE CASCADE,
