@@ -34,6 +34,8 @@ function parseInvitation(value: unknown): TeamInvitationRecord | null {
   const teamId = asString(entry.teamId);
   const recipientDiscordId = asString(entry.recipientDiscordId);
   if (!id || !teamId || !recipientDiscordId) return null;
+  const createdAtIso = asString(entry.createdAtIso);
+  const expiresAtIso = asString(entry.expiresAtIso);
   return {
     id,
     teamId,
@@ -44,6 +46,8 @@ function parseInvitation(value: unknown): TeamInvitationRecord | null {
     status: status as TeamInvitationRecord['status'],
     createdLabel: asString(entry.createdLabel),
     expiresLabel: asString(entry.expiresLabel),
+    ...(createdAtIso ? { createdAtIso } : {}),
+    ...(expiresAtIso ? { expiresAtIso } : {}),
     revision: asNumber(entry.revision),
   };
 }
