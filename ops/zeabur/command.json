@@ -1,4 +1,6 @@
 {
-  "requestId": "schema-discovery-20260908-1",
-  "mode": "schema"
+  "requestId": "inventory-projects-20260908-1",
+  "mode": "graphql_read",
+  "query": "query OpsInventory { me { username } teams { _id name myRole } projects { edges { node { _id name } } } }",
+  "variables": {}
 }
