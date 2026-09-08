@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { authoritativeNotifyRecipients } from '../../../src/discord-notify-recipients';
+import { internalWebUrl } from '../../../src/server/internal-web-origin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -64,18 +65,15 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
 
   let response: Response;
   try {
-    response = await fetch(new URL('/player-team/v1/me/state', request.url), {
+    response = await fetch(internalWebUrl(request.url, '/player-team/v1/me/state'), {
       method: 'GET',
       headers: { accept: 'application/json', cookie },
       cache: 'no-store',
     });
   } catch (error) {
+    console.error('discord-notify: viewer state lookup failed', error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'player_team_auth_unavailable',
-        detail: error instanceof Error ? error.message : 'unknown',
-      },
+      { ok: false, error: 'player_team_auth_unavailable' },
       { status: 503 },
     );
   }
@@ -85,7 +83,7 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
   }
   if (!response.ok) {
     return NextResponse.json(
-      { ok: false, error: 'player_team_auth_unavailable', status: response.status },
+      { ok: false, error: 'player_team_auth_unavailable' },
       { status: 503 },
     );
   }
@@ -107,7 +105,7 @@ async function authorisedWorkspaceState(
   let response: Response;
   try {
     response = await fetch(
-      new URL(`/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`, request.url),
+      internalWebUrl(request.url, `/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`),
       {
         method: 'GET',
         headers: { accept: 'application/json', cookie },
@@ -115,12 +113,9 @@ async function authorisedWorkspaceState(
       },
     );
   } catch (error) {
+    console.error('discord-notify: workspace authorization lookup failed', error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'workspace_authorization_unavailable',
-        detail: error instanceof Error ? error.message : 'unknown',
-      },
+      { ok: false, error: 'workspace_authorization_unavailable' },
       { status: 503 },
     );
   }
@@ -130,7 +125,7 @@ async function authorisedWorkspaceState(
   }
   if (!response.ok) {
     return NextResponse.json(
-      { ok: false, error: 'workspace_authorization_unavailable', status: response.status },
+      { ok: false, error: 'workspace_authorization_unavailable' },
       { status: 503 },
     );
   }
@@ -151,8 +146,6 @@ async function sanitizeForwardBody(
 ): Promise<JsonRecord | Response> {
   const forwardBody = Object.fromEntries(Object.entries(body).filter(([key]) => key !== 'action'));
 
-  // Old global recipient registries are deliberately not exposed to browser callers.
-  // Current team flows are workspace-scoped and rebuilt from authoritative membership.
   if (action === 'team-recipients' || action === 'war-recipients') {
     return NextResponse.json(
       { ok: false, error: 'legacy_global_recipient_action_disabled' },
@@ -174,8 +167,6 @@ async function sanitizeForwardBody(
     return {
       ...forwardBody,
       actorDiscordUserId: viewer.discordId,
-      // Gateway schedules the completion DM only for recipientDiscordUserIds.
-      // Keep the timer owner when their effective characterTimers preference is enabled.
       recipientDiscordUserIds: authoritativeNotifyRecipients(workspace, 'characterTimers'),
     };
   }
@@ -257,13 +248,9 @@ export async function POST(request: Request): Promise<Response> {
       headers: { 'content-type': contentType.includes('json') ? 'application/json' : contentType },
     });
   } catch (error) {
+    console.error('discord-notify: gateway request failed', error);
     return NextResponse.json(
-      {
-        ok: false,
-        error: 'gateway_unreachable',
-        detail: error instanceof Error ? error.message : 'unknown',
-        gateway: gatewayBaseUrl(),
-      },
+      { ok: false, error: 'gateway_unreachable' },
       { status: 502 },
     );
   }
