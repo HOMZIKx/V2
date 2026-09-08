@@ -1,4 +1,5 @@
 {
-  "requestId": "zeabur-schema-before-api-repair-20260908-1",
-  "mode": "schema"
+  "requestId": "repair-api-gateway-verified-20260908-2",
+  "mode": "api_gateway_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
