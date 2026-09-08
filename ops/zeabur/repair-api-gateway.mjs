@@ -16,18 +16,19 @@ const command=JSON.parse(fs.readFileSync(process.env.ZEABUR_COMMAND_PATH||'ops/z
 if(command.confirm!=='ZEABUR_WRITE_APPROVED')finish({ok:false,message:'missing write approval'},1);
 
 async function gql(query,variables={}){const r=await fetch(API,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({query,variables})});const b=await r.json();if(!r.ok||b.errors?.length)throw new Error((b.errors||[]).map(e=>e.message).join('; ')||`HTTP ${r.status}`);return b.data}
+const ids={serviceID:serviceId,environmentID:environmentId};
 
 try{
-  const before=await gql(`query Before($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name gitTrigger(environmentID:$environmentID){repoID branchName} variables(environmentID:$environmentID){key value readonly}}}`,{serviceID,environmentID});
+  const before=await gql(`query Before($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name gitTrigger(environmentID:$environmentID){repoID branchName} variables(environmentID:$environmentID){key value readonly}}}`,ids);
   const vars=before.service.variables||[];
   const entry=vars.find(v=>v.key==='API_GATEWAY_CORS_ORIGINS');
   if(entry?.readonly)throw new Error('API_GATEWAY_CORS_ORIGINS is readonly');
-  await gql(`mutation Git($serviceID:ObjectID!,$environmentID:ObjectID!,$trigger:TriggerInput!){updateGitTrigger(serviceID:$serviceID,environmentID:$environmentID,trigger:$trigger)}`,{serviceID,environmentID,trigger:{repoID,branchName:branch}});
+  await gql(`mutation Git($serviceID:ObjectID!,$environmentID:ObjectID!,$trigger:TriggerInput!){updateGitTrigger(serviceID:$serviceID,environmentID:$environmentID,trigger:$trigger)}`,{...ids,trigger:{repoID:repoId,branchName:branch}});
   if(entry){
-    await gql(`mutation Env($serviceID:ObjectID!,$environmentID:ObjectID!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:"API_GATEWAY_CORS_ORIGINS",newKey:"API_GATEWAY_CORS_ORIGINS",value:$value){key}}`,{serviceID,environmentID,value:cors});
+    await gql(`mutation Env($serviceID:ObjectID!,$environmentID:ObjectID!,$value:String!){updateSingleEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,oldKey:"API_GATEWAY_CORS_ORIGINS",newKey:"API_GATEWAY_CORS_ORIGINS",value:$value){key}}`,{...ids,value:cors});
   } else {
-    await gql(`mutation Env($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{serviceID,environmentID,key:'API_GATEWAY_CORS_ORIGINS',value:cors});
+    await gql(`mutation Env($serviceID:ObjectID!,$environmentID:ObjectID!,$key:String!,$value:String!){createEnvironmentVariable(serviceID:$serviceID,environmentID:$environmentID,key:$key,value:$value){key}}`,{...ids,key:'API_GATEWAY_CORS_ORIGINS',value:cors});
   }
-  await gql(`mutation Deploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}`,{serviceID,environmentID});
+  await gql(`mutation Deploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}`,ids);
   finish({ok:true,message:'branch, CORS and redeploy requested',service:'api-gateway',branch,cors});
 }catch(error){finish({ok:false,message:error?.message||String(error)},1)}
