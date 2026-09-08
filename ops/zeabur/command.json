@@ -1,6 +1,7 @@
 {
-  "requestId": "verify-api-gateway-runtime-state-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Verify($serviceID:ObjectID!,$environmentID:ObjectID!){service(_id:$serviceID){name status gitTrigger(environmentID:$environmentID){branchName repoID} variables(environmentID:$environmentID){key value readonly}} deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
-  "variables": {"serviceID":"6a8211c9bdeaa87e2c52df34","environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "api-gateway-runtime-log-20260908-2",
+  "mode": "cli",
+  "action": "logs:runtime",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "api-gateway"
 }
