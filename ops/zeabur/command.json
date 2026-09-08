@@ -1,4 +1,4 @@
 {
-  "requestId": "production-auth-persistence-audit-20260908-2",
-  "mode": "env_audit"
+  "requestId": "production-auth-chain-e2e-20260908-1",
+  "mode": "public_e2e"
 }
