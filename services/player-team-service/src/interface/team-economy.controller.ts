@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import { type TeamEconomyUseCases } from '../application/use-cases/team-economy.use-cases.js';
 import { type PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
+import { loadLegacyEconomyCatalog } from '../infrastructure/catalog/legacy-economy-catalog.js';
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
 import {
@@ -140,7 +141,11 @@ export class TeamEconomyController {
     @Body() body: unknown,
   ) {
     const parsed = this.parse(importItemsSchema, body);
-    return this.economy.importItems(await this.viewerId(headers), workspaceId, parsed.items);
+    const legacyItems = await loadLegacyEconomyCatalog();
+    return this.economy.importItems(await this.viewerId(headers), workspaceId, [
+      ...parsed.items,
+      ...legacyItems,
+    ]);
   }
 
   @Get('items')
