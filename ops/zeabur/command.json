@@ -1,4 +1,10 @@
 {
-  "requestId": "technika-persistence-after-restart-20260908-1",
-  "mode": "technika_persistence_probe"
+  "requestId": "redeploy-discord-technika-persistence-20260908-1",
+  "mode": "graphql_write",
+  "query": "mutation Redeploy($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}",
+  "variables": {
+    "serviceID": "6a8211a6bdeaa87e2c52df28",
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  },
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
