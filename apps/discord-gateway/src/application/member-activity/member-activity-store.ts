@@ -13,8 +13,8 @@ export type DayUserBucket = {
 export type AggregatedUserActivity = {
   readonly messageCount: number;
   readonly voiceMinutes: number;
-  readonly displayName?: string;
-  readonly avatarUrl?: string;
+  readonly displayName?: string | undefined;
+  readonly avatarUrl?: string | undefined;
 };
 
 export type DayFile = Record<string, DayUserBucket>;
