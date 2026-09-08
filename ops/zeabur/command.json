@@ -1,6 +1,8 @@
 {
-  "requestId": "schema-service-types-20260908-1",
+  "requestId": "inventory-service-settings-20260908-1",
   "mode": "graphql_read",
-  "query": "query OpsTypes { serviceType: __type(name: \"Service\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } environmentType: __type(name: \"Environment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } deploymentType: __type(name: \"Deployment\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } projectType: __type(name: \"Project\") { name fields { name type { kind name ofType { kind name ofType { kind name } } } } } }",
-  "variables": {}
+  "query": "query OpsServiceSettings($projectID: ObjectID!) { services(projectID: $projectID) { edges { node { _id name rootDirectory watchPaths buildEnvironmentMode customBuildCommand customStartCommand status consoleURL dnsName configPaths failureThreshold suspendedAt suspendedReason lockedAt lockedReason deployments { _id environmentID status ref commitSHA commitMessage createdAt startedAt finishedAt } } } } }",
+  "variables": {
+    "projectID": "6a720a3e472e2c91a9e660d5"
+  }
 }
