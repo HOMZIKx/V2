@@ -29,6 +29,10 @@ export type TeamInvitationWorkspaceUpdate = {
 export interface TeamInvitationsRepositoryPort {
   getWorkspace(workspaceId: string): Promise<TeamInvitationWorkspaceUpdate | null>;
 
+  listPendingForRecipient(
+    recipientDiscordId: string,
+  ): Promise<readonly TeamInvitationRecord[]>;
+
   findForRecipient(
     invitationId: string,
     recipientDiscordId: string,
