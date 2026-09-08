@@ -6,6 +6,7 @@ import { TeamInvitationSync } from '../src/team-invitation-sync';
 import { TeamKingdomWarRecipientSync } from '../src/team-kingdom-war-recipient-sync';
 import { TeamMembershipGuard } from '../src/team-membership-guard';
 import { PlayerStoreProvider } from '../src/player-store-react';
+import { TechnikUiAccessGuard } from '../src/technik/technik-ui-access-guard';
 import { AuthGate } from './auth-gate';
 import { MapMarkerBoundaryGuard } from './map-marker-boundary-guard';
 import './globals.css';
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
     <html lang="pl">
       <body>
         <PlayerStoreProvider>
+          <TechnikUiAccessGuard />
           <MapMarkerBoundaryGuard />
           <TeamInvitationSync />
           <TeamDailyTimerPanelSync />
