@@ -23,31 +23,44 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+type InvitationWorkspaceResult = {
+  readonly invitation: PendingInvitation;
+  readonly workspaceId: string;
+  readonly workspace: WorkspaceRecord;
+  readonly revision: number;
+};
+
+export async function createTeamInvitation(input: {
+  readonly workspaceId: string;
+  readonly recipientDiscordId: string;
+  readonly recipientDisplayName: string;
+}): Promise<InvitationWorkspaceResult> {
+  return requestJson<InvitationWorkspaceResult>(
+    playerTeamUrl(
+      `/player-team/v1/invitations/workspace/${encodeURIComponent(input.workspaceId)}`,
+    ),
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recipientDiscordId: input.recipientDiscordId,
+        recipientDisplayName: input.recipientDisplayName,
+      }),
+    },
+  );
+}
+
 export async function getTeamInvitation(invitationId: string): Promise<PendingInvitation> {
   return requestJson<PendingInvitation>(
     playerTeamUrl(`/player-team/v1/invitations/${encodeURIComponent(invitationId)}`),
   );
 }
 
-export async function acceptTeamInvitation(invitationId: string): Promise<{
-  readonly invitation: PendingInvitation;
-  readonly workspaceId: string;
-  readonly workspace: WorkspaceRecord;
-  readonly revision: number;
-}> {
-  const result = await requestJson<{
-    readonly invitation: PendingInvitation;
-    readonly workspaceId: string;
-    readonly workspace: WorkspaceRecord | null;
-    readonly revision: number;
-  }>(
+export async function acceptTeamInvitation(invitationId: string): Promise<InvitationWorkspaceResult> {
+  return requestJson<InvitationWorkspaceResult>(
     playerTeamUrl(`/player-team/v1/invitations/${encodeURIComponent(invitationId)}/accept`),
     { method: 'POST' },
   );
-  if (!result.workspace) {
-    throw new Error('team invitation accept returned no workspace');
-  }
-  return { ...result, workspace: result.workspace };
 }
 
 export async function declineTeamInvitation(invitationId: string): Promise<{
@@ -55,12 +68,7 @@ export async function declineTeamInvitation(invitationId: string): Promise<{
   readonly workspaceId: string;
   readonly revision: number;
 }> {
-  const result = await requestJson<{
-    readonly invitation: PendingInvitation;
-    readonly workspaceId: string;
-    readonly workspace: WorkspaceRecord | null;
-    readonly revision: number;
-  }>(
+  const result = await requestJson<InvitationWorkspaceResult>(
     playerTeamUrl(`/player-team/v1/invitations/${encodeURIComponent(invitationId)}/decline`),
     { method: 'POST' },
   );
