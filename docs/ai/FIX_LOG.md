@@ -90,6 +90,20 @@ oraz dla integracji Discord:
 - **Runtime / E2E:** nie dotyczy.
 - **Niepotwierdzone / ryzyka:** reguła działa dla agentów, które respektują `AGENTS.md`; dlatego `FIX_LOG.md` został również wpisany bezpośrednio do obowiązkowej kolejności czytania.
 
+## 2026-09-08 06:43 — Zweryfikowany most GitHub Actions → Zeabur Public API
+
+- **Status:** `DONE` dla połączenia i uwierzytelnienia API.
+- **Obszar:** GitHub Actions, Zeabur Public API, operacje deployment/runtime.
+- **Problem:** brakowało potwierdzonego kanału, przez który kolejne sesje AI mogą bezpiecznie wykonywać kontrolowane operacje na Zeaburze bez zapisywania tokenu w repo.
+- **Przyczyna:** sekret Zeabura istniał w GitHub Actions pod nazwą `zebur`, ale nie było workflow sprawdzającego jego dostępność i ważność.
+- **Poprawka:** dodano `.github/workflows/zeabur-connectivity.yml`. Workflow odczytuje wyłącznie `${{ secrets.zebur }}`, wykonuje bezpieczne zapytanie `query { me { username } }` do `https://api.zeabur.com/graphql`, nie wypisuje tokenu ani nazwy użytkownika i kończy się błędem przy braku sekretu, HTTP innym niż 200, błędzie GraphQL lub braku uwierzytelnionego użytkownika.
+- **Zmieniony plik:** `.github/workflows/zeabur-connectivity.yml`.
+- **Commit:** `86fcf1aaa12529eeb24a6b8e1c6da0e779e08c0f`.
+- **Walidacja:** GitHub Actions run `34187997914`, job `zeabur-auth` / `101940110041` zakończył się `success`; Zeabur API zaakceptował Bearer token i zwrócił poprawną odpowiedź uwierzytelnionego konta.
+- **Deployment:** do samego testu API nie jest wymagany deployment aplikacji; commit na `preview/destiled-web` uruchomił niezależnie standardowy pipeline/deployment brancha.
+- **Runtime / E2E:** potwierdzono realne połączenie GitHub-hosted runner → `api.zeabur.com` → uwierzytelniony Zeabur Public API.
+- **Niepotwierdzone / ryzyka:** nie oznacza to jeszcze, że mamy gotowe workflow do każdej mutacji Zeabura. Kolejne operacje powinny być dodawane jako jawna allowlista (np. odczyt usług/logów/env presence, restart/redeploy) z blokadą operacji destrukcyjnych.
+
 ---
 
 ## Szablon nowego wpisu
