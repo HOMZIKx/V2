@@ -1,6 +1,9 @@
 {
-  "requestId": "repair-identity-jwt-20260908-1",
-  "mode": "production_repair",
-  "phase": "identity_jwt_setup",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "verify-identity-redeploy-20260908-1",
+  "mode": "graphql_read",
+  "query": "query VerifyIdentity($serviceID:ObjectID!,$environmentID:ObjectID!){ service(_id:$serviceID){ _id name status gitTrigger(environmentID:$environmentID){branchName} variables(environmentID:$environmentID){key value} } deployments(serviceID:$serviceID,environmentID:$environmentID,perPage:3){ edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}} } }",
+  "variables": {
+    "serviceID": "6a8211cfbdeaa87e2c52df39",
+    "environmentID": "6a720a3e5f062718bc7b3421"
+  }
 }
