@@ -2,7 +2,6 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HuntRoomsUseCases } from '../application/use-cases/hunt-rooms.use-cases.js';
-import { PlayerTeamError } from '../domain/errors.js';
 import { parsePlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 
@@ -116,6 +115,6 @@ describe('HuntRoomsController production authentication', () => {
           visibility: 'open',
         },
       ),
-    ).rejects.toMatchObject<PlayerTeamError>({ code: 'UNAUTHORIZED' });
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 });
