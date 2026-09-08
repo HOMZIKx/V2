@@ -1,5 +1,6 @@
 {
-  "requestId": "inspect-zeabur-service-env-storage-schema-20260908-1",
+  "requestId": "inspect-production-env-storage-mode-20260908-1",
   "mode": "graphql_read",
-  "query": "query Inspect{__type(name:\"Service\"){fields{name type{kind name ofType{kind name}}}}}"
+  "query": "query Inspect($identity:ObjectID!,$api:ObjectID!,$pt:ObjectID!,$web:ObjectID!){identity:service(_id:$identity){name environmentVariableStorage} api:service(_id:$api){name environmentVariableStorage} pt:service(_id:$pt){name environmentVariableStorage} web:service(_id:$web){name environmentVariableStorage}}",
+  "variables": {"identity":"6a8211cfbdeaa87e2c52df39","api":"6a8211c9bdeaa87e2c52df34","pt":"6a99a4d34177ab13f998c84c","web":"6a985197573ada8b3bbe52a5"}
 }
