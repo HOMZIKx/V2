@@ -1,7 +1,8 @@
 /**
- * Discord user IDs eligible for kingdom-war DMs.
- * File-backed so restart keeps tonight's team recipient set.
- * HARD RULE: war scheduler DMs ONLY this list — never guild.members / never guild fan-out.
+ * Discord user IDs eligible for team coordination DMs (timers + kingdom war).
+ * File-backed so restart keeps the current team recipient set.
+ * HARD RULE: delivery uses ONLY explicit team IDs received from the web/workspace —
+ * never guild.members and never implicit whole-guild fan-out.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
@@ -60,18 +61,37 @@ function saveToDisk(): void {
   }
 }
 
-export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): {
-  readonly ok: true;
-  readonly count: number;
-} {
-  loadFromDisk();
-  recipients.clear();
+function addValidRecipients(discordUserIds: readonly string[]): void {
   for (const raw of discordUserIds) {
     const id = raw.trim();
     if (!isSnowflake(id)) continue;
     recipients.add(id);
     if (recipients.size >= MAX_RECIPIENTS) break;
   }
+}
+
+/** Replace from an authoritative web snapshot. */
+export function replaceKingdomWarRecipients(discordUserIds: readonly string[]): {
+  readonly ok: true;
+  readonly count: number;
+} {
+  loadFromDisk();
+  recipients.clear();
+  addValidRecipients(discordUserIds);
+  saveToDisk();
+  return { ok: true, count: recipients.size };
+}
+
+/**
+ * Add team IDs observed on a character-timer event. Web sends an explicit list of
+ * current workspace members, so this lets later bot-originated actions reach the same team.
+ */
+export function mergeTeamCoordinationRecipients(discordUserIds: readonly string[]): {
+  readonly ok: true;
+  readonly count: number;
+} {
+  loadFromDisk();
+  addValidRecipients(discordUserIds);
   saveToDisk();
   return { ok: true, count: recipients.size };
 }
