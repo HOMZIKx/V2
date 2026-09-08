@@ -1,5 +1,4 @@
 {
-  "requestId": "repair-api-gateway-20260908-1",
-  "mode": "api_gateway_repair",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "post-repair-production-audit-20260908-1",
+  "mode": "env_audit"
 }
