@@ -5,6 +5,10 @@ import { createLogger } from '@v2/observability';
 
 import { PlayerTeamError } from '../../domain/errors.js';
 import {
+  emptyMetinGeneralHuntEventState,
+  metinGeneralHuntEventCycleKey,
+} from '../../domain/metin-general-hunt-cycle.js';
+import {
   type MetinGeneralHuntRecord,
   type MetinGeneralHuntsRepositoryPort,
   type UpdateMetinGeneralHuntInput,
@@ -48,20 +52,55 @@ export class MetinGeneralHuntsRepository implements MetinGeneralHuntsRepositoryP
     };
   }
 
+  private async ensureCurrentEventCycle(
+    record: MetinGeneralHuntRecord,
+  ): Promise<MetinGeneralHuntRecord> {
+    const expectedCycleKey = metinGeneralHuntEventCycleKey(record.huntKey);
+    if (record.state.eventCycleKey === expectedCycleKey) return record;
+
+    const reset = await this.db.query(
+      `UPDATE player_team_metin_general_hunts
+       SET state = $2::jsonb,
+           revision = revision + 1,
+           updated_by_user_id = NULL,
+           updated_at = NOW()
+       WHERE hunt_key = $1 AND revision = $3
+       RETURNING *`,
+      [
+        record.huntKey,
+        JSON.stringify(emptyMetinGeneralHuntEventState(record.huntKey)),
+        record.revision,
+      ],
+    );
+
+    if (reset.rows[0] !== undefined) {
+      this.logger.info(`reset metin/general hunt ${record.huntKey} for ${expectedCycleKey}`);
+      return this.mapRow(reset.rows[0]);
+    }
+
+    const raced = await this.db.query(
+      `SELECT * FROM player_team_metin_general_hunts WHERE hunt_key = $1`,
+      [record.huntKey],
+    );
+    if (raced.rows[0] === undefined) {
+      throw new PlayerTeamError('NOT_FOUND', 'metin/general hunt disappeared during cycle reset');
+    }
+    const current = this.mapRow(raced.rows[0]);
+    return current.state.eventCycleKey === expectedCycleKey
+      ? current
+      : this.ensureCurrentEventCycle(current);
+  }
+
   public async getOrCreateHunt(huntKey: string): Promise<MetinGeneralHuntRecord> {
     const existing = await this.db.query(
       `SELECT * FROM player_team_metin_general_hunts WHERE hunt_key = $1`,
       [huntKey],
     );
-    if (existing.rows[0] !== undefined) return this.mapRow(existing.rows[0]);
+    if (existing.rows[0] !== undefined) {
+      return this.ensureCurrentEventCycle(this.mapRow(existing.rows[0]));
+    }
 
-    const initialState = JSON.stringify({
-      huntKey,
-      routes: [],
-      markers: [],
-      requests: [],
-      history: [],
-    });
+    const initialState = JSON.stringify(emptyMetinGeneralHuntEventState(huntKey));
     const inserted = await this.db.query(
       `INSERT INTO player_team_metin_general_hunts
         (hunt_key, state, revision, updated_by_user_id, updated_at)
@@ -79,11 +118,16 @@ export class MetinGeneralHuntsRepository implements MetinGeneralHuntsRepositoryP
     if (raced.rows[0] === undefined) {
       throw new PlayerTeamError('NOT_FOUND', 'metin/general hunt could not be initialised');
     }
-    return this.mapRow(raced.rows[0]);
+    return this.ensureCurrentEventCycle(this.mapRow(raced.rows[0]));
   }
 
   public async updateHunt(input: UpdateMetinGeneralHuntInput): Promise<MetinGeneralHuntRecord> {
     await this.getOrCreateHunt(input.huntKey);
+    const canonicalState = {
+      ...input.state,
+      huntKey: input.huntKey,
+      eventCycleKey: metinGeneralHuntEventCycleKey(input.huntKey),
+    };
     const updated = await this.db.query(
       `UPDATE player_team_metin_general_hunts
        SET state = $2::jsonb,
@@ -92,7 +136,7 @@ export class MetinGeneralHuntsRepository implements MetinGeneralHuntsRepositoryP
            updated_at = NOW()
        WHERE hunt_key = $1 AND revision = $4
        RETURNING *`,
-      [input.huntKey, JSON.stringify(input.state), input.viewerId, input.expectedRevision],
+      [input.huntKey, JSON.stringify(canonicalState), input.viewerId, input.expectedRevision],
     );
 
     if ((updated.rowCount ?? 0) === 0) {
