@@ -1,4 +1,5 @@
 {
-  "requestId": "production-auth-chain-e2e-20260908-1",
-  "mode": "public_e2e"
+  "requestId": "production-trusted-origins-repair-20260908-1",
+  "mode": "cors_repair",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
