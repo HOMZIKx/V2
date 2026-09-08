@@ -1,6 +1,7 @@
 {
-  "requestId": "verify-api-cors-activity-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Verify($apiID:ObjectID!,$activityID:ObjectID!,$environmentID:ObjectID!){ api:service(_id:$apiID){name status gitTrigger(environmentID:$environmentID){branchName} variables(environmentID:$environmentID){key value}} activity:service(_id:$activityID){name status gitTrigger(environmentID:$environmentID){branchName}} activityDeployments:deployments(serviceID:$activityID,environmentID:$environmentID,perPage:2){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} apiDeployments:deployments(serviceID:$apiID,environmentID:$environmentID,perPage:2){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} }",
-  "variables": {"apiID":"6a8211c9bdeaa87e2c52df34","activityID":"6a8211c2a21454a2cf6ad77b","environmentID":"6a720a3e5f062718bc7b3421"}
+  "requestId": "activity-build-log-20260908-2",
+  "mode": "cli",
+  "action": "logs:build",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "activity-service"
 }
