@@ -83,6 +83,30 @@ export class TeamInvitationsRepository implements TeamInvitationsRepositoryPort,
     };
   }
 
+  public async listPendingForRecipient(
+    recipientDiscordId: string,
+  ): Promise<readonly TeamInvitationRecord[]> {
+    const result = await this.db.query<{ invitation: unknown }>(
+      `SELECT invitation.value AS invitation
+       FROM player_team_workspace_snapshots snapshot
+       CROSS JOIN LATERAL jsonb_array_elements(
+         CASE
+           WHEN jsonb_typeof(snapshot.state->'invitations') = 'array'
+             THEN snapshot.state->'invitations'
+           ELSE '[]'::jsonb
+         END
+       ) WITH ORDINALITY AS invitation(value, position)
+       WHERE invitation.value->>'recipientDiscordId' = $1
+         AND invitation.value->>'status' = 'pending'
+       ORDER BY snapshot.updated_at DESC, invitation.position ASC`,
+      [recipientDiscordId],
+    );
+
+    return result.rows
+      .map((row) => parseInvitation(row.invitation))
+      .filter((entry): entry is TeamInvitationRecord => entry !== null);
+  }
+
   public async findForRecipient(
     invitationId: string,
     recipientDiscordId: string,
