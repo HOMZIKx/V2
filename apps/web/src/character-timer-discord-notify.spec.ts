@@ -28,6 +28,45 @@ import {
   syncTeamCoordinationRecipients,
 } from './discord-notify-api.js';
 
+const timer = {
+  id: 'timer-ksiega-1',
+  characterId: 'nerwnicht',
+  label: 'Księga umiejętności',
+  detail: '',
+  status: 'running' as const,
+  readyAtIso: '2099-01-01T00:00:00.000Z',
+  remainingLabel: 'w toku',
+  progressPercent: 20,
+  lastActorName: null,
+  lastConfirmedAt: null,
+  discordReminder: true,
+  reminderState: 'on' as const,
+  operationId: 'op1',
+};
+
+function workspaceWithMembers(
+  members: readonly Record<string, unknown>[],
+  notifyPrefs?: { readonly characterTimers: boolean; readonly kingdomWar: boolean },
+) {
+  return {
+    id: 'asteria',
+    name: 'Asteria',
+    description: '',
+    archived: false,
+    members,
+    characters: [{ id: 'nerwnicht', name: 'NerwNicht' }],
+    items: [],
+    timers: [timer],
+    tasks: [],
+    notes: [],
+    history: [],
+    invitations: [],
+    ...(notifyPrefs ? { notifyPrefs } : {}),
+    revision: 1,
+    updatedLabel: 'teraz',
+  } as never;
+}
+
 describe('character-timer-discord-notify', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -228,7 +267,7 @@ describe('character-timer-discord-notify', () => {
       }),
     );
     const resetPayload = vi.mocked(postDiscordTimerResetNotify).mock.calls[0]?.[0];
-    expect(resetPayload?.liveTimers?.map((timer) => timer.id)).toEqual([
+    expect(resetPayload?.liveTimers?.map((entry) => entry.id)).toEqual([
       'timer-ksiega-1',
       'timer-kamien-1',
     ]);
@@ -244,10 +283,135 @@ describe('character-timer-discord-notify', () => {
       }),
     );
     const actorPayload = vi.mocked(postDiscordTimerNotify).mock.calls[0]?.[0];
-    expect(actorPayload?.liveTimers?.map((timer) => timer.id)).toEqual([
+    expect(actorPayload?.liveTimers?.map((entry) => entry.id)).toEqual([
       'timer-ksiega-1',
       'timer-kamien-1',
     ]);
+  });
+
+  it('excludes a member who personally disabled character timer DMs', async () => {
+    const result = await notifyCharacterProgressTimer({
+      workspace: workspaceWithMembers([
+        {
+          id: 'mateusz',
+          displayName: 'Mateusz',
+          initials: 'M',
+          role: 'owner',
+          state: 'unknown',
+          discordAccountId: '123456789012345678',
+        },
+        {
+          id: 'aalpsik',
+          displayName: 'Aalpsik',
+          initials: 'A',
+          role: 'member',
+          state: 'unknown',
+          discordAccountId: '223456789012345678',
+          notifyPrefs: { characterTimers: false },
+        },
+      ]),
+      timer,
+      viewer: {
+        id: 'mateusz',
+        displayName: 'Mateusz',
+        discordDisplayName: 'Mateusz',
+        initials: 'M',
+        discordAccountId: '123456789012345678',
+      },
+      actorName: 'Mateusz',
+      kind: 'manual',
+    });
+
+    expect(result.sent).toBe(1);
+    expect(syncTeamCoordinationRecipients).toHaveBeenCalledWith(['123456789012345678']);
+    expect(postDiscordTimerNotify).toHaveBeenCalledTimes(1);
+    expect(postDiscordTimerNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ discordUserId: '123456789012345678' }),
+    );
+  });
+
+  it('uses team default off for inheriting members', async () => {
+    const result = await notifyCharacterProgressTimer({
+      workspace: workspaceWithMembers(
+        [
+          {
+            id: 'mateusz',
+            displayName: 'Mateusz',
+            initials: 'M',
+            role: 'owner',
+            state: 'unknown',
+            discordAccountId: '123456789012345678',
+          },
+          {
+            id: 'aalpsik',
+            displayName: 'Aalpsik',
+            initials: 'A',
+            role: 'member',
+            state: 'unknown',
+            discordAccountId: '223456789012345678',
+          },
+        ],
+        { characterTimers: false, kingdomWar: true },
+      ),
+      timer,
+      viewer: {
+        id: 'mateusz',
+        displayName: 'Mateusz',
+        discordDisplayName: 'Mateusz',
+        initials: 'M',
+        discordAccountId: '123456789012345678',
+      },
+      actorName: 'Mateusz',
+      kind: 'manual',
+    });
+
+    expect(result.sent).toBe(0);
+    expect(syncTeamCoordinationRecipients).not.toHaveBeenCalled();
+    expect(postDiscordTimerNotify).not.toHaveBeenCalled();
+  });
+
+  it('allows a personal character timer opt-in to override a team default off', async () => {
+    const result = await notifyCharacterProgressTimer({
+      workspace: workspaceWithMembers(
+        [
+          {
+            id: 'mateusz',
+            displayName: 'Mateusz',
+            initials: 'M',
+            role: 'owner',
+            state: 'unknown',
+            discordAccountId: '123456789012345678',
+          },
+          {
+            id: 'aalpsik',
+            displayName: 'Aalpsik',
+            initials: 'A',
+            role: 'member',
+            state: 'unknown',
+            discordAccountId: '223456789012345678',
+            notifyPrefs: { characterTimers: true },
+          },
+        ],
+        { characterTimers: false, kingdomWar: true },
+      ),
+      timer,
+      viewer: {
+        id: 'mateusz',
+        displayName: 'Mateusz',
+        discordDisplayName: 'Mateusz',
+        initials: 'M',
+        discordAccountId: '123456789012345678',
+      },
+      actorName: 'Mateusz',
+      kind: 'manual',
+    });
+
+    expect(result.sent).toBe(1);
+    expect(syncTeamCoordinationRecipients).toHaveBeenCalledWith(['223456789012345678']);
+    expect(postDiscordTimerNotify).toHaveBeenCalledTimes(1);
+    expect(postDiscordTimerNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ discordUserId: '223456789012345678' }),
+    );
   });
 
   it('does not schedule browser-local reminders', () => {
