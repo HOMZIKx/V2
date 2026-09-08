@@ -160,6 +160,12 @@ export async function publishDailyCharacterTimerPanels(input: {
 }): Promise<{ readonly sentOrUpdated: number }> {
   let sentOrUpdated = 0;
   for (const discordUserId of input.panelConfig.recipients) {
+    const existing = getDailyCharacterTimerPanelMessage(
+      input.panelConfig.workspaceId,
+      discordUserId,
+    );
+    if (existing?.dayKey === input.dayKey) continue;
+
     const ok = await upsertDailyCharacterTimerPanel({
       config: input.config,
       gateway: input.gateway,
@@ -252,7 +258,9 @@ export class DailyCharacterTimerPanelScheduler {
     };
     run();
     this.timer = setInterval(run, intervalMs);
-    this.timer.unref?.();
+    if (typeof this.timer === 'object' && this.timer && 'unref' in this.timer) {
+      this.timer.unref();
+    }
     this.deps.logger.info('Daily timer panel scheduler started', { intervalMs });
   }
 
