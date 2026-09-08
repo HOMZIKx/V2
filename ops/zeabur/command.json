@@ -1,7 +1,7 @@
 {
-  "requestId": "restart-api-graphql-after-tsconfig-fix-20260908-1",
-  "mode": "graphql_write",
-  "query": "mutation Restart($serviceID:ObjectID!,$environmentID:ObjectID!){restartService(serviceID:$serviceID,environmentID:$environmentID)}",
-  "variables": {"serviceID":"6a8211c9bdeaa87e2c52df34","environmentID":"6a720a3e5f062718bc7b3421"},
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "player-team-runtime-log-after-jwt-20260908-1",
+  "mode": "cli",
+  "action": "logs:runtime",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "player-team-service"
 }
