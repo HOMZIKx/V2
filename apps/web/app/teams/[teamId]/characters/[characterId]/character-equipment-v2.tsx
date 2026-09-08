@@ -60,6 +60,7 @@ interface ScreenshotAnalysisPayload {
   readonly draft?: {
     readonly name?: string;
     readonly enhancement?: number;
+    readonly category?: EquipmentSlot | null;
     readonly bonuses?: readonly string[];
     readonly confidence?: number;
     readonly notes?: string;
@@ -214,6 +215,7 @@ export function CharacterEquipmentV2() {
     notes: '',
   });
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(null);
+  const [categoryReviewRequired, setCategoryReviewRequired] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotStatus, setScreenshotStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
@@ -229,14 +231,18 @@ export function CharacterEquipmentV2() {
 
   const itemById = useMemo(() => {
     const map = new Map<string, EquipmentItem>();
-    for (const item of workspace?.items ?? []) map.set(item.id, item);
+    for (const item of workspace?.items ?? []) {
+      if (!item.archived) map.set(item.id, item);
+    }
     return map;
   }, [workspace]);
 
   const equipLocations = useMemo(() => {
     const map = new Map<string, ReturnType<typeof findEquipLocation>>();
     if (!workspace) return map;
-    for (const item of workspace.items) map.set(item.id, findEquipLocation(workspace, item.id));
+    for (const item of workspace.items) {
+      if (!item.archived) map.set(item.id, findEquipLocation(workspace, item.id));
+    }
     return map;
   }, [workspace]);
 
@@ -297,6 +303,7 @@ export function CharacterEquipmentV2() {
     const slot = equipmentSlotForCategory(item.category);
     if (!slot) return;
     setSelectedCatalogId(item.id);
+    setCategoryReviewRequired(false);
     setDraft((current) => ({
       ...current,
       name: item.title,
@@ -309,6 +316,7 @@ export function CharacterEquipmentV2() {
   const openManual = () => {
     setEditorMode('manual');
     setSelectedCatalogId(null);
+    setCategoryReviewRequired(false);
     setEditorError(null);
     setScreenshotFile(null);
     setScreenshotStatus('idle');
@@ -331,6 +339,7 @@ export function CharacterEquipmentV2() {
     setSelectedItemId(item.id);
     setEditorMode('edit');
     setSelectedCatalogId(null);
+    setCategoryReviewRequired(false);
     setEditorError(null);
     setScreenshotFile(null);
     setScreenshotStatus('idle');
@@ -347,6 +356,7 @@ export function CharacterEquipmentV2() {
   const closeEditor = () => {
     setEditorMode(null);
     setEditorError(null);
+    setCategoryReviewRequired(false);
     setScreenshotStatus('idle');
     setScreenshotFile(null);
   };
@@ -384,19 +394,21 @@ export function CharacterEquipmentV2() {
             item.title.trim().toLocaleLowerCase('pl') === baseName.trim().toLocaleLowerCase('pl'),
         ) ?? matches[0] ?? null;
       const bestSlot = best ? equipmentSlotForCategory(best.category) : null;
+      const analyzedSlot = bestSlot ?? payload.draft.category ?? null;
 
       setSelectedCatalogId(best?.id ?? null);
-      setDraft({
+      setCategoryReviewRequired(analyzedSlot === null);
+      setDraft((current) => ({
         name: best?.title ?? baseName,
         enhancement: parsedEnhancement,
-        category: bestSlot ?? 'weapon',
-        bonusesText: (payload.draft.bonuses ?? []).join('\n'),
+        category: analyzedSlot ?? current.category,
+        bonusesText: (payload.draft?.bonuses ?? []).join('\n'),
         confidence:
-          typeof payload.draft.confidence === 'number'
+          typeof payload.draft?.confidence === 'number'
             ? Math.min(1, Math.max(0, payload.draft.confidence))
             : null,
-        notes: payload.draft.notes?.trim() ?? '',
-      });
+        notes: payload.draft?.notes?.trim() ?? '',
+      }));
       setScreenshotStatus('done');
     } catch (error) {
       setScreenshotStatus('error');
@@ -414,6 +426,10 @@ export function CharacterEquipmentV2() {
       setEditorError('Podaj nazwę przedmiotu.');
       return;
     }
+    if (editorMode === 'screenshot' && categoryReviewRequired) {
+      setEditorError('Potwierdź typ / slot przedmiotu. Analiza nie rozpoznała go wystarczająco pewnie.');
+      return;
+    }
 
     const bonuses = cleanBonusLines(draft.bonusesText);
     if (editorMode === 'edit' && selectedItem) {
@@ -421,6 +437,11 @@ export function CharacterEquipmentV2() {
         enhancement: clampEnhancement(draft.enhancement),
       });
       closeEditor();
+      return;
+    }
+
+    if (bagCounts[bagLocation] >= BAG_CAPACITY[bagLocation]) {
+      setEditorError(`${bagLocation} jest pełna (${BAG_CAPACITY[bagLocation]}/${BAG_CAPACITY[bagLocation]}). Wybierz inną torbę lub magazyn.`);
       return;
     }
 
@@ -457,6 +478,11 @@ export function CharacterEquipmentV2() {
 
   const moveItem = (item: EquipmentItem, location: BagLocation) => {
     if (!writesEnabled) return;
+    const currentLocation = equipLocations.get(item.id) ? null : normalizeBagLocation(item);
+    if (currentLocation !== location && bagCounts[location] >= BAG_CAPACITY[location]) {
+      window.alert(`${location} jest pełna. Zwolnij slot albo wybierz inną lokalizację.`);
+      return;
+    }
     if (equipLocations.get(item.id)) unequipItem(workspace.id, item.id);
     confirmLocation(workspace.id, item.id, location);
     setBagLocation(location);
@@ -766,6 +792,7 @@ export function CharacterEquipmentV2() {
                       onChange={(event) => {
                         setScreenshotFile(event.target.files?.[0] ?? null);
                         setScreenshotStatus('idle');
+                        setCategoryReviewRequired(false);
                         setEditorError(null);
                       }}
                       type="file"
@@ -787,6 +814,9 @@ export function CharacterEquipmentV2() {
                     <div className={styles.analysisMeta}>
                       <strong>Pewność odczytu: {Math.round(draft.confidence * 100)}%</strong>
                       {draft.notes ? <span>{draft.notes}</span> : <span>Brak zgłoszonej niepewności.</span>}
+                      {categoryReviewRequired ? (
+                        <span>Typ przedmiotu wymaga ręcznego potwierdzenia przed zapisem.</span>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -837,15 +867,16 @@ export function CharacterEquipmentV2() {
                     </select>
                   </label>
                   <label className={styles.field}>
-                    <span>Typ / slot</span>
+                    <span>Typ / slot{categoryReviewRequired ? ' — potwierdź' : ''}</span>
                     <select
                       disabled={editorMode === 'edit'}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        setCategoryReviewRequired(false);
                         setDraft((current) => ({
                           ...current,
                           category: event.target.value as EquipmentSlot,
-                        }))
-                      }
+                        }));
+                      }}
                       value={draft.category}
                     >
                       {equipmentSlots.map((slot) => (
@@ -872,6 +903,7 @@ export function CharacterEquipmentV2() {
                 {editorMode !== 'edit' ? (
                   <div className={styles.destinationLine}>
                     Zapis trafi do: <strong>{bagLocation}</strong>
+                    <span> · {bagCounts[bagLocation]}/{BAG_CAPACITY[bagLocation]} zajęte</span>
                     {selectedCatalogId ? <span> · przedmiot dopasowany do katalogu V2</span> : null}
                   </div>
                 ) : null}
