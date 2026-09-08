@@ -61,6 +61,12 @@ export async function notifyCharacterProgressTimer(
   ctx: CharacterTimerNotifyContext,
 ): Promise<{ readonly sent: number; readonly results: readonly DiscordTimerNotifyResult[] }> {
   const timer = timerForPanelRefresh(ctx);
+
+  // Shared workspace writes are intentionally debounced in PlayerStoreProvider (120 ms).
+  // Waiting briefly here prevents the gateway from re-reading the previous server revision
+  // and repainting the PW panel with stale timer data immediately after a WWW click.
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 350));
+
   const ok = await refreshTeamDailyTimerPanel(ctx.workspace.id, {
     timerId: timer.id,
     ...(timer.readyAtIso ? { endsAt: timer.readyAtIso } : {}),
