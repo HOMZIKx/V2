@@ -44,6 +44,22 @@ oraz dla integracji Discord:
 
 # Wpisy
 
+## 2026-09-08 14:18 — Technika: live DM timerów postaci używa aktywnego szablonu
+
+- **Status:** `PARTIAL` — poprawka kodowa i CI są potwierdzone; pełny runtime E2E pozostaje otwarty do momentu realnego live DM przez Discord po wdrożeniu.
+- **Obszar:** `discord-gateway`, Technika config, timery postaci, trwały worker reminderów.
+- **Problem:** zapis i aktywacja konfiguracji Technika działały oraz przetrwały restart i pełny Zeabur redeploy, ale realne live DM timerów postaci nadal używały hardcoded `formatTimerNotifyContent(...)`, więc zmiana `characterTimers.messageTemplate` była widoczna w test-DM, lecz nie w normalnym przepływie.
+- **Przyczyna:** runtime poprawnie pobierał aktywny config do gate/toggle, ale treść live wiadomości nie konsumowała `characterTimers.messageTemplate`. Ten sam brak występował w kanonicznym durable workerze odpalanym po czasie.
+- **Poprawka:** dodano osobny renderer szablonu timerów postaci oparty o `applyNotifyTemplate`; `NotifyController` rozdziela teraz character-timer payload od legacy formattera i pobiera aktywną konfigurację w chwili wysyłki. Durable worker również rozwiązuje aktywny szablon dopiero przy fire, więc zmiana w Technika działa dla kolejnej wiadomości bez restartu. Legacy map/metin formatter nie został zmieniony.
+- **Zmienione pliki:** `apps/discord-gateway/src/application/notify/character-timer-template.ts`, `character-timer-template.spec.ts`, `apps/discord-gateway/src/interface/http/notify-character-template.spec.ts`, `notify.controller.ts`, `apps/discord-gateway/src/interface/discord/discord-bootstrap.service.ts`.
+- **Commit / PR:** PR `#68`; kod `2dacfbac5faf4f58d43261e9cb34c407c40427e5`; korekta typowania testu `bb9fc801dfc7b78ad866944298ee41903ab212f3`.
+- **Walidacja:** pierwszy CI `34224933226` wykrył wyłącznie błąd typowania nowego mocka testowego; po korekcie CI `34225187832` zakończył `Quality gates`, `Infrastructure integration` i `Secret scan` statusem `success`; Discord gateway regression tests, preview typecheck/build gates i production dependency audit przeszły. PR Title `34225198774` również `success`.
+- **Persistence proof:** wcześniejsze produkcyjne probe `34221254767` → restart `34221513829` → probe `34221568915` oraz pełny native redeploy `34221697477` / RUNNING deployment `6a9ff5427b89d694354a05a8` → probe `34222690555` zachowały tę samą rewizję, `updatedAt` i fingerprinty configu. To wyklucza reset/persistence jako przyczynę obecnego błędu.
+- **Deployment:** PR nie został jeszcze zmergowany do `preview/destiled-web`, aby nie uruchamiać wspólnego rollout’u w trakcie równoległych zmian innych agentów.
+- **Runtime / E2E:** test-DM nie jest uznawany za dowód, bo ta ścieżka już wcześniej respektowała szablon. Do `DONE` potrzebny jest realny character-timer notify przez gateway → Discord z niestandardowym aktywnym template.
+- **Pozostałe ryzyka:** `reminderMinutesBefore` nadal nie jest osobnym pre-reminder jobem. Obecny job odpala się na `endsAt` i oznacza timer jako ready; nie wolno po prostu przesunąć go wcześniej. Bezpieczna poprawka wymaga osobnego `pre_reminder` (bez mark-ready) oraz `due` (z mark-ready), z migracją starych persisted jobs. To pozostaje osobnym `PARTIAL`.
+
+
 ## 2026-09-08 11:28 — API Gateway odzyskany kanonicznym redeployem + trwałe originy + public E2E
 
 - **Status:** `DONE` dla odzyskania API Gateway, korekty trwałych originów, pełnego audytu środowiska i publicznego E2E. Interaktywny `Discord OAuth → session → Player Team write → DB → restart/reload → read` pozostaje osobnym `PARTIAL`, zgodnie z wcześniejszym wpisem, ponieważ wymaga realnej zgody użytkownika na Discordzie.

@@ -6,6 +6,13 @@
 Właściciel wznowił 2026-09-08 produkcyjne spięcie Web + Discord + backend na Zeaburze.
 Aktualny priorytet runtime: prawdziwy Discord OAuth, trwały Player Team oraz niezależny collector aktywności bota.
 
+### Technika / timery postaci — 2026-09-08
+
+- PR #68 naprawia rozjazd między test-DM a realnym live DM: aktywny `characterTimers.messageTemplate` jest teraz rozwiązywany przy każdej wysyłce, również przez durable worker po restarcie.
+- Trwałość configu Technika została potwierdzona na produkcji przez restart i pełny Zeabur redeploy; przyczyną nie był reset pliku/configu.
+- CI dla `bb9fc801dfc7b78ad866944298ee41903ab212f3`: PASS (`34225187832`); pełny live Discord E2E po wdrożeniu nadal `PARTIAL`.
+- `reminderMinutesBefore` wymaga osobnego pre-reminder joba i pozostaje otwartym, świadomie niewłączonym zakresem.
+
 ## Produkcja Zeabur — stan potwierdzony 2026-09-08
 
 - `identity-service`, `webapp-dest`, `player-team-service`, `activity-service`, `authorization-service`, `api-gateway` i `discord-gateway` są po recovery bez krytycznych problemów runtime; kluczowe usługi poza celowo pozostawionym `player-workspace-service` śledzą `preview/destiled-web`. API Gateway został odzyskany natywnym `redeployService` z kanonicznego Git triggera; potwierdzony deployment `6a9fd4677b89d6943549fbb1` użył `refs/heads/preview/destiled-web` i SHA `eb66226297a57ef4401a2f35635bbbb956856272`.
