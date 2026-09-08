@@ -273,7 +273,7 @@ export interface ProgressTimer {
   readonly kind?: ProgressionKind;
   /** Illustration matching the cycle (book / soul stone / biologist / horse medal). */
   readonly iconPath?: string;
-  /** Custom cycle length in minutes (manual timers). Presets use kind rules instead. */
+  /** Cycle length in minutes when the timer supports a per-cycle override (e.g. Soul Stone 8h/12h). */
   readonly durationMinutes?: number;
 }
 
@@ -2576,6 +2576,7 @@ export function markTimerDone(
   workspaceId: string,
   timerId: string,
   operationId: string,
+  durationMinutes?: number,
 ): PlayerStoreState {
   return updateWorkspace(state, workspaceId, (workspace, viewer) => {
     const existing = workspace.timers.find((timer) => timer.id === timerId);
@@ -2589,12 +2590,19 @@ export function markTimerDone(
       existing.remainingLabel === 'gotowe · zablokowane';
     if (existing.status !== 'ready' && !dueByClock && !lockedDueMarker) return workspace;
     const kind = existing.kind ?? inferProgressionKind(existing.label);
-    const restart = restartAfterDone(kind, new Date(), existing.durationMinutes);
+    const effectiveDurationMinutes =
+      kind === 'soul_stone' && (durationMinutes === 8 * 60 || durationMinutes === 12 * 60)
+        ? durationMinutes
+        : existing.durationMinutes;
+    const restart = restartAfterDone(kind, new Date(), effectiveDurationMinutes);
     const timers = workspace.timers.map((timer) => {
       if (timer.id !== timerId) return timer;
       return {
         ...timer,
         ...(kind ? { kind } : {}),
+        ...(kind === 'soul_stone' && effectiveDurationMinutes
+          ? { durationMinutes: effectiveDurationMinutes }
+          : {}),
         status: 'running' as const,
         progressPercent: 4,
         remainingLabel: restart.remainingLabel,

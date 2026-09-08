@@ -174,7 +174,12 @@ interface PlayerStoreApi {
     name: string,
   ) => boolean;
   confirmLocation: (workspaceId: string, itemId: string, locationLabel: string) => void;
-  completeTimer: (workspaceId: string, timerId: string, operationId: string) => void;
+  completeTimer: (
+    workspaceId: string,
+    timerId: string,
+    operationId: string,
+    durationMinutes?: number,
+  ) => void;
   ensureProgressionTimers: (workspaceId: string, characterId: string) => void;
   addTimer: (
     workspaceId: string,
@@ -677,8 +682,10 @@ export function PlayerStoreProvider({ children }: { readonly children: ReactNode
       confirmLocation: (workspaceId, itemId, locationLabel) => {
         apply((current) => confirmItemLocation(current, workspaceId, itemId, locationLabel));
       },
-      completeTimer: (workspaceId, timerId, operationId) => {
-        apply((current) => markTimerDone(current, workspaceId, timerId, operationId));
+      completeTimer: (workspaceId, timerId, operationId, durationMinutes) => {
+        apply((current) =>
+          markTimerDone(current, workspaceId, timerId, operationId, durationMinutes),
+        );
       },
       ensureProgressionTimers: (workspaceId, characterId) => {
         apply((current) => ensureCharacterProgressionTimers(current, workspaceId, characterId));

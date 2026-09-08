@@ -111,6 +111,8 @@ const REQUEST_ICONS: Readonly<Record<MetinGeneralHuntRequestType, string>> = {
   buff: '✨',
 };
 
+const LIVE_HISTORY_MS = 60 * 60 * 1_000;
+
 function newId(prefix: string): string {
   const random =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -246,6 +248,10 @@ export default function GeneralsMetinsPage() {
   const state = useMemo(
     () => normalizeState(huntDefinition.key, snapshot?.state, now),
     [huntDefinition.key, now, snapshot?.state],
+  );
+  const liveHistory = useMemo(
+    () => state.history.filter((entry) => now - entry.createdAt <= LIVE_HISTORY_MS),
+    [now, state.history],
   );
 
   const loadHunt = useCallback(
@@ -636,15 +642,15 @@ export default function GeneralsMetinsPage() {
                 <span>HISTORIA NA ŻYWO</span>
                 <h3>{huntDefinition.shortLabel}</h3>
               </div>
-              <em>{state.history.length}</em>
+              <em>{liveHistory.length}</em>
             </div>
 
             <div className={styles.historyList}>
-              {state.history.length === 0 ? (
-                <p className={styles.empty}>Jeszcze bez komend w tym wątku.</p>
+              {liveHistory.length === 0 ? (
+                <p className={styles.empty}>Brak komend z ostatnich 60 minut.</p>
               ) : null}
 
-              {state.history.map((entry) => {
+              {liveHistory.map((entry) => {
                 const isHelpEntry =
                   entry.type === 'need_pvp' ||
                   entry.type === 'need_dps' ||

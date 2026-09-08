@@ -286,7 +286,7 @@
 .workspace {
   display: grid;
   grid-template-areas: 'history map side';
-  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) 326px;
+  grid-template-columns: minmax(280px, 340px) minmax(520px, 1fr) minmax(290px, 320px);
   gap: 14px;
   align-items: start;
   margin-top: 14px;
@@ -372,7 +372,7 @@
 
 .mapCanvas {
   position: relative;
-  width: min(100%, 58vh, 600px);
+  width: min(100%, 620px);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 13px;
@@ -784,7 +784,7 @@
   position: sticky;
   top: 12px;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   background:
     radial-gradient(circle at 15% 0, rgba(82, 211, 156, 0.05), transparent 35%),
     var(--panel, rgba(16, 19, 27, 0.92));
@@ -814,11 +814,11 @@
   grid-template-columns: 28px 42px 44px minmax(0, 1fr);
   gap: 5px 6px;
   align-items: center;
-  min-height: 50px;
-  padding: 7px 8px;
+  min-height: 58px;
+  padding: 9px 10px;
   border: 1px solid var(--line, rgba(158, 169, 192, 0.16));
   border-radius: 9px;
-  font-size: 9px;
+  font-size: 10px;
   background: rgba(255, 255, 255, 0.018);
   transition: border-color 120ms ease, background 120ms ease;
 }
@@ -837,7 +837,7 @@
 .historyRow time {
   grid-area: time;
   color: var(--muted, #9299a9);
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .historyChannel {
@@ -857,7 +857,7 @@
   grid-area: actor;
   overflow: hidden;
   color: var(--muted-strong, #b8bfcd);
-  font-size: 9px;
+  font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -866,7 +866,7 @@
   grid-area: message;
   min-width: 0;
   overflow: hidden;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 850;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -973,7 +973,7 @@
 
 @media (max-width: 1260px) {
   .workspace {
-    grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) 300px;
+    grid-template-columns: minmax(260px, 280px) minmax(0, 1fr) minmax(260px, 280px);
   }
 
   .roomGrid {
