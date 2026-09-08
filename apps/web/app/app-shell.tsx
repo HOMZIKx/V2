@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { getReadyTimers } from '../src/player-store';
 import { usePlayerStore } from '../src/player-store-react';
-import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { progressionTimerLabels } from '../src/project-hard-progression';
+import { useTechnikAccess } from '../src/technik-access';
 
 export type AppSection =
   'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
@@ -241,6 +242,7 @@ export function AppShell({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
   const { state } = usePlayerStore();
+  const technikAccess = useTechnikAccess();
   useDiscordMembershipWatchdog();
   const needsProfileSetup =
     state.authStatus === 'authenticated' &&
@@ -329,10 +331,12 @@ export function AppShell({
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
     { id: 'technik' as const, label: 'Technik', icon: 'settings' as const, href: '/technik' },
   ];
-
+  const navigationForAccess = navigation.filter(
+    (item) => item.id !== 'technik' || technikAccess === 'allowed',
+  );
   const visibleNavigation = needsProfileSetup
-    ? navigation.filter((item) => item.id === 'profil')
-    : navigation;
+    ? navigationForAccess.filter((item) => item.id === 'profil')
+    : navigationForAccess;
 
   return (
     <div className="app-shell">
