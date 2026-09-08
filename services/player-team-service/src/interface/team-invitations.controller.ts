@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Get,
   Headers,
@@ -7,6 +9,7 @@ import {
   Post,
   UseFilters,
 } from '@nestjs/common';
+import { z } from 'zod';
 
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
@@ -15,6 +18,11 @@ import { PLAYER_TEAM_ENV, TEAM_INVITATIONS_USE_CASES } from './player-team.token
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
 
 type RequestHeaders = Record<string, string | string[] | undefined>;
+
+const createInvitationSchema = z.object({
+  recipientDiscordId: z.string().regex(/^\d{17,20}$/),
+  recipientDisplayName: z.string().trim().min(1).max(80),
+});
 
 @Controller('player-team/v1/invitations')
 @UseFilters(PlayerTeamExceptionFilter)
@@ -31,11 +39,14 @@ export class TeamInvitationsController {
     return this.useCases.assertAccess(Array.isArray(value) ? value[0] : value);
   }
 
-  private publishWorkspace(result: {
-    readonly workspaceId: string;
-    readonly workspace: Record<string, unknown>;
-    readonly revision: number;
-  }, viewerId: string): void {
+  private publishWorkspace(
+    result: {
+      readonly workspaceId: string;
+      readonly workspace: Record<string, unknown>;
+      readonly revision: number;
+    },
+    viewerId: string,
+  ): void {
     this.liveBus.publish({
       workspaceId: result.workspaceId,
       state: result.workspace,
@@ -43,6 +54,27 @@ export class TeamInvitationsController {
       updatedByUserId: viewerId,
       updatedAtIso: new Date().toISOString(),
     });
+  }
+
+  @Post('workspace/:workspaceId')
+  public async create(
+    @Headers() headers: RequestHeaders,
+    @Param('workspaceId') workspaceId: string,
+    @Body() rawBody: unknown,
+  ) {
+    const parsed = createInvitationSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
+    }
+    const viewerId = this.viewerId(headers);
+    const result = await this.useCases.createInvitation({
+      ownerDiscordId: viewerId,
+      workspaceId,
+      recipientDiscordId: parsed.data.recipientDiscordId,
+      recipientDisplayName: parsed.data.recipientDisplayName,
+    });
+    this.publishWorkspace(result, viewerId);
+    return result;
   }
 
   @Get(':invitationId')
