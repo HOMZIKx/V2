@@ -6,7 +6,17 @@ import { verifiedViewerId } from '../../../../src/server/verified-session';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type RawRecognizedItem = { name?: unknown; quantity?: unknown; confidence?: unknown };
+type RawRecognizedItem = {
+  slotIndex?: unknown;
+  row?: unknown;
+  column?: unknown;
+  name?: unknown;
+  quantity?: unknown;
+  itemConfidence?: unknown;
+  quantityConfidence?: unknown;
+  confidence?: unknown;
+  alternatives?: unknown;
+};
 type RateBucket = { count: number; resetAt: number };
 type DynamicCatalogItem = {
   id: string;
@@ -20,11 +30,30 @@ type CatalogMatch = {
   category: string;
   imageUrl: string | null;
 };
+type RecognizedItem = {
+  slotIndex: number;
+  row: number;
+  column: number;
+  recognizedName: string;
+  quantity: number;
+  itemConfidence: number;
+  quantityConfidence: number;
+  confidence: number;
+  alternatives: string[];
+  catalogMatch: CatalogMatch | null;
+};
 
 const RATE_WINDOW_MS = 5 * 60 * 1000;
 const RATE_LIMIT = 20;
 const DYNAMIC_LOOKUP_LIMIT = 40;
+const GRID_COLUMNS = 4;
+const MAX_RECOGNIZED_ITEMS = 200;
+const MAX_CATALOG_NAMES_IN_PROMPT = 1200;
 const rateBuckets = new Map<string, RateBucket>();
+
+const canonicalCatalogNames = Array.from(
+  new Set(gameItemCatalog.map((item) => item.title.trim()).filter(Boolean)),
+).slice(0, MAX_CATALOG_NAMES_IN_PROMPT);
 
 function rateLimited(viewerId: string): boolean {
   const now = Date.now();
@@ -48,6 +77,31 @@ function normalize(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9+]+/g, ' ')
     .trim();
+}
+
+function confidence(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback;
+}
+
+function positiveInteger(value: unknown, fallback = 1): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(1, Math.floor(parsed));
+}
+
+function integer(value: unknown, fallback = -1): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.floor(parsed);
+}
+
+function alternatives(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .slice(0, 3);
 }
 
 function bestStaticCatalogMatch(name: string): CatalogMatch | null {
@@ -130,6 +184,67 @@ async function dynamicCatalogMatch(
   }
 }
 
+function recognitionPrompt(): string {
+  const names = canonicalCatalogNames.map((name) => `- ${name}`).join('\n');
+  return `Jesteś modułem odczytu ekwipunku Metin2. Ten obraz przedstawia siatkę ekwipunku/dropu z 4 kolumnami.
+
+ZADANIE:
+1. Analizuj KAŻDY SLOT OSOBNO, od lewej do prawej i od góry do dołu.
+2. Pomijaj puste sloty. Nie twórz przedmiotu dla pustego pola.
+3. slotIndex jest liczony od 0: row * 4 + column. row i column także liczymy od 0.
+4. Nazwę rozpoznawaj przede wszystkim po ikonie. Jeżeli pasuje do katalogu poniżej, zwróć DOKŁADNIE nazwę z katalogu. Nie wymyślaj podobnej nazwy.
+5. Ilość odczytuj WYŁĄCZNIE z białej liczby nałożonej w prawym dolnym rogu konkretnego slotu. To może być liczba jedno-, dwu- lub trzycyfrowa. Jeżeli liczby naprawdę nie ma, quantity=1. Nie wyprowadzaj ilości z wyglądu ikony ani z sąsiedniego slotu.
+6. Oceniaj osobno pewność nazwy i pewność ilości. Gdy cyfry są małe/nieostre, obniż quantityConfidence zamiast zgadywać.
+7. Jeżeli nie potrafisz wiarygodnie rozpoznać nazwy, użyj "Nieznany przedmiot" i podaj maksymalnie 3 najbardziej prawdopodobne nazwy z katalogu w alternatives.
+8. Każdy zajęty slot może wystąpić tylko raz. Nie łącz kilku różnych slotów w jeden wynik i nie przenoś ilości między slotami.
+9. Przed odpowiedzią jeszcze raz sprawdź wszystkie cyfry w prawym dolnym rogu każdego zajętego slotu.
+
+Zwróć WYŁĄCZNIE JSON w formacie:
+{"items":[{"slotIndex":0,"row":0,"column":0,"name":"Dokładna nazwa","quantity":1,"itemConfidence":0.0,"quantityConfidence":0.0,"alternatives":[]}]}
+
+KATALOG DOZWOLONYCH NAZW (gdy przedmiot jest rozpoznawalny):
+${names}`;
+}
+
+function normalizeRecognizedItems(rawItems: RawRecognizedItem[]): RecognizedItem[] {
+  const bySlot = new Map<number, RecognizedItem>();
+
+  rawItems.slice(0, MAX_RECOGNIZED_ITEMS).forEach((raw, fallbackIndex) => {
+    const rawSlot = integer(raw.slotIndex, -1);
+    const rawRow = integer(raw.row, -1);
+    const rawColumn = integer(raw.column, -1);
+    const derivedSlot =
+      rawRow >= 0 && rawColumn >= 0 && rawColumn < GRID_COLUMNS
+        ? rawRow * GRID_COLUMNS + rawColumn
+        : -1;
+    const slotIndex = rawSlot >= 0 ? rawSlot : derivedSlot >= 0 ? derivedSlot : fallbackIndex;
+    const row = rawRow >= 0 ? rawRow : Math.floor(slotIndex / GRID_COLUMNS);
+    const column =
+      rawColumn >= 0 && rawColumn < GRID_COLUMNS ? rawColumn : slotIndex % GRID_COLUMNS;
+    const name =
+      typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Nieznany przedmiot';
+    const itemConfidence = confidence(raw.itemConfidence, confidence(raw.confidence, 0));
+    const quantityConfidence = confidence(raw.quantityConfidence, confidence(raw.confidence, 0));
+    const recognized: RecognizedItem = {
+      slotIndex,
+      row,
+      column,
+      recognizedName: name,
+      quantity: positiveInteger(raw.quantity, 1),
+      itemConfidence,
+      quantityConfidence,
+      confidence: Math.min(itemConfidence, quantityConfidence),
+      alternatives: alternatives(raw.alternatives),
+      catalogMatch: bestStaticCatalogMatch(name),
+    };
+
+    const existing = bySlot.get(slotIndex);
+    if (!existing || recognized.confidence > existing.confidence) bySlot.set(slotIndex, recognized);
+  });
+
+  return Array.from(bySlot.values()).sort((left, right) => left.slotIndex - right.slotIndex);
+}
+
 export async function POST(request: NextRequest) {
   const viewerId = await verifiedViewerId(request);
   if (!viewerId) {
@@ -161,14 +276,16 @@ export async function POST(request: NextRequest) {
         contents: [
           {
             parts: [
-              {
-                text: 'To jest screenshot dropu z Metin2. Rozpoznaj każdy widoczny stos przedmiotów. Zwróć WYŁĄCZNIE JSON: {"items":[{"name":"nazwa przedmiotu","quantity":1,"confidence":0.0}]}. quantity to liczba sztuk widoczna na stosie; jeśli brak liczby przyjmij 1. Nie zgaduj nazwy, gdy nie jesteś pewny — użyj krótkiego opisu wizualnego i niskiego confidence.',
-              },
+              { text: recognitionPrompt() },
               { inlineData: { mimeType: match[1], data: match[2] } },
             ],
           },
         ],
-        generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: 'application/json',
+          maxOutputTokens: 8192,
+        },
       }),
       cache: 'no-store',
     },
@@ -193,26 +310,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'ai_invalid_result' }, { status: 502 });
   }
 
-  const recognized = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 200).map((raw) => {
-    const name =
-      typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Nieznany przedmiot';
-    return {
-      recognizedName: name,
-      quantity: Number.isFinite(Number(raw.quantity))
-        ? Math.max(1, Math.floor(Number(raw.quantity)))
-        : 1,
-      confidence: Number.isFinite(Number(raw.confidence))
-        ? Math.max(0, Math.min(1, Number(raw.confidence)))
-        : 0,
-      catalogMatch: bestStaticCatalogMatch(name),
-    };
-  });
+  const recognized = normalizeRecognizedItems(Array.isArray(parsed.items) ? parsed.items : []);
 
   const workspaceId = workspaceIdFromRequest(request);
   if (workspaceId) {
     const unmatched = recognized
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.catalogMatch === null)
+      .filter(({ item }) => item.catalogMatch === null && item.recognizedName !== 'Nieznany przedmiot')
       .slice(0, DYNAMIC_LOOKUP_LIMIT);
     const dynamicMatches = await Promise.all(
       unmatched.map(({ item }) => dynamicCatalogMatch(request, workspaceId, item.recognizedName)),
