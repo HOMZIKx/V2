@@ -1,5 +1,5 @@
 import { ServiceUnavailableException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DiscordGatewayConfigSchema,
@@ -23,6 +23,10 @@ function enabledConfig() {
     }),
   );
 }
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('HealthController', () => {
   it('reports live ok always', () => {
@@ -73,10 +77,36 @@ describe('HealthController', () => {
     });
   });
 
-  it('discord health never exposes secrets', () => {
+  it('discord health exposes temporary panel persistence fallback without exposing paths', () => {
+    vi.stubEnv('DISCORD_GATEWAY_DATA_DIR', '');
+    vi.stubEnv('DESTILED_DATA_DIR', '');
     const controller = new HealthController(disabledConfig(), null);
     const body = controller.discord();
-    expect(JSON.stringify(body)).not.toMatch(/token|secret/i);
+
+    expect(body.panelPersistenceSource).toBe('temporary');
+    expect(body.panelPersistenceTemporaryFallback).toBe(true);
+    expect(body.panelPersistenceDataDirConfigured).toBe(false);
+  });
+
+  it('discord health reports configured panel data directory mode', () => {
+    vi.stubEnv('DISCORD_GATEWAY_DATA_DIR', '/data/discord-gateway');
+    vi.stubEnv('DESTILED_DATA_DIR', '');
+    const controller = new HealthController(disabledConfig(), null);
+    const body = controller.discord();
+
+    expect(body.panelPersistenceSource).toBe('configured');
+    expect(body.panelPersistenceTemporaryFallback).toBe(false);
+    expect(body.panelPersistenceDataDirConfigured).toBe(true);
+  });
+
+  it('discord health never exposes secrets or persistence filesystem paths', () => {
+    vi.stubEnv('DISCORD_GATEWAY_DATA_DIR', '/private/mounted/path');
+    const controller = new HealthController(disabledConfig(), null);
+    const body = controller.discord();
+    const serialized = JSON.stringify(body);
+
+    expect(serialized).not.toMatch(/token|secret/i);
+    expect(serialized).not.toContain('/private/mounted/path');
     expect(body.panelRenderer).toBe('components-v2-container');
     expect(body.gitCommitSha).toBeDefined();
   });
