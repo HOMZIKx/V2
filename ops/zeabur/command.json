@@ -1,6 +1,6 @@
 {
-  "requestId": "player-team-jwt-prepare-20260908-1",
-  "mode": "production_repair",
-  "phase": "player_team_prepare",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "verify-api-player-team-rollouts-20260908-1",
+  "mode": "graphql_read",
+  "query": "query Verify($apiID:ObjectID!,$ptID:ObjectID!,$environmentID:ObjectID!){api:service(_id:$apiID){name status gitTrigger(environmentID:$environmentID){branchName} variables(environmentID:$environmentID){key value readonly}} pt:service(_id:$ptID){name status gitTrigger(environmentID:$environmentID){branchName} variables(environmentID:$environmentID){key value readonly}} apiDeployments:deployments(serviceID:$apiID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}} ptDeployments:deployments(serviceID:$ptID,environmentID:$environmentID,perPage:5){edges{node{_id status commitSHA commitMessage createdAt startedAt finishedAt}}}}",
+  "variables": {"apiID":"6a8211c9bdeaa87e2c52df34","ptID":"6a99a4d34177ab13f998c84c","environmentID":"6a720a3e5f062718bc7b3421"}
 }
