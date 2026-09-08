@@ -69,6 +69,12 @@ export class TeamInvitationsUseCases {
     return viewerId;
   }
 
+  public async listPendingInvitations(
+    recipientDiscordId: string,
+  ): Promise<readonly TeamInvitationRecord[]> {
+    return this.repository.listPendingForRecipient(recipientDiscordId);
+  }
+
   public async createInvitation(input: {
     readonly ownerDiscordId: string;
     readonly workspaceId: string;
