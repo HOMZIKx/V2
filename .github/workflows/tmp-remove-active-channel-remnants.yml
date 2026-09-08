@@ -1,0 +1,37 @@
+name: tmp-remove-active-channel-remnants
+
+on:
+  push:
+    branches:
+      - fix/party-all-channels-remove-hunts-all-20260908
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/party-all-channels-remove-hunts-all-20260908
+      - name: Remove stale activeChannel references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/app/generaly-metki/page.tsx')
+          text = path.read_text()
+          if text.count('channel: activeChannel') != 2:
+              raise SystemExit(f"expected 2 stale references, found {text.count('channel: activeChannel')}")
+          path.write_text(text.replace('channel: activeChannel', 'channel'))
+          PY
+          ! grep -q "activeChannel" apps/web/app/generaly-metki/page.tsx
+          rm .github/workflows/tmp-remove-active-channel-remnants.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(web): remove stale hunt channel aliases"
+          git push origin HEAD:fix/party-all-channels-remove-hunts-all-20260908
