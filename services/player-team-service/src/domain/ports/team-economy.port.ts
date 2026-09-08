@@ -106,6 +106,7 @@ export interface EconomyExpenseRecord extends EconomyExpenseInput {
 
 export interface TeamEconomyRepositoryPort {
   searchItems(workspaceId: string, query: string): Promise<readonly EconomyCatalogItem[]>;
+  catalogStatus(): Promise<{ readonly total: number }>;
   importItems(input: {
     readonly items: readonly EconomyCatalogSeedItem[];
     readonly createdBy: string;
