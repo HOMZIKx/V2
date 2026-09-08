@@ -10,10 +10,12 @@ export type PlayerTeamDemoAccessConfig = {
   readonly allowDemoWrite: boolean;
 };
 
+type WorkspaceRole = 'owner' | 'member' | null;
+
 type PrivateWorkspaceAccess = {
   readonly workspace: Record<string, unknown>;
   readonly viewerAppId: string | null;
-  readonly role: 'owner' | 'member' | null;
+  readonly role: WorkspaceRole;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -26,6 +28,14 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function memberKey(member: Record<string, unknown>): string | null {
+  return asString(member.discordAccountId) ?? asString(member.id);
+}
+
 export class PlayerTeamStateUseCases {
   public constructor(
     private readonly repository: PlayerTeamStateRepositoryPort,
@@ -33,9 +43,8 @@ export class PlayerTeamStateUseCases {
   ) {}
 
   /**
-   * Validate demo-mode access. Returns the resolved owner user id.
-   * In dev-safe mode the viewer identity is carried in a request header.
-   * This will be replaced by proper identity/auth wiring in a later phase.
+   * Validate compatibility access. The web proxy strips browser-provided
+   * identity headers and replaces them with the verified Discord account id.
    */
   public assertDemoAccess(demoHeaderValue: string | undefined): string {
     if (!this.demoAccess.allowDemoWrite) {
@@ -47,12 +56,9 @@ export class PlayerTeamStateUseCases {
     if (demoHeaderValue === undefined || demoHeaderValue.trim().length === 0) {
       throw new PlayerTeamError('UNAUTHORIZED', 'missing demo viewer header');
     }
-    // Canonical owner key: bare Discord snowflake (strip legacy discord: prefix).
     const trimmed = demoHeaderValue.trim();
     const prefixed = /^discord:(\d{17,20})$/i.exec(trimmed);
-    if (prefixed?.[1]) {
-      return prefixed[1];
-    }
+    if (prefixed?.[1]) return prefixed[1];
     return trimmed;
   }
 
@@ -106,44 +112,97 @@ export class PlayerTeamStateUseCases {
       .map(asRecord)
       .find((entry) => {
         if (entry === null) return false;
-        const memberDiscordId = asString(entry.discordAccountId);
-        const memberId = asString(entry.id);
-        return memberDiscordId === ownerUserId || (viewerAppId !== null && memberId === viewerAppId);
+        return (
+          asString(entry.discordAccountId) === ownerUserId ||
+          (viewerAppId !== null && asString(entry.id) === viewerAppId)
+        );
       });
     if (member === undefined || member === null) {
       throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a workspace member');
     }
 
     const rawRole = asString(member.role);
-    const role = rawRole === 'owner' || rawRole === 'member' ? rawRole : null;
+    const role: WorkspaceRole = rawRole === 'owner' || rawRole === 'member' ? rawRole : null;
     return { workspace, viewerAppId, role };
   }
 
-  private sharedStateAllowsViewer(
+  /** The shared server snapshot, not the viewer's private snapshot, is authoritative for membership. */
+  private sharedRole(
     state: Record<string, unknown>,
     ownerUserId: string,
     viewerAppId: string | null,
-  ): boolean {
+  ): WorkspaceRole {
     const members = Array.isArray(state.members) ? state.members : [];
-    const memberMatch = members
+    const member = members
       .map(asRecord)
-      .some((entry) => {
+      .find((entry) => {
         if (entry === null) return false;
         return (
           asString(entry.discordAccountId) === ownerUserId ||
           (viewerAppId !== null && asString(entry.id) === viewerAppId)
         );
       });
-    if (memberMatch) return true;
+    const role = asString(member?.role);
+    return role === 'owner' || role === 'member' ? role : null;
+  }
 
-    const invitations = Array.isArray(state.invitations) ? state.invitations : [];
-    return invitations
+  /**
+   * A normal member can edit shared gameplay data and their own notify override,
+   * but cannot rewrite team identity, roster, roles, invitations or team defaults
+   * by submitting a forged whole-workspace snapshot.
+   */
+  private assertMemberMutationAllowed(input: {
+    readonly current: Record<string, unknown>;
+    readonly next: Record<string, unknown>;
+    readonly ownerUserId: string;
+    readonly viewerAppId: string | null;
+  }): void {
+    const protectedRootFields = ['id', 'name', 'description', 'archived', 'invitations', 'notifyPrefs'];
+    for (const field of protectedRootFields) {
+      if (!sameJson(input.current[field], input.next[field])) {
+        throw new PlayerTeamError('UNAUTHORIZED', `only workspace owner can change ${field}`);
+      }
+    }
+
+    const currentMembers = (Array.isArray(input.current.members) ? input.current.members : [])
       .map(asRecord)
-      .some((entry) => {
-        if (entry === null || asString(entry.recipientDiscordId) !== ownerUserId) return false;
-        const status = asString(entry.status);
-        return status === 'pending' || status === 'accepted';
-      });
+      .filter((entry): entry is Record<string, unknown> => entry !== null);
+    const nextMembers = (Array.isArray(input.next.members) ? input.next.members : [])
+      .map(asRecord)
+      .filter((entry): entry is Record<string, unknown> => entry !== null);
+
+    if (currentMembers.length !== nextMembers.length) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can change team roster');
+    }
+
+    for (const currentMember of currentMembers) {
+      const key = memberKey(currentMember);
+      if (key === null) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'invalid shared team member');
+      }
+      const nextMember = nextMembers.find((candidate) => memberKey(candidate) === key);
+      if (nextMember === undefined) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can change team roster');
+      }
+
+      const isViewer =
+        asString(currentMember.discordAccountId) === input.ownerUserId ||
+        (input.viewerAppId !== null && asString(currentMember.id) === input.viewerAppId);
+      if (!isViewer) {
+        if (!sameJson(currentMember, nextMember)) {
+          throw new PlayerTeamError('UNAUTHORIZED', 'member cannot edit another team member');
+        }
+        continue;
+      }
+
+      const { notifyPrefs: _currentNotify, ...currentProtected } = currentMember;
+      const { notifyPrefs: _nextNotify, ...nextProtected } = nextMember;
+      void _currentNotify;
+      void _nextNotify;
+      if (!sameJson(currentProtected, nextProtected)) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'member cannot change own role or identity');
+      }
+    }
   }
 
   public async getWorkspaceSnapshot(
@@ -154,11 +213,8 @@ export class PlayerTeamStateUseCases {
     const existing = await this.repository.getWorkspaceSnapshot(workspaceId);
 
     if (existing !== null) {
-      if (
-        access.role !== 'owner' &&
-        !this.sharedStateAllowsViewer(existing.state, ownerUserId, access.viewerAppId)
-      ) {
-        throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not authorised for shared workspace');
+      if (this.sharedRole(existing.state, ownerUserId, access.viewerAppId) === null) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a shared workspace member');
       }
       return existing;
     }
@@ -177,8 +233,13 @@ export class PlayerTeamStateUseCases {
     } catch (error) {
       if (!(error instanceof PlayerTeamError) || error.code !== 'REVISION_CONFLICT') throw error;
       const raced = await this.repository.getWorkspaceSnapshot(workspaceId);
-      if (raced !== null) return raced;
-      throw error;
+      if (
+        raced !== null &&
+        this.sharedRole(raced.state, ownerUserId, access.viewerAppId) === 'owner'
+      ) {
+        return raced;
+      }
+      throw new PlayerTeamError('UNAUTHORIZED', 'workspace id already belongs to another team');
     }
   }
 
@@ -199,11 +260,19 @@ export class PlayerTeamStateUseCases {
       if (access.role !== 'owner') {
         throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can initialise live state');
       }
-    } else if (
-      access.role !== 'owner' &&
-      !this.sharedStateAllowsViewer(existing.state, input.ownerUserId, access.viewerAppId)
-    ) {
-      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not authorised for shared workspace');
+    } else {
+      const sharedRole = this.sharedRole(existing.state, input.ownerUserId, access.viewerAppId);
+      if (sharedRole === null) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a shared workspace member');
+      }
+      if (sharedRole === 'member') {
+        this.assertMemberMutationAllowed({
+          current: existing.state,
+          next: input.state,
+          ownerUserId: input.ownerUserId,
+          viewerAppId: access.viewerAppId,
+        });
+      }
     }
 
     return this.repository.upsertWorkspaceSnapshot({
