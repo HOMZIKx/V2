@@ -571,7 +571,7 @@
   font-weight: 800;
 }
 
-button:disabled {
+.page button:disabled {
   opacity: 0.48;
   cursor: default;
 }
