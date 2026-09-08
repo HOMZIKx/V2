@@ -192,14 +192,17 @@ export function scheduleCharacterTimerReminder(
 /** Cancel every outstanding due/snooze job for this user+timer after a refresh. */
 export function cancelCharacterTimerReminder(discordUserId: string, timerId: string): void {
   loadFromDisk();
-  const prefix = `${discordUserId}:${timerId}:`;
+  const legacyKey = `${discordUserId}:${timerId}`;
+  const prefix = `${legacyKey}:`;
+  const matches = (key: string) => key === legacyKey || key.startsWith(prefix);
+
   for (const [key, handle] of pending) {
-    if (!key.startsWith(prefix)) continue;
+    if (!matches(key)) continue;
     clearTimeout(handle);
     pending.delete(key);
   }
   for (const key of [...metaByKey.keys()]) {
-    if (key.startsWith(prefix)) metaByKey.delete(key);
+    if (matches(key)) metaByKey.delete(key);
   }
   saveToDisk();
 }
