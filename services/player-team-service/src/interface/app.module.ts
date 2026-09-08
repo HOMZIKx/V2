@@ -5,10 +5,13 @@ import { MetinGeneralHuntsUseCases } from '../application/use-cases/metin-genera
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
 import { TeamEconomyUseCases } from '../application/use-cases/team-economy.use-cases.js';
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
+import { LegacyEconomyCatalogSeeder } from '../infrastructure/catalog/legacy-economy-catalog.seeder.js';
 import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.provider.js';
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
 import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
+import { TeamEconomyDropManagementRepository } from '../infrastructure/db/team-economy-drop-management.repository.js';
+import { TeamEconomyManagementRepository } from '../infrastructure/db/team-economy-management.repository.js';
 import { TeamEconomyRepository } from '../infrastructure/db/team-economy.repository.js';
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
 
@@ -16,6 +19,7 @@ import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
 import { PlayerTeamController } from './player-team.controller.js';
+import { TeamEconomyManagementController } from './team-economy-management.controller.js';
 import { TeamEconomyController } from './team-economy.controller.js';
 import { TeamInvitationsController } from './team-invitations.controller.js';
 import { WorkspaceLiveBus } from './workspace-live.bus.js';
@@ -38,6 +42,7 @@ import {
     WorkspaceLiveController,
     TeamInvitationsController,
     TeamEconomyController,
+    TeamEconomyManagementController,
   ],
   providers: [
     PlayerTeamEnvProvider,
@@ -51,6 +56,9 @@ import {
     MetinGeneralHuntsRepository,
     TeamInvitationsRepository,
     TeamEconomyRepository,
+    TeamEconomyManagementRepository,
+    TeamEconomyDropManagementRepository,
+    LegacyEconomyCatalogSeeder,
     WorkspaceLiveBus,
     {
       provide: PLAYER_TEAM_STATE_USE_CASES,

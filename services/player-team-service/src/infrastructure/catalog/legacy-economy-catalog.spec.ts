@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { parseLegacyEconomyCatalogCsv } from './legacy-economy-catalog.js';
+import {
+  loadLegacyEconomyCatalog,
+  parseLegacyEconomyCatalogCsv,
+} from './legacy-economy-catalog.js';
 
 describe('parseLegacyEconomyCatalogCsv', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('keeps only catalog fields, trims names and deduplicates case-insensitively', () => {
     const csv = [
       'name,uplevel,description,category,image_url,rarity,id,created_date,updated_date,created_by_id,created_by,is_sample',
@@ -42,5 +49,11 @@ describe('parseLegacyEconomyCatalogCsv', () => {
     expect(() => parseLegacyEconomyCatalogCsv('name,category\nTest,Inne')).toThrow(
       'unexpected header',
     );
+  });
+
+  it('does not block service startup when the legacy GitHub export is unavailable', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('network down'));
+
+    await expect(loadLegacyEconomyCatalog()).resolves.toEqual([]);
   });
 });
