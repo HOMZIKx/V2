@@ -1,5 +1,7 @@
 {
-  "requestId": "inspect-api-recovery-mutations-and-service-source-20260908-1",
-  "mode": "graphql_read",
-  "query": "query Schema{serviceType:__type(name:\"Service\"){fields{name args{name type{kind name ofType{kind name}}} type{kind name ofType{kind name}}}} mutation:__type(name:\"Mutation\"){fields{name args{name type{kind name ofType{kind name ofType{kind name}}}} type{kind name ofType{kind name}}}}}"
+  "requestId": "rollback-api-to-known-good-e31b81b-20260908-1",
+  "mode": "graphql_write",
+  "confirm": "ZEABUR_WRITE_APPROVED",
+  "query": "mutation Rollback($deploymentID:ObjectID!){rollbackDeployment(deploymentID:$deploymentID)}",
+  "variables": {"deploymentID":"6a9fc5547b89d6943549f756"}
 }
