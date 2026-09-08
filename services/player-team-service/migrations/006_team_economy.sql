@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS player_team_drop_participants (
   PRIMARY KEY (session_id, participant_id)
 );
 
+-- Item drops are always counted in whole units. The percentage share is only a suggestion;
+-- the final team ownership is stored explicitly in our_quantity.
 CREATE TABLE IF NOT EXISTS player_team_drop_items (
   id              TEXT PRIMARY KEY,
   session_id      TEXT NOT NULL REFERENCES player_team_drop_sessions(id) ON DELETE CASCADE,
@@ -73,6 +75,17 @@ CREATE TABLE IF NOT EXISTS player_team_drop_items (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_ptdi_session ON player_team_drop_items (session_id);
+
+-- Direct money drops are split percentage-wise and can contain fractional values.
+CREATE TABLE IF NOT EXISTS player_team_drop_money (
+  id                      TEXT PRIMARY KEY,
+  session_id              TEXT NOT NULL REFERENCES player_team_drop_sessions(id) ON DELETE CASCADE,
+  currency                TEXT NOT NULL CHECK (currency IN ('yang','won','gem')),
+  total_amount            NUMERIC(28,4) NOT NULL CHECK (total_amount >= 0),
+  our_share_basis_points  INTEGER NOT NULL CHECK (our_share_basis_points BETWEEN 0 AND 10000),
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ptdm_session ON player_team_drop_money (session_id);
 
 CREATE TABLE IF NOT EXISTS player_team_drop_leftovers (
   drop_item_id    TEXT PRIMARY KEY REFERENCES player_team_drop_items(id) ON DELETE CASCADE,
