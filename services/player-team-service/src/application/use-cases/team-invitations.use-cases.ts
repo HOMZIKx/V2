@@ -80,6 +80,31 @@ function normalizeExpiredInvitations(
   });
 }
 
+function invitationRecordFromEntry(
+  entry: Record<string, unknown>,
+  status: TeamInvitationRecord['status'],
+): TeamInvitationRecord {
+  const createdAtIso = asString(entry.createdAtIso);
+  const expiresAtIso = asString(entry.expiresAtIso);
+  return {
+    id: asString(entry.id),
+    teamId: asString(entry.teamId),
+    teamName: asString(entry.teamName),
+    inviterName: asString(entry.inviterName),
+    recipientDiscordId: asString(entry.recipientDiscordId),
+    recipientDisplayName: asString(entry.recipientDisplayName),
+    status,
+    createdLabel: asString(entry.createdLabel),
+    expiresLabel: asString(entry.expiresLabel),
+    ...(createdAtIso ? { createdAtIso } : {}),
+    ...(expiresAtIso ? { expiresAtIso } : {}),
+    revision:
+      typeof entry.revision === 'number' && Number.isFinite(entry.revision)
+        ? Math.trunc(entry.revision)
+        : 1,
+  };
+}
+
 export class TeamInvitationsUseCases {
   public constructor(
     private readonly repository: TeamInvitationsRepositoryPort,
@@ -264,38 +289,30 @@ export class TeamInvitationsUseCases {
         throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can cancel invitations');
       }
 
-      let cancelled: TeamInvitationRecord | null = null;
+      const normalizedInvitations = normalizeExpiredInvitations(invitationsOf(current.state));
+      const target = normalizedInvitations.find(
+        (entry) => asString(entry.id) === input.invitationId,
+      );
+      if (target === undefined) {
+        throw new PlayerTeamError('NOT_FOUND', 'invitation not found');
+      }
+      if (asString(target.status) !== 'pending') {
+        throw new PlayerTeamError('VALIDATION_FAILED', 'invitation is no longer pending');
+      }
+
+      const cancelledEntry: Record<string, unknown> = {
+        ...target,
+        status: 'cancelled',
+        revision:
+          typeof target.revision === 'number' && Number.isFinite(target.revision)
+            ? Math.trunc(target.revision) + 1
+            : 1,
+      };
+      const cancelled = invitationRecordFromEntry(cancelledEntry, 'cancelled');
       const revision = nextStateRevision(current.state);
-      const invitations = normalizeExpiredInvitations(invitationsOf(current.state)).map((entry) => {
-        if (asString(entry.id) !== input.invitationId) return entry;
-        if (asString(entry.status) !== 'pending') {
-          throw new PlayerTeamError('VALIDATION_FAILED', 'invitation is no longer pending');
-        }
-        const next = {
-          ...entry,
-          status: 'cancelled',
-          revision:
-            typeof entry.revision === 'number' && Number.isFinite(entry.revision)
-              ? Math.trunc(entry.revision) + 1
-              : 1,
-        };
-        cancelled = {
-          id: asString(next.id),
-          teamId: asString(next.teamId),
-          teamName: asString(next.teamName),
-          inviterName: asString(next.inviterName),
-          recipientDiscordId: asString(next.recipientDiscordId),
-          recipientDisplayName: asString(next.recipientDisplayName),
-          status: 'cancelled',
-          createdLabel: asString(next.createdLabel),
-          expiresLabel: asString(next.expiresLabel),
-          ...(asString(next.createdAtIso) ? { createdAtIso: asString(next.createdAtIso) } : {}),
-          ...(asString(next.expiresAtIso) ? { expiresAtIso: asString(next.expiresAtIso) } : {}),
-          revision: typeof next.revision === 'number' ? next.revision : 1,
-        };
-        return next;
-      });
-      if (cancelled === null) throw new PlayerTeamError('NOT_FOUND', 'invitation not found');
+      const invitations = normalizedInvitations.map((entry) =>
+        asString(entry.id) === input.invitationId ? cancelledEntry : entry,
+      );
 
       const history = Array.isArray(current.state.history) ? current.state.history : [];
       const nextState: Record<string, unknown> = {
