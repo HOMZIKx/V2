@@ -1,5 +1,7 @@
 {
-  "requestId": "character-timer-live-dm-proof-20260909-1153",
-  "mode": "character_timer_live_dm_proof",
-  "confirm": "DISCORD_TEST_DM_APPROVED"
+  "requestId": "discord-gateway-runtime-logs-20260909-1215",
+  "mode": "cli",
+  "action": "logs:runtime",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "discord-gateway"
 }
