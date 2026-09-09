@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { type PlayerTeamStateUseCases } from './player-team-state.use-cases.js';
 import { PlayerTeamError } from '../../domain/errors.js';
 import {
@@ -7,6 +9,16 @@ import {
   type EconomyExpenseInput,
   type TeamEconomyRepositoryPort,
 } from '../../domain/ports/team-economy.port.js';
+
+export const PRIVATE_ECONOMY_WORKSPACE_ALIAS = 'private';
+
+function privateEconomyWorkspaceId(viewerId: string): string {
+  const digest = createHash('sha256')
+    .update(`destiled:private-economy:${viewerId.trim()}`)
+    .digest('hex')
+    .slice(0, 40);
+  return `private-economy-${digest}`;
+}
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -43,25 +55,53 @@ export class TeamEconomyUseCases {
     private readonly stateUseCases: PlayerTeamStateUseCases,
   ) {}
 
-  private async workspace(viewerId: string, workspaceId: string) {
-    return this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId);
+  /**
+   * `private` is a reserved route alias. The actual storage key is derived on
+   * the server from the authenticated Discord identity, so the browser never
+   * selects another member's private economy workspace.
+   */
+  private async workspaceId(viewerId: string, workspaceId: string): Promise<string> {
+    if (workspaceId === PRIVATE_ECONOMY_WORKSPACE_ALIAS) {
+      return privateEconomyWorkspaceId(viewerId);
+    }
+    await this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId);
+    return workspaceId;
   }
 
-  private async assertOwner(viewerId: string, workspaceId: string): Promise<void> {
+  private async assertCatalogCreateAccess(viewerId: string, workspaceId: string): Promise<void> {
+    if (workspaceId === PRIVATE_ECONOMY_WORKSPACE_ALIAS) {
+      throw new PlayerTeamError(
+        'UNAUTHORIZED',
+        'private economy cannot mutate the shared global item catalogue',
+      );
+    }
+    await this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId);
+  }
+
+  private async assertOwner(viewerId: string, workspaceId: string): Promise<string> {
+    if (workspaceId === PRIVATE_ECONOMY_WORKSPACE_ALIAS) {
+      throw new PlayerTeamError(
+        'UNAUTHORIZED',
+        'private economy cannot edit an existing global item catalogue entry',
+      );
+    }
     const [workspace, viewerSnapshot] = await Promise.all([
-      this.workspace(viewerId, workspaceId),
+      this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId),
       this.stateUseCases.getViewerSnapshot(viewerId),
     ]);
-    if (memberRole(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner') {
+    if (
+      memberRole(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner'
+    ) {
       throw new PlayerTeamError(
         'UNAUTHORIZED',
         'only workspace owner can edit an existing global item catalogue entry',
       );
     }
+    return workspaceId;
   }
 
   public async catalogStatus(viewerId: string, workspaceId: string) {
-    await this.workspace(viewerId, workspaceId);
+    await this.workspaceId(viewerId, workspaceId);
     return this.repository.catalogStatus();
   }
 
@@ -70,13 +110,13 @@ export class TeamEconomyUseCases {
     workspaceId: string,
     items: readonly EconomyCatalogSeedItem[],
   ) {
-    await this.workspace(viewerId, workspaceId);
+    await this.assertCatalogCreateAccess(viewerId, workspaceId);
     return this.repository.importItems({ items, createdBy: viewerId });
   }
 
   public async searchItems(viewerId: string, workspaceId: string, query: string) {
-    await this.workspace(viewerId, workspaceId);
-    return this.repository.searchItems(workspaceId, query);
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, workspaceId);
+    return this.repository.searchItems(resolvedWorkspaceId, query);
   }
 
   public async createItem(
@@ -89,7 +129,7 @@ export class TeamEconomyUseCases {
       alias?: string | null | undefined;
     },
   ) {
-    await this.workspace(viewerId, workspaceId);
+    await this.assertCatalogCreateAccess(viewerId, workspaceId);
     return this.repository.createItem({ ...input, createdBy: viewerId });
   }
 
@@ -113,8 +153,12 @@ export class TeamEconomyUseCases {
     workspaceId: string,
     input: { itemId: string; unitPrice: number; currency: EconomyCurrency },
   ) {
-    await this.workspace(viewerId, workspaceId);
-    await this.repository.addPrice({ workspaceId, ...input, createdBy: viewerId });
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, workspaceId);
+    await this.repository.addPrice({
+      workspaceId: resolvedWorkspaceId,
+      ...input,
+      createdBy: viewerId,
+    });
     return { ok: true } as const;
   }
 
@@ -122,33 +166,41 @@ export class TeamEconomyUseCases {
     viewerId: string,
     input: Omit<EconomyDropSessionInput, 'createdBy'>,
   ) {
-    await this.workspace(viewerId, input.workspaceId);
-    return this.repository.createDrop({ ...input, createdBy: viewerId });
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, input.workspaceId);
+    return this.repository.createDrop({
+      ...input,
+      workspaceId: resolvedWorkspaceId,
+      createdBy: viewerId,
+    });
   }
 
   public async listDrops(viewerId: string, workspaceId: string, sinceIso?: string) {
-    await this.workspace(viewerId, workspaceId);
-    return this.repository.listDrops(workspaceId, sinceIso);
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, workspaceId);
+    return this.repository.listDrops(resolvedWorkspaceId, sinceIso);
   }
 
   public async createExpense(
     viewerId: string,
     input: Omit<EconomyExpenseInput, 'createdBy'>,
   ) {
-    await this.workspace(viewerId, input.workspaceId);
-    return this.repository.createExpense({ ...input, createdBy: viewerId });
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, input.workspaceId);
+    return this.repository.createExpense({
+      ...input,
+      workspaceId: resolvedWorkspaceId,
+      createdBy: viewerId,
+    });
   }
 
   public async listExpenses(viewerId: string, workspaceId: string, sinceIso?: string) {
-    await this.workspace(viewerId, workspaceId);
-    return this.repository.listExpenses(workspaceId, sinceIso);
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, workspaceId);
+    return this.repository.listExpenses(resolvedWorkspaceId, sinceIso);
   }
 
   public async summary(viewerId: string, workspaceId: string, sinceIso?: string) {
-    await this.workspace(viewerId, workspaceId);
+    const resolvedWorkspaceId = await this.workspaceId(viewerId, workspaceId);
     const [drops, expenses] = await Promise.all([
-      this.repository.listDrops(workspaceId, sinceIso),
-      this.repository.listExpenses(workspaceId, sinceIso),
+      this.repository.listDrops(resolvedWorkspaceId, sinceIso),
+      this.repository.listExpenses(resolvedWorkspaceId, sinceIso),
     ]);
     const currencies: EconomyCurrency[] = ['yang', 'won', 'gem'];
     const totals = currencies.map((currency) => {
