@@ -13,12 +13,12 @@ import {
 import { z } from 'zod';
 
 import { type PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
+import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import {
   AiObservationRepository,
   type AiObservationFeedbackInput,
   type AiObservationInput,
 } from '../infrastructure/db/ai-observation.repository.js';
-import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
 import { PLAYER_TEAM_ENV, PLAYER_TEAM_STATE_USE_CASES } from './player-team.tokens.js';
 import { resolvePlayerTeamRequestDiscordId } from './request-auth.js';
@@ -38,7 +38,7 @@ const createObservationSchema = z.object({
   confidence: z.number().min(0).max(1).nullable().optional(),
   image: z.object({
     mimeType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
-    sizeBytes: z.number().int().positive().max(8 * 1024 * 1024),
+    sizeBytes: z.number().int().positive().max(10 * 1024 * 1024),
     sha256: sha256Schema,
   }),
   aiOutput: jsonPayloadSchema,
