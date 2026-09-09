@@ -160,7 +160,14 @@ export default function PrivateEconomyPage() {
     try {
       const imageDataUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
+        reader.onload = () => {
+          const result = reader.result;
+          if (typeof result !== 'string') {
+            reject(new Error('Nie udało się odczytać obrazu jako danych.'));
+            return;
+          }
+          resolve(result);
+        };
         reader.onerror = () => reject(new Error('Nie udało się odczytać obrazu.'));
         reader.readAsDataURL(file);
       });
@@ -319,7 +326,7 @@ export default function PrivateEconomyPage() {
               <span className={styles.beta}>AI (beta)</span>
             </div>
             <p className={styles.aiWarning}>AI może się pomylić. Zawsze sprawdź nazwy, ilości i wartości przed zapisaniem wyniku.</p>
-            <form onSubmit={submitDrop}>
+            <form onSubmit={(event) => void submitDrop(event)}>
               <div className={styles.grid}>
                 <label className={styles.field}>Źródło<input onChange={(event) => setSource(event.target.value)} value={source} /></label>
                 <label className={styles.field}>Screen dropu · AI (beta)<input accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => void recognize(event)} type="file" /></label>
@@ -351,7 +358,7 @@ export default function PrivateEconomyPage() {
         {costOpen ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}><h2>Nowy koszt</h2></div>
-            <form onSubmit={submitCost}>
+            <form onSubmit={(event) => void submitCost(event)}>
               <div className={styles.grid}>
                 <label className={styles.field}>Nazwa<input onChange={(event) => setCostLabel(event.target.value)} value={costLabel} /></label>
                 <label className={styles.field}>Ilość<input min="0.0001" onChange={(event) => setCostQuantity(Math.max(0.0001, Number(event.target.value)))} step="0.0001" type="number" value={costQuantity} /></label>
