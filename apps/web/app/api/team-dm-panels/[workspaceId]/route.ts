@@ -69,6 +69,7 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
 }
 
 async function workspaceState(request: Request, cookie: string, workspaceId: string): Promise<JsonRecord | Response> {
+  void cookie;
   let response: Response;
   try {
     response = await callPlayerTeamGet(request, ['v1', 'workspaces', workspaceId, 'state']);
@@ -137,7 +138,7 @@ export async function PUT(request: Request, context: { params: Promise<{ workspa
   return callGateway('/notify/daily-timer-panel-config', {
     workspaceId,
     dailyTime,
-    recipients: authoritativeNotifyRecipients(workspace, 'characterTimers'),
+    recipients: authoritativeNotifyRecipients(workspace, 'characterTimers', viewer),
   });
 }
 
@@ -162,7 +163,7 @@ export async function POST(request: Request, context: { params: Promise<{ worksp
   return callGateway('/notify/daily-timer-panel-config', {
     workspaceId,
     dailyTime,
-    recipients: authoritativeNotifyRecipients(workspace, 'characterTimers'),
+    recipients: authoritativeNotifyRecipients(workspace, 'characterTimers', viewer),
   });
 }
 
