@@ -18,6 +18,7 @@ on:
       - ops/zeabur/verify-public-e2e.mjs
       - ops/zeabur/verify-technika-persistence.mjs
       - ops/zeabur/verify-character-timer-live-dm.mjs
+      - ops/zeabur/verify-daily-timer-panel-e2e.mjs
       - ops/zeabur/secure-secret-bridge.mjs
       - ops/zeabur/bridge-player-team-discord-secret.mjs
       - .github/workflows/zeabur-ops.yml
@@ -59,6 +60,7 @@ jobs:
             public_e2e) node ops/zeabur/verify-public-e2e.mjs ;;
             technika_persistence_probe) node ops/zeabur/verify-technika-persistence.mjs ;;
             character_timer_live_dm_proof) node ops/zeabur/verify-character-timer-live-dm.mjs ;;
+            daily_timer_panel_e2e) node ops/zeabur/verify-daily-timer-panel-e2e.mjs ;;
             secure_secret_bridge) node ops/zeabur/secure-secret-bridge.mjs ;;
             player_team_discord_secret_bridge) node ops/zeabur/bridge-player-team-discord-secret.mjs ;;
             *) node ops/zeabur/run.mjs ;;
