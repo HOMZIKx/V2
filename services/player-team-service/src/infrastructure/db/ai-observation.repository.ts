@@ -32,6 +32,13 @@ export type AiObservationFeedbackInput = {
   readonly changedFields?: readonly string[];
 };
 
+export type PendingAiObservation = {
+  readonly id: string;
+  readonly aiOutput: unknown;
+  readonly characterId: string | null;
+  readonly createdAtIso: string;
+};
+
 function actorHash(discordId: string): string {
   return createHash('sha256').update(`destiled-ai-observation:v1:${discordId}`, 'utf8').digest('hex');
 }
@@ -83,6 +90,42 @@ export class AiObservationRepository implements OnModuleInit {
     return { id: row.id, createdAtIso: new Date(row.created_at).toISOString() };
   }
 
+  public async latestPending(
+    viewerDiscordId: string,
+    input: {
+      readonly analysisType: AiObservationType;
+      readonly workspaceId: string;
+      readonly maxAgeMinutes?: number;
+    },
+  ): Promise<PendingAiObservation | null> {
+    const maxAgeMinutes = Math.max(1, Math.min(60, Math.trunc(input.maxAgeMinutes ?? 15)));
+    const result = await this.db.query<{
+      id: string;
+      ai_output: unknown;
+      character_id: string | null;
+      created_at: Date | string;
+    }>(
+      `SELECT id, ai_output, character_id, created_at
+       FROM player_team_ai_observations
+       WHERE actor_hash = $1
+         AND analysis_type = $2
+         AND workspace_id = $3
+         AND feedback_status = 'pending'
+         AND created_at >= NOW() - ($4::int * INTERVAL '1 minute')
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [actorHash(viewerDiscordId), input.analysisType, input.workspaceId, maxAgeMinutes],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      aiOutput: row.ai_output,
+      characterId: row.character_id,
+      createdAtIso: new Date(row.created_at).toISOString(),
+    };
+  }
+
   public async addFeedback(
     viewerDiscordId: string,
     observationId: string,
@@ -94,7 +137,7 @@ export class AiObservationRepository implements OnModuleInit {
            final_output = $4::jsonb,
            changed_fields = $5::jsonb,
            feedback_at = NOW()
-       WHERE id = $1 AND actor_hash = $2
+       WHERE id = $1 AND actor_hash = $2 AND feedback_status = 'pending'
        RETURNING id, feedback_status, feedback_at`,
       [
         observationId,
@@ -105,7 +148,7 @@ export class AiObservationRepository implements OnModuleInit {
       ],
     );
     const row = result.rows[0];
-    if (!row) throw new PlayerTeamError('NOT_FOUND', 'AI observation not found');
+    if (!row) throw new PlayerTeamError('NOT_FOUND', 'pending AI observation not found');
     return { id: row.id, status: row.feedback_status, feedbackAtIso: new Date(row.feedback_at).toISOString() };
   }
 }
