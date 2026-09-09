@@ -1,4 +1,4 @@
-name: Economy catalog polish patch
+name: Economy data UX polish
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - feat/economy-catalog-polish-20260909
     paths:
       - .github/workflows/economy-catalog-polish-patch.yml
-      - .github/scripts/apply_economy_catalog_polish.py
+      - .github/scripts/apply_economy_data_ux_polish.py
 
 permissions:
   contents: write
@@ -19,7 +19,7 @@ jobs:
         with:
           ref: feat/economy-catalog-polish-20260909
       - name: Apply patch
-        run: python3 .github/scripts/apply_economy_catalog_polish.py
+        run: python3 .github/scripts/apply_economy_data_ux_polish.py
       - name: Format touched files
         shell: bash
         run: |
@@ -27,18 +27,14 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec prettier --write \
             apps/web/app/economy/economy.module.css \
+            apps/web/app/economy/private/page.tsx \
             apps/web/app/teams/[teamId]/economy/team-economy.module.css \
-            apps/web/app/teams/[teamId]/economy/team-economy.tsx \
-            apps/web/app/teams/[teamId]/economy/drop-history-actions.tsx \
-            apps/web/app/teams/[teamId]/economy/market-price-hint.tsx \
-            apps/web/src/server/item-image-proxy.ts \
-            apps/web/src/item-image-path-regression.spec.ts \
-            services/player-team-service/src/infrastructure/db/team-economy.repository.ts
+            apps/web/app/teams/[teamId]/economy/team-economy.tsx
       - name: Commit patch
         shell: bash
         run: |
           git config user.name 'HOMZIKx'
           git config user.email 'ciborex12@gmail.com'
-          git add apps/web services/player-team-service
-          git commit -m 'fix(economy): align theme and repair catalog item resolution'
+          git add apps/web
+          git commit -m 'feat(economy): add period filters and complete private catalog binding'
           git push origin HEAD:feat/economy-catalog-polish-20260909
