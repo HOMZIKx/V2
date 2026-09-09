@@ -20,7 +20,8 @@ function finish(result, code = 0) {
     '',
     `- Result: **${result.ok ? 'OK' : 'FAILED'}**`,
     `- Source secret present: **${String(result.sourceSecretPresent ?? false)}**`,
-    `- Target configured: **${String(result.targetConfigured ?? false)}**`,
+    `- Gateway target configured: **${String(result.gatewayTargetConfigured ?? false)}**`,
+    `- Player Team target configured: **${String(result.playerTeamTargetConfigured ?? false)}**`,
     `- Values match after write: **${String(result.valuesMatch ?? false)}**`,
     `- Player Team redeploy requested: **${String(result.playerTeamRedeployRequested ?? false)}**`,
     `- Discord gateway redeploy requested: **${String(result.discordGatewayRedeployRequested ?? false)}**`,
@@ -107,16 +108,23 @@ try {
     finish({ ok: false, sourceSecretPresent: false, error: 'gateway source secret is missing or invalid' }, 1);
   }
 
+  // The background timer scheduler authenticates to Player Team with targetKey.
+  // Keep the source value private while writing the same secret under that key
+  // on BOTH services so either side can rotate independently from notify auth later.
+  await setEnv(gateway, targetKey, sourceSecret);
   await setEnv(playerTeam, targetKey, sourceSecret);
 
   services = await loadServices();
   const gatewayAfter = services.find((service) => service.name === sourceServiceName);
   const playerTeamAfter = services.find((service) => service.name === targetServiceName);
+  const gatewayTarget = gatewayAfter ? variableValue(gatewayAfter, targetKey) : '';
+  const playerTeamTarget = playerTeamAfter ? variableValue(playerTeamAfter, targetKey) : '';
   const valuesMatch =
     gatewayAfter !== undefined &&
     playerTeamAfter !== undefined &&
-    variableValue(gatewayAfter, sourceKey) === variableValue(playerTeamAfter, targetKey) &&
-    variableValue(playerTeamAfter, targetKey).length >= 20;
+    variableValue(gatewayAfter, sourceKey) === gatewayTarget &&
+    gatewayTarget === playerTeamTarget &&
+    playerTeamTarget.length >= 20;
   if (!valuesMatch) throw new Error('secret bridge verification failed');
 
   await redeploy(playerTeamAfter);
@@ -125,7 +133,8 @@ try {
   finish({
     ok: true,
     sourceSecretPresent: true,
-    targetConfigured: true,
+    gatewayTargetConfigured: true,
+    playerTeamTargetConfigured: true,
     valuesMatch: true,
     playerTeamRedeployRequested: true,
     discordGatewayRedeployRequested: true,
