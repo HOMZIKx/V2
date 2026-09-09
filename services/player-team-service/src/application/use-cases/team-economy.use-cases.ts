@@ -1,6 +1,4 @@
-import { type AiObservationFeedbackPort } from '../ports/ai-observation-feedback.port.js';
 import { type PlayerTeamStateUseCases } from './player-team-state.use-cases.js';
-import { evaluateEconomyFeedback } from '../../domain/ai-observation-feedback.js';
 import { PlayerTeamError } from '../../domain/errors.js';
 import {
   type EconomyCatalogSeedItem,
@@ -43,7 +41,6 @@ export class TeamEconomyUseCases {
   public constructor(
     private readonly repository: TeamEconomyRepositoryPort,
     private readonly stateUseCases: PlayerTeamStateUseCases,
-    private readonly observations: AiObservationFeedbackPort | null = null,
   ) {}
 
   private async workspace(viewerId: string, workspaceId: string) {
@@ -126,35 +123,7 @@ export class TeamEconomyUseCases {
     input: Omit<EconomyDropSessionInput, 'createdBy'>,
   ) {
     await this.workspace(viewerId, input.workspaceId);
-    const created = await this.repository.createDrop({ ...input, createdBy: viewerId });
-
-    if (this.observations) {
-      try {
-        const pending = await this.observations.latestPending(viewerId, {
-          analysisType: 'economy',
-          workspaceId: input.workspaceId,
-          maxAgeMinutes: 15,
-        });
-        if (pending) {
-          const finalOutput = {
-            items: input.items.map((item) => ({
-              name: item.displayName,
-              quantity: item.totalQuantity,
-            })),
-          };
-          const decision = evaluateEconomyFeedback(pending.aiOutput, finalOutput);
-          await this.observations.addFeedback(viewerId, pending.id, {
-            status: decision.status,
-            finalOutput,
-            changedFields: decision.changedFields,
-          });
-        }
-      } catch (error) {
-        console.error('economy AI feedback persistence failed', error);
-      }
-    }
-
-    return created;
+    return this.repository.createDrop({ ...input, createdBy: viewerId });
   }
 
   public async listDrops(viewerId: string, workspaceId: string, sinceIso?: string) {
