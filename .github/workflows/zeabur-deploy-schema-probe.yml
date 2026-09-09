@@ -1,0 +1,35 @@
+name: Zeabur deploy schema probe
+on:
+  push:
+    branches: [chore/live-route-probe-post-economy-20260909]
+    paths: [.github/workflows/zeabur-deploy-schema-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect Zeabur deployment mutation names
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=os.environ['ZEABUR_API_TOKEN'].strip()
+          query='''query { __schema { mutationType { fields { name args { name type { kind name ofType { kind name ofType { kind name } } } } } } } }'''
+          r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST','https://api.zeabur.com/graphql','-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':query})],capture_output=True,text=True,timeout=30)
+          if r.returncode: print('::error::Zeabur schema request failed');sys.exit(1)
+          p=json.loads(r.stdout)
+          if p.get('errors'): print('::error::Zeabur schema query failed: '+str(p['errors'][0].get('message','unknown'))[:200]);sys.exit(1)
+          fields=(((p.get('data') or {}).get('__schema') or {}).get('mutationType') or {}).get('fields') or []
+          wanted=[]
+          for f in fields:
+            name=str(f.get('name') or '')
+            low=name.lower()
+            if any(word in low for word in ('deploy','redeploy','restart','service')):
+              wanted.append({'name':name,'args':[a.get('name') for a in f.get('args') or []]})
+          print('ZEABUR_DEPLOY_MUTATIONS='+json.dumps(wanted, separators=(',',':')))
+          if not wanted: print('::error::No deployment-related mutations found');sys.exit(2)
+          PY
