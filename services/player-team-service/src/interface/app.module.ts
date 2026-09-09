@@ -92,9 +92,12 @@ import {
     },
     {
       provide: TEAM_ECONOMY_USE_CASES,
-      useFactory: (repository: TeamEconomyRepository, stateUseCases: PlayerTeamStateUseCases) =>
-        new TeamEconomyUseCases(repository, stateUseCases),
-      inject: [TeamEconomyRepository, PLAYER_TEAM_STATE_USE_CASES],
+      useFactory: (
+        repository: TeamEconomyRepository,
+        stateUseCases: PlayerTeamStateUseCases,
+        observations: AiObservationRepository,
+      ) => new TeamEconomyUseCases(repository, stateUseCases, observations),
+      inject: [TeamEconomyRepository, PLAYER_TEAM_STATE_USE_CASES, AiObservationRepository],
     },
   ],
 })
