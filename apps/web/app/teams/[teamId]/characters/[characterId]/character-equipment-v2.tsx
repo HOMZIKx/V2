@@ -393,7 +393,6 @@ export function CharacterEquipmentV2() {
     }
     setScreenshotStatus('loading');
     setEditorError(null);
-    setScreenshotAnalysisId(null);
     const body = new FormData();
     body.append('image', screenshotFile);
     body.append('workspaceId', workspace.id);
@@ -457,7 +456,6 @@ export function CharacterEquipmentV2() {
       }));
       setScreenshotStatus('done');
     } catch (error) {
-      setScreenshotAnalysisId(null);
       setScreenshotStatus('error');
       setEditorError(error instanceof Error ? error.message : 'Analiza screena nie powiodła się.');
     }
@@ -869,7 +867,6 @@ export function CharacterEquipmentV2() {
                       accept="image/png,image/jpeg,image/webp"
                       onChange={(event) => {
                         setScreenshotFile(event.target.files?.[0] ?? null);
-                        setScreenshotAnalysisId(null);
                         setScreenshotStatus('idle');
                         setCategoryReviewRequired(false);
                         setEditorError(null);
