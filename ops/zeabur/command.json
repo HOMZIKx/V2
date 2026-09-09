@@ -1,5 +1,7 @@
 {
-  "requestId": "pw-timers-secret-bridge-20260909-1504",
-  "mode": "player_team_discord_secret_bridge",
-  "confirm": "ZEABUR_WRITE_APPROVED"
+  "requestId": "pw-timers-runtime-verify-20260909-1514",
+  "mode": "cli",
+  "action": "logs:runtime",
+  "environmentId": "6a720a3e5f062718bc7b3421",
+  "serviceName": "discord-gateway"
 }
