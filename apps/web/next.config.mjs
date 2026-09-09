@@ -33,39 +33,50 @@ const discordGatewayProxyTarget =
 const nextConfig = {
   outputFileTracingRoot: path.join(appDirectory, '../..'),
   async rewrites() {
-    return [
-      // DiscordEntry probes /health/live. In production that check belongs to
-      // Identity, not to the Next.js process.
-      {
-        source: '/health/live',
-        destination: `${identityProxyTarget}/health/live`,
-      },
-      // Identity health lives at /health/* on the Identity service, while the
-      // browser intentionally stays same-origin under /identity/*.
-      {
-        source: '/identity/health/:path*',
-        destination: `${identityProxyTarget}/health/:path*`,
-      },
-      {
-        source: '/identity/:path*',
-        destination: `${identityProxyTarget}/identity/:path*`,
-      },
-      {
-        source: '/api/auth/:path*',
-        destination: `${identityProxyTarget}/api/auth/:path*`,
-      },
-      {
-        source: '/activity/:path*',
-        destination: `${activityProxyTarget}/activity/:path*`,
-      },
-      // /player-team/* is intentionally NOT rewritten directly. It is handled
-      // by app/player-team/[...path]/route.ts, which resolves the real Identity
-      // session server-side and injects the viewer id only after authentication.
-      {
-        source: '/discord-gateway/:path*',
-        destination: `${discordGatewayProxyTarget}/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        // DiscordEntry probes /health/live. In production that check belongs to
+        // Identity, not to the Next.js process.
+        {
+          source: '/health/live',
+          destination: `${identityProxyTarget}/health/live`,
+        },
+        // Identity health lives at /health/* on the Identity service, while the
+        // browser intentionally stays same-origin under /identity/*.
+        {
+          source: '/identity/health/:path*',
+          destination: `${identityProxyTarget}/health/:path*`,
+        },
+        {
+          source: '/identity/:path*',
+          destination: `${identityProxyTarget}/identity/:path*`,
+        },
+        {
+          source: '/api/auth/:path*',
+          destination: `${identityProxyTarget}/api/auth/:path*`,
+        },
+        {
+          source: '/activity/:path*',
+          destination: `${activityProxyTarget}/activity/:path*`,
+        },
+        // /player-team/* is intentionally NOT rewritten directly. It is handled
+        // by app/player-team/[...path]/route.ts, which resolves the real Identity
+        // session server-side and injects the viewer id only after authentication.
+        {
+          source: '/discord-gateway/:path*',
+          destination: `${discordGatewayProxyTarget}/:path*`,
+        },
+      ],
+      // Existing files under public/game/items/wiki stay static. Only a path that
+      // genuinely misses in the filesystem reaches the official-wiki proxy route.
+      fallback: [
+        {
+          source: '/game/items/wiki/:filename',
+          destination: '/api/item-images/wiki/:filename',
+        },
+      ],
+    };
   },
 };
 
