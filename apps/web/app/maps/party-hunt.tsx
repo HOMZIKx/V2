@@ -18,14 +18,18 @@ import {
   PARTY_SCOUT_PIN_TTL_MS,
   SCOUT_PIN_KIND_PRESETS,
   activeScoutPins,
+  claimScoutPin,
+  completeScoutPin,
   createMapParty,
   dismissScoutPin,
   formatScoutPinRemaining,
   incrementSessionKills,
   joinPartyByCode,
   partyActiveScoutPins,
+  partyCompletedScoutPins,
   placeScoutPin,
   pruneExpiredScoutPins,
+  releaseScoutPinClaim,
   requestPartyJoin,
   resetSessionKills,
   resolvePartyRequest,
@@ -34,8 +38,10 @@ import {
   scoutPinRemainingMs,
   setPartyChannel,
   setPartyMap,
+  setPartyMemberHuntRole,
   togglePartyVisibility,
   type MapParty,
+  type PartyHuntRole,
   type PartyScoutPin,
   type PartyVisibility,
   type ScoutPinKind,
@@ -48,7 +54,9 @@ import {
   joinPartyRoom,
   leavePartyRoom,
   patchPartyRoom,
+  patchPartyRoomPin,
   removePartyRoomPin,
+  setPartyRoomHuntRole,
   type PartyRoomSnapshot,
 } from '../../src/player-team-rooms-api';
 import { respawnMaps, type RespawnLocation } from '../../src/respawn-timers';
@@ -57,6 +65,17 @@ import styles from './map-hunting.module.css';
 
 /** Party map list: catalog entries that still have atlas images. */
 const partyMaps = respawnMaps.filter((candidate) => huntMapImagePath(candidate.key) !== null);
+
+const CHANNEL_COLORS: readonly string[] = [
+  '#ef5b5b',
+  '#4f8df7',
+  '#45bd7d',
+  '#8b6cf0',
+  '#ed9948',
+  '#34b8c8',
+  '#d8b63f',
+  '#d85eaa',
+];
 
 interface LocalPartyState {
   readonly party: MapParty | null;
@@ -67,6 +86,20 @@ interface LocalPartyState {
 
 const STORAGE_KEY = 'destiled:map-party:v2';
 const MINI_MODE_STORAGE_KEY = 'destiled:party-mini-mode:v1';
+
+function channelColor(channel: number): string {
+  return CHANNEL_COLORS[(Math.max(1, channel) - 1) % CHANNEL_COLORS.length] ?? '#4f8df7';
+}
+
+function channelButtonStyle(channel: number, active: boolean): CSSProperties {
+  const color = channelColor(channel);
+  return {
+    borderColor: color,
+    background: active ? `${color}35` : `${color}12`,
+    boxShadow: active ? `0 0 0 2px ${color}30, 0 8px 22px ${color}20` : undefined,
+    color: active ? '#fff' : color,
+  };
+}
 
 function MapPinGlyph() {
   return (
@@ -80,7 +113,7 @@ function MapPinGlyph() {
       <path
         d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12c0 8.2 10.5 22 10.5 22S22.5 20.2 22.5 12C22.5 6.2 17.8 1.5 12 1.5z"
         fill="currentColor"
-        stroke="rgba(255,255,255,0.7)"
+        stroke="rgba(255,255,255,0.8)"
         strokeWidth="1.25"
       />
       <circle cx="12" cy="12" r="4" fill="#0a1018" />
@@ -100,6 +133,37 @@ function pinMarkerClass(kind: ScoutPinKind): string {
   return 'is-scout';
 }
 
+function normalizeLocalParty(value: MapParty, fallbackMapKey: string, validMaps: Set<string>): MapParty {
+  const rawMembers = Array.isArray(value.members) ? value.members : [];
+  const members = rawMembers.map((member) => ({
+    ...member,
+    huntRole:
+      member.huntRole === 'scout' || member.huntRole === 'hunter'
+        ? member.huntRole
+        : member.role === 'leader'
+          ? ('scout' as const)
+          : ('hunter' as const),
+  }));
+  const nextMapKey = validMaps.has(value.mapKey) ? value.mapKey : fallbackMapKey;
+  return {
+    ...value,
+    id: typeof value.id === 'string' ? value.id : `party-migrated-${Date.now()}`,
+    name: typeof value.name === 'string' ? value.name : `Party · ${nextMapKey}`,
+    leaderId:
+      typeof value.leaderId === 'string'
+        ? value.leaderId
+        : (members[0]?.id ?? 'unknown'),
+    visibility: value.visibility === 'closed' ? 'closed' : 'open',
+    joinCode: typeof value.joinCode === 'string' ? value.joinCode : '',
+    mapKey: nextMapKey,
+    activeChannel:
+      typeof value.activeChannel === 'number' && value.activeChannel >= 1 ? value.activeChannel : 1,
+    members,
+    requests: Array.isArray(value.requests) ? value.requests : [],
+    sessionKills: typeof value.sessionKills === 'number' ? value.sessionKills : 0,
+  };
+}
+
 export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHuntingSnapshot }) {
   const [mapKey, setMapKey] = useState((partyMaps[0] ?? respawnMaps[0])?.key ?? '');
   const map = respawnMaps.find((candidate) => candidate.key === mapKey) ?? respawnMaps[0];
@@ -115,6 +179,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   const [pinCustomLabel, setPinCustomLabel] = useState('');
   const [notice, setNotice] = useState('');
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [failedMapImages, setFailedMapImages] = useState<readonly string[]>([]);
   const [miniMode, setMiniMode] = useState(false);
@@ -125,54 +190,31 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   const personalSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingRemoteRef = useRef(false);
 
+  const actorId = viewerId ?? 'mateusz';
+  const actorName = displayName || initialSnapshot.viewerName;
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as LocalPartyState;
-        if (saved.party === null || typeof saved.party === 'object') {
-          const catalogKeys = new Set(
-            (partyMaps.length > 0 ? partyMaps : respawnMaps).map((m) => m.key),
-          );
-          const fallbackKey = (partyMaps[0] ?? respawnMaps[0])?.key ?? '';
-          const migrateParty = (value: MapParty | null): MapParty | null => {
-            if (!value || typeof value !== 'object') return null;
-            const members = Array.isArray(value.members) ? value.members : [];
-            const requests = Array.isArray(value.requests) ? value.requests : [];
-            const nextMapKey = catalogKeys.has(value.mapKey) ? value.mapKey : fallbackKey;
-            return {
-              ...value,
-              id: typeof value.id === 'string' ? value.id : `party-migrated-${Date.now()}`,
-              name: typeof value.name === 'string' ? value.name : `Party · ${nextMapKey}`,
-              leaderId:
-                typeof value.leaderId === 'string'
-                  ? value.leaderId
-                  : ((members as Array<{ id?: string }>)[0]?.id ?? 'unknown'),
-              visibility: value.visibility === 'closed' ? 'closed' : 'open',
-              joinCode: typeof value.joinCode === 'string' ? value.joinCode : '',
-              mapKey: nextMapKey,
-              activeChannel:
-                typeof value.activeChannel === 'number' && value.activeChannel >= 1
-                  ? value.activeChannel
-                  : 1,
-              members,
-              requests,
-              sessionKills: typeof value.sessionKills === 'number' ? value.sessionKills : 0,
-            };
-          };
-          const migrated = migrateParty(saved.party ?? null);
-          setParty(migrated);
-          const closedSaved =
-            saved.savedClosedParty && typeof saved.savedClosedParty === 'object'
-              ? migrateParty(saved.savedClosedParty)
-              : migrated && migrated.visibility === 'closed'
-                ? migrated
-                : null;
-          setSavedClosedParty(closedSaved);
-          if (migrated) {
-            setMapKey(migrated.mapKey);
-            setChannel(migrated.activeChannel);
-          }
+        const catalogKeys = new Set(
+          (partyMaps.length > 0 ? partyMaps : respawnMaps).map((candidate) => candidate.key),
+        );
+        const fallbackKey = (partyMaps[0] ?? respawnMaps[0])?.key ?? '';
+        const migrated = saved.party
+          ? normalizeLocalParty(saved.party, fallbackKey, catalogKeys)
+          : null;
+        const closedSaved = saved.savedClosedParty
+          ? normalizeLocalParty(saved.savedClosedParty, fallbackKey, catalogKeys)
+          : migrated?.visibility === 'closed'
+            ? migrated
+            : null;
+        setParty(migrated);
+        setSavedClosedParty(closedSaved);
+        if (migrated) {
+          setMapKey(migrated.mapKey);
+          setChannel(migrated.activeChannel);
         }
         if (Array.isArray(saved.pins)) {
           const validPins = saved.pins.filter((pinUnknown): pinUnknown is PartyScoutPin => {
@@ -205,7 +247,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     applyingRemoteRef.current = true;
     setPartyRoomId(room.id);
     setPartyRevision(room.revision);
-    setParty({
+    const nextParty: MapParty = {
       id: room.id,
       name: room.name,
       leaderId: room.leaderId,
@@ -216,30 +258,15 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       members: room.members,
       requests: room.requests,
       sessionKills: room.sessionKills,
-    });
+    };
+    setParty(nextParty);
     setPins(room.pins);
-    if (room.visibility === 'closed') {
-      setSavedClosedParty({
-        id: room.id,
-        name: room.name,
-        leaderId: room.leaderId,
-        visibility: room.visibility,
-        joinCode: room.joinCode,
-        mapKey: room.mapKey,
-        activeChannel: room.activeChannel,
-        members: room.members,
-        requests: room.requests,
-        sessionKills: room.sessionKills,
-      });
-    } else {
-      setSavedClosedParty(null);
-    }
+    setSavedClosedParty(room.visibility === 'closed' ? nextParty : null);
     setTimeout(() => {
       applyingRemoteRef.current = false;
     }, 0);
   }, []);
 
-  // Personal partyHunt + resume room on enter.
   useEffect(() => {
     if (!loaded || !storeHydrated) return;
     if (!onlineEnabled || !viewerId) {
@@ -284,7 +311,6 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     };
   }, [applyPartyRoom, loaded, onlineEnabled, storeHydrated, viewerId]);
 
-  // Poll shared party room.
   useEffect(() => {
     if (!loaded || !onlineEnabled || !viewerId || !partyRoomId) return;
     let cancelled = false;
@@ -295,21 +321,19 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         applyPartyRoom(room);
         setConnectionStatus('online');
       } catch {
-        if (!cancelled) setConnectionStatus((s) => (s === 'online' ? 'error' : s));
+        if (!cancelled) setConnectionStatus((current) => (current === 'online' ? 'error' : current));
       }
     };
     void poll();
-    const id = window.setInterval(() => void poll(), 2000);
+    const id = window.setInterval(() => void poll(), 2_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);
     };
   }, [applyPartyRoom, loaded, onlineEnabled, partyRoomId, viewerId]);
 
-  // Personal partyHunt prefs/cache PUT.
   useEffect(() => {
-    if (!loaded || applyingRemoteRef.current) return;
-    if (!onlineEnabled || !viewerId) return;
+    if (!loaded || applyingRemoteRef.current || !onlineEnabled || !viewerId) return;
     if (personalSyncTimerRef.current) clearTimeout(personalSyncTimerRef.current);
     personalSyncTimerRef.current = setTimeout(() => {
       const snap: PartyHuntSnapshotV1 = {
@@ -389,25 +413,50 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         : activeScoutPins(pins, party, mapKey, channel, now),
     [allChannels, channel, mapKey, now, party, pins],
   );
-  const channelViewLabel = allChannels ? 'Wszystkie kanały' : `CH${channel}`;
   const sidebarPins = useMemo(() => partyActiveScoutPins(pins, party, now), [now, party, pins]);
+  const completedPins = useMemo(
+    () =>
+      [...partyCompletedScoutPins(pins, party)]
+        .sort((left, right) => (right.completedAt ?? 0) - (left.completedAt ?? 0))
+        .slice(0, 8),
+    [party, pins],
+  );
+  const channelViewLabel = allChannels ? 'Podgląd wszystkich CH' : `CH${channel}`;
   const currentMapImage = huntMapImagePath(mapKey);
   const canShowMapImage = currentMapImage !== null && !failedMapImages.includes(mapKey);
   const selectedPin =
     sidebarPins.find((pin) => pin.id === selectedPinId) ??
     visiblePins.find((pin) => pin.id === selectedPinId) ??
     null;
+  const hoveredPin = visiblePins.find((pin) => pin.id === hoveredPinId) ?? null;
+  const tooltipPin = hoveredPin ?? selectedPin;
   const viewingSharedPartyMap =
     !allChannels && party !== null && party.mapKey === mapKey && party.activeChannel === channel;
   const activePinLabel =
     pinCustomLabel.trim() ||
     SCOUT_PIN_KIND_PRESETS.find((item) => item.kind === pinKind)?.label ||
     'Metin';
+  const currentMember = party?.members.find((member) => member.id === actorId) ?? null;
+  const currentHuntRole: PartyHuntRole = currentMember?.huntRole ?? 'hunter';
 
-  /** Personal atlas focus — does not overwrite shared party.mapKey. */
+  const economyHref = useMemo(() => {
+    const params = new URLSearchParams({
+      scope: 'team',
+      source: party?.name ?? `Party · ${mapKey}`,
+      map: mapKey,
+      channel: String(channel),
+    });
+    if (party?.id) params.set('sessionId', party.id);
+    if (party?.members.length) {
+      params.set('participants', party.members.map((member) => member.displayName).join(','));
+    }
+    return `/economy?${params.toString()}`;
+  }, [channel, mapKey, party]);
+
   const changeMap = (next: string) => {
     setMapKey(next);
     setChannel(1);
+    setAllChannels(false);
     setSelectedPinId(null);
   };
   const changeChannel = (next: number) => {
@@ -419,6 +468,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setAllChannels(true);
     setSelectedPinId(null);
   };
+
   const syncPartyToMyView = () => {
     if (!party) return;
     if (allChannels) {
@@ -434,16 +484,17 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       })
         .then((room) => {
           applyPartyRoom(room);
-          setNotice(`Wspólna mapa party ustawiona na ${mapKey} · CH${channel}.`);
+          setNotice(`Wspólna mapa party: ${mapKey} · CH${channel}.`);
         })
-        .catch((e) =>
-          setNotice(`Sync mapy online nieudany: ${e instanceof Error ? e.message : String(e)}`),
+        .catch((error) =>
+          setNotice(`Sync mapy nieudany: ${error instanceof Error ? error.message : String(error)}`),
         );
       return;
     }
     setParty(setPartyChannel(setPartyMap(party, mapKey, channel), channel));
-    setNotice(`Wspólna mapa party ustawiona na ${mapKey} · CH${channel}.`);
+    setNotice(`Wspólna mapa party: ${mapKey} · CH${channel}.`);
   };
+
   const jumpToPartyMap = () => {
     if (!party) return;
     setAllChannels(false);
@@ -451,9 +502,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setChannel(party.activeChannel);
     setSelectedPinId(null);
   };
+
   const createParty = (visibility: PartyVisibility) => {
-    const actorId = viewerId ?? 'mateusz';
-    const actorName = displayName || initialSnapshot.viewerName;
     if (onlineEnabled && viewerId) {
       setConnectionStatus('connecting');
       void createPartyRoom({
@@ -469,13 +519,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           setSelectedPinId(null);
           setConnectionStatus('online');
           setNotice(
-            `${visibility === 'open' ? 'Otwarte' : 'Zamknięte'} party · ${room.mapKey} · kod ${room.joinCode} · wspólny pokój`,
+            `${visibility === 'open' ? 'Otwarte' : 'Zamknięte'} party · ${room.mapKey} · kod ${room.joinCode}`,
           );
         })
-        .catch((e) => {
+        .catch((error) => {
           setConnectionStatus('error');
           setNotice(
-            `Nie udało się utworzyć party online: ${e instanceof Error ? e.message : String(e)}`,
+            `Nie udało się utworzyć party: ${error instanceof Error ? error.message : String(error)}`,
           );
         });
       return;
@@ -492,13 +542,10 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setPins([]);
     setSelectedPinId(null);
     setSavedClosedParty(visibility === 'closed' ? next : null);
-    setNotice(
-      `${visibility === 'open' ? 'Otwarte' : 'Zamknięte'} party · ${next.mapKey} · kod ${next.joinCode} (lokalnie)`,
-    );
+    setNotice(`${visibility === 'open' ? 'Otwarte' : 'Zamknięte'} party · kod ${next.joinCode}`);
   };
+
   const joinWithCode = () => {
-    const actorId = viewerId ?? 'mateusz';
-    const actorName = displayName || initialSnapshot.viewerName;
     const code = joinCodeInput.trim();
     if (!code) {
       setNotice('Podaj kod party.');
@@ -511,14 +558,15 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           applyPartyRoom(room);
           setMapKey(room.mapKey);
           setChannel(room.activeChannel);
+          setAllChannels(false);
           setSelectedPinId(null);
           setJoinCodeInput('');
           setConnectionStatus('online');
-          setNotice(`Dołączono do wspólnego party · kod ${room.joinCode}.`);
+          setNotice(`Dołączono do party · kod ${room.joinCode}.`);
         })
-        .catch((e) => {
+        .catch((error) => {
           setConnectionStatus('error');
-          setNotice(`Nie udało się dołączyć: ${e instanceof Error ? e.message : String(e)}`);
+          setNotice(`Nie udało się dołączyć: ${error instanceof Error ? error.message : String(error)}`);
         });
       return;
     }
@@ -538,22 +586,16 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setPartyRoomId(null);
     setMapKey(result.party.mapKey);
     setChannel(result.party.activeChannel);
+    setAllChannels(false);
     setSelectedPinId(null);
     setJoinCodeInput('');
-    if (result.party.visibility === 'closed') {
-      setSavedClosedParty(result.party);
-    }
-    setNotice(
-      result.fromSaved
-        ? `Dołączono do zapisanego party · kod ${result.party.joinCode}.`
-        : `Dołączono lokalnie · kod ${result.party.joinCode}.`,
-    );
+    if (result.party.visibility === 'closed') setSavedClosedParty(result.party);
+    setNotice(`Dołączono lokalnie · kod ${result.party.joinCode}.`);
   };
+
   const leaveParty = () => {
     const leaving = party;
-    if (leaving?.visibility === 'closed') {
-      setSavedClosedParty(leaving);
-    }
+    if (leaving?.visibility === 'closed') setSavedClosedParty(leaving);
     if (onlineEnabled && viewerId && partyRoomId) {
       void leavePartyRoom({ viewerId, roomId: partyRoomId }).catch(() => undefined);
     }
@@ -561,28 +603,22 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
     setPartyRoomId(null);
     setPartyRevision(null);
     setSelectedPinId(null);
-    setNotice(
-      leaving?.visibility === 'closed'
-        ? `Opuszczono party. Wpisz kod ${leaving.joinCode}, żeby wrócić.`
-        : 'Opuszczono party.',
-    );
+    setHoveredPinId(null);
+    setNotice('Opuszczono party.');
   };
+
   const copyJoinCode = async () => {
     if (!party?.joinCode) return;
     try {
       await navigator.clipboard.writeText(party.joinCode);
       setNotice(`Skopiowano kod party: ${party.joinCode}`);
     } catch {
-      setNotice(`Kod party: ${party.joinCode} (kopiowanie niedostępne — skopiuj ręcznie).`);
+      setNotice(`Kod party: ${party.joinCode}`);
     }
   };
+
   const resetSession = () => {
-    if (!party) return;
-    const ok = window.confirm('Wyzerować zbicia sesji do 0?');
-    if (!ok) {
-      setNotice('Reset sesji anulowany.');
-      return;
-    }
+    if (!party || !window.confirm('Wyzerować zbicia sesji do 0?')) return;
     if (onlineEnabled && viewerId && partyRoomId && partyRevision !== null) {
       void patchPartyRoom({
         viewerId,
@@ -592,18 +628,19 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       })
         .then((room) => {
           applyPartyRoom(room);
-          setNotice('Sesja wyzerowana · zbicia = 0 (wspólny pokój).');
+          setNotice('Licznik sesji wyzerowany.');
         })
-        .catch((e) =>
-          setNotice(`Reset online nieudany: ${e instanceof Error ? e.message : String(e)}`),
+        .catch((error) =>
+          setNotice(`Reset nieudany: ${error instanceof Error ? error.message : String(error)}`),
         );
       return;
     }
     const next = resetSessionKills(party);
     setParty(next);
     if (next.visibility === 'closed') setSavedClosedParty(next);
-    setNotice('Sesja wyzerowana · zbicia = 0.');
+    setNotice('Licznik sesji wyzerowany.');
   };
+
   const addRequest = () => {
     const name = requestName.trim();
     if (!party || !name) return;
@@ -619,19 +656,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         expectedRevision: partyRevision,
         patch: { requests: next.requests },
       })
-        .then((room) => {
-          applyPartyRoom(room);
-          setNotice(`${name} czeka na decyzję lidera · wspólny pokój.`);
-        })
-        .catch((e) =>
-          setNotice(
-            `Nie udało się zapisać prośby online: ${e instanceof Error ? e.message : String(e)}`,
-          ),
+        .then(applyPartyRoom)
+        .catch((error) =>
+          setNotice(`Nie udało się dodać prośby: ${error instanceof Error ? error.message : String(error)}`),
         );
       return;
     }
     setParty(next);
-    setNotice(`${name} czeka na decyzję lidera (offline).`);
   };
 
   const resolveJoinRequest = (requestId: string, accepted: boolean) => {
@@ -644,37 +675,48 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         expectedRevision: partyRevision,
         patch: { requests: next.requests },
       })
-        .then((room) => {
-          applyPartyRoom(room);
-          setNotice(
-            accepted ? 'Prośba przyjęta · wspólny pokój.' : 'Prośba odrzucona · wspólny pokój.',
-          );
-        })
-        .catch((e) =>
-          setNotice(
-            `Nie udało się rozstrzygnąć prośby online: ${e instanceof Error ? e.message : String(e)}`,
-          ),
+        .then(applyPartyRoom)
+        .catch((error) =>
+          setNotice(`Nie udało się zapisać decyzji: ${error instanceof Error ? error.message : String(error)}`),
         );
       return;
     }
     setParty(next);
   };
+
+  const setHuntRole = (huntRole: PartyHuntRole) => {
+    if (!party || currentHuntRole === huntRole) return;
+    if (onlineEnabled && viewerId && partyRoomId) {
+      void setPartyRoomHuntRole({ viewerId, roomId: partyRoomId, huntRole })
+        .then((room) => {
+          applyPartyRoom(room);
+          setNotice(huntRole === 'scout' ? 'Rola: Scout.' : 'Rola: Bijący.');
+        })
+        .catch((error) =>
+          setNotice(`Zmiana roli nieudana: ${error instanceof Error ? error.message : String(error)}`),
+        );
+      return;
+    }
+    const next = setPartyMemberHuntRole(party, actorId, huntRole);
+    setParty(next);
+    if (next.visibility === 'closed') setSavedClosedParty(next);
+    setNotice(huntRole === 'scout' ? 'Rola: Scout.' : 'Rola: Bijący.');
+  };
+
   const placeOnMap = (event: MouseEvent<HTMLDivElement>) => {
     if (!party) return;
     if (allChannels) {
       setNotice('Wybierz konkretny CH, aby postawić pinezkę.');
       return;
     }
+    if (currentHuntRole !== 'scout') {
+      setNotice('Pinezki stawia Scout. Zmień rolę na Scout, jeśli przejmujesz skautowanie.');
+      return;
+    }
     const bounds = event.currentTarget.getBoundingClientRect();
     const location: RespawnLocation = {
-      x: Math.max(
-        0,
-        Math.min(100, Math.round(((event.clientX - bounds.left) / bounds.width) * 1_000) / 10),
-      ),
-      y: Math.max(
-        0,
-        Math.min(100, Math.round(((event.clientY - bounds.top) / bounds.height) * 1_000) / 10),
-      ),
+      x: Math.max(0, Math.min(100, Math.round(((event.clientX - bounds.left) / bounds.width) * 1_000) / 10)),
+      y: Math.max(0, Math.min(100, Math.round(((event.clientY - bounds.top) / bounds.height) * 1_000) / 10)),
     };
     const pin: PartyScoutPin = {
       id: `pin-${Date.now()}`,
@@ -683,70 +725,111 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
       channel,
       location,
       placedAt: Date.now(),
-      placedBy: displayName || initialSnapshot.viewerName,
+      placedBy: actorName,
       label: activePinLabel.slice(0, 24),
       kind: pinKind,
+      claimedBy: null,
+      claimedAt: null,
+      completedBy: null,
+      completedAt: null,
     };
     setPins((current) => placeScoutPin(current, pin));
     setSelectedPinId(pin.id);
-    setNotice(`Pinezka ${pin.label} · ~10 min · widoczna dla party na tej mapie/CH.`);
+    setNotice(`Pinezka ${pin.label} · CH${channel} · aktywna ~10 min.`);
     if (onlineEnabled && viewerId && partyRoomId) {
       void addPartyRoomPin({ viewerId, roomId: partyRoomId, pin })
         .then(applyPartyRoom)
-        .catch(() => {
-          setConnectionStatus('error');
-        });
+        .catch(() => setConnectionStatus('error'));
     }
   };
+
   const selectPinFromList = (pin: PartyScoutPin) => {
     setAllChannels(false);
     setMapKey(pin.mapKey);
     setChannel(pin.channel);
     setSelectedPinId(pin.id);
-    const remaining = formatScoutPinRemaining(scoutPinRemainingMs(pin, Date.now()));
-    setNotice(`Wybrano: ${pin.label} · TTL ${remaining}`);
+    setNotice(`Wybrano ${pin.label} · ${formatAge(scoutPinAgeMinutes(pin, Date.now()))}.`);
   };
+
   const dismissPin = (pinId: string) => {
     setPins((current) => dismissScoutPin(current, pinId));
     setSelectedPinId((current) => (current === pinId ? null : current));
-    setNotice('Pinezka odkliknięta.');
+    setHoveredPinId((current) => (current === pinId ? null : current));
+    setNotice('Pinezka usunięta bez zaliczenia zbicia.');
     if (onlineEnabled && viewerId && partyRoomId) {
       void removePartyRoomPin({ viewerId, roomId: partyRoomId, pinId })
         .then(applyPartyRoom)
-        .catch(() => {
-          setConnectionStatus('error');
-        });
-    }
-  };
-  const killAndDismiss = (pinId: string) => {
-    if (!party) return;
-    const next = incrementSessionKills(party);
-    setParty(next);
-    if (next.visibility === 'closed') setSavedClosedParty(next);
-    setPins((current) => dismissScoutPin(current, pinId));
-    setSelectedPinId(null);
-    setNotice('Zbicie w sesji (+1). Pinezka zdjęta.');
-    if (onlineEnabled && viewerId && partyRoomId) {
-      const rev = partyRevision;
-      void removePartyRoomPin({ viewerId, roomId: partyRoomId, pinId })
-        .then(async (room) => {
-          if (rev === null) return applyPartyRoom(room);
-          try {
-            return applyPartyRoom(
-              await patchPartyRoom({
-                viewerId,
-                roomId: partyRoomId,
-                expectedRevision: room.revision,
-                patch: { sessionKillsDelta: 1 },
-              }),
-            );
-          } catch {
-            return applyPartyRoom(room);
-          }
-        })
         .catch(() => setConnectionStatus('error'));
     }
   };
+
+  const toggleGoing = (pin: PartyScoutPin) => {
+    if (!party) return;
+    if (currentHuntRole !== 'hunter') {
+      setNotice('„Idę” jest akcją Bijącego. Zmień rolę na Bijący.');
+      return;
+    }
+    if (pin.claimedBy && pin.claimedBy !== actorName) {
+      setNotice(`${pin.claimedBy} już idzie do tej pinezki.`);
+      return;
+    }
+    const release = pin.claimedBy === actorName;
+    const claimTime = Date.now();
+    setPins((current) =>
+      release
+        ? releaseScoutPinClaim(current, pin.id, actorName)
+        : claimScoutPin(current, pin.id, actorName, claimTime),
+    );
+    setNotice(release ? 'Anulowano „Idę”.' : `Idę · ${pin.label} · CH${pin.channel}.`);
+    if (onlineEnabled && viewerId && partyRoomId) {
+      void patchPartyRoomPin({
+        viewerId,
+        roomId: partyRoomId,
+        pinId: pin.id,
+        patch: release
+          ? { claimedBy: null, claimedAt: null }
+          : { claimedBy: actorName, claimedAt: claimTime },
+      })
+        .then(applyPartyRoom)
+        .catch(() => setConnectionStatus('error'));
+    }
+  };
+
+  const killAndComplete = (pin: PartyScoutPin) => {
+    if (!party) return;
+    if (currentHuntRole !== 'hunter') {
+      setNotice('Zbicie oznacza Bijący. Zmień rolę na Bijący.');
+      return;
+    }
+    const completedAt = Date.now();
+    const nextParty = incrementSessionKills(party);
+    setParty(nextParty);
+    if (nextParty.visibility === 'closed') setSavedClosedParty(nextParty);
+    setPins((current) => completeScoutPin(current, pin.id, actorName, completedAt));
+    setSelectedPinId(null);
+    setHoveredPinId(null);
+    setNotice(`Zbite · ${pin.label} · CH${pin.channel}. Sesja +1.`);
+
+    if (onlineEnabled && viewerId && partyRoomId) {
+      void patchPartyRoomPin({
+        viewerId,
+        roomId: partyRoomId,
+        pinId: pin.id,
+        patch: { completedBy: actorName, completedAt },
+      })
+        .then((room) =>
+          patchPartyRoom({
+            viewerId,
+            roomId: partyRoomId,
+            expectedRevision: room.revision,
+            patch: { sessionKillsDelta: 1 },
+          }),
+        )
+        .then(applyPartyRoom)
+        .catch(() => setConnectionStatus('error'));
+    }
+  };
+
   const toggleVisibility = () => {
     if (!party) return;
     const next = togglePartyVisibility(party);
@@ -757,18 +840,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         expectedRevision: partyRevision,
         patch: { visibility: next.visibility },
       })
-        .then((room) => {
-          applyPartyRoom(room);
-          setNotice(
-            room.visibility === 'open'
-              ? 'Party otwarte · wspólny pokój.'
-              : 'Party zamknięte · wspólny pokój.',
-          );
-        })
-        .catch((e) =>
-          setNotice(
-            `Zmiana widoczności online nieudana: ${e instanceof Error ? e.message : String(e)}`,
-          ),
+        .then(applyPartyRoom)
+        .catch((error) =>
+          setNotice(`Zmiana widoczności nieudana: ${error instanceof Error ? error.message : String(error)}`),
         );
       return;
     }
@@ -795,32 +869,25 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
   };
 
   return (
-    <AppShell activeSection="maps" viewerName={displayName || initialSnapshot.viewerName}>
-      <main
-        className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`}
-        id="main-content"
-      >
+    <AppShell activeSection="maps" viewerName={actorName}>
+      <main className={`respawn-page ${styles.root}${miniMode ? ' is-mini' : ''}`} id="main-content">
         <header className="respawn-header">
           <div>
             <span className="eyebrow">Wyprawa · Projekt Hard</span>
             <h1>Party</h1>
             {!miniMode ? (
               <p>
-                Drużyna + pinezka skauta (~10 min). Twój wybór mapy poniżej to <b>Twój widok</b> —
-                wspólna mapa party zmienia się dopiero przyciskiem w panelu drużyny.
+                Scout zaznacza, Bijący przejmuje pinezkę przez „Idę” i zamyka ją przez „Zbite”. Kolor
+                pinezki zawsze odpowiada konkretnemu kanałowi.
               </p>
             ) : (
               <p className="respawn-mini-lead">
-                {mapKey} · {channelViewLabel} · mini okno · {huntStatusLabel(connectionStatus)}
+                {mapKey} · {channelViewLabel} · {huntStatusLabel(connectionStatus)}
               </p>
             )}
           </div>
           <div className="respawn-header-actions">
-            <span
-              className={`respawn-sync-status is-${connectionStatus}`}
-              data-testid="party-sync-status"
-              title={viewerId ? `viewer ${viewerId}` : 'Brak demo viewer id — tylko lokalnie'}
-            >
+            <span className={`respawn-sync-status is-${connectionStatus}`} data-testid="party-sync-status">
               {huntStatusLabel(connectionStatus)}
             </span>
             <button
@@ -828,39 +895,21 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
               className={miniMode ? 'is-active' : ''}
               data-testid="party-mini-mode-btn"
               onClick={() => setMiniMode((current) => !current)}
-              title={miniMode ? 'Widok pełny' : 'Mini okno'}
               type="button"
             >
               {miniMode ? 'Widok pełny' : 'Mini okno'}
             </button>
-            {party && !miniMode ? (
+            {party ? (
               <>
-                {party.visibility === 'closed' || party.joinCode ? (
-                  <button
-                    className="respawn-party-toggle"
-                    onClick={() => {
-                      void copyJoinCode();
-                    }}
-                    type="button"
-                  >
-                    <span /> Kopiuj kod
+                <button className="respawn-party-toggle" onClick={() => void copyJoinCode()} type="button">
+                  <span /> Kopiuj kod
+                </button>
+                {!miniMode ? (
+                  <button className="respawn-party-toggle" onClick={resetSession} type="button">
+                    <span /> Reset sesji
                   </button>
                 ) : null}
-                <button className="respawn-party-toggle" onClick={resetSession} type="button">
-                  <span /> Reset sesji
-                </button>
               </>
-            ) : null}
-            {party && miniMode ? (
-              <button
-                className="respawn-party-toggle"
-                onClick={() => {
-                  void copyJoinCode();
-                }}
-                type="button"
-              >
-                <span /> Kod
-              </button>
             ) : null}
           </div>
         </header>
@@ -868,11 +917,7 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
         <section className="respawn-controls panel">
           <div className="respawn-map-select">
             <label htmlFor="party-map">Mapa (Twój widok)</label>
-            <select
-              id="party-map"
-              onChange={(event) => changeMap(event.target.value)}
-              value={mapKey}
-            >
+            <select id="party-map" onChange={(event) => changeMap(event.target.value)} value={mapKey}>
               {(partyMaps.length > 0 ? partyMaps : respawnMaps).map((candidate) => (
                 <option key={candidate.key} value={candidate.key}>
                   {candidate.key}
@@ -883,25 +928,27 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           <div className="respawn-channel-select">
             <span>Kanał (Twój widok)</span>
             <div className="respawn-channels">
-              <button
-                aria-pressed={allChannels}
-                className={allChannels ? 'is-active' : ''}
-                onClick={showAllChannels}
-                type="button"
-              >
-                Wszystkie
-              </button>
               {Array.from({ length: map?.channels ?? 8 }, (_, index) => index + 1).map((value) => (
                 <button
                   aria-pressed={!allChannels && value === channel}
                   className={!allChannels && value === channel ? 'is-active' : ''}
                   key={value}
                   onClick={() => changeChannel(value)}
+                  style={channelButtonStyle(value, !allChannels && value === channel)}
                   type="button"
                 >
                   CH{value}
                 </button>
               ))}
+              <button
+                aria-pressed={allChannels}
+                className={allChannels ? 'is-active' : ''}
+                onClick={showAllChannels}
+                title="Tylko podgląd — pinezki zawsze należą do konkretnego CH"
+                type="button"
+              >
+                Podgląd wszystkich
+              </button>
             </div>
           </div>
           <div className="respawn-controls-stat">
@@ -918,27 +965,21 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           <div className="panel respawn-main-panel">
             <header className="respawn-list-header">
               <div>
-                <span className="section-kicker">
-                  {mapKey} · {channelViewLabel}
-                  {party
-                    ? viewingSharedPartyMap
-                      ? ' · widok = mapa party'
-                      : ` · party na ${party.mapKey} CH${party.activeChannel}`
-                    : ''}
-                </span>
+                <span className="section-kicker">Twój widok · {mapKey} · {channelViewLabel}</span>
                 <h2>Mapa party / skaut</h2>
-                {!miniMode ? (
+                {party ? (
                   <p className="respawn-list-lead">
-                    Wybierz rodzaj pinezki, potem klik mapy (~10 min TTL). Lista aktywnych pinezek
-                    jest obok.
+                    Wspólna mapa party: <b>{party.mapKey}</b> · CH{party.activeChannel}. Twoja rola:{' '}
+                    <b>{currentHuntRole === 'scout' ? 'Scout' : 'Bijący'}</b>.
                   </p>
                 ) : null}
               </div>
               {party ? (
                 <div className="respawn-filters">
-                  <button onClick={markSessionKill} type="button">
-                    Zbite w sesji (+1)
-                  </button>
+                  <a className="respawn-party-toggle is-on" href={economyHref}>
+                    Dodaj drop z sesji
+                  </a>
+                  <button onClick={markSessionKill} type="button">Zbite ręcznie (+1)</button>
                 </div>
               ) : null}
             </header>
@@ -950,9 +991,8 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                   {SCOUT_PIN_KIND_PRESETS.map((preset) => (
                     <button
                       aria-pressed={pinKind === preset.kind && !pinCustomLabel.trim()}
-                      className={
-                        pinKind === preset.kind && !pinCustomLabel.trim() ? 'is-active' : ''
-                      }
+                      className={pinKind === preset.kind && !pinCustomLabel.trim() ? 'is-active' : ''}
+                      disabled={currentHuntRole !== 'scout'}
                       key={preset.kind}
                       onClick={() => {
                         setPinKind(preset.kind);
@@ -967,32 +1007,26 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <label className={`catalog-search ${styles.pinKindCustom}`}>
                   <span className="sr-only">Własna etykieta</span>
                   <input
+                    disabled={currentHuntRole !== 'scout'}
                     maxLength={24}
                     onChange={(event) => {
                       setPinCustomLabel(event.target.value);
                       if (event.target.value.trim()) setPinKind('spot');
                     }}
-                    placeholder="Własna etykieta (opcjonalnie)"
+                    placeholder={currentHuntRole === 'scout' ? 'Własna etykieta' : 'Pinezki dodaje Scout'}
                     value={pinCustomLabel}
                   />
                 </label>
-                <span className={styles.pinKindHint}>Następna: {activePinLabel}</span>
               </div>
             ) : null}
 
             <div className="respawn-map-stage-wrap">
               <div
-                aria-label={
-                  party
-                    ? allChannels
-                      ? 'Mapa party — widok wszystkich kanałów'
-                      : 'Mapa party — klik stawia pinezkę'
-                    : 'Mapa party'
-                }
-                className={`respawn-map-stage${party && !allChannels ? ' is-placing' : ''}`}
+                aria-label={party && !allChannels ? 'Mapa party — klik stawia pinezkę' : 'Mapa party'}
+                className={`respawn-map-stage${party && !allChannels && currentHuntRole === 'scout' ? ' is-placing' : ''}`}
                 onClick={placeOnMap}
-                role={party && !allChannels ? 'button' : undefined}
-                tabIndex={party && !allChannels ? 0 : undefined}
+                role={party && !allChannels && currentHuntRole === 'scout' ? 'button' : undefined}
+                tabIndex={party && !allChannels && currentHuntRole === 'scout' ? 0 : undefined}
               >
                 {canShowMapImage ? (
                   <img
@@ -1021,80 +1055,162 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <div className="respawn-map-shade" />
                 <div className="respawn-map-caption">
                   <strong>{mapKey}</strong>
-                  <span>
-                    {channelViewLabel} · TTL pinezki {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min
-                  </span>
+                  <span>{channelViewLabel} · TTL {Math.round(PARTY_SCOUT_PIN_TTL_MS / 60_000)} min</span>
                 </div>
+
                 {visiblePins.map((pin) => {
                   const age = scoutPinAgeMinutes(pin, now);
-                  const remaining = formatScoutPinRemaining(scoutPinRemainingMs(pin, now));
+                  const color = channelColor(pin.channel);
                   return (
                     <button
-                      aria-label={`Pinezka ${pin.label} · ${formatAge(age)} · TTL ${remaining}`}
-                      className={`respawn-map-marker respawn-map-pin is-scout ${pinMarkerClass(
-                        pin.kind,
-                      )}${selectedPinId === pin.id ? ' is-selected' : ''}`}
+                      aria-label={`Pinezka ${pin.label} · CH${pin.channel} · ${formatAge(age)}`}
+                      className={`respawn-map-marker respawn-map-pin is-scout ${pinMarkerClass(pin.kind)}${
+                        selectedPinId === pin.id ? ' is-selected' : ''
+                      }`}
                       key={pin.id}
                       onClick={(event) => {
                         event.stopPropagation();
                         setSelectedPinId(pin.id);
-                        setNotice(`Pinezka ${pin.label}: ${formatAge(age)} · TTL ${remaining}`);
                       }}
-                      style={{ left: `${pin.location.x}%`, top: `${pin.location.y}%` }}
-                      title={`${pin.label} · ${formatAge(age)} · ${pin.placedBy}`}
+                      onMouseEnter={() => setHoveredPinId(pin.id)}
+                      onMouseLeave={() => setHoveredPinId((current) => (current === pin.id ? null : current))}
+                      style={{
+                        left: `${pin.location.x}%`,
+                        top: `${pin.location.y}%`,
+                        color,
+                        filter: `drop-shadow(0 0 6px ${color})`,
+                      }}
+                      title={`${pin.label} · CH${pin.channel} · ${formatAge(age)} · ${pin.placedBy}`}
                       type="button"
                     >
                       <MapPinGlyph />
-                      {allChannels ? (
+                      <span
+                        aria-hidden
+                        style={{
+                          color: '#fff',
+                          fontSize: 8,
+                          fontWeight: 900,
+                          left: '50%',
+                          lineHeight: 1,
+                          pointerEvents: 'none',
+                          position: 'absolute',
+                          textShadow: '0 1px 3px #000',
+                          top: '42%',
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        {pin.channel}
+                      </span>
+                      {pin.claimedBy ? (
                         <span
-                          aria-hidden
                           style={{
+                            background: `${color}e8`,
+                            border: '1px solid rgba(255,255,255,.55)',
+                            borderRadius: 999,
                             color: '#fff',
-                            fontSize: 8,
-                            fontWeight: 900,
+                            fontSize: 9,
+                            fontWeight: 800,
                             left: '50%',
-                            lineHeight: 1,
+                            padding: '3px 7px',
                             pointerEvents: 'none',
                             position: 'absolute',
-                            textShadow: '0 1px 3px #000',
-                            top: '42%',
-                            transform: 'translate(-50%, -50%)',
+                            top: -18,
+                            transform: 'translateX(-50%)',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {pin.channel}
+                          Idę · {pin.claimedBy}
                         </span>
                       ) : null}
                     </button>
                   );
                 })}
+
+                {tooltipPin ? (
+                  <div
+                    onClick={(event) => event.stopPropagation()}
+                    onMouseEnter={() => setHoveredPinId(tooltipPin.id)}
+                    style={{
+                      background: 'rgba(9,14,18,.96)',
+                      border: `1px solid ${channelColor(tooltipPin.channel)}`,
+                      borderRadius: 12,
+                      boxShadow: '0 14px 34px rgba(0,0,0,.45)',
+                      color: '#eef2f5',
+                      left: `${tooltipPin.location.x}%`,
+                      maxWidth: 240,
+                      minWidth: 190,
+                      padding: 10,
+                      position: 'absolute',
+                      top: `${tooltipPin.location.y}%`,
+                      transform: 'translate(-50%, calc(-100% - 24px))',
+                      zIndex: 20,
+                    }}
+                  >
+                    <strong style={{ color: channelColor(tooltipPin.channel) }}>
+                      CH{tooltipPin.channel} · {tooltipPin.label}
+                    </strong>
+                    <div style={{ fontSize: 11, marginTop: 4 }}>
+                      {formatAge(scoutPinAgeMinutes(tooltipPin, now))} · {tooltipPin.placedBy}
+                    </div>
+                    {tooltipPin.claimedBy ? (
+                      <div style={{ fontSize: 11, marginTop: 4 }}>Idzie: <b>{tooltipPin.claimedBy}</b></div>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button
+                        disabled={currentHuntRole !== 'hunter' || Boolean(tooltipPin.claimedBy && tooltipPin.claimedBy !== actorName)}
+                        onClick={() => toggleGoing(tooltipPin)}
+                        type="button"
+                      >
+                        {tooltipPin.claimedBy === actorName ? 'Nie idę' : 'Idę'}
+                      </button>
+                      <button
+                        disabled={currentHuntRole !== 'hunter'}
+                        onClick={() => killAndComplete(tooltipPin)}
+                        type="button"
+                      >
+                        Zbite
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
+
               {!miniMode ? (
                 <p className="respawn-map-help">
                   {!party
-                    ? 'Najpierw utwórz party albo dołącz kodem obok — potem klik mapy stawia pinezkę.'
+                    ? 'Najpierw utwórz party albo dołącz kodem.'
                     : allChannels
-                      ? 'Widok zbiorczy: pinezki ze wszystkich CH na tej mapie. Wybierz konkretny CH, aby dodać pinezkę.'
-                      : 'Klik mapy = pinezka. Klik pinezki = odklik / zbicie w sesji.'}
+                      ? 'Podgląd wszystkich CH. Aby dodać pinezkę wybierz konkretny kanał.'
+                      : currentHuntRole === 'scout'
+                        ? 'Scout: klik mapy dodaje pinezkę w kolorze aktualnego CH.'
+                        : 'Bijący: wybierz pinezkę, kliknij „Idę”, a po zbiciu „Zbite”.'}
                 </p>
               ) : null}
+
               {selectedPin ? (
                 <div className="respawn-party-feed">
-                  <span>Wybrana pinezka · TTL na żywo</span>
+                  <span>Wybrana pinezka</span>
                   <p>
+                    <b style={{ color: channelColor(selectedPin.channel) }}>CH{selectedPin.channel}</b> ·{' '}
                     <b>{selectedPin.label}</b> ({scoutPinKindLabel(selectedPin.kind)}) ·{' '}
-                    {selectedPin.mapKey} CH{selectedPin.channel} · {selectedPin.location.x}% /{' '}
-                    {selectedPin.location.y}%
+                    {formatAge(scoutPinAgeMinutes(selectedPin, now))}
                   </p>
                   <p>
-                    {formatAge(scoutPinAgeMinutes(selectedPin, now))} · {selectedPin.placedBy} ·{' '}
-                    <b>TTL {formatScoutPinRemaining(scoutPinRemainingMs(selectedPin, now))}</b>
+                    {selectedPin.placedBy} · TTL{' '}
+                    <b>{formatScoutPinRemaining(scoutPinRemainingMs(selectedPin, now))}</b>
+                    {selectedPin.claimedBy ? ` · Idzie: ${selectedPin.claimedBy}` : ''}
                   </p>
-                  <button onClick={() => dismissPin(selectedPin.id)} type="button">
-                    Odkliknij pinezkę
+                  <button
+                    disabled={currentHuntRole !== 'hunter' || Boolean(selectedPin.claimedBy && selectedPin.claimedBy !== actorName)}
+                    onClick={() => toggleGoing(selectedPin)}
+                    type="button"
+                  >
+                    {selectedPin.claimedBy === actorName ? 'Nie idę' : 'Idę'}
                   </button>{' '}
-                  <button onClick={() => killAndDismiss(selectedPin.id)} type="button">
-                    Zbite w sesji (+1) i zdejmij
-                  </button>
+                  <button disabled={currentHuntRole !== 'hunter'} onClick={() => killAndComplete(selectedPin)} type="button">
+                    Zbite (+1)
+                  </button>{' '}
+                  <button onClick={() => dismissPin(selectedPin.id)} type="button">Usuń bez zbicia</button>
                 </div>
               ) : null}
             </div>
@@ -1106,24 +1222,12 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                 <header>
                   <span className="section-kicker">Drużyna</span>
                   <h2>Utwórz lub dołącz</h2>
-                  {!miniMode ? (
-                    <p>Wybierz swój widok mapy, stwórz otwarte/zamknięte party albo wpisz kod.</p>
-                  ) : (
-                    <p className="respawn-mini-lead">{huntStatusLabel(connectionStatus)}</p>
-                  )}
+                  <p>Party ma jeden wspólny pokój. Kanały nie tworzą osobnych pokojów.</p>
                 </header>
-                <button
-                  className="respawn-party-toggle is-on"
-                  onClick={() => createParty('open')}
-                  type="button"
-                >
+                <button className="respawn-party-toggle is-on" onClick={() => createParty('open')} type="button">
                   <span /> Otwarte party
                 </button>
-                <button
-                  className="respawn-party-toggle"
-                  onClick={() => createParty('closed')}
-                  type="button"
-                >
+                <button className="respawn-party-toggle" onClick={() => createParty('closed')} type="button">
                   <span /> Zamknięte party (kod)
                 </button>
                 <div className="respawn-party-feed">
@@ -1140,25 +1244,9 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                       value={joinCodeInput}
                     />
                   </label>
-                  <button
-                    className="respawn-party-toggle is-on"
-                    disabled={!joinCodeInput.trim()}
-                    onClick={joinWithCode}
-                    type="button"
-                  >
+                  <button className="respawn-party-toggle is-on" disabled={!joinCodeInput.trim()} onClick={joinWithCode} type="button">
                     <span /> Dołącz
                   </button>
-                  {savedClosedParty ? (
-                    <p>
-                      Zapisane zamknięte party czeka na kod <b>{savedClosedParty.joinCode}</b>.
-                    </p>
-                  ) : !miniMode ? (
-                    <p>
-                      {onlineEnabled && viewerId
-                        ? 'Dołącz kodem do wspólnego pokoju player-team.'
-                        : 'Offline: lokalny join-by-code (cache).'}
-                    </p>
-                  ) : null}
                 </div>
               </>
             ) : (
@@ -1167,83 +1255,92 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                   <span className="section-kicker">Drużyna</span>
                   <h2>{party.name}</h2>
                   <p>
-                    Kod <b>{party.joinCode}</b> ·{' '}
-                    {party.visibility === 'open' ? 'otwarte' : 'zamknięte'} · zbicia:{' '}
-                    <b>{party.sessionKills}</b>
+                    Kod <b>{party.joinCode}</b> · {party.visibility === 'open' ? 'otwarte' : 'zamknięte'} · zbicia: <b>{party.sessionKills}</b>
                   </p>
-                  {!miniMode ? (
-                    <p className="respawn-list-lead">
-                      Wspólna mapa party: <b>{party.mapKey}</b> · CH{party.activeChannel}
-                    </p>
-                  ) : (
-                    <p className="respawn-mini-lead">
-                      {party.mapKey} · CH{party.activeChannel}
-                    </p>
-                  )}
+                  <p className="respawn-list-lead">
+                    Wspólna mapa: <b>{party.mapKey}</b> ·{' '}
+                    <b style={{ color: channelColor(party.activeChannel) }}>CH{party.activeChannel}</b>
+                  </p>
                 </header>
+
+                <div className="respawn-party-feed">
+                  <span>Moja rola w tej sesji</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className={currentHuntRole === 'scout' ? 'respawn-party-toggle is-on' : 'respawn-party-toggle'}
+                      onClick={() => setHuntRole('scout')}
+                      type="button"
+                    >
+                      <span /> Scout
+                    </button>
+                    <button
+                      className={currentHuntRole === 'hunter' ? 'respawn-party-toggle is-on' : 'respawn-party-toggle'}
+                      onClick={() => setHuntRole('hunter')}
+                      type="button"
+                    >
+                      <span /> Bijący
+                    </button>
+                  </div>
+                </div>
+
                 {!viewingSharedPartyMap ? (
                   <div className="respawn-party-feed">
-                    <span>Twój widok ≠ mapa party</span>
+                    <span>Twój widok jest inny niż wspólna mapa</span>
                     <button className="respawn-party-toggle" onClick={jumpToPartyMap} type="button">
                       <span /> Skocz do mapy party
                     </button>
-                    <button
-                      className="respawn-party-toggle is-on"
-                      disabled={allChannels}
-                      onClick={syncPartyToMyView}
-                      type="button"
-                    >
-                      <span /> {allChannels ? 'Wybierz CH, aby ustawić mapę party' : 'Ustaw mój widok jako mapę party'}
+                    <button className="respawn-party-toggle is-on" disabled={allChannels} onClick={syncPartyToMyView} type="button">
+                      <span /> {allChannels ? 'Wybierz konkretny CH' : 'Ustaw mój widok jako wspólny'}
                     </button>
                   </div>
                 ) : null}
+
                 <button
                   className={`respawn-party-toggle ${party.visibility === 'open' ? 'is-on' : ''}`}
                   onClick={toggleVisibility}
                   type="button"
                 >
-                  <span />
-                  {party.visibility === 'open'
-                    ? 'Party otwarte · zamknij'
-                    : 'Party zamknięte · otwórz'}
+                  <span /> {party.visibility === 'open' ? 'Party otwarte · zamknij' : 'Party zamknięte · otwórz'}
                 </button>
+
                 <div className="respawn-party-members">
                   {party.members.map((member) => (
                     <div key={member.id}>
                       <span className="respawn-member-dot is-online" />
                       <strong>{member.displayName}</strong>
-                      <small>{member.role === 'leader' ? 'lider' : 'uczestnik'}</small>
+                      <small>
+                        {member.role === 'leader' ? 'lider · ' : ''}
+                        {member.huntRole === 'scout' ? 'Scout' : 'Bijący'}
+                      </small>
                     </div>
                   ))}
                 </div>
+
                 <div className={`respawn-party-feed ${styles.pinList}`}>
                   <span>Aktywne pinezki ({sidebarPins.length})</span>
                   {sidebarPins.length === 0 ? (
-                    <p>Brak aktywnych pinezek — kliknij mapę, żeby postawić.</p>
+                    <p>Brak aktywnych pinezek.</p>
                   ) : (
                     <ul className={styles.pinListItems}>
                       {sidebarPins.map((pin) => {
                         const remaining = formatScoutPinRemaining(scoutPinRemainingMs(pin, now));
+                        const color = channelColor(pin.channel);
                         return (
                           <li
-                            className={`${styles.pinListItem}${
-                              selectedPinId === pin.id ? ` ${styles.pinListItemSelected}` : ''
-                            }`}
+                            className={`${styles.pinListItem}${selectedPinId === pin.id ? ` ${styles.pinListItemSelected}` : ''}`}
                             key={pin.id}
+                            style={{ borderColor: color }}
                           >
-                            <button
-                              className={styles.pinListSelect}
-                              onClick={() => selectPinFromList(pin)}
-                              type="button"
-                            >
-                              <strong>{pin.label}</strong>
+                            <button className={styles.pinListSelect} onClick={() => selectPinFromList(pin)} type="button">
+                              <strong><span style={{ color }}>CH{pin.channel}</span> · {pin.label}</strong>
                               <small>
-                                {pin.mapKey} CH{pin.channel} · {pin.location.x}% / {pin.location.y}%
+                                {formatAge(scoutPinAgeMinutes(pin, now))} · {pin.placedBy}
+                                {pin.claimedBy ? ` · Idzie: ${pin.claimedBy}` : ''}
                               </small>
                               <b className={styles.pinListTtl}>TTL {remaining}</b>
                             </button>
                             <button
-                              aria-label={`Odkliknij ${pin.label}`}
+                              aria-label={`Usuń ${pin.label}`}
                               className={styles.pinListDismiss}
                               onClick={() => dismissPin(pin.id)}
                               type="button"
@@ -1256,23 +1353,27 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                     </ul>
                   )}
                 </div>
+
+                {completedPins.length > 0 && !miniMode ? (
+                  <div className="respawn-party-feed">
+                    <span>Ostatnio zbite</span>
+                    {completedPins.map((pin) => (
+                      <p key={`done-${pin.id}`}>
+                        <b style={{ color: channelColor(pin.channel) }}>CH{pin.channel}</b> · {pin.label} ·{' '}
+                        {pin.completedBy ?? 'Bijący'}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+
                 {!miniMode ? (
                   <div className="respawn-party-feed">
                     <span>Zaproszenie / dostęp</span>
                     <label className="catalog-search">
                       <span className="sr-only">Nazwa osoby</span>
-                      <input
-                        onChange={(event) => setRequestName(event.target.value)}
-                        placeholder="Nazwa osoby do party"
-                        value={requestName}
-                      />
+                      <input onChange={(event) => setRequestName(event.target.value)} placeholder="Nazwa osoby do party" value={requestName} />
                     </label>
-                    <button
-                      className="respawn-party-toggle"
-                      disabled={!requestName.trim()}
-                      onClick={addRequest}
-                      type="button"
-                    >
+                    <button className="respawn-party-toggle" disabled={!requestName.trim()} onClick={addRequest} type="button">
                       <span /> Dodaj prośbę
                     </button>
                     {party.requests
@@ -1280,22 +1381,14 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
                       .map((request) => (
                         <p key={request.id}>
                           <b>{request.displayName}</b> prosi{' '}
-                          <button
-                            onClick={() => resolveJoinRequest(request.id, true)}
-                            type="button"
-                          >
-                            Przyjmij
-                          </button>{' '}
-                          <button
-                            onClick={() => resolveJoinRequest(request.id, false)}
-                            type="button"
-                          >
-                            Odrzuć
-                          </button>
+                          <button onClick={() => resolveJoinRequest(request.id, true)} type="button">Przyjmij</button>{' '}
+                          <button onClick={() => resolveJoinRequest(request.id, false)} type="button">Odrzuć</button>
                         </p>
                       ))}
                   </div>
                 ) : null}
+
+                <a className="respawn-party-toggle is-on" href={economyHref}>Dodaj drop z tej sesji</a>
                 <button className="respawn-party-toggle" onClick={leaveParty} type="button">
                   <span /> Opuść party
                 </button>
@@ -1304,16 +1397,13 @@ export function PartyHunt({ initialSnapshot }: { readonly initialSnapshot: MapHu
           </aside>
         </section>
 
-        <p aria-live="polite" className="respawn-notice">
-          {notice}
-        </p>
+        <p aria-live="polite" className="respawn-notice">{notice}</p>
         {!miniMode ? (
           <p className="respawn-data-note">
-            Twój widok mapy nie nadpisuje automatycznie wspólnej mapy party. Pinezki skauta znikają
-            po ~10 min.{' '}
+            „Podgląd wszystkich” nie jest kanałem — pinezka zawsze zapisuje konkretny CH. Kolor CH jest stały i identyczny na przycisku, mapie i liście.{' '}
             {connectionStatus === 'online'
-              ? 'Wspólny pokój party przez player-team (poll). localStorage = cache offline.'
-              : 'Tryb lokalny / offline — localStorage jako cache.'}
+              ? 'Role, „Idę”, zbicia i pinezki synchronizuje wspólny pokój player-team.'
+              : 'Tryb offline używa lokalnego cache.'}
           </p>
         ) : null}
       </main>
