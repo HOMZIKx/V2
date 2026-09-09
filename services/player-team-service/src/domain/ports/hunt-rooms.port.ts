@@ -4,7 +4,8 @@ export type PartyRoomMember = {
   readonly id: string;
   readonly displayName: string;
   readonly role: 'leader' | 'member';
-  readonly huntRole: PartyHuntRole;
+  /** Optional only for backwards-compatible decoding/mocks; persistence normalizes it. */
+  readonly huntRole?: PartyHuntRole;
 };
 
 export type PartyRoomRequest = {
@@ -23,10 +24,10 @@ export type PartyRoomPin = {
   readonly placedBy: string;
   readonly label: string;
   readonly kind: 'metin' | 'boss' | 'spot';
-  readonly claimedBy?: string | null;
-  readonly claimedAt?: number | null;
-  readonly completedBy?: string | null;
-  readonly completedAt?: number | null;
+  readonly claimedBy?: string | null | undefined;
+  readonly claimedAt?: number | null | undefined;
+  readonly completedBy?: string | null | undefined;
+  readonly completedAt?: number | null | undefined;
 };
 
 export type PartyRoomRecord = {
@@ -125,9 +126,11 @@ export interface HuntRoomsRepositoryPort {
   getPartyRoom(roomId: string): Promise<PartyRoomRecord | null>;
   leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null>;
   patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord>;
-  setPartyHuntRole(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord>;
+  /** Optional for old in-memory test adapters; production repository implements it. */
+  setPartyHuntRole?(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord>;
   addPartyRoomPin(roomId: string, viewerId: string, pin: PartyRoomPin): Promise<PartyRoomRecord>;
-  patchPartyRoomPin(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord>;
+  /** Optional for old in-memory test adapters; production repository implements it. */
+  patchPartyRoomPin?(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord>;
   removePartyRoomPin(roomId: string, viewerId: string, pinId: string): Promise<PartyRoomRecord>;
 
   getOrCreateTimerRoom(
