@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { usePlayerStore } from '../../../../../src/player-store-react';
 import { AppShell } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
-import { WorkspaceSectionNav } from '../../workspace-section-nav';
+import { EconomyContextNav } from '../economy-context-nav';
 import { CompactAmountInput } from '../compact-amount-input';
 import { EconomySubnav } from '../economy-subnav';
 import styles from '../economy-tools.module.css';
@@ -376,6 +376,8 @@ export function EconomyManagement() {
     <>
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className={styles.page} id="main-content">
+          <EconomyContextNav currentLabel="Magazyn i ceny" workspaceId={workspace.id} workspaceName={workspace.name} />
+
           <section className={styles.hero}>
             <div>
               <span className={styles.eyebrow}>Zespół · Ekonomia · Zarządzanie</span>
@@ -387,7 +389,6 @@ export function EconomyManagement() {
             </button>
           </section>
 
-          <WorkspaceSectionNav active="economy" workspaceId={workspace.id} />
 
           <section className={styles.metrics}>
             <article className={styles.metric}>

@@ -3,12 +3,12 @@
   gap: 4px;
   margin-top: 6px;
   padding: 7px 9px;
-  border: 1px solid rgba(202, 158, 74, 0.2);
+  border: 1px solid rgba(74, 138, 255, 0.18);
   border-radius: 8px;
-  background: rgba(202, 158, 74, 0.055);
-  color: #aeb7c7;
-  font-size: 11px;
-  line-height: 1.35;
+  background: rgba(57, 136, 255, 0.045);
+  color: #98a3b6;
+  font-size: 10px;
+  line-height: 1.4;
 }
 
 .row {
@@ -19,24 +19,30 @@
 }
 
 .row strong {
-  color: #e8c77e;
+  color: #f0cf8d;
   font-weight: 700;
 }
 
 .action {
-  border: 1px solid rgba(202, 158, 74, 0.34);
+  padding: 2px 7px;
+  border: 1px solid rgba(74, 138, 255, 0.3);
   border-radius: 6px;
-  background: rgba(202, 158, 74, 0.09);
-  color: #e8c77e;
-  padding: 2px 6px;
+  outline: none;
+  background: rgba(57, 136, 255, 0.08);
+  color: #aecdff;
   font: inherit;
+  font-weight: 700;
   cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
-.action:hover {
-  background: rgba(202, 158, 74, 0.16);
+.action:hover,
+.action:focus-visible {
+  border-color: rgba(74, 138, 255, 0.48);
+  background: rgba(57, 136, 255, 0.14);
+  color: #c7dcff;
 }
 
 .muted {
-  color: #7f899c;
+  color: #778196;
 }

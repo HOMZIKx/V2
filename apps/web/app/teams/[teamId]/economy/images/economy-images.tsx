@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'rea
 import { usePlayerStore } from '../../../../../src/player-store-react';
 import { AppShell } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
-import { WorkspaceSectionNav } from '../../workspace-section-nav';
+import { EconomyContextNav } from '../economy-context-nav';
 import { EconomySubnav } from '../economy-subnav';
 import styles from '../economy-tools.module.css';
 
@@ -161,6 +161,8 @@ export function EconomyImages() {
     <>
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className={styles.page} id="main-content">
+          <EconomyContextNav currentLabel="Ilustracje" workspaceId={workspace.id} workspaceName={workspace.name} />
+
           <section className={styles.hero}>
             <div>
               <span className={styles.eyebrow}>Zespół · Ekonomia · Ilustracje</span>
@@ -169,7 +171,6 @@ export function EconomyImages() {
             </div>
           </section>
 
-          <WorkspaceSectionNav active="economy" workspaceId={workspace.id} />
           {error ? <p className={styles.error}>{error}</p> : null}
           {notice ? <p className={styles.notice}>{notice}</p> : null}
 
