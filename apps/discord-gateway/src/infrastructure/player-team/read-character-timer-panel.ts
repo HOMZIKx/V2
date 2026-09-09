@@ -40,6 +40,26 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
+async function fetchState(
+  url: string,
+  demoViewerHeader: string,
+  viewerId: string,
+): Promise<LooseRecord | null> {
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { [demoViewerHeader]: viewerId },
+      cache: 'no-store',
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
+  return asRecord(body?.state);
+}
+
 export async function readCharacterTimerPanelFromBot(input: {
   readonly baseUrl: string;
   readonly demoViewerHeader: string;
@@ -47,23 +67,24 @@ export async function readCharacterTimerPanelFromBot(input: {
   readonly workspaceId: string;
   readonly selectedCharacterId?: string | null;
 }): Promise<CharacterTimerPanelSnapshot | null> {
-  let response: Response;
-  try {
-    response = await fetch(
-      `${input.baseUrl.replace(/\/$/, '')}/player-team/v1/workspaces/${encodeURIComponent(input.workspaceId)}/state`,
-      {
-        method: 'GET',
-        headers: { [input.demoViewerHeader]: input.viewerId },
-        cache: 'no-store',
-      },
-    );
-  } catch {
-    return null;
-  }
-  if (!response.ok) return null;
+  const baseUrl = input.baseUrl.replace(/\/$/, '');
 
-  const body = (await response.json().catch(() => null)) as { readonly state?: unknown } | null;
-  const workspace = asRecord(body?.state);
+  // The shared workspace can contain legacy member rows where `id` is the V2 app UUID
+  // and `discordAccountId` was never backfilled. Resolve the authenticated viewer's app
+  // id from their private snapshot so the daily Discord panel can still find that row.
+  const viewerState = await fetchState(
+    `${baseUrl}/player-team/v1/me/state`,
+    input.demoViewerHeader,
+    input.viewerId,
+  );
+  const viewer = asRecord(viewerState?.viewer);
+  const viewerAppId = asString(viewer?.id);
+
+  const workspace = await fetchState(
+    `${baseUrl}/player-team/v1/workspaces/${encodeURIComponent(input.workspaceId)}/state`,
+    input.demoViewerHeader,
+    input.viewerId,
+  );
   if (!workspace) return null;
 
   const members = Array.isArray(workspace.members)
@@ -72,7 +93,7 @@ export async function readCharacterTimerPanelFromBot(input: {
   const member = members.find((row) => {
     const discordId = asString(row.discordAccountId);
     const id = asString(row.id);
-    return discordId === input.viewerId || id === input.viewerId;
+    return discordId === input.viewerId || id === input.viewerId || (viewerAppId !== null && id === viewerAppId);
   });
   if (!member) return null;
   const memberId = asString(member.id);
