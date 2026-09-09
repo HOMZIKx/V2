@@ -89,16 +89,19 @@ describe('imported item image paths', () => {
 
   it('tries the exact wiki filename before fuzzy page-image discovery for missing local assets', async () => {
     const requested: string[] = [];
-    const fakeFetch = (async (input: string | URL | Request) => {
-      const url = String(input);
+    const fakeFetch = ((input: string | URL | Request) => {
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       requested.push(url);
       if (url.includes('/Special:Redirect/file/Amulet_Karmy_1.png')) {
-        return new Response(new Uint8Array([1, 2, 3]), {
-          status: 200,
-          headers: { 'content-type': 'image/png' },
-        });
+        return Promise.resolve(
+          new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { 'content-type': 'image/png' },
+          }),
+        );
       }
-      return new Response(null, { status: 404 });
+      return Promise.resolve(new Response(null, { status: 404 }));
     }) as typeof fetch;
 
     const response = await getCatalogWikiImageResponse('wiki_d69e989913be0bfd.png', fakeFetch);
