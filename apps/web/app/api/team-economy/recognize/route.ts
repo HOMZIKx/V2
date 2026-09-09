@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { gameItemCatalog } from '../../../../src/item-catalog';
+import { recordAiObservation } from '../../../../src/server/ai-observation';
 import { verifiedViewerId } from '../../../../src/server/verified-session';
 
 export const runtime = 'nodejs';
@@ -53,6 +54,8 @@ const DYNAMIC_LOOKUP_LIMIT = 40;
 const MAX_RECOGNIZED_ITEMS = 200;
 const MAX_CATALOG_NAMES_IN_PROMPT = 1200;
 const MIN_AUTO_NAME_CONFIDENCE = 0.72;
+const ECONOMY_PROMPT_VERSION = 'economy-drop-grid-v1';
+const ECONOMY_PARSER_VERSION = 'economy-slot-normalizer-v1';
 const rateBuckets = new Map<string, RateBucket>();
 
 const canonicalCatalogNames = Array.from(
@@ -139,6 +142,12 @@ function workspaceIdFromRequest(request: NextRequest): string | null {
   } catch {
     return null;
   }
+}
+
+function workspaceIdFromBody(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 160 ? trimmed : null;
 }
 
 function chooseDynamicMatch(name: string, rows: readonly DynamicCatalogItem[]): CatalogMatch | null {
@@ -285,6 +294,11 @@ function normalizeRecognizedItems(rawItems: RawRecognizedItem[]): RecognizedItem
     }));
 }
 
+function aggregateConfidence(items: readonly RecognizedItem[]): number | null {
+  if (items.length === 0) return null;
+  return items.reduce((sum, item) => sum + item.confidence, 0) / items.length;
+}
+
 export async function POST(request: NextRequest) {
   const viewerId = await verifiedViewerId(request);
   if (!viewerId) {
@@ -297,7 +311,10 @@ export async function POST(request: NextRequest) {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) return NextResponse.json({ error: 'ai_not_configured' }, { status: 503 });
 
-  const body = (await request.json().catch(() => null)) as { imageDataUrl?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    imageDataUrl?: unknown;
+    workspaceId?: unknown;
+  } | null;
   if (!body || typeof body.imageDataUrl !== 'string') {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
@@ -305,6 +322,7 @@ export async function POST(request: NextRequest) {
   if (!match?.[1] || !match[2] || match[2].length > 12_000_000) {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
+  const imageBytes = Buffer.from(match[2], 'base64');
 
   const model =
     process.env.GEMINI_VISION_MODEL?.trim() ||
@@ -355,7 +373,7 @@ export async function POST(request: NextRequest) {
 
   const recognized = normalizeRecognizedItems(Array.isArray(parsed.items) ? parsed.items : []);
 
-  const workspaceId = workspaceIdFromRequest(request);
+  const workspaceId = workspaceIdFromBody(body.workspaceId) ?? workspaceIdFromRequest(request);
   if (workspaceId) {
     const unmatched = recognized
       .map((item, index) => ({ item, index }))
@@ -370,5 +388,20 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.json({ items: recognized });
+  const analysisId = await recordAiObservation(request, {
+    analysisType: 'economy',
+    workspaceId,
+    model,
+    promptVersion: ECONOMY_PROMPT_VERSION,
+    parserVersion: ECONOMY_PARSER_VERSION,
+    confidence: aggregateConfidence(recognized),
+    imageMimeType: match[1] as 'image/png' | 'image/jpeg' | 'image/webp',
+    imageBytes,
+    aiOutput: {
+      rawItems: Array.isArray(parsed.items) ? parsed.items : [],
+      normalizedItems: recognized,
+    },
+  });
+
+  return NextResponse.json({ analysisId, items: recognized, model, persisted: analysisId !== null });
 }

@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 
+import { recordAiObservation } from '../../../../src/server/ai-observation';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const DEFAULT_VISION_MODEL = 'gemini-3.8-flash';
+const EQUIPMENT_PROMPT_VERSION = 'equipment-tooltip-v1';
+const EQUIPMENT_PARSER_VERSION = 'equipment-draft-v1';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const EQUIPMENT_CATEGORIES = new Set([
   'weapon',
@@ -264,6 +268,13 @@ function parseAnalysisDraft(raw: string): AnalysisDraft | null {
   };
 }
 
+function contextValue(form: FormData, key: string): string | null {
+  const value = form.get(key);
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 160 ? trimmed : null;
+}
+
 const ANALYSIS_PROMPT = `
 Analizujesz WYŁĄCZNIE pojedynczy tooltip przedmiotu z gry Metin2 / Projekt Hard.
 To jest etap roboczy: NIE zapisujesz niczego do bazy i NIE uzupełniasz danych z wiedzy o grze.
@@ -320,6 +331,8 @@ export async function POST(request: Request) {
     return jsonError('Screen musi mieć od 1 B do 8 MB.', 413);
   }
 
+  const workspaceId = contextValue(form, 'workspaceId');
+  const characterId = contextValue(form, 'characterId');
   const bytes = Buffer.from(await upload.arrayBuffer());
   const base64Image = bytes.toString('base64');
   const model = process.env.GEMINI_VISION_MODEL?.trim() || DEFAULT_VISION_MODEL;
@@ -383,10 +396,24 @@ export async function POST(request: Request) {
     return jsonError('Nie udało się pewnie odczytać danych ze screena. Użyj dodawania ręcznego.', 422);
   }
 
+  const analysisId = await recordAiObservation(request, {
+    analysisType: 'equipment',
+    workspaceId,
+    characterId,
+    model,
+    promptVersion: EQUIPMENT_PROMPT_VERSION,
+    parserVersion: EQUIPMENT_PARSER_VERSION,
+    confidence: draft.confidence,
+    imageMimeType: upload.type as 'image/png' | 'image/jpeg' | 'image/webp',
+    imageBytes: bytes,
+    aiOutput: draft,
+  });
+
   return NextResponse.json({
+    analysisId,
     draft,
     model,
     provider: 'gemini',
-    persisted: false,
+    persisted: analysisId !== null,
   });
 }

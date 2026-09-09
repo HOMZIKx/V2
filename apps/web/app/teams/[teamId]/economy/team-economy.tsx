@@ -11,6 +11,7 @@ import {
   type FormEvent,
 } from 'react';
 
+import { resolveAiObservationFeedback } from '../../../../src/ai-observation-feedback';
 import { gameItemCatalog } from '../../../../src/item-catalog';
 import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell } from '../../../app-shell';
@@ -199,6 +200,7 @@ export function TeamEconomy() {
   const [splitMode, setSplitMode] = useState<'max_equal' | 'strict_equal'>('max_equal');
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [draftMoney, setDraftMoney] = useState<DraftMoney[]>([]);
+  const [dropAnalysisId, setDropAnalysisId] = useState<string | null>(null);
   const [outsiders, setOutsiders] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const initializedMembersForWorkspaceRef = useRef<string | null>(null);
@@ -304,6 +306,7 @@ export function TeamEconomy() {
   );
 
   const recognizeFile = useCallback(async (file: File) => {
+    if (!workspace) return;
     if (!file.type.startsWith('image/')) {
       setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
       return;
@@ -320,7 +323,7 @@ export function TeamEconomy() {
       const response = await fetch('/api/team-economy/recognize', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: dataUrl }),
+        body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as { error?: string };
@@ -330,7 +333,10 @@ export function TeamEconomy() {
             : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
         );
       }
-      const body = (await response.json()) as { items: AiItem[] };
+      const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
+      setDropAnalysisId(
+        typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId.trim() : null,
+      );
       setDraftItems(
         body.items.map((item, index) => ({
           key: `ai-${Date.now()}-${index}`,
@@ -352,7 +358,7 @@ export function TeamEconomy() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [workspace]);
 
   function recognize(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -495,6 +501,15 @@ export function TeamEconomy() {
         }),
       });
       if (!response.ok) throw new Error('Serwer odrzucił zapis dropu.');
+      if (dropAnalysisId) {
+        void resolveAiObservationFeedback(dropAnalysisId, {
+          items: resolved.map((item) => ({
+            name: item.name.trim(),
+            quantity: item.totalQuantity,
+          })),
+        });
+      }
+      setDropAnalysisId(null);
       setDraftItems([]);
       setDraftMoney([]);
       setOutsiders('');

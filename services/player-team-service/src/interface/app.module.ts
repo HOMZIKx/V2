@@ -7,6 +7,7 @@ import { TeamEconomyUseCases } from '../application/use-cases/team-economy.use-c
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
 import { LegacyEconomyCatalogSeeder } from '../infrastructure/catalog/legacy-economy-catalog.seeder.js';
 import { PlayerTeamEnvProvider } from '../infrastructure/config/player-team-env.provider.js';
+import { AiObservationRepository } from '../infrastructure/db/ai-observation.repository.js';
 import { HuntRoomsRepository } from '../infrastructure/db/hunt-rooms.repository.js';
 import { MetinGeneralHuntsRepository } from '../infrastructure/db/metin-general-hunts.repository.js';
 import { PlayerTeamStateRepository } from '../infrastructure/db/player-team-state.repository.js';
@@ -15,6 +16,7 @@ import { TeamEconomyManagementRepository } from '../infrastructure/db/team-econo
 import { TeamEconomyRepository } from '../infrastructure/db/team-economy.repository.js';
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
 
+import { AiObservationController } from './ai-observation.controller.js';
 import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
@@ -43,6 +45,7 @@ import {
     TeamInvitationsController,
     TeamEconomyController,
     TeamEconomyManagementController,
+    AiObservationController,
   ],
   providers: [
     PlayerTeamEnvProvider,
@@ -58,6 +61,7 @@ import {
     TeamEconomyRepository,
     TeamEconomyManagementRepository,
     TeamEconomyDropManagementRepository,
+    AiObservationRepository,
     LegacyEconomyCatalogSeeder,
     WorkspaceLiveBus,
     {
