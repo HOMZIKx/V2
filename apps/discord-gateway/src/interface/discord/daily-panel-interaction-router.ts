@@ -25,9 +25,17 @@ import { canonicalOwnerViewerId } from '../../infrastructure/player-team/owner-v
 import { readCharacterTimerCardFromBot } from '../../infrastructure/player-team/read-character-timer-card.js';
 import { readSharedKingdomWarWorkspaceContext } from '../../infrastructure/player-team/read-team-workspace-context.js';
 import { refreshSharedCharacterTimer } from '../../infrastructure/player-team/refresh-shared-character-timer.js';
-import { parseCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
+import {
+  parseCharacterTimerButtonCustomId,
+  type CharacterTimerButtonPayload,
+} from '../../infrastructure/security/character-timer-custom-id.js';
 import { parseCharacterTimerPanelSelectCustomId } from '../../infrastructure/security/character-timer-panel-custom-id.js';
 import { parseSignedCustomId } from '../../infrastructure/security/signed-custom-id.js';
+import {
+  renderCharacterTimerSnoozeConfirmation,
+  renderCharacterTimerSnoozePicker,
+  workspaceIdFromDailyTimerPanelReminderId,
+} from '../../presentation/discord/character-timer-daily-panel-renderer.js';
 import { TeamSyncInteractionRouter } from './team-sync-interaction-router.js';
 import type { InteractionRouterDeps } from './interaction-router.js';
 
@@ -108,7 +116,7 @@ export class DailyPanelInteractionRouter {
         await this.handleCharacterTimerAction(
           interaction,
           timerButton.operation,
-          timerButton.payload.timerId,
+          timerButton.payload,
         );
         return;
       } catch {
@@ -210,12 +218,95 @@ export class DailyPanelInteractionRouter {
     });
   }
 
+  private async handleDailyPanelSnooze(
+    interaction: MessageComponentInteraction,
+    workspaceId: string,
+    payload: CharacterTimerButtonPayload,
+  ): Promise<void> {
+    const panel = getDailyCharacterTimerPanelMessage(workspaceId, interaction.user.id);
+    const today = warsawClock().dayKey;
+    if (!panel || panel.dayKey !== today || panel.messageId !== interaction.message.id) {
+      await interaction.reply({
+        content: 'Ten panel timerów jest nieaktualny. Użyj dzisiejszej wiadomości PW.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (payload.snoozeMinutes === undefined) {
+      const live = this.deps.getBotConfig?.() ?? defaultBotConfigValues();
+      const characterCfg = live.characterTimers ?? live.timersNotify;
+      const picker = renderCharacterTimerSnoozePicker({
+        workspaceId,
+        signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+        baseMinutes: characterCfg.reminderMinutesBefore,
+      });
+      await interaction.update({ components: picker.components ?? [] });
+      return;
+    }
+
+    if (payload.snoozeMinutes === 0) {
+      await interaction.deferUpdate();
+      await refreshExistingDailyCharacterTimerPanels({
+        config: this.deps.config,
+        gateway: this.deps.gateway,
+        logger: this.deps.logger,
+        workspaceId,
+      });
+      return;
+    }
+
+    const scheduled = scheduleCharacterTimerReminder(
+      {
+        discordUserId: interaction.user.id,
+        timerId: payload.timerId,
+        label: 'Panel timerów',
+        workspaceId,
+        delayMs: payload.snoozeMinutes * 60_000,
+      },
+      {
+        logger: this.deps.logger,
+        send: async () => {
+          await refreshExistingDailyCharacterTimerPanels({
+            config: this.deps.config,
+            gateway: this.deps.gateway,
+            logger: this.deps.logger,
+            workspaceId,
+          });
+        },
+      },
+    );
+
+    if (!scheduled.ok) {
+      await interaction.reply({
+        content: 'Nie udało się ustawić przypomnienia.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const confirmation = renderCharacterTimerSnoozeConfirmation({
+      workspaceId,
+      signingSecret: this.deps.config.DISCORD_COMPONENT_SIGNING_SECRET,
+      fireAtMs: scheduled.fireAtMs,
+    });
+    await interaction.update({ components: confirmation.components ?? [] });
+  }
+
   private async handleCharacterTimerAction(
     interaction: MessageComponentInteraction,
     operation: 'gotowe' | 'przypomnij',
-    timerId: string,
+    payload: CharacterTimerButtonPayload,
   ): Promise<void> {
+    const timerId = payload.timerId;
+
     if (operation === 'przypomnij') {
+      const workspaceId = workspaceIdFromDailyTimerPanelReminderId(timerId);
+      if (workspaceId) {
+        await this.handleDailyPanelSnooze(interaction, workspaceId, payload);
+        return;
+      }
+
       await interaction.reply({
         content:
           'Ten stary typ przypomnienia został wyłączony. Aktualny stan jest utrzymywany w jednym dziennym panelu PW.',
