@@ -68,6 +68,16 @@ export class TeamEconomyUseCases {
     return workspaceId;
   }
 
+  private async assertCatalogCreateAccess(viewerId: string, workspaceId: string): Promise<void> {
+    if (workspaceId === PRIVATE_ECONOMY_WORKSPACE_ALIAS) {
+      throw new PlayerTeamError(
+        'UNAUTHORIZED',
+        'private economy cannot mutate the shared global item catalogue',
+      );
+    }
+    await this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId);
+  }
+
   private async assertOwner(viewerId: string, workspaceId: string): Promise<string> {
     if (workspaceId === PRIVATE_ECONOMY_WORKSPACE_ALIAS) {
       throw new PlayerTeamError(
@@ -79,7 +89,9 @@ export class TeamEconomyUseCases {
       this.stateUseCases.getWorkspaceSnapshot(viewerId, workspaceId),
       this.stateUseCases.getViewerSnapshot(viewerId),
     ]);
-    if (memberRole(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner') {
+    if (
+      memberRole(workspace.state, viewerId, viewerAppId(viewerSnapshot?.state ?? null)) !== 'owner'
+    ) {
       throw new PlayerTeamError(
         'UNAUTHORIZED',
         'only workspace owner can edit an existing global item catalogue entry',
@@ -98,7 +110,7 @@ export class TeamEconomyUseCases {
     workspaceId: string,
     items: readonly EconomyCatalogSeedItem[],
   ) {
-    await this.workspaceId(viewerId, workspaceId);
+    await this.assertCatalogCreateAccess(viewerId, workspaceId);
     return this.repository.importItems({ items, createdBy: viewerId });
   }
 
@@ -117,7 +129,7 @@ export class TeamEconomyUseCases {
       alias?: string | null | undefined;
     },
   ) {
-    await this.workspaceId(viewerId, workspaceId);
+    await this.assertCatalogCreateAccess(viewerId, workspaceId);
     return this.repository.createItem({ ...input, createdBy: viewerId });
   }
 
