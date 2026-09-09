@@ -15,9 +15,9 @@ import { gameItemCatalog } from '../../../../src/item-catalog';
 import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell } from '../../../app-shell';
 import { DiscordEntryScreen } from '../../../discord-entry';
-import { WorkspaceSectionNav } from '../workspace-section-nav';
 import { CompactAmountInput } from './compact-amount-input';
 import { DropHistoryActions } from './drop-history-actions';
+import { EconomyContextNav } from './economy-context-nav';
 import { MarketPriceHint } from './market-price-hint';
 import styles from './team-economy.module.css';
 
@@ -563,6 +563,8 @@ export function TeamEconomy() {
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className={styles.page} id="main-content">
+        <EconomyContextNav currentLabel="Ekonomia" workspaceId={workspace.id} workspaceName={workspace.name} />
+
         <section className={styles.hero}>
           <div>
             <span className={styles.eyebrow}>Zespół · Ekonomia</span>
@@ -582,8 +584,6 @@ export function TeamEconomy() {
             </button>
           </div>
         </section>
-
-        <WorkspaceSectionNav active="economy" workspaceId={workspace.id} />
 
         <section className={styles.metrics}>
           <article className={styles.metric}>

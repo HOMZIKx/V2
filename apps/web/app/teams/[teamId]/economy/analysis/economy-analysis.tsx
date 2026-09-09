@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { usePlayerStore } from '../../../../../src/player-store-react';
 import { AppShell } from '../../../../app-shell';
 import { DiscordEntryScreen } from '../../../../discord-entry';
-import { WorkspaceSectionNav } from '../../workspace-section-nav';
+import { EconomyContextNav } from '../economy-context-nav';
 import { EconomySubnav } from '../economy-subnav';
 import styles from '../economy-tools.module.css';
 
@@ -252,6 +252,8 @@ export function EconomyAnalysis() {
     <>
       <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
         <main className={styles.page} id="main-content">
+          <EconomyContextNav currentLabel="Rentowność" workspaceId={workspace.id} workspaceName={workspace.name} />
+
           <section className={styles.hero}>
             <div>
               <span className={styles.eyebrow}>Zespół · Ekonomia · Rentowność</span>
@@ -269,7 +271,6 @@ export function EconomyAnalysis() {
             </label>
           </section>
 
-          <WorkspaceSectionNav active="economy" workspaceId={workspace.id} />
 
           <section className={styles.metrics}>
             <article className={styles.metric}><span>Wartość dropu · Yang</span><strong>{money(grossYang, 'yang')}</strong></article>
