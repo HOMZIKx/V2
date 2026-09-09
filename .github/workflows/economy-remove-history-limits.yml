@@ -1,0 +1,50 @@
+name: Economy remove history caps
+
+on:
+  push:
+    branches:
+      - feat/economy-catalog-polish-clean-20260909
+    paths:
+      - .github/workflows/economy-remove-history-limits.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/economy-catalog-polish-clean-20260909
+      - name: Remove hard history caps
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('services/player-team-service/src/infrastructure/db/team-economy.repository.ts')
+          text = path.read_text()
+          old_drops = 'ORDER BY occurred_at DESC LIMIT 250`'
+          old_expenses = 'ORDER BY occurred_at DESC LIMIT 500`'
+          if text.count(old_drops) != 1:
+              raise SystemExit(f'expected one drop history cap, got {text.count(old_drops)}')
+          if text.count(old_expenses) != 1:
+              raise SystemExit(f'expected one expense history cap, got {text.count(old_expenses)}')
+          text = text.replace(old_drops, 'ORDER BY occurred_at DESC`', 1)
+          text = text.replace(old_expenses, 'ORDER BY occurred_at DESC`', 1)
+          path.write_text(text)
+          PY
+      - name: Format repository
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write services/player-team-service/src/infrastructure/db/team-economy.repository.ts
+      - name: Commit product patch
+        shell: bash
+        run: |
+          git config user.name 'HOMZIKx'
+          git config user.email 'ciborex12@gmail.com'
+          git add services/player-team-service/src/infrastructure/db/team-economy.repository.ts
+          git commit -m 'fix(economy): make full history truly complete'
+          git push origin HEAD:feat/economy-catalog-polish-clean-20260909
