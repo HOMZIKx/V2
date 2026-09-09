@@ -1,0 +1,129 @@
+name: Economy AI live verify
+on:
+  push:
+    branches: [ops/economy-ai-live-verify-20260909]
+    paths: [.github/workflows/economy-ai-live-verify.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy and verify webapp-dest
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+          EXPECTED_SHA: 8f8d091d836611f33b5d0e2fff0588e990739e4f
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, time
+          token=(os.environ.get('ZEABUR_API_TOKEN') or '').strip()
+          expected=os.environ['EXPECTED_SHA'].strip()
+          endpoint='https://api.zeabur.com/graphql'
+          if not token:
+              print('::error::Missing Zeabur token'); sys.exit(1)
+
+          def gql(query, variables=None):
+              r=subprocess.run([
+                  'curl','-sS','--fail-with-body','-X','POST',endpoint,
+                  '-H',f'Authorization: Bearer {token}',
+                  '-H','Content-Type: application/json',
+                  '--data-binary',json.dumps({'query':query,'variables':variables or {}}),
+              ],capture_output=True,text=True,timeout=45)
+              if r.returncode:
+                  print('::error::Zeabur transport failed'); sys.exit(1)
+              try: payload=json.loads(r.stdout)
+              except Exception:
+                  print('::error::Zeabur returned non-JSON'); sys.exit(1)
+              if payload.get('errors'):
+                  print('::error::Zeabur GraphQL: '+str(payload['errors'][0].get('message','unknown'))[:220]); sys.exit(1)
+              return payload.get('data') or {}
+
+          projects=[e['node'] for e in gql('query{projects{edges{node{_id name}}}}')['projects']['edges']]
+          project=next((p for p in projects if p.get('name')=='untitled-1'),None)
+          if not project:
+              print('::error::Project untitled-1 not found'); sys.exit(1)
+          detail=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':project['_id']})['project']
+          env=next((e for e in detail['environments'] if e.get('name')=='production'),None)
+          services={s['name']:s['_id'] for s in detail['services']}
+          web=services.get('webapp-dest')
+          if not env or not web:
+              print('::error::Production webapp-dest not found'); sys.exit(1)
+
+          redeploy='mutation($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}'
+          ok=gql(redeploy,{'serviceID':web,'environmentID':env['_id']}).get('redeployService') is True
+          print(f'REDEPLOY webapp-dest accepted={str(ok).lower()}')
+          if not ok: sys.exit(2)
+
+          execute='mutation($serviceID:ObjectID!,$environmentID:ObjectID!,$command:[String!]!){executeCommand(serviceID:$serviceID,environmentID:$environmentID,command:$command){exitCode output}}'
+          def run(script):
+              return gql(execute,{'serviceID':web,'environmentID':env['_id'],'command':['node','-e',script]})['executeCommand']
+
+          verify_script=r'''
+          const fs=require('fs');
+          (async()=>{
+            const expected='8f8d091d836611f33b5d0e2fff0588e990739e4f';
+            const sha=(process.env.ZEABUR_GIT_COMMIT_SHA||'').trim();
+            const branch=(process.env.ZEABUR_GIT_BRANCH||'').trim();
+            const keySet=Boolean((process.env.GEMINI_API_KEY||'').trim());
+            const configured=(process.env.GEMINI_VISION_MODEL||process.env.GEMINI_MODEL||'').trim();
+            const candidates=[
+              '/app/apps/web/app/api/team-economy/recognize/route.ts',
+              'apps/web/app/api/team-economy/recognize/route.ts',
+              '/workspace/apps/web/app/api/team-economy/recognize/route.ts'
+            ];
+            let code=''; let source='';
+            for(const f of candidates){try{code=fs.readFileSync(f,'utf8');source=f;break}catch{}}
+            const codeOk=code.includes('gemini-3.8-flash')&&code.includes('responseJsonSchema')&&code.includes('ai_quota_exceeded')&&code.includes("'x-goog-api-key'");
+            const port=(process.env.PORT||process.env.WEB_PORT||'3000').trim();
+            let routeStatus=0;
+            try{const r=await fetch(`http://127.0.0.1:${port}/economy/private`,{redirect:'manual',signal:AbortSignal.timeout(6000)});routeStatus=r.status}catch{}
+            const routeOk=[200,301,302,307,308].includes(routeStatus);
+            console.log(`RUNTIME sha=${sha} branch=${branch} key_set=${keySet} configured_model=${configured||'unset'}`);
+            console.log(`SOURCE_CHECK=${codeOk?'OK':'FAIL'} source=${source||'not-found'} route_status=${routeStatus}`);
+            process.exitCode=(sha===expected&&branch==='preview/destiled-web'&&keySet&&codeOk&&routeOk)?0:3;
+          })().catch(e=>{console.log('VERIFY_FAIL='+String(e?.message||e).slice(0,180));process.exit(4)});
+          '''
+
+          ready=False
+          for attempt in range(1,31):
+              out=run(verify_script)
+              text=(out.get('output') or '').strip()
+              print(f'ATTEMPT={attempt}')
+              print(text)
+              if out.get('exitCode')==0:
+                  ready=True
+                  break
+              time.sleep(10)
+          if not ready:
+              print('::error::webapp-dest did not reach expected deployed SHA/state'); sys.exit(3)
+
+          model_probe=r'''
+          const tiny='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlMY6wAAAAASUVORK5CYII=';
+          (async()=>{
+            const key=(process.env.GEMINI_API_KEY||'').trim();
+            const model='gemini-3.8-flash';
+            const schema={type:'object',additionalProperties:false,required:['ok'],properties:{ok:{type:'boolean'}}};
+            const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{
+              method:'POST',
+              headers:{'content-type':'application/json','x-goog-api-key':key},
+              body:JSON.stringify({
+                contents:[{role:'user',parts:[{text:'Look at this image and return JSON with ok=true.'},{inlineData:{mimeType:'image/png',data:tiny}}]}],
+                generationConfig:{responseMimeType:'application/json',responseJsonSchema:schema,maxOutputTokens:128,thinkingConfig:{thinkingLevel:'low'}}
+              })
+            });
+            const body=await r.text(); let parsed=null; try{parsed=JSON.parse(body)}catch{}
+            const text=(parsed?.candidates||[]).flatMap(c=>c.content?.parts||[]).map(p=>p.text||'').join('').trim();
+            let result=null; try{result=JSON.parse(text)}catch{}
+            console.log(`GEMINI_38_IMAGE_PROBE status=${r.status} finish=${parsed?.candidates?.[0]?.finishReason||'none'} json_ok=${result?.ok===true} api_error=${parsed?.error?.message?String(parsed.error.message).slice(0,140):'none'}`);
+            process.exitCode=(r.ok&&result?.ok===true)?0:5;
+          })().catch(e=>{console.log('MODEL_PROBE_FAIL='+String(e?.message||e).slice(0,180));process.exit(6)});
+          '''
+          probe=run(model_probe)
+          print((probe.get('output') or '').strip())
+          if probe.get('exitCode')!=0:
+              print('::error::Gemini 3.8 Flash image/structured-output fallback probe failed'); sys.exit(4)
+
+          print('LIVE_ECONOMY_AI_FIX=OK')
+          PY
