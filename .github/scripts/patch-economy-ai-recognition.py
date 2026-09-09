@@ -247,8 +247,8 @@ if private_old not in private:
     raise SystemExit('private error block missing')
 private = private.replace(private_old, private_new, 1)
 
-team_import = "import { economyAiErrorMessage } from '../../../src/economy-ai-error';\n"
-team_anchor = "import { resolveAiObservationFeedback } from '../../../src/ai-observation-feedback';\n"
+team_import = "import { economyAiErrorMessage } from '../../../../src/economy-ai-error';\n"
+team_anchor = "import { resolveAiObservationFeedback } from '../../../../src/ai-observation-feedback';\n"
 if team_import not in team:
     if team_anchor not in team:
         raise SystemExit('team import anchor missing')
