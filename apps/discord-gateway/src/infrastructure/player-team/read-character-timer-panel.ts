@@ -98,7 +98,9 @@ export async function readCharacterTimerPanelFromBot(input: {
 }): Promise<CharacterTimerPanelSnapshot | null> {
   const baseUrl = input.baseUrl.replace(/\/$/, '');
   const serviceSecret =
-    input.serviceSecret?.trim() ?? process.env.DISCORD_NOTIFY_SHARED_SECRET?.trim() ?? '';
+    input.serviceSecret?.trim() ??
+    process.env.PLAYER_TEAM_DISCORD_GATEWAY_SHARED_SECRET?.trim() ??
+    '';
 
   let workspace: LooseRecord | null = null;
   let viewerAppId: string | null = null;
