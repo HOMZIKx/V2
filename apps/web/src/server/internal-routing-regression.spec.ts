@@ -8,8 +8,9 @@ function source(relativeUrl: string): string {
 describe('server-side Player Team routing', () => {
   it('does not route Team DM panel auth through the public request origin', () => {
     const text = source('../../app/api/team-dm-panels/[workspaceId]/route.ts');
-    expect(text).toContain('internalWebUrl(request.url');
-    expect(text).not.toMatch(/new URL\(\s*[`'"]\/player-team/);
+    expect(text).toContain("GET as playerTeamGet");
+    expect(text).toContain('callPlayerTeamGet(request');
+    expect(text).not.toContain('internalWebUrl(request.url');
   });
 
   it('does not route Discord notify auth through the public request origin', () => {

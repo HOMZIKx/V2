@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { authoritativeNotifyRecipients } from '../../../../src/discord-notify-recipients';
-import { internalWebUrl } from '../../../../src/server/internal-web-origin';
+import { GET as playerTeamGet } from '../../../player-team/[...path]/route';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,15 +26,22 @@ function notifySecret(): string {
   return (process.env.DISCORD_NOTIFY_SHARED_SECRET ?? '').trim();
 }
 
+async function callPlayerTeamGet(request: Request, path: readonly string[]): Promise<Response> {
+  const url = new URL(request.url);
+  url.search = '';
+  const internalRequest = new NextRequest(url, {
+    method: 'GET',
+    headers: request.headers,
+  });
+  return playerTeamGet(internalRequest, { params: Promise.resolve({ path: [...path] }) });
+}
+
 async function verifyViewer(request: Request): Promise<VerifiedViewer | Response> {
   const cookie = request.headers.get('cookie')?.trim() ?? '';
   if (!cookie) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
   let response: Response;
   try {
-    response = await fetch(internalWebUrl(request.url, '/player-team/v1/me/state'), {
-      headers: { accept: 'application/json', cookie },
-      cache: 'no-store',
-    });
+    response = await callPlayerTeamGet(request, ['v1', 'me', 'state']);
   } catch (error) {
     console.error('team-dm-panels: viewer state lookup failed', error);
     return NextResponse.json({ ok: false, error: 'player_team_unavailable' }, { status: 503 });
@@ -64,10 +71,7 @@ async function verifyViewer(request: Request): Promise<VerifiedViewer | Response
 async function workspaceState(request: Request, cookie: string, workspaceId: string): Promise<JsonRecord | Response> {
   let response: Response;
   try {
-    response = await fetch(internalWebUrl(request.url, `/player-team/v1/workspaces/${encodeURIComponent(workspaceId)}/state`), {
-      headers: { accept: 'application/json', cookie },
-      cache: 'no-store',
-    });
+    response = await callPlayerTeamGet(request, ['v1', 'workspaces', workspaceId, 'state']);
   } catch (error) {
     console.error('team-dm-panels: workspace lookup failed', error);
     return NextResponse.json({ ok: false, error: 'workspace_unavailable' }, { status: 503 });
