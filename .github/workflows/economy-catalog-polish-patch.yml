@@ -20,7 +20,19 @@ jobs:
       - name: Normalize cleanup matchers
         shell: bash
         run: |
-          python3 -c "from pathlib import Path; p=Path('.github/scripts/apply_economy_cost_catalog_cleanup.py'); t=p.read_text(); old=\"    \\\"<small>{rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}</small>\\\",\\n    \\\"<small>{rangeLabel(range)} · katalog centralny</small>\\\",\"; new=\"    \\\"\\\"\\\"<small>\\n              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}\\n            </small>\\\"\\\"\\\",\\n    \\\"<small>{rangeLabel(range)} · katalog centralny</small>\\\",\"; assert old in t; t=t.replace(old,new,1); t=t.replace(\"          label: expenseLabel.trim(),\", \"          label: expenseLabel,\"); p.write_text(t)"
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/apply_economy_cost_catalog_cleanup.py')
+          t = p.read_text()
+          old = "    \"<small>{rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}</small>\",\n    \"<small>{rangeLabel(range)} · katalog centralny</small>\","
+          new = "    \"\"\"<small>\n              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}\n            </small>\"\"\",\n    \"<small>{rangeLabel(range)} · katalog centralny</small>\","
+          if old not in t:
+              raise SystemExit('catalog label matcher source not found')
+          t = t.replace(old, new, 1)
+          t = t.replace('          label: expenseLabel.trim(),', '          label: expenseLabel,')
+          t = t.replace('\\1', '\\\\g<1>')
+          p.write_text(t)
+          PY
       - name: Apply cleanup
         run: python3 .github/scripts/apply_economy_cost_catalog_cleanup.py
       - name: Format touched files
@@ -31,8 +43,7 @@ jobs:
           pnpm exec prettier --write \
             apps/web/app/economy/economy.module.css \
             apps/web/app/economy/private/page.tsx \
-            apps/web/app/teams/[teamId]/economy/team-economy.tsx \
-            services/player-team-service/migrations/009_economy_catalog_seed.sql
+            apps/web/app/teams/[teamId]/economy/team-economy.tsx
       - name: Commit cleanup
         shell: bash
         run: |
