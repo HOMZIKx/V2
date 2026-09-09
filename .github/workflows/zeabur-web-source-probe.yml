@@ -39,13 +39,12 @@ jobs:
           project=next((p for p in projects if p.get('name')=='untitled-1'),None) or (projects[0] if len(projects)==1 else None)
           if not project: print('::error::Project not resolved');sys.exit(1)
 
-          # Try safe scalar fields discovered above one-by-one so schema differences do not hide everything.
           safe=[]
           for name in interesting:
             if name.lower() in {'gitcredentials','gitcredential','environmentvariables','variables','secrets'}: continue
             safe.append(name)
           for field in safe:
-            q=f'''query($id:ObjectID!){{project(_id:$id){{services{{_id name {field}}}}}}}}'''
+            q='query($id:ObjectID!){project(_id:$id){services{_id name '+field+'}}}'
             body=json.dumps({'query':q,'variables':{'id':project['_id']}})
             r=subprocess.run(['curl','-sS','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',body],capture_output=True,text=True,timeout=30)
             try: payload=json.loads(r.stdout)
