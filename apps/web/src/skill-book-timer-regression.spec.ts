@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_APPEARANCE_LOOK, defaultSkillPathForClass } from './character-profile';
 import {
   addProgressionTimer,
   type PlayerStoreState,
@@ -54,8 +55,8 @@ function stateWithLegacyBook(): PlayerStoreState {
             id: 'char-1',
             name: 'KuzynPasek',
             characterClass: 'warrior',
-            skillPath: 'body',
-            appearanceLook: 'classic',
+            skillPath: defaultSkillPathForClass('warrior'),
+            appearanceLook: DEFAULT_APPEARANCE_LOOK,
             gender: 'male',
             level: 80,
             responsibleMemberId: 'owner-app-id',
