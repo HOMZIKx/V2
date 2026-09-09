@@ -409,7 +409,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     const sessions = await this.db.query(
       `SELECT * FROM player_team_drop_sessions
        WHERE workspace_id = $1 AND ($2::timestamptz IS NULL OR occurred_at >= $2::timestamptz)
-       ORDER BY occurred_at DESC LIMIT 250`,
+       ORDER BY occurred_at DESC`,
       [workspaceId, sinceIso ?? null],
     );
     const result: EconomyDropSessionRecord[] = [];
@@ -513,7 +513,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
     const result = await this.db.query(
       `SELECT * FROM player_team_expenses
        WHERE workspace_id = $1 AND ($2::timestamptz IS NULL OR occurred_at >= $2::timestamptz)
-       ORDER BY occurred_at DESC LIMIT 500`,
+       ORDER BY occurred_at DESC`,
       [workspaceId, sinceIso ?? null],
     );
     return result.rows.map((row) => ({
