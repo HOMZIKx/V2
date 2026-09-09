@@ -4,7 +4,7 @@ import { getCatalogWikiImageResponse } from './item-image-proxy';
 
 describe('item image proxy', () => {
   it('serves an already downloaded wiki icon locally without an external request', async () => {
-    const fetchImpl = vi.fn(async () => {
+    const fetchImpl = vi.fn(() => {
       throw new Error('external fetch must not run for a local asset');
     }) as unknown as typeof fetch;
 
@@ -17,46 +17,52 @@ describe('item image proxy', () => {
   });
 
   it('resolves a missing local icon from the official Metin2 MediaWiki API', async () => {
-    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+    const fetchImpl = vi.fn((input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input : input.url);
       const prop = url.searchParams.get('prop');
 
       if (url.pathname === '/api.php' && prop === 'images') {
-        return Response.json({
-          query: {
-            pages: [
-              {
-                title: 'Amulet Karmy 1',
-                images: [
-                  { title: 'Plik:Czarne Tło.png' },
-                  { title: 'Plik:Amulet Karmy 1.png' },
-                ],
-              },
-            ],
-          },
-        });
+        return Promise.resolve(
+          Response.json({
+            query: {
+              pages: [
+                {
+                  title: 'Amulet Karmy 1',
+                  images: [
+                    { title: 'Plik:Czarne Tło.png' },
+                    { title: 'Plik:Amulet Karmy 1.png' },
+                  ],
+                },
+              ],
+            },
+          }),
+        );
       }
 
       if (url.pathname === '/api.php' && prop === 'imageinfo') {
-        return Response.json({
-          query: {
-            pages: [
-              {
-                title: 'Plik:Amulet Karmy 1.png',
-                imageinfo: [
-                  { url: 'https://pl-wiki.metin2.gameforge.com/images/9/90/Amulet_Karmy_1.png' },
-                ],
-              },
-            ],
-          },
-        });
+        return Promise.resolve(
+          Response.json({
+            query: {
+              pages: [
+                {
+                  title: 'Plik:Amulet Karmy 1.png',
+                  imageinfo: [
+                    { url: 'https://pl-wiki.metin2.gameforge.com/images/9/90/Amulet_Karmy_1.png' },
+                  ],
+                },
+              ],
+            },
+          }),
+        );
       }
 
       if (url.pathname === '/images/9/90/Amulet_Karmy_1.png') {
-        return new Response(new Uint8Array([137, 80, 78, 71]), {
-          status: 200,
-          headers: { 'content-type': 'image/png', 'content-length': '4' },
-        });
+        return Promise.resolve(
+          new Response(new Uint8Array([137, 80, 78, 71]), {
+            status: 200,
+            headers: { 'content-type': 'image/png', 'content-length': '4' },
+          }),
+        );
       }
 
       throw new Error(`unexpected fetch: ${url.toString()}`);
