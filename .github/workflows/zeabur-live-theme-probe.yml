@@ -1,0 +1,128 @@
+name: Zeabur live theme probe
+
+on:
+  push:
+    branches:
+      - ops/redeploy-web-theme-20260909
+    paths:
+      - .github/workflows/zeabur-live-theme-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  redeploy-and-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy webapp-dest and verify live CSS fingerprints
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, time
+
+          token = os.environ.get('ZEABUR_API_TOKEN', '').strip()
+          if not token:
+              print("::error::Missing Zeabur API token")
+              sys.exit(1)
+          endpoint = 'https://api.zeabur.com/graphql'
+
+          def gql(query, variables=None):
+              body = json.dumps({'query': query, 'variables': variables or {}})
+              result = subprocess.run(
+                  ['curl','-sS','--fail-with-body','-X','POST',endpoint,
+                   '-H',f'Authorization: Bearer {token}',
+                   '-H','Content-Type: application/json','--data-binary',body],
+                  capture_output=True, text=True, timeout=45)
+              if result.returncode:
+                  print('::error::Zeabur transport failed')
+                  sys.exit(1)
+              payload = json.loads(result.stdout)
+              if payload.get('errors'):
+                  print('::error::Zeabur GraphQL: ' + str(payload['errors'][0].get('message','unknown'))[:220])
+                  sys.exit(1)
+              return payload.get('data') or {}
+
+          root = gql('query{projects{edges{node{_id name}}}}')
+          projects = [edge['node'] for edge in root['projects']['edges']]
+          project = next((p for p in projects if p.get('name') == 'untitled-1'), None) or (projects[0] if len(projects) == 1 else None)
+          if not project:
+              print('::error::Zeabur project not resolved')
+              sys.exit(1)
+
+          detail = gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}', {'id': project['_id']})['project']
+          production = next((e for e in detail['environments'] if e.get('name') == 'production'), None)
+          web = next((s for s in detail['services'] if s.get('name') == 'webapp-dest'), None)
+          if not production or not web:
+              print('::error::production/webapp-dest target missing')
+              sys.exit(1)
+
+          redeploy = gql(
+              'mutation($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}',
+              {'serviceID': web['_id'], 'environmentID': production['_id']},
+          )
+          if redeploy.get('redeployService') is not True:
+              print('::error::webapp-dest redeploy not accepted')
+              sys.exit(1)
+          print('REDEPLOY webapp-dest accepted=true')
+
+          node_script = r'''
+          async function main() {
+            const port = String(process.env.PORT || process.env.WEB_PORT || '3000').trim();
+            const origin = `http://127.0.0.1:${port}`;
+            const page = await fetch(origin + '/economy', {redirect:'manual', signal:AbortSignal.timeout(7000)});
+            if (page.status !== 200) {
+              console.log(`economy_status=${page.status}`);
+              process.exitCode = 2;
+              return;
+            }
+            const html = await page.text();
+            const hrefs = [...html.matchAll(/href=["']([^"']+\.css(?:\?[^"']*)?)["']/g)].map(m => m[1]);
+            const unique = [...new Set(hrefs)];
+            let css = '';
+            for (const href of unique) {
+              const url = href.startsWith('http') ? href : origin + (href.startsWith('/') ? href : '/' + href);
+              try {
+                const response = await fetch(url, {signal:AbortSignal.timeout(7000)});
+                if (response.ok) css += '\n' + await response.text();
+              } catch {}
+            }
+            const normalized = css.toLowerCase().replace(/\s+/g, '');
+            const checks = {
+              ch1_red: normalized.includes('#ff5d6c'),
+              ch2_blue: normalized.includes('#4b8cff'),
+              economy_gold: normalized.includes('#d4aa55'),
+            };
+            for (const [key, ok] of Object.entries(checks)) console.log(`${key}=${ok ? 'ok' : 'missing'}`);
+            console.log(`economy_status=${page.status} css_files=${unique.length}`);
+            if (!Object.values(checks).every(Boolean)) process.exitCode = 3;
+          }
+          main().catch((error) => {
+            console.log(`probe_error=${error?.cause?.code || error?.name || 'unknown'}`);
+            process.exitCode = 4;
+          });
+          '''
+          execute = 'mutation($serviceID:ObjectID!,$environmentID:ObjectID!,$command:[String!]!){executeCommand(serviceID:$serviceID,environmentID:$environmentID,command:$command){exitCode output}}'
+
+          for attempt in range(1, 13):
+              data = gql(execute, {
+                  'serviceID': web['_id'],
+                  'environmentID': production['_id'],
+                  'command': ['node', '-e', node_script],
+              })['executeCommand']
+              output = str(data.get('output') or '').strip()
+              code = data.get('exitCode')
+              print(f'PROBE attempt={attempt} exitCode={code}')
+              if output:
+                  print(output)
+              if code == 0:
+                  print('LIVE_THEME_CSS=OK')
+                  sys.exit(0)
+              if attempt < 12:
+                  time.sleep(10)
+
+          print('::error::Live webapp did not expose the new Economy/Party CSS fingerprints')
+          sys.exit(1)
+          PY
