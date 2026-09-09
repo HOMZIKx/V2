@@ -1,0 +1,90 @@
+/* Party / map channel identity.
+   Each concrete CH gets one stable, high-contrast color. "Podgląd wszystkich" stays neutral.
+   Keep this palette free of green so channel identity does not bleed into Economy branding. */
+
+.respawn-channels button:nth-child(1) { --party-channel-color: #ff5d6c; }
+.respawn-channels button:nth-child(2) { --party-channel-color: #4b8cff; }
+.respawn-channels button:nth-child(3) { --party-channel-color: #9b6cff; }
+.respawn-channels button:nth-child(4) { --party-channel-color: #ff9d4d; }
+.respawn-channels button:nth-child(5) { --party-channel-color: #42c8ff; }
+.respawn-channels button:nth-child(6) { --party-channel-color: #ffd257; }
+.respawn-channels button:nth-child(7) { --party-channel-color: #ff6ec7; }
+.respawn-channels button:nth-child(8) { --party-channel-color: #d6e2f0; }
+
+.respawn-channels button:nth-child(-n + 8) {
+  min-width: 46px;
+  min-height: 34px;
+  border-width: 2px !important;
+  border-color: var(--party-channel-color) !important;
+  background: color-mix(in srgb, var(--party-channel-color) 13%, #0b101a) !important;
+  color: var(--party-channel-color) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--party-channel-color) 22%, transparent),
+    0 0 12px color-mix(in srgb, var(--party-channel-color) 9%, transparent) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.02em;
+}
+
+.respawn-channels button:nth-child(-n + 8):hover,
+.respawn-channels button:nth-child(-n + 8):focus-visible {
+  background: color-mix(in srgb, var(--party-channel-color) 24%, #0b101a) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--party-channel-color) 36%, transparent),
+    0 0 18px color-mix(in srgb, var(--party-channel-color) 28%, transparent) !important;
+}
+
+.respawn-channels button:nth-child(-n + 8).is-active,
+.respawn-channels button:nth-child(-n + 8)[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--party-channel-color) 38%, #080b11) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--party-channel-color) 70%, #ffffff),
+    0 0 0 2px color-mix(in srgb, var(--party-channel-color) 38%, transparent),
+    0 0 22px color-mix(in srgb, var(--party-channel-color) 45%, transparent) !important;
+  text-shadow: 0 1px 4px #000;
+}
+
+/* The ninth control is the aggregate read-only view, not a channel. */
+.respawn-channels button:nth-child(n + 9) {
+  border-color: rgba(166, 177, 202, 0.26) !important;
+  background: rgba(16, 20, 29, 0.9) !important;
+  color: #aab4c5 !important;
+}
+
+/* Scout pins inherit their channel color inline from PartyHunt. Make that color visually dominant. */
+.respawn-map-marker.respawn-map-pin.is-scout svg {
+  width: 24px !important;
+  height: 36px !important;
+  filter:
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.92))
+    drop-shadow(0 0 7px currentColor)
+    drop-shadow(0 0 13px currentColor) !important;
+}
+
+.respawn-map-marker.respawn-map-pin.is-scout > span:first-of-type {
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  text-shadow: 0 1px 3px #000, 0 0 5px #000 !important;
+}
+
+.respawn-map-marker.respawn-map-pin.is-scout.is-selected svg {
+  transform: scale(1.14);
+  filter:
+    drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 8px currentColor)
+    drop-shadow(0 0 16px currentColor) !important;
+}
+
+@media (max-width: 640px) {
+  .respawn-channels {
+    gap: 8px !important;
+  }
+
+  .respawn-channels button:nth-child(-n + 8) {
+    min-width: 44px;
+    min-height: 36px;
+    padding: 0 9px !important;
+    font-size: 10px !important;
+  }
+}

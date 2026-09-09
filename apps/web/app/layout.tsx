@@ -11,6 +11,7 @@ import { MapMarkerBoundaryGuard } from './map-marker-boundary-guard';
 import './globals.css';
 import './generaly-metki-theme.css';
 import './map-marker-bounds.css';
+import './party-channel-colors.css';
 
 export const metadata: Metadata = {
   title: 'DESTILED — centrum gracza i zespołów',

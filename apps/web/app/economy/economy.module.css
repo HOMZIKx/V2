@@ -11,7 +11,8 @@
   padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 14px;
-  background: rgba(8, 18, 17, 0.72);
+  background: rgba(12, 13, 17, 0.9);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
   width: fit-content;
 }
 
@@ -24,19 +25,28 @@
   font-weight: 700;
 }
 
+.scopeLink:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.045);
+}
+
 .scopeLinkActive {
   color: #fff3c8;
-  background: rgba(187, 151, 72, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(214, 176, 87, 0.28);
+  background: linear-gradient(180deg, rgba(196, 154, 69, 0.22), rgba(196, 154, 69, 0.1));
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 186, 99, 0.35),
+    0 5px 18px rgba(0, 0, 0, 0.2);
 }
 
 .hero,
 .panel,
 .metric,
 .scopeCard {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(145deg, rgba(9, 25, 22, 0.96), rgba(11, 17, 18, 0.94));
-  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  background:
+    radial-gradient(circle at 90% 0, rgba(196, 154, 69, 0.055), transparent 34%),
+    linear-gradient(145deg, rgba(17, 18, 23, 0.98), rgba(8, 9, 13, 0.97));
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
 }
 
 .hero {
@@ -88,14 +98,19 @@
 }
 
 .primary {
-  background: #c49a45;
+  background: linear-gradient(180deg, #d4aa55, #b98b35);
   color: #151109;
+  box-shadow: 0 8px 22px rgba(196, 154, 69, 0.18);
+}
+
+.primary:hover {
+  filter: brightness(1.06);
 }
 
 .secondary {
-  background: rgba(255, 255, 255, 0.07);
-  color: rgba(255, 255, 255, 0.86);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.065);
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
 }
 
 .primary:disabled,
@@ -112,8 +127,19 @@
 }
 
 .metric {
+  position: relative;
+  overflow: hidden;
   border-radius: 15px;
   padding: 16px;
+}
+
+.metric::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(210, 170, 84, 0.42), transparent);
+  content: '';
 }
 
 .metric span,
@@ -125,6 +151,7 @@
 .metric strong {
   display: block;
   margin: 5px 0;
+  color: #f5f1e7;
   font-size: 21px;
 }
 
@@ -181,10 +208,15 @@
   padding: 22px;
   color: inherit;
   text-decoration: none;
+  transition: border-color 140ms ease, transform 140ms ease, background 140ms ease;
 }
 
 .scopeCard:hover {
-  border-color: rgba(210, 170, 84, 0.34);
+  border-color: rgba(210, 170, 84, 0.42);
+  background:
+    radial-gradient(circle at 90% 0, rgba(196, 154, 69, 0.09), transparent 36%),
+    linear-gradient(145deg, rgba(20, 20, 25, 0.99), rgba(10, 10, 14, 0.98));
+  transform: translateY(-1px);
 }
 
 .field {
@@ -199,13 +231,21 @@
 .field select,
 .field textarea {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 10px;
   padding: 10px 11px;
-  background: rgba(2, 9, 9, 0.62);
+  background: rgba(5, 6, 9, 0.82);
   color: #fff;
   font: inherit;
   box-sizing: border-box;
+  outline: none;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: rgba(210, 170, 84, 0.5);
+  box-shadow: 0 0 0 3px rgba(196, 154, 69, 0.08);
 }
 
 .full {
@@ -256,8 +296,9 @@
 }
 
 .notice {
-  background: rgba(54, 143, 112, 0.14);
-  color: #a6e4ce;
+  border: 1px solid rgba(210, 170, 84, 0.2);
+  background: rgba(196, 154, 69, 0.09);
+  color: #ead294;
 }
 
 @media (max-width: 900px) {
