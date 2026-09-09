@@ -1,7 +1,6 @@
 {
-  "requestId": "pw-timers-runtime-recheck-20260909-1516",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "discord-gateway"
+  "requestId": "pw-timers-e2e-20260909-1520",
+  "mode": "daily_timer_panel_e2e",
+  "workspaceId": "kuzyni",
+  "confirm": "DISCORD_TEST_DM_APPROVED"
 }
