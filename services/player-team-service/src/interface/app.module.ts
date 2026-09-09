@@ -18,6 +18,7 @@ import { TeamEconomyRepository } from '../infrastructure/db/team-economy.reposit
 import { TeamInvitationsRepository } from '../infrastructure/db/team-invitations.repository.js';
 
 import { AiObservationController } from './ai-observation.controller.js';
+import { DiscordGatewayPlayerTeamReadController } from './discord-gateway-read.controller.js';
 import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
@@ -42,6 +43,7 @@ import {
   controllers: [
     HealthController,
     PlayerTeamController,
+    DiscordGatewayPlayerTeamReadController,
     HuntRoomsController,
     MetinGeneralHuntsController,
     WorkspaceLiveController,
