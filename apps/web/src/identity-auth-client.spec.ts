@@ -12,14 +12,19 @@ import {
 } from './player-store';
 
 describe('identity session → viewer', () => {
-  it('maps Discord snowflake as viewer id when present', () => {
+  it('maps Discord snowflake and avatar when present', () => {
     const viewer = toPlayerIdentityFromSession({
       displayName: 'Mateusz C.',
       v2UserId: '11111111-2222-4333-8444-555555555555',
       discordAccountId: '123456789012345678',
+      discordAvatarUrl:
+        'https://cdn.discordapp.com/avatars/123456789012345678/avatar.png?size=128',
     });
     expect(viewer.id).toBe('123456789012345678');
     expect(viewer.discordAccountId).toBe('123456789012345678');
+    expect(viewer.discordAvatarUrl).toBe(
+      'https://cdn.discordapp.com/avatars/123456789012345678/avatar.png?size=128',
+    );
     expect(viewer.displayName).toBe('Mateusz C.');
     expect(viewer.initials).toBe('MC');
   });
@@ -31,6 +36,7 @@ describe('identity session → viewer', () => {
     });
     expect(viewer.id).toBe('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
     expect(viewer.discordAccountId).toBeUndefined();
+    expect(viewer.discordAvatarUrl).toBeUndefined();
   });
 
   it('parses auth callback query params (bridge)', () => {
@@ -92,14 +98,18 @@ describe('identity session → viewer', () => {
     ).toBe(false);
   });
 
-  it('completeDiscordAuth accepts PlayerIdentity from OAuth callback', () => {
+  it('completeDiscordAuth keeps the avatar-bearing identity object', () => {
     const identity = toPlayerIdentityFromSession({
       displayName: 'Oak Leaf',
       v2UserId: 'v2-1',
       discordAccountId: '111222333',
+      discordAvatarUrl: 'https://cdn.discordapp.com/embed/avatars/1.png',
     });
     const state = completeDiscordAuth(createInitialPlayerStore(), 'authenticated', identity);
     expect(state.viewer).toEqual(identity);
+    expect((state.viewer as { discordAvatarUrl?: string } | null)?.discordAvatarUrl).toBe(
+      'https://cdn.discordapp.com/embed/avatars/1.png',
+    );
   });
 
   it('keeps Mateusz demo when completeDiscordAuth has no identity', () => {

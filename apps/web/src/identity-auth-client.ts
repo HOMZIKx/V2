@@ -33,8 +33,12 @@ export interface LinkedAccountView {
   readonly updatedAt: string;
 }
 
+export type PlayerIdentityWithDiscordAvatar = PlayerIdentity & {
+  readonly discordAvatarUrl?: string;
+};
+
 export interface ResolvedIdentityViewer {
-  readonly viewer: PlayerIdentity;
+  readonly viewer: PlayerIdentityWithDiscordAvatar;
   readonly v2UserId: string;
   readonly discordAccountId: string | null;
 }
@@ -74,10 +78,12 @@ export function toPlayerIdentityFromSession(input: {
   readonly displayName: string;
   readonly v2UserId: string;
   readonly discordAccountId?: string | null;
-}): PlayerIdentity {
+  readonly discordAvatarUrl?: string | null;
+}): PlayerIdentityWithDiscordAvatar {
   const displayName = input.displayName.trim() || 'Discord';
   const v2UserId = input.v2UserId.trim();
   const discordAccountId = input.discordAccountId?.trim() || null;
+  const discordAvatarUrl = input.discordAvatarUrl?.trim() || null;
   const id = discordAccountId || v2UserId || 'unknown';
   return {
     id,
@@ -85,6 +91,7 @@ export function toPlayerIdentityFromSession(input: {
     discordDisplayName: displayName,
     initials: initialsFromDisplayName(displayName),
     ...(discordAccountId ? { discordAccountId } : {}),
+    ...(discordAvatarUrl ? { discordAvatarUrl } : {}),
   };
 }
 
@@ -158,6 +165,7 @@ export async function resolveDiscordViewerFromSession(): Promise<ResolvedIdentit
       displayName: me.name,
       v2UserId: me.id,
       discordAccountId,
+      discordAvatarUrl: me.image,
     }),
   };
 }
@@ -219,7 +227,8 @@ export function viewerFromCallbackSearchParams(params: URLSearchParams): PlayerI
   const displayName = params.get('displayName')?.trim();
   if (!viewerId || !displayName) return null;
   const discordAccountId = params.get('discordAccountId')?.trim() || null;
-  // Bridge sends V2 uuid as viewerId + optional discordAccountId.
+  // Bridge sends V2 uuid as viewerId + optional discordAccountId. Avatar is taken
+  // from the authoritative live /identity/me session, never trusted from the URL.
   return toPlayerIdentityFromSession({
     displayName,
     v2UserId: viewerId,
