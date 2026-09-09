@@ -17,6 +17,10 @@ function normalizedText(value: unknown): string {
     : '';
 }
 
+function normalizedEquipmentName(value: unknown): string {
+  return normalizedText(value).replace(/\s*\+\d+$/u, '').trim();
+}
+
 function integer(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : null;
@@ -33,13 +37,20 @@ export function evaluateEquipmentFeedback(aiOutput: unknown, finalOutput: unknow
   const final = asRecord(finalOutput);
   const changed: string[] = [];
 
-  if (normalizedText(ai?.name) !== normalizedText(final?.name)) changed.push('name');
+  if (normalizedEquipmentName(ai?.name) !== normalizedEquipmentName(final?.name)) changed.push('name');
   if (integer(ai?.enhancement) !== integer(final?.enhancement)) changed.push('enhancement');
   if (normalizedText(ai?.category) !== normalizedText(final?.category)) changed.push('category');
 
   const aiBonuses = normalizedStringArray(ai?.bonuses);
   const finalBonuses = normalizedStringArray(final?.bonuses);
-  if (JSON.stringify(aiBonuses) !== JSON.stringify(finalBonuses)) changed.push('bonuses');
+  const catalogFilledEmptyAiBonuses =
+    aiBonuses.length === 0 && normalizedText(final?.catalogLayer) === 'project_hard_source';
+  if (
+    !catalogFilledEmptyAiBonuses &&
+    JSON.stringify(aiBonuses) !== JSON.stringify(finalBonuses)
+  ) {
+    changed.push('bonuses');
+  }
 
   return { status: changed.length === 0 ? 'accepted' : 'corrected', changedFields: changed };
 }
