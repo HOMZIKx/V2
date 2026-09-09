@@ -11,7 +11,16 @@ import { progressionTimerLabels } from '../src/project-hard-progression';
 import { useTechnikAccess } from '../src/technik-access';
 
 export type AppSection =
-  'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
+  | 'dashboard'
+  | 'profil'
+  | 'generaly-metki'
+  | 'teams'
+  | 'characters'
+  | 'timers'
+  | 'maps'
+  | 'market'
+  | 'technik'
+  | 'later';
 
 export type IconName =
   | 'activity'
@@ -158,11 +167,7 @@ function NotificationsBell({
       </button>
 
       {open ? (
-        <div
-          aria-label="Lista powiadomień"
-          className="notifications-popover"
-          role="dialog"
-        >
+        <div aria-label="Lista powiadomień" className="notifications-popover" role="dialog">
           <header className="notifications-popover-header">
             <div>
               <strong>Powiadomienia</strong>
@@ -329,6 +334,7 @@ export function AppShell({
     },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
+    { id: 'market' as const, label: 'Ekonomia', icon: 'market' as const, href: '/economy' },
     { id: 'technik' as const, label: 'Technik', icon: 'settings' as const, href: '/technik' },
   ];
   const navigationForAccess = navigation.filter(
