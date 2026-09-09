@@ -21,4 +21,24 @@ describe('character-timer-custom-id', () => {
       expect(parsed.payload.timerId).toBe('timer-skill-book-a1b2c3d4');
     }
   });
+
+  it('round-trips the daily panel snooze delay under Discord 100-char limit', () => {
+    const customId = createCharacterTimerButtonCustomId(
+      'przypomnij',
+      {
+        timerId: 'panel-123e4567-e89b-12d3-a456-426614174000',
+        snoozeMinutes: 60,
+      },
+      secret,
+    );
+
+    expect(customId.length).toBeLessThanOrEqual(100);
+    expect(parseCharacterTimerButtonCustomId(customId, secret)).toMatchObject({
+      operation: 'przypomnij',
+      payload: {
+        timerId: 'panel-123e4567-e89b-12d3-a456-426614174000',
+        snoozeMinutes: 60,
+      },
+    });
+  });
 });

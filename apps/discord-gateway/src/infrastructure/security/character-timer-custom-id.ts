@@ -8,8 +8,10 @@ export type CharacterTimerButtonOperation = 'gotowe' | 'przypomnij';
 
 export type CharacterTimerButtonPayload = {
   readonly timerId: string;
-  /** Optional workspace hint — omitted from customId when too long; looked up from state. */
+  /** Optional workspace hint retained for compatibility with older call sites. */
   readonly workspaceId?: string;
+  /** 0 = return to the live panel; positive value = snooze delay. */
+  readonly snoozeMinutes?: number;
 };
 
 const ACTION_BY_OP: Record<CharacterTimerButtonOperation, ComponentAction> = {
@@ -22,27 +24,52 @@ const OP_BY_ACTION: Partial<Record<ComponentAction, CharacterTimerButtonOperatio
   ct_later: 'przypomnij',
 };
 
-/** Compact payload: timerId only (unique in player-store). */
-export function encodeCharacterTimerButtonPayload(payload: CharacterTimerButtonPayload): string {
-  const timerId = payload.timerId.trim();
-  if (!timerId || timerId.includes('|') || timerId.includes(':')) {
-    throw new Error('timerId is required and must not contain "|" or ":".');
-  }
-  return Buffer.from(timerId, 'utf8')
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, 'utf8')
     .toString('base64')
     .replaceAll('+', '-')
     .replaceAll('/', '_')
     .replaceAll('=', '');
 }
 
+/** Compact payload; old timerId-only custom IDs remain valid. */
+export function encodeCharacterTimerButtonPayload(payload: CharacterTimerButtonPayload): string {
+  const timerId = payload.timerId.trim();
+  if (!timerId || timerId.includes('|') || timerId.includes(':')) {
+    throw new Error('timerId is required and must not contain "|" or ":".');
+  }
+
+  if (payload.snoozeMinutes === undefined) return base64UrlEncode(timerId);
+  if (
+    !Number.isInteger(payload.snoozeMinutes) ||
+    payload.snoozeMinutes < 0 ||
+    payload.snoozeMinutes > 1_440
+  ) {
+    throw new Error('snoozeMinutes must be an integer between 0 and 1440.');
+  }
+  return base64UrlEncode(`${timerId}|${payload.snoozeMinutes}`);
+}
+
 export function decodeCharacterTimerButtonPayload(encoded: string): CharacterTimerButtonPayload {
   const padded = encoded.replaceAll('-', '+').replaceAll('_', '/');
   const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
-  const timerId = Buffer.from(padded + pad, 'base64').toString('utf8').trim();
-  if (!timerId) {
+  const raw = Buffer.from(padded + pad, 'base64').toString('utf8').trim();
+  if (!raw) {
     throw new Error('Invalid character timer button payload.');
   }
-  return { timerId };
+
+  const [timerIdRaw, snoozeRaw, ...extra] = raw.split('|');
+  const timerId = timerIdRaw?.trim() ?? '';
+  if (!timerId || extra.length > 0) {
+    throw new Error('Invalid character timer button payload.');
+  }
+  if (snoozeRaw === undefined) return { timerId };
+
+  const snoozeMinutes = Number(snoozeRaw);
+  if (!Number.isInteger(snoozeMinutes) || snoozeMinutes < 0 || snoozeMinutes > 1_440) {
+    throw new Error('Invalid snooze delay.');
+  }
+  return { timerId, snoozeMinutes };
 }
 
 export function createCharacterTimerButtonCustomId(
