@@ -60,31 +60,74 @@ async function fetchState(
   return asRecord(body?.state);
 }
 
+async function fetchGatewayWorkspaceState(input: {
+  readonly url: string;
+  readonly serviceSecret: string;
+  readonly viewerId: string;
+}): Promise<{ readonly state: LooseRecord; readonly viewerAppId: string | null } | null> {
+  let response: Response;
+  try {
+    response = await fetch(input.url, {
+      method: 'GET',
+      headers: {
+        'x-discord-gateway-secret': input.serviceSecret,
+        'x-discord-user-id': input.viewerId,
+      },
+      cache: 'no-store',
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const body = (await response.json().catch(() => null)) as {
+    readonly state?: unknown;
+    readonly viewerAppId?: unknown;
+  } | null;
+  const state = asRecord(body?.state);
+  if (!state) return null;
+  return { state, viewerAppId: asString(body?.viewerAppId) };
+}
+
 export async function readCharacterTimerPanelFromBot(input: {
   readonly baseUrl: string;
   readonly demoViewerHeader: string;
   readonly viewerId: string;
   readonly workspaceId: string;
   readonly selectedCharacterId?: string | null;
+  readonly serviceSecret?: string | null;
 }): Promise<CharacterTimerPanelSnapshot | null> {
   const baseUrl = input.baseUrl.replace(/\/$/, '');
+  const serviceSecret = input.serviceSecret?.trim() ?? '';
 
-  // The shared workspace can contain legacy member rows where `id` is the V2 app UUID
-  // and `discordAccountId` was never backfilled. Resolve the authenticated viewer's app
-  // id from their private snapshot so the daily Discord panel can still find that row.
-  const viewerState = await fetchState(
-    `${baseUrl}/player-team/v1/me/state`,
-    input.demoViewerHeader,
-    input.viewerId,
-  );
-  const viewer = asRecord(viewerState?.viewer);
-  const viewerAppId = asString(viewer?.id);
+  let workspace: LooseRecord | null = null;
+  let viewerAppId: string | null = null;
 
-  const workspace = await fetchState(
-    `${baseUrl}/player-team/v1/workspaces/${encodeURIComponent(input.workspaceId)}/state`,
-    input.demoViewerHeader,
-    input.viewerId,
-  );
+  if (serviceSecret) {
+    const internal = await fetchGatewayWorkspaceState({
+      url: `${baseUrl}/player-team/v1/internal/discord/workspaces/${encodeURIComponent(input.workspaceId)}/state`,
+      serviceSecret,
+      viewerId: input.viewerId,
+    });
+    workspace = internal?.state ?? null;
+    viewerAppId = internal?.viewerAppId ?? null;
+  } else {
+    // Local/dev compatibility only. Production background jobs use the read-only
+    // service-authenticated endpoint above and never rely on demo access.
+    const viewerState = await fetchState(
+      `${baseUrl}/player-team/v1/me/state`,
+      input.demoViewerHeader,
+      input.viewerId,
+    );
+    const viewer = asRecord(viewerState?.viewer);
+    viewerAppId = asString(viewer?.id);
+
+    workspace = await fetchState(
+      `${baseUrl}/player-team/v1/workspaces/${encodeURIComponent(input.workspaceId)}/state`,
+      input.demoViewerHeader,
+      input.viewerId,
+    );
+  }
+
   if (!workspace) return null;
 
   const members = Array.isArray(workspace.members)
