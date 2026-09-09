@@ -2,6 +2,7 @@ import type { RespawnKind, RespawnLocation } from './respawn-timers';
 
 export type PartyVisibility = 'open' | 'closed';
 export type PartyRequestStatus = 'pending' | 'accepted' | 'rejected';
+export type PartyHuntRole = 'scout' | 'hunter';
 /** Scout pin kinds shown in UI: Metin / Boss / Inne. */
 export type ScoutPinKind = RespawnKind | 'spot';
 
@@ -21,6 +22,8 @@ export interface MapPartyMember {
   readonly id: string;
   readonly displayName: string;
   readonly role: 'leader' | 'member';
+  /** Role inside the active hunt. Independent from party permissions. */
+  readonly huntRole: PartyHuntRole;
 }
 
 export interface MapPartyRequest {
@@ -58,6 +61,12 @@ export interface PartyScoutPin {
   readonly placedBy: string;
   readonly label: string;
   readonly kind: ScoutPinKind;
+  /** Hunter who declared „Idę”. Kept on the pin so every party member sees the same claim. */
+  readonly claimedBy?: string | null;
+  readonly claimedAt?: number | null;
+  /** Completed pins stay durable in the shared room but are excluded from the active map. */
+  readonly completedBy?: string | null;
+  readonly completedAt?: number | null;
 }
 
 export function scoutPinKindLabel(kind: ScoutPinKind): string {
@@ -65,7 +74,7 @@ export function scoutPinKindLabel(kind: ScoutPinKind): string {
 }
 
 export function createMapParty(input: {
-  readonly leader: Omit<MapPartyMember, 'role'>;
+  readonly leader: Omit<MapPartyMember, 'role' | 'huntRole'>;
   readonly mapKey: string;
   readonly activeChannel: number;
   readonly visibility: PartyVisibility;
@@ -80,7 +89,7 @@ export function createMapParty(input: {
     joinCode: code,
     mapKey: input.mapKey,
     activeChannel: input.activeChannel,
-    members: [{ ...input.leader, role: 'leader' }],
+    members: [{ ...input.leader, role: 'leader', huntRole: 'scout' }],
     requests: [],
     sessionKills: 0,
   };
@@ -95,7 +104,7 @@ export function createMapParty(input: {
 export function joinPartyByCode(input: {
   readonly code: string;
   readonly savedClosedParty: MapParty | null;
-  readonly member: Omit<MapPartyMember, 'role'>;
+  readonly member: Omit<MapPartyMember, 'role' | 'huntRole'>;
   readonly mapKey: string;
   readonly activeChannel: number;
   readonly now: number;
@@ -120,7 +129,7 @@ export function joinPartyByCode(input: {
       fromSaved: true,
       party: {
         ...party,
-        members: [...party.members, { ...input.member, role: 'member' }],
+        members: [...party.members, { ...input.member, role: 'member', huntRole: 'hunter' }],
       },
     };
   }
@@ -137,8 +146,13 @@ export function joinPartyByCode(input: {
       mapKey: input.mapKey,
       activeChannel: input.activeChannel,
       members: [
-        { id: 'remote-leader', displayName: 'Lider (mock)', role: 'leader' },
-        { ...input.member, role: 'member' },
+        {
+          id: 'remote-leader',
+          displayName: 'Lider (mock)',
+          role: 'leader',
+          huntRole: 'scout',
+        },
+        { ...input.member, role: 'member', huntRole: 'hunter' },
       ],
       requests: [],
       sessionKills: 0,
@@ -152,6 +166,19 @@ export function setPartyMap(party: MapParty, mapKey: string, channel = 1): MapPa
 
 export function setPartyChannel(party: MapParty, channel: number): MapParty {
   return { ...party, activeChannel: channel };
+}
+
+export function setPartyMemberHuntRole(
+  party: MapParty,
+  memberId: string,
+  huntRole: PartyHuntRole,
+): MapParty {
+  return {
+    ...party,
+    members: party.members.map((member) =>
+      member.id === memberId ? { ...member, huntRole } : member,
+    ),
+  };
 }
 
 export function togglePartyVisibility(party: MapParty): MapParty {
@@ -181,7 +208,10 @@ export function resolvePartyRequest(
   return {
     ...party,
     members: accepted
-      ? [...party.members, { id: request.id, displayName: request.displayName, role: 'member' }]
+      ? [
+          ...party.members,
+          { id: request.id, displayName: request.displayName, role: 'member', huntRole: 'hunter' },
+        ]
       : party.members,
     requests: party.requests.map((item) =>
       item.id === requestId ? { ...item, status: accepted ? 'accepted' : 'rejected' } : item,
@@ -198,7 +228,7 @@ export function resetSessionKills(party: MapParty): MapParty {
 }
 
 export function isScoutPinActive(pin: PartyScoutPin, now: number): boolean {
-  return now - pin.placedAt < PARTY_SCOUT_PIN_TTL_MS;
+  return pin.completedAt == null && now - pin.placedAt < PARTY_SCOUT_PIN_TTL_MS;
 }
 
 export function scoutPinAgeMinutes(pin: PartyScoutPin, now: number): number {
@@ -244,11 +274,58 @@ export function partyActiveScoutPins(
   return pins.filter((pin) => pin.partyId === party.id && isScoutPinActive(pin, now));
 }
 
+/** Completed markers are retained in the room for session history/audit. */
+export function partyCompletedScoutPins(
+  pins: readonly PartyScoutPin[],
+  party: MapParty | null,
+): readonly PartyScoutPin[] {
+  if (!party) return [];
+  return pins.filter((pin) => pin.partyId === party.id && pin.completedAt != null);
+}
+
 export function placeScoutPin(
   pins: readonly PartyScoutPin[],
   pin: PartyScoutPin,
 ): readonly PartyScoutPin[] {
   return [...pins, pin];
+}
+
+export function claimScoutPin(
+  pins: readonly PartyScoutPin[],
+  pinId: string,
+  claimedBy: string,
+  now: number,
+): readonly PartyScoutPin[] {
+  return pins.map((pin) =>
+    pin.id === pinId && pin.completedAt == null
+      ? { ...pin, claimedBy, claimedAt: now }
+      : pin,
+  );
+}
+
+export function releaseScoutPinClaim(
+  pins: readonly PartyScoutPin[],
+  pinId: string,
+  claimedBy: string,
+): readonly PartyScoutPin[] {
+  return pins.map((pin) =>
+    pin.id === pinId && pin.claimedBy === claimedBy && pin.completedAt == null
+      ? { ...pin, claimedBy: null, claimedAt: null }
+      : pin,
+  );
+}
+
+export function completeScoutPin(
+  pins: readonly PartyScoutPin[],
+  pinId: string,
+  completedBy: string,
+  now: number,
+): readonly PartyScoutPin[] {
+  return pins.map((pin) =>
+    pin.id === pinId && pin.completedAt == null
+      ? { ...pin, completedBy, completedAt: now }
+      : pin,
+  );
 }
 
 export function dismissScoutPin(
@@ -258,12 +335,12 @@ export function dismissScoutPin(
   return pins.filter((pin) => pin.id !== pinId);
 }
 
-/** Drop expired scout pins so localStorage / UI stay clean. */
+/** Drop expired active scout pins so localStorage / UI stay clean. Completed pins are history. */
 export function pruneExpiredScoutPins(
   pins: readonly PartyScoutPin[],
   now: number,
 ): readonly PartyScoutPin[] {
-  return pins.filter((pin) => isScoutPinActive(pin, now));
+  return pins.filter((pin) => pin.completedAt != null || isScoutPinActive(pin, now));
 }
 
 /** @deprecated Use PartyScoutPin + activeScoutPins — kept for old localStorage migration. */
