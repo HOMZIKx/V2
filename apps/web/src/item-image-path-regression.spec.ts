@@ -23,11 +23,14 @@ describe('imported item image paths', () => {
     expect(imported.length).toBeGreaterThan(0);
 
     const unresolved = imported.filter((item) => {
-      if (!item.sourceImageUrl?.startsWith('/game/items/wiki/')) return true;
-      const filename = path.posix.basename(item.sourceImageUrl);
-      const localExists = existsSync(path.join(publicRoot, item.sourceImageUrl.slice(1)));
+      const sourceImageUrl = item.sourceImageUrl;
+      if (!sourceImageUrl?.startsWith('/game/items/')) return true;
+
+      const localExists = existsSync(path.join(publicRoot, sourceImageUrl.slice(1)));
       if (localExists) return false;
 
+      if (!sourceImageUrl.startsWith('/game/items/wiki/')) return true;
+      const filename = path.posix.basename(sourceImageUrl);
       const fallbackItem = catalogItemForWikiFilename(filename);
       return (
         fallbackItem?.id !== item.id ||
