@@ -1,0 +1,184 @@
+name: Economy catalog polish patch
+
+on:
+  push:
+    branches:
+      - feat/economy-catalog-polish-20260909
+    paths:
+      - .github/workflows/economy-catalog-polish-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/economy-catalog-polish-20260909
+      - name: Apply targeted patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          def replace_once(path, old, new):
+              p=Path(path); text=p.read_text()
+              count=text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected 1 match, got {count} for {old[:80]!r}')
+              p.write_text(text.replace(old,new,1))
+
+          # 1) Canonical catalog imports must repair stale/wrong image URLs.
+          replace_once(
+            'services/player-team-service/src/infrastructure/db/team-economy.repository.ts',
+            "image_url = COALESCE(image_url, $3),",
+            "image_url = COALESCE($3, image_url),",
+          )
+
+          # 2) Missing local wiki assets: prefer exact item-title redirect before fuzzy page-image matching.
+          proxy='apps/web/src/server/item-image-proxy.ts'
+          old="""  const resolvedUrl = await resolveWikiImageUrl(item, fetchImpl);\n  if (resolvedUrl) {\n    const image = await fetchRemoteImage(fetchImpl, resolvedUrl);\n    if (image) return image;\n  }\n\n  for (const candidate of itemTitleRedirectCandidates(item)) {\n    const image = await fetchRemoteImage(fetchImpl, candidate);\n    if (image) return image;\n  }\n"""
+          new="""  // Exact file-name redirects are safer than fuzzy page-image matching.\n  // Some wiki pages contain several visually similar item images; using fuzzy matching first\n  // can return a valid image that belongs to a different item.\n  for (const candidate of itemTitleRedirectCandidates(item)) {\n    const image = await fetchRemoteImage(fetchImpl, candidate);\n    if (image) return image;\n  }\n\n  const resolvedUrl = await resolveWikiImageUrl(item, fetchImpl);\n  if (resolvedUrl) {\n    const image = await fetchRemoteImage(fetchImpl, resolvedUrl);\n    if (image) return image;\n  }\n"""
+          replace_once(proxy, old, new)
+
+          # 3) Generate a one-time DB repair migration from the canonical DOBRYTEMAT catalog.
+          catalog=json.loads(Path('apps/web/src/data/dobry-temat-item-catalog.json').read_text())
+          items=catalog['items'] if isinstance(catalog,dict) and 'items' in catalog else catalog
+          wiki=json.loads(Path('apps/web/src/data/wiki-item-image-map.json').read_text())
+          ph=json.loads(Path('apps/web/src/data/ph-item-icon-map.json').read_text())
+          def source_image(item):
+              title=str(item.get('title','')).strip()
+              iid=str(item.get('id','')).strip()
+              if title in ph: return ph[title]
+              if iid in wiki: return wiki[iid]
+              raw=item.get('image_url')
+              if isinstance(raw,str) and raw.startswith('/item-database/wiki/'):
+                  return '/game/items/wiki/'+raw.rsplit('/',1)[-1]
+              if isinstance(raw,str) and raw.startswith('/game/items/'):
+                  return raw
+              return None
+          rows=[]
+          for item in items:
+              name=str(item.get('title','')).strip()
+              image=source_image(item)
+              if not name or not image: continue
+              esc_name=name.replace("'","''")
+              esc_img=image.replace("'","''")
+              rows.append(f"    ('{esc_name}', '{esc_img}')")
+          migration="""-- Repair economy catalog images from the canonical DOBRYTEMAT catalog.\n-- Generated from apps/web/src/data/dobry-temat-item-catalog.json + local image maps.\n-- This deliberately updates by canonical name so legacy/random item IDs keep their FK history.\n\nWITH canonical_images(canonical_name, image_url) AS (\n  VALUES\n""" + ',\n'.join(rows) + """\n)\nUPDATE player_team_economy_items AS item\nSET image_url = canonical_images.image_url,\n    updated_at = NOW()\nFROM canonical_images\nWHERE LOWER(item.canonical_name) = LOWER(canonical_images.canonical_name)\n  AND item.image_url IS DISTINCT FROM canonical_images.image_url;\n"""
+          Path('services/player-team-service/migrations/008_economy_catalog_image_repair.sql').write_text(migration)
+
+          # 4) Team AI: resolve against the live canonical catalog and prefill its latest price.
+          team='apps/web/app/teams/[teamId]/economy/team-economy.tsx'
+          replace_once(team,
+            """type AiItem = {\n  recognizedName: string;\n  quantity: number;\n  confidence: number;\n  catalogMatch: {\n    id: string;\n    name: string;\n    category: string;\n    imageUrl: string | null;\n  } | null;\n};\n""",
+            """type AiItem = {\n  recognizedName: string;\n  quantity: number;\n  confidence: number;\n  catalogMatch: {\n    id: string;\n    name: string;\n    category: string;\n    imageUrl: string | null;\n  } | null;\n};\n\ntype CatalogSearchItem = {\n  id: string;\n  canonicalName: string;\n  category: string;\n  imageUrl: string | null;\n  lastPrice: { unitPrice: number; currency: Currency; createdAtIso: string } | null;\n};\n""
+          )
+          replace_once(team,
+            """      setDraftItems(\n        body.items.map((item, index) => ({\n          key: `ai-${Date.now()}-${index}`,\n          itemId: null,\n          name: item.catalogMatch?.name ?? item.recognizedName,\n          category: item.catalogMatch?.category ?? 'Pozostałe',\n          totalQuantity: item.quantity,\n          ourQuantity: item.quantity,\n          unitPrice: 0,\n          currency: 'yang',\n          confidence: item.confidence,\n        })),\n      );\n""",
+            """      const resolvedAiItems = await Promise.all(\n        body.items.map(async (item, index): Promise<DraftItem> => {\n          const name = item.catalogMatch?.name ?? item.recognizedName;\n          let catalogItem: CatalogSearchItem | null = null;\n          const catalogResponse = await fetch(api(workspace.id, `items?q=${encodeURIComponent(name)}`), {\n            cache: 'no-store',\n          });\n          if (catalogResponse.ok) {\n            const candidates = (await catalogResponse.json()) as CatalogSearchItem[];\n            catalogItem =\n              candidates.find(\n                (candidate) =>\n                  candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===\n                  name.trim().toLocaleLowerCase('pl-PL'),\n              ) ?? null;\n          }\n          return {\n            key: `ai-${Date.now()}-${index}`,\n            itemId: catalogItem?.id ?? null,\n            name: catalogItem?.canonicalName ?? name,\n            category: catalogItem?.category ?? item.catalogMatch?.category ?? 'Pozostałe',\n            totalQuantity: item.quantity,\n            ourQuantity: item.quantity,\n            unitPrice: catalogItem?.lastPrice?.unitPrice ?? 0,\n            currency: catalogItem?.lastPrice?.currency ?? 'yang',\n            confidence: item.confidence,\n          };\n        }),\n      );\n      setDraftItems(resolvedAiItems);\n"""
+          )
+
+          # Team manual/edited item: search exact catalog name before creating a new record.
+          replace_once(team,
+            """        if (!itemId) {\n          const response = await fetch(api(workspace.id, 'items'), {\n            method: 'POST',\n            headers: { 'content-type': 'application/json' },\n            body: JSON.stringify({\n              canonicalName: item.name.trim(),\n              category: item.category || 'Pozostałe',\n            }),\n          });\n          if (!response.ok) throw new Error(`Nie udało się zapisać przedmiotu: ${item.name}.`);\n          const saved = (await response.json()) as { id: string };\n          itemId = saved.id;\n        }\n""",
+            """        if (!itemId) {\n          const searchResponse = await fetch(\n            api(workspace.id, `items?q=${encodeURIComponent(item.name.trim())}`),\n            { cache: 'no-store' },\n          );\n          if (searchResponse.ok) {\n            const candidates = (await searchResponse.json()) as CatalogSearchItem[];\n            const exact = candidates.find(\n              (candidate) =>\n                candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===\n                item.name.trim().toLocaleLowerCase('pl-PL'),\n            );\n            if (exact) itemId = exact.id;\n          }\n        }\n        if (!itemId) {\n          const response = await fetch(api(workspace.id, 'items'), {\n            method: 'POST',\n            headers: { 'content-type': 'application/json' },\n            body: JSON.stringify({\n              canonicalName: item.name.trim(),\n              category: item.category || 'Pozostałe',\n            }),\n          });\n          if (!response.ok) throw new Error(`Nie udało się zapisać przedmiotu: ${item.name}.`);\n          const saved = (await response.json()) as { id: string };\n          itemId = saved.id;\n        }\n"""
+          )
+
+          # Same duplicate protection while editing historical drops.
+          hist='apps/web/app/teams/[teamId]/economy/drop-history-actions.tsx'
+          replace_once(hist,
+            """      const response = await fetch(api(workspaceId, 'items'), {\n        method: 'POST',\n        headers: { 'content-type': 'application/json' },\n        body: JSON.stringify({ canonicalName: item.displayName.trim(), category: 'Pozostałe' }),\n      });\n      if (!response.ok) throw new Error(`Nie udało się zapisać przedmiotu: ${item.displayName}.`);\n      const saved = (await response.json()) as { id: string };\n      resolved.push({ ...item, itemId: saved.id });\n""",
+            """      const searchResponse = await fetch(\n        api(workspaceId, `items?q=${encodeURIComponent(item.displayName.trim())}`),\n        { cache: 'no-store' },\n      );\n      if (searchResponse.ok) {\n        const candidates = (await searchResponse.json()) as Array<{ id: string; canonicalName: string }>;\n        const exact = candidates.find(\n          (candidate) =>\n            candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===\n            item.displayName.trim().toLocaleLowerCase('pl-PL'),\n        );\n        if (exact) {\n          resolved.push({ ...item, itemId: exact.id });\n          continue;\n        }\n      }\n      const response = await fetch(api(workspaceId, 'items'), {\n        method: 'POST',\n        headers: { 'content-type': 'application/json' },\n        body: JSON.stringify({ canonicalName: item.displayName.trim(), category: 'Pozostałe' }),\n      });\n      if (!response.ok) throw new Error(`Nie udało się zapisać przedmiotu: ${item.displayName}.`);\n      const saved = (await response.json()) as { id: string };\n      resolved.push({ ...item, itemId: saved.id });\n"""
+          )
+
+          # 5) Price hint: add robust median and visible freshness based on retrieved history.
+          hint='apps/web/app/teams/[teamId]/economy/market-price-hint.tsx'
+          replace_once(hint,
+            """  const selected = useMemo(\n    () => prices.find((price) => price.currency === currency) ?? null,\n    [currency, prices],\n  );\n""",
+            """  const stats = useMemo(() => {\n    const rows = prices.filter((price) => price.currency === currency);\n    const latest = rows[0] ?? null;\n    if (!latest) return null;\n    const values = rows.map((price) => price.unitPrice).sort((left, right) => left - right);\n    const middle = Math.floor(values.length / 2);\n    const median =\n      values.length % 2 === 0\n        ? ((values[middle - 1] ?? 0) + (values[middle] ?? 0)) / 2\n        : (values[middle] ?? 0);\n    const ageDays = Math.max(0, (Date.now() - new Date(latest.createdAtIso).getTime()) / 86_400_000);\n    const freshness = ageDays <= 3 ? 'świeża' : ageDays <= 14 ? 'starsza' : 'nieaktualna';\n    return { latest, median, freshness };\n  }, [currency, prices]);\n"""
+          )
+          replace_once(hint,
+            """  if (!selected) {\n    return <div className={`${styles.hint} ${styles.muted}`}>Brak zapisanej ceny {currency.toUpperCase()} dla tego przedmiotu.</div>;\n  }\n\n  return (\n    <div className={styles.hint}>\n      <div className={styles.row}>\n        <span>Ostatnia:</span>\n        <strong>{compact(selected.unitPrice, currency)}</strong>\n        <span>· {new Date(selected.createdAtIso).toLocaleDateString('pl-PL')}</span>\n        <button className={styles.action} onClick={() => onUsePrice(selected.unitPrice)} type=\"button\">\n          Użyj\n        </button>\n      </div>\n      <div className={styles.row}>\n        <span>Średnia:</span>\n        <strong>{compact(selected.averagePrice, currency)}</strong>\n        <span>· {selected.sampleCount} wpisów</span>\n        <button className={styles.action} onClick={() => onUsePrice(selected.averagePrice)} type=\"button\">\n          Użyj średniej\n        </button>\n      </div>\n    </div>\n  );\n""",
+            """  if (!stats) {\n    return <div className={`${styles.hint} ${styles.muted}`}>Brak zapisanej ceny {currency.toUpperCase()} dla tego przedmiotu.</div>;\n  }\n\n  return (\n    <div className={styles.hint}>\n      <div className={styles.row}>\n        <span>Ostatnia:</span>\n        <strong>{compact(stats.latest.unitPrice, currency)}</strong>\n        <span>· {new Date(stats.latest.createdAtIso).toLocaleDateString('pl-PL')} · {stats.freshness}</span>\n        <button className={styles.action} onClick={() => onUsePrice(stats.latest.unitPrice)} type=\"button\">\n          Użyj\n        </button>\n      </div>\n      <div className={styles.row}>\n        <span>Mediana:</span>\n        <strong>{compact(stats.median, currency)}</strong>\n        <span>· {prices.filter((price) => price.currency === currency).length} ostatnich wpisów</span>\n        <button className={styles.action} onClick={() => onUsePrice(stats.median)} type=\"button\">\n          Użyj mediany\n        </button>\n      </div>\n      <div className={styles.row}>\n        <span>Średnia:</span>\n        <strong>{compact(stats.latest.averagePrice, currency)}</strong>\n        <span>· {stats.latest.sampleCount} wpisów łącznie</span>\n      </div>\n    </div>\n  );\n"""
+          )
+
+          # 6) Economy palette: use the same red/blue/silver/black tokens as the rest of V2.
+          econ=Path('apps/web/app/economy/economy.module.css')
+          css=econ.read_text()
+          substitutions={
+            '#fff3c8':'var(--text)',
+            'rgba(196, 154, 69, 0.22)':'rgba(57, 136, 255, 0.18)',
+            'rgba(196, 154, 69, 0.1)':'rgba(57, 136, 255, 0.08)',
+            'rgba(224, 186, 99, 0.35)':'rgba(57, 136, 255, 0.34)',
+            'rgba(196, 154, 69, 0.055)':'rgba(57, 136, 255, 0.055)',
+            '#d2aa54':'#82b0ff',
+            'linear-gradient(180deg, #d4aa55, #b98b35)':'linear-gradient(180deg, var(--red), var(--red-deep))',
+            'color: #151109;':'color: #fff;',
+            'rgba(196, 154, 69, 0.18)':'rgba(227, 60, 87, 0.2)',
+            'rgba(210, 170, 84, 0.42)':'rgba(57, 136, 255, 0.42)',
+            'rgba(196, 154, 69, 0.16)':'rgba(57, 136, 255, 0.14)',
+            '#e6c36d':'#aecdff',
+            'rgba(196, 154, 69, 0.09)':'rgba(57, 136, 255, 0.08)',
+            'rgba(210, 170, 84, 0.5)':'rgba(57, 136, 255, 0.52)',
+            'rgba(196, 154, 69, 0.08)':'rgba(57, 136, 255, 0.08)',
+            '#ead294':'#b9d2ff',
+          }
+          for oldv,newv in substitutions.items(): css=css.replace(oldv,newv)
+          econ.write_text(css)
+
+          teamcss=Path('apps/web/app/teams/[teamId]/economy/team-economy.module.css')
+          css=teamcss.read_text()
+          css=css.replace('rgba(240, 189, 100, 0.07)', 'rgba(227, 60, 87, 0.07)')
+          css=css.replace('color: var(--amber);', 'color: #82b0ff;', 1)
+          css=css.replace('border-color: rgba(240, 189, 100, 0.34);', 'border-color: rgba(227, 60, 87, 0.38);')
+          css=css.replace('background: linear-gradient(180deg, rgba(240, 189, 100, 0.16), rgba(240, 189, 100, 0.08));', 'background: linear-gradient(180deg, rgba(227, 60, 87, 0.24), rgba(140, 29, 52, 0.18));')
+          css=css.replace('color: #f4d69b;', 'color: #ffd7df;', 1)
+          css=css.replace('border-color: rgba(240, 189, 100, 0.55);', 'border-color: rgba(227, 60, 87, 0.6);')
+          css=css.replace('background: linear-gradient(180deg, rgba(240, 189, 100, 0.22), rgba(240, 189, 100, 0.11));', 'background: linear-gradient(180deg, rgba(227, 60, 87, 0.3), rgba(140, 29, 52, 0.22));')
+          css=css.replace('color: var(--green) !important;', 'color: var(--silver) !important;')
+          css=css.replace('border: 1px solid rgba(240, 189, 100, 0.2);', 'border: 1px solid rgba(57, 136, 255, 0.22);')
+          css=css.replace('background: rgba(240, 189, 100, 0.045);', 'background: rgba(57, 136, 255, 0.05);')
+          css=css.replace('color: #f4d69b;', 'color: #b9d2ff;')
+          teamcss.write_text(css)
+
+          # 7) Regression test for exact wiki-image fallback priority.
+          test='apps/web/src/item-image-path-regression.spec.ts'
+          replace_once(test,
+            "import { catalogItemForWikiFilename } from './server/item-image-proxy.js';",
+            "import { catalogItemForWikiFilename, getCatalogWikiImageResponse } from './server/item-image-proxy.js';"
+          )
+          replace_once(test,
+            """  it('keeps a known missing binary addressable by the fallback route', () => {\n    const missing = findGameItemByTitle('Amulet Karmy 1');\n    expect(missing?.sourceImageUrl).toBe('/game/items/wiki/wiki_d69e989913be0bfd.png');\n    expect(existsSync(path.join(publicRoot, 'game/items/wiki/wiki_d69e989913be0bfd.png'))).toBe(false);\n    expect(catalogItemForWikiFilename('wiki_d69e989913be0bfd.png')?.title).toBe('Amulet Karmy 1');\n  });\n""",
+            """  it('keeps a known missing binary addressable by the fallback route', () => {\n    const missing = findGameItemByTitle('Amulet Karmy 1');\n    expect(missing?.sourceImageUrl).toBe('/game/items/wiki/wiki_d69e989913be0bfd.png');\n    expect(existsSync(path.join(publicRoot, 'game/items/wiki/wiki_d69e989913be0bfd.png'))).toBe(false);\n    expect(catalogItemForWikiFilename('wiki_d69e989913be0bfd.png')?.title).toBe('Amulet Karmy 1');\n  });\n\n  it('tries the exact wiki filename before fuzzy page-image discovery for missing local assets', async () => {\n    const requested: string[] = [];\n    const fakeFetch = (async (input: string | URL | Request) => {\n      const url = String(input);\n      requested.push(url);\n      if (url.includes('/Special:Redirect/file/Amulet_Karmy_1.png')) {\n        return new Response(new Uint8Array([1, 2, 3]), {\n          status: 200,\n          headers: { 'content-type': 'image/png' },\n        });\n      }\n      return new Response(null, { status: 404 });\n    }) as typeof fetch;\n\n    const response = await getCatalogWikiImageResponse('wiki_d69e989913be0bfd.png', fakeFetch);\n    expect(response.status).toBe(200);\n    expect(requested[0]).toContain('/Special:Redirect/file/Amulet_Karmy_1.png');\n    expect(requested.some((url) => url.includes('/api.php'))).toBe(false);\n  });\n"""
+          )
+
+          print(f'generated migration rows={len(rows)}')
+          PY
+
+      - name: Format touched TS/CSS
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec prettier --write \
+            apps/web/app/economy/economy.module.css \
+            apps/web/app/teams/[teamId]/economy/team-economy.module.css \
+            apps/web/app/teams/[teamId]/economy/team-economy.tsx \
+            apps/web/app/teams/[teamId]/economy/drop-history-actions.tsx \
+            apps/web/app/teams/[teamId]/economy/market-price-hint.tsx \
+            apps/web/src/server/item-image-proxy.ts \
+            apps/web/src/item-image-path-regression.spec.ts \
+            services/player-team-service/src/infrastructure/db/team-economy.repository.ts
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'HOMZIKx'
+          git config user.email 'ciborex12@gmail.com'
+          git add apps/web services/player-team-service
+          git commit -m 'fix(economy): align theme and repair catalog item resolution'
+          git push origin HEAD:feat/economy-catalog-polish-20260909
