@@ -1,0 +1,42 @@
+name: Zeabur redeploy target probe
+on:
+  push:
+    branches: [chore/live-route-probe-post-economy-20260909]
+    paths: [.github/workflows/zeabur-redeploy-target-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve exact redeploy targets
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=os.environ['ZEABUR_API_TOKEN'].strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=30)
+            if r.returncode: print('::error::Zeabur request failed');sys.exit(1)
+            p=json.loads(r.stdout)
+            if p.get('errors'): print('::error::Zeabur GraphQL: '+str(p['errors'][0].get('message','unknown'))[:200]);sys.exit(1)
+            return p.get('data') or {}
+          schema=gql('''query { __schema { mutationType { fields { name type { kind name ofType { kind name } } } } } }''')
+          field=next((f for f in schema['__schema']['mutationType']['fields'] if f['name']=='redeployService'),None)
+          print('REDEPLOY_RETURN_TYPE='+json.dumps(field.get('type') if field else None,separators=(',',':')))
+          root=gql('query{projects{edges{node{_id name}}}}'); ps=[e['node'] for e in root['projects']['edges']]
+          p=next((x for x in ps if x['name']=='untitled-1'),None) or (ps[0] if len(ps)==1 else None)
+          if not p: print('::error::Project not resolved');sys.exit(1)
+          d=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':p['_id']})['project']
+          print('ZEABUR_SERVICES='+json.dumps([x['name'] for x in d['services']],separators=(',',':')))
+          candidates=[x for x in d['services'] if 'player' in (x.get('name') or '').lower() and 'team' in (x.get('name') or '').lower()]
+          if len(candidates)!=1: print(f'::error::Expected one Player Team service, found {len(candidates)}');sys.exit(2)
+          web=[x for x in d['services'] if x.get('name')=='webapp-dest']
+          if len(web)!=1: print(f'::error::Expected one webapp-dest service, found {len(web)}');sys.exit(2)
+          prod=[x for x in d['environments'] if x.get('name')=='production']
+          if len(prod)!=1: print(f'::error::Expected one production environment, found {len(prod)}');sys.exit(2)
+          print('REDEPLOY_TARGETS='+json.dumps({'web':web[0]['name'],'playerTeam':candidates[0]['name'],'environment':prod[0]['name']},separators=(',',':')))
+          PY
