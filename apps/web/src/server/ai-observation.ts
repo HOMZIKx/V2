@@ -21,12 +21,31 @@ function imageSha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
+function inferredPageContext(request: Request): {
+  readonly workspaceId: string | null;
+  readonly characterId: string | null;
+} {
+  const referer = request.headers.get('referer');
+  if (!referer) return { workspaceId: null, characterId: null };
+  try {
+    const pathname = new URL(referer).pathname;
+    const match = /^\/teams\/([^/]+)(?:\/characters\/([^/]+))?(?:\/|$)/u.exec(pathname);
+    return {
+      workspaceId: match?.[1] ? decodeURIComponent(match[1]) : null,
+      characterId: match?.[2] ? decodeURIComponent(match[2]) : null,
+    };
+  } catch {
+    return { workspaceId: null, characterId: null };
+  }
+}
+
 export async function recordAiObservation(
   request: Request,
   input: AiObservationRecordInput,
 ): Promise<string | null> {
   const cookie = request.headers.get('cookie');
   if (!cookie) return null;
+  const context = inferredPageContext(request);
 
   try {
     const response = await fetch(internalWebUrl(request.url, '/player-team/v1/ai-observations'), {
@@ -38,8 +57,8 @@ export async function recordAiObservation(
       },
       body: JSON.stringify({
         analysisType: input.analysisType,
-        workspaceId: input.workspaceId ?? null,
-        characterId: input.characterId ?? null,
+        workspaceId: input.workspaceId ?? context.workspaceId,
+        characterId: input.characterId ?? context.characterId,
         model: input.model,
         promptVersion: input.promptVersion,
         parserVersion: input.parserVersion,
