@@ -61,6 +61,7 @@ type Drop = {
 };
 type Expense = {
   id: string;
+  dropSessionId: string | null;
   label: string;
   quantity: number;
   unitPrice: number;
@@ -92,12 +93,6 @@ type CatalogSearchItem = {
 };
 
 const api = (path: string) => `/player-team/v1/economy/private/${path}`;
-
-function weekStartIso(): string {
-  const now = new Date();
-  const day = (now.getDay() + 6) % 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0).toISOString();
-}
 
 const CURRENCIES: readonly Currency[] = ['yang', 'won', 'gem'];
 
@@ -146,6 +141,7 @@ export default function PrivateEconomyPage() {
   const [costQuantity, setCostQuantity] = useState(1);
   const [costUnitPrice, setCostUnitPrice] = useState(0);
   const [costCurrency, setCostCurrency] = useState<Currency>('yang');
+  const [costDropSessionId, setCostDropSessionId] = useState('');
 
   const catalogNames = useMemo(
     () =>
@@ -414,6 +410,7 @@ export default function PrivateEconomyPage() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          dropSessionId: costDropSessionId || null,
           label: costLabel.trim(),
           expenseType: 'other',
           quantity: costQuantity,
@@ -426,6 +423,7 @@ export default function PrivateEconomyPage() {
       if (!response.ok) throw new Error('Serwer odrzucił koszt.');
       setCostLabel('');
       setCostUnitPrice(0);
+      setCostDropSessionId('');
       setCostOpen(false);
       setNotice('Koszt zapisany w prywatnej ekonomii.');
       await load();
@@ -581,6 +579,20 @@ export default function PrivateEconomyPage() {
                       {item.confidence !== null ? (
                         <small>AI (beta): {Math.round(item.confidence * 100)}%</small>
                       ) : null}
+                    </label>
+                    <label className={styles.field}>
+                      Powiąż z dropem / aktywnością
+                      <select
+                        value={costDropSessionId}
+                        onChange={(event) => setCostDropSessionId(event.target.value)}
+                      >
+                        <option value="">Koszt ogólny</option>
+                        {drops.map((drop) => (
+                          <option key={drop.id} value={drop.id}>
+                            {drop.source} · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label className={styles.field}>
                       Ilość

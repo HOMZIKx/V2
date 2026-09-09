@@ -97,6 +97,7 @@ type Drop = {
 
 type Expense = {
   id: string;
+  dropSessionId: string | null;
   label: string;
   quantity: number;
   unitPrice: number;
@@ -160,13 +161,6 @@ const dobryTematSeed = Array.from(
     }, new Map<string, { id: string; canonicalName: string; category: string; imageUrl: string | null }>())
     .values(),
 );
-
-function weekStartIso(): string {
-  const now = new Date();
-  const day = (now.getDay() + 6) % 7;
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0);
-  return start.toISOString();
-}
 
 const CURRENCIES: readonly Currency[] = ['yang', 'won', 'gem'];
 
@@ -236,7 +230,6 @@ export function TeamEconomy() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [catalogReady, setCatalogReady] = useState(false);
   const [range, setRange] = useState<RangePreset>('7d');
 
   const [dropOpen, setDropOpen] = useState(false);
@@ -259,6 +252,7 @@ export function TeamEconomy() {
   const [expensePrice, setExpensePrice] = useState(0);
   const [expenseCurrency, setExpenseCurrency] = useState<Currency>('yang');
   const [expenseShare, setExpenseShare] = useState(100);
+  const [expenseDropSessionId, setExpenseDropSessionId] = useState('');
 
   useEffect(() => {
     if (!workspace) {
@@ -316,44 +310,6 @@ export function TeamEconomy() {
     setSelectedMembers(workspace.members.map((member) => member.id));
   }, [workspace]);
 
-  const ensureCatalog = useCallback(async () => {
-    if (!workspace || catalogReady) return;
-    try {
-      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), {
-        cache: 'no-store',
-      });
-      if (!statusResponse.ok) {
-        setNotice('Nie udało się sprawdzić dodatkowego katalogu. Ekonomia nadal działa.');
-        return;
-      }
-      const status = (await statusResponse.json()) as { total?: number };
-      const currentTotal = Number(status.total ?? 0);
-      if (currentTotal < dobryTematSeed.length) {
-        const importResponse = await fetch(api(workspace.id, 'catalog-import'), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ items: dobryTematSeed }),
-        });
-        if (!importResponse.ok) {
-          setNotice(
-            'Dodatkowy katalog DOBRYTEMAT nie zsynchronizował się w pełni. Ekonomia nadal działa.',
-          );
-          return;
-        }
-        const imported = (await importResponse.json()) as { imported?: number };
-        if (Number(imported.imported ?? 0) > 0) {
-          setNotice(
-            `Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`,
-          );
-        }
-      }
-    } catch {
-      setNotice('Dodatkowy katalog jest chwilowo niedostępny. Ekonomia nadal działa.');
-    } finally {
-      setCatalogReady(true);
-    }
-  }, [workspace, catalogReady]);
-
   const load = useCallback(async () => {
     if (!workspace) return;
     setError('');
@@ -377,28 +333,33 @@ export function TeamEconomy() {
   }, [workspace, range]);
 
   useEffect(() => {
-    void ensureCatalog();
     void load();
-  }, [ensureCatalog, load]);
+  }, [load]);
 
   const totals = summaryRows(summary);
 
-  const ranking = useMemo(
-    () =>
-      Object.entries(
-        drops.reduce<Record<string, number>>((acc, drop) => {
-          const itemValue = drop.items
-            .filter((item) => item.currency === 'yang')
-            .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
-          const cashValue = drop.money
-            .filter((entry) => entry.currency === 'yang')
-            .reduce((sum, entry) => sum + entry.ourAmount, 0);
-          acc[drop.source] = (acc[drop.source] ?? 0) + itemValue + cashValue;
-          return acc;
-        }, {}),
-      ).sort((left, right) => right[1] - left[1]),
-    [drops],
-  );
+  const ranking = useMemo(() => {
+    const values = new Map<string, number>();
+    const sourceByDropId = new Map<string, string>();
+    for (const drop of drops) {
+      sourceByDropId.set(drop.id, drop.source);
+      const itemValue = drop.items
+        .filter((item) => item.currency === 'yang')
+        .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
+      const cashValue = drop.money
+        .filter((entry) => entry.currency === 'yang')
+        .reduce((sum, entry) => sum + entry.ourAmount, 0);
+      values.set(drop.source, (values.get(drop.source) ?? 0) + itemValue + cashValue);
+    }
+    for (const expense of expenses) {
+      if (expense.currency !== 'yang' || !expense.dropSessionId) continue;
+      const source = sourceByDropId.get(expense.dropSessionId);
+      if (!source) continue;
+      const cost = (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000;
+      values.set(source, (values.get(source) ?? 0) - cost);
+    }
+    return [...values.entries()].sort((left, right) => right[1] - left[1]);
+  }, [drops, expenses]);
 
   const recognizeFile = useCallback(
     async (file: File) => {
@@ -668,6 +629,7 @@ export function TeamEconomy() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          dropSessionId: expenseDropSessionId || null,
           label: expenseLabel,
           expenseType: 'other',
           quantity: expenseQty,
@@ -681,6 +643,7 @@ export function TeamEconomy() {
       setExpenseOpen(false);
       setExpenseLabel('');
       setExpensePrice(0);
+      setExpenseDropSessionId('');
       setNotice('Koszt zapisany.');
       await load();
     } catch (err) {
@@ -784,9 +747,7 @@ export function TeamEconomy() {
           <article className={styles.metric}>
             <span>Wpisy dropów</span>
             <strong>{summary?.runCount ?? 0}</strong>
-            <small>
-              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}
-            </small>
+            <small>{rangeLabel(range)} · katalog centralny</small>
           </article>
         </section>
 
@@ -1117,6 +1078,20 @@ export function TeamEconomy() {
                   onChange={(event) => setExpenseLabel(event.target.value)}
                 />
               </label>
+              <label className={`${styles.field} ${styles.wide}`}>
+                Powiąż z dropem / aktywnością
+                <select
+                  value={expenseDropSessionId}
+                  onChange={(event) => setExpenseDropSessionId(event.target.value)}
+                >
+                  <option value="">Koszt ogólny</option>
+                  {drops.map((drop) => (
+                    <option key={drop.id} value={drop.id}>
+                      {drop.source} · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className={styles.field}>
                 Ilość
                 <input
@@ -1175,7 +1150,7 @@ export function TeamEconomy() {
             Historia dropów
           </button>
           <button data-active={tab === 'ranking'} onClick={() => setTab('ranking')} type="button">
-            Źródła dropu
+            Wynik wg źródła
           </button>
         </div>
 
@@ -1222,6 +1197,9 @@ export function TeamEconomy() {
                     <p>
                       {new Date(expense.occurredAtIso).toLocaleString('pl-PL')} · udział{' '}
                       {(expense.ourShareBasisPoints / 100).toLocaleString('pl-PL')}%
+                      {expense.dropSessionId
+                        ? ` · ${drops.find((drop) => drop.id === expense.dropSessionId)?.source ?? 'powiązany drop'}`
+                        : ' · koszt ogólny'}
                     </p>
                   </article>
                 ))}
@@ -1291,7 +1269,7 @@ export function TeamEconomy() {
         {tab === 'ranking' ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Wartość dropu wg źródła · Yang</h2>
+              <h2>Wynik wg źródła · Yang</h2>
             </div>
             {ranking.length ? (
               <div className={styles.rank}>
@@ -1304,7 +1282,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Brak danych o wartości dropów w wybranym okresie.</p>
+              <p className={styles.empty}>Brak danych do wyliczenia wyniku wg źródła.</p>
             )}
           </section>
         ) : null}
