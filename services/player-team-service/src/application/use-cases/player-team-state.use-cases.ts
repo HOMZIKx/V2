@@ -36,6 +36,16 @@ function memberKey(member: Record<string, unknown>): string | null {
   return asString(member.discordAccountId) ?? asString(member.id);
 }
 
+function matchesVerifiedViewer(
+  member: Record<string, unknown>,
+  ownerUserId: string,
+  viewerAppId: string | null,
+): boolean {
+  const discordAccountId = asString(member.discordAccountId);
+  if (discordAccountId !== null) return discordAccountId === ownerUserId;
+  return viewerAppId !== null && asString(member.id) === viewerAppId;
+}
+
 export class PlayerTeamStateUseCases {
   public constructor(
     private readonly repository: PlayerTeamStateRepositoryPort,
@@ -110,13 +120,10 @@ export class PlayerTeamStateUseCases {
     const members = Array.isArray(workspace.members) ? workspace.members : [];
     const member = members
       .map(asRecord)
-      .find((entry) => {
-        if (entry === null) return false;
-        return (
-          asString(entry.discordAccountId) === ownerUserId ||
-          (viewerAppId !== null && asString(entry.id) === viewerAppId)
-        );
-      });
+      .find(
+        (entry) =>
+          entry !== null && matchesVerifiedViewer(entry, ownerUserId, viewerAppId),
+      );
     if (member === undefined || member === null) {
       throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a workspace member');
     }
@@ -135,15 +142,53 @@ export class PlayerTeamStateUseCases {
     const members = Array.isArray(state.members) ? state.members : [];
     const member = members
       .map(asRecord)
-      .find((entry) => {
-        if (entry === null) return false;
-        return (
-          asString(entry.discordAccountId) === ownerUserId ||
-          (viewerAppId !== null && asString(entry.id) === viewerAppId)
-        );
-      });
+      .find(
+        (entry) =>
+          entry !== null && matchesVerifiedViewer(entry, ownerUserId, viewerAppId),
+      );
     const role = asString(member?.role);
     return role === 'owner' || role === 'member' ? role : null;
+  }
+
+  /**
+   * Legacy shared workspaces can contain only the V2 app UUID on a member row.
+   * Once the proxy has verified the Discord snowflake for that app UUID, persist the
+   * mapping in shared state so downstream DM fan-out no longer depends on a transient
+   * request/session fallback.
+   */
+  private async backfillSharedDiscordIdentity(
+    existing: WorkspaceSnapshotRecord,
+    ownerUserId: string,
+    viewerAppId: string | null,
+  ): Promise<WorkspaceSnapshotRecord> {
+    if (viewerAppId === null) return existing;
+    const rawMembers = Array.isArray(existing.state.members) ? existing.state.members : [];
+    let changed = false;
+    const members = rawMembers.map((rawMember) => {
+      const member = asRecord(rawMember);
+      if (member === null || asString(member.id) !== viewerAppId) return rawMember;
+      const currentDiscordId = asString(member.discordAccountId);
+      if (currentDiscordId !== null) return rawMember;
+      changed = true;
+      return { ...member, discordAccountId: ownerUserId };
+    });
+    if (!changed) return existing;
+
+    try {
+      return await this.repository.upsertWorkspaceSnapshot({
+        workspaceId: existing.workspaceId,
+        state: { ...existing.state, members },
+        expectedRevision: existing.revision,
+        updatedByUserId: ownerUserId,
+      });
+    } catch (error) {
+      if (!(error instanceof PlayerTeamError) || error.code !== 'REVISION_CONFLICT') throw error;
+      const raced = await this.repository.getWorkspaceSnapshot(existing.workspaceId);
+      if (raced === null || this.sharedRole(raced.state, ownerUserId, viewerAppId) === null) {
+        throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a shared workspace member');
+      }
+      return raced;
+    }
   }
 
   /**
@@ -185,9 +230,7 @@ export class PlayerTeamStateUseCases {
         throw new PlayerTeamError('UNAUTHORIZED', 'only workspace owner can change team roster');
       }
 
-      const isViewer =
-        asString(currentMember.discordAccountId) === input.ownerUserId ||
-        (input.viewerAppId !== null && asString(currentMember.id) === input.viewerAppId);
+      const isViewer = matchesVerifiedViewer(currentMember, input.ownerUserId, input.viewerAppId);
       if (!isViewer) {
         if (!sameJson(currentMember, nextMember)) {
           throw new PlayerTeamError('UNAUTHORIZED', 'member cannot edit another team member');
@@ -216,7 +259,7 @@ export class PlayerTeamStateUseCases {
       if (this.sharedRole(existing.state, ownerUserId, access.viewerAppId) === null) {
         throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a shared workspace member');
       }
-      return existing;
+      return this.backfillSharedDiscordIdentity(existing, ownerUserId, access.viewerAppId);
     }
 
     if (access.role !== 'owner') {
@@ -237,7 +280,7 @@ export class PlayerTeamStateUseCases {
         raced !== null &&
         this.sharedRole(raced.state, ownerUserId, access.viewerAppId) === 'owner'
       ) {
-        return raced;
+        return this.backfillSharedDiscordIdentity(raced, ownerUserId, access.viewerAppId);
       }
       throw new PlayerTeamError('UNAUTHORIZED', 'workspace id already belongs to another team');
     }
