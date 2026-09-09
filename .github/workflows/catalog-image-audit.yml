@@ -1,0 +1,72 @@
+name: Catalog image audit
+
+on:
+  push:
+    branches:
+      - ops/economy-catalog-audit-20260909
+    paths:
+      - .github/workflows/catalog-image-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit catalog image mappings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re, collections
+          root = pathlib.Path('.')
+          catalog = json.loads((root/'apps/web/src/data/dobry-temat-item-catalog.json').read_text())
+          mapping = json.loads((root/'apps/web/src/data/wiki-item-image-map.json').read_text())
+          ph = json.loads((root/'apps/web/src/data/ph-item-icon-map.json').read_text())
+          items = catalog['items'] if isinstance(catalog, dict) and 'items' in catalog else catalog
+          pub = root/'apps/web/public'
+          def localize(raw):
+              if not isinstance(raw, str): return None
+              if raw.startswith('/item-database/wiki/'):
+                  return '/game/items/wiki/' + raw.rsplit('/',1)[-1]
+              if raw.startswith('/game/items/'):
+                  return raw
+              return None
+          cross=[]; changed=[]; mapped_missing=[]; raw_missing=[]; duplicate=collections.defaultdict(list)
+          for item in items:
+              iid=str(item.get('id',''))
+              title=str(item.get('title',''))
+              raw=localize(item.get('image_url'))
+              mapped=mapping.get(iid)
+              chosen=ph.get(title) or mapped or raw
+              if mapped and raw and mapped != raw:
+                  changed.append((iid,title,raw,mapped))
+                  raw_base=pathlib.PurePosixPath(raw).name
+                  map_base=pathlib.PurePosixPath(mapped).name
+                  if raw_base != map_base:
+                      cross.append((iid,title,raw,mapped))
+              if mapped and not (pub/mapped.lstrip('/')).exists(): mapped_missing.append((iid,title,mapped))
+              if raw and not (pub/raw.lstrip('/')).exists(): raw_missing.append((iid,title,raw))
+              if chosen: duplicate[chosen].append((iid,title,raw,mapped))
+          print(f'items={len(items)} map_entries={len(mapping)} ph_entries={len(ph)}')
+          print(f'mapped_differs_from_dump={len(changed)} cross_filename={len(cross)} mapped_missing={len(mapped_missing)} raw_missing={len(raw_missing)}')
+          print('CROSS_FILENAME_START')
+          for row in cross[:200]: print(' | '.join(row))
+          print('CROSS_FILENAME_END')
+          print('MAPPED_MISSING_START')
+          for row in mapped_missing[:100]: print(' | '.join(row))
+          print('MAPPED_MISSING_END')
+          print('RAW_MISSING_START')
+          for row in raw_missing[:100]: print(' | '.join(row))
+          print('RAW_MISSING_END')
+          suspicious_dups=[]
+          for path, rows in duplicate.items():
+              titles=sorted({r[1] for r in rows})
+              if len(titles)>1:
+                  suspicious_dups.append((path,titles,rows))
+          print(f'duplicate_paths_with_multiple_titles={len(suspicious_dups)}')
+          print('DUPLICATE_PATHS_START')
+          for path,titles,rows in suspicious_dups[:100]: print(path+' | '+ ' || '.join(titles))
+          print('DUPLICATE_PATHS_END')
+          PY
