@@ -1,0 +1,122 @@
+name: Live economy final verify
+on:
+  push:
+    branches: [ops/live-economy-final-verify-20260909]
+    paths: [.github/workflows/live-economy-final-verify.yml]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Redeploy and verify production Economy
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+          EXPECTED_SHA: 3a42ebe6f3388d36cc633b8a4406675920458408
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys, time
+          token=(os.environ.get('ZEABUR_API_TOKEN') or '').strip()
+          expected=os.environ['EXPECTED_SHA'].strip()
+          endpoint='https://api.zeabur.com/graphql'
+          if not token:
+              print('::error::Missing Zeabur token'); sys.exit(1)
+
+          def gql(query, variables=None):
+              r=subprocess.run([
+                  'curl','-sS','--fail-with-body','-X','POST',endpoint,
+                  '-H',f'Authorization: Bearer {token}',
+                  '-H','Content-Type: application/json',
+                  '--data-binary',json.dumps({'query':query,'variables':variables or {}})
+              ],capture_output=True,text=True,timeout=45)
+              if r.returncode:
+                  print('::error::Zeabur transport failed'); sys.exit(1)
+              try: payload=json.loads(r.stdout)
+              except Exception:
+                  print('::error::Zeabur returned non-JSON'); sys.exit(1)
+              if payload.get('errors'):
+                  print('::error::Zeabur GraphQL: '+str(payload['errors'][0].get('message','unknown'))[:240]); sys.exit(1)
+              return payload.get('data') or {}
+
+          projects=[e['node'] for e in gql('query{projects{edges{node{_id name}}}}')['projects']['edges']]
+          project=next((p for p in projects if p.get('name')=='untitled-1'),None)
+          if not project:
+              print('::error::Project untitled-1 not found'); sys.exit(1)
+          detail=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':project['_id']})['project']
+          env=next((e for e in detail['environments'] if e.get('name')=='production'),None)
+          services={s['name']:s['_id'] for s in detail['services']}
+          if not env or 'player-team-service' not in services or 'webapp-dest' not in services:
+              print('::error::Required production services not found'); sys.exit(1)
+
+          redeploy='mutation($serviceID:ObjectID!,$environmentID:ObjectID!){redeployService(serviceID:$serviceID,environmentID:$environmentID)}'
+          for name in ('player-team-service','webapp-dest'):
+              ok=gql(redeploy,{'serviceID':services[name],'environmentID':env['_id']}).get('redeployService') is True
+              print(f'REDEPLOY service={name} accepted={str(ok).lower()}')
+              if not ok: sys.exit(2)
+
+          execute='mutation($serviceID:ObjectID!,$environmentID:ObjectID!,$command:[String!]!){executeCommand(serviceID:$serviceID,environmentID:$environmentID,command:$command){exitCode output}}'
+          def run(service, command):
+              return gql(execute,{'serviceID':services[service],'environmentID':env['_id'],'command':command})['executeCommand']
+
+          db_script=r'''
+          const {Pool}=require('pg');
+          (async()=>{
+            const cs=(process.env.PLAYER_TEAM_DATABASE_URL||'').trim();
+            if(!cs){console.log('DB_VERIFY=FAIL reason=no_database_url');process.exit(2)}
+            const p=new Pool({connectionString:cs});
+            try{
+              const m=await p.query("select id from player_team_schema_migrations where id in ('008_economy_catalog_image_repair.sql','009_economy_catalog_seed.sql') order by id");
+              const c=await p.query("select count(*)::int as total, count(*) filter (where image_url is null or btrim(image_url)='')::int as missing from player_team_economy_items");
+              const total=Number(c.rows[0]?.total||0), missing=Number(c.rows[0]?.missing||0);
+              const ids=m.rows.map(x=>x.id);
+              const ok=total>=678 && missing===0 && ids.length===2;
+              const meta=Object.fromEntries(Object.entries(process.env).filter(([k])=>/(ZEABUR.*(GIT|COMMIT|SOURCE)|GIT.*(SHA|COMMIT))/i.test(k)).map(([k,v])=>[k,String(v).slice(0,160)]));
+              console.log(`DB_VERIFY=${ok?'OK':'FAIL'} total=${total} missing=${missing} migrations=${ids.join(',')}`);
+              console.log('RUNTIME_META='+JSON.stringify(meta));
+              process.exitCode=ok?0:3;
+            }finally{await p.end().catch(()=>{})}
+          })().catch(e=>{console.log('DB_VERIFY=FAIL error='+String(e?.message||e).slice(0,180));process.exit(4)});
+          '''
+
+          web_script=r'''
+          (async()=>{
+            const port=(process.env.PORT||process.env.WEB_PORT||'3000').trim();
+            const base=`http://127.0.0.1:${port}`;
+            const r=await fetch(base+'/economy',{redirect:'manual',signal:AbortSignal.timeout(6000)});
+            const html=await r.text();
+            const hrefs=[...html.matchAll(/href=["']([^"']+\.css[^"']*)["']/g)].map(m=>m[1]);
+            let css='';
+            for(const href of hrefs){try{const u=href.startsWith('http')?href:base+href; const cr=await fetch(u,{signal:AbortSignal.timeout(5000)}); if(cr.ok)css+='\n'+await cr.text()}catch{}}
+            const hasBlue=css.includes('57,136,255')||css.includes('57, 136, 255');
+            const hasPeriod=css.includes('min-height:32px')||css.includes('min-height: 32px');
+            const ok=[200,301,302,307,308].includes(r.status)&&hasBlue&&hasPeriod;
+            const meta=Object.fromEntries(Object.entries(process.env).filter(([k])=>/(ZEABUR.*(GIT|COMMIT|SOURCE)|GIT.*(SHA|COMMIT))/i.test(k)).map(([k,v])=>[k,String(v).slice(0,160)]));
+            console.log(`WEB_VERIFY=${ok?'OK':'FAIL'} status=${r.status} css=${hrefs.length} blue=${hasBlue} periods=${hasPeriod}`);
+            console.log('RUNTIME_META='+JSON.stringify(meta));
+            process.exitCode=ok?0:5;
+          })().catch(e=>{console.log('WEB_VERIFY=FAIL error='+String(e?.message||e).slice(0,180));process.exit(6)});
+          '''
+
+          migrated_once=False
+          for attempt in range(1,31):
+              db=run('player-team-service',['node','-e',db_script])
+              web=run('webapp-dest',['node','-e',web_script])
+              db_out=(db.get('output') or '').strip(); web_out=(web.get('output') or '').strip()
+              print(f'ATTEMPT={attempt}')
+              print(db_out)
+              print(web_out)
+              if db.get('exitCode')==0 and web.get('exitCode')==0:
+                  print('LIVE_ECONOMY_FINAL=OK')
+                  sys.exit(0)
+              if attempt==12 and db.get('exitCode')!=0 and not migrated_once:
+                  print('DB_MIGRATION_FALLBACK=RUN')
+                  mig=run('player-team-service',['sh','-lc','cd /app 2>/dev/null || true; if [ -f services/player-team-service/package.json ]; then pnpm --dir services/player-team-service migrate; elif [ -f package.json ]; then pnpm migrate; else echo no-source-tree; exit 9; fi'])
+                  print((mig.get('output') or '').strip())
+                  print('DB_MIGRATION_FALLBACK_EXIT='+str(mig.get('exitCode')))
+                  migrated_once=True
+              time.sleep(10)
+          print('::error::Production did not reach verified Economy state')
+          sys.exit(7)
+          PY
