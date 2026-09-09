@@ -31,4 +31,46 @@ describe('authoritativeNotifyRecipients', () => {
 
     expect(authoritativeNotifyRecipients(workspace, 'characterTimers')).toEqual([MEMBER]);
   });
+
+  it('uses the server-verified Discord id for the matching legacy app member', () => {
+    const workspace = {
+      notifyPrefs: { characterTimers: true },
+      members: [{ id: 'owner-app-id', notifyPrefs: { characterTimers: true } }],
+    };
+
+    expect(
+      authoritativeNotifyRecipients(workspace, 'characterTimers', {
+        appId: 'owner-app-id',
+        discordId: OWNER,
+      }),
+    ).toEqual([OWNER]);
+  });
+
+  it('does not bypass a personal timer-DM opt-out when using the verified fallback', () => {
+    const workspace = {
+      notifyPrefs: { characterTimers: true },
+      members: [{ id: 'owner-app-id', notifyPrefs: { characterTimers: false } }],
+    };
+
+    expect(
+      authoritativeNotifyRecipients(workspace, 'characterTimers', {
+        appId: 'owner-app-id',
+        discordId: OWNER,
+      }),
+    ).toEqual([]);
+  });
+
+  it('never injects the verified Discord id into a different member row', () => {
+    const workspace = {
+      notifyPrefs: { characterTimers: true },
+      members: [{ id: 'someone-else-app-id' }],
+    };
+
+    expect(
+      authoritativeNotifyRecipients(workspace, 'characterTimers', {
+        appId: 'owner-app-id',
+        discordId: OWNER,
+      }),
+    ).toEqual([]);
+  });
 });
