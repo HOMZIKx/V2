@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/economy-catalog-polish-clean-20260909
+      - name: Repair canonical catalog image gaps
+        run: python3 .github/scripts/repair_catalog_image_gaps.py
       - name: Audit canonical image gaps and local candidates
         run: python3 .github/scripts/audit_missing_catalog_images.py
       - name: Generate migrations and regression test
@@ -32,6 +34,9 @@ jobs:
         run: |
           git config user.name 'HOMZIKx'
           git config user.email 'ciborex12@gmail.com'
-          git add apps/web/src/item-image-path-regression.spec.ts services/player-team-service/migrations
+          git add \
+            apps/web/src/data/dobry-temat-item-catalog.json \
+            apps/web/src/item-image-path-regression.spec.ts \
+            services/player-team-service/migrations
           git commit -m 'fix(economy): repair and seed canonical item catalog'
           git push origin HEAD:feat/economy-catalog-polish-clean-20260909
