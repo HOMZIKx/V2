@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS player_team_ai_observations (
   parser_version TEXT NOT NULL,
   confidence DOUBLE PRECISION NULL CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   image_mime_type TEXT NOT NULL CHECK (image_mime_type IN ('image/png', 'image/jpeg', 'image/webp')),
-  image_byte_size INTEGER NOT NULL CHECK (image_byte_size > 0 AND image_byte_size <= 8388608),
+  image_byte_size INTEGER NOT NULL CHECK (image_byte_size > 0 AND image_byte_size <= 10485760),
   image_sha256 CHAR(64) NOT NULL,
   ai_output JSONB NOT NULL,
   feedback_status TEXT NOT NULL DEFAULT 'pending' CHECK (feedback_status IN ('pending', 'accepted', 'corrected', 'rejected')),
