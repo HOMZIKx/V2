@@ -75,7 +75,8 @@ jobs:
         if: github.ref == 'refs/heads/preview/destiled-web' || github.base_ref == 'preview/destiled-web'
         run: |
           pnpm --dir apps/web exec vitest run --config vitest.config.ts \
-            src/item-image-path-regression.spec.ts
+            src/item-image-path-regression.spec.ts \
+            src/server/item-image-proxy.spec.ts
         env:
           CI: 'true'
 
