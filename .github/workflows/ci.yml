@@ -69,6 +69,7 @@ jobs:
         run: |
           pnpm --dir services/player-team-service exec vitest run --config vitest.config.ts \
             src/interface/team-economy-management.controller.spec.ts \
+            src/interface/discord-gateway-read.controller.spec.ts \
             src/application/use-cases/player-team-state-discord-backfill.spec.ts
         env:
           CI: 'true'
