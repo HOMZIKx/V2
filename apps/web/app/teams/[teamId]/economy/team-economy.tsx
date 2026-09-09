@@ -178,6 +178,10 @@ function directMoneyShare(row: DraftMoney): number {
   return (row.totalAmount * row.sharePercent) / 100;
 }
 
+function normalizedParticipantName(value: string): string {
+  return value.trim().toLocaleLowerCase('pl-PL');
+}
+
 export function TeamEconomy() {
   const { teamId } = useParams<{ teamId: string }>();
   const { state, hydrated } = usePlayerStore();
@@ -203,7 +207,9 @@ export function TeamEconomy() {
   const [dropAnalysisId, setDropAnalysisId] = useState<string | null>(null);
   const [outsiders, setOutsiders] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [partySessionId, setPartySessionId] = useState<string | null>(null);
   const initializedMembersForWorkspaceRef = useRef<string | null>(null);
+  const appliedPartyContextRef = useRef<string | null>(null);
 
   const [expenseLabel, setExpenseLabel] = useState('');
   const [expenseQty, setExpenseQty] = useState(1);
@@ -214,8 +220,46 @@ export function TeamEconomy() {
   useEffect(() => {
     if (!workspace) {
       initializedMembersForWorkspaceRef.current = null;
+      appliedPartyContextRef.current = null;
       return;
     }
+
+    const query = window.location.search.replace(/^\?/, '');
+    const params = new URLSearchParams(query);
+    const isPartyContext = params.get('scope') === 'team';
+    const contextKey = `${workspace.id}:${query}`;
+
+    if (isPartyContext && appliedPartyContextRef.current !== contextKey) {
+      appliedPartyContextRef.current = contextKey;
+      initializedMembersForWorkspaceRef.current = workspace.id;
+
+      const sourceParam = params.get('source')?.trim() ?? '';
+      const mapParam = params.get('map')?.trim() ?? '';
+      const channelParam = params.get('channel')?.trim() ?? '';
+      const sourceParts = [sourceParam, mapParam, channelParam ? `CH${channelParam}` : ''].filter(Boolean);
+      if (sourceParts.length > 0) setSource(sourceParts.join(' · ').slice(0, 120));
+
+      const sessionId = params.get('sessionId')?.trim() ?? '';
+      setPartySessionId(sessionId || null);
+
+      const participantNames = (params.get('participants') ?? '')
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean);
+      const participantNameSet = new Set(participantNames.map(normalizedParticipantName));
+      const matchedMembers = workspace.members.filter((member) =>
+        participantNameSet.has(normalizedParticipantName(member.displayName)),
+      );
+      setSelectedMembers(matchedMembers.map((member) => member.id));
+      const matchedNameSet = new Set(matchedMembers.map((member) => normalizedParticipantName(member.displayName)));
+      setOutsiders(
+        participantNames.filter((name) => !matchedNameSet.has(normalizedParticipantName(name))).join(', '),
+      );
+      setDropOpen(true);
+      setNotice('Kontekst sesji Party wczytany: źródło, mapa, CH i uczestnicy zostały uzupełnione.');
+      return;
+    }
+
     if (initializedMembersForWorkspaceRef.current === workspace.id) return;
     initializedMembersForWorkspaceRef.current = workspace.id;
     setSelectedMembers(workspace.members.map((member) => member.id));
@@ -478,6 +522,7 @@ export function TeamEconomy() {
         body: JSON.stringify({
           source,
           occurredAtIso: new Date().toISOString(),
+          notes: partySessionId ? `Sesja Party: ${partySessionId}` : undefined,
           ourShareBasisPoints: Math.round(share * 100),
           pileCount: piles,
           splitMode,
@@ -510,6 +555,7 @@ export function TeamEconomy() {
         });
       }
       setDropAnalysisId(null);
+      setPartySessionId(null);
       setDraftItems([]);
       setDraftMoney([]);
       setOutsiders('');

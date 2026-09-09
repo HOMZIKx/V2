@@ -15,6 +15,8 @@ import {
   type PartyRoomRecord,
   type PartyRoomRequest,
   type PatchPartyRoomInput,
+  type PatchPartyRoomPinInput,
+  type SetPartyHuntRoleInput,
   type TimerRoomRecord,
   type TimerRoomSnapshot,
 } from '../../domain/ports/hunt-rooms.port.js';
@@ -46,6 +48,32 @@ function isLeaderOnlyPatch(input: PatchPartyRoomInput): boolean {
     input.visibility !== undefined ||
     input.requests !== undefined
   );
+}
+
+function normalizePartyMembers(value: unknown): PartyRoomMember[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (member): member is Record<string, unknown> =>
+        typeof member === 'object' && member !== null && !Array.isArray(member),
+    )
+    .filter(
+      (member) =>
+        typeof member.id === 'string' &&
+        typeof member.displayName === 'string' &&
+        (member.role === 'leader' || member.role === 'member'),
+    )
+    .map((member) => ({
+      id: member.id as string,
+      displayName: member.displayName as string,
+      role: member.role as 'leader' | 'member',
+      huntRole:
+        member.huntRole === 'scout' || member.huntRole === 'hunter'
+          ? member.huntRole
+          : member.role === 'leader'
+            ? 'scout'
+            : 'hunter',
+    }));
 }
 
 @Injectable()
@@ -92,7 +120,7 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       mapKey: row.map_key,
       activeChannel: Number(row.active_channel),
       sessionKills: Number(row.session_kills),
-      members: Array.isArray(row.members) ? row.members : [],
+      members: normalizePartyMembers(row.members),
       requests: Array.isArray(row.requests) ? row.requests : [],
       pins: Array.isArray(row.pins) ? row.pins : [],
       revision: Number(row.revision),
@@ -124,7 +152,12 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
 
   public async createPartyRoom(input: CreatePartyRoomInput): Promise<PartyRoomRecord> {
     const members: PartyRoomMember[] = [
-      { id: input.leaderId, displayName: input.displayName, role: 'leader' },
+      {
+        id: input.leaderId,
+        displayName: input.displayName,
+        role: 'leader',
+        huntRole: 'scout',
+      },
     ];
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -170,15 +203,20 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
         throw new PlayerTeamError('NOT_FOUND', 'party room not found for join code');
       }
 
-      const members = (Array.isArray(row.members) ? row.members : []) as PartyRoomMember[];
+      const members = normalizePartyMembers(row.members);
       if (members.some((member) => member.id === input.viewerId)) {
         await client.query('COMMIT');
         return this.mapPartyRow(row);
       }
 
-      const nextMembers = [
+      const nextMembers: PartyRoomMember[] = [
         ...members,
-        { id: input.viewerId, displayName: input.displayName, role: 'member' as const },
+        {
+          id: input.viewerId,
+          displayName: input.displayName,
+          role: 'member',
+          huntRole: 'hunter',
+        },
       ];
       const updated = await client.query(
         `UPDATE player_team_party_rooms
@@ -319,6 +357,34 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
     });
   }
 
+  public async setPartyHuntRole(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord> {
+    const updated = await this.db.query(
+      `UPDATE player_team_party_rooms
+       SET members = COALESCE(
+             (SELECT jsonb_agg(
+                CASE
+                  WHEN member->>'id' = $2 THEN member || jsonb_build_object('huntRole', $3::text)
+                  ELSE member
+                END
+              ) FROM jsonb_array_elements(members) AS member),
+             '[]'::jsonb
+           ),
+           revision = revision + 1,
+           updated_at = NOW()
+       WHERE id = $1
+         AND EXISTS (
+           SELECT 1 FROM jsonb_array_elements(members) AS member WHERE member->>'id' = $2
+         )
+       RETURNING *`,
+      [input.roomId, input.viewerId, input.huntRole],
+    );
+    if ((updated.rowCount ?? 0) > 0) return this.mapPartyRow(updated.rows[0]);
+
+    const current = await this.getPartyRoom(input.roomId);
+    if (current === null) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
+    throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+  }
+
   public async addPartyRoomPin(
     roomId: string,
     viewerId: string,
@@ -353,6 +419,46 @@ export class HuntRoomsRepository implements HuntRoomsRepositoryPort, OnModuleIni
       throw new PlayerTeamError('NOT_FOUND', 'party room not found');
     }
     throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+  }
+
+  public async patchPartyRoomPin(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord> {
+    const patch: Record<string, string | number | null> = {};
+    if (input.claimedBy !== undefined) patch.claimedBy = input.claimedBy;
+    if (input.claimedAt !== undefined) patch.claimedAt = input.claimedAt;
+    if (input.completedBy !== undefined) patch.completedBy = input.completedBy;
+    if (input.completedAt !== undefined) patch.completedAt = input.completedAt;
+    if (Object.keys(patch).length === 0) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'pin patch cannot be empty');
+    }
+
+    const updated = await this.db.query(
+      `UPDATE player_team_party_rooms
+       SET pins = COALESCE(
+             (SELECT jsonb_agg(
+                CASE WHEN item->>'id' = $2 THEN item || $3::jsonb ELSE item END
+              ) FROM jsonb_array_elements(pins) AS item),
+             '[]'::jsonb
+           ),
+           revision = revision + 1,
+           updated_at = NOW()
+       WHERE id = $1
+         AND EXISTS (
+           SELECT 1 FROM jsonb_array_elements(members) AS member WHERE member->>'id' = $4
+         )
+         AND EXISTS (
+           SELECT 1 FROM jsonb_array_elements(pins) AS item WHERE item->>'id' = $2
+         )
+       RETURNING *`,
+      [input.roomId, input.pinId, JSON.stringify(patch), input.viewerId],
+    );
+    if ((updated.rowCount ?? 0) > 0) return this.mapPartyRow(updated.rows[0]);
+
+    const current = await this.getPartyRoom(input.roomId);
+    if (current === null) throw new PlayerTeamError('NOT_FOUND', 'party room not found');
+    if (!current.members.some((member) => member.id === input.viewerId)) {
+      throw new PlayerTeamError('UNAUTHORIZED', 'viewer is not a party member');
+    }
+    throw new PlayerTeamError('NOT_FOUND', 'party pin not found');
   }
 
   public async removePartyRoomPin(

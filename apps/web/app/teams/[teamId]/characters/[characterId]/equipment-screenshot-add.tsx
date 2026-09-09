@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
 
+import { resolveAiObservationFeedback } from '../../../../../src/ai-observation-feedback';
 import {
   equipmentSlotForCategory,
   parseEnhancementFromName,
@@ -19,6 +21,7 @@ import { Icon } from '../../../../app-shell';
 import styles from './equipment-screenshot-add.module.css';
 
 type AnalysisPayload = {
+  readonly analysisId?: string | null;
   readonly draft?: {
     readonly name?: string;
     readonly enhancement?: number;
@@ -50,7 +53,7 @@ function cleanBonuses(value: string): readonly string[] {
 }
 
 export function EquipmentScreenshotAdd() {
-  const params = useParams<{ teamId: string }>();
+  const params = useParams<{ teamId: string; characterId: string }>();
   const { state, writesEnabled, createItem, confirmLocation } = usePlayerStore();
   const workspace = state.workspaces.find((entry) => entry.id === params.teamId) ?? null;
 
@@ -60,12 +63,38 @@ export function EquipmentScreenshotAdd() {
   const [error, setError] = useState<string | null>(null);
   const [reviewRequired, setReviewRequired] = useState(false);
   const [analysisNote, setAnalysisNote] = useState('');
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [triggerTarget, setTriggerTarget] = useState<HTMLElement | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     name: '',
     enhancement: 0,
     category: 'weapon',
     bonusesText: '',
   });
+
+  useEffect(() => {
+    setMounted(true);
+    let hiddenButton: HTMLButtonElement | null = null;
+    const discover = () => {
+      const candidate = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+        (button) =>
+          !button.hasAttribute('data-eq-ai-beta') &&
+          button.textContent?.trim().includes('Dodaj ze screena'),
+      );
+      if (!candidate) return;
+      hiddenButton = candidate;
+      candidate.style.display = 'none';
+      setTriggerTarget(candidate.parentElement);
+    };
+    discover();
+    const observer = new MutationObserver(discover);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      if (hiddenButton) hiddenButton.style.display = '';
+    };
+  }, []);
 
   const catalogMatches = useMemo(() => {
     const query = stripEnhancementFromName(draft.name).trim();
@@ -81,6 +110,7 @@ export function EquipmentScreenshotAdd() {
     setError(null);
     setReviewRequired(false);
     setAnalysisNote('');
+    setAnalysisId(null);
     setDraft({ name: '', enhancement: 0, category: 'weapon', bonusesText: '' });
   };
 
@@ -90,7 +120,7 @@ export function EquipmentScreenshotAdd() {
   };
 
   const analyze = async () => {
-    if (!file) {
+    if (!file || !workspace) {
       setError('Wybierz screen pojedynczego tooltipa przedmiotu.');
       return;
     }
@@ -99,6 +129,8 @@ export function EquipmentScreenshotAdd() {
     setError(null);
     const body = new FormData();
     body.append('image', file);
+    body.append('workspaceId', workspace.id);
+    body.append('characterId', params.characterId);
 
     try {
       const response = await fetch('/api/equipment/analyze-item', { method: 'POST', body });
@@ -121,6 +153,11 @@ export function EquipmentScreenshotAdd() {
       const catalogSlot = best ? equipmentSlotForCategory(best.category) : null;
       const resolvedSlot = catalogSlot ?? payload.draft.category ?? null;
 
+      setAnalysisId(
+        typeof payload.analysisId === 'string' && payload.analysisId.trim()
+          ? payload.analysisId.trim()
+          : null,
+      );
       setDraft((current) => ({
         name: best?.title ?? baseName,
         enhancement,
@@ -151,11 +188,12 @@ export function EquipmentScreenshotAdd() {
       return;
     }
 
+    const bonuses = cleanBonuses(draft.bonusesText);
     const createdId = createItem(workspace.id, {
       name: draft.name.trim(),
       category: draft.category,
       enhancement: clampEnhancement(draft.enhancement),
-      bonuses: cleanBonuses(draft.bonusesText),
+      bonuses,
       planned: false,
     });
     if (!createdId) {
@@ -164,139 +202,157 @@ export function EquipmentScreenshotAdd() {
     }
 
     confirmLocation(workspace.id, createdId, 'Torba I');
+    if (analysisId) {
+      void resolveAiObservationFeedback(analysisId, {
+        name: draft.name.trim(),
+        enhancement: clampEnhancement(draft.enhancement),
+        category: draft.category,
+        bonuses,
+      });
+    }
     close();
   };
 
-  if (!workspace || state.authStatus !== 'authenticated') return null;
+  if (!workspace || state.authStatus !== 'authenticated' || !mounted) return null;
+
+  const trigger = (
+    <button
+      className={styles.trigger}
+      data-eq-ai-beta="true"
+      disabled={!writesEnabled}
+      onClick={() => setOpen(true)}
+      type="button"
+    >
+      <Icon name="plus" size={15} />
+      Dodaj ze screena · AI (beta)
+    </button>
+  );
+
+  const modal = open ? (
+    <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) close();
+    }}>
+      <section aria-label="Dodaj przedmiot ze screena — AI beta" className={styles.modal} role="dialog">
+        <header className={styles.header}>
+          <div>
+            <strong>Dodaj przedmiot ze screena · AI (beta)</strong>
+            <span>AI przygotowuje szkic. Ty zatwierdzasz dane przed zapisaniem do wspólnej torby.</span>
+          </div>
+          <button aria-label="Zamknij" className={styles.close} onClick={close} type="button">
+            <Icon name="x" size={17} />
+          </button>
+        </header>
+
+        <form className={styles.form} onSubmit={submit}>
+          <p className={styles.review}>
+            AI może się pomylić. Zweryfikuj nazwę, ulepszenie, slot i bonusy przed zapisaniem karty.
+          </p>
+          <label className={styles.upload}>
+            <span>Screen pojedynczego tooltipa · AI (beta)</span>
+            <input
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setStatus('idle');
+                setError(null);
+                setAnalysisId(null);
+              }}
+              type="file"
+            />
+            <button
+              className={styles.analyze}
+              disabled={!file || status === 'loading'}
+              onClick={(event) => {
+                event.preventDefault();
+                void analyze();
+              }}
+              type="button"
+            >
+              {status === 'loading' ? 'Analizuję…' : 'Analizuj screen · AI (beta)'}
+            </button>
+          </label>
+
+          {status === 'done' ? (
+            <p className={styles.info}>Analiza gotowa. Sprawdź dane i dopiero wtedy dodaj kartę.</p>
+          ) : null}
+          {analysisNote ? <p className={styles.review}>{analysisNote}</p> : null}
+
+          <div className={styles.grid}>
+            <label className={styles.field}>
+              <span>Nazwa</span>
+              <input
+                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                value={draft.name}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>+N</span>
+              <input
+                max={9}
+                min={0}
+                onChange={(event) => setDraft((current) => ({
+                  ...current,
+                  enhancement: clampEnhancement(Number(event.target.value)),
+                }))}
+                type="number"
+                value={draft.enhancement}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Typ / slot</span>
+              <select
+                onChange={(event) => {
+                  setReviewRequired(false);
+                  setDraft((current) => ({
+                    ...current,
+                    category: event.target.value as EquipmentSlot,
+                  }));
+                }}
+                value={draft.category}
+              >
+                {equipmentSlots.map((slot) => (
+                  <option key={slot} value={slot}>{slotLabels[slot]}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {catalogMatches.length > 0 ? (
+            <p className={styles.info}>
+              Baza V2: {catalogMatches.slice(0, 3).map((item) => item.title).join(' · ')}
+            </p>
+          ) : null}
+
+          {reviewRequired ? (
+            <p className={styles.review}>AI nie rozpoznało typu. Wybierz właściwy slot ręcznie.</p>
+          ) : null}
+
+          <label className={styles.field}>
+            <span>Bonusy — jedna linia = jeden bonus</span>
+            <textarea
+              onChange={(event) => setDraft((current) => ({ ...current, bonusesText: event.target.value }))}
+              placeholder="np. Silny przeciwko Nieumarłym +20%"
+              value={draft.bonusesText}
+            />
+          </label>
+
+          {error ? <p className={styles.error} role="alert">{error}</p> : null}
+
+          <div className={styles.actions}>
+            <button className={styles.cancel} onClick={close} type="button">Anuluj</button>
+            <button className={styles.save} disabled={!writesEnabled} type="submit">
+              Potwierdź i dodaj do torby
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  ) : null;
 
   return (
     <>
-      <button
-        className={styles.trigger}
-        disabled={!writesEnabled}
-        onClick={() => setOpen(true)}
-        type="button"
-      >
-        <Icon name="plus" size={15} />
-        Dodaj ze screena
-      </button>
-
-      {open ? (
-        <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) close();
-        }}>
-          <section aria-label="Dodaj przedmiot ze screena" className={styles.modal} role="dialog">
-            <header className={styles.header}>
-              <div>
-                <strong>Dodaj przedmiot ze screena</strong>
-                <span>AI przygotowuje szkic. Ty zatwierdzasz dane przed zapisaniem do wspólnej torby.</span>
-              </div>
-              <button aria-label="Zamknij" className={styles.close} onClick={close} type="button">
-                <Icon name="x" size={17} />
-              </button>
-            </header>
-
-            <form className={styles.form} onSubmit={submit}>
-              <label className={styles.upload}>
-                <span>Screen pojedynczego tooltipa</span>
-                <input
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(event) => {
-                    setFile(event.target.files?.[0] ?? null);
-                    setStatus('idle');
-                    setError(null);
-                  }}
-                  type="file"
-                />
-                <button
-                  className={styles.analyze}
-                  disabled={!file || status === 'loading'}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    void analyze();
-                  }}
-                  type="button"
-                >
-                  {status === 'loading' ? 'Analizuję…' : 'Analizuj screen'}
-                </button>
-              </label>
-
-              {status === 'done' ? (
-                <p className={styles.info}>Analiza gotowa. Sprawdź dane i dopiero wtedy dodaj kartę.</p>
-              ) : null}
-              {analysisNote ? <p className={styles.review}>{analysisNote}</p> : null}
-
-              <div className={styles.grid}>
-                <label className={styles.field}>
-                  <span>Nazwa</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                    value={draft.name}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>+N</span>
-                  <input
-                    max={9}
-                    min={0}
-                    onChange={(event) => setDraft((current) => ({
-                      ...current,
-                      enhancement: clampEnhancement(Number(event.target.value)),
-                    }))}
-                    type="number"
-                    value={draft.enhancement}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span>Typ / slot</span>
-                  <select
-                    onChange={(event) => {
-                      setReviewRequired(false);
-                      setDraft((current) => ({
-                        ...current,
-                        category: event.target.value as EquipmentSlot,
-                      }));
-                    }}
-                    value={draft.category}
-                  >
-                    {equipmentSlots.map((slot) => (
-                      <option key={slot} value={slot}>{slotLabels[slot]}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              {catalogMatches.length > 0 ? (
-                <p className={styles.info}>
-                  Baza V2: {catalogMatches.slice(0, 3).map((item) => item.title).join(' · ')}
-                </p>
-              ) : null}
-
-              {reviewRequired ? (
-                <p className={styles.review}>AI nie rozpoznało typu. Wybierz właściwy slot ręcznie.</p>
-              ) : null}
-
-              <label className={styles.field}>
-                <span>Bonusy — jedna linia = jeden bonus</span>
-                <textarea
-                  onChange={(event) => setDraft((current) => ({ ...current, bonusesText: event.target.value }))}
-                  placeholder="np. Silny przeciwko Nieumarłym +20%"
-                  value={draft.bonusesText}
-                />
-              </label>
-
-              {error ? <p className={styles.error} role="alert">{error}</p> : null}
-
-              <div className={styles.actions}>
-                <button className={styles.cancel} onClick={close} type="button">Anuluj</button>
-                <button className={styles.save} disabled={!writesEnabled} type="submit">
-                  Potwierdź i dodaj do torby
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
+      {triggerTarget ? createPortal(trigger, triggerTarget) : trigger}
+      {modal ? createPortal(modal, document.body) : null}
     </>
   );
 }

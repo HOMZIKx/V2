@@ -2,10 +2,13 @@
  * Shared Timers + Party rooms via player-team-service (REST + polling, no WS).
  */
 
+export type PartyHuntRole = 'scout' | 'hunter';
+
 export type PartyRoomMember = {
   readonly id: string;
   readonly displayName: string;
   readonly role: 'leader' | 'member';
+  readonly huntRole: PartyHuntRole;
 };
 
 export type PartyRoomPin = {
@@ -18,6 +21,10 @@ export type PartyRoomPin = {
   readonly placedBy: string;
   readonly label: string;
   readonly kind: 'metin' | 'boss' | 'spot';
+  readonly claimedBy?: string | null;
+  readonly claimedAt?: number | null;
+  readonly completedBy?: string | null;
+  readonly completedAt?: number | null;
 };
 
 export type PartyRoomSnapshot = {
@@ -211,6 +218,24 @@ export async function patchPartyRoom(input: {
   return (await res.json()) as PartyRoomSnapshot;
 }
 
+export async function setPartyRoomHuntRole(input: {
+  readonly viewerId: string;
+  readonly roomId: string;
+  readonly huntRole: PartyHuntRole;
+}): Promise<PartyRoomSnapshot> {
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}/hunt-role`,
+    {
+      method: 'PATCH',
+      headers: headers(input.viewerId, true),
+      credentials: requestCredentials,
+      body: JSON.stringify({ huntRole: input.huntRole }),
+    },
+  );
+  if (!res.ok) throw new Error(`setPartyRoomHuntRole failed: ${await readError(res)}`);
+  return (await res.json()) as PartyRoomSnapshot;
+}
+
 export async function addPartyRoomPin(input: {
   readonly viewerId: string;
   readonly roomId: string;
@@ -226,6 +251,30 @@ export async function addPartyRoomPin(input: {
     },
   );
   if (!res.ok) throw new Error(`addPartyRoomPin failed: ${await readError(res)}`);
+  return (await res.json()) as PartyRoomSnapshot;
+}
+
+export async function patchPartyRoomPin(input: {
+  readonly viewerId: string;
+  readonly roomId: string;
+  readonly pinId: string;
+  readonly patch: {
+    readonly claimedBy?: string | null;
+    readonly claimedAt?: number | null;
+    readonly completedBy?: string | null;
+    readonly completedAt?: number | null;
+  };
+}): Promise<PartyRoomSnapshot> {
+  const res = await fetch(
+    `${baseUrl}/player-team/v1/party-rooms/${encodeURIComponent(input.roomId)}/pins/${encodeURIComponent(input.pinId)}`,
+    {
+      method: 'PATCH',
+      headers: headers(input.viewerId, true),
+      credentials: requestCredentials,
+      body: JSON.stringify(input.patch),
+    },
+  );
+  if (!res.ok) throw new Error(`patchPartyRoomPin failed: ${await readError(res)}`);
   return (await res.json()) as PartyRoomSnapshot;
 }
 

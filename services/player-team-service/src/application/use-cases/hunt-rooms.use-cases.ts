@@ -7,6 +7,8 @@ import {
   type PartyRoomPin,
   type PartyRoomRecord,
   type PatchPartyRoomInput,
+  type PatchPartyRoomPinInput,
+  type SetPartyHuntRoleInput,
   type TimerRoomSnapshot,
 } from '../../domain/ports/hunt-rooms.port.js';
 
@@ -62,12 +64,28 @@ export class HuntRoomsUseCases {
     return this.repository.patchPartyRoom(input);
   }
 
+  public setPartyHuntRole(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord> {
+    const handler = this.repository.setPartyHuntRole;
+    if (!handler) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'party hunt role persistence is unavailable');
+    }
+    return handler.call(this.repository, input);
+  }
+
   public addPartyRoomPin(
     roomId: string,
     viewerId: string,
     pin: PartyRoomPin,
   ): Promise<PartyRoomRecord> {
     return this.repository.addPartyRoomPin(roomId, viewerId, pin);
+  }
+
+  public patchPartyRoomPin(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord> {
+    const handler = this.repository.patchPartyRoomPin;
+    if (!handler) {
+      throw new PlayerTeamError('VALIDATION_FAILED', 'party pin state persistence is unavailable');
+    }
+    return handler.call(this.repository, input);
   }
 
   public removePartyRoomPin(

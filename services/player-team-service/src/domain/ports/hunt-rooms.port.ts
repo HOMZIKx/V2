@@ -1,7 +1,11 @@
+export type PartyHuntRole = 'scout' | 'hunter';
+
 export type PartyRoomMember = {
   readonly id: string;
   readonly displayName: string;
   readonly role: 'leader' | 'member';
+  /** Optional only for backwards-compatible decoding/mocks; persistence normalizes it. */
+  readonly huntRole?: PartyHuntRole;
 };
 
 export type PartyRoomRequest = {
@@ -20,6 +24,10 @@ export type PartyRoomPin = {
   readonly placedBy: string;
   readonly label: string;
   readonly kind: 'metin' | 'boss' | 'spot';
+  readonly claimedBy?: string | null | undefined;
+  readonly claimedAt?: number | null | undefined;
+  readonly completedBy?: string | null | undefined;
+  readonly completedAt?: number | null | undefined;
 };
 
 export type PartyRoomRecord = {
@@ -87,6 +95,22 @@ export type PatchPartyRoomInput = {
   readonly requests?: readonly PartyRoomRequest[];
 };
 
+export type PatchPartyRoomPinInput = {
+  readonly roomId: string;
+  readonly viewerId: string;
+  readonly pinId: string;
+  readonly claimedBy?: string | null;
+  readonly claimedAt?: number | null;
+  readonly completedBy?: string | null;
+  readonly completedAt?: number | null;
+};
+
+export type SetPartyHuntRoleInput = {
+  readonly roomId: string;
+  readonly viewerId: string;
+  readonly huntRole: PartyHuntRole;
+};
+
 export type ConfirmTimerKillInput = {
   readonly mapKey: string;
   readonly channel: number;
@@ -102,7 +126,11 @@ export interface HuntRoomsRepositoryPort {
   getPartyRoom(roomId: string): Promise<PartyRoomRecord | null>;
   leavePartyRoom(roomId: string, viewerId: string): Promise<PartyRoomRecord | null>;
   patchPartyRoom(input: PatchPartyRoomInput): Promise<PartyRoomRecord>;
+  /** Optional for old in-memory test adapters; production repository implements it. */
+  setPartyHuntRole?(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord>;
   addPartyRoomPin(roomId: string, viewerId: string, pin: PartyRoomPin): Promise<PartyRoomRecord>;
+  /** Optional for old in-memory test adapters; production repository implements it. */
+  patchPartyRoomPin?(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord>;
   removePartyRoomPin(roomId: string, viewerId: string, pinId: string): Promise<PartyRoomRecord>;
 
   getOrCreateTimerRoom(

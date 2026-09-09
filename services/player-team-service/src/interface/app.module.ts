@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { HuntRoomsUseCases } from '../application/use-cases/hunt-rooms.use-cases.js';
 import { MetinGeneralHuntsUseCases } from '../application/use-cases/metin-general-hunts.use-cases.js';
 import { PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
+import { PrivateEconomyUseCases } from '../application/use-cases/private-economy.use-cases.js';
 import { TeamEconomyUseCases } from '../application/use-cases/team-economy.use-cases.js';
 import { TeamInvitationsUseCases } from '../application/use-cases/team-invitations.use-cases.js';
 import { LegacyEconomyCatalogSeeder } from '../infrastructure/catalog/legacy-economy-catalog.seeder.js';
@@ -22,6 +23,7 @@ import { HealthController } from './health.controller.js';
 import { HuntRoomsController } from './hunt-rooms.controller.js';
 import { MetinGeneralHuntsController } from './metin-general-hunts.controller.js';
 import { PlayerTeamController } from './player-team.controller.js';
+import { PrivateEconomyController } from './private-economy.controller.js';
 import { TeamEconomyManagementController } from './team-economy-management.controller.js';
 import { TeamEconomyController } from './team-economy.controller.js';
 import { TeamInvitationsController } from './team-invitations.controller.js';
@@ -32,6 +34,7 @@ import {
   METIN_GENERAL_HUNTS_USE_CASES,
   PLAYER_TEAM_ENV,
   PLAYER_TEAM_STATE_USE_CASES,
+  PRIVATE_ECONOMY_USE_CASES,
   TEAM_ECONOMY_USE_CASES,
   TEAM_INVITATIONS_USE_CASES,
 } from './player-team.tokens.js';
@@ -46,6 +49,7 @@ import {
     WorkspaceLiveController,
     TeamInvitationsController,
     TeamEconomyController,
+    PrivateEconomyController,
     TeamEconomyManagementController,
     AiObservationController,
   ],
@@ -97,6 +101,11 @@ import {
       useFactory: (repository: TeamEconomyRepository, stateUseCases: PlayerTeamStateUseCases) =>
         new TeamEconomyUseCases(repository, stateUseCases),
       inject: [TeamEconomyRepository, PLAYER_TEAM_STATE_USE_CASES],
+    },
+    {
+      provide: PRIVATE_ECONOMY_USE_CASES,
+      useFactory: (repository: TeamEconomyRepository) => new PrivateEconomyUseCases(repository),
+      inject: [TeamEconomyRepository],
     },
   ],
 })
