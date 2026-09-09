@@ -93,6 +93,9 @@ describe('project hard progression config', () => {
     expect(progressionTimerIcons.mining).toContain('mining');
     expect(progressionTimerIcons.biologist).toContain('biologist');
     expect(progressionTimerIcons.horse).toContain('horse-medal');
+    expect(inferProgressionKind('Księga umiejętności')).toBe('skill_book');
+    expect(inferProgressionKind('Skill Book')).toBe('skill_book');
+    expect(inferProgressionKind('Księga Klątw')).toBeNull();
     expect(inferProgressionKind('Kamień duszy')).toBe('soul_stone');
     expect(inferProgressionKind('Kamień Duchowy')).toBe('soul_stone');
     expect(inferProgressionKind('Dowodzenie')).toBe('leadership');
