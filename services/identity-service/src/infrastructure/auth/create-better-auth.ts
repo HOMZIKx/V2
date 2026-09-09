@@ -12,6 +12,7 @@ import { enforceLoginEntitlement } from '../authorization/login-entitlement-gate
 import type { IdentityEnv } from '../config/identity-env.js';
 
 const REDIS_KEY_PREFIX = 'v2:identity:auth:';
+const DISCORD_CDN_ORIGIN = 'https://cdn.discordapp.com';
 
 /** Concrete inferred runtime returned by {@link createBetterAuth}. */
 export type AuthRuntime = ReturnType<typeof createBetterAuth>;
@@ -45,6 +46,32 @@ interface MappableDiscordProfile {
   readonly username?: string;
   readonly global_name?: string | null;
   readonly email?: string | null;
+  readonly avatar?: string | null;
+  readonly discriminator?: string | null;
+}
+
+function discordDefaultAvatarIndex(profile: MappableDiscordProfile): number {
+  const discriminator = profile.discriminator?.trim() ?? '';
+  if (discriminator && discriminator !== '0' && /^\d+$/u.test(discriminator)) {
+    return Number(discriminator) % 5;
+  }
+
+  try {
+    return Number((BigInt(profile.id) >> 22n) % 6n);
+  } catch {
+    return 0;
+  }
+}
+
+/** Stable Discord CDN URL for both custom and default avatars. */
+export function buildDiscordAvatarUrl(profile: MappableDiscordProfile): string {
+  const avatar = profile.avatar?.trim();
+  if (avatar) {
+    const extension = avatar.startsWith('a_') ? 'gif' : 'png';
+    return `${DISCORD_CDN_ORIGIN}/avatars/${encodeURIComponent(profile.id)}/${encodeURIComponent(avatar)}.${extension}?size=128`;
+  }
+
+  return `${DISCORD_CDN_ORIGIN}/embed/avatars/${discordDefaultAvatarIndex(profile)}.png`;
 }
 
 /**
@@ -57,12 +84,14 @@ export function mapDiscordProfileToUser(profile: MappableDiscordProfile): {
   name: string;
   email: string;
   emailVerified: boolean;
+  image: string;
 } {
   const email = profile.email == null ? buildSyntheticEmail('discord', profile.id) : profile.email;
   return {
     name: profile.global_name ?? profile.username ?? profile.id,
     email,
     emailVerified: false,
+    image: buildDiscordAvatarUrl(profile),
   };
 }
 
@@ -142,6 +171,7 @@ export function createBetterAuth(config: IdentityEnv, deps: CreateBetterAuthDepe
       discord: {
         clientId: config.IDENTITY_DISCORD_CLIENT_ID ?? '',
         clientSecret: config.IDENTITY_DISCORD_CLIENT_SECRET ?? '',
+        overrideUserInfoOnSignIn: true,
         mapProfileToUser: (profile) => mapDiscordProfileToUser(profile),
       },
     },
