@@ -15,6 +15,8 @@ import { TeamEconomyUseCases } from './team-economy.use-cases.js';
 class RepositoryStub implements TeamEconomyRepositoryPort {
   public drops: EconomyDropSessionRecord[] = [];
   public expenses: EconomyExpenseRecord[] = [];
+  public readonly dropWorkspaceIds: string[] = [];
+  public readonly expenseWorkspaceIds: string[] = [];
 
   public async catalogStatus() {
     return { total: 0 };
@@ -45,7 +47,8 @@ class RepositoryStub implements TeamEconomyRepositoryPort {
     throw new Error(`not used: ${input.workspaceId}`);
   }
 
-  public async listDrops(): Promise<readonly EconomyDropSessionRecord[]> {
+  public async listDrops(workspaceId: string): Promise<readonly EconomyDropSessionRecord[]> {
+    this.dropWorkspaceIds.push(workspaceId);
     return this.drops;
   }
 
@@ -53,7 +56,8 @@ class RepositoryStub implements TeamEconomyRepositoryPort {
     throw new Error(`not used: ${input.workspaceId}`);
   }
 
-  public async listExpenses(): Promise<readonly EconomyExpenseRecord[]> {
+  public async listExpenses(workspaceId: string): Promise<readonly EconomyExpenseRecord[]> {
+    this.expenseWorkspaceIds.push(workspaceId);
     return this.expenses;
   }
 }
@@ -147,5 +151,29 @@ describe('TeamEconomyUseCases.summary', () => {
       costs: 100,
       net: 600,
     });
+  });
+
+  it('binds the reserved private alias to a different server workspace for each authenticated viewer', async () => {
+    const repository = new RepositoryStub();
+    const forbiddenStateAccess = {
+      async getWorkspaceSnapshot() {
+        throw new Error('private economy must not depend on a team workspace');
+      },
+    } as unknown as PlayerTeamStateUseCases;
+    const useCases = new TeamEconomyUseCases(repository, forbiddenStateAccess);
+
+    const firstViewer = '12345678901234567';
+    const secondViewer = '98765432109876543';
+    const first = await useCases.summary(firstViewer, 'private');
+    const second = await useCases.summary(secondViewer, 'private');
+
+    expect(first.workspaceId).toBe('private');
+    expect(second.workspaceId).toBe('private');
+    expect(repository.dropWorkspaceIds).toHaveLength(2);
+    expect(repository.dropWorkspaceIds[0]).not.toBe(repository.dropWorkspaceIds[1]);
+    expect(repository.dropWorkspaceIds[0]).toMatch(/^private-economy-[a-f0-9]{40}$/);
+    expect(repository.dropWorkspaceIds[0]).not.toContain(firstViewer);
+    expect(repository.dropWorkspaceIds[1]).not.toContain(secondViewer);
+    expect(repository.expenseWorkspaceIds).toEqual(repository.dropWorkspaceIds);
   });
 });
