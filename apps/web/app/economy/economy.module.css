@@ -340,3 +340,40 @@
     text-align: center;
   }
 }
+
+.periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+}
+
+.period,
+.periodActive {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(11, 16, 26, 0.86);
+  color: var(--muted-strong);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.periodActive {
+  border-color: rgba(57, 136, 255, 0.55);
+  background: rgba(57, 136, 255, 0.16);
+  color: #c8dcff;
+}
+
+.currencyValues {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.currencyValues strong {
+  margin: 0;
+  font-size: 17px;
+}

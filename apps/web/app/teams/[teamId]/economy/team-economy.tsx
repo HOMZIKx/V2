@@ -24,6 +24,27 @@ import styles from './team-economy.module.css';
 
 type Currency = 'yang' | 'won' | 'gem';
 type Tab = 'drop' | 'costs' | 'history' | 'ranking';
+type RangePreset = 'day' | '7d' | '30d' | 'all';
+
+const RANGE_OPTIONS: readonly { value: RangePreset; label: string }[] = [
+  { value: 'day', label: 'Dzisiaj' },
+  { value: '7d', label: '7 dni' },
+  { value: '30d', label: '30 dni' },
+  { value: 'all', label: 'Całość' },
+];
+
+function rangeSinceIso(range: RangePreset): string | null {
+  if (range === 'all') return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  if (range === '7d') start.setDate(start.getDate() - 6);
+  if (range === '30d') start.setDate(start.getDate() - 29);
+  return start.toISOString();
+}
+
+function rangeLabel(range: RangePreset): string {
+  return RANGE_OPTIONS.find((option) => option.value === range)?.label ?? '7 dni';
+}
 
 type Summary = {
   runCount: number;
@@ -147,6 +168,22 @@ function weekStartIso(): string {
   return start.toISOString();
 }
 
+const CURRENCIES: readonly Currency[] = ['yang', 'won', 'gem'];
+
+function summaryRows(summary: Summary | null) {
+  return CURRENCIES.map(
+    (currency) =>
+      summary?.totals.find((row) => row.currency === currency) ?? {
+        currency,
+        gross: 0,
+        itemGross: 0,
+        moneyGross: 0,
+        costs: 0,
+        net: 0,
+      },
+  );
+}
+
 function money(value: number, currency: Currency): string {
   if (currency === 'won') {
     return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} Won`;
@@ -200,6 +237,7 @@ export function TeamEconomy() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [catalogReady, setCatalogReady] = useState(false);
+  const [range, setRange] = useState<RangePreset>('7d');
 
   const [dropOpen, setDropOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -319,12 +357,13 @@ export function TeamEconomy() {
   const load = useCallback(async () => {
     if (!workspace) return;
     setError('');
-    const since = encodeURIComponent(weekStartIso());
+    const since = rangeSinceIso(range);
+    const suffix = since ? `?since=${encodeURIComponent(since)}` : '';
     try {
       const [summaryResponse, dropsResponse, expensesResponse] = await Promise.all([
-        fetch(api(workspace.id, `summary?since=${since}`), { cache: 'no-store' }),
-        fetch(api(workspace.id, `drops?since=${since}`), { cache: 'no-store' }),
-        fetch(api(workspace.id, `expenses?since=${since}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `summary${suffix}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `drops${suffix}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `expenses${suffix}`), { cache: 'no-store' }),
       ]);
       if (!summaryResponse.ok || !dropsResponse.ok || !expensesResponse.ok) {
         throw new Error('Nie udało się pobrać ekonomii zespołu.');
@@ -335,21 +374,14 @@ export function TeamEconomy() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Błąd pobierania danych.');
     }
-  }, [workspace]);
+  }, [workspace, range]);
 
   useEffect(() => {
     void ensureCatalog();
     void load();
   }, [ensureCatalog, load]);
 
-  const yang = summary?.totals.find((total) => total.currency === 'yang') ?? {
-    gross: 0,
-    itemGross: 0,
-    moneyGross: 0,
-    costs: 0,
-    net: 0,
-    currency: 'yang' as const,
-  };
+  const totals = summaryRows(summary);
 
   const ranking = useMemo(
     () =>
@@ -691,7 +723,7 @@ export function TeamEconomy() {
           <div>
             <span className={styles.eyebrow}>Zespół · Ekonomia</span>
             <h1>{workspace.name}</h1>
-            <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik tygodnia.</p>
+            <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik dla wybranego okresu.</p>
           </div>
           <div className={styles.actions}>
             <button
@@ -711,29 +743,49 @@ export function TeamEconomy() {
           </div>
         </section>
 
+        <div className={styles.periods} aria-label="Zakres danych ekonomii">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              className={range === option.value ? styles.periodActive : styles.period}
+              key={option.value}
+              onClick={() => setRange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <section className={styles.metrics}>
           <article className={styles.metric}>
-            <span>Przychód · ten tydzień</span>
-            <strong>{money(yang.gross, 'yang')}</strong>
-            <small>
-              przedmioty {money(yang.itemGross, 'yang')} · kasa {money(yang.moneyGross, 'yang')}
-            </small>
+            <span>Przychód · {rangeLabel(range)}</span>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.gross, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
             <span>Koszty</span>
-            <strong>{money(yang.costs, 'yang')}</strong>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.costs, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
             <span>Wynik netto</span>
-            <strong className={styles.net}>{money(yang.net, 'yang')}</strong>
+            <div className={`${styles.currencyValues} ${styles.net}`}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.net, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
-            <span>Wyprawy</span>
+            <span>Wpisy dropów</span>
             <strong>{summary?.runCount ?? 0}</strong>
             <small>
-              {catalogReady
-                ? `${dobryTematSeed.length} pozycji katalogu lokalnego`
-                : 'synchronizacja katalogu…'}
+              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}
             </small>
           </article>
         </section>
@@ -1114,7 +1166,7 @@ export function TeamEconomy() {
 
         <div className={styles.tabs}>
           <button data-active={tab === 'drop'} onClick={() => setTab('drop')} type="button">
-            Tydzień
+            Bilans
           </button>
           <button data-active={tab === 'costs'} onClick={() => setTab('costs')} type="button">
             Koszty
@@ -1123,14 +1175,14 @@ export function TeamEconomy() {
             Historia dropów
           </button>
           <button data-active={tab === 'ranking'} onClick={() => setTab('ranking')} type="button">
-            Dochodowość
+            Źródła dropu
           </button>
         </div>
 
         {tab === 'drop' ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Bilans tygodnia</h2>
+              <h2>Bilans · {rangeLabel(range)}</h2>
             </div>
             <div className={styles.grid}>
               {(summary?.totals ?? []).map((total) => (
@@ -1175,7 +1227,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Brak kosztów w tym tygodniu.</p>
+              <p className={styles.empty}>Brak kosztów w wybranym okresie.</p>
             )}
           </section>
         ) : null}
@@ -1231,7 +1283,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Brak zapisanych dropów w tym tygodniu.</p>
+              <p className={styles.empty}>Brak zapisanych dropów w wybranym okresie.</p>
             )}
           </section>
         ) : null}
@@ -1239,7 +1291,7 @@ export function TeamEconomy() {
         {tab === 'ranking' ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Dochodowość aktywności · Yang</h2>
+              <h2>Wartość dropu wg źródła · Yang</h2>
             </div>
             {ranking.length ? (
               <div className={styles.rank}>
@@ -1252,7 +1304,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Za mało danych do rankingu.</p>
+              <p className={styles.empty}>Brak danych o wartości dropów w wybranym okresie.</p>
             )}
           </section>
         ) : null}
