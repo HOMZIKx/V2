@@ -57,6 +57,7 @@ jobs:
         run: |
           pnpm --dir apps/discord-gateway exec vitest run --config vitest.config.ts \
             src/application/member-activity/member-activity-collector.spec.ts \
+            src/application/member-activity/member-activity-query.spec.ts \
             src/application/technika/versioned-config-store.spec.ts \
             src/infrastructure/discord/discord-js-adapter.spec.ts
         env:
