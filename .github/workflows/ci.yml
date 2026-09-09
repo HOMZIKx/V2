@@ -59,7 +59,8 @@ jobs:
             src/application/member-activity/member-activity-collector.spec.ts \
             src/application/member-activity/member-activity-query.spec.ts \
             src/application/technika/versioned-config-store.spec.ts \
-            src/infrastructure/discord/discord-js-adapter.spec.ts
+            src/infrastructure/discord/discord-js-adapter.spec.ts \
+            src/infrastructure/player-team/read-character-timer-panel.spec.ts
         env:
           CI: 'true'
 
@@ -71,12 +72,15 @@ jobs:
         env:
           CI: 'true'
 
-      - name: Run web item image regression tests for preview
+      - name: Run web regression tests for preview
         if: github.ref == 'refs/heads/preview/destiled-web' || github.base_ref == 'preview/destiled-web'
         run: |
           pnpm --dir apps/web exec vitest run --config vitest.config.ts \
             src/item-image-path-regression.spec.ts \
-            src/server/item-image-proxy.spec.ts
+            src/server/item-image-proxy.spec.ts \
+            src/discord-notify-recipients.spec.ts \
+            src/project-hard-progression.spec.ts \
+            src/skill-book-timer-regression.spec.ts
         env:
           CI: 'true'
 
