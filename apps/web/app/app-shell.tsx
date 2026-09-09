@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { useDiscordMembershipWatchdog } from '../src/discord-membership-watchdog-hook';
 import { getReadyTimers } from '../src/player-store';
@@ -240,6 +240,7 @@ export function AppShell({
   viewerName: string;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   const router = useRouter();
   const { state } = usePlayerStore();
   const technikAccess = useTechnikAccess();
@@ -248,6 +249,11 @@ export function AppShell({
     state.authStatus === 'authenticated' &&
     Boolean(state.viewer) &&
     !state.viewer?.profileSetupDone;
+  const isEconomyRoute =
+    pathname === '/economy' ||
+    pathname.startsWith('/economy/') ||
+    /^\/teams\/[^/]+\/economy(?:\/|$)/.test(pathname);
+  const navigationActiveSection: AppSection = isEconomyRoute ? 'economy' : activeSection;
 
   useEffect(() => {
     if (!needsProfileSetup) return;
@@ -360,7 +366,7 @@ export function AppShell({
         <nav aria-label="Główna nawigacja" className="global-nav">
           {visibleNavigation.map((item) => (
             <a
-              aria-current={item.id === activeSection ? 'page' : undefined}
+              aria-current={item.id === navigationActiveSection ? 'page' : undefined}
               className="global-nav-item"
               href={item.href}
               key={item.id}
@@ -398,7 +404,7 @@ export function AppShell({
       <aside className={`mobile-drawer${mobileMenuOpen ? ' is-open' : ''}`}>
         {visibleNavigation.map((item) => (
           <a
-            aria-current={item.id === activeSection ? 'page' : undefined}
+            aria-current={item.id === navigationActiveSection ? 'page' : undefined}
             className="drawer-item"
             href={item.href}
             key={item.id}
