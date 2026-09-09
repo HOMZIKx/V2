@@ -4,10 +4,8 @@ import {
   ButtonStyle,
   ContainerBuilder,
   MessageFlags,
-  SectionBuilder,
   StringSelectMenuBuilder,
   TextDisplayBuilder,
-  ThumbnailBuilder,
   type MessageCreateOptions,
 } from 'discord.js';
 
@@ -18,18 +16,22 @@ import type {
 import { createCharacterTimerButtonCustomId } from '../../infrastructure/security/character-timer-custom-id.js';
 import { createCharacterTimerPanelSelectCustomId } from '../../infrastructure/security/character-timer-panel-custom-id.js';
 
-const COLORS = {
-  neutral: 0x3b82f6,
-  done: 0x2fbf8f,
-  warning: 0xe55353,
-  ready: 0xef4444,
-  muted: 0x667085,
-} as const;
+const PANEL_ACCENT = 0x2fbf8f;
+const PANEL_REMINDER_PREFIX = 'panel-';
+const FALLBACK_WEB_BASE_URL = 'https://desapp.zeabur.app';
 
-function timerIconUrl(path: string | null): string | null {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  return `https://desapp.zeabur.app${path.startsWith('/') ? '' : '/'}${path}`;
+function webBaseUrl(): string {
+  return (process.env.DESTILED_WEB_BASE_URL ?? FALLBACK_WEB_BASE_URL).replace(/\/$/, '');
+}
+
+export function dailyTimerPanelReminderId(workspaceId: string): string {
+  return `${PANEL_REMINDER_PREFIX}${workspaceId}`;
+}
+
+export function workspaceIdFromDailyTimerPanelReminderId(timerId: string): string | null {
+  if (!timerId.startsWith(PANEL_REMINDER_PREFIX)) return null;
+  const workspaceId = timerId.slice(PANEL_REMINDER_PREFIX.length).trim();
+  return workspaceId.length > 0 ? workspaceId : null;
 }
 
 function readyAtMs(timer: CharacterTimerPanelTimer): number | null {
@@ -38,42 +40,58 @@ function readyAtMs(timer: CharacterTimerPanelTimer): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
-function timerVisualState(timer: CharacterTimerPanelTimer, nowMs: number): {
-  readonly accent: number;
-  readonly badge: string;
-  readonly buttonStyle: ButtonStyle;
-  readonly actionable: boolean;
-} {
+function timerIsReady(timer: CharacterTimerPanelTimer, nowMs: number): boolean {
   const readyMs = readyAtMs(timer);
-  const isReady = timer.status === 'ready' || (readyMs !== null && readyMs <= nowMs);
-  if (isReady) {
-    return { accent: COLORS.ready, badge: '🔴 GOTOWE', buttonStyle: ButtonStyle.Success, actionable: true };
+  return timer.status === 'ready' || (readyMs !== null && readyMs <= nowMs);
+}
+
+function timerStatusText(timer: CharacterTimerPanelTimer, nowMs: number): string {
+  if (timerIsReady(timer, nowMs)) return '🟢 **gotowe**';
+
+  const readyMs = readyAtMs(timer);
+  if (readyMs !== null) {
+    const unix = Math.floor(readyMs / 1000);
+    return `🟡 <t:${unix}:R>`;
   }
-  const remainingMs = readyMs === null ? null : readyMs - nowMs;
-  if (remainingMs !== null && remainingMs <= 10 * 60_000) {
-    return { accent: COLORS.warning, badge: '🔴 KOŃCZY SIĘ', buttonStyle: ButtonStyle.Success, actionable: false };
-  }
-  if (timer.status === 'running' && timer.lastConfirmedAt) {
-    return { accent: COLORS.done, badge: '🟢 ZROBIONE · CYKL TRWA', buttonStyle: ButtonStyle.Success, actionable: false };
-  }
+
   if (timer.status === 'running') {
-    return { accent: COLORS.neutral, badge: '🔵 W TRAKCIE', buttonStyle: ButtonStyle.Success, actionable: false };
+    return timer.remainingLabel ? `🟡 ${timer.remainingLabel}` : '🟡 w trakcie';
   }
-  return { accent: COLORS.muted, badge: '⚪ BRAK AKTYWNEGO CYKLU', buttonStyle: ButtonStyle.Secondary, actionable: false };
+
+  return '⚪ brak aktywnego cyklu';
 }
 
-function timerClock(timer: CharacterTimerPanelTimer): string {
-  const ms = readyAtMs(timer);
-  if (ms === null) return timer.remainingLabel ?? 'Brak czasu zakończenia';
-  const unix = Math.floor(ms / 1000);
-  return `<t:${unix}:R> · <t:${unix}:t>`;
+function timerSummary(snapshot: CharacterTimerPanelSnapshot, nowMs: number): string {
+  if (!snapshot.selectedCharacter) {
+    return 'Nie masz jeszcze postaci przypisanej do swojego konta w tym zespole.';
+  }
+  if (snapshot.timers.length === 0) {
+    return 'Brak timerów dla tej postaci.';
+  }
+
+  return snapshot.timers
+    .map((timer) => `**${timer.label}** — ${timerStatusText(timer, nowMs)}`)
+    .join('\n');
 }
 
-function characterSubtitle(snapshot: CharacterTimerPanelSnapshot): string {
-  const character = snapshot.selectedCharacter;
-  if (!character) return 'Brak postaci przypisanej do Twojego konta.';
-  const parts = [character.characterClass, character.skillPath].filter(Boolean);
-  return parts.length > 0 ? parts.join(' · ') : 'Postać zespołu';
+function buttonLabel(prefix: string, value: string): string {
+  const maxValueLength = Math.max(1, 80 - prefix.length);
+  return `${prefix}${value.slice(0, maxValueLength)}`;
+}
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function openTimersButton(): ButtonBuilder {
+  return new ButtonBuilder()
+    .setLabel('Otwórz timery')
+    .setStyle(ButtonStyle.Link)
+    .setURL(`${webBaseUrl()}/timers`);
 }
 
 export function renderCharacterTimerDailyPanel(input: {
@@ -83,97 +101,171 @@ export function renderCharacterTimerDailyPanel(input: {
 }): MessageCreateOptions {
   const nowMs = input.nowMs ?? Date.now();
   const snapshot = input.snapshot;
-  const components: ContainerBuilder[] = [];
+  const panel = new ContainerBuilder().setAccentColor(PANEL_ACCENT);
 
-  const header = new ContainerBuilder().setAccentColor(COLORS.neutral);
-  header.addTextDisplayComponents(
+  panel.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      `## DESTILED · TIMERY\n**${snapshot.selectedCharacter?.name ?? 'Brak postaci'}**\n${characterSubtitle(snapshot)}\n-# ${snapshot.workspaceName} · panel aktualizuje się z tej samej bazy co strona`,
+      `## DESTILED · TIMERY\n**${snapshot.selectedCharacter?.name ?? 'Brak postaci'}**\n-# Dzisiejsze timery`,
     ),
   );
-  components.push(header);
 
-  if (!snapshot.selectedCharacter) {
-    const empty = new ContainerBuilder().setAccentColor(COLORS.muted);
-    empty.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent('Nie masz jeszcze postaci przypisanej do swojego konta w tym zespole.'),
-    );
-    components.push(empty);
-  }
+  panel.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(timerSummary(snapshot, nowMs)),
+  );
 
-  for (const timer of snapshot.timers) {
-    const visual = timerVisualState(timer, nowMs);
-    const container = new ContainerBuilder().setAccentColor(visual.accent);
-    const text = new TextDisplayBuilder().setContent(
-      `### ${timer.label}\n${visual.badge}\n**${timerClock(timer)}**${timer.detail ? `\n-# ${timer.detail}` : ''}`,
-    );
-    const iconUrl = timerIconUrl(timer.iconPath);
-    if (iconUrl) {
-      container.addSectionComponents(
-        new SectionBuilder()
-          .addTextDisplayComponents(text)
-          .setThumbnailAccessory(new ThumbnailBuilder().setURL(iconUrl)),
-      );
-    } else {
-      container.addTextDisplayComponents(text);
-    }
-    container.addActionRowComponents(
+  const readyTimers = snapshot.timers.filter((timer) => timerIsReady(timer, nowMs));
+  for (const group of chunk(readyTimers, 5)) {
+    panel.addActionRowComponents(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(
-            createCharacterTimerButtonCustomId(
-              'gotowe',
-              { timerId: timer.id, workspaceId: snapshot.workspaceId },
-              input.signingSecret,
-            ),
-          )
-          .setLabel(visual.actionable ? 'Zrobione / oddane' : 'Jeszcze trwa')
-          .setStyle(visual.buttonStyle)
-          .setDisabled(!visual.actionable),
+        group.map((timer) =>
+          new ButtonBuilder()
+            .setCustomId(
+              createCharacterTimerButtonCustomId(
+                'gotowe',
+                { timerId: timer.id },
+                input.signingSecret,
+              ),
+            )
+            .setLabel(buttonLabel('Zrobione · ', timer.label))
+            .setStyle(ButtonStyle.Success),
+        ),
       ),
     );
-    components.push(container);
   }
 
-  if (snapshot.selectedCharacter && snapshot.timers.length === 0) {
-    const empty = new ContainerBuilder().setAccentColor(COLORS.muted);
-    empty.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent('### Brak timerów\nDodaj timer na stronie DESTILED — pojawi się tutaj automatycznie.'),
-    );
-    components.push(empty);
-  }
-
-  const footer = new ContainerBuilder().setAccentColor(COLORS.neutral);
   if (snapshot.characters.length > 1) {
     const select = new StringSelectMenuBuilder()
       .setCustomId(
         createCharacterTimerPanelSelectCustomId(snapshot.workspaceId, input.signingSecret),
       )
-      .setPlaceholder('Zmień postać')
+      .setPlaceholder(`Postać: ${snapshot.selectedCharacter?.name ?? 'wybierz'}`.slice(0, 150))
       .addOptions(
         snapshot.characters.slice(0, 25).map((character) => ({
           label: character.name.slice(0, 100),
           value: character.id,
-          description: [character.characterClass, character.skillPath]
-            .filter(Boolean)
-            .join(' · ')
-            .slice(0, 100) || 'Postać zespołu',
           default: character.id === snapshot.selectedCharacterId,
         })),
       );
-    footer.addActionRowComponents(
+    panel.addActionRowComponents(
       new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select),
     );
   }
-  footer.addTextDisplayComponents(
-    new TextDisplayBuilder().setContent(
-      '-# Czas „za X min” jest natywnym timestampem Discorda i odlicza bez wysyłania nowych wiadomości.',
+
+  panel.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      openTimersButton(),
+      new ButtonBuilder()
+        .setCustomId(
+          createCharacterTimerButtonCustomId(
+            'przypomnij',
+            { timerId: dailyTimerPanelReminderId(snapshot.workspaceId) },
+            input.signingSecret,
+          ),
+        )
+        .setLabel('Przypomnij później')
+        .setStyle(ButtonStyle.Secondary),
     ),
   );
-  components.push(footer);
 
   return {
-    components,
+    components: [panel],
     flags: MessageFlags.IsComponentsV2,
   };
+}
+
+function normalizedReminderOptions(baseMinutes: number): number[] {
+  const base = Math.max(5, Math.min(360, Math.round(baseMinutes)));
+  return [...new Set([base, base * 2, base * 4].map((value) => Math.min(1_440, value)))];
+}
+
+function reminderLabel(minutes: number): string {
+  if (minutes < 60) return `Za ${minutes} min`;
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `Za ${hours} ${hours === 1 ? 'godz.' : 'godz.'}`;
+  }
+  return `Za ${Math.floor(minutes / 60)} godz. ${minutes % 60} min`;
+}
+
+export function renderCharacterTimerSnoozePicker(input: {
+  readonly workspaceId: string;
+  readonly signingSecret: string;
+  readonly baseMinutes: number;
+}): MessageCreateOptions {
+  const panel = new ContainerBuilder().setAccentColor(PANEL_ACCENT);
+  const timerId = dailyTimerPanelReminderId(input.workspaceId);
+
+  panel.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      '## DESTILED · TIMERY\n**Przypomnij później**\nKiedy mam ponownie podbić ten panel?',
+    ),
+  );
+
+  panel.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      normalizedReminderOptions(input.baseMinutes).map((minutes) =>
+        new ButtonBuilder()
+          .setCustomId(
+            createCharacterTimerButtonCustomId(
+              'przypomnij',
+              { timerId, snoozeMinutes: minutes },
+              input.signingSecret,
+            ),
+          )
+          .setLabel(reminderLabel(minutes))
+          .setStyle(ButtonStyle.Primary),
+      ),
+    ),
+  );
+
+  panel.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      openTimersButton(),
+      new ButtonBuilder()
+        .setCustomId(
+          createCharacterTimerButtonCustomId(
+            'przypomnij',
+            { timerId, snoozeMinutes: 0 },
+            input.signingSecret,
+          ),
+        )
+        .setLabel('Wróć')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+
+  return { components: [panel], flags: MessageFlags.IsComponentsV2 };
+}
+
+export function renderCharacterTimerSnoozeConfirmation(input: {
+  readonly workspaceId: string;
+  readonly signingSecret: string;
+  readonly fireAtMs: number;
+}): MessageCreateOptions {
+  const panel = new ContainerBuilder().setAccentColor(PANEL_ACCENT);
+  const timerId = dailyTimerPanelReminderId(input.workspaceId);
+  const unix = Math.floor(input.fireAtMs / 1000);
+
+  panel.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      `## DESTILED · TIMERY\n🔔 **Przypomnienie ustawione**\nPanel wróci <t:${unix}:R>.`,
+    ),
+  );
+  panel.addActionRowComponents(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      openTimersButton(),
+      new ButtonBuilder()
+        .setCustomId(
+          createCharacterTimerButtonCustomId(
+            'przypomnij',
+            { timerId, snoozeMinutes: 0 },
+            input.signingSecret,
+          ),
+        )
+        .setLabel('Wróć do panelu')
+        .setStyle(ButtonStyle.Secondary),
+    ),
+  );
+
+  return { components: [panel], flags: MessageFlags.IsComponentsV2 };
 }
