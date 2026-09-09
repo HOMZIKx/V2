@@ -118,6 +118,21 @@ function clampEnhancement(value: number): number {
   return Math.min(9, Math.max(0, Math.trunc(value)));
 }
 
+function startsSocketGroup(value: string): boolean {
+  const line = value.trim();
+  return /^(?:Kamień Duszy|Kamien Duszy)\b/iu.test(line) ||
+    /^(?:Białe Złoto|Biale Zloto|Złoto|Zloto|Srebro|Miedź|Miedz|Jadeit|Heban|Ametyst|Kryształ|Krysztal|Niebiańskie Łzy|Niebiańskie Lzy)\b/iu.test(line);
+}
+
+function splitDisplayedBonuses(lines: readonly string[]): {
+  readonly regular: readonly string[];
+  readonly sockets: readonly string[];
+} {
+  const firstSocket = lines.findIndex(startsSocketGroup);
+  if (firstSocket < 0) return { regular: lines, sockets: [] };
+  return { regular: lines.slice(0, firstSocket), sockets: lines.slice(firstSocket) };
+}
+
 function itemImage(item: EquipmentItem) {
   return item.iconPath ? (
     <img alt="" src={item.iconPath} />
@@ -280,6 +295,9 @@ export function CharacterEquipmentV2() {
   const selectedItem = selectedItemId ? itemById.get(selectedItemId) ?? null : null;
   const selectedEquipLocation =
     selectedItemId && workspace ? equipLocations.get(selectedItemId) ?? null : null;
+  const selectedBonusGroups = selectedItem
+    ? splitDisplayedBonuses(selectedItem.bonuses)
+    : { regular: [] as readonly string[], sockets: [] as readonly string[] };
 
   const catalogSuggestions = useMemo(() => {
     if (!character) return [];
@@ -378,24 +396,37 @@ export function CharacterEquipmentV2() {
       if (!response.ok || !payload.draft?.name) {
         throw new Error(payload.error || 'Nie udało się odczytać przedmiotu ze screena.');
       }
+      const analysisDraft = payload.draft;
+      const analyzedName = analysisDraft.name;
+      if (!analyzedName) {
+        throw new Error('Nie udało się odczytać nazwy przedmiotu ze screena.');
+      }
 
       const parsedEnhancement = clampEnhancement(
-        payload.draft.enhancement ?? parseEnhancementFromName(payload.draft.name),
+        analysisDraft.enhancement ?? parseEnhancementFromName(analyzedName),
       );
-      const baseName = stripEnhancementFromName(payload.draft.name);
+      const baseName = stripEnhancementFromName(analyzedName);
       const matches = searchGameItems(baseName)
         .filter((item) => {
           const slot = equipmentSlotForCategory(item.category);
           return Boolean(slot) && isItemCompatibleWithClass(item.category, character.characterClass);
         })
         .slice(0, 8);
+      const normalizedBaseName = baseName.trim().toLocaleLowerCase('pl');
+      const exactMatches = matches.filter(
+        (item) => item.title.trim().toLocaleLowerCase('pl') === normalizedBaseName,
+      );
+      const sameSlotMatches = analysisDraft.category
+        ? matches.filter((item) => equipmentSlotForCategory(item.category) === analysisDraft.category)
+        : matches;
       const best =
-        matches.find(
-          (item) =>
-            item.title.trim().toLocaleLowerCase('pl') === baseName.trim().toLocaleLowerCase('pl'),
-        ) ?? matches[0] ?? null;
+        exactMatches.length === 1
+          ? exactMatches[0]!
+          : sameSlotMatches.length === 1
+            ? sameSlotMatches[0]!
+            : null;
       const bestSlot = best ? equipmentSlotForCategory(best.category) : null;
-      const analyzedSlot = bestSlot ?? payload.draft.category ?? null;
+      const analyzedSlot = bestSlot ?? analysisDraft.category ?? null;
 
       setSelectedCatalogId(best?.id ?? null);
       setCategoryReviewRequired(analyzedSlot === null);
@@ -403,12 +434,12 @@ export function CharacterEquipmentV2() {
         name: best?.title ?? baseName,
         enhancement: parsedEnhancement,
         category: analyzedSlot ?? current.category,
-        bonusesText: (payload.draft?.bonuses ?? []).join('\n'),
+        bonusesText: (analysisDraft.bonuses ?? []).join('\n'),
         confidence:
-          typeof payload.draft?.confidence === 'number'
-            ? Math.min(1, Math.max(0, payload.draft.confidence))
+          typeof analysisDraft.confidence === 'number'
+            ? Math.min(1, Math.max(0, analysisDraft.confidence))
             : null,
-        notes: payload.draft?.notes?.trim() ?? '',
+        notes: analysisDraft.notes?.trim() ?? '',
       }));
       setScreenshotStatus('done');
     } catch (error) {
@@ -689,15 +720,26 @@ export function CharacterEquipmentV2() {
 
                 <div className={styles.bonusBlock}>
                   <span>Bonusy</span>
-                  {selectedItem.bonuses.length > 0 ? (
+                  {selectedBonusGroups.regular.length > 0 ? (
                     <ul>
-                      {selectedItem.bonuses.map((bonus, index) => (
+                      {selectedBonusGroups.regular.map((bonus, index) => (
                         <li key={`${bonus}-${index}`}>{bonus}</li>
                       ))}
                     </ul>
-                  ) : (
+                  ) : selectedBonusGroups.sockets.length === 0 ? (
                     <p>Brak zapisanych dodatkowych linii.</p>
-                  )}
+                  ) : null}
+
+                  {selectedBonusGroups.sockets.length > 0 ? (
+                    <div className={styles.socketBonusGroup}>
+                      <span>Kamienie / przetopy</span>
+                      <ul>
+                        {selectedBonusGroups.sockets.map((bonus, index) => (
+                          <li key={`${bonus}-socket-${index}`}>{bonus}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className={styles.detailsActions}>

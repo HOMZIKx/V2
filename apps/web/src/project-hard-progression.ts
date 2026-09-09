@@ -243,11 +243,12 @@ export const projectHardSkillBookRules = {
 
 /**
  * Soul Stones (Kamienie duchowe) — mastery toward Perfect (P).
- * Owner rule (DESTILED): next read is available 12 h after reading.
+ * The effective cooldown can be 8 h or 12 h; each timer stores the selected duration.
  */
 export const projectHardSoulStoneRules = {
   readableAnytime: true,
   cooldownHours: 12,
+  allowedCooldownHours: [8, 12] as const,
   purpose: 'mistrzostwo umiejętności do stopnia P (pasywne / Perfect)',
   sources: 'metiny, bossy, potwory, skrzynie',
 } as const;
@@ -292,9 +293,9 @@ export const projectHardProgressionCycles: readonly ProgressionCycleDef[] = [
     reset: 'hours_12',
     alwaysTracked: true,
     unlockLevel: null,
-    detailReady: `Czytanie kamieni duchowych do P · cooldown ${projectHardSoulStoneRules.cooldownHours} h od przeczytania`,
+    detailReady: 'Czytanie kamieni duchowych do P · ustaw cooldown 8 h albo 12 h',
     remainingReady: 'gotowe do czytania',
-    doneHint: `Kamień Duchowy: kolejne czytanie po ${projectHardSoulStoneRules.cooldownHours} h.`,
+    doneHint: 'Kamień Duchowy: kolejne czytanie po wybranym cooldownie 8 h / 12 h.',
   },
   {
     kind: 'leadership',
@@ -489,6 +490,18 @@ export function isMidnightProgressionKind(kind: ProgressionKind | null): boolean
   return progressionCycleByKind(kind).reset === 'midnight';
 }
 
+function soulStoneCooldownMinutes(durationMinutes?: number): number {
+  const requested =
+    typeof durationMinutes === 'number' && Number.isFinite(durationMinutes)
+      ? Math.round(durationMinutes)
+      : projectHardSoulStoneRules.cooldownHours * 60;
+  return projectHardSoulStoneRules.allowedCooldownHours.includes(
+    (requested / 60) as (typeof projectHardSoulStoneRules.allowedCooldownHours)[number],
+  )
+    ? requested
+    : projectHardSoulStoneRules.cooldownHours * 60;
+}
+
 export function restartAfterDone(
   kind: ProgressionKind | null,
   now = new Date(),
@@ -507,11 +520,12 @@ export function restartAfterDone(
     };
   }
   if (kind === 'soul_stone') {
-    const hours = projectHardSoulStoneRules.cooldownHours;
+    const minutes = soulStoneCooldownMinutes(durationMinutes);
+    const hours = minutes / 60;
     return {
-      readyAtIso: new Date(now.getTime() + hours * 3_600_000).toISOString(),
+      readyAtIso: new Date(now.getTime() + minutes * 60_000).toISOString(),
       remainingLabel: `${hours} h od przeczytania`,
-      detailHint: progressionCycleByKind('soul_stone').doneHint,
+      detailHint: `Kamień Duchowy: kolejne czytanie po ${hours} h.`,
     };
   }
   if (kind && isMidnightProgressionKind(kind)) {
@@ -542,7 +556,7 @@ export function progressionCycleDurationMs(
     return projectHardHorseRules.advancementCooldownHours * 3_600_000;
   }
   if (kind === 'soul_stone') {
-    return projectHardSoulStoneRules.cooldownHours * 3_600_000;
+    return soulStoneCooldownMinutes(durationMinutes) * 60_000;
   }
   if (kind && isMidnightProgressionKind(kind)) {
     const midnight = new Date(nextMidnightIso(now)).getTime();

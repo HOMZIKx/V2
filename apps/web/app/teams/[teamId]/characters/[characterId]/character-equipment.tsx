@@ -309,7 +309,12 @@ function CharacterCard(props: {
   readonly onRemove: (characterId: string, setId: string, slot: EquipmentSlot) => void;
   readonly onItemDragStart: (itemId: string) => void;
   readonly onItemDragEnd: () => void;
-  readonly onCompleteTimer: (timerId: string, label: string, characterName: string) => void;
+  readonly onCompleteTimer: (
+    timerId: string,
+    label: string,
+    characterName: string,
+    durationMinutes?: number,
+  ) => void;
   readonly onRemoveTimer: (timerId: string, label: string, characterName: string) => void;
   readonly onAddTimer: (characterId: string) => void;
   readonly onAddTimerKind: (value: ProgressionKind | 'custom') => void;
@@ -660,23 +665,48 @@ function CharacterCard(props: {
                         {!lockedDue && timer.remainingLabel ? ` · ${timer.remainingLabel}` : ''}
                       </span>
                     </div>
-                    <button
-                      disabled={!writesEnabled || blocked}
-                      onClick={() => {
-                        if (blocked) return;
-                        onCompleteTimer(timer.id, timer.label, entry.name);
-                      }}
-                      title={
-                        lockedDue
-                          ? 'Timer zakończony — odświeżenie uruchomi kolejny cykl'
-                          : blocked
-                            ? 'Timer w toku — edycja zablokowana'
-                            : 'Jeden klik uruchamia cykl'
-                      }
-                      type="button"
-                    >
-                      {lockedDue ? 'Odśwież' : blocked ? 'Zablokowany' : 'Start'}
-                    </button>
+                    {timerKind(timer) === 'soul_stone' && !blocked ? (
+                      <>
+                        <button
+                          disabled={!writesEnabled}
+                          onClick={() =>
+                            onCompleteTimer(timer.id, timer.label, entry.name, 8 * 60)
+                          }
+                          title="Uruchom cooldown Kamienia Duchowego na 8 godzin"
+                          type="button"
+                        >
+                          {lockedDue ? 'Odśwież 8h' : 'Start 8h'}
+                        </button>
+                        <button
+                          disabled={!writesEnabled}
+                          onClick={() =>
+                            onCompleteTimer(timer.id, timer.label, entry.name, 12 * 60)
+                          }
+                          title="Uruchom cooldown Kamienia Duchowego na 12 godzin"
+                          type="button"
+                        >
+                          {lockedDue ? 'Odśwież 12h' : 'Start 12h'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        disabled={!writesEnabled || blocked}
+                        onClick={() => {
+                          if (blocked) return;
+                          onCompleteTimer(timer.id, timer.label, entry.name);
+                        }}
+                        title={
+                          lockedDue
+                            ? 'Timer zakończony — odświeżenie uruchomi kolejny cykl'
+                            : blocked
+                              ? 'Timer w toku — edycja zablokowana'
+                              : 'Jeden klik uruchamia cykl'
+                        }
+                        type="button"
+                      >
+                        {lockedDue ? 'Odśwież' : blocked ? 'Zablokowany' : 'Start'}
+                      </button>
+                    )}
                     <button
                       className="eq-char-timer-remove"
                       disabled={!writesEnabled}
@@ -1206,9 +1236,9 @@ export function CharacterEquipment() {
       onAddTimerKind={setAddTimerKind}
       onAssign={assignToCharacter}
       onCharacterDrop={onCharacterDrop}
-      onCompleteTimer={(timerId, label, characterName) => {
+      onCompleteTimer={(timerId, label, characterName, durationMinutes) => {
         const operationId = `timer-${timerId}-${Date.now()}`;
-        completeTimer(workspace.id, timerId, operationId);
+        completeTimer(workspace.id, timerId, operationId, durationMinutes);
         const timer = workspace.timers.find((item) => item.id === timerId);
         setAnnouncement(
           `${characterName}: ${label} — czas ruszył.${timer ? ` ${completionHint(timer)}` : ''}`,
