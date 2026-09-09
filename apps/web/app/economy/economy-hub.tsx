@@ -49,6 +49,8 @@ type Expense = {
   readonly occurredAtIso: string;
 };
 
+const currencies: readonly Currency[] = ['yang', 'won', 'gem'];
+
 function api(path: string): string {
   return `/player-team/v1/economy/workspaces/private/${path}`;
 }
@@ -73,6 +75,24 @@ function dateLabel(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date);
+}
+
+function dropAmountLabel(drop: Drop): string {
+  const totals = currencies
+    .map((currency) => {
+      const moneyValue = drop.money
+        .filter((entry) => entry.currency === currency)
+        .reduce((sum, entry) => sum + entry.ourAmount, 0);
+      const itemValue = drop.items
+        .filter((item) => item.currency === currency)
+        .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
+      return { currency, value: moneyValue + itemValue };
+    })
+    .filter((entry) => entry.value > 0);
+
+  return totals.length > 0
+    ? totals.map((entry) => amount(entry.value, entry.currency)).join(' · ')
+    : amount(0, 'yang');
 }
 
 export function EconomyHub() {
@@ -224,7 +244,7 @@ export function EconomyHub() {
   const workspaces = state.workspaces.filter((workspace) => !workspace.archived);
 
   return (
-    <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
+    <AppShell activeSection="market" viewerName={state.viewer.displayName}>
       <main className={styles.page} id="main-content">
         <section className={styles.hero}>
           <div>
@@ -264,7 +284,11 @@ export function EconomyHub() {
             ) : (
               <div className={styles.teamGrid}>
                 {workspaces.map((workspace) => (
-                  <a className={styles.teamCard} href={`/teams/${workspace.id}/economy`} key={workspace.id}>
+                  <a
+                    className={styles.teamCard}
+                    href={`/teams/${workspace.id}/economy`}
+                    key={workspace.id}
+                  >
                     <strong>{workspace.name}</strong>
                     <span>{workspace.members.length} członków</span>
                     <em>Otwórz ekonomię zespołu →</em>
@@ -279,7 +303,8 @@ export function EconomyHub() {
               <div>
                 <strong>Prywatny zakres konta</strong>
                 <span>
-                  Dane są zapisywane przez player-team API pod serwerowym identyfikatorem przypisanym wyłącznie do zalogowanego konta.
+                  Dane są zapisywane przez player-team API pod serwerowym identyfikatorem
+                  przypisanym wyłącznie do zalogowanego konta.
                 </span>
               </div>
               <span className={styles.serverBadge}>bez localStorage</span>
@@ -325,7 +350,10 @@ export function EconomyHub() {
                 <form className={styles.form} onSubmit={submitIncome}>
                   <label>
                     Źródło
-                    <input value={incomeSource} onChange={(event) => setIncomeSource(event.target.value)} />
+                    <input
+                      value={incomeSource}
+                      onChange={(event) => setIncomeSource(event.target.value)}
+                    />
                   </label>
                   <label>
                     Kwota
@@ -348,7 +376,9 @@ export function EconomyHub() {
                       <option value="gem">GEM</option>
                     </select>
                   </label>
-                  <button disabled={busy} type="submit">Zapisz przychód</button>
+                  <button disabled={busy} type="submit">
+                    Zapisz przychód
+                  </button>
                 </form>
               </section>
             ) : null}
@@ -359,7 +389,10 @@ export function EconomyHub() {
                 <form className={styles.form} onSubmit={submitExpense}>
                   <label>
                     Nazwa
-                    <input value={expenseLabel} onChange={(event) => setExpenseLabel(event.target.value)} />
+                    <input
+                      value={expenseLabel}
+                      onChange={(event) => setExpenseLabel(event.target.value)}
+                    />
                   </label>
                   <label>
                     Kwota
@@ -382,7 +415,9 @@ export function EconomyHub() {
                       <option value="gem">GEM</option>
                     </select>
                   </label>
-                  <button disabled={busy} type="submit">Zapisz koszt</button>
+                  <button disabled={busy} type="submit">
+                    Zapisz koszt
+                  </button>
                 </form>
               </section>
             ) : null}
@@ -398,21 +433,15 @@ export function EconomyHub() {
                 <p className={styles.muted}>Brak prywatnych wpisów w tym tygodniu.</p>
               ) : (
                 <div className={styles.history}>
-                  {drops.map((drop) => {
-                    const moneyValue = drop.money.reduce((sum, row) => sum + row.ourAmount, 0);
-                    const itemValue = drop.items
-                      .filter((item) => item.currency === 'yang')
-                      .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
-                    return (
-                      <article key={drop.id}>
-                        <div>
-                          <strong>{drop.source}</strong>
-                          <span>{dateLabel(drop.occurredAtIso)}</span>
-                        </div>
-                        <em>+ {amount(moneyValue + itemValue, 'yang')}</em>
-                      </article>
-                    );
-                  })}
+                  {drops.map((drop) => (
+                    <article key={drop.id}>
+                      <div>
+                        <strong>{drop.source}</strong>
+                        <span>{dateLabel(drop.occurredAtIso)}</span>
+                      </div>
+                      <em>+ {dropAmountLabel(drop)}</em>
+                    </article>
+                  ))}
                   {expenses.map((expense) => (
                     <article key={expense.id}>
                       <div>
@@ -420,7 +449,14 @@ export function EconomyHub() {
                         <span>{dateLabel(expense.occurredAtIso)}</span>
                       </div>
                       <em className={styles.cost}>
-                        − {amount((expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000, expense.currency)}
+                        −{' '}
+                        {amount(
+                          (expense.quantity *
+                            expense.unitPrice *
+                            expense.ourShareBasisPoints) /
+                            10_000,
+                          expense.currency,
+                        )}
                       </em>
                     </article>
                   ))}
