@@ -20,22 +20,7 @@ jobs:
       - name: Normalize cleanup matcher
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('.github/scripts/apply_economy_cost_catalog_cleanup.py')
-          text = p.read_text()
-          old = '''    "<small>{rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}</small>",
-    "<small>{rangeLabel(range)} · katalog centralny</small>",
-'''
-          new = '''    """<small>
-              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}
-            </small>""",
-    "<small>{rangeLabel(range)} · katalog centralny</small>",
-'''
-          if old not in text:
-              raise SystemExit('cleanup matcher source not found')
-          p.write_text(text.replace(old, new, 1))
-          PY
+          python3 -c "from pathlib import Path; p=Path('.github/scripts/apply_economy_cost_catalog_cleanup.py'); t=p.read_text(); old=\"    \\\"<small>{rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}</small>\\\",\\n    \\\"<small>{rangeLabel(range)} · katalog centralny</small>\\\",\"; new=\"    \\\"\\\"\\\"<small>\\n              {rangeLabel(range)} · katalog {catalogReady ? 'gotowy' : 'synchronizacja…'}\\n            </small>\\\"\\\"\\\",\\n    \\\"<small>{rangeLabel(range)} · katalog centralny</small>\\\",\"; assert old in t; p.write_text(t.replace(old,new,1))"
       - name: Apply cleanup
         run: python3 .github/scripts/apply_economy_cost_catalog_cleanup.py
       - name: Format touched files
