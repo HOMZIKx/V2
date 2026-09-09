@@ -21,12 +21,17 @@ function serialized(message: { readonly components?: readonly unknown[] }): stri
 }
 
 function countDiscordComponents(value: unknown): number {
-  if (Array.isArray(value)) return value.reduce((sum, item) => sum + countDiscordComponents(item), 0);
+  if (Array.isArray(value)) {
+    return value.reduce<number>((sum, item) => sum + countDiscordComponents(item), 0);
+  }
   if (!value || typeof value !== 'object') return 0;
 
   const record = value as Record<string, unknown>;
   const own = typeof record.type === 'number' ? 1 : 0;
-  const nested = Object.values(record).reduce((sum, item) => sum + countDiscordComponents(item), 0);
+  const nested = Object.values(record).reduce<number>(
+    (sum, item) => sum + countDiscordComponents(item),
+    0,
+  );
   return own + nested;
 }
 
