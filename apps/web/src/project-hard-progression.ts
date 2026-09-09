@@ -481,7 +481,13 @@ export function inferProgressionKind(label: string): ProgressionKind | null {
     return 'mining';
   }
   if (normalized.includes('combo') || normalized.includes('kombinac')) return null;
-  if (normalized.includes('księg') || normalized.includes('skill')) return 'skill_book';
+  if (
+    normalized.includes('księga umiejętności') ||
+    normalized.includes('ksiega umiejetnosci') ||
+    normalized.includes('skill book')
+  ) {
+    return 'skill_book';
+  }
   return null;
 }
 
