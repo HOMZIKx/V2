@@ -26,6 +26,7 @@ jobs:
           text = p.read_text()
           text = text.replace('">Tydzień<": ">Bilans<",', '"            Tydzień\\n": "            Bilans\\n",')
           text = text.replace('">Dochodowość<": ">Źródła dropu<",', '"            Dochodowość\\n": "            Źródła dropu\\n",')
+          text = text.replace('\\1', '\\g<1>')
           p.write_text(text)
           PY
       - name: Apply patch
