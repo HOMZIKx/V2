@@ -87,9 +87,27 @@ function resolveUpgradeDescription(
   return baseline;
 }
 
+/**
+ * The legacy DOBRYTEMAT dump points at `/item-database/wiki/*`, while the V2 build
+ * ships the downloaded files under `/public/game/items/wiki/*`. Keep manual PH/wiki
+ * maps as higher-priority overrides, then deterministically reuse the already-downloaded
+ * legacy asset instead of showing a generic icon when a map entry is missing.
+ */
+function resolveImportedItemImagePath(imageUrl: string | null | undefined): string | null {
+  const value = imageUrl?.trim();
+  if (!value) return null;
+  const legacyWikiPrefix = '/item-database/wiki/';
+  if (value.startsWith(legacyWikiPrefix)) {
+    return `/game/items/wiki/${value.slice(legacyWikiPrefix.length)}`;
+  }
+  if (value.startsWith('/game/items/')) return value;
+  return null;
+}
+
 export const gameItemCatalog: readonly GameItem[] = legacy.map((item) => {
   const ph = phIcons[item.title] ?? null;
-  const local = ph ?? localImages[item.id] ?? null;
+  const imported = resolveImportedItemImagePath(item.image_url);
+  const local = ph ?? localImages[item.id] ?? imported;
   return {
     id: item.id,
     title: item.title,
