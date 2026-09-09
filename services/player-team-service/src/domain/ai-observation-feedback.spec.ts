@@ -21,6 +21,15 @@ describe('AI observation feedback', () => {
     ).toEqual({ status: 'corrected', changedFields: ['enhancement', 'bonuses'] });
   });
 
+  it('records user-entered bonuses when AI missed every bonus line', () => {
+    expect(
+      evaluateEquipmentFeedback(
+        { name: 'Ebonitowe Kolczyki', enhancement: 9, category: 'earrings', bonuses: [] },
+        { name: 'Ebonitowe Kolczyki', enhancement: 9, category: 'earrings', bonuses: ['Silny przeciwko Ludziom +10%'] },
+      ),
+    ).toEqual({ status: 'corrected', changedFields: ['bonuses'] });
+  });
+
   it('compares normalized economy recognition with the saved drop', () => {
     expect(
       evaluateEconomyFeedback(
