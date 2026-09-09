@@ -6,11 +6,6 @@ import { Pool, type PoolClient } from 'pg';
 import { createLogger } from '@v2/observability';
 
 import {
-  attributedAmount,
-  splitOwnedQuantity,
-  type TeamEconomySplitMode,
-} from '../../domain/team-economy.js';
-import {
   type EconomyCatalogItem,
   type EconomyCatalogSeedItem,
   type EconomyCurrency,
@@ -20,8 +15,13 @@ import {
   type EconomyExpenseRecord,
   type TeamEconomyRepositoryPort,
 } from '../../domain/ports/team-economy.port.js';
-import { type PlayerTeamEnv } from '../config/player-team-env.js';
+import {
+  attributedAmount,
+  splitOwnedQuantity,
+  type TeamEconomySplitMode,
+} from '../../domain/team-economy.js';
 import { PLAYER_TEAM_ENV } from '../../interface/player-team.tokens.js';
+import { type PlayerTeamEnv } from '../config/player-team-env.js';
 
 @Injectable()
 export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModuleInit {
@@ -137,7 +137,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
           await client.query(
             `UPDATE player_team_economy_items
              SET category = CASE WHEN category = 'Pozostałe' THEN $2 ELSE category END,
-                 image_url = COALESCE(image_url, $3),
+                 image_url = COALESCE($3, image_url),
                  updated_at = NOW()
              WHERE id = $1`,
             [itemId, raw.category.trim() || 'Pozostałe', raw.imageUrl ?? null],
@@ -146,7 +146,10 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
 
         for (const aliasRaw of raw.aliases ?? []) {
           const alias = aliasRaw.trim();
-          if (!alias || alias.toLocaleLowerCase('pl-PL') === canonicalName.toLocaleLowerCase('pl-PL')) {
+          if (
+            !alias ||
+            alias.toLocaleLowerCase('pl-PL') === canonicalName.toLocaleLowerCase('pl-PL')
+          ) {
             continue;
           }
           await client.query(
@@ -335,12 +338,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
           `INSERT INTO player_team_drop_participants
              (session_id, participant_id, display_name, is_team_member)
            VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-          [
-            sessionId,
-            participant.participantId,
-            participant.displayName,
-            participant.isTeamMember,
-          ],
+          [sessionId, participant.participantId, participant.displayName, participant.isTeamMember],
         );
       }
       for (const item of input.items) {
@@ -388,13 +386,7 @@ export class TeamEconomyRepository implements TeamEconomyRepositoryPort, OnModul
           `INSERT INTO player_team_drop_money
              (id, session_id, currency, total_amount, our_share_basis_points, created_at)
            VALUES ($1,$2,$3,$4,$5,NOW())`,
-          [
-            randomUUID(),
-            sessionId,
-            money.currency,
-            money.totalAmount,
-            money.ourShareBasisPoints,
-          ],
+          [randomUUID(), sessionId, money.currency, money.totalAmount, money.ourShareBasisPoints],
         );
       }
       await client.query('COMMIT');

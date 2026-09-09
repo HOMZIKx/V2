@@ -11,6 +11,27 @@ import { EconomyScopeNav } from '../economy-scope-nav';
 import styles from '../economy.module.css';
 
 type Currency = 'yang' | 'won' | 'gem';
+type RangePreset = 'day' | '7d' | '30d' | 'all';
+
+const RANGE_OPTIONS: readonly { value: RangePreset; label: string }[] = [
+  { value: 'day', label: 'Dzisiaj' },
+  { value: '7d', label: '7 dni' },
+  { value: '30d', label: '30 dni' },
+  { value: 'all', label: 'Całość' },
+];
+
+function rangeSinceIso(range: RangePreset): string | null {
+  if (range === 'all') return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  if (range === '7d') start.setDate(start.getDate() - 6);
+  if (range === '30d') start.setDate(start.getDate() - 29);
+  return start.toISOString();
+}
+
+function rangeLabel(range: RangePreset): string {
+  return RANGE_OPTIONS.find((option) => option.value === range)?.label ?? '7 dni';
+}
 type Summary = {
   runCount: number;
   totals: Array<{
@@ -40,6 +61,7 @@ type Drop = {
 };
 type Expense = {
   id: string;
+  dropSessionId: string | null;
   label: string;
   quantity: number;
   unitPrice: number;
@@ -48,7 +70,9 @@ type Expense = {
 };
 type DraftItem = {
   key: string;
+  itemId: string | null;
   name: string;
+  category: string;
   quantity: number;
   unitPrice: number;
   currency: Currency;
@@ -58,23 +82,42 @@ type AiItem = {
   recognizedName: string;
   quantity: number;
   confidence: number;
-  catalogMatch: { name: string } | null;
+  catalogMatch: { id: string; name: string; category: string; imageUrl: string | null } | null;
+};
+type CatalogSearchItem = {
+  id: string;
+  canonicalName: string;
+  category: string;
+  imageUrl: string | null;
+  lastPrice: { unitPrice: number; currency: Currency; createdAtIso: string } | null;
 };
 
 const api = (path: string) => `/player-team/v1/economy/private/${path}`;
 
-function weekStartIso(): string {
-  const now = new Date();
-  const day = (now.getDay() + 6) % 7;
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0).toISOString();
+const CURRENCIES: readonly Currency[] = ['yang', 'won', 'gem'];
+
+function summaryRows(summary: Summary | null) {
+  return CURRENCIES.map(
+    (currency) =>
+      summary?.totals.find((row) => row.currency === currency) ?? {
+        currency,
+        gross: 0,
+        itemGross: 0,
+        moneyGross: 0,
+        costs: 0,
+        net: 0,
+      },
+  );
 }
 
 function money(value: number, currency: Currency): string {
   const suffix = currency === 'yang' ? 'Yang' : currency === 'won' ? 'Won' : 'GEM';
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
-  if (currency === 'yang' && abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kkk`;
-  if (currency === 'yang' && abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kk`;
+  if (currency === 'yang' && abs >= 1_000_000_000)
+    return `${sign}${(abs / 1_000_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kkk`;
+  if (currency === 'yang' && abs >= 1_000_000)
+    return `${sign}${(abs / 1_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })} kk`;
   return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} ${suffix}`;
 }
 
@@ -88,6 +131,7 @@ export default function PrivateEconomyPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [range, setRange] = useState<RangePreset>('7d');
   const [source, setSource] = useState('Wyprawa');
   const [items, setItems] = useState<DraftItem[]>([]);
   const [moneyAmount, setMoneyAmount] = useState(0);
@@ -97,20 +141,26 @@ export default function PrivateEconomyPage() {
   const [costQuantity, setCostQuantity] = useState(1);
   const [costUnitPrice, setCostUnitPrice] = useState(0);
   const [costCurrency, setCostCurrency] = useState<Currency>('yang');
+  const [costDropSessionId, setCostDropSessionId] = useState('');
 
   const catalogNames = useMemo(
-    () => Array.from(new Set(gameItemCatalog.map((item) => item.title.trim()).filter(Boolean))).slice(0, 2500),
+    () =>
+      Array.from(new Set(gameItemCatalog.map((item) => item.title.trim()).filter(Boolean))).slice(
+        0,
+        2500,
+      ),
     [],
   );
 
   const load = useCallback(async () => {
-    const since = encodeURIComponent(weekStartIso());
+    const since = rangeSinceIso(range);
+    const suffix = since ? `?since=${encodeURIComponent(since)}` : '';
     setError('');
     try {
       const [summaryResponse, dropsResponse, expensesResponse] = await Promise.all([
-        fetch(api(`summary?since=${since}`), { cache: 'no-store' }),
-        fetch(api(`drops?since=${since}`), { cache: 'no-store' }),
-        fetch(api(`expenses?since=${since}`), { cache: 'no-store' }),
+        fetch(api(`summary${suffix}`), { cache: 'no-store' }),
+        fetch(api(`drops${suffix}`), { cache: 'no-store' }),
+        fetch(api(`expenses${suffix}`), { cache: 'no-store' }),
       ]);
       if (!summaryResponse.ok || !dropsResponse.ok || !expensesResponse.ok) {
         throw new Error('Nie udało się pobrać prywatnej ekonomii.');
@@ -121,31 +171,76 @@ export default function PrivateEconomyPage() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Błąd pobierania danych.');
     }
-  }, []);
+  }, [range]);
 
   useEffect(() => {
     if (hydrated && state.authStatus === 'authenticated') void load();
   }, [hydrated, load, state.authStatus]);
 
-  const yang = summary?.totals.find((row) => row.currency === 'yang') ?? {
-    gross: 0,
-    itemGross: 0,
-    moneyGross: 0,
-    costs: 0,
-    net: 0,
-    currency: 'yang' as const,
-  };
+  const totals = summaryRows(summary);
 
   const addManualItem = () => {
     setItems((current) => [
       ...current,
-      { key: `manual-${Date.now()}`, name: '', quantity: 1, unitPrice: 0, currency: 'yang', confidence: null },
+      {
+        key: `manual-${Date.now()}`,
+        itemId: null,
+        name: '',
+        category: 'Pozostałe',
+        quantity: 1,
+        unitPrice: 0,
+        currency: 'yang',
+        confidence: null,
+      },
     ]);
   };
 
   const patchItem = (key: string, patch: Partial<DraftItem>) => {
-    setItems((current) => current.map((item) => item.key === key ? { ...item, ...patch } : item));
+    setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   };
+
+  const resolveCatalogItem = useCallback(
+    async (name: string): Promise<CatalogSearchItem | null> => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const response = await fetch(api(`items?q=${encodeURIComponent(trimmed)}`), {
+        cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const candidates = (await response.json()) as CatalogSearchItem[];
+      return (
+        candidates.find(
+          (candidate) =>
+            candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+            trimmed.toLocaleLowerCase('pl-PL'),
+        ) ?? null
+      );
+    },
+    [],
+  );
+
+  const bindDraftToCatalog = useCallback(
+    async (key: string, name: string) => {
+      const match = await resolveCatalogItem(name);
+      if (!match) return;
+      setItems((current) =>
+        current.map((item) =>
+          item.key === key
+            ? {
+                ...item,
+                itemId: match.id,
+                name: match.canonicalName,
+                category: match.category,
+                unitPrice: item.unitPrice > 0 ? item.unitPrice : (match.lastPrice?.unitPrice ?? 0),
+                currency:
+                  item.unitPrice > 0 ? item.currency : (match.lastPrice?.currency ?? item.currency),
+              }
+            : item,
+        ),
+      );
+    },
+    [resolveCatalogItem],
+  );
 
   const recognize = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -182,18 +277,35 @@ export default function PrivateEconomyPage() {
         error?: string;
       };
       if (!response.ok || !Array.isArray(body.items)) {
-        throw new Error(body.error === 'ai_not_configured' ? 'AI nie jest skonfigurowane w tym wdrożeniu.' : 'AI nie rozpoznało screena.');
+        throw new Error(
+          body.error === 'ai_not_configured'
+            ? 'AI nie jest skonfigurowane w tym wdrożeniu.'
+            : 'AI nie rozpoznało screena.',
+        );
       }
-      setAnalysisId(typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId : null);
-      setItems(body.items.map((item, index) => ({
-        key: `ai-${Date.now()}-${index}`,
-        name: item.catalogMatch?.name ?? item.recognizedName,
-        quantity: Math.max(1, Math.floor(item.quantity)),
-        unitPrice: 0,
-        currency: 'yang',
-        confidence: item.confidence,
-      })));
-      setNotice(`AI (beta) rozpoznało ${body.items.length} pozycji. Zweryfikuj każdą nazwę i ilość przed zapisem.`);
+      setAnalysisId(
+        typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId : null,
+      );
+      const resolved = await Promise.all(
+        body.items.map(async (item, index): Promise<DraftItem> => {
+          const recognizedName = item.catalogMatch?.name ?? item.recognizedName;
+          const match = await resolveCatalogItem(recognizedName);
+          return {
+            key: `ai-${Date.now()}-${index}`,
+            itemId: match?.id ?? null,
+            name: match?.canonicalName ?? recognizedName,
+            category: match?.category ?? item.catalogMatch?.category ?? 'Pozostałe',
+            quantity: Math.max(1, Math.floor(item.quantity)),
+            unitPrice: match?.lastPrice?.unitPrice ?? 0,
+            currency: match?.lastPrice?.currency ?? 'yang',
+            confidence: item.confidence,
+          };
+        }),
+      );
+      setItems(resolved);
+      setNotice(
+        `AI (beta) rozpoznało ${body.items.length} pozycji. Zweryfikuj każdą nazwę i ilość przed zapisem.`,
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Błąd AI.');
     } finally {
@@ -214,6 +326,33 @@ export default function PrivateEconomyPage() {
     setBusy(true);
     setError('');
     try {
+      const resolvedItems: DraftItem[] = [];
+      for (const item of items) {
+        let itemId = item.itemId;
+        let category = item.category;
+        if (!itemId) {
+          const match = await resolveCatalogItem(item.name);
+          if (match) {
+            itemId = match.id;
+            category = match.category;
+          }
+        }
+        if (!itemId) {
+          const createResponse = await fetch(api('items'), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              canonicalName: item.name.trim(),
+              category: category || 'Pozostałe',
+            }),
+          });
+          if (!createResponse.ok)
+            throw new Error(`Nie udało się powiązać przedmiotu: ${item.name}.`);
+          const created = (await createResponse.json()) as { id: string };
+          itemId = created.id;
+        }
+        resolvedItems.push({ ...item, itemId, category });
+      }
       const response = await fetch(api('drops'), {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -224,8 +363,8 @@ export default function PrivateEconomyPage() {
           pileCount: 1,
           splitMode: 'max_equal',
           participants: [],
-          items: items.map((item) => ({
-            itemId: null,
+          items: resolvedItems.map((item) => ({
+            itemId: item.itemId,
             displayName: item.name.trim(),
             totalQuantity: item.quantity,
             ourQuantity: item.quantity,
@@ -233,13 +372,16 @@ export default function PrivateEconomyPage() {
             currency: item.currency,
             aiConfidence: item.confidence,
           })),
-          money: moneyAmount > 0 ? [{ currency: moneyCurrency, totalAmount: moneyAmount, ourShareBasisPoints: 10_000 }] : [],
+          money:
+            moneyAmount > 0
+              ? [{ currency: moneyCurrency, totalAmount: moneyAmount, ourShareBasisPoints: 10_000 }]
+              : [],
         }),
       });
       if (!response.ok) throw new Error('Serwer odrzucił zapis prywatnego dropu.');
       if (analysisId) {
         void resolveAiObservationFeedback(analysisId, {
-          items: items.map((item) => ({ name: item.name.trim(), quantity: item.quantity })),
+          items: resolvedItems.map((item) => ({ name: item.name.trim(), quantity: item.quantity })),
         });
       }
       setItems([]);
@@ -268,6 +410,7 @@ export default function PrivateEconomyPage() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          dropSessionId: costDropSessionId || null,
           label: costLabel.trim(),
           expenseType: 'other',
           quantity: costQuantity,
@@ -280,6 +423,7 @@ export default function PrivateEconomyPage() {
       if (!response.ok) throw new Error('Serwer odrzucił koszt.');
       setCostLabel('');
       setCostUnitPrice(0);
+      setCostDropSessionId('');
       setCostOpen(false);
       setNotice('Koszt zapisany w prywatnej ekonomii.');
       await load();
@@ -290,7 +434,12 @@ export default function PrivateEconomyPage() {
     }
   };
 
-  if (!hydrated) return <main className="discord-entry"><p className="entry-status">Ładowanie…</p></main>;
+  if (!hydrated)
+    return (
+      <main className="discord-entry">
+        <p className="entry-status">Ładowanie…</p>
+      </main>
+    );
   if (state.authStatus !== 'authenticated' || !state.viewer) return <DiscordEntryScreen />;
 
   return (
@@ -301,91 +450,328 @@ export default function PrivateEconomyPage() {
           <div>
             <span className={styles.eyebrow}>Ekonomia · Prywatna</span>
             <h1>Moja ekonomia</h1>
-            <p>Dropy, koszty i wynik należą wyłącznie do zalogowanego konta. Ten zakres nie jest agregowany z ekonomią zespołu.</p>
+            <p>
+              Dropy, koszty i wynik należą wyłącznie do zalogowanego konta. Ten zakres nie jest
+              agregowany z ekonomią zespołu.
+            </p>
           </div>
           <div className={styles.actions}>
-            <button className={styles.primary} onClick={() => setDropOpen((value) => !value)} type="button">+ Dodaj drop</button>
-            <button className={styles.secondary} onClick={() => setCostOpen((value) => !value)} type="button">+ Koszt</button>
+            <button
+              className={styles.primary}
+              onClick={() => setDropOpen((value) => !value)}
+              type="button"
+            >
+              + Dodaj drop
+            </button>
+            <button
+              className={styles.secondary}
+              onClick={() => setCostOpen((value) => !value)}
+              type="button"
+            >
+              + Koszt
+            </button>
           </div>
         </section>
 
+        <div className={styles.periods} aria-label="Zakres danych ekonomii">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              className={range === option.value ? styles.periodActive : styles.period}
+              key={option.value}
+              onClick={() => setRange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <section className={styles.metrics}>
-          <article className={styles.metric}><span>Przychód · tydzień</span><strong>{money(yang.gross, 'yang')}</strong><small>przedmioty {money(yang.itemGross, 'yang')} · kasa {money(yang.moneyGross, 'yang')}</small></article>
-          <article className={styles.metric}><span>Koszty</span><strong>{money(yang.costs, 'yang')}</strong></article>
-          <article className={styles.metric}><span>Wynik netto</span><strong>{money(yang.net, 'yang')}</strong></article>
-          <article className={styles.metric}><span>Wyprawy</span><strong>{summary?.runCount ?? 0}</strong></article>
+          <article className={styles.metric}>
+            <span>Przychód · {rangeLabel(range)}</span>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.gross, total.currency)}</strong>
+              ))}
+            </div>
+          </article>
+          <article className={styles.metric}>
+            <span>Koszty</span>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.costs, total.currency)}</strong>
+              ))}
+            </div>
+          </article>
+          <article className={styles.metric}>
+            <span>Wynik netto</span>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.net, total.currency)}</strong>
+              ))}
+            </div>
+          </article>
+          <article className={styles.metric}>
+            <span>Wpisy dropów</span>
+            <strong>{summary?.runCount ?? 0}</strong>
+            <small>{rangeLabel(range)}</small>
+          </article>
         </section>
 
-        {error ? <p className={styles.error} role="alert">{error}</p> : null}
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
         {notice ? <p className={styles.notice}>{notice}</p> : null}
 
         {dropOpen ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <div><h2>Nowy prywatny drop</h2><p className={styles.muted}>Dodaj ręcznie albo użyj rozpoznawania screena.</p></div>
+              <div>
+                <h2>Nowy prywatny drop</h2>
+                <p className={styles.muted}>Dodaj ręcznie albo użyj rozpoznawania screena.</p>
+              </div>
               <span className={styles.beta}>AI (beta)</span>
             </div>
-            <p className={styles.aiWarning}>AI może się pomylić. Zawsze sprawdź nazwy, ilości i wartości przed zapisaniem wyniku.</p>
+            <p className={styles.aiWarning}>
+              AI może się pomylić. Zawsze sprawdź nazwy, ilości i wartości przed zapisaniem wyniku.
+            </p>
             <form onSubmit={(event) => void submitDrop(event)}>
               <div className={styles.grid}>
-                <label className={styles.field}>Źródło<input onChange={(event) => setSource(event.target.value)} value={source} /></label>
-                <label className={styles.field}>Screen dropu · AI (beta)<input accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={(event) => void recognize(event)} type="file" /></label>
+                <label className={styles.field}>
+                  Źródło
+                  <input onChange={(event) => setSource(event.target.value)} value={source} />
+                </label>
+                <label className={styles.field}>
+                  Screen dropu · AI (beta)
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={busy}
+                    onChange={(event) => void recognize(event)}
+                    type="file"
+                  />
+                </label>
               </div>
               <div className={styles.actions} style={{ marginTop: 12 }}>
-                <button className={styles.secondary} onClick={addManualItem} type="button">+ Przedmiot ręcznie</button>
+                <button className={styles.secondary} onClick={addManualItem} type="button">
+                  + Przedmiot ręcznie
+                </button>
               </div>
-              <datalist id="private-economy-catalog">{catalogNames.map((name) => <option key={name} value={name} />)}</datalist>
+              <datalist id="private-economy-catalog">
+                {catalogNames.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
               <div className={styles.itemRows}>
                 {items.map((item) => (
                   <div className={styles.itemRow} key={item.key}>
-                    <label className={styles.field}>Przedmiot<input list="private-economy-catalog" onChange={(event) => patchItem(item.key, { name: event.target.value })} value={item.name} />{item.confidence !== null ? <small>AI (beta): {Math.round(item.confidence * 100)}%</small> : null}</label>
-                    <label className={styles.field}>Ilość<input min="1" onChange={(event) => patchItem(item.key, { quantity: Math.max(1, Math.floor(Number(event.target.value))) })} type="number" value={item.quantity} /></label>
-                    <label className={styles.field}>Cena / szt.<input min="0" onChange={(event) => patchItem(item.key, { unitPrice: Math.max(0, Number(event.target.value)) })} type="number" value={item.unitPrice} /></label>
-                    <label className={styles.field}>Waluta<select onChange={(event) => patchItem(item.key, { currency: event.target.value as Currency })} value={item.currency}><option value="yang">Yang</option><option value="won">Won</option><option value="gem">GEM</option></select></label>
-                    <button className={styles.secondary} onClick={() => setItems((current) => current.filter((row) => row.key !== item.key))} type="button">Usuń</button>
+                    <label className={styles.field}>
+                      Przedmiot
+                      <input
+                        list="private-economy-catalog"
+                        onBlur={() => void bindDraftToCatalog(item.key, item.name)}
+                        onChange={(event) =>
+                          patchItem(item.key, { name: event.target.value, itemId: null })
+                        }
+                        value={item.name}
+                      />
+                      {item.confidence !== null ? (
+                        <small>AI (beta): {Math.round(item.confidence * 100)}%</small>
+                      ) : null}
+                    </label>
+                    <label className={styles.field}>
+                      Powiąż z dropem / aktywnością
+                      <select
+                        value={costDropSessionId}
+                        onChange={(event) => setCostDropSessionId(event.target.value)}
+                      >
+                        <option value="">Koszt ogólny</option>
+                        {drops.map((drop) => (
+                          <option key={drop.id} value={drop.id}>
+                            {drop.source} · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.field}>
+                      Ilość
+                      <input
+                        min="1"
+                        onChange={(event) =>
+                          patchItem(item.key, {
+                            quantity: Math.max(1, Math.floor(Number(event.target.value))),
+                          })
+                        }
+                        type="number"
+                        value={item.quantity}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      Cena / szt.
+                      <input
+                        min="0"
+                        onChange={(event) =>
+                          patchItem(item.key, {
+                            unitPrice: Math.max(0, Number(event.target.value)),
+                          })
+                        }
+                        type="number"
+                        value={item.unitPrice}
+                      />
+                    </label>
+                    <label className={styles.field}>
+                      Waluta
+                      <select
+                        onChange={(event) =>
+                          patchItem(item.key, { currency: event.target.value as Currency })
+                        }
+                        value={item.currency}
+                      >
+                        <option value="yang">Yang</option>
+                        <option value="won">Won</option>
+                        <option value="gem">GEM</option>
+                      </select>
+                    </label>
+                    <button
+                      className={styles.secondary}
+                      onClick={() =>
+                        setItems((current) => current.filter((row) => row.key !== item.key))
+                      }
+                      type="button"
+                    >
+                      Usuń
+                    </button>
                   </div>
                 ))}
               </div>
               <div className={styles.grid} style={{ marginTop: 14 }}>
-                <label className={styles.field}>Pieniądze<input min="0" onChange={(event) => setMoneyAmount(Math.max(0, Number(event.target.value)))} type="number" value={moneyAmount} /></label>
-                <label className={styles.field}>Waluta pieniędzy<select onChange={(event) => setMoneyCurrency(event.target.value as Currency)} value={moneyCurrency}><option value="yang">Yang</option><option value="won">Won</option><option value="gem">GEM</option></select></label>
+                <label className={styles.field}>
+                  Pieniądze
+                  <input
+                    min="0"
+                    onChange={(event) => setMoneyAmount(Math.max(0, Number(event.target.value)))}
+                    type="number"
+                    value={moneyAmount}
+                  />
+                </label>
+                <label className={styles.field}>
+                  Waluta pieniędzy
+                  <select
+                    onChange={(event) => setMoneyCurrency(event.target.value as Currency)}
+                    value={moneyCurrency}
+                  >
+                    <option value="yang">Yang</option>
+                    <option value="won">Won</option>
+                    <option value="gem">GEM</option>
+                  </select>
+                </label>
               </div>
-              <div className={styles.actions} style={{ marginTop: 16 }}><button className={styles.primary} disabled={busy} type="submit">Zapisz prywatny drop</button></div>
+              <div className={styles.actions} style={{ marginTop: 16 }}>
+                <button className={styles.primary} disabled={busy} type="submit">
+                  Zapisz prywatny drop
+                </button>
+              </div>
             </form>
           </section>
         ) : null}
 
         {costOpen ? (
           <section className={styles.panel}>
-            <div className={styles.panelHeader}><h2>Nowy koszt</h2></div>
+            <div className={styles.panelHeader}>
+              <h2>Nowy koszt</h2>
+            </div>
             <form onSubmit={(event) => void submitCost(event)}>
               <div className={styles.grid}>
-                <label className={styles.field}>Nazwa<input onChange={(event) => setCostLabel(event.target.value)} value={costLabel} /></label>
-                <label className={styles.field}>Ilość<input min="0.0001" onChange={(event) => setCostQuantity(Math.max(0.0001, Number(event.target.value)))} step="0.0001" type="number" value={costQuantity} /></label>
-                <label className={styles.field}>Cena / szt.<input min="0" onChange={(event) => setCostUnitPrice(Math.max(0, Number(event.target.value)))} type="number" value={costUnitPrice} /></label>
-                <label className={styles.field}>Waluta<select onChange={(event) => setCostCurrency(event.target.value as Currency)} value={costCurrency}><option value="yang">Yang</option><option value="won">Won</option><option value="gem">GEM</option></select></label>
+                <label className={styles.field}>
+                  Nazwa
+                  <input onChange={(event) => setCostLabel(event.target.value)} value={costLabel} />
+                </label>
+                <label className={styles.field}>
+                  Ilość
+                  <input
+                    min="0.0001"
+                    onChange={(event) =>
+                      setCostQuantity(Math.max(0.0001, Number(event.target.value)))
+                    }
+                    step="0.0001"
+                    type="number"
+                    value={costQuantity}
+                  />
+                </label>
+                <label className={styles.field}>
+                  Cena / szt.
+                  <input
+                    min="0"
+                    onChange={(event) => setCostUnitPrice(Math.max(0, Number(event.target.value)))}
+                    type="number"
+                    value={costUnitPrice}
+                  />
+                </label>
+                <label className={styles.field}>
+                  Waluta
+                  <select
+                    onChange={(event) => setCostCurrency(event.target.value as Currency)}
+                    value={costCurrency}
+                  >
+                    <option value="yang">Yang</option>
+                    <option value="won">Won</option>
+                    <option value="gem">GEM</option>
+                  </select>
+                </label>
               </div>
-              <div className={styles.actions} style={{ marginTop: 16 }}><button className={styles.primary} disabled={busy} type="submit">Zapisz koszt</button></div>
+              <div className={styles.actions} style={{ marginTop: 16 }}>
+                <button className={styles.primary} disabled={busy} type="submit">
+                  Zapisz koszt
+                </button>
+              </div>
             </form>
           </section>
         ) : null}
 
         <section className={styles.panel}>
-          <div className={styles.panelHeader}><div><h2>Historia · ten tydzień</h2><p className={styles.muted}>Tylko wpisy przypisane do Twojego prywatnego scope.</p></div></div>
+          <div className={styles.panelHeader}>
+            <div>
+              <h2>Historia · ten tydzień</h2>
+              <p className={styles.muted}>Tylko wpisy przypisane do Twojego prywatnego scope.</p>
+            </div>
+          </div>
           <div className={styles.history}>
             {drops.map((drop) => (
               <div className={styles.historyRow} key={drop.id}>
-                <div><strong>{drop.source}</strong><span> · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}</span><small> · {drop.items.length} przedm. · {drop.money.length} wpisów kasy</small></div>
-                <strong>{money(drop.items.filter((item) => item.currency === 'yang').reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0) + drop.money.filter((entry) => entry.currency === 'yang').reduce((sum, entry) => sum + entry.ourAmount, 0), 'yang')}</strong>
+                <div>
+                  <strong>{drop.source}</strong>
+                  <span> · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}</span>
+                  <small>
+                    {' '}
+                    · {drop.items.length} przedm. · {drop.money.length} wpisów kasy
+                  </small>
+                </div>
+                <strong>
+                  {money(
+                    drop.items
+                      .filter((item) => item.currency === 'yang')
+                      .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0) +
+                      drop.money
+                        .filter((entry) => entry.currency === 'yang')
+                        .reduce((sum, entry) => sum + entry.ourAmount, 0),
+                    'yang',
+                  )}
+                </strong>
               </div>
             ))}
             {expenses.map((expense) => (
               <div className={styles.historyRow} key={expense.id}>
-                <div><strong>Koszt · {expense.label}</strong><span> · {new Date(expense.occurredAtIso).toLocaleString('pl-PL')}</span></div>
+                <div>
+                  <strong>Koszt · {expense.label}</strong>
+                  <span> · {new Date(expense.occurredAtIso).toLocaleString('pl-PL')}</span>
+                </div>
                 <strong>-{money(expense.quantity * expense.unitPrice, expense.currency)}</strong>
               </div>
             ))}
-            {drops.length === 0 && expenses.length === 0 ? <p className={styles.muted}>Brak prywatnych wpisów w tym tygodniu.</p> : null}
+            {drops.length === 0 && expenses.length === 0 ? (
+              <p className={styles.muted}>Brak prywatnych wpisów w tym tygodniu.</p>
+            ) : null}
           </div>
         </section>
       </main>

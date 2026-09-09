@@ -24,6 +24,27 @@ import styles from './team-economy.module.css';
 
 type Currency = 'yang' | 'won' | 'gem';
 type Tab = 'drop' | 'costs' | 'history' | 'ranking';
+type RangePreset = 'day' | '7d' | '30d' | 'all';
+
+const RANGE_OPTIONS: readonly { value: RangePreset; label: string }[] = [
+  { value: 'day', label: 'Dzisiaj' },
+  { value: '7d', label: '7 dni' },
+  { value: '30d', label: '30 dni' },
+  { value: 'all', label: 'Całość' },
+];
+
+function rangeSinceIso(range: RangePreset): string | null {
+  if (range === 'all') return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  if (range === '7d') start.setDate(start.getDate() - 6);
+  if (range === '30d') start.setDate(start.getDate() - 29);
+  return start.toISOString();
+}
+
+function rangeLabel(range: RangePreset): string {
+  return RANGE_OPTIONS.find((option) => option.value === range)?.label ?? '7 dni';
+}
 
 type Summary = {
   runCount: number;
@@ -76,6 +97,7 @@ type Drop = {
 
 type Expense = {
   id: string;
+  dropSessionId: string | null;
   label: string;
   quantity: number;
   unitPrice: number;
@@ -115,9 +137,17 @@ type AiItem = {
   } | null;
 };
 
+type CatalogSearchItem = {
+  id: string;
+  canonicalName: string;
+  category: string;
+  imageUrl: string | null;
+  lastPrice: { unitPrice: number; currency: Currency; createdAtIso: string } | null;
+};
+
 const dobryTematSeed = Array.from(
-  gameItemCatalog.reduce(
-    (map, item) => {
+  gameItemCatalog
+    .reduce((map, item) => {
       const key = item.title.trim().toLocaleLowerCase('pl-PL');
       if (!map.has(key)) {
         map.set(key, {
@@ -128,19 +158,24 @@ const dobryTematSeed = Array.from(
         });
       }
       return map;
-    },
-    new Map<
-      string,
-      { id: string; canonicalName: string; category: string; imageUrl: string | null }
-    >(),
-  ).values(),
+    }, new Map<string, { id: string; canonicalName: string; category: string; imageUrl: string | null }>())
+    .values(),
 );
 
-function weekStartIso(): string {
-  const now = new Date();
-  const day = (now.getDay() + 6) % 7;
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day, 0, 0, 0, 0);
-  return start.toISOString();
+const CURRENCIES: readonly Currency[] = ['yang', 'won', 'gem'];
+
+function summaryRows(summary: Summary | null) {
+  return CURRENCIES.map(
+    (currency) =>
+      summary?.totals.find((row) => row.currency === currency) ?? {
+        currency,
+        gross: 0,
+        itemGross: 0,
+        moneyGross: 0,
+        costs: 0,
+        net: 0,
+      },
+  );
 }
 
 function money(value: number, currency: Currency): string {
@@ -185,7 +220,8 @@ function normalizedParticipantName(value: string): string {
 export function TeamEconomy() {
   const { teamId } = useParams<{ teamId: string }>();
   const { state, hydrated } = usePlayerStore();
-  const workspace = state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
+  const workspace =
+    state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
 
   const [tab, setTab] = useState<Tab>('drop');
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -194,7 +230,7 @@ export function TeamEconomy() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [catalogReady, setCatalogReady] = useState(false);
+  const [range, setRange] = useState<RangePreset>('7d');
 
   const [dropOpen, setDropOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -216,6 +252,7 @@ export function TeamEconomy() {
   const [expensePrice, setExpensePrice] = useState(0);
   const [expenseCurrency, setExpenseCurrency] = useState<Currency>('yang');
   const [expenseShare, setExpenseShare] = useState(100);
+  const [expenseDropSessionId, setExpenseDropSessionId] = useState('');
 
   useEffect(() => {
     if (!workspace) {
@@ -236,7 +273,9 @@ export function TeamEconomy() {
       const sourceParam = params.get('source')?.trim() ?? '';
       const mapParam = params.get('map')?.trim() ?? '';
       const channelParam = params.get('channel')?.trim() ?? '';
-      const sourceParts = [sourceParam, mapParam, channelParam ? `CH${channelParam}` : ''].filter(Boolean);
+      const sourceParts = [sourceParam, mapParam, channelParam ? `CH${channelParam}` : ''].filter(
+        Boolean,
+      );
       if (sourceParts.length > 0) setSource(sourceParts.join(' · ').slice(0, 120));
 
       const sessionId = params.get('sessionId')?.trim() ?? '';
@@ -251,12 +290,18 @@ export function TeamEconomy() {
         participantNameSet.has(normalizedParticipantName(member.displayName)),
       );
       setSelectedMembers(matchedMembers.map((member) => member.id));
-      const matchedNameSet = new Set(matchedMembers.map((member) => normalizedParticipantName(member.displayName)));
+      const matchedNameSet = new Set(
+        matchedMembers.map((member) => normalizedParticipantName(member.displayName)),
+      );
       setOutsiders(
-        participantNames.filter((name) => !matchedNameSet.has(normalizedParticipantName(name))).join(', '),
+        participantNames
+          .filter((name) => !matchedNameSet.has(normalizedParticipantName(name)))
+          .join(', '),
       );
       setDropOpen(true);
-      setNotice('Kontekst sesji Party wczytany: źródło, mapa, CH i uczestnicy zostały uzupełnione.');
+      setNotice(
+        'Kontekst sesji Party wczytany: źródło, mapa, CH i uczestnicy zostały uzupełnione.',
+      );
       return;
     }
 
@@ -265,47 +310,16 @@ export function TeamEconomy() {
     setSelectedMembers(workspace.members.map((member) => member.id));
   }, [workspace]);
 
-  const ensureCatalog = useCallback(async () => {
-    if (!workspace || catalogReady) return;
-    try {
-      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), { cache: 'no-store' });
-      if (!statusResponse.ok) {
-        setNotice('Nie udało się sprawdzić dodatkowego katalogu. Ekonomia nadal działa.');
-        return;
-      }
-      const status = (await statusResponse.json()) as { total?: number };
-      const currentTotal = Number(status.total ?? 0);
-      if (currentTotal < dobryTematSeed.length) {
-        const importResponse = await fetch(api(workspace.id, 'catalog-import'), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ items: dobryTematSeed }),
-        });
-        if (!importResponse.ok) {
-          setNotice('Dodatkowy katalog DOBRYTEMAT nie zsynchronizował się w pełni. Ekonomia nadal działa.');
-          return;
-        }
-        const imported = (await importResponse.json()) as { imported?: number };
-        if (Number(imported.imported ?? 0) > 0) {
-          setNotice(`Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`);
-        }
-      }
-    } catch {
-      setNotice('Dodatkowy katalog jest chwilowo niedostępny. Ekonomia nadal działa.');
-    } finally {
-      setCatalogReady(true);
-    }
-  }, [workspace, catalogReady]);
-
   const load = useCallback(async () => {
     if (!workspace) return;
     setError('');
-    const since = encodeURIComponent(weekStartIso());
+    const since = rangeSinceIso(range);
+    const suffix = since ? `?since=${encodeURIComponent(since)}` : '';
     try {
       const [summaryResponse, dropsResponse, expensesResponse] = await Promise.all([
-        fetch(api(workspace.id, `summary?since=${since}`), { cache: 'no-store' }),
-        fetch(api(workspace.id, `drops?since=${since}`), { cache: 'no-store' }),
-        fetch(api(workspace.id, `expenses?since=${since}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `summary${suffix}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `drops${suffix}`), { cache: 'no-store' }),
+        fetch(api(workspace.id, `expenses${suffix}`), { cache: 'no-store' }),
       ]);
       if (!summaryResponse.ok || !dropsResponse.ok || !expensesResponse.ok) {
         throw new Error('Nie udało się pobrać ekonomii zespołu.');
@@ -316,93 +330,114 @@ export function TeamEconomy() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Błąd pobierania danych.');
     }
-  }, [workspace]);
+  }, [workspace, range]);
 
   useEffect(() => {
-    void ensureCatalog();
     void load();
-  }, [ensureCatalog, load]);
+  }, [load]);
 
-  const yang = summary?.totals.find((total) => total.currency === 'yang') ?? {
-    gross: 0,
-    itemGross: 0,
-    moneyGross: 0,
-    costs: 0,
-    net: 0,
-    currency: 'yang' as const,
-  };
+  const totals = summaryRows(summary);
 
-  const ranking = useMemo(
-    () =>
-      Object.entries(
-        drops.reduce<Record<string, number>>((acc, drop) => {
-          const itemValue = drop.items
-            .filter((item) => item.currency === 'yang')
-            .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
-          const cashValue = drop.money
-            .filter((entry) => entry.currency === 'yang')
-            .reduce((sum, entry) => sum + entry.ourAmount, 0);
-          acc[drop.source] = (acc[drop.source] ?? 0) + itemValue + cashValue;
-          return acc;
-        }, {}),
-      ).sort((left, right) => right[1] - left[1]),
-    [drops],
-  );
-
-  const recognizeFile = useCallback(async (file: File) => {
-    if (!workspace) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
-      return;
+  const ranking = useMemo(() => {
+    const values = new Map<string, number>();
+    const sourceByDropId = new Map<string, string>();
+    for (const drop of drops) {
+      sourceByDropId.set(drop.id, drop.source);
+      const itemValue = drop.items
+        .filter((item) => item.currency === 'yang')
+        .reduce((sum, item) => sum + item.ourQuantity * item.unitPrice, 0);
+      const cashValue = drop.money
+        .filter((entry) => entry.currency === 'yang')
+        .reduce((sum, entry) => sum + entry.ourAmount, 0);
+      values.set(drop.source, (values.get(drop.source) ?? 0) + itemValue + cashValue);
     }
-    setBusy(true);
-    setError('');
-    try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));
-        reader.readAsDataURL(file);
-      });
-      const response = await fetch('/api/team-economy/recognize', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(
-          body.error === 'ai_not_configured'
-            ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
-            : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
-        );
+    for (const expense of expenses) {
+      if (expense.currency !== 'yang' || !expense.dropSessionId) continue;
+      const source = sourceByDropId.get(expense.dropSessionId);
+      if (!source) continue;
+      const cost = (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000;
+      values.set(source, (values.get(source) ?? 0) - cost);
+    }
+    return [...values.entries()].sort((left, right) => right[1] - left[1]);
+  }, [drops, expenses]);
+
+  const recognizeFile = useCallback(
+    async (file: File) => {
+      if (!workspace) return;
+      if (!file.type.startsWith('image/')) {
+        setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
+        return;
       }
-      const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
-      setDropAnalysisId(
-        typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId.trim() : null,
-      );
-      setDraftItems(
-        body.items.map((item, index) => ({
-          key: `ai-${Date.now()}-${index}`,
-          itemId: null,
-          name: item.catalogMatch?.name ?? item.recognizedName,
-          category: item.catalogMatch?.category ?? 'Pozostałe',
-          totalQuantity: item.quantity,
-          ourQuantity: item.quantity,
-          unitPrice: 0,
-          currency: 'yang',
-          confidence: item.confidence,
-        })),
-      );
-      setNotice(
-        `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Błąd AI.');
-    } finally {
-      setBusy(false);
-    }
-  }, [workspace]);
+      setBusy(true);
+      setError('');
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));
+          reader.readAsDataURL(file);
+        });
+        const response = await fetch('/api/team-economy/recognize', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
+        });
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            body.error === 'ai_not_configured'
+              ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
+              : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
+          );
+        }
+        const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
+        setDropAnalysisId(
+          typeof body.analysisId === 'string' && body.analysisId.trim()
+            ? body.analysisId.trim()
+            : null,
+        );
+        const resolvedAiItems = await Promise.all(
+          body.items.map(async (item, index): Promise<DraftItem> => {
+            const name = item.catalogMatch?.name ?? item.recognizedName;
+            let catalogItem: CatalogSearchItem | null = null;
+            const catalogResponse = await fetch(
+              api(workspace.id, `items?q=${encodeURIComponent(name)}`),
+              { cache: 'no-store' },
+            );
+            if (catalogResponse.ok) {
+              const candidates = (await catalogResponse.json()) as CatalogSearchItem[];
+              catalogItem =
+                candidates.find(
+                  (candidate) =>
+                    candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+                    name.trim().toLocaleLowerCase('pl-PL'),
+                ) ?? null;
+            }
+            return {
+              key: `ai-${Date.now()}-${index}`,
+              itemId: catalogItem?.id ?? null,
+              name: catalogItem?.canonicalName ?? name,
+              category: catalogItem?.category ?? item.catalogMatch?.category ?? 'Pozostałe',
+              totalQuantity: item.quantity,
+              ourQuantity: item.quantity,
+              unitPrice: catalogItem?.lastPrice?.unitPrice ?? 0,
+              currency: catalogItem?.lastPrice?.currency ?? 'yang',
+              confidence: item.confidence,
+            };
+          }),
+        );
+        setDraftItems(resolvedAiItems);
+        setNotice(
+          `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Błąd AI.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [workspace],
+  );
 
   function recognize(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -481,6 +516,21 @@ export function TeamEconomy() {
       for (const item of draftItems) {
         if (!item.name.trim()) throw new Error('Każdy przedmiot musi mieć nazwę.');
         let itemId = item.itemId;
+        if (!itemId) {
+          const searchResponse = await fetch(
+            api(workspace.id, `items?q=${encodeURIComponent(item.name.trim())}`),
+            { cache: 'no-store' },
+          );
+          if (searchResponse.ok) {
+            const candidates = (await searchResponse.json()) as CatalogSearchItem[];
+            const exactMatch = candidates.find(
+              (candidate) =>
+                candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+                item.name.trim().toLocaleLowerCase('pl-PL'),
+            );
+            if (exactMatch) itemId = exactMatch.id;
+          }
+        }
         if (!itemId) {
           const response = await fetch(api(workspace.id, 'items'), {
             method: 'POST',
@@ -579,6 +629,7 @@ export function TeamEconomy() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          dropSessionId: expenseDropSessionId || null,
           label: expenseLabel,
           expenseType: 'other',
           quantity: expenseQty,
@@ -592,6 +643,7 @@ export function TeamEconomy() {
       setExpenseOpen(false);
       setExpenseLabel('');
       setExpensePrice(0);
+      setExpenseDropSessionId('');
       setNotice('Koszt zapisany.');
       await load();
     } catch (err) {
@@ -624,16 +676,24 @@ export function TeamEconomy() {
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className={styles.page} id="main-content">
-        <EconomyContextNav currentLabel="Ekonomia" workspaceId={workspace.id} workspaceName={workspace.name} />
+        <EconomyContextNav
+          currentLabel="Ekonomia"
+          workspaceId={workspace.id}
+          workspaceName={workspace.name}
+        />
 
         <section className={styles.hero}>
           <div>
             <span className={styles.eyebrow}>Zespół · Ekonomia</span>
             <h1>{workspace.name}</h1>
-            <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik tygodnia.</p>
+            <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik dla wybranego okresu.</p>
           </div>
           <div className={styles.actions}>
-            <button className={styles.button} onClick={() => setDropOpen((value) => !value)} type="button">
+            <button
+              className={styles.button}
+              onClick={() => setDropOpen((value) => !value)}
+              type="button"
+            >
               + Dodaj drop
             </button>
             <button
@@ -646,30 +706,48 @@ export function TeamEconomy() {
           </div>
         </section>
 
+        <div className={styles.periods} aria-label="Zakres danych ekonomii">
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              className={range === option.value ? styles.periodActive : styles.period}
+              key={option.value}
+              onClick={() => setRange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
         <section className={styles.metrics}>
           <article className={styles.metric}>
-            <span>Przychód · ten tydzień</span>
-            <strong>{money(yang.gross, 'yang')}</strong>
-            <small>
-              przedmioty {money(yang.itemGross, 'yang')} · kasa {money(yang.moneyGross, 'yang')}
-            </small>
+            <span>Przychód · {rangeLabel(range)}</span>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.gross, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
             <span>Koszty</span>
-            <strong>{money(yang.costs, 'yang')}</strong>
+            <div className={styles.currencyValues}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.costs, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
             <span>Wynik netto</span>
-            <strong className={styles.net}>{money(yang.net, 'yang')}</strong>
+            <div className={`${styles.currencyValues} ${styles.net}`}>
+              {totals.map((total) => (
+                <strong key={total.currency}>{money(total.net, total.currency)}</strong>
+              ))}
+            </div>
           </article>
           <article className={styles.metric}>
-            <span>Wyprawy</span>
+            <span>Wpisy dropów</span>
             <strong>{summary?.runCount ?? 0}</strong>
-            <small>
-              {catalogReady
-                ? `${dobryTematSeed.length} pozycji katalogu lokalnego`
-                : 'synchronizacja katalogu…'}
-            </small>
+            <small>{rangeLabel(range)} · katalog centralny</small>
           </article>
         </section>
 
@@ -736,7 +814,10 @@ export function TeamEconomy() {
                       onChange={recognize}
                       type="file"
                     />
-                    <small>Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik zawsze można poprawić.</small>
+                    <small>
+                      Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik
+                      zawsze można poprawić.
+                    </small>
                   </span>
                 </label>
 
@@ -796,7 +877,10 @@ export function TeamEconomy() {
                                 type="number"
                                 value={item.totalQuantity}
                                 onChange={(event) => {
-                                  const totalQuantity = Math.max(1, Math.floor(Number(event.target.value)));
+                                  const totalQuantity = Math.max(
+                                    1,
+                                    Math.floor(Number(event.target.value)),
+                                  );
                                   patchItem(item.key, {
                                     totalQuantity,
                                     ourQuantity: Math.min(item.ourQuantity, totalQuantity),
@@ -814,7 +898,10 @@ export function TeamEconomy() {
                                   patchItem(item.key, {
                                     ourQuantity: Math.max(
                                       0,
-                                      Math.min(item.totalQuantity, Math.floor(Number(event.target.value))),
+                                      Math.min(
+                                        item.totalQuantity,
+                                        Math.floor(Number(event.target.value)),
+                                      ),
                                     ),
                                   })
                                 }
@@ -909,7 +996,10 @@ export function TeamEconomy() {
                             value={row.sharePercent}
                             onChange={(event) =>
                               patchMoney(row.key, {
-                                sharePercent: Math.max(0, Math.min(100, Number(event.target.value))),
+                                sharePercent: Math.max(
+                                  0,
+                                  Math.min(100, Number(event.target.value)),
+                                ),
                               })
                             }
                           />
@@ -988,6 +1078,20 @@ export function TeamEconomy() {
                   onChange={(event) => setExpenseLabel(event.target.value)}
                 />
               </label>
+              <label className={`${styles.field} ${styles.wide}`}>
+                Powiąż z dropem / aktywnością
+                <select
+                  value={expenseDropSessionId}
+                  onChange={(event) => setExpenseDropSessionId(event.target.value)}
+                >
+                  <option value="">Koszt ogólny</option>
+                  {drops.map((drop) => (
+                    <option key={drop.id} value={drop.id}>
+                      {drop.source} · {new Date(drop.occurredAtIso).toLocaleString('pl-PL')}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className={styles.field}>
                 Ilość
                 <input
@@ -1037,7 +1141,7 @@ export function TeamEconomy() {
 
         <div className={styles.tabs}>
           <button data-active={tab === 'drop'} onClick={() => setTab('drop')} type="button">
-            Tydzień
+            Bilans
           </button>
           <button data-active={tab === 'costs'} onClick={() => setTab('costs')} type="button">
             Koszty
@@ -1046,14 +1150,14 @@ export function TeamEconomy() {
             Historia dropów
           </button>
           <button data-active={tab === 'ranking'} onClick={() => setTab('ranking')} type="button">
-            Dochodowość
+            Wynik wg źródła
           </button>
         </div>
 
         {tab === 'drop' ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Bilans tygodnia</h2>
+              <h2>Bilans · {rangeLabel(range)}</h2>
             </div>
             <div className={styles.grid}>
               {(summary?.totals ?? []).map((total) => (
@@ -1062,7 +1166,8 @@ export function TeamEconomy() {
                   <strong>{money(total.net, total.currency)}</strong>
                   <small>
                     przedmioty {money(total.itemGross, total.currency)} · kasa{' '}
-                    {money(total.moneyGross, total.currency)} · koszty {money(total.costs, total.currency)}
+                    {money(total.moneyGross, total.currency)} · koszty{' '}
+                    {money(total.costs, total.currency)}
                   </small>
                 </article>
               ))}
@@ -1083,7 +1188,8 @@ export function TeamEconomy() {
                       <h3>{expense.label}</h3>
                       <strong>
                         {money(
-                          (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000,
+                          (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) /
+                            10_000,
                           expense.currency,
                         )}
                       </strong>
@@ -1091,12 +1197,15 @@ export function TeamEconomy() {
                     <p>
                       {new Date(expense.occurredAtIso).toLocaleString('pl-PL')} · udział{' '}
                       {(expense.ourShareBasisPoints / 100).toLocaleString('pl-PL')}%
+                      {expense.dropSessionId
+                        ? ` · ${drops.find((drop) => drop.id === expense.dropSessionId)?.source ?? 'powiązany drop'}`
+                        : ' · koszt ogólny'}
                     </p>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Brak kosztów w tym tygodniu.</p>
+              <p className={styles.empty}>Brak kosztów w wybranym okresie.</p>
             )}
           </section>
         ) : null}
@@ -1117,13 +1226,17 @@ export function TeamEconomy() {
                     <p>
                       Udział pieniędzy {(drop.ourShareBasisPoints / 100).toLocaleString('pl-PL')}% ·{' '}
                       {drop.pileCount} kupek ·{' '}
-                      {drop.participants.map((entry) => entry.displayName).join(', ') || 'bez listy'}
+                      {drop.participants.map((entry) => entry.displayName).join(', ') ||
+                        'bez listy'}
                     </p>
                     {drop.items.length ? (
                       <p>
                         Przedmioty:{' '}
                         {drop.items
-                          .map((item) => `${item.displayName} ${item.ourQuantity}/${item.totalQuantity}`)
+                          .map(
+                            (item) =>
+                              `${item.displayName} ${item.ourQuantity}/${item.totalQuantity}`,
+                          )
                           .join(' · ')}
                       </p>
                     ) : null}
@@ -1148,7 +1261,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Brak zapisanych dropów w tym tygodniu.</p>
+              <p className={styles.empty}>Brak zapisanych dropów w wybranym okresie.</p>
             )}
           </section>
         ) : null}
@@ -1156,7 +1269,7 @@ export function TeamEconomy() {
         {tab === 'ranking' ? (
           <section className={styles.panel}>
             <div className={styles.panelHeader}>
-              <h2>Dochodowość aktywności · Yang</h2>
+              <h2>Wynik wg źródła · Yang</h2>
             </div>
             {ranking.length ? (
               <div className={styles.rank}>
@@ -1169,7 +1282,7 @@ export function TeamEconomy() {
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Za mało danych do rankingu.</p>
+              <p className={styles.empty}>Brak danych do wyliczenia wyniku wg źródła.</p>
             )}
           </section>
         ) : null}
