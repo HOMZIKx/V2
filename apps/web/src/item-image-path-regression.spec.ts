@@ -96,6 +96,11 @@ describe('imported item image paths', () => {
       ];
     });
 
+    for (const entry of suspicious) {
+      const message = `${entry.title} (${entry.id}) -> ${entry.mapped}; canonical=${entry.canonical ?? 'none'}; phOverride=${entry.phOverride ?? 'none'}`;
+      console.error(`::error file=apps/web/src/data/wiki-item-image-map.json,title=Suspicious item image mapping::${message}`);
+    }
+
     expect(suspicious).toEqual([]);
   });
 });
