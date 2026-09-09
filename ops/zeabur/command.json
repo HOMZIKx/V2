@@ -1,7 +1,4 @@
 {
-  "requestId": "discord-gateway-runtime-logs-20260909-1215",
-  "mode": "cli",
-  "action": "logs:runtime",
-  "environmentId": "6a720a3e5f062718bc7b3421",
-  "serviceName": "discord-gateway"
+  "requestId": "pw-timers-env-audit-20260909-1240",
+  "mode": "env_audit"
 }
