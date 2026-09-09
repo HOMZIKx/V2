@@ -1,0 +1,60 @@
+name: Zeabur web source probe
+
+on:
+  push:
+    branches:
+      - ops/redeploy-web-theme-20260909
+    paths:
+      - .github/workflows/zeabur-web-source-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect webapp-dest source fields
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=os.environ.get('ZEABUR_API_TOKEN','').strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=40)
+            if r.returncode: print('::error::Zeabur transport failed');sys.exit(1)
+            p=json.loads(r.stdout)
+            if p.get('errors'): print('::error::Zeabur GraphQL: '+str(p['errors'][0].get('message','unknown'))[:220]);sys.exit(1)
+            return p.get('data') or {}
+
+          schema=gql('''query { __type(name:"Service") { fields { name type { kind name ofType { kind name } } } } }''')
+          fields=[f['name'] for f in (schema.get('__type') or {}).get('fields') or []]
+          interesting=[name for name in fields if any(k in name.lower() for k in ('git','branch','repo','source','deploy','build','root','provider'))]
+          print('SERVICE_SOURCE_FIELDS='+json.dumps(interesting,separators=(',',':')))
+
+          root=gql('query{projects{edges{node{_id name}}}}'); projects=[e['node'] for e in root['projects']['edges']]
+          project=next((p for p in projects if p.get('name')=='untitled-1'),None) or (projects[0] if len(projects)==1 else None)
+          if not project: print('::error::Project not resolved');sys.exit(1)
+
+          # Try safe scalar fields discovered above one-by-one so schema differences do not hide everything.
+          safe=[]
+          for name in interesting:
+            if name.lower() in {'gitcredentials','gitcredential','environmentvariables','variables','secrets'}: continue
+            safe.append(name)
+          for field in safe:
+            q=f'''query($id:ObjectID!){{project(_id:$id){{services{{_id name {field}}}}}}}}'''
+            body=json.dumps({'query':q,'variables':{'id':project['_id']}})
+            r=subprocess.run(['curl','-sS','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',body],capture_output=True,text=True,timeout=30)
+            try: payload=json.loads(r.stdout)
+            except Exception: continue
+            if payload.get('errors'): continue
+            services=((payload.get('data') or {}).get('project') or {}).get('services') or []
+            web=next((s for s in services if s.get('name')=='webapp-dest'),None)
+            if not web: continue
+            value=web.get(field)
+            if isinstance(value,(str,int,float,bool)) or value is None:
+              print(f'WEB_SOURCE {field}={json.dumps(value,separators=(",",":"))}')
+          PY
