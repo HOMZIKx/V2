@@ -212,10 +212,6 @@ export function TeamEconomy() {
   const [expenseShare, setExpenseShare] = useState(100);
 
   useEffect(() => {
-    if (!dropOpen) setDropAnalysisId(null);
-  }, [dropOpen]);
-
-  useEffect(() => {
     if (!workspace) {
       initializedMembersForWorkspaceRef.current = null;
       return;
@@ -311,7 +307,6 @@ export function TeamEconomy() {
 
   const recognizeFile = useCallback(async (file: File) => {
     if (!workspace) return;
-    setDropAnalysisId(null);
     if (!file.type.startsWith('image/')) {
       setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
       return;
@@ -359,7 +354,6 @@ export function TeamEconomy() {
         `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
       );
     } catch (err) {
-      setDropAnalysisId(null);
       setError(err instanceof Error ? err.message : 'Błąd AI.');
     } finally {
       setBusy(false);
