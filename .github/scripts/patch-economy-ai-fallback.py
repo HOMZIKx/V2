@@ -2,6 +2,26 @@ from pathlib import Path
 
 p = Path('apps/web/app/api/team-economy/recognize/route.ts')
 s = p.read_text(encoding='utf-8')
+
+image_old = """  if (!match?.[1] || !match[2] || match[2].length > 12_000_000) {
+    return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
+  }
+  const imageBytes = Buffer.from(match[2], 'base64');
+
+"""
+image_new = """  if (!match?.[1] || !match[2] || match[2].length > 12_000_000) {
+    return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
+  }
+  const apiKey: string = key;
+  const imageMimeType = match[1] as 'image/png' | 'image/jpeg' | 'image/webp';
+  const imageData = match[2];
+  const imageBytes = Buffer.from(imageData, 'base64');
+
+"""
+if image_old not in s:
+    raise SystemExit('validated image block not found')
+s = s.replace(image_old, image_new, 1)
+
 old = """  const model =
     process.env.GEMINI_VISION_MODEL?.trim() ||
     process.env.GEMINI_MODEL?.trim() ||
@@ -68,7 +88,7 @@ new = """  const primaryModel =
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-goog-api-key': key,
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: [
@@ -76,7 +96,7 @@ new = """  const primaryModel =
               role: 'user',
               parts: [
                 { text: recognitionPrompt() },
-                { inlineData: { mimeType: match[1], data: match[2] } },
+                { inlineData: { mimeType: imageMimeType, data: imageData } },
               ],
             },
           ],
@@ -118,6 +138,7 @@ if old not in s:
     raise SystemExit('Gemini request block not found')
 s = s.replace(old, new, 1)
 s = s.replace("    model,\n    promptVersion: ECONOMY_PROMPT_VERSION,", "    model: modelUsed,\n    promptVersion: ECONOMY_PROMPT_VERSION,", 1)
+s = s.replace("    imageMimeType: match[1] as 'image/png' | 'image/jpeg' | 'image/webp',", "    imageMimeType,", 1)
 s = s.replace("    model,\n    persisted: analysisId !== null,", "    model: modelUsed,\n    persisted: analysisId !== null,", 1)
 p.write_text(s, encoding='utf-8')
 print('PATCH_FALLBACK=OK')
