@@ -16,10 +16,16 @@ describe('item image proxy', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it('resolves a missing local icon from the official Metin2 MediaWiki API', async () => {
+  it('tries exact title redirects before falling back to the official Metin2 MediaWiki API', async () => {
+    const requested: string[] = [];
     const fetchImpl = vi.fn((input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input : input.url);
+      requested.push(url.toString());
       const prop = url.searchParams.get('prop');
+
+      if (url.pathname.startsWith('/index.php/Special:Redirect/file/')) {
+        return Promise.resolve(new Response(null, { status: 404 }));
+      }
 
       if (url.pathname === '/api.php' && prop === 'images') {
         return Promise.resolve(
@@ -74,6 +80,18 @@ describe('item image proxy', () => {
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(response.headers.get('x-item-image-source')).toBe('metin2-wiki');
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]));
-    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(requested.slice(0, 3)).toEqual([
+      'https://pl-wiki.metin2.gameforge.com/index.php/Special:Redirect/file/Amulet_Karmy_1.png',
+      'https://pl-wiki.metin2.gameforge.com/index.php/Special:Redirect/file/Amulet_Karmy_1.jpg',
+      'https://pl-wiki.metin2.gameforge.com/index.php/Special:Redirect/file/Amulet_Karmy_1.jpeg',
+    ]);
+    expect(requested[3]).toContain('/api.php?');
+    expect(requested[3]).toContain('prop=images');
+    expect(requested[4]).toContain('/api.php?');
+    expect(requested[4]).toContain('prop=imageinfo');
+    expect(requested[5]).toBe(
+      'https://pl-wiki.metin2.gameforge.com/images/9/90/Amulet_Karmy_1.png',
+    );
   });
 });

@@ -101,7 +101,9 @@ export function DropHistoryActions({
   };
 
   const patchMoney = (key: string, patch: Partial<EditMoney>) => {
-    setMoneyRows((current) => current.map((entry) => (entry.key === key ? { ...entry, ...patch } : entry)));
+    setMoneyRows((current) =>
+      current.map((entry) => (entry.key === key ? { ...entry, ...patch } : entry)),
+    );
   };
 
   const resolveItems = async (): Promise<EditItem[]> => {
@@ -111,6 +113,25 @@ export function DropHistoryActions({
       if (item.itemId) {
         resolved.push(item);
         continue;
+      }
+      const searchResponse = await fetch(
+        api(workspaceId, `items?q=${encodeURIComponent(item.displayName.trim())}`),
+        { cache: 'no-store' },
+      );
+      if (searchResponse.ok) {
+        const candidates = (await searchResponse.json()) as Array<{
+          id: string;
+          canonicalName: string;
+        }>;
+        const exactMatch = candidates.find(
+          (candidate) =>
+            candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+            item.displayName.trim().toLocaleLowerCase('pl-PL'),
+        );
+        if (exactMatch) {
+          resolved.push({ ...item, itemId: exactMatch.id });
+          continue;
+        }
       }
       const response = await fetch(api(workspaceId, 'items'), {
         method: 'POST',
@@ -152,37 +173,44 @@ export function DropHistoryActions({
             isTeamMember: false,
           })),
       ];
-      const response = await fetch(api(workspaceId, `management/drops/${encodeURIComponent(drop.id)}`), {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          source: source.trim(),
-          occurredAtIso: drop.occurredAtIso,
-          ourShareBasisPoints: Math.round(share * 100),
-          pileCount: piles,
-          splitMode,
-          participants,
-          items: resolved.map((item) => ({
-            dropItemId: item.id || null,
-            itemId: item.itemId,
-            displayName: item.displayName.trim(),
-            totalQuantity: item.totalQuantity,
-            ourQuantity: item.ourQuantity,
-            unitPrice: item.unitPrice,
-            currency: item.currency,
-            aiConfidence: item.aiConfidence ?? null,
-          })),
-          money: moneyRows
-            .filter((entry) => entry.totalAmount > 0)
-            .map((entry) => ({
-              currency: entry.currency,
-              totalAmount: entry.totalAmount,
-              ourShareBasisPoints: entry.ourShareBasisPoints,
+      const response = await fetch(
+        api(workspaceId, `management/drops/${encodeURIComponent(drop.id)}`),
+        {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            source: source.trim(),
+            occurredAtIso: drop.occurredAtIso,
+            ourShareBasisPoints: Math.round(share * 100),
+            pileCount: piles,
+            splitMode,
+            participants,
+            items: resolved.map((item) => ({
+              dropItemId: item.id || null,
+              itemId: item.itemId,
+              displayName: item.displayName.trim(),
+              totalQuantity: item.totalQuantity,
+              ourQuantity: item.ourQuantity,
+              unitPrice: item.unitPrice,
+              currency: item.currency,
+              aiConfidence: item.aiConfidence ?? null,
             })),
-        }),
-      });
+            money: moneyRows
+              .filter((entry) => entry.totalAmount > 0)
+              .map((entry) => ({
+                currency: entry.currency,
+                totalAmount: entry.totalAmount,
+                ourShareBasisPoints: entry.ourShareBasisPoints,
+              })),
+          }),
+        },
+      );
       if (!response.ok) {
-        throw new Error(response.status === 403 ? 'Tylko właściciel zespołu może edytować zapisany drop.' : 'Nie udało się zapisać zmian dropu.');
+        throw new Error(
+          response.status === 403
+            ? 'Tylko właściciel zespołu może edytować zapisany drop.'
+            : 'Nie udało się zapisać zmian dropu.',
+        );
       }
       setItems(resolved);
       setEditing(false);
@@ -195,15 +223,27 @@ export function DropHistoryActions({
   };
 
   const remove = async () => {
-    if (!window.confirm(`Usunąć drop „${drop.source}” z ${new Date(drop.occurredAtIso).toLocaleString('pl-PL')}?`)) return;
+    if (
+      !window.confirm(
+        `Usunąć drop „${drop.source}” z ${new Date(drop.occurredAtIso).toLocaleString('pl-PL')}?`,
+      )
+    )
+      return;
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(api(workspaceId, `management/drops/${encodeURIComponent(drop.id)}`), {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        api(workspaceId, `management/drops/${encodeURIComponent(drop.id)}`),
+        {
+          method: 'DELETE',
+        },
+      );
       if (!response.ok) {
-        throw new Error(response.status === 403 ? 'Tylko właściciel zespołu może usuwać zapisany drop.' : 'Nie udało się usunąć dropu.');
+        throw new Error(
+          response.status === 403
+            ? 'Tylko właściciel zespołu może usuwać zapisany drop.'
+            : 'Nie udało się usunąć dropu.',
+        );
       }
       await onChanged();
     } catch (err) {
@@ -216,10 +256,20 @@ export function DropHistoryActions({
   return (
     <div>
       <div className={styles.rowActions}>
-        <button className={styles.buttonGhost} disabled={busy} onClick={() => setEditing((value) => !value)} type="button">
+        <button
+          className={styles.buttonGhost}
+          disabled={busy}
+          onClick={() => setEditing((value) => !value)}
+          type="button"
+        >
           {editing ? 'Anuluj edycję' : 'Edytuj'}
         </button>
-        <button className={styles.buttonGhost} disabled={busy} onClick={() => void remove()} type="button">
+        <button
+          className={styles.buttonGhost}
+          disabled={busy}
+          onClick={() => void remove()}
+          type="button"
+        >
           Usuń drop
         </button>
       </div>
@@ -240,7 +290,9 @@ export function DropHistoryActions({
                 step="0.01"
                 type="number"
                 value={share}
-                onChange={(event) => setShare(Math.max(0, Math.min(100, Number(event.target.value))))}
+                onChange={(event) =>
+                  setShare(Math.max(0, Math.min(100, Number(event.target.value))))
+                }
               />
             </label>
             <label className={styles.field}>
@@ -250,12 +302,17 @@ export function DropHistoryActions({
                 min="1"
                 type="number"
                 value={piles}
-                onChange={(event) => setPiles(Math.max(1, Math.min(100, Math.floor(Number(event.target.value)))))}
+                onChange={(event) =>
+                  setPiles(Math.max(1, Math.min(100, Math.floor(Number(event.target.value)))))
+                }
               />
             </label>
             <label className={styles.field}>
               Tryb podziału
-              <select value={splitMode} onChange={(event) => setSplitMode(event.target.value as SplitMode)}>
+              <select
+                value={splitMode}
+                onChange={(event) => setSplitMode(event.target.value as SplitMode)}
+              >
                 <option value="max_equal">Maksymalnie równo + reszta</option>
                 <option value="strict_equal">Tylko idealnie równo</option>
               </select>
@@ -278,7 +335,12 @@ export function DropHistoryActions({
               {items.map((item) => (
                 <tr key={item.key}>
                   <td>
-                    <input value={item.displayName} onChange={(event) => patchItem(item.key, { displayName: event.target.value, itemId: null })} />
+                    <input
+                      value={item.displayName}
+                      onChange={(event) =>
+                        patchItem(item.key, { displayName: event.target.value, itemId: null })
+                      }
+                    />
                     <MarketPriceHint
                       currency={item.currency}
                       itemName={item.displayName}
@@ -293,7 +355,10 @@ export function DropHistoryActions({
                       value={item.totalQuantity}
                       onChange={(event) => {
                         const totalQuantity = Math.max(1, Math.floor(Number(event.target.value)));
-                        patchItem(item.key, { totalQuantity, ourQuantity: Math.min(item.ourQuantity, totalQuantity) });
+                        patchItem(item.key, {
+                          totalQuantity,
+                          ourQuantity: Math.min(item.ourQuantity, totalQuantity),
+                        });
                       }}
                     />
                   </td>
@@ -303,21 +368,44 @@ export function DropHistoryActions({
                       min="0"
                       type="number"
                       value={item.ourQuantity}
-                      onChange={(event) => patchItem(item.key, { ourQuantity: Math.max(0, Math.min(item.totalQuantity, Math.floor(Number(event.target.value)))) })}
+                      onChange={(event) =>
+                        patchItem(item.key, {
+                          ourQuantity: Math.max(
+                            0,
+                            Math.min(item.totalQuantity, Math.floor(Number(event.target.value))),
+                          ),
+                        })
+                      }
                     />
                   </td>
                   <td>
-                    <CompactAmountInput value={item.unitPrice} onValueChange={(value) => patchItem(item.key, { unitPrice: value })} />
+                    <CompactAmountInput
+                      value={item.unitPrice}
+                      onValueChange={(value) => patchItem(item.key, { unitPrice: value })}
+                    />
                   </td>
                   <td>
-                    <select value={item.currency} onChange={(event) => patchItem(item.key, { currency: event.target.value as Currency })}>
+                    <select
+                      value={item.currency}
+                      onChange={(event) =>
+                        patchItem(item.key, { currency: event.target.value as Currency })
+                      }
+                    >
                       <option value="yang">Yang</option>
                       <option value="won">Won</option>
                       <option value="gem">GEM</option>
                     </select>
                   </td>
                   <td>
-                    <button className={styles.buttonGhost} onClick={() => setItems((current) => current.filter((candidate) => candidate.key !== item.key))} type="button">
+                    <button
+                      className={styles.buttonGhost}
+                      onClick={() =>
+                        setItems((current) =>
+                          current.filter((candidate) => candidate.key !== item.key),
+                        )
+                      }
+                      type="button"
+                    >
                       Usuń
                     </button>
                   </td>
@@ -327,17 +415,22 @@ export function DropHistoryActions({
           </table>
           <button
             className={styles.buttonGhost}
-            onClick={() => setItems((current) => [...current, {
-              id: '',
-              key: `edit-item-${Date.now()}`,
-              itemId: null,
-              displayName: '',
-              totalQuantity: 1,
-              ourQuantity: 1,
-              unitPrice: 0,
-              currency: 'yang',
-              aiConfidence: null,
-            }])}
+            onClick={() =>
+              setItems((current) => [
+                ...current,
+                {
+                  id: '',
+                  key: `edit-item-${Date.now()}`,
+                  itemId: null,
+                  displayName: '',
+                  totalQuantity: 1,
+                  ourQuantity: 1,
+                  unitPrice: 0,
+                  currency: 'yang',
+                  aiConfidence: null,
+                },
+              ])
+            }
             type="button"
           >
             + Przedmiot
@@ -349,11 +442,19 @@ export function DropHistoryActions({
               <div className={styles.moneyRow} key={entry.key}>
                 <label className={styles.field}>
                   Kwota
-                  <CompactAmountInput value={entry.totalAmount} onValueChange={(value) => patchMoney(entry.key, { totalAmount: value })} />
+                  <CompactAmountInput
+                    value={entry.totalAmount}
+                    onValueChange={(value) => patchMoney(entry.key, { totalAmount: value })}
+                  />
                 </label>
                 <label className={styles.field}>
                   Waluta
-                  <select value={entry.currency} onChange={(event) => patchMoney(entry.key, { currency: event.target.value as Currency })}>
+                  <select
+                    value={entry.currency}
+                    onChange={(event) =>
+                      patchMoney(entry.key, { currency: event.target.value as Currency })
+                    }
+                  >
                     <option value="yang">Yang</option>
                     <option value="won">Won</option>
                     <option value="gem">GEM</option>
@@ -366,10 +467,24 @@ export function DropHistoryActions({
                     min="0"
                     type="number"
                     value={entry.ourShareBasisPoints / 100}
-                    onChange={(event) => patchMoney(entry.key, { ourShareBasisPoints: Math.round(Math.max(0, Math.min(100, Number(event.target.value))) * 100) })}
+                    onChange={(event) =>
+                      patchMoney(entry.key, {
+                        ourShareBasisPoints: Math.round(
+                          Math.max(0, Math.min(100, Number(event.target.value))) * 100,
+                        ),
+                      })
+                    }
                   />
                 </label>
-                <button className={styles.buttonGhost} onClick={() => setMoneyRows((current) => current.filter((candidate) => candidate.key !== entry.key))} type="button">
+                <button
+                  className={styles.buttonGhost}
+                  onClick={() =>
+                    setMoneyRows((current) =>
+                      current.filter((candidate) => candidate.key !== entry.key),
+                    )
+                  }
+                  type="button"
+                >
                   Usuń
                 </button>
               </div>
@@ -377,13 +492,18 @@ export function DropHistoryActions({
           </div>
           <button
             className={styles.buttonGhost}
-            onClick={() => setMoneyRows((current) => [...current, {
-              id: '',
-              key: `edit-money-${Date.now()}`,
-              currency: 'yang',
-              totalAmount: 0,
-              ourShareBasisPoints: Math.round(share * 100),
-            }])}
+            onClick={() =>
+              setMoneyRows((current) => [
+                ...current,
+                {
+                  id: '',
+                  key: `edit-money-${Date.now()}`,
+                  currency: 'yang',
+                  totalAmount: 0,
+                  ourShareBasisPoints: Math.round(share * 100),
+                },
+              ])
+            }
             type="button"
           >
             + Pieniądze
@@ -396,7 +516,13 @@ export function DropHistoryActions({
                 <label key={member.id}>
                   <input
                     checked={selectedMembers.includes(member.id)}
-                    onChange={(event) => setSelectedMembers((current) => event.target.checked ? [...new Set([...current, member.id])] : current.filter((id) => id !== member.id))}
+                    onChange={(event) =>
+                      setSelectedMembers((current) =>
+                        event.target.checked
+                          ? [...new Set([...current, member.id])]
+                          : current.filter((id) => id !== member.id),
+                      )
+                    }
                     type="checkbox"
                   />
                   {member.displayName}
