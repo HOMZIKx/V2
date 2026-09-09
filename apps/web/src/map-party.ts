@@ -22,8 +22,8 @@ export interface MapPartyMember {
   readonly id: string;
   readonly displayName: string;
   readonly role: 'leader' | 'member';
-  /** Role inside the active hunt. Independent from party permissions. */
-  readonly huntRole: PartyHuntRole;
+  /** Optional while decoding old snapshots; current Party UI normalizes/persists it. */
+  readonly huntRole?: PartyHuntRole;
 }
 
 export interface MapPartyRequest {
