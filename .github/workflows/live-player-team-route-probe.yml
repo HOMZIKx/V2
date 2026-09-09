@@ -1,0 +1,53 @@
+name: Live player-team route probe
+on:
+  push:
+    branches: [chore/live-route-probe-20260909]
+    paths: [.github/workflows/live-player-team-route-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live player-team routes from webapp-dest
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=os.environ['ZEABUR_API_TOKEN'].strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=40)
+            if r.returncode: print('::error::Zeabur transport failed');sys.exit(1)
+            b=json.loads(r.stdout)
+            if b.get('errors'): print('::error::Zeabur GraphQL: '+str(b['errors'][0].get('message','unknown'))[:180]);sys.exit(1)
+            return b.get('data') or {}
+          root=gql('query{projects{edges{node{_id name}}}}'); ps=[e['node'] for e in root['projects']['edges']]
+          p=next((x for x in ps if x['name']=='untitled-1'),None) or (ps[0] if len(ps)==1 else None)
+          if not p: print('::error::Project not resolved');sys.exit(1)
+          d=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':p['_id']})['project']
+          env=next(x for x in d['environments'] if x['name']=='production'); sm={x['name']:x['_id'] for x in d['services']}
+          web=sm.get('webapp-dest')
+          if not web: print('::error::webapp-dest missing');sys.exit(1)
+          script=r'''
+          async function main(){
+            const base=(process.env.PLAYER_TEAM_PROXY_TARGET||'').trim().replace(/\/+$/,''); let bad=false;
+            for(const [path,expect,label] of [
+              ['/health/ready',[200],'ready'],
+              ['/player-team/v1/economy/workspaces/__probe__/items?q=x',[401,403],'economy_items'],
+              ['/player-team/v1/economy/workspaces/__probe__/management/prices',[401,403],'economy_management'],
+              ['/player-team/v1/metin-general-hunts/metin-v1',[401,403],'metin_general_hunts']
+            ]){
+              try{const r=await fetch(base+path,{redirect:'manual',signal:AbortSignal.timeout(5000)});const ok=expect.includes(r.status);console.log(`${label}=${ok?'ok':'fail'} status=${r.status}`);if(!ok)bad=true}catch(e){console.log(`${label}=fail code=${e?.cause?.code||e?.name||'unknown'}`);bad=true}
+            }
+            if(bad)process.exitCode=2;
+          } main().catch(()=>process.exitCode=3);
+          '''
+          q='mutation($serviceID:ObjectID!,$environmentID:ObjectID!,$command:[String!]!){executeCommand(serviceID:$serviceID,environmentID:$environmentID,command:$command){exitCode output}}'
+          out=gql(q,{'serviceID':web,'environmentID':env['_id'],'command':['node','-e',script]})['executeCommand']
+          print(str(out.get('output') or '').strip())
+          if out.get('exitCode')!=0: print('::error::Live route wiring failed');sys.exit(1)
+          print('LIVE_PLAYER_TEAM_ROUTES=OK')
+          PY
