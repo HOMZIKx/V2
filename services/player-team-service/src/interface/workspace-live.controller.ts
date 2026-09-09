@@ -6,6 +6,7 @@ import {
   Headers,
   HttpCode,
   Inject,
+  Optional,
   Param,
   Put,
   Sse,
@@ -94,7 +95,9 @@ export class WorkspaceLiveController {
     @Inject(PLAYER_TEAM_STATE_USE_CASES) private readonly useCases: PlayerTeamStateUseCases,
     @Inject(PLAYER_TEAM_ENV) private readonly env: PlayerTeamEnv,
     private readonly liveBus: WorkspaceLiveBus,
-    @Inject(AiObservationRepository) private readonly observations: AiObservationRepository,
+    @Optional()
+    @Inject(AiObservationRepository)
+    private readonly observations: AiObservationRepository | null = null,
   ) {}
 
   private viewerId(headers: RequestHeaders): Promise<string> {
@@ -117,6 +120,7 @@ export class WorkspaceLiveController {
     viewerId: string,
     workspaceId: string,
   ): Promise<PendingAiObservation | null> {
+    if (!this.observations) return null;
     try {
       return await this.observations.latestPending(viewerId, {
         analysisType: 'equipment',
@@ -135,6 +139,7 @@ export class WorkspaceLiveController {
     readonly previousState: JsonRecord;
     readonly nextState: JsonRecord;
   }): Promise<void> {
+    if (!this.observations) return;
     if (!hasCharacter(input.nextState, input.pending.characterId)) return;
     const item = newlyAddedItem(input.previousState, input.nextState);
     if (!item) return;
