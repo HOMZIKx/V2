@@ -50,6 +50,10 @@ const patchPartyBodySchema = z.object({
   requests: z.array(partyRequestSchema).max(100).optional(),
 });
 
+const huntRoleBodySchema = z.object({
+  huntRole: z.enum(['scout', 'hunter']),
+});
+
 const pinSchema = z.object({
   id: z.string().min(1),
   partyId: z.string().optional(),
@@ -60,7 +64,20 @@ const pinSchema = z.object({
   placedBy: z.string().min(1),
   label: z.string().min(1),
   kind: z.enum(['metin', 'boss', 'spot']),
+  claimedBy: z.string().min(1).nullable().optional(),
+  claimedAt: z.number().nullable().optional(),
+  completedBy: z.string().min(1).nullable().optional(),
+  completedAt: z.number().nullable().optional(),
 });
+
+const patchPinBodySchema = z
+  .object({
+    claimedBy: z.string().min(1).nullable().optional(),
+    claimedAt: z.number().nullable().optional(),
+    completedBy: z.string().min(1).nullable().optional(),
+    completedAt: z.number().nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, { message: 'pin patch cannot be empty' });
 
 const addPinBodySchema = z.object({
   pin: pinSchema,
@@ -189,6 +206,24 @@ export class HuntRoomsController {
     });
   }
 
+  @Patch('party-rooms/:roomId/hunt-role')
+  public async setHuntRole(
+    @Headers() headers: RequestHeaders,
+    @Param('roomId') roomId: string,
+    @Body() rawBody: unknown,
+  ) {
+    const viewerId = await this.resolveViewerId(headers);
+    const parsed = huntRoleBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
+    }
+    return this.useCases.setPartyHuntRole({
+      roomId,
+      viewerId,
+      huntRole: parsed.data.huntRole,
+    });
+  }
+
   @Post('party-rooms/:roomId/pins')
   @HttpCode(200)
   public async addPin(
@@ -205,6 +240,29 @@ export class HuntRoomsController {
     return this.useCases.addPartyRoomPin(roomId, viewerId, {
       ...pin,
       partyId: pin.partyId ?? roomId,
+    });
+  }
+
+  @Patch('party-rooms/:roomId/pins/:pinId')
+  public async patchPin(
+    @Headers() headers: RequestHeaders,
+    @Param('roomId') roomId: string,
+    @Param('pinId') pinId: string,
+    @Body() rawBody: unknown,
+  ) {
+    const viewerId = await this.resolveViewerId(headers);
+    const parsed = patchPinBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      throw new BadRequestException(`invalid request body: ${parsed.error.message}`);
+    }
+    return this.useCases.patchPartyRoomPin({
+      roomId,
+      viewerId,
+      pinId,
+      ...(parsed.data.claimedBy !== undefined ? { claimedBy: parsed.data.claimedBy } : {}),
+      ...(parsed.data.claimedAt !== undefined ? { claimedAt: parsed.data.claimedAt } : {}),
+      ...(parsed.data.completedBy !== undefined ? { completedBy: parsed.data.completedBy } : {}),
+      ...(parsed.data.completedAt !== undefined ? { completedAt: parsed.data.completedAt } : {}),
     });
   }
 
