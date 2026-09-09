@@ -1,0 +1,51 @@
+name: Economy migration probe
+
+on:
+  push:
+    branches:
+      - chore/economy-migration-probe-20260909
+    paths:
+      - .github/workflows/economy-migration-probe.yml
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: v2
+          POSTGRES_PASSWORD: v2
+          POSTGRES_DB: player_team
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U v2 -d player_team"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      PLAYER_TEAM_DATABASE_URL: postgresql://v2:v2@127.0.0.1:5432/player_team
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Run all player-team migrations
+        run: pnpm --dir services/player-team-service migrate
+      - name: Verify canonical economy catalog
+        shell: bash
+        run: |
+          count=$(docker exec ${{ job.services.postgres.id }} psql -U v2 -d player_team -tAc "SELECT COUNT(*) FROM player_team_economy_items WHERE created_by = 'system:dobry-temat-catalog';")
+          total=$(docker exec ${{ job.services.postgres.id }} psql -U v2 -d player_team -tAc "SELECT COUNT(*) FROM player_team_economy_items;")
+          bad=$(docker exec ${{ job.services.postgres.id }} psql -U v2 -d player_team -tAc "SELECT COUNT(*) FROM player_team_economy_items WHERE image_url IS NULL OR image_url = '';" )
+          echo "system_seed=$count total=$total missing_image=$bad"
+          test "$count" -eq 678
+          test "$total" -ge 678
+          test "$bad" -eq 0
+      - name: Verify migration ledger
+        shell: bash
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U v2 -d player_team -c "SELECT id FROM player_team_schema_migrations ORDER BY id;"
