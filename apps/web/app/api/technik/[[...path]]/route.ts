@@ -12,7 +12,6 @@ const LOCAL_GATEWAY = 'http://127.0.0.1:4100';
 const PRODUCTION_GATEWAY = 'http://discord-gateway.zeabur.internal:4100';
 const LOCAL_IDENTITY = 'http://127.0.0.1:4200';
 const TECHNIKA_SECRET_HEADER = 'x-technika-secret';
-const TECHNIKA_ADMIN_DISCORD_ID = '808066932753563668';
 
 function trimTrailingSlash(value: string): string {
   return value.trim().replace(/\/$/, '');
@@ -42,6 +41,20 @@ function identityBaseUrl(): string {
 
 function technikaSecret(): string {
   return (process.env.DISCORD_TECHNIKA_SHARED_SECRET ?? '').trim();
+}
+
+function technikaAdminDiscordIds(): ReadonlySet<string> {
+  const configured = process.env.TECHNIKA_ADMIN_DISCORD_IDS?.trim() ?? '';
+  return new Set(
+    configured
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => /^\d{17,20}$/.test(value)),
+  );
+}
+
+function isTechnikaAdmin(discordUserId: string): boolean {
+  return technikaAdminDiscordIds().has(discordUserId.trim());
 }
 
 type IdentityAccount = {
@@ -120,13 +133,51 @@ async function resolveAuthenticatedDiscordSession(
   return { ok: true, discordUserId };
 }
 
+async function requireTechnikaAdmin(request: Request): Promise<
+  | { readonly ok: true; readonly discordUserId: string }
+  | { readonly ok: false; readonly response: Response }
+> {
+  const session = await resolveAuthenticatedDiscordSession(request);
+  if (!session.ok) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { ok: false, error: session.error },
+        { status: session.status },
+      ),
+    };
+  }
+
+  if (!isTechnikaAdmin(session.discordUserId)) {
+    return {
+      ok: false,
+      response: NextResponse.json({ ok: false, error: 'technik_forbidden' }, { status: 403 }),
+    };
+  }
+
+  return { ok: true, discordUserId: session.discordUserId };
+}
+
 type RouteCtx = { params: Promise<{ path?: string[] }> };
 
 async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
   const { path: segments = [] } = await ctx.params;
   const joined = segments.join('/');
 
+  if (joined === 'access') {
+    const session = await resolveAuthenticatedDiscordSession(request);
+    if (!session.ok) {
+      return NextResponse.json(
+        { ok: false, allowed: false, error: session.error },
+        { status: session.status },
+      );
+    }
+    return NextResponse.json({ ok: true, allowed: isTechnikaAdmin(session.discordUserId) });
+  }
+
   if (joined === 'meta' || joined === '') {
+    const access = await requireTechnikaAdmin(request);
+    if (!access.ok) return access.response;
     return NextResponse.json({
       mutationsEnabled: Boolean(technikaSecret()),
       gateway: gatewayBaseUrl(),
@@ -203,20 +254,8 @@ async function handle(request: Request, ctx: RouteCtx): Promise<Response> {
       );
     }
   } else if (!publicRead) {
-    const session = await resolveAuthenticatedDiscordSession(request);
-    if (!session.ok) {
-      return NextResponse.json(
-        { ok: false, error: session.error },
-        { status: session.status },
-      );
-    }
-
-    if (session.discordUserId !== TECHNIKA_ADMIN_DISCORD_ID) {
-      return NextResponse.json(
-        { ok: false, error: 'technik_forbidden' },
-        { status: 403 },
-      );
-    }
+    const access = await requireTechnikaAdmin(request);
+    if (!access.ok) return access.response;
 
     const secret = technikaSecret();
     if (!secret) {
