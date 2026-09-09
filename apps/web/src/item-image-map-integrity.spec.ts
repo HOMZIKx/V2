@@ -31,6 +31,14 @@ function wikiAssetId(imagePath: string): string | null {
 }
 
 describe('wiki item image map integrity', () => {
+  it('has a canonical imported image path for every database item', () => {
+    const missing = catalog
+      .filter((item) => importedImagePath(item.image_url) === null)
+      .map((item) => ({ id: item.id, title: item.title, image: item.image_url ?? null }));
+
+    expect(missing).toEqual([]);
+  });
+
   it('does not silently point an item id at another item wiki asset', () => {
     const suspicious = catalog.flatMap((item) => {
       const mapped = wikiImages[item.id];
