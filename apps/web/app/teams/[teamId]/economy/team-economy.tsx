@@ -12,6 +12,7 @@ import {
 } from 'react';
 
 import { resolveAiObservationFeedback } from '../../../../src/ai-observation-feedback';
+import { economyAiErrorMessage } from '../../../../src/economy-ai-error';
 import { gameItemCatalog } from '../../../../src/item-catalog';
 import { usePlayerStore } from '../../../../src/player-store-react';
 import { AppShell } from '../../../app-shell';
@@ -383,14 +384,16 @@ export function TeamEconomy() {
           body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
         });
         if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as { error?: string };
-          throw new Error(
-            body.error === 'ai_not_configured'
-              ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
-              : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
-          );
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: string;
+            retryAfterSeconds?: number | null;
+          };
+          throw new Error(economyAiErrorMessage(body.error, body.retryAfterSeconds));
         }
         const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
+        if (!Array.isArray(body.items) || body.items.length === 0) {
+          throw new Error('AI nie znalazło żadnego zajętego slotu na tym screenie.');
+        }
         setDropAnalysisId(
           typeof body.analysisId === 'string' && body.analysisId.trim()
             ? body.analysisId.trim()

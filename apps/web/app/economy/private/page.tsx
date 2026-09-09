@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 
 import { resolveAiObservationFeedback } from '../../../src/ai-observation-feedback';
+import { economyAiErrorMessage } from '../../../src/economy-ai-error';
 import { gameItemCatalog } from '../../../src/item-catalog';
 import { usePlayerStore } from '../../../src/player-store-react';
 import { AppShell } from '../../app-shell';
@@ -275,13 +276,13 @@ export default function PrivateEconomyPage() {
         analysisId?: string | null;
         items?: AiItem[];
         error?: string;
+        retryAfterSeconds?: number | null;
       };
       if (!response.ok || !Array.isArray(body.items)) {
-        throw new Error(
-          body.error === 'ai_not_configured'
-            ? 'AI nie jest skonfigurowane w tym wdrożeniu.'
-            : 'AI nie rozpoznało screena.',
-        );
+        throw new Error(economyAiErrorMessage(body.error, body.retryAfterSeconds));
+      }
+      if (body.items.length === 0) {
+        throw new Error('AI nie znalazło żadnego zajętego slotu na tym screenie.');
       }
       setAnalysisId(
         typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId : null,

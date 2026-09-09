@@ -54,9 +54,45 @@ const DYNAMIC_LOOKUP_LIMIT = 40;
 const MAX_RECOGNIZED_ITEMS = 200;
 const MAX_CATALOG_NAMES_IN_PROMPT = 1200;
 const MIN_AUTO_NAME_CONFIDENCE = 0.72;
-const ECONOMY_PROMPT_VERSION = 'economy-drop-grid-v1';
-const ECONOMY_PARSER_VERSION = 'economy-slot-normalizer-v1';
+const ECONOMY_PROMPT_VERSION = 'economy-drop-grid-v2';
+const ECONOMY_PARSER_VERSION = 'economy-slot-normalizer-v2';
 const rateBuckets = new Map<string, RateBucket>();
+
+const RECOGNITION_RESPONSE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['items'],
+  properties: {
+    items: {
+      type: 'array',
+      maxItems: MAX_RECOGNIZED_ITEMS,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'slotIndex',
+          'row',
+          'column',
+          'name',
+          'quantity',
+          'itemConfidence',
+          'quantityConfidence',
+          'alternatives',
+        ],
+        properties: {
+          slotIndex: { type: 'integer' },
+          row: { type: 'integer' },
+          column: { type: 'integer' },
+          name: { type: 'string' },
+          quantity: { type: 'integer', minimum: 1 },
+          itemConfidence: { type: 'number', minimum: 0, maximum: 1 },
+          quantityConfidence: { type: 'number', minimum: 0, maximum: 1 },
+          alternatives: { type: 'array', maxItems: 3, items: { type: 'string' } },
+        },
+      },
+    },
+  },
+} as const;
 
 const canonicalCatalogNames = Array.from(
   new Set(gameItemCatalog.map((item) => item.title.trim()).filter(Boolean)),
@@ -150,7 +186,10 @@ function workspaceIdFromBody(value: unknown): string | null {
   return trimmed.length > 0 && trimmed.length <= 160 ? trimmed : null;
 }
 
-function chooseDynamicMatch(name: string, rows: readonly DynamicCatalogItem[]): CatalogMatch | null {
+function chooseDynamicMatch(
+  name: string,
+  rows: readonly DynamicCatalogItem[],
+): CatalogMatch | null {
   const target = normalize(name);
   if (!target) return null;
   const exact = rows.find((item) => normalize(item.canonicalName) === target);
@@ -173,7 +212,12 @@ function chooseDynamicMatch(name: string, rows: readonly DynamicCatalogItem[]): 
         ? rows[0]
         : null;
   return match
-    ? { id: match.id, name: match.canonicalName, category: match.category, imageUrl: match.imageUrl }
+    ? {
+        id: match.id,
+        name: match.canonicalName,
+        category: match.category,
+        imageUrl: match.imageUrl,
+      }
     : null;
 }
 
@@ -225,6 +269,36 @@ Zwróć WYŁĄCZNIE JSON:
 
 KATALOG NAZW DO NORMALIZACJI (nie traktuj go jako dowodu wizualnego):
 ${names}`;
+}
+
+function extractGeminiText(payload: {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+}): string {
+  return (payload.candidates ?? [])
+    .flatMap((candidate) => candidate.content?.parts ?? [])
+    .map((part) => (typeof part.text === 'string' ? part.text : ''))
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
+function stripJsonFence(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('```')) return trimmed;
+  return trimmed
+    .replace(/^```(?:json)?\s*/iu, '')
+    .replace(/\s*```$/u, '')
+    .trim();
+}
+
+function retryAfterSeconds(response: Response): number | null {
+  const raw = response.headers.get('retry-after')?.trim();
+  if (!raw) return null;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.ceil(seconds);
+  const at = Date.parse(raw);
+  if (!Number.isFinite(at)) return null;
+  return Math.max(1, Math.ceil((at - Date.now()) / 1000));
 }
 
 function normalizeRecognizedItems(rawItems: RawRecognizedItem[]): RecognizedItem[] {
@@ -322,51 +396,113 @@ export async function POST(request: NextRequest) {
   if (!match?.[1] || !match[2] || match[2].length > 12_000_000) {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
-  const imageBytes = Buffer.from(match[2], 'base64');
+  const apiKey: string = key;
+  const imageMimeType = match[1] as 'image/png' | 'image/jpeg' | 'image/webp';
+  const imageData = match[2];
+  const imageBytes = Buffer.from(imageData, 'base64');
 
-  const model =
+  const primaryModel =
     process.env.GEMINI_VISION_MODEL?.trim() ||
     process.env.GEMINI_MODEL?.trim() ||
     'gemini-3-flash-preview';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: recognitionPrompt() },
-              { inlineData: { mimeType: match[1], data: match[2] } },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: 'application/json',
-          maxOutputTokens: 8192,
+  const fallbackModel = process.env.GEMINI_ECONOMY_FALLBACK_MODEL?.trim() || 'gemini-3.8-flash';
+
+  async function requestGemini(modelName: string): Promise<Response> {
+    const generationConfig =
+      modelName === 'gemini-3.8-flash'
+        ? {
+            responseMimeType: 'application/json',
+            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingLevel: 'low' },
+          }
+        : {
+            temperature: 0,
+            responseMimeType: 'application/json',
+            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
+            maxOutputTokens: 8192,
+          };
+
+    return fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
-      }),
-      cache: 'no-store',
-    },
-  );
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: recognitionPrompt() },
+                { inlineData: { mimeType: imageMimeType, data: imageData } },
+              ],
+            },
+          ],
+          generationConfig,
+        }),
+        cache: 'no-store',
+      },
+    );
+  }
+
+  let modelUsed = primaryModel;
+  let response: Response;
+  try {
+    response = await requestGemini(primaryModel);
+    const shouldFallback =
+      fallbackModel !== primaryModel &&
+      (response.status === 400 ||
+        response.status === 404 ||
+        response.status === 429 ||
+        response.status >= 500);
+    if (shouldFallback) {
+      console.warn(
+        'team economy Gemini primary model unavailable, trying fallback',
+        primaryModel,
+        response.status,
+        fallbackModel,
+      );
+      response = await requestGemini(fallbackModel);
+      modelUsed = fallbackModel;
+    }
+  } catch (error) {
+    console.error('team economy Gemini request failed', error);
+    return NextResponse.json({ error: 'ai_unavailable' }, { status: 502 });
+  }
+
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
     console.error('team economy Gemini recognition failed', response.status, detail.slice(0, 500));
+    if (response.status === 429) {
+      return NextResponse.json(
+        {
+          error: 'ai_quota_exceeded',
+          retryAfterSeconds: retryAfterSeconds(response),
+        },
+        { status: 429 },
+      );
+    }
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 502 });
   }
-  const payload = (await response.json()) as {
+
+  let payload: {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
-  const text = payload.candidates?.[0]?.content?.parts?.find(
-    (part) => typeof part.text === 'string',
-  )?.text;
+  try {
+    payload = (await response.json()) as typeof payload;
+  } catch {
+    return NextResponse.json({ error: 'ai_invalid_result' }, { status: 502 });
+  }
+
+  const text = extractGeminiText(payload);
   if (!text) return NextResponse.json({ error: 'ai_empty_result' }, { status: 502 });
 
   let parsed: { items?: RawRecognizedItem[] };
   try {
-    parsed = JSON.parse(text) as { items?: RawRecognizedItem[] };
+    parsed = JSON.parse(stripJsonFence(text)) as { items?: RawRecognizedItem[] };
   } catch {
     return NextResponse.json({ error: 'ai_invalid_result' }, { status: 502 });
   }
@@ -377,7 +513,9 @@ export async function POST(request: NextRequest) {
   if (workspaceId) {
     const unmatched = recognized
       .map((item, index) => ({ item, index }))
-      .filter(({ item }) => item.catalogMatch === null && item.recognizedName !== 'Nieznany przedmiot')
+      .filter(
+        ({ item }) => item.catalogMatch === null && item.recognizedName !== 'Nieznany przedmiot',
+      )
       .slice(0, DYNAMIC_LOOKUP_LIMIT);
     const dynamicMatches = await Promise.all(
       unmatched.map(({ item }) => dynamicCatalogMatch(request, workspaceId, item.recognizedName)),
@@ -391,11 +529,11 @@ export async function POST(request: NextRequest) {
   const analysisId = await recordAiObservation(request, {
     analysisType: 'economy',
     workspaceId,
-    model,
+    model: modelUsed,
     promptVersion: ECONOMY_PROMPT_VERSION,
     parserVersion: ECONOMY_PARSER_VERSION,
     confidence: aggregateConfidence(recognized),
-    imageMimeType: match[1] as 'image/png' | 'image/jpeg' | 'image/webp',
+    imageMimeType,
     imageBytes,
     aiOutput: {
       rawItems: Array.isArray(parsed.items) ? parsed.items : [],
@@ -403,5 +541,10 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ analysisId, items: recognized, model, persisted: analysisId !== null });
+  return NextResponse.json({
+    analysisId,
+    items: recognized,
+    model: modelUsed,
+    persisted: analysisId !== null,
+  });
 }
