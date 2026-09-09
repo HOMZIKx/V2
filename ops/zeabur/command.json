@@ -1,6 +1,5 @@
 {
-  "requestId": "pw-timers-e2e-20260909-1520",
-  "mode": "daily_timer_panel_e2e",
-  "workspaceId": "kuzyni",
-  "confirm": "DISCORD_TEST_DM_APPROVED"
+  "requestId": "repair-player-team-discord-secret-20260909-1817",
+  "mode": "player_team_discord_secret_bridge",
+  "confirm": "ZEABUR_WRITE_APPROVED"
 }
