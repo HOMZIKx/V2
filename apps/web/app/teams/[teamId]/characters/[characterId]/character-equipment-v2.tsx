@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 
+import { resolveAiObservationFeedback } from '../../../../../src/ai-observation-feedback';
 import { formatCharacterClassLine } from '../../../../../src/character-profile';
 import {
   equipmentSlotForCategory,
@@ -57,6 +58,7 @@ interface ItemDraft {
 }
 
 interface ScreenshotAnalysisPayload {
+  readonly analysisId?: string | null;
   readonly draft?: {
     readonly name?: string;
     readonly enhancement?: number;
@@ -234,6 +236,7 @@ export function CharacterEquipmentV2() {
   const [categoryReviewRequired, setCategoryReviewRequired] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [screenshotAnalysisId, setScreenshotAnalysisId] = useState<string | null>(null);
   const [screenshotStatus, setScreenshotStatus] = useState<'idle' | 'loading' | 'done' | 'error'>(
     'idle',
   );
@@ -338,6 +341,7 @@ export function CharacterEquipmentV2() {
     setCategoryReviewRequired(false);
     setEditorError(null);
     setScreenshotFile(null);
+    setScreenshotAnalysisId(null);
     setScreenshotStatus('idle');
     setDraft({
       name: '',
@@ -361,6 +365,7 @@ export function CharacterEquipmentV2() {
     setCategoryReviewRequired(false);
     setEditorError(null);
     setScreenshotFile(null);
+    setScreenshotAnalysisId(null);
     setScreenshotStatus('idle');
     setDraft({
       name: stripEnhancementFromName(item.name),
@@ -378,6 +383,7 @@ export function CharacterEquipmentV2() {
     setCategoryReviewRequired(false);
     setScreenshotStatus('idle');
     setScreenshotFile(null);
+    setScreenshotAnalysisId(null);
   };
 
   const analyzeScreenshot = async () => {
@@ -387,8 +393,11 @@ export function CharacterEquipmentV2() {
     }
     setScreenshotStatus('loading');
     setEditorError(null);
+    setScreenshotAnalysisId(null);
     const body = new FormData();
     body.append('image', screenshotFile);
+    body.append('workspaceId', workspace.id);
+    body.append('characterId', character.id);
 
     try {
       const response = await fetch('/api/equipment/analyze-item', { method: 'POST', body });
@@ -428,6 +437,11 @@ export function CharacterEquipmentV2() {
       const bestSlot = best ? equipmentSlotForCategory(best.category) : null;
       const analyzedSlot = bestSlot ?? analysisDraft.category ?? null;
 
+      setScreenshotAnalysisId(
+        typeof payload.analysisId === 'string' && payload.analysisId.trim()
+          ? payload.analysisId.trim()
+          : null,
+      );
       setSelectedCatalogId(best?.id ?? null);
       setCategoryReviewRequired(analyzedSlot === null);
       setDraft((current) => ({
@@ -443,6 +457,7 @@ export function CharacterEquipmentV2() {
       }));
       setScreenshotStatus('done');
     } catch (error) {
+      setScreenshotAnalysisId(null);
       setScreenshotStatus('error');
       setEditorError(error instanceof Error ? error.message : 'Analiza screena nie powiodła się.');
     }
@@ -508,6 +523,14 @@ export function CharacterEquipmentV2() {
     }
 
     confirmLocation(workspace.id, createdId, bagLocation);
+    if (editorMode === 'screenshot' && screenshotAnalysisId) {
+      void resolveAiObservationFeedback(screenshotAnalysisId, {
+        name: draft.name.trim(),
+        enhancement: clampEnhancement(draft.enhancement),
+        category: draft.category,
+        bonuses,
+      });
+    }
     setSelectedItemId(createdId);
     setInventoryMode('bag');
     closeEditor();
@@ -846,6 +869,7 @@ export function CharacterEquipmentV2() {
                       accept="image/png,image/jpeg,image/webp"
                       onChange={(event) => {
                         setScreenshotFile(event.target.files?.[0] ?? null);
+                        setScreenshotAnalysisId(null);
                         setScreenshotStatus('idle');
                         setCategoryReviewRequired(false);
                         setEditorError(null);
