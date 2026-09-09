@@ -13,10 +13,13 @@ import {
 import { z } from 'zod';
 
 import { type PlayerTeamStateUseCases } from '../application/use-cases/player-team-state.use-cases.js';
+import {
+  evaluateEconomyFeedback,
+  evaluateEquipmentFeedback,
+} from '../domain/ai-observation-feedback.js';
 import { type PlayerTeamEnv } from '../infrastructure/config/player-team-env.js';
 import {
   AiObservationRepository,
-  type AiObservationFeedbackInput,
   type AiObservationInput,
 } from '../infrastructure/db/ai-observation.repository.js';
 import { PlayerTeamExceptionFilter } from './player-team-exception.filter.js';
@@ -45,9 +48,8 @@ const createObservationSchema = z.object({
 });
 
 const feedbackSchema = z.object({
-  status: z.enum(['accepted', 'corrected', 'rejected']),
+  status: z.literal('rejected').optional(),
   finalOutput: z.unknown().optional(),
-  changedFields: z.array(z.string().trim().min(1).max(80)).max(32).optional(),
 });
 
 function assertJsonBudget(value: unknown, label: string): void {
@@ -105,13 +107,32 @@ export class AiObservationController {
         parsed.success ? 'invalid AI observation id' : `invalid AI feedback: ${parsed.error.message}`,
       );
     }
-    if (parsed.data.finalOutput !== undefined) {
-      assertJsonBudget(parsed.data.finalOutput, 'finalOutput');
+
+    const viewerId = await this.viewerId(headers);
+    if (parsed.data.status === 'rejected') {
+      if (parsed.data.finalOutput !== undefined) assertJsonBudget(parsed.data.finalOutput, 'finalOutput');
+      return this.observations.addFeedback(viewerId, observationId, {
+        status: 'rejected',
+        finalOutput: parsed.data.finalOutput,
+        changedFields: [],
+      });
     }
-    return this.observations.addFeedback(
-      await this.viewerId(headers),
-      observationId,
-      parsed.data as AiObservationFeedbackInput,
-    );
+
+    if (parsed.data.finalOutput === undefined) {
+      throw new BadRequestException('finalOutput is required to resolve AI feedback');
+    }
+    assertJsonBudget(parsed.data.finalOutput, 'finalOutput');
+
+    const observation = await this.observations.getOwnedPending(viewerId, observationId);
+    const decision =
+      observation.analysisType === 'equipment'
+        ? evaluateEquipmentFeedback(observation.aiOutput, parsed.data.finalOutput)
+        : evaluateEconomyFeedback(observation.aiOutput, parsed.data.finalOutput);
+
+    return this.observations.addFeedback(viewerId, observationId, {
+      status: decision.status,
+      finalOutput: parsed.data.finalOutput,
+      changedFields: decision.changedFields,
+    });
   }
 }
