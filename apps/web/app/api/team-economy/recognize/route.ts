@@ -396,39 +396,78 @@ export async function POST(request: NextRequest) {
   if (!match?.[1] || !match[2] || match[2].length > 12_000_000) {
     return NextResponse.json({ error: 'invalid_image' }, { status: 400 });
   }
-  const imageBytes = Buffer.from(match[2], 'base64');
+  const apiKey: string = key;
+  const imageMimeType = match[1] as 'image/png' | 'image/jpeg' | 'image/webp';
+  const imageData = match[2];
+  const imageBytes = Buffer.from(imageData, 'base64');
 
-  const model =
+  const primaryModel =
     process.env.GEMINI_VISION_MODEL?.trim() ||
     process.env.GEMINI_MODEL?.trim() ||
     'gemini-3-flash-preview';
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`,
+  const fallbackModel = process.env.GEMINI_ECONOMY_FALLBACK_MODEL?.trim() || 'gemini-3.8-flash';
+
+  async function requestGemini(modelName: string): Promise<Response> {
+    const generationConfig =
+      modelName === 'gemini-3.8-flash'
+        ? {
+            responseMimeType: 'application/json',
+            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
+            maxOutputTokens: 8192,
+            thinkingConfig: { thinkingLevel: 'low' },
+          }
+        : {
+            temperature: 0,
+            responseMimeType: 'application/json',
+            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
+            maxOutputTokens: 8192,
+          };
+
+    return fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`,
       {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
         body: JSON.stringify({
           contents: [
             {
               role: 'user',
               parts: [
                 { text: recognitionPrompt() },
-                { inlineData: { mimeType: match[1], data: match[2] } },
+                { inlineData: { mimeType: imageMimeType, data: imageData } },
               ],
             },
           ],
-          generationConfig: {
-            temperature: 0,
-            responseMimeType: 'application/json',
-            responseJsonSchema: RECOGNITION_RESPONSE_JSON_SCHEMA,
-            maxOutputTokens: 8192,
-          },
+          generationConfig,
         }),
         cache: 'no-store',
       },
     );
+  }
+
+  let modelUsed = primaryModel;
+  let response: Response;
+  try {
+    response = await requestGemini(primaryModel);
+    const shouldFallback =
+      fallbackModel !== primaryModel &&
+      (response.status === 400 ||
+        response.status === 404 ||
+        response.status === 429 ||
+        response.status >= 500);
+    if (shouldFallback) {
+      console.warn(
+        'team economy Gemini primary model unavailable, trying fallback',
+        primaryModel,
+        response.status,
+        fallbackModel,
+      );
+      response = await requestGemini(fallbackModel);
+      modelUsed = fallbackModel;
+    }
   } catch (error) {
     console.error('team economy Gemini request failed', error);
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 502 });
@@ -490,11 +529,11 @@ export async function POST(request: NextRequest) {
   const analysisId = await recordAiObservation(request, {
     analysisType: 'economy',
     workspaceId,
-    model,
+    model: modelUsed,
     promptVersion: ECONOMY_PROMPT_VERSION,
     parserVersion: ECONOMY_PARSER_VERSION,
     confidence: aggregateConfidence(recognized),
-    imageMimeType: match[1] as 'image/png' | 'image/jpeg' | 'image/webp',
+    imageMimeType,
     imageBytes,
     aiOutput: {
       rawItems: Array.isArray(parsed.items) ? parsed.items : [],
@@ -505,7 +544,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     analysisId,
     items: recognized,
-    model,
+    model: modelUsed,
     persisted: analysisId !== null,
   });
 }
