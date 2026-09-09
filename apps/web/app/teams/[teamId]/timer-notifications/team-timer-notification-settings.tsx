@@ -79,7 +79,11 @@ export function TeamTimerNotificationSettings() {
       .then((config) => {
         setSavedTime(config.dailyTime);
         setDailyTime(config.dailyTime);
-        setMessage(`Zapisano. Zespół otrzyma panel timerów codziennie o ${config.dailyTime}.`);
+        setMessage(
+          config.recipients.length > 0
+            ? `Zapisano. Panel timerów będzie wysyłany codziennie o ${config.dailyTime} do ${config.recipients.length} członków.`
+            : `Godzina ${config.dailyTime} została zapisana, ale lista odbiorców PW jest pusta. Sprawdź podpięcie Discord i ustawienie PW timerów.`,
+        );
       })
       .catch((error: unknown) => {
         setMessage(error instanceof Error ? error.message : 'Nie udało się zapisać ustawienia panelu PW.');
