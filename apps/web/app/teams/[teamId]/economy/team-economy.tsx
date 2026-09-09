@@ -115,9 +115,17 @@ type AiItem = {
   } | null;
 };
 
+type CatalogSearchItem = {
+  id: string;
+  canonicalName: string;
+  category: string;
+  imageUrl: string | null;
+  lastPrice: { unitPrice: number; currency: Currency; createdAtIso: string } | null;
+};
+
 const dobryTematSeed = Array.from(
-  gameItemCatalog.reduce(
-    (map, item) => {
+  gameItemCatalog
+    .reduce((map, item) => {
       const key = item.title.trim().toLocaleLowerCase('pl-PL');
       if (!map.has(key)) {
         map.set(key, {
@@ -128,12 +136,8 @@ const dobryTematSeed = Array.from(
         });
       }
       return map;
-    },
-    new Map<
-      string,
-      { id: string; canonicalName: string; category: string; imageUrl: string | null }
-    >(),
-  ).values(),
+    }, new Map<string, { id: string; canonicalName: string; category: string; imageUrl: string | null }>())
+    .values(),
 );
 
 function weekStartIso(): string {
@@ -185,7 +189,8 @@ function normalizedParticipantName(value: string): string {
 export function TeamEconomy() {
   const { teamId } = useParams<{ teamId: string }>();
   const { state, hydrated } = usePlayerStore();
-  const workspace = state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
+  const workspace =
+    state.workspaces.find((entry) => entry.id === teamId && !entry.archived) ?? null;
 
   const [tab, setTab] = useState<Tab>('drop');
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -236,7 +241,9 @@ export function TeamEconomy() {
       const sourceParam = params.get('source')?.trim() ?? '';
       const mapParam = params.get('map')?.trim() ?? '';
       const channelParam = params.get('channel')?.trim() ?? '';
-      const sourceParts = [sourceParam, mapParam, channelParam ? `CH${channelParam}` : ''].filter(Boolean);
+      const sourceParts = [sourceParam, mapParam, channelParam ? `CH${channelParam}` : ''].filter(
+        Boolean,
+      );
       if (sourceParts.length > 0) setSource(sourceParts.join(' · ').slice(0, 120));
 
       const sessionId = params.get('sessionId')?.trim() ?? '';
@@ -251,12 +258,18 @@ export function TeamEconomy() {
         participantNameSet.has(normalizedParticipantName(member.displayName)),
       );
       setSelectedMembers(matchedMembers.map((member) => member.id));
-      const matchedNameSet = new Set(matchedMembers.map((member) => normalizedParticipantName(member.displayName)));
+      const matchedNameSet = new Set(
+        matchedMembers.map((member) => normalizedParticipantName(member.displayName)),
+      );
       setOutsiders(
-        participantNames.filter((name) => !matchedNameSet.has(normalizedParticipantName(name))).join(', '),
+        participantNames
+          .filter((name) => !matchedNameSet.has(normalizedParticipantName(name)))
+          .join(', '),
       );
       setDropOpen(true);
-      setNotice('Kontekst sesji Party wczytany: źródło, mapa, CH i uczestnicy zostały uzupełnione.');
+      setNotice(
+        'Kontekst sesji Party wczytany: źródło, mapa, CH i uczestnicy zostały uzupełnione.',
+      );
       return;
     }
 
@@ -268,7 +281,9 @@ export function TeamEconomy() {
   const ensureCatalog = useCallback(async () => {
     if (!workspace || catalogReady) return;
     try {
-      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), { cache: 'no-store' });
+      const statusResponse = await fetch(api(workspace.id, 'catalog-status'), {
+        cache: 'no-store',
+      });
       if (!statusResponse.ok) {
         setNotice('Nie udało się sprawdzić dodatkowego katalogu. Ekonomia nadal działa.');
         return;
@@ -282,12 +297,16 @@ export function TeamEconomy() {
           body: JSON.stringify({ items: dobryTematSeed }),
         });
         if (!importResponse.ok) {
-          setNotice('Dodatkowy katalog DOBRYTEMAT nie zsynchronizował się w pełni. Ekonomia nadal działa.');
+          setNotice(
+            'Dodatkowy katalog DOBRYTEMAT nie zsynchronizował się w pełni. Ekonomia nadal działa.',
+          );
           return;
         }
         const imported = (await importResponse.json()) as { imported?: number };
         if (Number(imported.imported ?? 0) > 0) {
-          setNotice(`Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`);
+          setNotice(
+            `Baza DOBRYTEMAT zsynchronizowana: dodano ${Number(imported.imported)} pozycji.`,
+          );
         }
       }
     } catch {
@@ -349,60 +368,83 @@ export function TeamEconomy() {
     [drops],
   );
 
-  const recognizeFile = useCallback(async (file: File) => {
-    if (!workspace) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
-      return;
-    }
-    setBusy(true);
-    setError('');
-    try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));
-        reader.readAsDataURL(file);
-      });
-      const response = await fetch('/api/team-economy/recognize', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(
-          body.error === 'ai_not_configured'
-            ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
-            : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
-        );
+  const recognizeFile = useCallback(
+    async (file: File) => {
+      if (!workspace) return;
+      if (!file.type.startsWith('image/')) {
+        setError('Wklej lub wybierz plik obrazu PNG, JPG albo WEBP.');
+        return;
       }
-      const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
-      setDropAnalysisId(
-        typeof body.analysisId === 'string' && body.analysisId.trim() ? body.analysisId.trim() : null,
-      );
-      setDraftItems(
-        body.items.map((item, index) => ({
-          key: `ai-${Date.now()}-${index}`,
-          itemId: null,
-          name: item.catalogMatch?.name ?? item.recognizedName,
-          category: item.catalogMatch?.category ?? 'Pozostałe',
-          totalQuantity: item.quantity,
-          ourQuantity: item.quantity,
-          unitPrice: 0,
-          currency: 'yang',
-          confidence: item.confidence,
-        })),
-      );
-      setNotice(
-        `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Błąd AI.');
-    } finally {
-      setBusy(false);
-    }
-  }, [workspace]);
+      setBusy(true);
+      setError('');
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error('Nie udało się odczytać screena.'));
+          reader.readAsDataURL(file);
+        });
+        const response = await fetch('/api/team-economy/recognize', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ imageDataUrl: dataUrl, workspaceId: workspace.id }),
+        });
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(
+            body.error === 'ai_not_configured'
+              ? 'AI nie jest skonfigurowane w tym wdrożeniu. Możesz dodać drop ręcznie.'
+              : 'AI nie rozpoznało screena. Możesz poprawić wynik ręcznie.',
+          );
+        }
+        const body = (await response.json()) as { analysisId?: string | null; items: AiItem[] };
+        setDropAnalysisId(
+          typeof body.analysisId === 'string' && body.analysisId.trim()
+            ? body.analysisId.trim()
+            : null,
+        );
+        const resolvedAiItems = await Promise.all(
+          body.items.map(async (item, index): Promise<DraftItem> => {
+            const name = item.catalogMatch?.name ?? item.recognizedName;
+            let catalogItem: CatalogSearchItem | null = null;
+            const catalogResponse = await fetch(
+              api(workspace.id, `items?q=${encodeURIComponent(name)}`),
+              { cache: 'no-store' },
+            );
+            if (catalogResponse.ok) {
+              const candidates = (await catalogResponse.json()) as CatalogSearchItem[];
+              catalogItem =
+                candidates.find(
+                  (candidate) =>
+                    candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+                    name.trim().toLocaleLowerCase('pl-PL'),
+                ) ?? null;
+            }
+            return {
+              key: `ai-${Date.now()}-${index}`,
+              itemId: catalogItem?.id ?? null,
+              name: catalogItem?.canonicalName ?? name,
+              category: catalogItem?.category ?? item.catalogMatch?.category ?? 'Pozostałe',
+              totalQuantity: item.quantity,
+              ourQuantity: item.quantity,
+              unitPrice: catalogItem?.lastPrice?.unitPrice ?? 0,
+              currency: catalogItem?.lastPrice?.currency ?? 'yang',
+              confidence: item.confidence,
+            };
+          }),
+        );
+        setDraftItems(resolvedAiItems);
+        setNotice(
+          `AI rozpoznało ${body.items.length} pozycji slot po slocie. Sprawdź szczególnie małe cyfry ilości przed zapisem.`,
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Błąd AI.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [workspace],
+  );
 
   function recognize(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -481,6 +523,21 @@ export function TeamEconomy() {
       for (const item of draftItems) {
         if (!item.name.trim()) throw new Error('Każdy przedmiot musi mieć nazwę.');
         let itemId = item.itemId;
+        if (!itemId) {
+          const searchResponse = await fetch(
+            api(workspace.id, `items?q=${encodeURIComponent(item.name.trim())}`),
+            { cache: 'no-store' },
+          );
+          if (searchResponse.ok) {
+            const candidates = (await searchResponse.json()) as CatalogSearchItem[];
+            const exactMatch = candidates.find(
+              (candidate) =>
+                candidate.canonicalName.trim().toLocaleLowerCase('pl-PL') ===
+                item.name.trim().toLocaleLowerCase('pl-PL'),
+            );
+            if (exactMatch) itemId = exactMatch.id;
+          }
+        }
         if (!itemId) {
           const response = await fetch(api(workspace.id, 'items'), {
             method: 'POST',
@@ -624,7 +681,11 @@ export function TeamEconomy() {
   return (
     <AppShell activeSection="teams" viewerName={state.viewer.displayName}>
       <main className={styles.page} id="main-content">
-        <EconomyContextNav currentLabel="Ekonomia" workspaceId={workspace.id} workspaceName={workspace.name} />
+        <EconomyContextNav
+          currentLabel="Ekonomia"
+          workspaceId={workspace.id}
+          workspaceName={workspace.name}
+        />
 
         <section className={styles.hero}>
           <div>
@@ -633,7 +694,11 @@ export function TeamEconomy() {
             <p>Drop, nasza część, podział na kupki, ceny, koszty i wynik tygodnia.</p>
           </div>
           <div className={styles.actions}>
-            <button className={styles.button} onClick={() => setDropOpen((value) => !value)} type="button">
+            <button
+              className={styles.button}
+              onClick={() => setDropOpen((value) => !value)}
+              type="button"
+            >
               + Dodaj drop
             </button>
             <button
@@ -736,7 +801,10 @@ export function TeamEconomy() {
                       onChange={recognize}
                       type="file"
                     />
-                    <small>Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik zawsze można poprawić.</small>
+                    <small>
+                      Wybierz plik albo wklej screen Ctrl+V. AI czyta sloty, ikony i liczby; wynik
+                      zawsze można poprawić.
+                    </small>
                   </span>
                 </label>
 
@@ -796,7 +864,10 @@ export function TeamEconomy() {
                                 type="number"
                                 value={item.totalQuantity}
                                 onChange={(event) => {
-                                  const totalQuantity = Math.max(1, Math.floor(Number(event.target.value)));
+                                  const totalQuantity = Math.max(
+                                    1,
+                                    Math.floor(Number(event.target.value)),
+                                  );
                                   patchItem(item.key, {
                                     totalQuantity,
                                     ourQuantity: Math.min(item.ourQuantity, totalQuantity),
@@ -814,7 +885,10 @@ export function TeamEconomy() {
                                   patchItem(item.key, {
                                     ourQuantity: Math.max(
                                       0,
-                                      Math.min(item.totalQuantity, Math.floor(Number(event.target.value))),
+                                      Math.min(
+                                        item.totalQuantity,
+                                        Math.floor(Number(event.target.value)),
+                                      ),
                                     ),
                                   })
                                 }
@@ -909,7 +983,10 @@ export function TeamEconomy() {
                             value={row.sharePercent}
                             onChange={(event) =>
                               patchMoney(row.key, {
-                                sharePercent: Math.max(0, Math.min(100, Number(event.target.value))),
+                                sharePercent: Math.max(
+                                  0,
+                                  Math.min(100, Number(event.target.value)),
+                                ),
                               })
                             }
                           />
@@ -1062,7 +1139,8 @@ export function TeamEconomy() {
                   <strong>{money(total.net, total.currency)}</strong>
                   <small>
                     przedmioty {money(total.itemGross, total.currency)} · kasa{' '}
-                    {money(total.moneyGross, total.currency)} · koszty {money(total.costs, total.currency)}
+                    {money(total.moneyGross, total.currency)} · koszty{' '}
+                    {money(total.costs, total.currency)}
                   </small>
                 </article>
               ))}
@@ -1083,7 +1161,8 @@ export function TeamEconomy() {
                       <h3>{expense.label}</h3>
                       <strong>
                         {money(
-                          (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) / 10_000,
+                          (expense.quantity * expense.unitPrice * expense.ourShareBasisPoints) /
+                            10_000,
                           expense.currency,
                         )}
                       </strong>
@@ -1117,13 +1196,17 @@ export function TeamEconomy() {
                     <p>
                       Udział pieniędzy {(drop.ourShareBasisPoints / 100).toLocaleString('pl-PL')}% ·{' '}
                       {drop.pileCount} kupek ·{' '}
-                      {drop.participants.map((entry) => entry.displayName).join(', ') || 'bez listy'}
+                      {drop.participants.map((entry) => entry.displayName).join(', ') ||
+                        'bez listy'}
                     </p>
                     {drop.items.length ? (
                       <p>
                         Przedmioty:{' '}
                         {drop.items
-                          .map((item) => `${item.displayName} ${item.ourQuantity}/${item.totalQuantity}`)
+                          .map(
+                            (item) =>
+                              `${item.displayName} ${item.ourQuantity}/${item.totalQuantity}`,
+                          )
                           .join(' · ')}
                       </p>
                     ) : null}

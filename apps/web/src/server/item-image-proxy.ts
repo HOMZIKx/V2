@@ -108,7 +108,10 @@ function wikiPageTitle(item: GameItem): string | null {
     const marker = '/index.php/';
     const markerIndex = url.pathname.indexOf(marker);
     if (markerIndex >= 0) {
-      return decodeURIComponent(url.pathname.slice(markerIndex + marker.length)).replace(/_/gu, ' ');
+      return decodeURIComponent(url.pathname.slice(markerIndex + marker.length)).replace(
+        /_/gu,
+        ' ',
+      );
     }
     const fromQuery = url.searchParams.get('title');
     return fromQuery ? fromQuery.replace(/_/gu, ' ') : null;
@@ -155,7 +158,9 @@ async function resolveWikiImageUrl(item: GameItem, fetchImpl: FetchLike): Promis
   const pages = asWikiPages(imagesPayload?.query?.pages);
   const imageEntries = pages.flatMap((page) =>
     Array.isArray(page.images)
-      ? page.images.filter((entry): entry is WikiImageEntry => Boolean(entry && typeof entry === 'object'))
+      ? page.images.filter((entry): entry is WikiImageEntry =>
+          Boolean(entry && typeof entry === 'object'),
+        )
       : [],
   );
   const candidates = imageEntries
@@ -183,7 +188,9 @@ async function resolveWikiImageUrl(item: GameItem, fetchImpl: FetchLike): Promis
     .flatMap((page) => {
       const title = typeof page.title === 'string' ? page.title : '';
       const infos = Array.isArray(page.imageinfo)
-        ? page.imageinfo.filter((entry): entry is WikiImageInfo => Boolean(entry && typeof entry === 'object'))
+        ? page.imageinfo.filter((entry): entry is WikiImageInfo =>
+            Boolean(entry && typeof entry === 'object'),
+          )
         : [];
       const url = infos.find((entry) => typeof entry.url === 'string')?.url;
       return typeof url === 'string' ? [{ title, url, score: byTitle.get(title) ?? -1 }] : [];
@@ -208,7 +215,8 @@ function itemTitleRedirectCandidates(item: GameItem): readonly string[] {
   );
   const filenameBase = item.title.replace(/\s+/gu, '_');
   return extensions.map(
-    (ext) => `${WIKI_ORIGIN}/index.php/Special:Redirect/file/${encodeURIComponent(`${filenameBase}.${ext}`)}`,
+    (ext) =>
+      `${WIKI_ORIGIN}/index.php/Special:Redirect/file/${encodeURIComponent(`${filenameBase}.${ext}`)}`,
   );
 }
 
@@ -264,14 +272,16 @@ export async function getCatalogWikiImageResponse(
   const local = await readLocalWikiImage(filename);
   if (local) return local;
 
-  const resolvedUrl = await resolveWikiImageUrl(item, fetchImpl);
-  if (resolvedUrl) {
-    const image = await fetchRemoteImage(fetchImpl, resolvedUrl);
+  // Prefer an exact item filename first. Wiki pages can contain several visually
+  // similar images and fuzzy matching must only be a last-resort fallback.
+  for (const candidate of itemTitleRedirectCandidates(item)) {
+    const image = await fetchRemoteImage(fetchImpl, candidate);
     if (image) return image;
   }
 
-  for (const candidate of itemTitleRedirectCandidates(item)) {
-    const image = await fetchRemoteImage(fetchImpl, candidate);
+  const resolvedUrl = await resolveWikiImageUrl(item, fetchImpl);
+  if (resolvedUrl) {
+    const image = await fetchRemoteImage(fetchImpl, resolvedUrl);
     if (image) return image;
   }
 

@@ -33,11 +33,16 @@ function normalize(value: string): string {
 }
 
 function compact(value: number, currency: Currency): string {
-  if (currency === 'won') return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} Won`;
-  if (currency === 'gem') return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} GEM`;
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}kkk`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}kk`;
-  if (value >= 1_000) return `${(value / 1_000).toLocaleString('pl-PL', { maximumFractionDigits: 1 })}k`;
+  if (currency === 'won')
+    return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} Won`;
+  if (currency === 'gem')
+    return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 2 })} GEM`;
+  if (value >= 1_000_000_000)
+    return `${(value / 1_000_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}kkk`;
+  if (value >= 1_000_000)
+    return `${(value / 1_000_000).toLocaleString('pl-PL', { maximumFractionDigits: 2 })}kk`;
+  if (value >= 1_000)
+    return `${(value / 1_000).toLocaleString('pl-PL', { maximumFractionDigits: 1 })}k`;
   return `${value.toLocaleString('pl-PL')} Yang`;
 }
 
@@ -72,12 +77,17 @@ export function MarketPriceHint({
       void (async () => {
         setLoading(true);
         try {
-          const itemsResponse = await fetch(api(workspaceId, `items?q=${encodeURIComponent(name)}`), {
-            cache: 'no-store',
-          });
+          const itemsResponse = await fetch(
+            api(workspaceId, `items?q=${encodeURIComponent(name)}`),
+            {
+              cache: 'no-store',
+            },
+          );
           if (!itemsResponse.ok) return;
           const items = (await itemsResponse.json()) as CatalogItem[];
-          const exact = items.find((candidate) => normalize(candidate.canonicalName) === normalize(name)) ?? null;
+          const exact =
+            items.find((candidate) => normalize(candidate.canonicalName) === normalize(name)) ??
+            null;
           setItem(exact);
           if (!exact) {
             setPrices([]);
@@ -98,33 +108,71 @@ export function MarketPriceHint({
     return () => window.clearTimeout(timer);
   }, [itemName, workspaceId]);
 
-  const selected = useMemo(
-    () => prices.find((price) => price.currency === currency) ?? null,
-    [currency, prices],
-  );
+  const stats = useMemo(() => {
+    const rows = prices.filter((price) => price.currency === currency);
+    const latest = rows[0] ?? null;
+    if (!latest) return null;
+    const values = rows.map((price) => price.unitPrice).sort((left, right) => left - right);
+    const middle = Math.floor(values.length / 2);
+    const median =
+      values.length % 2 === 0
+        ? ((values[middle - 1] ?? 0) + (values[middle] ?? 0)) / 2
+        : (values[middle] ?? 0);
+    const ageDays = Math.max(
+      0,
+      (Date.now() - new Date(latest.createdAtIso).getTime()) / 86_400_000,
+    );
+    const freshness = ageDays <= 3 ? 'świeża' : ageDays <= 14 ? 'starsza' : 'nieaktualna';
+    return { latest, median, freshness, recentCount: rows.length };
+  }, [currency, prices]);
 
   if (!itemName.trim()) return null;
   if (loading && !item) return <div className={styles.hint}>Sprawdzam ceny w bazie ogólnej…</div>;
-  if (!item) return <div className={`${styles.hint} ${styles.muted}`}>Brak dokładnego dopasowania w bazie.</div>;
-  if (!selected) {
-    return <div className={`${styles.hint} ${styles.muted}`}>Brak zapisanej ceny {currency.toUpperCase()} dla tego przedmiotu.</div>;
+  if (!item)
+    return (
+      <div className={`${styles.hint} ${styles.muted}`}>Brak dokładnego dopasowania w bazie.</div>
+    );
+  if (!stats) {
+    return (
+      <div className={`${styles.hint} ${styles.muted}`}>
+        Brak zapisanej ceny {currency.toUpperCase()} dla tego przedmiotu.
+      </div>
+    );
   }
 
   return (
     <div className={styles.hint}>
       <div className={styles.row}>
         <span>Ostatnia:</span>
-        <strong>{compact(selected.unitPrice, currency)}</strong>
-        <span>· {new Date(selected.createdAtIso).toLocaleDateString('pl-PL')}</span>
-        <button className={styles.action} onClick={() => onUsePrice(selected.unitPrice)} type="button">
+        <strong>{compact(stats.latest.unitPrice, currency)}</strong>
+        <span>· {new Date(stats.latest.createdAtIso).toLocaleDateString('pl-PL')}</span>
+        <button
+          className={styles.action}
+          onClick={() => onUsePrice(stats.latest.unitPrice)}
+          type="button"
+        >
           Użyj
         </button>
       </div>
       <div className={styles.row}>
+        <span>Mediana:</span>
+        <strong>{compact(stats.median, currency)}</strong>
+        <span>
+          · {stats.recentCount} ostatnich wpisów · {stats.freshness}
+        </span>
+        <button className={styles.action} onClick={() => onUsePrice(stats.median)} type="button">
+          Użyj mediany
+        </button>
+      </div>
+      <div className={styles.row}>
         <span>Średnia:</span>
-        <strong>{compact(selected.averagePrice, currency)}</strong>
-        <span>· {selected.sampleCount} wpisów</span>
-        <button className={styles.action} onClick={() => onUsePrice(selected.averagePrice)} type="button">
+        <strong>{compact(stats.latest.averagePrice, currency)}</strong>
+        <span>· {stats.latest.sampleCount} wpisów</span>
+        <button
+          className={styles.action}
+          onClick={() => onUsePrice(stats.latest.averagePrice)}
+          type="button"
+        >
           Użyj średniej
         </button>
       </div>
