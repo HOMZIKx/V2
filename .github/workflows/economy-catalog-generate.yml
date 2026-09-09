@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feat/economy-catalog-polish-clean-20260909
-      - name: Audit canonical image gaps
+      - name: Audit canonical image gaps and local candidates
         run: python3 .github/scripts/audit_missing_catalog_images.py
       - name: Generate migrations and regression test
         run: python3 .github/scripts/generate_economy_catalog_migrations.py
