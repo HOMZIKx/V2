@@ -14,7 +14,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function finish(payload, code = 0) {
   fs.writeFileSync(`${outDir}/result.json`, JSON.stringify(payload, null, 2));
-  fs.writeFileSync(`${outDir}/summary.md`, `# Discord persistence restart proof\n\n- Persistent volume: **${payload.volumeReady ?? false}**\n- Data dir /data: **${payload.dataDirReady ?? false}**\n- Activity collector enabled: **${payload.activityEnabled ?? false}**\n- Restart observed: **${payload.restartObserved ?? false}**\n- Config survived: **${payload.configSurvived ?? false}**\n- Collector metadata survived: **${payload.collectorMetaSurvived ?? false}**\n- Counters survived: **${payload.countersSurvived ?? false}**\n- Discord ready: **${payload.discordReady ?? false}**\n`);
+  fs.writeFileSync(`${outDir}/summary.md`, `# Discord persistence restart proof\n\n- Persistent volume: **${payload.volumeReady ?? false}**\n- Data dir /data: **${payload.dataDirReady ?? false}**\n- Activity collector enabled: **${payload.activityEnabled ?? false}**\n- Restart observed: **${payload.restartObserved ?? false}**\n- Config survived: **${payload.configSurvived ?? false}**\n- Collector metadata survived: **${payload.collectorMetaSurvived ?? false}**\n- Counters did not regress: **${payload.countersSurvived ?? false}**\n- Discord ready: **${payload.discordReady ?? false}**\n`);
   process.exit(code);
 }
 
@@ -123,7 +123,12 @@ try {
 
   const configSurvived = before.configHash === after.configHash;
   const collectorMetaSurvived = Boolean(before.collectorStartedAt) && before.collectorStartedAt === after.collectorStartedAt;
-  const countersSurvived = before.totalMembers === after.totalMembers && before.messageCount === after.messageCount && before.voiceMinutes === after.voiceMinutes;
+  // Live Discord activity can legitimately increase while the gateway is restarting.
+  // Persistence is proven when accumulated values never go backwards.
+  const countersSurvived =
+    after.totalMembers >= before.totalMembers &&
+    after.messageCount >= before.messageCount &&
+    after.voiceMinutes >= before.voiceMinutes;
   const discordReady = after.discordState === 'ready' && after.discordEnabled && after.isolationOk && !after.lastErrorPresent;
   const finalState = await serviceState();
   const stillMounted = (finalState.service?.volumes ?? []).some((v) => v.id === 'discord-gateway-data' && v.dir === '/data');
