@@ -5,6 +5,7 @@ import {
   biologistQuestById,
   horseAdvanceDetail,
   inferProgressionKind,
+  progressionCycleDurationMs,
   progressionKindsForLevel,
   progressionTimerIcons,
   progressionTimerLabels,
@@ -15,6 +16,7 @@ import {
   projectHardProgressionCycles,
   projectHardSkillBookRules,
   projectHardSoulStoneRules,
+  restartAfterDone,
   timerProgressPercent,
 } from './project-hard-progression';
 
@@ -76,6 +78,7 @@ describe('project hard progression config', () => {
     expect(projectHardProgressionCycles).toHaveLength(7);
     expect(projectHardSkillBookRules.dailyReset).toBe('midnight');
     expect(projectHardSoulStoneRules.cooldownHours).toBe(12);
+    expect(projectHardSoulStoneRules.allowedCooldownHours).toEqual([8, 12]);
     expect(projectHardExtraReadingRules.dailyReset).toBe('midnight');
     expect(projectHardExtraReadingRules.families).not.toContain('combo');
     expect(projectHardSoulStoneRules.purpose).toContain('P');
@@ -99,6 +102,17 @@ describe('project hard progression config', () => {
     expect(projectHardProductFacts.hasAlchemy).toBe(false);
     expect(projectHardProductFacts.hasSashes).toBe(false);
     expect(projectHardProductFacts.maxCharacterLevel).toBe(99);
+  });
+
+  it('uses the selected 8h or 12h soul stone cooldown', () => {
+    const now = new Date('2026-09-08T12:00:00.000Z');
+    const eightHours = restartAfterDone('soul_stone', now, 8 * 60);
+    const twelveHours = restartAfterDone('soul_stone', now, 12 * 60);
+    expect(Date.parse(eightHours.readyAtIso) - now.getTime()).toBe(8 * 3_600_000);
+    expect(eightHours.remainingLabel).toBe('8 h od przeczytania');
+    expect(Date.parse(twelveHours.readyAtIso) - now.getTime()).toBe(12 * 3_600_000);
+    expect(progressionCycleDurationMs('soul_stone', now, 8 * 60)).toBe(8 * 3_600_000);
+    expect(progressionCycleDurationMs('soul_stone', now, 12 * 60)).toBe(12 * 3_600_000);
   });
 
   it('keeps running timer progress bars visible and fills toward readyAtIso', () => {
