@@ -11,7 +11,7 @@ import { progressionTimerLabels } from '../src/project-hard-progression';
 import { useTechnikAccess } from '../src/technik-access';
 
 export type AppSection =
-  'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
+  'dashboard' | 'profil' | 'generaly-metki' | 'teams' | 'characters' | 'economy' | 'timers' | 'maps' | 'market' | 'technik' | 'later';
 
 export type IconName =
   | 'activity'
@@ -327,6 +327,7 @@ export function AppShell({
       icon: 'character' as const,
       href: charactersHref,
     },
+    { id: 'economy' as const, label: 'Ekonomia', icon: 'market' as const, href: '/economy' },
     { id: 'timers' as const, label: 'Timery', icon: 'clock' as const, href: '/timers' },
     { id: 'maps' as const, label: 'Party', icon: 'map' as const, href: '/maps' },
     { id: 'technik' as const, label: 'Technik', icon: 'settings' as const, href: '/technik' },
