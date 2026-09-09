@@ -48,6 +48,44 @@ function playerInitials(displayName: string): string {
   return `${parts[0]![0] ?? ''}${parts.at(-1)?.[0] ?? ''}`.toLocaleUpperCase('pl');
 }
 
+function RankingAvatar({
+  avatarUrl,
+  displayName,
+}: {
+  readonly avatarUrl?: string;
+  readonly displayName: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [avatarUrl]);
+
+  const showImage = Boolean(avatarUrl && !failed);
+  return (
+    <span className={styles.avatar} aria-hidden>
+      {showImage ? (
+        <img
+          alt=""
+          src={avatarUrl}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'cover',
+            borderRadius: 'inherit',
+          }}
+        />
+      ) : (
+        playerInitials(displayName)
+      )}
+    </span>
+  );
+}
+
 function formatVoice(minutes: number | undefined): { value: string; unit: string } {
   if (typeof minutes !== 'number') return { value: '—', unit: '' };
   if (minutes < 60) return { value: String(minutes), unit: 'min' };
@@ -343,21 +381,7 @@ export function MemberDiscordActivity({ discordUserId, viewer }: Props) {
                           </td>
                           <td>
                             <div className={styles.playerCell}>
-                              <span
-                                className={styles.avatar}
-                                aria-hidden
-                                style={
-                                  row.avatarUrl
-                                    ? {
-                                        backgroundImage: `url(${JSON.stringify(row.avatarUrl)})`,
-                                        backgroundPosition: 'center',
-                                        backgroundSize: 'cover',
-                                      }
-                                    : undefined
-                                }
-                              >
-                                {row.avatarUrl ? null : playerInitials(row.displayName)}
-                              </span>
+                              <RankingAvatar avatarUrl={row.avatarUrl} displayName={row.displayName} />
                               <div className={styles.playerInfo}>
                                 <div>
                                   <DiscordNick discordUserId={row.discordUserId} displayName={row.displayName} />
