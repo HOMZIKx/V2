@@ -7,6 +7,8 @@ import {
   type PartyRoomPin,
   type PartyRoomRecord,
   type PatchPartyRoomInput,
+  type PatchPartyRoomPinInput,
+  type SetPartyHuntRoleInput,
   type TimerRoomSnapshot,
 } from '../../domain/ports/hunt-rooms.port.js';
 
@@ -62,12 +64,20 @@ export class HuntRoomsUseCases {
     return this.repository.patchPartyRoom(input);
   }
 
+  public setPartyHuntRole(input: SetPartyHuntRoleInput): Promise<PartyRoomRecord> {
+    return this.repository.setPartyHuntRole(input);
+  }
+
   public addPartyRoomPin(
     roomId: string,
     viewerId: string,
     pin: PartyRoomPin,
   ): Promise<PartyRoomRecord> {
     return this.repository.addPartyRoomPin(roomId, viewerId, pin);
+  }
+
+  public patchPartyRoomPin(input: PatchPartyRoomPinInput): Promise<PartyRoomRecord> {
+    return this.repository.patchPartyRoomPin(input);
   }
 
   public removePartyRoomPin(
