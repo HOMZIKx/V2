@@ -1,0 +1,54 @@
+name: Economy AI diagnose
+on:
+  push:
+    branches: [ops/economy-ai-diagnose-20260909]
+    paths: [.github/workflows/economy-ai-diagnose.yml]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Gemini config from webapp-dest
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=(os.environ.get('ZEABUR_API_TOKEN') or '').strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=45)
+            if r.returncode: print('::error::Zeabur transport failed');sys.exit(1)
+            p=json.loads(r.stdout)
+            if p.get('errors'): print('::error::Zeabur GraphQL: '+str(p['errors'][0].get('message','unknown'))[:200]);sys.exit(1)
+            return p.get('data') or {}
+          ps=[e['node'] for e in gql('query{projects{edges{node{_id name}}}}')['projects']['edges']]
+          p=next((x for x in ps if x.get('name')=='untitled-1'),None)
+          d=gql('query($id:ObjectID!){project(_id:$id){environments{_id name} services{_id name}}}',{'id':p['_id']})['project']
+          env=next(x for x in d['environments'] if x.get('name')=='production'); sm={x['name']:x['_id'] for x in d['services']}
+          script=r'''
+          const tiny='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlMY6wAAAAASUVORK5CYII=';
+          async function run(config,label){
+            const key=(process.env.GEMINI_API_KEY||'').trim();
+            const model=(process.env.GEMINI_VISION_MODEL||process.env.GEMINI_MODEL||'gemini-3-flash-preview').trim();
+            console.log(`MODEL=${model} key_set=${Boolean(key)}`);
+            const u=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
+            const r=await fetch(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{role:'user',parts:[{text:'Return JSON with an items array containing one object: name test, quantity 1, itemConfidence 0.9, quantityConfidence 0.9, slotIndex 0, row 0, column 0, alternatives empty.'},{inlineData:{mimeType:'image/png',data:tiny}}]}],generationConfig:config})});
+            const text=await r.text();
+            let p;try{p=JSON.parse(text)}catch{}
+            const out=(p?.candidates||[]).flatMap(c=>c.content?.parts||[]).map(x=>x.text||'').join('\\n');
+            console.log(`${label}_STATUS=${r.status} text_len=${out.length} finish=${p?.candidates?.[0]?.finishReason||'none'} api_error=${p?.error?.message?String(p.error.message).slice(0,120):'none'}`);
+            console.log(`${label}_TEXT=${out.slice(0,500).replace(/\\s+/g,' ')}`);
+          }
+          (async()=>{
+            await run({temperature:0,responseMimeType:'application/json',maxOutputTokens:8192},'OLD');
+            await run({temperature:0,responseMimeType:'application/json',maxOutputTokens:2048,responseJsonSchema:{type:'object',additionalProperties:false,required:['items'],properties:{items:{type:'array',items:{type:'object',additionalProperties:false,required:['slotIndex','row','column','name','quantity','itemConfidence','quantityConfidence','alternatives'],properties:{slotIndex:{type:'integer'},row:{type:'integer'},column:{type:'integer'},name:{type:'string'},quantity:{type:'integer',minimum:1},itemConfidence:{type:'number',minimum:0,maximum:1},quantityConfidence:{type:'number',minimum:0,maximum:1},alternatives:{type:'array',items:{type:'string'},maxItems:3}}}}}},thinkingConfig:{thinkingLevel:'low'}},'SCHEMA');
+          })().catch(e=>{console.log('PROBE_FAIL='+String(e?.message||e).slice(0,180));process.exit(2)});
+          '''
+          q='mutation($serviceID:ObjectID!,$environmentID:ObjectID!,$command:[String!]!){executeCommand(serviceID:$serviceID,environmentID:$environmentID,command:$command){exitCode output}}'
+          out=gql(q,{'serviceID':sm['webapp-dest'],'environmentID':env['_id'],'command':['node','-e',script]})['executeCommand']
+          print((out.get('output') or '').strip())
+          if out.get('exitCode')!=0: sys.exit(2)
+          PY
