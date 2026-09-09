@@ -1,6 +1,14 @@
 import styles from './economy.module.css';
 
-export function EconomyScopeNav({ active }: { readonly active: 'private' | 'team' | 'home' }) {
+export function EconomyScopeNav({
+  active,
+  teamQuery = '',
+}: {
+  readonly active: 'private' | 'team' | 'home';
+  readonly teamQuery?: string;
+}) {
+  const teamHref = teamQuery ? `/economy/team?${teamQuery}` : '/economy/team';
+
   return (
     <nav aria-label="Zakres ekonomii" className={styles.scopeNav}>
       <a
@@ -13,7 +21,7 @@ export function EconomyScopeNav({ active }: { readonly active: 'private' | 'team
       <a
         aria-current={active === 'team' ? 'page' : undefined}
         className={active === 'team' ? styles.scopeLinkActive : styles.scopeLink}
-        href="/economy/team"
+        href={teamHref}
       >
         Zespołowa
       </a>
