@@ -32,11 +32,12 @@ export type AiObservationFeedbackInput = {
   readonly changedFields?: readonly string[];
 };
 
-export type PendingAiObservation = {
+export type OwnedPendingAiObservation = {
   readonly id: string;
+  readonly analysisType: AiObservationType;
   readonly aiOutput: unknown;
+  readonly workspaceId: string | null;
   readonly characterId: string | null;
-  readonly createdAtIso: string;
 };
 
 function actorHash(discordId: string): string {
@@ -90,39 +91,31 @@ export class AiObservationRepository implements OnModuleInit {
     return { id: row.id, createdAtIso: new Date(row.created_at).toISOString() };
   }
 
-  public async latestPending(
+  public async getOwnedPending(
     viewerDiscordId: string,
-    input: {
-      readonly analysisType: AiObservationType;
-      readonly workspaceId: string;
-      readonly maxAgeMinutes?: number;
-    },
-  ): Promise<PendingAiObservation | null> {
-    const maxAgeMinutes = Math.max(1, Math.min(60, Math.trunc(input.maxAgeMinutes ?? 15)));
+    observationId: string,
+  ): Promise<OwnedPendingAiObservation> {
     const result = await this.db.query<{
       id: string;
+      analysis_type: AiObservationType;
       ai_output: unknown;
+      workspace_id: string | null;
       character_id: string | null;
-      created_at: Date | string;
     }>(
-      `SELECT id, ai_output, character_id, created_at
+      `SELECT id, analysis_type, ai_output, workspace_id, character_id
        FROM player_team_ai_observations
-       WHERE actor_hash = $1
-         AND analysis_type = $2
-         AND workspace_id = $3
-         AND feedback_status = 'pending'
-         AND created_at >= NOW() - ($4::int * INTERVAL '1 minute')
-       ORDER BY created_at DESC
+       WHERE id = $1 AND actor_hash = $2 AND feedback_status = 'pending'
        LIMIT 1`,
-      [actorHash(viewerDiscordId), input.analysisType, input.workspaceId, maxAgeMinutes],
+      [observationId, actorHash(viewerDiscordId)],
     );
     const row = result.rows[0];
-    if (!row) return null;
+    if (!row) throw new PlayerTeamError('NOT_FOUND', 'pending AI observation not found');
     return {
       id: row.id,
+      analysisType: row.analysis_type,
       aiOutput: row.ai_output,
+      workspaceId: row.workspace_id,
       characterId: row.character_id,
-      createdAtIso: new Date(row.created_at).toISOString(),
     };
   }
 
