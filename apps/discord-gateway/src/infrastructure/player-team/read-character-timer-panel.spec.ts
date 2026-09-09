@@ -7,6 +7,7 @@ const APP_ID = 'owner-app-id';
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe('readCharacterTimerPanelFromBot', () => {
@@ -56,6 +57,41 @@ describe('readCharacterTimerPanelFromBot', () => {
     expect(snapshot?.memberId).toBe(APP_ID);
     expect(snapshot?.selectedCharacter?.id).toBe('char-1');
     expect(snapshot?.timers.map((timer) => timer.id)).toEqual(['timer-skill-book']);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the dedicated player-team gateway secret from env, never the notify secret', async () => {
+    vi.stubEnv('PLAYER_TEAM_DISCORD_GATEWAY_SHARED_SECRET', 'player-team-secret');
+    vi.stubEnv('DISCORD_NOTIFY_SHARED_SECRET', 'notify-secret');
+
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(String(input)).toBe(
+        'http://player-team/player-team/v1/internal/discord/workspaces/team-1/state',
+      );
+      expect(new Headers(init?.headers).get('x-discord-gateway-secret')).toBe(
+        'player-team-secret',
+      );
+      return Response.json({
+        viewerAppId: APP_ID,
+        state: {
+          id: 'team-1',
+          name: 'Destiled',
+          members: [{ id: APP_ID, role: 'owner' }],
+          characters: [],
+          timers: [],
+        },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const snapshot = await readCharacterTimerPanelFromBot({
+      baseUrl: 'http://player-team',
+      demoViewerHeader: 'x-demo-viewer-id',
+      viewerId: DISCORD_ID,
+      workspaceId: 'team-1',
+    });
+
+    expect(snapshot?.memberId).toBe(APP_ID);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
