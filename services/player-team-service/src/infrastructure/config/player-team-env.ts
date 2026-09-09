@@ -74,6 +74,13 @@ const baseSchema = z.object({
     .transform((v) => (v === undefined ? 'x-authenticated-discord-id' : v))
     .pipe(z.string().min(1)),
 
+  /**
+   * Read-only service credential for Discord gateway background jobs. It never
+   * enables browser/demo writes and is only accepted by the internal Discord
+   * workspace snapshot endpoint.
+   */
+  PLAYER_TEAM_DISCORD_GATEWAY_SHARED_SECRET: optionalTrimmed,
+
   PLAYER_TEAM_CORS_ORIGINS: csvOrigins,
 });
 
