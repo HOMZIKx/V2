@@ -52,7 +52,7 @@ function RankingAvatar({
   avatarUrl,
   displayName,
 }: {
-  readonly avatarUrl?: string;
+  readonly avatarUrl: string | undefined;
   readonly displayName: string;
 }) {
   const [failed, setFailed] = useState(false);
