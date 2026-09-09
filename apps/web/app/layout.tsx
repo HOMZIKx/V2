@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { DiscordAvatarHydrator } from '../src/discord-avatar-hydrator';
 import { TeamDailyTimerPanelSync } from '../src/team-daily-timer-panel-sync';
 import { TeamInvitationSync } from '../src/team-invitation-sync';
 import { TeamKingdomWarRecipientSync } from '../src/team-kingdom-war-recipient-sync';
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
     <html lang="pl">
       <body>
         <PlayerStoreProvider>
+          <DiscordAvatarHydrator />
           <MapMarkerBoundaryGuard />
           <TeamInvitationSync />
           <TeamDailyTimerPanelSync />
