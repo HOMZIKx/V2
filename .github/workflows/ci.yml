@@ -70,6 +70,14 @@ jobs:
         env:
           CI: 'true'
 
+      - name: Run web item image regression tests for preview
+        if: github.ref == 'refs/heads/preview/destiled-web' || github.base_ref == 'preview/destiled-web'
+        run: |
+          pnpm --dir apps/web exec vitest run --config vitest.config.ts \
+            src/item-image-path-regression.spec.ts
+        env:
+          CI: 'true'
+
       - name: Run preview compile gates
         if: github.ref == 'refs/heads/preview/destiled-web' || github.base_ref == 'preview/destiled-web'
         run: |
