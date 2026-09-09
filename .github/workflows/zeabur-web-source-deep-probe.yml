@@ -1,0 +1,77 @@
+name: Zeabur web source deep probe
+
+on:
+  push:
+    branches:
+      - ops/redeploy-web-theme-20260909
+    paths:
+      - .github/workflows/zeabur-web-source-deep-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect nested source metadata
+        env:
+          ZEABUR_API_TOKEN: ${{ secrets.zebur }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          token=os.environ.get('ZEABUR_API_TOKEN','').strip(); endpoint='https://api.zeabur.com/graphql'
+          def gql(q,v=None,required=True):
+            r=subprocess.run(['curl','-sS','--fail-with-body','-X','POST',endpoint,'-H',f'Authorization: Bearer {token}','-H','Content-Type: application/json','--data-binary',json.dumps({'query':q,'variables':v or {}})],capture_output=True,text=True,timeout=40)
+            if r.returncode:
+              if required: print('::error::Zeabur transport failed');sys.exit(1)
+              return None
+            p=json.loads(r.stdout)
+            if p.get('errors'):
+              if required: print('::error::Zeabur GraphQL: '+str(p['errors'][0].get('message','unknown'))[:220]);sys.exit(1)
+              return None
+            return p.get('data') or {}
+
+          type_expr='type { kind name ofType { kind name ofType { kind name ofType { kind name } } } }'
+          service=gql('query { __type(name:"Service") { fields { name '+type_expr+' } } }')['__type']
+          interesting=[]
+          for f in service['fields']:
+            if f['name'] in ('gitTrigger','arbitraryGitSource','deployments'):
+              t=f['type']
+              while t and not t.get('name'): t=t.get('ofType')
+              name=t.get('name') if t else None
+              interesting.append((f['name'],name))
+          print('SOURCE_TYPES='+json.dumps(interesting,separators=(',',':')))
+
+          nested={}
+          for field,type_name in interesting:
+            if not type_name: continue
+            data=gql('query($name:String!){__type(name:$name){fields{name '+type_expr+'}}}',{'name':type_name},required=False)
+            if not data or not data.get('__type'): continue
+            names=[]
+            for nf in data['__type'].get('fields') or []:
+              nt=nf['type']; x=nt
+              while x and not x.get('name'): x=x.get('ofType')
+              names.append((nf['name'], x.get('name') if x else None, nt.get('kind')))
+            nested[field]=names
+          print('NESTED_SOURCE_FIELDS='+json.dumps(nested,separators=(',',':')))
+
+          root=gql('query{projects{edges{node{_id name}}}}'); projects=[e['node'] for e in root['projects']['edges']]
+          project=next((p for p in projects if p.get('name')=='untitled-1'),None) or (projects[0] if len(projects)==1 else None)
+          if not project: print('::error::Project not resolved');sys.exit(1)
+
+          for field, entries in nested.items():
+            scalars=[name for name,typ,kind in entries if typ in ('String','Boolean','Int','Float','ID','ObjectID','DateTime','Time')]
+            if not scalars: continue
+            selection=' '.join(scalars)
+            q='query($id:ObjectID!){project(_id:$id){services{_id name '+field+'{'+selection+'}}}}'
+            data=gql(q,{'id':project['_id']},required=False)
+            if not data: continue
+            services=(data.get('project') or {}).get('services') or []
+            web=next((s for s in services if s.get('name')=='webapp-dest'),None)
+            if not web: continue
+            value=web.get(field)
+            print('WEB_NESTED '+field+'='+json.dumps(value,separators=(',',':'),default=str))
+          PY
