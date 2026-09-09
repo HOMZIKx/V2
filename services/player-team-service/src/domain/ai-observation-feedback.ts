@@ -43,14 +43,7 @@ export function evaluateEquipmentFeedback(aiOutput: unknown, finalOutput: unknow
 
   const aiBonuses = normalizedStringArray(ai?.bonuses);
   const finalBonuses = normalizedStringArray(final?.bonuses);
-  const catalogFilledEmptyAiBonuses =
-    aiBonuses.length === 0 && normalizedText(final?.catalogLayer) === 'project_hard_source';
-  if (
-    !catalogFilledEmptyAiBonuses &&
-    JSON.stringify(aiBonuses) !== JSON.stringify(finalBonuses)
-  ) {
-    changed.push('bonuses');
-  }
+  if (JSON.stringify(aiBonuses) !== JSON.stringify(finalBonuses)) changed.push('bonuses');
 
   return { status: changed.length === 0 ? 'accepted' : 'corrected', changedFields: changed };
 }
